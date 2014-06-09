@@ -4,4 +4,6 @@
 *~
 *#
 dist/
+build/
+cfncluster.egg-info/
 .idea/
