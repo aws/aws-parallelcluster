@@ -1,0 +1,1553 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20140509-0 cfn-201400509-0",
+  "Parameters" : {
+    "KeyName" : {
+      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
+      "Type" : "String",
+      "MinLength" : "1",
+      "MaxLength" : "64",
+      "AllowedPattern" : "[-_ a-zA-Z0-9]*",
+      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes and underscores."
+    },
+    "MasterInstanceType" : {
+      "Description" : "Master Server EC2 instance type",
+      "Type" : "String",
+      "Default" : "m3.medium",
+      "ConstraintDescription" : "must be a valid EC2 instance type.",
+      "AllowedValues" : [
+        "cc2.8xlarge",
+        "c3.8xlarge",
+        "c3.4xlarge",
+        "c3.2xlarge",
+        "c3.xlarge",
+        "c3.large",
+        "r3.8xlarge",
+        "r3.4xlarge",
+        "r3.2xlarge",
+        "r3.xlarge",
+        "r3.large",
+        "i2.8xlarge",
+        "i2.4xlarge",
+        "i2.2xlarge",
+        "i2.xlarge",
+        "cr1.8xlarge",
+        "cg1.4xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "hi1.4xlarge",
+        "g2.2xlarge"
+      ]
+    },
+    "ComputeInstanceType" : {
+      "Description" : "Cluster Server EC2 instance type",
+      "Type" : "String",
+      "Default" : "m3.medium",
+      "ConstraintDescription" : "must be a valid EC2 instance type.",
+      "AllowedValues" : [
+        "cc2.8xlarge",
+        "c3.8xlarge",
+        "c3.4xlarge",
+        "c3.2xlarge",
+        "c3.xlarge",
+        "c3.large",
+        "r3.8xlarge",
+        "r3.4xlarge",
+        "r3.2xlarge",
+        "r3.xlarge",
+        "r3.large",
+        "i2.8xlarge",
+        "i2.4xlarge",
+        "i2.2xlarge",
+        "i2.xlarge",
+        "cr1.8xlarge",
+        "cg1.4xlarge",
+        "m3.medium",
+        "m3.large",
+        "m3.xlarge",
+        "m3.2xlarge",
+        "hi1.4xlarge",
+        "g2.2xlarge"
+      ]
+    },
+    "InitialQueueSize" : {
+      "Description" : "Inital number of EC2 instances to launch as compute nodes in the cluster.",
+      "Type" : "Number",
+      "Default" : "2"
+    },
+    "MaxQueueSize" : {
+      "Description" : "Maximum number of EC2 instances that can be launched in the cluster.",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "VPCBaseBackendSubnet1" : {
+      "Description" : "ID of the Subnet you want to provision the Compute Servers into",
+      "Type" : "String",
+      "Default" : "subnet-"
+    },
+    "VPCBaseNATENI1" : {
+      "Description" : "ID ENI used for Floating License Network license",
+      "Type" : "String",
+      "Default" : "eni-"
+    },
+    "VPCBaseBackSecurityGroup" : {
+      "Description" : "Compute Security Group ID",
+      "Type" : "String",
+      "Default" : "sg-"
+    },
+    "Scheduler" : {
+      "Description" : "Cluster scheduler",
+      "Type" : "String",
+      "Default" : "sge",
+      "ConstraintDescription" : "must be a supported scheduler",
+      "AllowedValues" : [
+        "sge",
+        "openlava",
+        "slurm",
+        "torque",
+        "hadoop2",
+        "test"
+      ]
+    },
+    "ScalingThreshold" : {
+      "Description" : "Threshold for triggering CloudWatch ScaleUp action",
+      "Type" : "String",
+      "Default" : "4"
+    },
+    "ScalingEvaluationPeriods" : {
+      "Description" : "Period to measure ScalingThreshold",
+      "Type" : "String",
+      "Default" : "2"
+    },
+    "ScalingPeriod" : {
+      "Description" : "Period to measure ScalingThreshold",
+      "Type" : "String",
+      "Default" : "60"
+    },
+    "SpotPrice" : {
+      "Description" : "Spot price for the SpotComputeFleet",
+      "Type" : "Number",
+      "Default" : "0.00"
+    },
+    "ClusterType" : {
+      "Description" : "Type of cluster to launch i.e. ondemand or spot",
+      "Type" : "String",
+      "Default" : "ondemand",
+      "ConstraintDescription" : "must be a supported cluster type",
+      "AllowedValues" : [
+        "ondemand",
+        "spot"
+      ]
+    },
+    "ProxyServer" : {
+      "Description" : "hostname and port of HTTP proxy server for cfn-init, boto and yum i.e. proxy.example.com:8080",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "UseVPCBase" : {
+      "Description" : "Boolean flag to use exisiting vpc resources from vpc or create resources",
+      "Type" : "String",
+      "Default" : "false",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
+    },
+    "VolumeSize" : {
+      "Description" : "Size of EBS volume in GB, if creating a new one",
+      "Type" : "Number",
+      "Default" : "100"
+    },
+    "VolumeType" : {
+      "Description" : "Type of volume to create either new or from snapshot",
+      "Type" : "String",
+      "Default" : "standard",
+      "ConstraintDescription" : "must be a supported volume type: standard, io1",
+      "AllowedValues" : [
+        "standard",
+        "io1"
+      ]
+    },
+    "PublicSubnet" : {
+      "Description" : "ID of the Subnet you want to provision the Master server into",
+      "Type" : "String",
+      "Default" : "subnet-"
+    },
+    "AvailabilityZones" : {
+      "Description" : "Availability Zone(s) the cluster will launch into. This can be a list to support support a multi-AZ cluster. The first AZ listed must be the AZ that the Master will lauch into. THIS IS REQUIRED",
+      "Type" : "CommaDelimitedList"
+    },
+    "EBSSnapshotId" : {
+      "Description" : "Id of EBS snapshot if using snapshot as source for volume",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "InstallType" : {
+      "Description" : "Type of install on instances. \"minimal\" is just scheduler and basic condfig, \"full\" is VNC + Ganglia as well.",
+      "Type" : "String",
+      "Default" : "minimal",
+      "ConstraintDescription" : "must be a supported install type",
+      "AllowedValues" : [
+        "minimal",
+        "full"
+      ]
+    },
+    "CustomAMI" : {
+      "Description" : "ID of a Custom AMI, to use instead of published AMI's",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "VPCId" : {
+      "Description" : "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
+      "Type" : "String",
+      "Default" : "vpc-"
+    },
+    "SSHFrom" : {
+      "Description" : "Lockdown SSH access (default can be accessed from anywhere)",
+      "Type" : "String",
+      "MinLength" : "9",
+      "MaxLength" : "18",
+      "Default" : "0.0.0.0/0",
+      "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+    },
+    "PrivateCIDRs" : {
+      "Description" : "CIDR(s) for new backend subnet(s) i.e. 10.0.100.0/24. This is a comma-delimited list and can support multiple CIDR ranges for a multi-AZ cluster. The order and length of this list MUST match the AvailabilityZones parameter.",
+      "Type" : "CommaDelimitedList",
+      "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x.",
+      "Default" : "10.0.100.0/24, NONE, NONE"
+    },
+    "MaintainInitialSize" : {
+      "Description" : "Boolean flag to set autoscaling group to maintain initial size and scale back",
+      "Type" : "String",
+      "Default" : "false",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
+    },
+    "ComputeUsesPublicSubnet" : {
+      "Description" : "Boolean flag to launch compute with direct egress or behind the Master server.",
+      "Type" : "String",
+      "Default" : "true",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
+    },
+    "UsePublicIps" : {
+      "Description" : "Boolean flag to use public IP's for instances. If false, the VPC must be correctly setup to use NAT for all traffic.",
+      "Type" : "String",
+      "Default" : "true",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
+    },
+    "VolumeIOPS" : {
+      "Description" : "Number of IOPS for volume type io1. Not used for standard volumes.",
+      "Type" : "Number",
+      "Default" : "100"
+    },
+    "PreInstallScript" : {
+      "Description" : "Preinstall script URL. This is run before any host configuration.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "PostInstallScript" : {
+      "Description" : "Postinstall script URL. This is run before any host configuration.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "ComputeWaitConditionCount" : {
+      "Description" : "Specific number of instances to wait for while creating the cluster",
+      "Type" : "Number",
+      "Default" : "2"
+    },
+    "IAMPolicy" : {
+      "Description" : "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
+      "Type" : "String",
+      "Default" : "NONE"
+    }
+  },
+  "Conditions" : {
+    "UseSpotInstances" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "ClusterType"
+        },
+        "spot"
+      ]
+    },
+    "CreateVPCResources" : {
+      "Fn::And" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "UseVPCBase"
+            },
+            "false"
+          ]
+        },
+        {
+          "Fn::Not" : [
+            {
+              "Condition" : "ComputeInPublicSubnet"
+            }
+          ]
+        }
+      ]
+    },
+    "UseEBSSnapshot" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "EBSSnapshotId"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseCustomAMI" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "CustomAMI"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "MaintainInitialASGSize" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "MaintainInitialSize"
+        },
+        "true"
+      ]
+    },
+    "ComputeInPublicSubnet" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "ComputeUsesPublicSubnet"
+        },
+        "true"
+      ]
+    },
+    "CreateSecurityGroupsAndENI" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "UseVPCBase"
+        },
+        "false"
+      ]
+    },
+    "UsePublicIPs" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "UsePublicIps"
+        },
+        "true"
+      ]
+    },
+    "UseEBSPIOPS" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "VolumeType"
+        },
+        "io1"
+      ]
+    },
+    "UseIAMPolicy" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "IAMPolicy"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    }
+  },
+  "Mappings" : {
+    "AWSInstanceType2Capabilites" : {
+      "cc2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "cr1.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "g2.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m3.medium" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "m3.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "m3.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m3.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c3.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "c3.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c3.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c3.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c3.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "r3.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "r3.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r3.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r3.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r3.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "i2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "i2.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i2.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i2.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i2.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "cg1.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      }
+    },
+    "AWSRegionArch2AMI" : {
+      "eu-west-1" : {
+        "64HVM" : "ami-df9657a8"
+      },
+      "us-east-1" : {
+        "64HVM" : "ami-5cdd3f34"
+      },
+      "ap-northeast-1" : {
+        "64HVM" : "ami-1b57111a"
+      },
+      "us-west-2" : {
+        "64HVM" : "ami-ed7503dd"
+      }
+    }
+  },
+  "Resources" : {
+    "SQS" : {
+      "Type" : "AWS::SQS::Queue",
+      "Properties" : {}
+    },
+    "SQSPolicy" : {
+      "Type" : "AWS::SQS::QueuePolicy",
+      "Properties" : {
+        "PolicyDocument" : {
+          "Id" : "MyQueuePolicy",
+          "Statement" : [
+            {
+              "Sid" : "Allow-SendMessage-From-AS-SNS-Topic",
+              "Effect" : "Allow",
+              "Principal" : {
+                "AWS" : "*"
+              },
+              "Action" : [
+                "sqs:SendMessage"
+              ],
+              "Resource" : "*",
+              "Condition" : {
+                "ArnEquals" : {
+                  "aws:SourceArn" : {
+                    "Ref" : "SNS"
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "Queues" : [
+          {
+            "Ref" : "SQS"
+          }
+        ]
+      }
+    },
+    "SNS" : {
+      "Type" : "AWS::SNS::Topic",
+      "Properties" : {
+        "Subscription" : [
+          {
+            "Endpoint" : {
+              "Fn::GetAtt" : [
+                "SQS",
+                "Arn"
+              ]
+            },
+            "Protocol" : "sqs"
+          }
+        ]
+      }
+    },
+    "DynamoDBTable" : {
+      "Type" : "AWS::DynamoDB::Table",
+      "Properties" : {
+        "AttributeDefinitions" : [
+          {
+            "AttributeName" : "instanceId",
+            "AttributeType" : "S"
+          }
+        ],
+        "KeySchema" : [
+          {
+            "AttributeName" : "instanceId",
+            "KeyType" : "HASH"
+          }
+        ],
+        "ProvisionedThroughput" : {
+          "ReadCapacityUnits" : "5",
+          "WriteCapacityUnits" : "5"
+        }
+      }
+    },
+    "RootRole" : {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument" : {
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : [
+                  "ec2.amazonaws.com"
+                ]
+              },
+              "Action" : [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Path" : "/"
+      }
+    },
+    "RootInstanceProfile" : {
+      "Type" : "AWS::IAM::InstanceProfile",
+      "Properties" : {
+        "Path" : "/",
+        "Roles" : [
+          {
+            "Ref" : "RootRole"
+          }
+        ]
+      }
+    },
+    "RolePolicies" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "root",
+        "PolicyDocument" : {
+          "Statement" : [
+            {
+              "Sid" : "EC2",
+              "Action" : [
+                "ec2:AttachVolume",
+                "ec2:DescribeInstanceAttribute",
+                "ec2:DescribeInstanceStatus",
+                "ec2:DescribeInstances"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                "*"
+              ]
+            },
+            {
+              "Sid" : "DynamoDBList",
+              "Action" : [
+                "dynamodb:ListTables"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                "*"
+              ]
+            },
+            {
+              "Sid" : "SQSQueue",
+              "Action" : [
+                "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                {
+                  "Fn::GetAtt" : [
+                    "SQS",
+                    "Arn"
+                  ]
+                }
+              ]
+            },
+            {
+              "Sid" : "Autoscaling",
+              "Action" : [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:TerminateInstanceInAutoScalingGroup"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                "*"
+              ]
+            },
+            {
+              "Sid" : "CloudWatch",
+              "Action" : [
+                "cloudwatch:PutMetricData"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                "*"
+              ]
+            },
+            {
+              "Sid" : "DynamoDBTable",
+              "Action" : [
+                "dynamodb:PutItem",
+                "dynamodb:Query",
+                "dynamodb:GetItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:DescribeTable"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "arn:aws:dynamodb:",
+                      {
+                        "Ref" : "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref" : "AWS::AccountId"
+                      },
+                      ":table/",
+                      {
+                        "Ref" : "DynamoDBTable"
+                      }
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Sid" : "SQSList",
+              "Action" : [
+                "sqs:ListQueues"
+              ],
+              "Effect" : "Allow",
+              "Resource" : [
+                "*"
+              ]
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "RootRole"
+          }
+        ]
+      }
+    },
+    "CustomRolePolicies" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "custom",
+        "PolicyDocument" : {
+          "Statement" : [
+            {
+              "Ref" : "IAMPolicy"
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "RootRole"
+          }
+        ]
+      },
+      "Condition" : "UseIAMPolicy"
+    },
+    "MasterIPAddress" : {
+      "Type" : "AWS::EC2::EIP",
+      "Properties" : {
+        "Domain" : "vpc",
+        "InstanceId" : {
+          "Ref" : "MasterServer"
+        }
+      }
+    },
+    "MasterServer" : {
+      "Type" : "AWS::EC2::Instance",
+      "Properties" : {
+        "InstanceType" : {
+          "Ref" : "MasterInstanceType"
+        },
+        "KeyName" : {
+          "Ref" : "KeyName"
+        },
+        "Tags" : [
+          {
+            "Key" : "Application",
+            "Value" : {
+              "Ref" : "AWS::StackName"
+            }
+          },
+          {
+            "Key" : "Name",
+            "Value" : "Master"
+          }
+        ],
+        "UserData" : {
+          "Fn::Base64" : {
+            "Fn::Join" : [
+              "",
+              [
+                "#!/bin/bash\n\n",
+                "function error_exit\n",
+                "{\n",
+                "  cfn-signal ${proxy_args} -e 1 -r \"$1\" '",
+                {
+                  "Ref" : "MasterServerWaitHandle"
+                },
+                "'\n",
+                "  exit 1\n",
+                "}\n",
+                "proxy=",
+                {
+                  "Ref" : "ProxyServer"
+                },
+                "\n",
+                "if [ \"$proxy\" != \"NONE\" ]; then\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=$proxy\"\n",
+                "else\n",
+                "  proxy_args=\"\"\n",
+                "fi\n",
+                "cfn-init ${proxy_args} -s ",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " -v -c default -r MasterServer --region ",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
+                "cfn-signal ${proxy_args} -e 0 -r \"MasterServer setup complete\" '",
+                {
+                  "Ref" : "MasterServerWaitHandle"
+                },
+                "'\n",
+                "# End of file\n"
+              ]
+            ]
+          }
+        },
+        "NetworkInterfaces" : [
+          {
+            "NetworkInterfaceId" : {
+              "Fn::If" : [
+                "CreateSecurityGroupsAndENI",
+                {
+                  "Ref" : "MasterENI"
+                },
+                {
+                  "Ref" : "VPCBaseNATENI1"
+                }
+              ]
+            },
+            "DeviceIndex" : "0"
+          }
+        ],
+        "ImageId" : {
+          "Fn::If" : [
+            "UseCustomAMI",
+            {
+              "Ref" : "CustomAMI"
+            },
+            {
+              "Fn::FindInMap" : [
+                "AWSRegionArch2AMI",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                {
+                  "Fn::FindInMap" : [
+                    "AWSInstanceType2Capabilites",
+                    {
+                      "Ref" : "MasterInstanceType"
+                    },
+                    "Arch"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "EbsOptimized" : {
+          "Fn::FindInMap" : [
+            "AWSInstanceType2Capabilites",
+            {
+              "Ref" : "MasterInstanceType"
+            },
+            "EBSOpt"
+          ]
+        },
+        "IamInstanceProfile" : {
+          "Ref" : "RootInstanceProfile"
+        }
+      },
+      "Metadata" : {
+        "Comment" : "cfncluster Master server",
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "default" : [
+              "deployConfigFiles",
+              "runBootAsMaster"
+            ]
+          },
+          "deployConfigFiles" : {
+            "files" : {
+              "/opt/cfncluster/cfnconfig" : {
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "stack_name=",
+                      {
+                        "Ref" : "AWS::StackName"
+                      },
+                      "\n",
+                      "cfn_preinstall=",
+                      {
+                        "Ref" : "PreInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall=",
+                      {
+                        "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_region=",
+                      {
+                        "Ref" : "AWS::Region"
+                      },
+                      "\n",
+                      "cfn_volume=",
+                      {
+                        "Ref" : "SharedVolume"
+                      },
+                      "\n",
+                      "cfn_scheduler=",
+                      {
+                        "Ref" : "Scheduler"
+                      },
+                      "\n",
+                      "cfn_install_type=",
+                      {
+                        "Ref" : "InstallType"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/opt/cfncluster/sqswatcher/sqswatcher.cfg" : {
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "[sqswatcher]\n",
+                      "region = ",
+                      {
+                        "Ref" : "AWS::Region"
+                      },
+                      "\n",
+                      "sqsqueue = ",
+                      {
+                        "Fn::GetAtt" : [
+                          "SQS",
+                          "QueueName"
+                        ]
+                      },
+                      "\n",
+                      "table_name = ",
+                      {
+                        "Ref" : "DynamoDBTable"
+                      },
+                      "\n",
+                      "scheduler = ",
+                      {
+                        "Ref" : "Scheduler"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root"
+              }
+            }
+          },
+          "runBootAsMaster" : {
+            "commands" : {
+              "bootasmaster" : {
+                "command" : "/opt/cfncluster/scripts/boot_as_master"
+              }
+            }
+          }
+        }
+      }
+    },
+    "MasterServerWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "Properties" : {
+        "Handle" : {
+          "Ref" : "MasterServerWaitHandle"
+        },
+        "Timeout" : "1800"
+      }
+    },
+    "MasterServerWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "ComputeFleet" : {
+      "Type" : "AWS::AutoScaling::AutoScalingGroup",
+      "Properties" : {
+        "MaxSize" : {
+          "Ref" : "MaxQueueSize"
+        },
+        "AvailabilityZones" : [
+          {
+            "Fn::GetAtt" : [
+              "MasterServer",
+              "AvailabilityZone"
+            ]
+          }
+        ],
+        "VPCZoneIdentifier" : [
+          {
+            "Fn::If" : [
+              "ComputeInPublicSubnet",
+              {
+                "Ref" : "PublicSubnet"
+              },
+              {
+                "Fn::If" : [
+                  "CreateVPCResources",
+                  {
+                    "Ref" : "PrivateSubnet"
+                  },
+                  {
+                    "Ref" : "VPCBaseBackendSubnet1"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "LaunchConfigurationName" : {
+          "Ref" : "ComputeServerLaunchConfig"
+        },
+        "MinSize" : {
+          "Fn::If" : [
+            "MaintainInitialASGSize",
+            {
+              "Ref" : "InitialQueueSize"
+            },
+            "0"
+          ]
+        },
+        "DesiredCapacity" : {
+          "Ref" : "InitialQueueSize"
+        },
+        "NotificationConfiguration" : {
+          "TopicARN" : {
+            "Ref" : "SNS"
+          },
+          "NotificationTypes" : [
+            "autoscaling:EC2_INSTANCE_TERMINATE"
+          ]
+        },
+        "Tags" : [
+          {
+            "Key" : "Name",
+            "Value" : "Compute",
+            "PropagateAtLaunch" : "true"
+          }
+        ]
+      },
+      "DependsOn" : "MasterServerWaitCondition"
+    },
+    "ComputeServerLaunchConfig" : {
+      "Type" : "AWS::AutoScaling::LaunchConfiguration",
+      "Properties" : {
+        "SecurityGroups" : [
+          {
+            "Fn::If" : [
+              "CreateSecurityGroupsAndENI",
+              {
+                "Ref" : "ComputeSecurityGroup"
+              },
+              {
+                "Ref" : "VPCBaseBackSecurityGroup"
+              }
+            ]
+          }
+        ],
+        "AssociatePublicIpAddress" : {
+          "Fn::If" : [
+            "ComputeInPublicSubnet",
+            "true",
+            "false"
+          ]
+        },
+        "InstanceType" : {
+          "Ref" : "ComputeInstanceType"
+        },
+        "KeyName" : {
+          "Ref" : "KeyName"
+        },
+        "UserData" : {
+          "Fn::Base64" : {
+            "Fn::Join" : [
+              "",
+              [
+                "#!/bin/bash\n",
+                "function error_exit\n",
+                "{\n",
+                "  cfn-signal ${proxy_args} -e 1 -r \"$1\" '",
+                {
+                  "Ref" : "ComputeWaitHandle"
+                },
+                "'\n",
+                "  exit 1\n",
+                "}\n",
+                "proxy=",
+                {
+                  "Ref" : "ProxyServer"
+                },
+                "\n",
+                "if [ \"$proxy\" != \"NONE\" ]; then\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=$proxy\"\n",
+                "else\n",
+                "  proxy_args=\"\"\n",
+                "fi\n",
+                "cfn-init ${proxy_args} -v -s ",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " -c default -r ComputeServerLaunchConfig ",
+                "         --region ",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init'\n",
+                "cfn-signal ${proxy_args} -e 0 -r \"Compute setup complete\" '",
+                {
+                  "Ref" : "ComputeWaitHandle"
+                },
+                "'\n"
+              ]
+            ]
+          }
+        },
+        "IamInstanceProfile" : {
+          "Ref" : "RootInstanceProfile"
+        },
+        "SpotPrice" : {
+          "Fn::If" : [
+            "UseSpotInstances",
+            {
+              "Ref" : "SpotPrice"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "ImageId" : {
+          "Fn::If" : [
+            "UseCustomAMI",
+            {
+              "Ref" : "CustomAMI"
+            },
+            {
+              "Fn::FindInMap" : [
+                "AWSRegionArch2AMI",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                {
+                  "Fn::FindInMap" : [
+                    "AWSInstanceType2Capabilites",
+                    {
+                      "Ref" : "ComputeInstanceType"
+                    },
+                    "Arch"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "InstanceMonitoring" : "false"
+      },
+      "Metadata" : {
+        "Comment" : "cfncluster Compute server",
+        "AWS::CloudFormation::Init" : {
+          "configSets" : {
+            "default" : [
+              "deployConfigFiles",
+              "runBootAsCompute"
+            ]
+          },
+          "deployConfigFiles" : {
+            "files" : {
+              "/opt/cfncluster/cfnconfig" : {
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "cfn_scheduler=",
+                      {
+                        "Ref" : "Scheduler"
+                      },
+                      "\n",
+                      "cfn_region=",
+                      {
+                        "Ref" : "AWS::Region"
+                      },
+                      "\n",
+                      "cfn_preinstall=",
+                      {
+                        "Ref" : "PreInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall=",
+                      {
+                        "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_sqs_url=",
+                      {
+                        "Ref" : "SQS"
+                      },
+                      "\n",
+                      "cfn_master=",
+                      {
+                        "Fn::GetAtt" : [
+                          "MasterServer",
+                          "PrivateDnsName"
+                        ]
+                      },
+                      "\n",
+                      "cfn_install_type=",
+                      {
+                        "Ref" : "InstallType"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root"
+              },
+              "/opt/cfncluster/nodewatcher/nodewatcher.cfg" : {
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "[nodewatcher]\n",
+                      "region = ",
+                      {
+                        "Ref" : "AWS::Region"
+                      },
+                      "\n",
+                      "scheduler = ",
+                      {
+                        "Ref" : "Scheduler"
+                      },
+                      "\n"
+                    ]
+                  ]
+                },
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root"
+              }
+            }
+          },
+          "runBootAsCompute" : {
+            "commands" : {
+              "bootascompute" : {
+                "command" : "/opt/cfncluster/scripts/boot_as_compute"
+              }
+            }
+          }
+        }
+      }
+    },
+    "ComputeWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle"
+    },
+    "ComputeWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "Properties" : {
+        "Handle" : {
+          "Ref" : "ComputeWaitHandle"
+        },
+        "Timeout" : "900",
+        "Count" : {
+          "Ref" : "ComputeWaitConditionCount"
+        }
+      }
+    },
+    "ScaleUpPolicy" : {
+      "Type" : "AWS::AutoScaling::ScalingPolicy",
+      "Properties" : {
+        "AdjustmentType" : "ChangeInCapacity",
+        "AutoScalingGroupName" : {
+          "Ref" : "ComputeFleet"
+        },
+        "Cooldown" : "120",
+        "ScalingAdjustment" : "2"
+      }
+    },
+    "AddCapacityAlarm" : {
+      "Type" : "AWS::CloudWatch::Alarm",
+      "Properties" : {
+        "Threshold" : {
+          "Ref" : "ScalingThreshold"
+        },
+        "Period" : {
+          "Ref" : "ScalingPeriod"
+        },
+        "EvaluationPeriods" : {
+          "Ref" : "ScalingEvaluationPeriods"
+        },
+        "Statistic" : "Average",
+        "AlarmActions" : [
+          {
+            "Ref" : "ScaleUpPolicy"
+          }
+        ],
+        "Namespace" : "cfncluster",
+        "ComparisonOperator" : "GreaterThanThreshold",
+        "Dimensions" : [
+          {
+            "Name" : "Stack",
+            "Value" : {
+              "Ref" : "AWS::StackName"
+            }
+          }
+        ],
+        "MetricName" : "pending"
+      }
+    },
+    "PrivateSubnet" : {
+      "Type" : "AWS::EC2::Subnet",
+      "Properties" : {
+        "VpcId" : {
+          "Ref" : "VPCId"
+        },
+        "CidrBlock" : {
+          "Ref" : "PrivateCIDRs"
+        },
+        "Tags" : [
+          {
+            "Key" : "Network",
+            "Value" : "BackendSubnet"
+          }
+        ],
+        "AvailabilityZone" : {
+          "Fn::GetAtt" : [
+            "MasterServer",
+            "AvailabilityZone"
+          ]
+        }
+      },
+      "Condition" : "CreateVPCResources"
+    },
+    "PrivateRouteTable" : {
+      "Type" : "AWS::EC2::RouteTable",
+      "Properties" : {
+        "VpcId" : {
+          "Ref" : "VPCId"
+        },
+        "Tags" : [
+          {
+            "Key" : "Application",
+            "Value" : {
+              "Ref" : "AWS::StackName"
+            }
+          },
+          {
+            "Key" : "Network",
+            "Value" : "BackendSubnet1"
+          }
+        ]
+      },
+      "Condition" : "CreateVPCResources"
+    },
+    "PrivateRoute" : {
+      "Type" : "AWS::EC2::Route",
+      "Properties" : {
+        "RouteTableId" : {
+          "Ref" : "PrivateRouteTable"
+        },
+        "DestinationCidrBlock" : "0.0.0.0/0",
+        "NetworkInterfaceId" : {
+          "Ref" : "MasterENI"
+        }
+      },
+      "Condition" : "CreateVPCResources"
+    },
+    "PrivateSubnetRouteTableAssociation" : {
+      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties" : {
+        "SubnetId" : {
+          "Ref" : "PrivateSubnet"
+        },
+        "RouteTableId" : {
+          "Ref" : "PrivateRouteTable"
+        }
+      },
+      "Condition" : "CreateVPCResources"
+    },
+    "MasterSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Enable access to the Master host",
+        "VpcId" : {
+          "Ref" : "VPCId"
+        },
+        "SecurityGroupIngress" : [
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "22",
+            "ToPort" : "22",
+            "CidrIp" : {
+              "Ref" : "SSHFrom"
+            }
+          },
+          {
+            "IpProtocol" : "tcp",
+            "FromPort" : "80",
+            "ToPort" : "80",
+            "CidrIp" : "0.0.0.0/0"
+          }
+        ]
+      },
+      "Condition" : "CreateSecurityGroupsAndENI"
+    },
+    "MasterSecurityGroupIngress" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "IpProtocol" : "-1",
+        "FromPort" : "0",
+        "ToPort" : "65535",
+        "SourceSecurityGroupId" : {
+          "Ref" : "ComputeSecurityGroup"
+        },
+        "GroupId" : {
+          "Ref" : "MasterSecurityGroup"
+        }
+      },
+      "Condition" : "CreateSecurityGroupsAndENI"
+    },
+    "ComputeSecurityGroup" : {
+      "Type" : "AWS::EC2::SecurityGroup",
+      "Properties" : {
+        "GroupDescription" : "Allow access to resources in subnets behind front",
+        "VpcId" : {
+          "Ref" : "VPCId"
+        },
+        "SecurityGroupIngress" : [
+          {
+            "SourceSecurityGroupId" : {
+              "Ref" : "MasterSecurityGroup"
+            },
+            "IpProtocol" : "-1",
+            "FromPort" : "0",
+            "ToPort" : "65535"
+          }
+        ]
+      },
+      "Condition" : "CreateSecurityGroupsAndENI"
+    },
+    "ComputeSecurityGroupIngress" : {
+      "Type" : "AWS::EC2::SecurityGroupIngress",
+      "Properties" : {
+        "IpProtocol" : "-1",
+        "FromPort" : "0",
+        "ToPort" : "65535",
+        "SourceSecurityGroupId" : {
+          "Ref" : "ComputeSecurityGroup"
+        },
+        "GroupId" : {
+          "Ref" : "ComputeSecurityGroup"
+        }
+      },
+      "Condition" : "CreateSecurityGroupsAndENI"
+    },
+    "MasterENI" : {
+      "Type" : "AWS::EC2::NetworkInterface",
+      "Properties" : {
+        "Description" : "An ENI for use on NAT instance or single Master",
+        "SubnetId" : {
+          "Ref" : "PublicSubnet"
+        },
+        "SourceDestCheck" : "false",
+        "GroupSet" : [
+          {
+            "Ref" : "MasterSecurityGroup"
+          }
+        ]
+      },
+      "Condition" : "CreateSecurityGroupsAndENI"
+    },
+    "SharedVolume" : {
+      "Type" : "AWS::EC2::Volume",
+      "Properties" : {
+        "AvailabilityZone" : {
+          "Fn::Select" : [
+            "0",
+            {
+              "Ref" : "AvailabilityZones"
+            }
+          ]
+        },
+        "VolumeType" : {
+          "Ref" : "VolumeType"
+        },
+        "Size" : {
+          "Fn::If" : [
+            "UseEBSSnapshot",
+            {
+              "Ref" : "AWS::NoValue"
+            },
+            {
+              "Ref" : "VolumeSize"
+            }
+          ]
+        },
+        "SnapshotId" : {
+          "Fn::If" : [
+            "UseEBSSnapshot",
+            {
+              "Ref" : "EBSSnapshotId"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "Iops" : {
+          "Fn::If" : [
+            "UseEBSPIOPS",
+            {
+              "Ref" : "VolumeIOPS"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs" : {
+    "MasterPrivateIP" : {
+      "Description" : "Private IP Address of the Master host",
+      "Value" : {
+        "Fn::GetAtt" : [
+          "MasterServer",
+          "PrivateIp"
+        ]
+      }
+    },
+    "MasterPublicIP" : {
+      "Description" : "Public IP Address of the Master host",
+      "Value" : {
+        "Fn::GetAtt" : [
+          "MasterServer",
+          "PublicIp"
+        ]
+      }
+    }
+  }
+}

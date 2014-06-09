@@ -1,0 +1,29 @@
+#-----------------------------------------------------------------------
+# T H I S   I S   A    O N E   P E R   C L U S T E R    F I L E
+#
+# This is a sample cluster definition file.  There is a cluster
+# definition file for each cluster.  This file's name should be 
+# lsf.cluster.<cluster-name>.  
+# See lsf.cluster(5) and the "LSF Administrator's Guide".
+#
+
+Begin Parameters
+EXINTERVAL = 45
+End Parameters
+
+Begin   ClusterAdmins
+Administrators = openlava
+End    ClusterAdmins 
+
+Begin	Host
+HOSTNAME          model          type  server  r1m  RESOURCES
+<master>                  IntelXeon      linux   1      3.5    (ms)
+<compute>                  IntelXeon      linux   1      3.5    (cs)
+End     Host
+
+Begin ResourceMap
+RESOURCENAME  LOCATION
+# tmp2	        [default]
+# nio	        [all]
+# console	[default]
+End ResourceMap

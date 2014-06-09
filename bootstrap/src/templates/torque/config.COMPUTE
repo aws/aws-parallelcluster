@@ -1,0 +1,2 @@
+$pbsserver     <master>    # hostname running pbs server     
+$logevent      225         # bitmap of which events to log

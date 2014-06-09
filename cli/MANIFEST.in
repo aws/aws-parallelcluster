@@ -1,0 +1,2 @@
+recursive-include cfncluster/cloudformation *
+recursive-include cfncluster/examples *

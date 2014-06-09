@@ -1,0 +1,3 @@
+/home <cidr>(rw,no_root_squash)
+/shared <cidr>(rw,no_root_squash)
+/opt/sge <cidr>(rw,no_root_squash)

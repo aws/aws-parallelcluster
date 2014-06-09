@@ -1,0 +1,7 @@
+*.pyc
+*.pyo
+*.class
+*~
+*#
+dist/
+.idea/

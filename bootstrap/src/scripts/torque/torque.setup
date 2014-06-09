@@ -1,0 +1,95 @@
+#!/bin/sh
+# torque.setup
+
+# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
+# License. A copy of the License is located at
+#
+# http://aws.amazon.com/asl/
+#
+# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+
+# USAGE:  torque.setup <USERNAME> [<HOSTNAME>]
+
+if [ "$1" = "" ] ; then
+  echo "USAGE:  torque.setup <USERNAME> [<HOSTNAME.DOMAIN>]"
+  exit 1
+  fi
+
+unset PBSDEBUG
+TRQ_CHECK=`pgrep trqauthd`
+TRQ_CHECK_RES=$?
+if [ "$TRQ_CHECK_RES" = "1" ]; then
+  TRQ_START=`trqauthd`
+  TRQ_START_RES=$?
+  if [ "$TRQ_START_RES" -ne "0" ]; then
+    echo "trqauthd failed to start!!! exiting setup"
+    exit 1
+  else
+    echo "trqauthd successfully started"
+  fi
+fi
+
+if [ "$2" = "" ] ; then
+  # obtain name obtained from reverse lookup of ip address
+  HOSTNAME=`hostname -f`
+else
+  HOSTNAME=$2
+fi
+  
+# enable operator privileges
+
+USER=$1@$HOSTNAME
+
+echo "initializing TORQUE (admin: $USER)"
+
+ps -ef | grep -v grep | grep pbs_server 
+
+if [ "$?" -eq "0" ] ; then
+  echo "ERROR: pbs_server already running... run 'qterm' to stop pbs_server and rerun"
+  exit 1;
+fi
+
+pbs_server -f -t create
+# Starting in TORQUE 3.1 the server is multi-threaded.
+# We need to pause a second to allow the server to finish coming
+# up. If we go to qmgr right away it will fail.
+sleep 2
+
+ps -ef | grep -v grep | grep pbs_server 
+
+if [ "$?" -ne "0" ] ; then
+  echo "ERROR: pbs_server failed to start, check syslog and server logs for more information"
+  exit 1;
+fi
+
+echo set server operators += $USER@* | qmgr
+
+if [ "$?" -ne "0" ] ; then
+  echo "ERROR: cannot set TORQUE admins"
+  qterm
+  exit 1;
+fi
+
+echo set server managers += $USER | qmgr
+
+
+qmgr -c 'set server scheduling = true'
+qmgr -c 'set server keep_completed = 300'
+qmgr -c 'set server mom_job_sync = true'
+
+# create default queue
+
+qmgr -c 'create queue batch'
+qmgr -c 'set queue batch queue_type = execution'
+qmgr -c 'set queue batch started = true'
+qmgr -c 'set queue batch enabled = true'
+qmgr -c 'set queue batch resources_default.walltime = 1:00:00'
+qmgr -c 'set queue batch resources_default.nodes = 1'
+
+qmgr -c 'set server default_queue = batch'
+
+qmgr -c 'set server auto_node_np = True'

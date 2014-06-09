@@ -1,0 +1,11 @@
+This as the bootstrap scripts deployed in an AMI that is launched by the
+CfnCluster CloudFormation template. They are called by cfn-init. They are
+typically installed in /opt/cfncluster
+
+Install
+-------
+
+As root:
+
+  # tar xf CfnClusterBootstrap.tar.gz
+  # make install

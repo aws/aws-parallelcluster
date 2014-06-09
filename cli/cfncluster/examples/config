@@ -1,0 +1,128 @@
+## cfncluster config
+[global]
+# Default cluster config section. 
+cluster_template = default
+
+[aws]
+# This is the AWS credentials section (required).
+# These settings apply to all clusters
+# replace these with your AWS keys
+# If not defined, boto will attempt to use a) enviornment
+# or b) EC2 IAM role.
+#aws_access_key_id= #your_aws_access_key_id
+#aws_secret_access_key = #your_secret_access_key
+# Uncomment to specify a different Amazon AWS region  (OPTIONAL)
+#aws_region_name = us-west-2
+
+[keypair mykey]
+key_location = /path/to/key.pem
+
+## cfncluster templates
+[cluster default]
+# Name of an existing EC2 KeyPair to enable SSH access to the instances.
+key_name = mykey
+# Override path to cloudformation in S3
+# (defaults to https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json)
+#template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
+# Cluster user
+# (defaults to ec2-user for the default template)
+#cluster_user = ec2-user
+# Cluster Server EC2 instance type
+# (defaults to m3.medium for default template)
+#compute_instance_type = m3.medium
+# Master Server EC2 instance type
+# (defaults to m3.medium for default template
+#master_instance_type = m3.medium
+# Inital number of EC2 instances to launch as compute nodes in the cluster.
+# (defaults to 2 for default template)
+#initial_queue_size = 1
+# Maximum number of EC2 instances that can be launched in the cluster.
+# (defaults to 10 for the default template)
+#max_queue_size = 10
+# Boolean flag to set autoscaling group to maintain initial size and scale back
+# (defaults to false for the default template)
+#maintain_initial_size = false
+# Type of install on instances. "minimal" is just scheduler and 
+# basic condfig, "full" is VNC + Ganglia as well.
+# (defaults to minimal for the default template)
+#install_type = minimal
+# Cluster scheduler
+# (defaults to sge for the default template)
+#scheduler = sge
+# Type of cluster to launch i.e. ondemand or spot
+# (defaults to ondemand for the default template)
+#cluster_type = ondemand
+# Spot price for the ComputeFleet
+#spot_price = 0.00
+# ID of a Custom AMI, to use instead of published AMI's
+#custom_ami = NONE
+# URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
+# (defaults to NONE for the default template)
+#pre_install = NONE
+# URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
+# (defaults to NONE for the default template)
+#post_install = NONE
+# HTTP(S) proxy server, typically http://x.x.x.x:8080
+# (defaults to NONE for the default template)
+#proxy_server = NONE
+# Settings section relating to VPC to be used
+vpc_settings = public
+# Settings section relating to EBS volume
+#ebs_settings = custom
+# Settings section relation to scaling
+#scaling = custom
+
+## VPC Settings
+[vpc public]
+# ID of the VPC you want to provision cluster into.
+vpc_id = vpc-
+# ID of the Subnet you want to provision the Master server into
+public_subnet = subnet-
+# Availability zones of VPC resources
+# This is a comma delimited list and must always contain three values
+# Example: us-west-2a,NONE,NONE
+availability_zones =
+
+#[vpc private]
+# Boolean flag to launch compute with direct egress or behind the Master server.
+#compute_uses_public_subnet = false
+# ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false
+#vpc_id =
+# ID of the Subnet you want to provision the Master server into
+#public_subnet =
+# CIDR for new backend subnet i.e. 10.0.100.0/24
+#private_cidrs = 10.0.100.0/24
+
+#[vpc existing-public]
+# Boolean flag to use exisiting vpc resources from vpc or create resources
+#use_vpc_base = true
+# Id of existing ENI to be used for the master serer
+#vpc_base_eni = eni-
+# Exisiting Compute Security Group ID
+#vpc_base_security_group = sg-
+
+## EBS Settings
+#[ebs custom]
+# Id of EBS snapshot if using snapshot as source for volume
+# (defaults to NONE for default template)
+#ebs_snapshot_id = snap-
+# Type of volume to create either new or from snapshot
+# (defaults to standard for default template)
+#volume_type = io1
+# Size of volume to be created if not using a snapshot
+# (defaults to 100GB for default template)
+#volume_size = 200
+# Number of IOPS for io1 type volumes
+#volume_iops = 200
+
+## Scaling settings
+#[scaling custom]
+# Threshold for triggering CloudWatch ScaleUp action
+# (defaults to 4 for default template)
+#scaling_threshold = 4
+# Period to measure ScalingThreshold
+# (defaults to 60 for default template)
+#scaling_period = 60
+# Period to measure ScalingThreshold
+# (defaults to 2 for default template)
+#scaling_evaluation_periods = 2

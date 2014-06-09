@@ -1,0 +1,209 @@
+#!/bin/bash
+
+# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
+# License. A copy of the License is located at
+#
+# http://aws.amazon.com/asl/
+#
+# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES 
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+
+set -x
+
+# Source cfncluster config
+. /opt/cfncluster/cfnconfig
+
+function error_exit () {
+  script=`basename $0`
+  echo "cfncluster: $script - $1"
+  logger -t cfncluster "$script - $1" 
+  exit 1
+}
+
+if [ "${cfn_volume}x" == "x" ]; then
+  error_exit "Volume must be provided."
+fi
+
+myhostname=$(hostname -s)
+if [ $? != 0 ]; then
+  error_exit 'Failed to determine local hostname'
+fi
+
+# Enable PAT
+function enable_pat () {
+RC=0
+/opt/cfncluster/scripts/os/configure-pat.sh || RC=1
+echo -e "\n# Enable PAT\n/opt/cfncluster/scripts/os/configure-pat.sh\n\n" >> /etc/rc.local || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to enable NAT(PAT)"
+fi
+}
+
+# Attache and mount volume
+function attach_mount_volume () {
+RC=0
+/usr/local/sbin/attachVolume.py ${cfn_volume} || RC=1
+sleep 10 # Hate having to do this...
+dev=$(stat /dev/disk/by-ebs-volumeid/${cfn_volume}|grep -- 'File:'|awk '{print $4}'|cut -d'/' -f3|tr -d "'")
+fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
+if [ "${fs_type}x" == "x" ]; then
+  mkfs.xfs /dev/disk/by-ebs-volumeid/${cfn_volume} || RC=1
+  sleep 5
+fi
+fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
+echo "/dev/disk/by-ebs-volumeid/${cfn_volume} /shared $fs_type noatime,nodiratime 0 0" >> /etc/fstab
+mount -v /shared || RC=1
+chmod 1777 /shared || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to attach and mount volume"
+fi
+}
+
+# Setup NFS as Master
+function setup_master_nfs () {
+# 1. Determine subnet for NFS exports
+ETH0_MAC=`/sbin/ifconfig  | /bin/grep eth0 | awk '{print tolower($5)}' | grep '^[0-9a-f]\{2\}\(:[0-9a-f]\{2\}\)\{5\}$'`
+VPC_CIDR_URI="http://169.254.169.254/latest/meta-data/network/interfaces/macs/${ETH0_MAC}/vpc-ipv4-cidr-block"
+VPC_CIDR_RANGE=`curl --retry 3 --retry-delay 0 --silent --fail ${VPC_CIDR_URI}`
+if [ $? -ne 0 ] ; then
+   echo "Unable to retrive VPC CIDR range from meta-data. This either means a) non-VPC or b) an error" | logger -t "cfncluster"
+   VPC_CIDR_RANGE="10.0.0.0/8"
+else
+   echo "Retrived the VPC CIDR range: ${VPC_CIDR_RANGE} from meta-data for NFS export." | logger -t "cfncluster"
+fi
+# 2. Update config
+RC=0
+cd /etc || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/exports.MASTER exports || RC=1
+sed -i "s?<cidr>?$VPC_CIDR_RANGE?" exports || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure NFS exports"
+fi
+# 3. Start NFS
+RC=0
+chkconfig nfs on || RC=1
+chkconfig rpcbind on || RC=1
+chkconfig rpcidmapd on || RC=1
+service rpcbind restart || RC=1
+service rpcidmapd restart || RC=1
+service nfs restart || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start NFS server"
+fi
+}
+
+# Setup Torque on master
+function setup_master_torque () {
+RC=0
+. /opt/cfncluster/templates/torque/torque.sh || RC=1
+echo "/opt/torque/lib" >> /etc/ld.so.conf.d/torque.conf || RC=1
+ldconfig || RC=1
+cd /var/spool/torque || RC=1
+/bin/cp -f /opt/cfncluster/templates/torque/server_name.MASTER server_name || RC=1
+sed -i "s/<master>/$myhostname/" server_name || RC=1
+chkconfig trqauthd on || RC=1
+service trqauthd start || RC=1
+cd /opt/cfncluster/scripts/torque || RC=1
+./torque.setup root || RC=1
+chkconfig pbs_server on || RC=1
+service pbs_server restart || RC=1
+chkconfig pbs_sched on || RC=1
+service pbs_sched start || RC=1
+cp /opt/cfncluster/templates/torque/torque.sh /etc/profile.d || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure Torque"
+fi
+}
+
+# Setup Ganglia as Master
+function setup_master_ganglia () {
+RC=0
+location=`curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone` || RC=1
+cd /etc/ganglia || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/gmond.conf.MASTER gmond.conf || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/gmetad.conf.MASTER gmetad.conf || RC=1
+sed -i "s/<master>/$myhostname/" gmond.conf || RC=1
+sed -i "s/<location>/$location/" gmond.conf || RC=1
+sed -i "s/<stack_name>/$stack_name/" gmond.conf || RC=1
+sed -i "s/<stack_name>/$stack_name/" gmetad.conf || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure Ganglia"
+fi
+}
+
+# Start httpd and ganglia services
+function start_http_ganglia () {
+RC=0
+chkconfig gmond on || RC=1
+chkconfig gmetad on  || RC=1
+chkconfig httpd on || RC=1
+service gmond start || RC=1
+service gmetad start || RC=1
+service httpd start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Ganglia"
+fi
+}
+
+# Start VNC server for ec2user 
+function start_vncserver () {
+RC=0
+cd /etc/sysconfig || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/tvncservers.MASTER tvncservers || RC=1
+chkconfig tvncserver on || RC=1
+service tvncserver start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to setup TurboVNC"
+fi
+}
+
+# Adding custom CloudWatch metric to crontab
+function add_custom_metric () {
+RC=0
+crontab -l > /tmp/root.crontab
+echo "* * * * * /opt/cfncluster/scripts/torque/publish_pending_jobs.sh 2>&1" >> /tmp/root.crontab || RC=1
+crontab /tmp/root.crontab || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to add custom metric crontab"
+fi
+}
+
+# Setup ec2-user SSH auth
+function setup_ssh_auth () {
+RC=0
+su - ec2-user -c "ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ''" || RC=1
+su - ec2-user -c "cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys2 && chmod 0600 ~/.ssh/authorized_keys2" || RC=1
+su - ec2-user -c "ssh-keyscan $(hostname -f),$(hostname -s) > ~/.ssh/known_hosts && chmod 0600 ~/.ssh/known_hosts" || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to setup ec2-user SSH auth"
+fi
+}
+
+function minimal_install () {
+  enable_pat
+  attach_mount_volume
+  setup_master_nfs
+  setup_master_torque
+  setup_master_ganglia
+  start_http_ganglia
+  add_custom_metric
+  setup_ssh_auth
+}
+
+## Main script
+case $cfn_install_type in
+  minimal)
+    minimal_install
+    ;;
+
+  *)
+    error_exit "Unkown install type: $cfn_install_type"
+
+esac
+
+script=`basename $0`
+echo "cfncluster: $script - SUCCESS - Booted as cfncluster Master"
+logger -t cfncluster "$script - SUCCESS - Booted as cfncluster Master"
