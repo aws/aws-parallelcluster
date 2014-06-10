@@ -13,11 +13,11 @@ The current working version is cfncluster-0.0.5. The CLI is written in python an
 #### Linux/OSX
 
 ```
-$ sudo easy_install https://s3.amazonaws.com/cfncluster-us-east-1/sdist/cfncluster-0.0.5.tar.gz
+$ sudo easy_install cfncluster
 ```
 or
 ```
-$ sudo pip install https://s3.amazonaws.com/cfncluster-us-east-1/sdist/cfncluster-0.0.5.tar.gz
+$ sudo pip install cfncluster
 ```
 
 #### Windows
