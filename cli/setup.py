@@ -29,7 +29,7 @@ setup(
     author_email = "dougalb@amazon.com",
     description = ("A simple tool to launch and manage HPC clusters as CloudFormation stacks."),
     url = ("https://github.com/awslabs/cfncluster"),
-    license = "ASL",
+    license = "Amazon Software License",
     packages = find_packages(),
     install_requires=['boto >= 2.28.0', 'paramiko >= 1.14'],
     entry_points=dict(console_scripts=console_scripts),
@@ -40,8 +40,10 @@ setup(
     },
     long_description=read('README'),
     classifiers=[
-        "Development Status :: 3 - Alpha",
-        "Topic :: Utilities",
-        "License :: Amazon Software License",
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Programming Language :: Python",
+        "Topic :: Scientific/Engineering",
+        "License :: Other/Proprietary License",
     ],
 )
