@@ -6,11 +6,11 @@ AWS. It is reasonably agnostic to what the cluster is for and can easily be
 extended to support different frameworks. The the CLI is stateless, 
 everything is done using CloudFormation or resources within AWS.
 
-Installation
-============
+### Installation
+
 The current working version is cfncluster-0.0.5. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
 
-## Linux/OSX
+#### Linux/OSX
 
 ```
 $ sudo easy_install https://s3.amazonaws.com/cfncluster-us-east-1/sdist/cfncluster-0.0.5.tar.gz
@@ -20,7 +20,7 @@ or
 $ sudo pip install https://s3.amazonaws.com/cfncluster-us-east-1/sdist/cfncluster-0.0.5.tar.gz
 ```
 
-## Windows
+#### Windows
 Windows support is experimental!!
 
 Install the following packages:
@@ -31,7 +31,7 @@ setuptools - https://pypi.python.org/pypi/setuptools#windows-7-or-graphical-inst
 
 Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example: C:\Python27;C:\Python27\Scripts
 
-## Configuration
+### Configuration
 
 Once installed you will need to setup some initial config. The easiest way to do this is below:
 
