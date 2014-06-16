@@ -87,6 +87,16 @@ class CfnClusterConfig:
             except ConfigParser.NoOptionError:
                 self.region = 'us-east-1'
 
+        # Check if credentials have been provided in config
+        try:
+            self.aws_access_key_id = __config.get('aws', 'aws_access_key_id')
+        except ConfigParser.NoOptionError:
+            self.aws_access_key_id=None
+        try:
+            self.aws_secret_access_key = __config.get('aws', 'aws_secret_access_key')
+        except ConfigParser.NoOptionError:
+            self.aws_secret_access_key=None
+
         # Determine the CloudFormation URL to be used
         # Config file or default
         try:
@@ -125,7 +135,7 @@ class CfnClusterConfig:
                                       install_type='InstallType', scheduler='Scheduler', cluster_type='ClusterType',
                                       spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
                                       post_install='PostInstallScript', proxy_server='ProxyServer',
-                                      iam_policy='IAMPolicy')
+                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup')
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.__cluster_options:

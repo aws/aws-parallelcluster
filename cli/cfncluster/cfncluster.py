@@ -35,7 +35,8 @@ def create(args):
     except ValueError:
         pass
     capabilities = ["CAPABILITY_IAM"]
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
     try:
         logger.debug((config.template_url, config.parameters))
         stack = cfnconn.create_stack(('cfncluster-' + args.cluster_name),template_url=config.template_url,
@@ -68,8 +69,10 @@ def update(args):
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
-    asgconn = boto.ec2.autoscale.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    asgconn = boto.ec2.autoscale.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
     if not args.reset_desired:
         temp_resources = []
         resources = cfnconn.describe_stack_resources(stack_name)
@@ -117,7 +120,8 @@ def stop(args):
 
 def list(args):
     config = cfnconfig.CfnClusterConfig(args)
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
     try:
         stacks = cfnconn.describe_stacks()
         for stack in stacks:
@@ -133,7 +137,8 @@ def list(args):
         sys.exit(0)
 
 def get_ec2_instances(stack, config):
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
 
     temp_resources = []
 
@@ -154,8 +159,10 @@ def get_ec2_instances(stack, config):
     return instances
 
 def get_asg_instances(stack, config):
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
-    asgconn = boto.ec2.autoscale.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    asgconn = boto.ec2.autoscale.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
 
     temp_resources = []
 
@@ -194,7 +201,8 @@ def instances(args):
 def status(args):
     stack = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
 
     try:
         status = cfnconn.describe_stacks(stack)[0].stack_status
@@ -235,7 +243,8 @@ def delete(args):
     stack = ('cfncluster-' + args.cluster_name)
 
     config = cfnconfig.CfnClusterConfig(args)
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
     try:
         cfnconn.delete_stack(stack)
         status = cfnconn.describe_stacks(stack)[0].stack_status
@@ -271,7 +280,8 @@ def delete(args):
 def sshmaster(args):
     stack = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
-    cfnconn = boto.cloudformation.connect_to_region(config.region)
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
     outputs = cfnconn.describe_stacks(stack)[0].outputs
     if args.useprivateip:
         hostname = [ o for o in outputs if o.key == 'MasterPrivateIP' ][0].value
