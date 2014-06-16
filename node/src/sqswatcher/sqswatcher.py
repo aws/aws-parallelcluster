@@ -22,6 +22,7 @@ import boto.sqs
 import boto.ec2
 import boto.dynamodb
 import boto.dynamodb2
+import boto.dynamodb2.exceptions
 import boto.exception
 import daemon
 import daemon.pidfile
@@ -143,7 +144,7 @@ def pollQueue():
 
                             item.delete()
 
-                        except TypeError:
+                        except boto.dynamodb2.exceptions.ItemNotFound:
                             print ("Did not find %s in the metadb\n" % instanceId)
 
                         q.delete_message(result)
