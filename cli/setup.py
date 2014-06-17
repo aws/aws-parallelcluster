@@ -31,7 +31,7 @@ setup(
     url = ("https://github.com/awslabs/cfncluster"),
     license = "Amazon Software License",
     packages = find_packages(),
-    install_requires=['boto >= 2.28.0', 'paramiko >= 1.14.0'],
+    install_requires=['boto >= 2.28.0', 'paramiko >= 1.14.0', 'argparse'],
     entry_points=dict(console_scripts=console_scripts),
     include_package_data = True,
     zip_safe = False,
