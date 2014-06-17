@@ -107,7 +107,7 @@ availability_zones =
 # (defaults to NONE for default template)
 #ebs_snapshot_id = snap-
 # Type of volume to create either new or from snapshot
-# (defaults to standard for default template)
+# (defaults to gp2 for default template)
 #volume_type = io1
 # Size of volume to be created if not using a snapshot
 # (defaults to 100GB for default template)

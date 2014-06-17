@@ -20,7 +20,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "0.0.5"
+version = "0.0.6"
 
 setup(
     name = "cfncluster",
@@ -31,7 +31,7 @@ setup(
     url = ("https://github.com/awslabs/cfncluster"),
     license = "Amazon Software License",
     packages = find_packages(),
-    install_requires=['boto >= 2.28.0', 'paramiko >= 1.14'],
+    install_requires=['boto >= 2.28.0', 'paramiko >= 1.14.0'],
     entry_points=dict(console_scripts=console_scripts),
     include_package_data = True,
     zip_safe = False,
