@@ -479,16 +479,16 @@
     },
     "AWSRegionArch2AMI" : {
       "eu-west-1" : {
-        "64HVM" : "ami-df9657a8"
+        "64HVM" : "ami-e3458c94"
       },
       "us-east-1" : {
-        "64HVM" : "ami-5cdd3f34"
+        "64HVM" : "ami-745ea11c"
       },
       "ap-northeast-1" : {
-        "64HVM" : "ami-1b57111a"
+        "64HVM" : "ami-2d41092c"
       },
       "us-west-2" : {
-        "64HVM" : "ami-ed7503dd"
+        "64HVM" : "ami-e581fcd5"
       }
     }
   },
@@ -912,6 +912,7 @@
                         "Ref" : "Scheduler"
                       },
                       "\n",
+                      "cfn_node_type=MasterServer\n",
                       "cfn_install_type=",
                       {
                         "Ref" : "InstallType"
@@ -1215,6 +1216,7 @@
                         ]
                       },
                       "\n",
+                      "cfn_node_type=ComputeFleet\n",
                       "cfn_install_type=",
                       {
                         "Ref" : "InstallType"
