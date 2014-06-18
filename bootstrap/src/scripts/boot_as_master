@@ -57,7 +57,14 @@ fi
 RC=0
 mkdir -p /scratch
 chmod 1777 /scratch
-DEVS=$(/usr/bin/ec2-metadata -b | grep ephemeral | awk '{print $2}')
+MAPPING=$(/usr/bin/ec2-metadata -b | grep ephemeral | awk '{print $2}' | sed 's/sd/xvd/')
+for m in $MAPPING; do
+  stat -t /dev/${m} >/dev/null 2>&1
+  check=$?
+  if [ ${check} -eq 0 ]; then
+    DEVS="${m} $DEVS"
+  fi
+done
 NUM_DEVS=0
 for d in $DEVS; do
   d=/dev/${d}
@@ -67,7 +74,7 @@ for d in $DEVS; do
   parted -s -a optimal ${d} mkpart primary 1MB 100%
   parted -s ${d} set 1 lvm on
   let NUM_DEVS++
-  PARTITIONS="$PARTITIONS ${d}1"
+  PARTITIONS="${d}1 $PARTITIONS"
 done
 # sleep 10 seconds to let partitions settle (bug?)
 sleep 10
@@ -75,7 +82,7 @@ sleep 10
 # Setup LVM
 pvcreate $PARTITIONS
 vgcreate vg.01 $PARTITIONS
-if [ "$cfn_encrypted_ephemeral" == "true" ] then
+if [ "$cfn_encrypted_ephemeral" == "true" ]; then
   mkfs -q /dev/ram1 1024
   mkdir -p /root/keystore
   mount /dev/ram1 /root/keystore
