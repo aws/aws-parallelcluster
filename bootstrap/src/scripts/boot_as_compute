@@ -27,7 +27,7 @@ RC=0
 if [ "${cfn_preinstall}" != "NONE" ]; then
   tmpfile=$(mktemp)
   wget -qO- ${cfn_preinstall} > $tmpfile || RC=1
-  if [ "${cfn_preinstall_args}" != "NONE"]; then
+  if [ "${cfn_preinstall_args}" != "NONE" ]; then
     args=${cfn_preinstall_args}
   fi
   /bin/sh $tmpfile $args || RC=1
@@ -132,7 +132,7 @@ RC=0
 if [ "${cfn_postinstall}" != "NONE" ]; then
   tmpfile=$(mktemp)
   wget -qO- ${cfn_postinstall} > $tmpfile || RC=1
-  if [ "${cfn_postinstall_args}" != "NONE"]; then
+  if [ "${cfn_postinstall_args}" != "NONE" ]; then
     args=${cfn_postinstall_args}
   fi
   /bin/sh $tmpfile $args || RC=1
