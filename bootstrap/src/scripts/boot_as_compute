@@ -69,6 +69,7 @@ sleep 10
 # Setup LVM
 pvcreate $PARTITIONS
 vgcreate vg.01 $PARTITIONS
+lvcreate -i $NUM_DEVS -I 64 -l 100%FREE -n lv_ephemeral vg.01
 if [ "$cfn_encrypted_ephemeral" == "true" ]; then
   mkfs -q /dev/ram1 1024
   mkdir -p /root/keystore
@@ -80,7 +81,6 @@ if [ "$cfn_encrypted_ephemeral" == "true" ]; then
   mkfs.xfs /dev/mapper/ephemeral_luks
   mount -v -t xfs -o noatime,nodiratime /dev/mapper/ephemeral_luks /scratch
 else
-  lvcreate -i $NUM_DEVS -I 64 -l 100%FREE -n lv_ephemeral vg.01
   mkfs.xfs /dev/vg.01/lv_ephemeral
   echo "/dev/vg.01/lv_ephemeral /scratch xfs noatime,nodiratime 0 0" >> /etc/fstab
   mount -v /scratch
@@ -102,7 +102,7 @@ RC=0
 location=`curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone` || RC=1
 cd /etc/ganglia || RC=1
 /bin/cp -f /opt/cfncluster/templates/os/gmond.conf.COMPUTE gmond.conf || RC=1
-sed -i "s/<master>/$cfn_master/" gmond.conf || RC=1
+sed -i "s/<master>/${cfn_master}/" gmond.conf || RC=1
 sed -i "s/<location>/$location/" gmond.conf || RC=1
 chkconfig gmond on || RC=1
 service gmond start || RC=1
