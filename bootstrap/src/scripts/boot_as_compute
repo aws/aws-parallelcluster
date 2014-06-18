@@ -39,8 +39,9 @@ RC=0
 mkdir -p /scratch
 chmod 1777 /scratch
 MAPPING=$(/usr/bin/ec2-metadata -b | grep ephemeral | awk '{print $2}' | sed 's/sd/xvd/')
-for m in MAPPING; do
-  check=$(stat -t /dev/${m} >/dev/null 2>&1)
+for m in $MAPPING; do
+  stat -t /dev/${m} >/dev/null 2>&1
+  check=$?
   if [ ${check} -eq 0 ]; then
     DEVS="${m} $DEVS"
   fi
@@ -62,7 +63,7 @@ sleep 10
 # Setup LVM
 pvcreate $PARTITIONS
 vgcreate vg.01 $PARTITIONS
-if [ "$cfn_encrypted_ephemeral" == "true" ] then
+if [ "$cfn_encrypted_ephemeral" == "true" ]; then
   mkfs -q /dev/ram1 1024
   mkdir -p /root/keystore
   mount /dev/ram1 /root/keystore
