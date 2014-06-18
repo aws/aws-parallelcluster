@@ -275,6 +275,40 @@
       "Description" : "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "Placement" : {
+      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type" : "String",
+      "Default" : "cluster",
+      "AllowedValues" : [
+        "cluster",
+        "compute"
+      ]
+    },
+    "PlacementGroup" : {
+      "Description" : "The name of an exisiting placement group",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "EncryptedEphemeral" : {
+      "Description" : "Boolean flag to encrypt local ephemeral drives. The keys are in-memory and non-recoverable.",
+      "Type" : "String",
+      "Default" : "true",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
+    },
+    "PreInstallArgs" : {
+      "Description" : "Preinstall script args passed to the preinstall script.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "PostInstallArgs" : {
+      "Description" : "Postinstall script args passed to the postinstall script.",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -379,6 +413,26 @@
             "NONE"
           ]
         }
+      ]
+    },
+    "UsePlacementGroup" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "PlacementGroup"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseClusterPlacement" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "Placement"
+        },
+        "cluster"
       ]
     }
   },
@@ -753,6 +807,24 @@
         "InstanceType" : {
           "Ref" : "MasterInstanceType"
         },
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName" : "/dev/sdb",
+            "VirtualName" : "ephemeral0"
+          },
+          {
+            "DeviceName" : "/dev/sdc",
+            "VirtualName" : "ephemeral1"
+          },
+          {
+            "DeviceName" : "/dev/sdd",
+            "VirtualName" : "ephemeral2"
+          },
+          {
+            "DeviceName" : "/dev/sde",
+            "VirtualName" : "ephemeral3"
+          }
+        ],
         "KeyName" : {
           "Ref" : "KeyName"
         },
@@ -864,6 +936,17 @@
         },
         "IamInstanceProfile" : {
           "Ref" : "RootInstanceProfile"
+        },
+        "PlacementGroupName" : {
+          "Fn::If" : [
+            "UseClusterPlacement",
+            {
+              "Ref" : "PlacementGroup"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
         }
       },
       "Metadata" : {
@@ -892,9 +975,19 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
+                      "cfn_preinstall_args=",
+                      {
+                        "Ref" : "PreInstallArgs"
+                      },
+                      "\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall_args=",
+                      {
+                        "Ref" : "PostInstallArgs"
                       },
                       "\n",
                       "cfn_region=",
@@ -910,6 +1003,11 @@
                       "cfn_scheduler=",
                       {
                         "Ref" : "Scheduler"
+                      },
+                      "\n",
+                      "cfn_encrypted_ephemeral=",
+                      {
+                        "Ref" : "EncryptedEphemeral"
                       },
                       "\n",
                       "cfn_node_type=MasterServer\n",
@@ -1049,7 +1147,18 @@
             "Value" : "Compute",
             "PropagateAtLaunch" : "true"
           }
-        ]
+        ],
+        "PlacementGroup" : {
+          "Fn::If" : [
+            "UsePlacementGroup",
+            {
+              "Ref" : "PlacementGroup"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        }
       },
       "DependsOn" : "MasterServerWaitCondition"
     },
@@ -1079,6 +1188,24 @@
         "InstanceType" : {
           "Ref" : "ComputeInstanceType"
         },
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName" : "/dev/sdb",
+            "VirtualName" : "ephemeral0"
+          },
+          {
+            "DeviceName" : "/dev/sdc",
+            "VirtualName" : "ephemeral1"
+          },
+          {
+            "DeviceName" : "/dev/sdd",
+            "VirtualName" : "ephemeral2"
+          },
+          {
+            "DeviceName" : "/dev/sde",
+            "VirtualName" : "ephemeral3"
+          }
+        ],
         "KeyName" : {
           "Ref" : "KeyName"
         },
@@ -1198,9 +1325,19 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
+                      "cfn_preinstall_args=",
+                      {
+                        "Ref" : "PreInstallArgs"
+                      },
+                      "\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall_args=",
+                      {
+                        "Ref" : "PostInstallArgs"
                       },
                       "\n",
                       "cfn_sqs_url=",
@@ -1217,6 +1354,11 @@
                       },
                       "\n",
                       "cfn_node_type=ComputeFleet\n",
+                      "cfn_encrypted_ephemeral=",
+                      {
+                        "Ref" : "EncryptedEphemeral"
+                      },
+                      "\n",
                       "cfn_install_type=",
                       {
                         "Ref" : "InstallType"

@@ -76,11 +76,13 @@ def main():
     pcreate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
                          help='disable stack rollback on error')
     pcreate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
-                         help='disable stack rollback on error')
+                         help='specify a URL for a custom cloudformation template')
     pcreate.add_argument("--cluster-template", "-t", type=str, dest="cluster_template", default=None,
-                         help='specific a specific cluster template to use')
+                         help='specify a specific cluster template to use')
     pcreate.add_argument("--extra-parameters", "-p", type=str, dest="extra_parameters", default=None,
                          help='add extra parameters to stack create')
+    pcreate.add_argument("--tags", "-g", type=str, dest="tags", default=None,
+                         help='tags to be added to the stack')
     pcreate.set_defaults(func=create)
 
     pupdate = subparsers.add_parser('update', help='update a running cluster')
@@ -89,9 +91,9 @@ def main():
     pupdate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
                          help='disable stack rollback on error')
     pupdate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
-                         help='disable stack rollback on error')
+                         help='specify a URL for a custom cloudformation template')
     pupdate.add_argument("--cluster-template", "-t", type=str, dest="cluster_template", default=None,
-                         help='disable stack rollback on error')
+                         help='specify a specific cluster template to use')
     pupdate.add_argument("--extra-parameters", "-p", type=str, dest="extra_parameters", default=None,
                          help='add extra parameters to stack update')
     pupdate.add_argument("--reset-desired", "-rd", action='store_true', dest="reset_desired", default=False,

@@ -32,36 +32,13 @@ if [ $? != 0 ]; then
   error_exit 'Failed to determine short hostname.'
 fi
 
-# Determine instance type
-instance_type=`curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-type`
-instance_type=$(echo $instance_type| tr '.' '_')
-
-# Mount NFS exports
+# Mount SGE NFS exports
 function mount_nfs () {
 RC=0
-echo "$cfn_master:/home /home nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
-echo "$cfn_master:/shared /shared nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
 echo "$cfn_master:/opt/sge /opt/sge nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
-mount -v /home || RC=1
-mount -v /shared || RC=1
 mount -v /opt/sge || RC=1
 if [ $RC -ne 0 ]; then
-  error_exit "Failed during during NFS mounts"
-fi
-}
-
-# Configure ganglia
-function configure_ganglia () {
-RC=0
-location=`curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone` || RC=1
-cd /etc/ganglia || RC=1
-/bin/cp -f /opt/cfncluster/templates/os/gmond.conf.COMPUTE gmond.conf || RC=1
-sed -i "s/<master>/$cfn_master/" gmond.conf || RC=1
-sed -i "s/<location>/$location/" gmond.conf || RC=1
-chkconfig gmond on || RC=1
-service gmond start || RC=1
-if [ $RC -ne 0 ]; then
-  error_exit "Failed during Ganglia setup"
+  error_exit "Failed during during SGE NFS mounts"
 fi
 }
 
@@ -75,37 +52,15 @@ if [ $RC -ne 0 ]; then
 fi
 }
 
-# Adding nodewatcher to crontab
-function add_nodewatcher () {
-RC=0
-crontab -l > /tmp/root.crontab
-echo "* * * * * cd /opt/cfncluster/nodewatcher && ./nodewatcher.py >> nodewatcher.log 2>&1" >> /tmp/root.crontab || RC=1
-crontab /tmp/root.crontab || RC=1
-if [ $RC -ne 0 ]; then
-  error_exit "Failed to nodewatcher crontab"
-fi
-}
-
 function minimal_install () {
   mount_nfs
   setup_sge_profile
-  add_nodewatcher
-}
-
-function full_install () {
-  mount_nfs
-  configure_ganglia
-  add_nodewatcher
 }
 
 ## Main script
 case $cfn_install_type in
   minimal)
     minimal_install
-    ;;
-
-  full)
-    full_install
     ;;
 
   *)

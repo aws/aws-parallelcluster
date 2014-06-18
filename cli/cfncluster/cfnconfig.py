@@ -116,7 +116,7 @@ class CfnClusterConfig:
                                   vpc_base_eni='VPCBaseNATENI1', compute_uses_public_subnet='ComputeUsesPublicSubnet',
                                   vpc_base_security_group='VPCBaseBackSecurityGroup', use_vpc_base='UseVPCBase',
                                   vpc_base_backend_subnet='VPCBaseBackendSubnet1',
-                                  availability_zones='AvailabilityZones')
+                                  availability_zones='AvailabilityZones', ssh_from='SSHFrom')
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
@@ -135,7 +135,9 @@ class CfnClusterConfig:
                                       install_type='InstallType', scheduler='Scheduler', cluster_type='ClusterType',
                                       spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
                                       post_install='PostInstallScript', proxy_server='ProxyServer',
-                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup')
+                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup',
+                                      encrypted_ephemeral='EncryptedEphemeral',pre_install_args='PreInstallArgs',
+                                      post_install_args='PostInstallArgs')
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.__cluster_options:

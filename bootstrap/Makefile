@@ -1,5 +1,5 @@
 SHELL = /bin/sh
-PREFIX ?= /opt/cfncluster
+DESTDIR ?= /opt/cfncluster
 
 install:
 	install -d -m 755 $(DESTDIR)
