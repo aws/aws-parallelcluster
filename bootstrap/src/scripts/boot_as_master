@@ -25,7 +25,13 @@ function error_exit () {
 # Run preinstall script if defined
 RC=0
 if [ "${cfn_preinstall}" != "NONE" ]; then
-  wget -qO- ${cfn_preinstall} | /bin/sh || RC=1
+  tmpfile=$(mktemp)
+  wget -qO- ${cfn_preinstall} > $tmpfile || RC=1
+  if [ "${cfn_preinstall_args}" != "NONE"]; then
+    args=${cfn_preinstall_args}
+  fi
+  /bin/sh $tmpfile $args || RC=1
+  /bin/rm $tmpfile
 fi
 if [ $RC -ne 0 ]; then
   error_exit "Failed to run boot_as_master preinstall"
@@ -200,7 +206,13 @@ cd /opt/cfncluster/sqswatcher && ./sqswatcher.py 2>&1
 # Run postinstall script if defined
 RC=0
 if [ "${cfn_postinstall}" != "NONE" ]; then
-  wget -qO- ${cfn_postinstall} | /bin/sh || RC=1
+  tmpfile=$(mktemp)
+  wget -qO- ${cfn_postinstall} > $tmpfile || RC=1
+  if [ "${cfn_postinstall_args}" != "NONE"]; then
+    args=${cfn_postinstall_args}
+  fi
+  /bin/sh $tmpfile $args || RC=1
+  /bin/rm $tmpfile
 fi
 if [ $RC -ne 0 ]; then
   error_exit "Failed to run boot_as_master postinstall"
