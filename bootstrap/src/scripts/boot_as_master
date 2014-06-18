@@ -31,6 +31,155 @@ if [ $RC -ne 0 ]; then
   error_exit "Failed to run boot_as_master preinstall"
 fi
 
+## Non-scheduler specific functions
+##
+
+# Check cfn_volume is present in config
+if [ "${cfn_volume}x" == "x" ]; then
+  error_exit "Volume must be provided."
+fi
+
+# Check hostname resolves using DNS
+myhostname=$(hostname -s)
+if [ $? != 0 ]; then
+  error_exit 'Failed to determine local hostname'
+fi
+
+# Enable PAT
+RC=0
+/opt/cfncluster/scripts/os/configure-pat.sh || RC=1
+echo -e "\n# Enable PAT\n/opt/cfncluster/scripts/os/configure-pat.sh\n\n" >> /etc/rc.local || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to enable NAT(PAT)"
+fi
+
+# LVM, format, mount /ephemeral
+RC=0
+mkdir -p /scratch
+chmod 1777 /scratch
+DEVS=$(/usr/bin/ec2-metadata -b | grep ephemeral | awk '{print $2}')
+NUM_DEVS=0
+for d in $DEVS; do
+  d=/dev/${d}
+  dd if=/dev/zero of=${d} bs=32k count=1
+  parted -s ${d} mklabel msdos
+  parted -s ${d}
+  parted -s -a optimal ${d} mkpart primary 1MB 100%
+  parted -s ${d} set 1 lvm on
+  let NUM_DEVS++
+  PARTITIONS="$PARTITIONS ${d}1"
+done
+# sleep 10 seconds to let partitions settle (bug?)
+sleep 10
+
+# Setup LVM
+pvcreate $PARTITIONS
+vgcreate vg.01 $PARTITIONS
+if [ "$cfn_secure_ephemeral" == "true" ] then
+  mkfs -q /dev/ram1 1024
+  mkdir -p /root/keystore
+  mount /dev/ram1 /root/keystore
+  dd if=/dev/urandom of=/root/keystore/keyfile bs=1024 count=4
+  chmod 0400 /root/keystore/keyfile
+  cryptsetup -q luksFormat /dev/vg.01/lv_ephemeral /root/keystore/keyfile
+  cryptsetup -d /root/keystore/keyfile luksOpen /dev/vg.01/lv_ephemeral ephemeral_luks
+  mkfs.xfs /dev/mapper/ephemeral_luks
+  mount -v -t xfs -o noatime,nodiratime /dev/mapper/ephemeral_luks /scratch
+else
+  lvcreate -i $NUM_DEVS -I 64 -l 100%FREE -n lv_ephemeral vg.01
+  mkfs.xfs /dev/vg.01/lv_ephemeral
+  echo "/dev/vg.01/lv_ephemeral /scratch xfs noatime,nodiratime 0 0" >> /etc/fstab
+  mount -v /scratch
+fi
+chmod 1777 /scratch
+
+# Attach and mount /shared volume
+RC=0
+/usr/local/sbin/attachVolume.py ${cfn_volume} || RC=1
+sleep 10 # Hate having to do this...
+dev=$(stat /dev/disk/by-ebs-volumeid/${cfn_volume}|grep -- 'File:'|awk '{print $4}'|cut -d'/' -f3|tr -d "'")
+fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
+if [ "${fs_type}x" == "x" ]; then
+  mkfs.xfs /dev/disk/by-ebs-volumeid/${cfn_volume} || RC=1
+  sleep 5
+fi
+fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
+echo "/dev/disk/by-ebs-volumeid/${cfn_volume} /shared $fs_type noatime,nodiratime 0 0" >> /etc/fstab
+mount -v /shared || RC=1
+chmod 1777 /shared || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to attach and mount volume"
+fi
+
+# Setup NFS as Master
+# 1. Determine subnet for NFS exports
+ETH0_MAC=`/sbin/ifconfig  | /bin/grep eth0 | awk '{print tolower($5)}' | grep '^[0-9a-f]\{2\}\(:[0-9a-f]\{2\}\)\{5\}$'`
+VPC_CIDR_URI="http://169.254.169.254/latest/meta-data/network/interfaces/macs/${ETH0_MAC}/vpc-ipv4-cidr-block"
+VPC_CIDR_RANGE=`curl --retry 3 --retry-delay 0 --silent --fail ${VPC_CIDR_URI}`
+if [ $? -ne 0 ] ; then
+   echo "Unable to retrive VPC CIDR range from meta-data. This either means a) non-VPC or b) an error" | logger -t "cfncluster"
+   VPC_CIDR_RANGE="10.0.0.0/8"
+else
+   echo "Retrived the VPC CIDR range: ${VPC_CIDR_RANGE} from meta-data for NFS export." | logger -t "cfncluster"
+fi
+# 2. Update config
+RC=0
+cd /etc || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/exports.MASTER exports || RC=1
+sed -i "s?<cidr>?$VPC_CIDR_RANGE?" exports || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure NFS exports"
+fi
+# 3. Start NFS
+RC=0
+chkconfig nfs on || RC=1
+chkconfig rpcbind on || RC=1
+chkconfig rpcidmapd on || RC=1
+service rpcbind restart || RC=1
+service rpcidmapd restart || RC=1
+service nfs restart || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start NFS server"
+fi
+
+# Setup Ganglia as Master
+RC=0
+location=`curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone` || RC=1
+cd /etc/ganglia || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/gmond.conf.MASTER gmond.conf || RC=1
+/bin/cp -f /opt/cfncluster/templates/os/gmetad.conf.MASTER gmetad.conf || RC=1
+sed -i "s/<master>/$myhostname/" gmond.conf || RC=1
+sed -i "s/<location>/$location/" gmond.conf || RC=1
+sed -i "s/<stack_name>/$stack_name/" gmond.conf || RC=1
+sed -i "s/<stack_name>/$stack_name/" gmetad.conf || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure Ganglia"
+fi
+
+# Start httpd and ganglia services
+RC=0
+chkconfig gmond on || RC=1
+chkconfig gmetad on  || RC=1
+chkconfig httpd on || RC=1
+service gmond start || RC=1
+service gmetad start || RC=1
+service httpd start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Ganglia"
+fi
+
+# Setup ec2-user SSH auth
+RC=0
+su - ec2-user -c "ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ''" || RC=1
+su - ec2-user -c "cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys2 && chmod 0600 ~/.ssh/authorized_keys2" || RC=1
+su - ec2-user -c "ssh-keyscan ${myhostname} > ~/.ssh/known_hosts && chmod 0600 ~/.ssh/known_hosts" || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to setup ec2-user SSH auth"
+fi
+
+## Scheduler specific section
+##
+
 # Run boot as master for a specific scheduler
 RC=0
 /opt/cfncluster/scripts/${cfn_scheduler}/boot_as_master >/var/log/cfncluster.log 2>&1 || RC=1
