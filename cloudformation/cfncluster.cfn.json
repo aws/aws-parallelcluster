@@ -299,6 +299,16 @@
         "true",
         "false"
       ]
+    },
+    "PreInstallArgs" : {
+      "Description" : "Preinstall script args passed to the preinstall script.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "PostInstallArgs" : {
+      "Description" : "Postinstall script args passed to the postinstall script.",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -417,12 +427,12 @@
         }
       ]
     },
-    "UseComputePlacement" : {
+    "UseClusterPlacement" : {
       "Fn::Equals" : [
         {
           "Ref" : "Placement"
         },
-        "compute"
+        "cluster"
       ]
     }
   },
@@ -797,6 +807,24 @@
         "InstanceType" : {
           "Ref" : "MasterInstanceType"
         },
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName" : "/dev/sdb",
+            "VirtualName" : "ephemeral0"
+          },
+          {
+            "DeviceName" : "/dev/sdc",
+            "VirtualName" : "ephemeral1"
+          },
+          {
+            "DeviceName" : "/dev/sdd",
+            "VirtualName" : "ephemeral2"
+          },
+          {
+            "DeviceName" : "/dev/sde",
+            "VirtualName" : "ephemeral3"
+          }
+        ],
         "KeyName" : {
           "Ref" : "KeyName"
         },
@@ -909,9 +937,9 @@
         "IamInstanceProfile" : {
           "Ref" : "RootInstanceProfile"
         },
-        "PlacementGroup" : {
+        "PlacementGroupName" : {
           "Fn::If" : [
-            "UseComputePlacement",
+            "UseClusterPlacement",
             {
               "Ref" : "PlacementGroup"
             },
@@ -947,9 +975,19 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
+                      "cfn_preinstall_args=",
+                      {
+                        "Ref" : "PreInstallArgs"
+                      },
+                      "\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall_args=",
+                      {
+                        "Ref" : "PostInstallArgs"
                       },
                       "\n",
                       "cfn_region=",
@@ -1150,6 +1188,24 @@
         "InstanceType" : {
           "Ref" : "ComputeInstanceType"
         },
+        "BlockDeviceMappings" : [
+          {
+            "DeviceName" : "/dev/sdb",
+            "VirtualName" : "ephemeral0"
+          },
+          {
+            "DeviceName" : "/dev/sdc",
+            "VirtualName" : "ephemeral1"
+          },
+          {
+            "DeviceName" : "/dev/sdd",
+            "VirtualName" : "ephemeral2"
+          },
+          {
+            "DeviceName" : "/dev/sde",
+            "VirtualName" : "ephemeral3"
+          }
+        ],
         "KeyName" : {
           "Ref" : "KeyName"
         },
@@ -1269,9 +1325,19 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
+                      "cfn_preinstall_args=",
+                      {
+                        "Ref" : "PreInstallArgs"
+                      },
+                      "\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
+                      },
+                      "\n",
+                      "cfn_postinstall_args=",
+                      {
+                        "Ref" : "PostInstallArgs"
                       },
                       "\n",
                       "cfn_sqs_url=",

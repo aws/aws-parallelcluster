@@ -59,9 +59,15 @@ key_name = mykey
 # URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
 # (defaults to NONE for the default template)
 #pre_install = NONE
+# Arguments to be passed to preinstall script
+# (defaults to NONE for the default template)
+#pre_install_args = NONE
 # URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
 # (defaults to NONE for the default template)
 #post_install = NONE
+# Arguments to be passed to postinstall script
+# (defaults to NONE for the default template)
+#post_install_args = NONE
 # HTTP(S) proxy server, typically http://x.x.x.x:8080
 # (defaults to NONE for the default template)
 #proxy_server = NONE
@@ -91,6 +97,10 @@ public_subnet = subnet-
 # This is a comma delimited list and must always contain three values
 # Example: us-west-2a,NONE,NONE
 availability_zones =
+# SSH from CIDR
+# This is only used when cfncluster creates the security group
+# (defaults to 0.0.0.0/0 in the default template)
+#ssh_from = 0.0.0.0/0
 
 #[vpc private]
 # Boolean flag to launch compute with direct egress or behind the Master server.
