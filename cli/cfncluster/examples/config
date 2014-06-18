@@ -65,6 +65,15 @@ key_name = mykey
 # HTTP(S) proxy server, typically http://x.x.x.x:8080
 # (defaults to NONE for the default template)
 #proxy_server = NONE
+# Cluster placement group. This placement group must already exist.
+# (defaults to NONE for the default template)
+#placement_group = NONE
+# Cluster placment logic. This enables the whole cluster or only compute to use the placement group
+# (defaults to cluster in the default template)
+#placement = cluster 
+# Encrypted ephemeral drives. In-memory keys, non-recoverable.
+# (defaults to false in default template)
+#encrypted_ephemeral = false
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume
