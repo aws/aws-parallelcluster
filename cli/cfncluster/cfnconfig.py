@@ -135,7 +135,8 @@ class CfnClusterConfig:
                                       install_type='InstallType', scheduler='Scheduler', cluster_type='ClusterType',
                                       spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
                                       post_install='PostInstallScript', proxy_server='ProxyServer',
-                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup')
+                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup',
+                                      encrypted_ephemeral='EncryptedEphemeral')
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.__cluster_options:
