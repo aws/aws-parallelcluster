@@ -26,7 +26,9 @@ Windows support is experimental!!
 Install the following packages:
 
 Python2.7 - https://www.python.org/download/
+
 pyCrypto - http://www.voidspace.org.uk/python/modules.shtml#pycrypto
+
 setuptools - https://pypi.python.org/pypi/setuptools#windows-7-or-graphical-install
 
 Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example: C:\Python27;C:\Python27\Scripts
