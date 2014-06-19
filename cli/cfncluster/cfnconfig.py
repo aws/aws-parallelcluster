@@ -160,7 +160,7 @@ class CfnClusterConfig:
 
         # Dictionary list of all EBS options
         self.__ebs_options = dict(ebs_snapshot_id='EBSSnapshotId', volume_type='VolumeType', volume_size='VolumeSize',
-                                  volume_iops='VolumeIOPS')
+                                  volume_iops='VolumeIOPS', encrypted='EBSEncryption')
 
         try:
             if self.__ebs_section:

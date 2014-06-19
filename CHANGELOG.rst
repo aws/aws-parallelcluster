@@ -6,6 +6,7 @@ CHANGELOG
 =====
 
 * feature:``cfncluster``: Added option to encrypt ephemeral drives with in-memory keys
+* feature:``cfncluster``: Support for EBS encryption on /shared volume
 * feature:``cfncluster``: Detect all ephemeral drives, stripe and mount as /scratch
 * feature:``cfncluster``: Support for placement groups
 * feature:``cfncluster``: Support for cluster placement logic. Can either be cluster or compute.
