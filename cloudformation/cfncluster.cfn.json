@@ -438,11 +438,9 @@
       ]
     },
     "UseClusterPlacement" : {
-      "Fn::Equals" : [
-        {
-          "Ref" : "Placement"
-        },
-        "cluster"
+      "Fn::And": [
+        { "Fn::Equals" : [ { "Ref" : "Placement" }, "cluster" ] },
+        { "Condition" : "UsePlacementGroup" }
       ]
     },
     "UseEBSEncryption" : {
