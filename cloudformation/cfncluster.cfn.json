@@ -309,6 +309,16 @@
       "Description" : "Postinstall script args passed to the postinstall script.",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "EBSEncryption" : {
+      "Description" : "Boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
+      "Type" : "String",
+      "Default" : "false",
+      "ConstraintDescription" : "true/false",
+      "AllowedValues" : [
+        "true",
+        "false"
+      ]
     }
   },
   "Conditions" : {
@@ -433,6 +443,14 @@
           "Ref" : "Placement"
         },
         "cluster"
+      ]
+    },
+    "UseEBSEncryption" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "EBSEncryption"
+        },
+        "true"
       ]
     }
   },
@@ -1666,6 +1684,17 @@
             "UseEBSPIOPS",
             {
               "Ref" : "VolumeIOPS"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "Encrypted" : {
+          "Fn::If" : [
+            "UseEBSEncryption",
+            {
+              "Ref" : "EBSEncryption"
             },
             {
               "Ref" : "AWS::NoValue"

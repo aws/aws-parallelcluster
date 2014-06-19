@@ -133,6 +133,9 @@ availability_zones =
 #volume_size = 200
 # Number of IOPS for io1 type volumes
 #volume_iops = 200
+# Use encrypted volume (should not be used with snapshots)
+# (defaults to false for default template)
+#encrypted = false
 
 ## Scaling settings
 #[scaling custom]
