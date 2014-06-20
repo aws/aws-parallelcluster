@@ -1000,21 +1000,21 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
-                      "cfn_preinstall_args=",
+                      "cfn_preinstall_args=\"",
                       {
                         "Ref" : "PreInstallArgs"
                       },
-                      "\n",
+                      "\"\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
                       },
                       "\n",
-                      "cfn_postinstall_args=",
+                      "cfn_postinstall_args=\"",
                       {
                         "Ref" : "PostInstallArgs"
                       },
-                      "\n",
+                      "\"\n",
                       "cfn_region=",
                       {
                         "Ref" : "AWS::Region"
@@ -1350,21 +1350,21 @@
                         "Ref" : "PreInstallScript"
                       },
                       "\n",
-                      "cfn_preinstall_args=",
+                      "cfn_preinstall_args=\"",
                       {
                         "Ref" : "PreInstallArgs"
                       },
-                      "\n",
+                      "\"\n",
                       "cfn_postinstall=",
                       {
                         "Ref" : "PostInstallScript"
                       },
                       "\n",
-                      "cfn_postinstall_args=",
+                      "cfn_postinstall_args=\"",
                       {
                         "Ref" : "PostInstallArgs"
                       },
-                      "\n",
+                      "\"\n",
                       "cfn_sqs_url=",
                       {
                         "Ref" : "SQS"
