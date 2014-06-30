@@ -109,7 +109,17 @@ chmod 1777 /scratch
 # Attach and mount /shared volume
 RC=0
 /usr/local/sbin/attachVolume.py ${cfn_volume} || RC=1
-sleep 10 # Hate having to do this...
+TRY=0
+while [ $TRY -lt 3 ]; do
+  sleep 10
+  stat /dev/disk/by-ebs-volumeid/${cfn_volume} 2>&1 >/dev/null
+  check_stat=$?
+  if [ $check_stat -eq 0 ]; then
+    break
+  else
+    TRY=$(( $TRY + 1 )) 
+  fi
+done
 dev=$(stat /dev/disk/by-ebs-volumeid/${cfn_volume}|grep -- 'File:'|awk '{print $4}'|cut -d'/' -f3|tr -d "'")
 fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
 if [ "${fs_type}x" == "x" ]; then
