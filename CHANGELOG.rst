@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.8
+=====
+
+* updates:``ami``: Pulled latest CentOS errata
+* bugfix:``cfncluster``: Fixed issues with attaching encrypted EBS volumes
+* bugfix:``cfncluster``: Fixed issues with install_type option(removed)
+
 0.0.7
 =====
 
