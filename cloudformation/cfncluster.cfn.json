@@ -186,16 +186,6 @@
       "Type" : "String",
       "Default" : "NONE"
     },
-    "InstallType" : {
-      "Description" : "Type of install on instances. \"minimal\" is just scheduler and basic condfig, \"full\" is VNC + Ganglia as well.",
-      "Type" : "String",
-      "Default" : "minimal",
-      "ConstraintDescription" : "must be a supported install type",
-      "AllowedValues" : [
-        "minimal",
-        "full"
-      ]
-    },
     "CustomAMI" : {
       "Description" : "ID of a Custom AMI, to use instead of published AMI's",
       "Type" : "String",
@@ -1035,12 +1025,7 @@
                         "Ref" : "EncryptedEphemeral"
                       },
                       "\n",
-                      "cfn_node_type=MasterServer\n",
-                      "cfn_install_type=",
-                      {
-                        "Ref" : "InstallType"
-                      },
-                      "\n"
+                      "cfn_node_type=MasterServer\n"
                     ]
                   ]
                 },
@@ -1382,11 +1367,6 @@
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"
-                      },
-                      "\n",
-                      "cfn_install_type=",
-                      {
-                        "Ref" : "InstallType"
                       },
                       "\n"
                     ]

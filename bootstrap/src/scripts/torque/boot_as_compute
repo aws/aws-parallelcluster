@@ -53,20 +53,12 @@ if [ $RC -ne 0 ]; then
 fi
 }
 
-function minimal_install () {
+function do_install () {
   setup_torque
 }
 
 ## Main script
-case $cfn_install_type in
-  minimal)
-    minimal_install
-    ;;
-
-  *)
-    error_exit "Unkown install type: $cfn_install_type"
-
-esac
+do_install
   
 
 script=`basename $0`

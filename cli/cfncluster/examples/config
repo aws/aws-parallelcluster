@@ -42,10 +42,6 @@ key_name = mykey
 # Boolean flag to set autoscaling group to maintain initial size and scale back
 # (defaults to false for the default template)
 #maintain_initial_size = false
-# Type of install on instances. "minimal" is just scheduler and 
-# basic condfig, "full" is VNC + Ganglia as well.
-# (defaults to minimal for the default template)
-#install_type = minimal
 # Cluster scheduler
 # (defaults to sge for the default template)
 #scheduler = sge

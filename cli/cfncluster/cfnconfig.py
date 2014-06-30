@@ -132,7 +132,7 @@ class CfnClusterConfig:
         self.__cluster_options = dict(cluster_user='ClusterUser', compute_instance_type='ComputeInstanceType',
                                       master_instance_type='MasterInstanceType', initial_queue_size='InitialQueueSize',
                                       max_queue_size='MaxQueueSize', maintain_initial_size='MaintainInitialSize',
-                                      install_type='InstallType', scheduler='Scheduler', cluster_type='ClusterType',
+                                      scheduler='Scheduler', cluster_type='ClusterType',
                                       spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
                                       post_install='PostInstallScript', proxy_server='ProxyServer',
                                       iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup',
