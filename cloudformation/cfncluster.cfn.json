@@ -13,7 +13,7 @@
     "MasterInstanceType" : {
       "Description" : "Master Server EC2 instance type",
       "Type" : "String",
-      "Default" : "m3.medium",
+      "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
       "AllowedValues" : [
         "cc2.8xlarge",
@@ -38,13 +38,16 @@
         "m3.xlarge",
         "m3.2xlarge",
         "hi1.4xlarge",
-        "g2.2xlarge"
+        "g2.2xlarge",
+        "t2.micro",
+        "t2.small",
+        "t2.medium"
       ]
     },
     "ComputeInstanceType" : {
       "Description" : "Cluster Server EC2 instance type",
       "Type" : "String",
-      "Default" : "m3.medium",
+      "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
       "AllowedValues" : [
         "cc2.8xlarge",
@@ -69,7 +72,10 @@
         "m3.xlarge",
         "m3.2xlarge",
         "hi1.4xlarge",
-        "g2.2xlarge"
+        "g2.2xlarge",
+        "t2.micro",
+        "t2.small",
+        "t2.medium"
       ]
     },
     "InitialQueueSize" : {
@@ -159,7 +165,7 @@
     "VolumeSize" : {
       "Description" : "Size of EBS volume in GB, if creating a new one",
       "Type" : "Number",
-      "Default" : "100"
+      "Default" : "20"
     },
     "VolumeType" : {
       "Description" : "Type of volume to create either new or from snapshot",
@@ -283,7 +289,7 @@
     "EncryptedEphemeral" : {
       "Description" : "Boolean flag to encrypt local ephemeral drives. The keys are in-memory and non-recoverable.",
       "Type" : "String",
-      "Default" : "true",
+      "Default" : "false",
       "ConstraintDescription" : "true/false",
       "AllowedValues" : [
         "true",
@@ -544,20 +550,32 @@
       "cg1.4xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
+      },
+      "t2.micro" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.small" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.medium" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
       }
     },
     "AWSRegionArch2AMI" : {
       "eu-west-1" : {
-        "64HVM" : "ami-a1a169d6"
+        "64HVM" : "ami-d15892a6"
       },
       "us-east-1" : {
-        "64HVM" : "ami-2c07f944"
+        "64HVM" : "ami-705d9918"
       },
       "ap-northeast-1" : {
-        "64HVM" : "ami-b3c78fb2"
+        "64HVM" : "ami-6d64306c"
       },
       "us-west-2" : {
-        "64HVM" : "ami-7dcab74d"
+        "64HVM" : "ami-cfbbc4ff"
       }
     }
   },

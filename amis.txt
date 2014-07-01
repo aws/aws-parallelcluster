@@ -1,4 +1,4 @@
-us-west-2 ami-7dcab74d
-us-east-1 ami-2c07f944
-eu-west-1 ami-a1a169d6
-ap-northeast-1 ami-b3c78fb2
+us-west-2 ami-cfbbc4ff
+us-east-1 ami-705d9918
+eu-west-1 ami-d15892a6
+ap-northeast-1 ami-6d64306c

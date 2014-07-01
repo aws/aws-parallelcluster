@@ -5,8 +5,10 @@ CHANGELOG
 0.0.8
 =====
 
+* feature:``cfncluster``: Added support for new T2 instances
+* updates:``cfncluster``: Changed default instance sizes to t2.micro(free tier)
+* updates:``cfncluster``: Changed EBS volume default size to 20GB(free tier)
 * updates:``ami``: Pulled latest CentOS errata
-* bugfix:``cfncluster``: Fixed issues with attaching encrypted EBS volumes
 * bugfix:``cfncluster``: Fixed issues with install_type option(removed)
 
 0.0.7

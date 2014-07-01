@@ -28,11 +28,11 @@ key_name = mykey
 # (defaults to ec2-user for the default template)
 #cluster_user = ec2-user
 # Cluster Server EC2 instance type
-# (defaults to m3.medium for default template)
-#compute_instance_type = m3.medium
+# (defaults to t2.micro for default template)
+#compute_instance_type = t2.micro
 # Master Server EC2 instance type
-# (defaults to m3.medium for default template
-#master_instance_type = m3.medium
+# (defaults to t2.micro for default template
+#master_instance_type = t2.micro
 # Inital number of EC2 instances to launch as compute nodes in the cluster.
 # (defaults to 2 for default template)
 #initial_queue_size = 1
@@ -125,8 +125,8 @@ availability_zones =
 # (defaults to gp2 for default template)
 #volume_type = io1
 # Size of volume to be created if not using a snapshot
-# (defaults to 100GB for default template)
-#volume_size = 200
+# (defaults to 20GB for default template)
+#volume_size = 20
 # Number of IOPS for io1 type volumes
 #volume_iops = 200
 # Use encrypted volume (should not be used with snapshots)
