@@ -15,9 +15,7 @@ import boto.ec2.autoscale
 import boto.exception
 import time
 import os
-import paramiko
 import socket
-import interactive
 import logging
 
 import cfnconfig
@@ -276,75 +274,4 @@ def delete(args):
     except KeyboardInterrupt:
         print('\nExiting...')
         sys.exit(0)
-
-def sshmaster(args):
-    stack = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
-    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
-                                                    aws_secret_access_key=config.aws_secret_access_key)
-    outputs = cfnconn.describe_stacks(stack)[0].outputs
-    if args.useprivateip:
-        hostname = [ o for o in outputs if o.key == 'MasterPrivateIP' ][0].value
-    else:
-        hostname = [ o for o in outputs if o.key == 'MasterPublicIP' ][0].value
-    port = 22
-
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((hostname, port))
-    except Exception, e:
-        print '*** Connect failed: ' + str(e)
-        traceback.print_exc()
-        sys.exit(1)
-
-    try:
-        t = paramiko.Transport(sock)
-        try:
-            t.start_client()
-        except paramiko.SSHException:
-            print '*** SSH negotiation failed.'
-            sys.exit(1)
-
-        try:
-            keys = paramiko.util.load_host_keys(os.path.expanduser('~/.ssh/known_hosts'))
-        except IOError:
-            try:
-                keys = paramiko.util.load_host_keys(os.path.expanduser('~/ssh/known_hosts'))
-            except IOError:
-                print '*** Unable to open host keys file'
-                keys = {}
-
-        # check server's host key -- this is important.
-        key = t.get_remote_server_key()
-        if not keys.has_key(hostname):
-            print '*** WARNING: Unknown host key!'
-        elif not keys[hostname].has_key(key.get_name()):
-            print '*** WARNING: Unknown host key!'
-        elif keys[hostname][key.get_name()] != key:
-            print '*** WARNING: Host key has changed!!!'
-            sys.exit(1)
-        else:
-            print '*** Host key OK.'
-
-        key = paramiko.RSAKey.from_private_key_file(config.key_location)
-        username = 'ec2-user'
-        t.auth_publickey(username, key)
-
-        chan = t.open_session()
-        chan.get_pty()
-        chan.invoke_shell()
-        print '*** Here we go!'
-        print
-        interactive.interactive_shell(chan)
-        chan.close()
-        t.close()
-
-    except Exception, e:
-        print '*** Caught exception: ' + str(e.__class__) + ': ' + str(e)
-        ##traceback.print_exc()
-        try:
-            t.close()
-        except:
-            pass
-        sys.exit(1)
 

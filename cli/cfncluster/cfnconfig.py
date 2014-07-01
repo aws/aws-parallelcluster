@@ -15,6 +15,8 @@ import sys
 import inspect
 import pkg_resources
 import logging
+import json
+import urllib2
 
 class CfnClusterConfig:
 
@@ -56,6 +58,20 @@ class CfnClusterConfig:
         except AttributeError:
             self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
+
+        # Check if package updates should be checked
+        try:
+            self.__update_check = __config.get('global', 'update_check')
+        except ConfigParser.NoOptionError:
+            self.__update_check = True
+
+        if self.__update_check == True:
+            try:
+                __latest = json.loads(urllib2.urlopen("http://pypi.python.org/pypi/cfncluster/json").read())['info']['version']
+                if self.version < __latest:
+                    print('warning: There is a newer version %s of cfncluster available.' % __latest)
+            except Exception:
+                pass
 
         # Get the EC2 keypair name to be used, exit if not set
         try:

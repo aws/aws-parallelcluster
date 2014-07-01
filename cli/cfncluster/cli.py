@@ -31,9 +31,6 @@ def list(args):
 def delete(args):
     cfncluster.delete(args)
 
-def sshmaster(args):
-    cfncluster.sshmaster(args)
-
 def instances(args):
     cfncluster.instances(args)
 
@@ -122,13 +119,6 @@ def main():
     pinstances.add_argument("cluster_name", type=str, default=None,
                         help='show the status of cfncluster with the provided name.')
     pinstances.set_defaults(func=instances)
-
-    psshmaster = subparsers.add_parser('sshmaster', help='ssh to Master instance')
-    psshmaster.add_argument("cluster_name", type=str, default=None,
-                        help='ssh to the Master of the cfncluster with the provided name.')
-    psshmaster.add_argument("--privateip", action='store_true', dest="useprivateip",
-                         help='connect to the private IP of the MasterServer')
-    psshmaster.set_defaults(func=sshmaster)
 
     args = parser.parse_args()
     logging.debug(args)

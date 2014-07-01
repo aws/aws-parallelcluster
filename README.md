@@ -8,7 +8,7 @@ everything is done using CloudFormation or resources within AWS.
 
 ### Installation
 
-The current working version is cfncluster-0.0.5. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.8. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
 
 #### Linux/OSX
 
@@ -77,7 +77,4 @@ Once all of those settings contain valid values, you can launch the cluster by r
 ```
 $ cfncluster create mycluster
 ```
-Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings or via the cfncluster CLI.
-```
-$ cfncluster sshmaster mycluster
-```
+Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings. For more details on connecting to EC2 instances, check the EC2 User Guide - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client

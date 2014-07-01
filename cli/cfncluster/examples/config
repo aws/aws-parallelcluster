@@ -2,6 +2,8 @@
 [global]
 # Default cluster config section. 
 cluster_template = default
+# Check for updates
+update_check = false
 
 [aws]
 # This is the AWS credentials section (required).
