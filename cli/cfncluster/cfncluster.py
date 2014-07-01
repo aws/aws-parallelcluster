@@ -141,7 +141,16 @@ def get_ec2_instances(stack, config):
     temp_resources = []
 
     while True:
-        resources = cfnconn.describe_stack_resources(stack)
+        try:
+            resources = cfnconn.describe_stack_resources(stack)
+        except boto.exception.BotoServerError as e:
+            if e.message.endswith("does not exist"):
+                #sys.stdout.write('\r\n')
+                print e.message
+                sys.stdout.flush()
+                sys.exit(0)
+            else:
+                raise e
         temp_resources.extend(resources)
         if not resources.next_token:
             break
@@ -165,7 +174,16 @@ def get_asg_instances(stack, config):
     temp_resources = []
 
     while True:
-        resources = cfnconn.describe_stack_resources(stack)
+        try:
+            resources = cfnconn.describe_stack_resources(stack)
+        except boto.exception.BotoServerError as e:
+            if e.message.endswith("does not exist"):
+                #sys.stdout.write('\r\n')
+                print e.message
+                sys.stdout.flush()
+                sys.exit(0)
+            else:
+                raise e
         temp_resources.extend(resources)
         if not resources.next_token:
             break
@@ -207,7 +225,7 @@ def status(args):
         sys.stdout.write('\rStatus: %s' % status)
         sys.stdout.flush()
         if not args.nowait:
-            while ((status != 'CREATE_COMPLETE') and (status != 'UPDATE_COMPLETE')):
+            while ((status != 'CREATE_COMPLETE') and (status != 'UPDATE_COMPLETE') and (status != 'ROLLBACK_COMPLETE')):
                 time.sleep(5)
                 status = cfnconn.describe_stacks(stack)[0].stack_status
                 events = cfnconn.describe_stack_events(stack)[0]
