@@ -267,7 +267,12 @@
       "Type" : "Number",
       "Default" : "2"
     },
-    "IAMPolicy" : {
+    "S3ReadResource" : {
+      "Description" : "S3 resource with read access from cfncluster nodes",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "S3ReadWriteResource" : {
       "Description" : "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
       "Type" : "String",
       "Default" : "NONE"
@@ -409,12 +414,12 @@
         "io1"
       ]
     },
-    "UseIAMPolicy" : {
+    "UseS3ReadPolicy" : {
       "Fn::Not" : [
         {
           "Fn::Equals" : [
             {
-              "Ref" : "IAMPolicy"
+              "Ref" : "S3ReadResource"
             },
             "NONE"
           ]
@@ -454,6 +459,18 @@
           "Ref" : "EBSEncryption"
         },
         "true"
+      ]
+    },
+    "UseS3ReadWritePolicy" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "S3ReadWriteResource"
+            },
+            "NONE"
+          ]
+        }
       ]
     }
   },
@@ -658,6 +675,7 @@
       "Type" : "AWS::IAM::Role",
       "Properties" : {
         "AssumeRolePolicyDocument" : {
+          "Version" : "2012-10-17",
           "Statement" : [
             {
               "Effect" : "Allow",
@@ -686,10 +704,10 @@
         ]
       }
     },
-    "RolePolicies" : {
+    "CfnClusterPolicies" : {
       "Type" : "AWS::IAM::Policy",
       "Properties" : {
-        "PolicyName" : "root",
+        "PolicyName" : "cfncluster",
         "PolicyDocument" : {
           "Statement" : [
             {
@@ -797,7 +815,8 @@
                 "*"
               ]
             }
-          ]
+          ],
+          "Version" : "2012-10-17"
         },
         "Roles" : [
           {
@@ -806,14 +825,25 @@
         ]
       }
     },
-    "CustomRolePolicies" : {
+    "S3ReadRolePolicies" : {
       "Type" : "AWS::IAM::Policy",
       "Properties" : {
-        "PolicyName" : "custom",
+        "PolicyName" : "S3Read",
         "PolicyDocument" : {
+          "Version" : "2012-10-17",
           "Statement" : [
             {
-              "Ref" : "IAMPolicy"
+              "Sid" : "S3Read",
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:Get*",
+                "s3:List*"
+              ],
+              "Resource" : [
+                {
+                  "Ref" : "S3ReadResource"
+                }
+              ]
             }
           ]
         },
@@ -823,7 +853,36 @@
           }
         ]
       },
-      "Condition" : "UseIAMPolicy"
+      "Condition" : "UseS3ReadPolicy"
+    },
+    "S3ReadWriteRolePolicies" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "S3ReadWrite",
+        "PolicyDocument" : {
+          "Version" : "2012-10-17",
+          "Statement" : [
+            {
+              "Sid" : "S3ReadWrite",
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:*"
+              ],
+              "Resource" : [
+                {
+                  "Ref" : "S3ReadWriteResource"
+                }
+              ]
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "RootRole"
+          }
+        ]
+      },
+      "Condition" : "UseS3ReadWritePolicy"
     },
     "MasterIPAddress" : {
       "Type" : "AWS::EC2::EIP",
