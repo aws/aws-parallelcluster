@@ -83,7 +83,7 @@ key_name = mykey
 #placement = cluster
 # Path/mountpoint for ephemeral drives
 # (defaults to /scratch in the default template)
-#ephemeral_dir = /scragc
+#ephemeral_dir = /scratch
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false in default template)
 #encrypted_ephemeral = false

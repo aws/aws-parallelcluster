@@ -320,6 +320,11 @@
         "true",
         "false"
       ]
+    },
+    "EphemeralDir" : {
+      "Description" : "The path/mountpoint for the ephemeral drive",
+      "Type" : "String",
+      "Default" : "/scratch"
     }
   },
   "Conditions" : {
@@ -1102,6 +1107,11 @@
                         "Ref" : "EncryptedEphemeral"
                       },
                       "\n",
+                      "cfn_ephemeral_dir=",
+                      {
+                        "Ref" : "EphemeralDir"
+                      },
+                      "\n",
                       "cfn_node_type=MasterServer\n"
                     ]
                   ]
@@ -1441,6 +1451,11 @@
                       },
                       "\n",
                       "cfn_node_type=ComputeFleet\n",
+                      "cfn_ephemeral_dir=",
+                      {
+                        "Ref" : "EphemeralDir"
+                      },
+                      "\n",
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"
