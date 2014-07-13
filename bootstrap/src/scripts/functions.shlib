@@ -1,0 +1,110 @@
+# Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
+# License. A copy of the License is located at
+#
+# http://aws.amazon.com/asl/
+#
+# or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
+# OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Error exit function
+function error_exit () {
+  script=`basename $0`
+  echo "cfncluster: $script - $1"
+  logger -t cfncluster "$script - $1"
+  exit 1
+}
+
+# Check and run preinstall
+function run_preinstall () {
+  RC=0
+  if [ "${cfn_preinstall}" != "NONE" ]; then
+    tmpfile=$(mktemp)
+    wget -qO- ${cfn_preinstall} > $tmpfile || RC=1
+    if [ "${cfn_preinstall_args}" != "NONE" ]; then
+      args=${cfn_preinstall_args}
+    fi
+    /bin/sh $tmpfile $args || RC=1
+    /bin/rm $tmpfile
+  fi
+  if [ $RC -ne 0 ]; then
+    error_exit "Failed to run boot_as_master preinstall"
+  fi
+}
+
+# LVM stripe, format, mount ephemeral drives
+function setup_ephemeral_drives () {
+  RC=0
+  mkdir -p ${cfn_ephemeral_dir} || RC=1
+  chmod 1777 ${cfn_ephemeral_dir} || RC=1
+  MAPPING=$(/usr/bin/ec2-metadata -b | grep ephemeral | awk '{print $2}' | sed 's/sd/xvd/')
+  NUM_DEVS=0
+  for m in $MAPPING; do
+    stat -t /dev/${m} >/dev/null 2>&1
+    check=$?
+    if [ ${check} -eq 0 ]; then
+      DEVS="${m} $DEVS"
+      let NUM_DEVS++
+    fi
+  done
+  if [ $NUM_DEVS -gt 0 ]; then
+    for d in $DEVS; do
+      d=/dev/${d}
+      dd if=/dev/zero of=${d} bs=32k count=1 || RC=1
+      parted -s ${d} mklabel msdos || RC=1
+      parted -s ${d} || RC=1
+      parted -s -a optimal ${d} mkpart primary 1MB 100% || RC=1
+      parted -s ${d} set 1 lvm on || RC=1
+      let NUM_DEVS++
+      PARTITIONS="${d}1 $PARTITIONS"
+    done
+    if [ $RC -ne 0 ]; then
+      error_exit "Failed to detect and/or partition ephemeral devices."
+    fi
+
+    # sleep 10 seconds to let partitions settle (bug?)
+    sleep 10
+
+    # Setup LVM
+    RC=0
+    pvcreate $PARTITIONS || RC=1
+    vgcreate vg.01 $PARTITIONS || RC=1
+    lvcreate -i $NUM_DEVS -I 64 -l 100%FREE -n lv_ephemeral vg.01 || RC=1
+    if [ "$cfn_encrypted_ephemeral" == "true" ]; then
+      mkfs -q /dev/ram1 1024 || RC=1
+      mkdir -p /root/keystore || RC=1
+      mount /dev/ram1 /root/keystore || RC=1
+      dd if=/dev/urandom of=/root/keystore/keyfile bs=1024 count=4 || RC=1
+      chmod 0400 /root/keystore/keyfile || RC=1
+      cryptsetup -q luksFormat /dev/vg.01/lv_ephemeral /root/keystore/keyfile || RC=1
+      cryptsetup -d /root/keystore/keyfile luksOpen /dev/vg.01/lv_ephemeral ephemeral_luks || RC=1
+      mkfs.xfs /dev/mapper/ephemeral_luks || RC=1
+      mount -v -t xfs -o noatime,nodiratime /dev/mapper/ephemeral_luks ${cfn_ephemeral_dir} || RC=1
+    else
+      mkfs.xfs /dev/vg.01/lv_ephemeral || RC=1
+      echo "/dev/vg.01/lv_ephemeral ${cfn_ephemeral_dir} xfs noatime,nodiratime 0 0" >> /etc/fstab || RC=1
+      mount -v ${cfn_ephemeral_dir} || RC=1
+    fi
+  fi
+  chmod 1777 ${cfn_ephemeral_dir} || RC=1
+  if [ $RC -ne 0 ]; then
+    error_exit "Failed to create LVM stripe and/or format ephemeral volume."
+  fi
+}
+
+# Run post install
+function run_postinstall () {
+  RC=0
+  if [ "${cfn_postinstall}" != "NONE" ]; then
+    tmpfile=$(mktemp)
+    wget -qO- ${cfn_postinstall} > $tmpfile || RC=1
+    if [ "${cfn_postinstall_args}" != "NONE" ]; then
+      args=${cfn_postinstall_args}
+    fi
+    /bin/sh $tmpfile $args || RC=1
+    /bin/rm $tmpfile
+  fi
+  if [ $RC -ne 0 ]; then
+    error_exit "Failed to run boot_as_master postinstall"
+  fi
+}
