@@ -55,7 +55,6 @@ function setup_ephemeral_drives () {
       parted -s ${d} || RC=1
       parted -s -a optimal ${d} mkpart primary 1MB 100% || RC=1
       parted -s ${d} set 1 lvm on || RC=1
-      let NUM_DEVS++
       PARTITIONS="${d}1 $PARTITIONS"
     done
     if [ $RC -ne 0 ]; then
