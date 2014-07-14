@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+0.0.9
+=====
+
+* feature:``cfncluster``: Added s3_read_resource and s3_read_write_resource options to cluster config
+* feature:``cfncluster``: cfncluster is now available in all regions
+* updates:``ami``: Pulled latest CentOS errata
+* feature:``cfncluster``: Added ephemeral_dir option to cluster config
+
 0.0.8
 =====
 
