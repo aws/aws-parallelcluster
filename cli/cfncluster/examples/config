@@ -54,6 +54,12 @@ key_name = mykey
 #spot_price = 0.00
 # ID of a Custom AMI, to use instead of published AMI's
 #custom_ami = NONE
+# Specify S3 resource which cfncluster nodes will be granted read-only access
+# (defaults to NONE for the default template)
+#s3_read_resource = NONE
+# Specify S3 resource which cfncluster nodes will be granted read-write access
+# (defaults to NONE for the default template)
+#s3_read_write_resource = NONE
 # URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
 # (defaults to NONE for the default template)
 #pre_install = NONE
@@ -74,7 +80,10 @@ key_name = mykey
 #placement_group = NONE
 # Cluster placment logic. This enables the whole cluster or only compute to use the placement group
 # (defaults to cluster in the default template)
-#placement = cluster 
+#placement = cluster
+# Path/mountpoint for ephemeral drives
+# (defaults to /scratch in the default template)
+#ephemeral_dir = /scratch
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false in default template)
 #encrypted_ephemeral = false

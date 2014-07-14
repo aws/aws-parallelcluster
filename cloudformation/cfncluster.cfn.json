@@ -267,7 +267,12 @@
       "Type" : "Number",
       "Default" : "2"
     },
-    "IAMPolicy" : {
+    "S3ReadResource" : {
+      "Description" : "S3 resource with read access from cfncluster nodes",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "S3ReadWriteResource" : {
       "Description" : "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
       "Type" : "String",
       "Default" : "NONE"
@@ -315,6 +320,11 @@
         "true",
         "false"
       ]
+    },
+    "EphemeralDir" : {
+      "Description" : "The path/mountpoint for the ephemeral drive",
+      "Type" : "String",
+      "Default" : "/scratch"
     }
   },
   "Conditions" : {
@@ -409,12 +419,12 @@
         "io1"
       ]
     },
-    "UseIAMPolicy" : {
+    "UseS3ReadPolicy" : {
       "Fn::Not" : [
         {
           "Fn::Equals" : [
             {
-              "Ref" : "IAMPolicy"
+              "Ref" : "S3ReadResource"
             },
             "NONE"
           ]
@@ -454,6 +464,18 @@
           "Ref" : "EBSEncryption"
         },
         "true"
+      ]
+    },
+    "UseS3ReadWritePolicy" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "S3ReadWriteResource"
+            },
+            "NONE"
+          ]
+        }
       ]
     }
   },
@@ -566,16 +588,28 @@
     },
     "AWSRegionArch2AMI" : {
       "eu-west-1" : {
-        "64HVM" : "ami-d15892a6"
+        "64HVM" : "ami-7df5220a"
       },
       "us-east-1" : {
-        "64HVM" : "ami-705d9918"
+        "64HVM" : "ami-0c458764"
       },
       "ap-northeast-1" : {
-        "64HVM" : "ami-6d64306c"
+        "64HVM" : "ami-4f38684e"
       },
       "us-west-2" : {
-        "64HVM" : "ami-cfbbc4ff"
+        "64HVM" : "ami-750f7645"
+      },
+      "sa-east-1" : {
+        "64HVM" : "ami-7753fd6a"
+      },
+      "us-west-1" : {
+        "64HVM" : "ami-1b8c8c5e"
+      },
+      "ap-southeast-1" : {
+        "64HVM" : "ami-da4e1788"
+      },
+      "ap-southeast-2" : {
+        "64HVM" : "ami-e5a9cedf"
       }
     }
   },
@@ -658,6 +692,7 @@
       "Type" : "AWS::IAM::Role",
       "Properties" : {
         "AssumeRolePolicyDocument" : {
+          "Version" : "2012-10-17",
           "Statement" : [
             {
               "Effect" : "Allow",
@@ -686,10 +721,10 @@
         ]
       }
     },
-    "RolePolicies" : {
+    "CfnClusterPolicies" : {
       "Type" : "AWS::IAM::Policy",
       "Properties" : {
-        "PolicyName" : "root",
+        "PolicyName" : "cfncluster",
         "PolicyDocument" : {
           "Statement" : [
             {
@@ -797,7 +832,8 @@
                 "*"
               ]
             }
-          ]
+          ],
+          "Version" : "2012-10-17"
         },
         "Roles" : [
           {
@@ -806,14 +842,25 @@
         ]
       }
     },
-    "CustomRolePolicies" : {
+    "S3ReadRolePolicies" : {
       "Type" : "AWS::IAM::Policy",
       "Properties" : {
-        "PolicyName" : "custom",
+        "PolicyName" : "S3Read",
         "PolicyDocument" : {
+          "Version" : "2012-10-17",
           "Statement" : [
             {
-              "Ref" : "IAMPolicy"
+              "Sid" : "S3Read",
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:Get*",
+                "s3:List*"
+              ],
+              "Resource" : [
+                {
+                  "Ref" : "S3ReadResource"
+                }
+              ]
             }
           ]
         },
@@ -823,7 +870,36 @@
           }
         ]
       },
-      "Condition" : "UseIAMPolicy"
+      "Condition" : "UseS3ReadPolicy"
+    },
+    "S3ReadWriteRolePolicies" : {
+      "Type" : "AWS::IAM::Policy",
+      "Properties" : {
+        "PolicyName" : "S3ReadWrite",
+        "PolicyDocument" : {
+          "Version" : "2012-10-17",
+          "Statement" : [
+            {
+              "Sid" : "S3ReadWrite",
+              "Effect" : "Allow",
+              "Action" : [
+                "s3:*"
+              ],
+              "Resource" : [
+                {
+                  "Ref" : "S3ReadWriteResource"
+                }
+              ]
+            }
+          ]
+        },
+        "Roles" : [
+          {
+            "Ref" : "RootRole"
+          }
+        ]
+      },
+      "Condition" : "UseS3ReadWritePolicy"
     },
     "MasterIPAddress" : {
       "Type" : "AWS::EC2::EIP",
@@ -1041,6 +1117,11 @@
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"
+                      },
+                      "\n",
+                      "cfn_ephemeral_dir=",
+                      {
+                        "Ref" : "EphemeralDir"
                       },
                       "\n",
                       "cfn_node_type=MasterServer\n"
@@ -1382,6 +1463,11 @@
                       },
                       "\n",
                       "cfn_node_type=ComputeFleet\n",
+                      "cfn_ephemeral_dir=",
+                      {
+                        "Ref" : "EphemeralDir"
+                      },
+                      "\n",
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"

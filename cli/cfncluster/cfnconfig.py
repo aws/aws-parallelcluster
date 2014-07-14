@@ -148,12 +148,13 @@ class CfnClusterConfig:
         self.__cluster_options = dict(cluster_user='ClusterUser', compute_instance_type='ComputeInstanceType',
                                       master_instance_type='MasterInstanceType', initial_queue_size='InitialQueueSize',
                                       max_queue_size='MaxQueueSize', maintain_initial_size='MaintainInitialSize',
-                                      scheduler='Scheduler', cluster_type='ClusterType',
+                                      scheduler='Scheduler', cluster_type='ClusterType', ephemeral_dir='EphemeralDir',
                                       spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
                                       post_install='PostInstallScript', proxy_server='ProxyServer',
-                                      iam_policy='IAMPolicy', placement='Placement', placement_group='PlacementGroup',
+                                      placement='Placement', placement_group='PlacementGroup',
                                       encrypted_ephemeral='EncryptedEphemeral',pre_install_args='PreInstallArgs',
-                                      post_install_args='PostInstallArgs')
+                                      post_install_args='PostInstallArgs', s3_read_resource='S3ReadResource',
+                                      s3_read_write_resource='S3ReadWriteResource')
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.__cluster_options:
