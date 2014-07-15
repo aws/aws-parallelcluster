@@ -1064,6 +1064,8 @@
           "configSets" : {
             "default" : [
               "deployConfigFiles",
+              "installChefServer",
+              "configureChefServer",
               "runBootAsMaster"
             ]
           },
@@ -1174,6 +1176,37 @@
             "commands" : {
               "bootasmaster" : {
                 "command" : "/opt/cfncluster/scripts/boot_as_master"
+              }
+            }
+          },
+          "installChefServer" : {
+            "packages" : {
+              "rpm" : {
+                "chefServer" : "https://opscode-omnibus-packages.s3.amazonaws.com/el/6/x86_64/chef-server-11.1.3-1.el6.x86_64.rpm"
+              }
+            },
+            "files" : {
+              "/etc/chef-server/chef-server.rb" : {
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "chef_server_webui['enable'] = false\n",
+                      "nginx['non_ssl_port'] = 8080\n",
+                      "nginx['ssl_port'] = 8443\n"
+                    ]
+                  ]
+                },
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root"
+              }
+            }
+          },
+          "configureChefServer" : {
+            "commands" : {
+              "reconfigureChefServer" : {
+                "command" : "su - -c '/usr/bin/chef-server-ctl reconfigure'"
               }
             }
           }
