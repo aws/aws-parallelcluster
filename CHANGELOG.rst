@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.10
+======
+
+* updates:``ami``: Pulled latest CentOS errata
+* updates:``ami``: Updated packages to match base RHEL AMI's
+* feature:``cli``: Improved region handling and added support for AWS_DEFAULT_REGION
+
 0.0.9
 =====
 
