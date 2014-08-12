@@ -94,14 +94,17 @@ class CfnClusterConfig:
             raise Exception
 
         # Determine the EC2 region to used used or default to us-east-1
-        # Order is 1) CLI arg 2) Config file 3) us-east-1
+        # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
         if args.region:
             self.region = args.region
         else:
-            try:
-                self.region = __config.get('aws', 'aws_region_name')
-            except ConfigParser.NoOptionError:
-                self.region = 'us-east-1'
+            if os.environ.get('AWS_DEFAULT_REGION'):
+                self.region = os.environ.get('AWS_DEFAULT_REGION')
+            else:
+                try:
+                    self.region = __config.get('aws', 'aws_region_name')
+                except ConfigParser.NoOptionError:
+                    self.region = 'us-east-1'
 
         # Check if credentials have been provided in config
         try:
