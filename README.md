@@ -1,14 +1,14 @@
 cfncluster
 ==========
 
-cfncluster is a sample code framework that deploys and maintains clusters on 
+cfncluster is a framework that deploys and maintains HPC clusters on 
 AWS. It is reasonably agnostic to what the cluster is for and can easily be 
 extended to support different frameworks. The the CLI is stateless, 
 everything is done using CloudFormation or resources within AWS.
 
 ### Installation
 
-The current working version is cfncluster-0.0.8. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.10. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
 
 #### Linux/OSX
 
@@ -26,8 +26,6 @@ Windows support is experimental!!
 Install the following packages:
 
 Python2.7 - https://www.python.org/download/
-
-pyCrypto - http://www.voidspace.org.uk/python/modules.shtml#pycrypto
 
 setuptools - https://pypi.python.org/pypi/setuptools#windows-7-or-graphical-install
 

@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+import os, sys
 from setuptools import setup, find_packages
 
 # Utility function to read the README file.
@@ -20,7 +20,13 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "0.0.9"
+version = "0.0.10"
+requires = ['boto', 'botocore'] 
+
+if sys.version_info[:2] == (2, 6):
+    # For python2.6 we have to require argparse since it
+    # was not in stdlib until 2.7.
+    requires.append('argparse>=1.1')
 
 setup(
     name = "cfncluster",
@@ -31,7 +37,7 @@ setup(
     url = ("https://github.com/awslabs/cfncluster"),
     license = "Amazon Software License",
     packages = find_packages(),
-    install_requires=['boto', 'argparse'],
+    install_requires = requires,
     entry_points=dict(console_scripts=console_scripts),
     include_package_data = True,
     zip_safe = False,

@@ -32,6 +32,7 @@ def create(args):
         config.parameters.append(('ComputeWaitConditionCount', initial_queue_size))
     except ValueError:
         pass
+
     capabilities = ["CAPABILITY_IAM"]
     cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
                                                     aws_secret_access_key=config.aws_secret_access_key)
@@ -39,7 +40,7 @@ def create(args):
         logger.debug((config.template_url, config.parameters))
         stack = cfnconn.create_stack(('cfncluster-' + args.cluster_name),template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
-                                     disable_rollback=args.norollback)
+                                     disable_rollback=args.norollback, tags=args.tags)
         status = cfnconn.describe_stacks(stack)[0].stack_status
         if not args.nowait:
             while status == 'CREATE_IN_PROGRESS':

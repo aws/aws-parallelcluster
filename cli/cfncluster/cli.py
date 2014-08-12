@@ -58,7 +58,7 @@ def main():
     # add the handler to the root logger
     logging.getLogger('cfncluster.cli').addHandler(console)
 
-    parser = argparse.ArgumentParser(description='cfncluster is the a tool to launch and manage cluster.')
+    parser = argparse.ArgumentParser(description='cfncluster is a tool to launch and manage a cluster.')
     parser.add_argument("--config", "-c", dest="config_file", help='specify a alternative config file')
     parser.add_argument( "--region", "-r", dest="region", help='specify a specific region to connect to',
                         default=None)
