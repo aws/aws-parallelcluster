@@ -20,7 +20,7 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "0.0.10"
+version = "0.0.11"
 requires = ['boto', 'botocore'] 
 
 if sys.version_info[:2] == (2, 6):
