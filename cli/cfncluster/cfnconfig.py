@@ -61,7 +61,7 @@ class CfnClusterConfig:
 
         # Check if package updates should be checked
         try:
-            self.__update_check = __config.get('global', 'update_check')
+            self.__update_check = __config.getboolean('global', 'update_check')
         except ConfigParser.NoOptionError:
             self.__update_check = True
 
