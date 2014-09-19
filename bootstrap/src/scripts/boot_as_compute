@@ -19,6 +19,9 @@ set -x
 # Source functions
 . /opt/cfncluster/scripts/functions.shlib
 
+# Check DNS
+check_dns || error_exit "DNS checks failed."
+
 # Run preinstall script if defined
 run_preinstall
 

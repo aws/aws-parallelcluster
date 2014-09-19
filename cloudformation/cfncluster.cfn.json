@@ -111,9 +111,7 @@
       "AllowedValues" : [
         "sge",
         "openlava",
-        "slurm",
         "torque",
-        "hadoop2",
         "test"
       ]
     },
@@ -588,28 +586,28 @@
     },
     "AWSRegionArch2AMI" : {
       "eu-west-1" : {
-        "64HVM" : "ami-b04290c7"
+        "64HVM" : "ami-22953255"
       },
       "us-east-1" : {
-        "64HVM" : "ami-208a5b48"
+        "64HVM" : "ami-1a69c072"
       },
       "ap-northeast-1" : {
-        "64HVM" : "ami-75411874"
+        "64HVM" : "ami-8f012e8e"
       },
       "us-west-2" : {
-        "64HVM" : "ami-ed5822dd"
+        "64HVM" : "ami-7f8ece4f"
       },
       "sa-east-1" : {
-        "64HVM" : "ami-fde54de0"
+        "64HVM" : "ami-2962c834"
       },
       "us-west-1" : {
-        "64HVM" : "ami-1b78755e"
+        "64HVM" : "ami-79afa63c"
       },
       "ap-southeast-1" : {
-        "64HVM" : "ami-220e5570"
+        "64HVM" : "ami-44ecc816"
       },
       "ap-southeast-2" : {
-        "64HVM" : "ami-c181e7fb"
+        "64HVM" : "ami-814526bb"
       }
     }
   },

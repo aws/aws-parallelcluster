@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.11
+======
+
+* updates:``ami``: Pulled latest CentOS errata
+* updates:``ami``: Removed DKMS Lustre; replaced with Intel Lustre Client
+
+
 0.0.10
 ======
 
