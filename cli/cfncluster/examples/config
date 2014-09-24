@@ -99,33 +99,27 @@ vpc_settings = public
 # ID of the VPC you want to provision cluster into.
 vpc_id = vpc-
 # ID of the Subnet you want to provision the Master server into
-public_subnet = subnet-
-# Availability zones of VPC resources
-# This is a comma delimited list and must always contain three values
-# Example: us-west-2a,NONE,NONE
-availability_zones =
+master_subnet_id = subnet-
 # SSH from CIDR
 # This is only used when cfncluster creates the security group
 # (defaults to 0.0.0.0/0 in the default template)
 #ssh_from = 0.0.0.0/0
 
-#[vpc private]
-# Boolean flag to launch compute with direct egress or behind the Master server.
-#compute_uses_public_subnet = false
-# ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false
+#[vpc private-new]
+# ID of the VPC you want to provision cluster into.
+#vpc_id = vpc-
+# ID of the Subnet you want to provision the Master server into
+#master_subnet_id = subnet-
+# CIDR for new backend subnet i.e. 10.0.100.0/24
+#compute_subnet_cidr = 10.0.100.0/24
+
+#[vpc private-existing]
+# ID of the VPC you want to provision cluster into.
 #vpc_id =
 # ID of the Subnet you want to provision the Master server into
-#public_subnet =
+#master_subnet_id = subnet-
 # CIDR for new backend subnet i.e. 10.0.100.0/24
-#private_cidrs = 10.0.100.0/24
-
-#[vpc existing-public]
-# Boolean flag to use exisiting vpc resources from vpc or create resources
-#use_vpc_base = true
-# Id of existing ENI to be used for the master serer
-#vpc_base_eni = eni-
-# Exisiting Compute Security Group ID
-#vpc_base_security_group = sg-
+#compute_subnet_id = subnet-
 
 ## EBS Settings
 #[ebs custom]

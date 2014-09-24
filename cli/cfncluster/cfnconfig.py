@@ -117,25 +117,27 @@ class CfnClusterConfig:
             self.aws_secret_access_key=None
 
         # Determine the CloudFormation URL to be used
-        # Config file or default
+        # Order is 1) CLI arg 2) Config file 3) default for version + region
         try:
-            self.template_url = __config.get(self.__cluster_section,
-                                             'template_url')
-            if not self.template_url:
-                raise Exception
-        except ConfigParser.NoOptionError:
-            self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
+            if args.template_url is not None:
+                self.template_url = args.template_url
+            try:
+                self.template_url = __config.get(self.__cluster_section,
+                                                 'template_url')
+                if not self.template_url:
+                    raise Exception
+            except ConfigParser.NoOptionError:
+                self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
+        except AttributeError:
+            pass
 
         # Determine which vpc settings section will be used
         self.__vpc_settings = __config.get(self.__cluster_section, 'vpc_settings')
         self.__vpc_section = ('vpc %s' % self.__vpc_settings)
 
         # Dictionary list of all VPC options
-        self.__vpc_options = dict(vpc_id='VPCId', public_subnet='PublicSubnet', private_cidrs='PrivateCIDRs',
-                                  vpc_base_eni='VPCBaseNATENI1', compute_uses_public_subnet='ComputeUsesPublicSubnet',
-                                  vpc_base_security_group='VPCBaseBackSecurityGroup', use_vpc_base='UseVPCBase',
-                                  vpc_base_backend_subnet='VPCBaseBackendSubnet1',
-                                  availability_zones='AvailabilityZones', ssh_from='SSHFrom')
+        self.__vpc_options = dict(vpc_id='VPCId', master_subnet_id='MasterSubnetId', compute_subnet_cidr='ComputeSubnetCidr',
+                                  compute_subnet_id='ComputeSubnetId', use_public_ips='UsePublicIps' , ssh_from='SSHFrom')
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
