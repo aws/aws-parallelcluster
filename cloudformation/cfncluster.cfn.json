@@ -292,6 +292,16 @@
       "Description" : "The path/mountpoint for the ephemeral drive",
       "Type" : "String",
       "Default" : "/scratch"
+    },
+    "BaseOS" : {
+      "Description" : "Base OS type for cluster AMI",
+      "Type" : "String",
+      "Default" : "centos",
+      "ConstraintDescription" : "must be a supported base OS",
+      "AllowedValues" : [
+        "centos",
+        "ubuntu"
+      ]
     }
   },
   "Conditions" : {
@@ -625,6 +635,14 @@
       },
       "ap-southeast-2" : {
         "64HVM" : "ami-814526bb"
+      }
+    },
+    "ClusterUser" : {
+      "centos" : {
+        "User" : "ec2-user"
+      },
+      "ubuntu" : {
+        "User" : "ubuntu"
       }
     }
   },
@@ -1132,7 +1150,18 @@
                         "Ref" : "EphemeralDir"
                       },
                       "\n",
-                      "cfn_node_type=MasterServer\n"
+                      "cfn_node_type=MasterServer\n",
+                      "cfn_cluster_user=",
+                      {
+                        "Fn::FindInMap" : [
+                          "ClusterUser",
+                          {
+                            "Ref" : "BaseOS"
+                          },
+                          "User"
+                        ]
+                      },
+                      "\n"
                     ]
                   ]
                 },
@@ -1468,6 +1497,17 @@
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"
+                      },
+                      "\n",
+                      "cfn_cluster_user=",
+                      {
+                        "Fn::FindInMap" : [
+                          "ClusterUser",
+                          {
+                            "Ref" : "BaseOS"
+                          },
+                          "User"
+                        ]
                       },
                       "\n"
                     ]

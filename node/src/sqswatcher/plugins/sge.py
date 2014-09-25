@@ -58,8 +58,10 @@ report_variables      NONE
     # Connect and start SGE
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    hosts_key_file = '/home/' + os.environ['cfn_cluster_user'] + '.ssh/known_hosts'
+    user_key_file = '/home/' + os.environ['cfn_cluster_user'] + '.ssh/id_rsa'
     try:
-        ssh.load_host_keys('/home/ec2-user/.ssh/known_hosts')
+        ssh.load_host_keys(hosts_key_file)
     except IOError:
         ssh._host_keys_filename = None
         pass
@@ -68,7 +70,7 @@ report_variables      NONE
     while iter < 3 and connected == False:
         try:
             print('Connecting to host: %s iter: %d' % (hostname, iter))
-            ssh.connect(hostname, username='ec2-user', key_filename='/home/ec2-user/.ssh/id_rsa')
+            ssh.connect(hostname, username=os.environ['cfn_cluster_user'], key_filename=user_key_file)
             connected=True
         except socket.error, e:
             print('Socket error: %s' % e)
@@ -77,7 +79,7 @@ report_variables      NONE
             if iter == 3:
                print("Unable to provison host")
                return
-    ssh.save_host_keys('/home/ec2-user/.ssh/known_hosts')
+    ssh.save_host_keys(hosts_key_file)
     command = "sudo sh -c \'cd /opt/sge && /opt/sge/inst_sge -x -auto /opt/cfncluster/templates/sge/sge_inst.conf\'"
     stdin, stdout, stderr = ssh.exec_command(command)
     ssh.close()
