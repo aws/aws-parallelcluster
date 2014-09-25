@@ -584,30 +584,30 @@
         "EBSOpt" : "False"
       }
     },
-    "AWSRegionArch2AMI" : {
+    "AWSRegionOS2AMI" : {
       "eu-west-1" : {
-        "64HVM" : "ami-22953255"
+        "centos" : "ami-22953255"
       },
       "us-east-1" : {
-        "64HVM" : "ami-1a69c072"
+        "centos" : "ami-1a69c072"
       },
       "ap-northeast-1" : {
-        "64HVM" : "ami-8f012e8e"
+        "centos" : "ami-8f012e8e"
       },
       "us-west-2" : {
-        "64HVM" : "ami-7f8ece4f"
+        "centos" : "ami-7f8ece4f"
       },
       "sa-east-1" : {
-        "64HVM" : "ami-2962c834"
+        "centos" : "ami-2962c834"
       },
       "us-west-1" : {
-        "64HVM" : "ami-79afa63c"
+        "centos" : "ami-79afa63c"
       },
       "ap-southeast-1" : {
-        "64HVM" : "ami-44ecc816"
+        "centos" : "ami-44ecc816"
       },
       "ap-southeast-2" : {
-        "64HVM" : "ami-814526bb"
+        "centos" : "ami-814526bb"
       }
     }
   },
@@ -1015,18 +1015,12 @@
             },
             {
               "Fn::FindInMap" : [
-                "AWSRegionArch2AMI",
+                "AWSRegionOS2AMI",
                 {
                   "Ref" : "AWS::Region"
                 },
                 {
-                  "Fn::FindInMap" : [
-                    "AWSInstanceType2Capabilites",
-                    {
-                      "Ref" : "MasterInstanceType"
-                    },
-                    "Arch"
-                  ]
+                      "Ref" : "BaseOS"
                 }
               ]
             }
@@ -1382,18 +1376,12 @@
             },
             {
               "Fn::FindInMap" : [
-                "AWSRegionArch2AMI",
+                "AWSRegionOS2AMI",
                 {
                   "Ref" : "AWS::Region"
                 },
                 {
-                  "Fn::FindInMap" : [
-                    "AWSInstanceType2Capabilites",
-                    {
-                      "Ref" : "ComputeInstanceType"
-                    },
-                    "Arch"
-                  ]
+                      "Ref" : "BaseOS"
                 }
               ]
             }
