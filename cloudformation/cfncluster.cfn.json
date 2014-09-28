@@ -584,30 +584,30 @@
         "EBSOpt" : "False"
       }
     },
-    "AWSRegionOS2AMI" : {
+    "AWSRegionArch2AMI" : {
       "eu-west-1" : {
-        "centos" : "ami-22953255"
+        "64HVM" : "ami-22953255"
       },
       "us-east-1" : {
-        "centos" : "ami-1a69c072"
+        "64HVM" : "ami-1a69c072"
       },
       "ap-northeast-1" : {
-        "centos" : "ami-8f012e8e"
+        "64HVM" : "ami-8f012e8e"
       },
       "us-west-2" : {
-        "centos" : "ami-7f8ece4f"
+        "64HVM" : "ami-7f8ece4f"
       },
       "sa-east-1" : {
-        "centos" : "ami-2962c834"
+        "64HVM" : "ami-2962c834"
       },
       "us-west-1" : {
-        "centos" : "ami-79afa63c"
+        "64HVM" : "ami-79afa63c"
       },
       "ap-southeast-1" : {
-        "centos" : "ami-44ecc816"
+        "64HVM" : "ami-44ecc816"
       },
       "ap-southeast-2" : {
-        "centos" : "ami-814526bb"
+        "64HVM" : "ami-814526bb"
       }
     }
   },
@@ -1015,12 +1015,18 @@
             },
             {
               "Fn::FindInMap" : [
-                "AWSRegionOS2AMI",
+                "AWSRegionArch2AMI",
                 {
                   "Ref" : "AWS::Region"
                 },
                 {
-                      "Ref" : "BaseOS"
+                  "Fn::FindInMap" : [
+                    "AWSInstanceType2Capabilites",
+                    {
+                      "Ref" : "MasterInstanceType"
+                    },
+                    "Arch"
+                  ]
                 }
               ]
             }
@@ -1376,12 +1382,18 @@
             },
             {
               "Fn::FindInMap" : [
-                "AWSRegionOS2AMI",
+                "AWSRegionArch2AMI",
                 {
                   "Ref" : "AWS::Region"
                 },
                 {
-                      "Ref" : "BaseOS"
+                  "Fn::FindInMap" : [
+                    "AWSInstanceType2Capabilites",
+                    {
+                      "Ref" : "ComputeInstanceType"
+                    },
+                    "Arch"
+                  ]
                 }
               ]
             }
