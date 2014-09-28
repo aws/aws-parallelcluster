@@ -135,13 +135,13 @@ if [ $RC -ne 0 ]; then
   error_exit "Failed to start Ganglia"
 fi
 
-# Setup ec2-user SSH auth
+# Setup ${cfn_cluster_user} SSH auth
 RC=0
-su - ec2-user -c "ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ''" || RC=1
-su - ec2-user -c "cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys2 && chmod 0600 ~/.ssh/authorized_keys2" || RC=1
-su - ec2-user -c "ssh-keyscan ${myhostname} > ~/.ssh/known_hosts && chmod 0600 ~/.ssh/known_hosts" || RC=1
+su - ${cfn_cluster_user} -c "ssh-keygen -q -t rsa -f ~/.ssh/id_rsa -N ''" || RC=1
+su - ${cfn_cluster_user} -c "cp ~/.ssh/id_rsa.pub ~/.ssh/authorized_keys2 && chmod 0600 ~/.ssh/authorized_keys2" || RC=1
+su - ${cfn_cluster_user} -c "ssh-keyscan ${myhostname} > ~/.ssh/known_hosts && chmod 0600 ~/.ssh/known_hosts" || RC=1
 if [ $RC -ne 0 ]; then
-  error_exit "Failed to setup ec2-user SSH auth"
+  error_exit "Failed to setup ${cfn_cluster_user} SSH auth"
 fi
 
 ## Scheduler specific section
