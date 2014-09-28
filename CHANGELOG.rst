@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+0.0.12
+======
+
+* updates:``cli``: Simplfied VPC config and removed multi-AZ
+
+
 0.0.11
 ======
 

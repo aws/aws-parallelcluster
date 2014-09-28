@@ -12,6 +12,7 @@
 import sys
 import boto.cloudformation
 import boto.ec2.autoscale
+import boto.vpc
 import boto.exception
 import time
 import os
@@ -25,11 +26,29 @@ logger = logging.getLogger('cfncluster.cfncluster')
 def create(args):
     print('Starting: %s' % (args.cluster_name))
 
+    # Build the config based on args
     config = cfnconfig.CfnClusterConfig(args)
+
+    # Set the ComputeWaitConditionCount parameter to match InitialQueueSize
     try:
         i = [p[0] for p in config.parameters].index('InitialQueueSize')
         initial_queue_size = config.parameters[i][1]
         config.parameters.append(('ComputeWaitConditionCount', initial_queue_size))
+    except ValueError:
+        pass
+
+    # Get the MasterSubnetId and use it to determine AvailabilityZone
+    try:
+        i = [p[0] for p in config.parameters].index('MasterSubnetId')
+        master_subnet_id = config.parameters[i][1]
+        try:
+            vpcconn = boto.vpc.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                 aws_secret_access_key=config.aws_secret_access_key)
+            availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
+        except boto.exception.BotoServerError as e:
+            print e.message
+            sys.exit(1)
+        config.parameters.append(('AvailabilityZone', availability_zone))
     except ValueError:
         pass
 
