@@ -105,6 +105,21 @@ def update(args):
         desired_capacity = asgconn.get_all_groups(names=[asg])[0].desired_capacity
         config.parameters.append(('InitialQueueSize', desired_capacity))
 
+    # Get the MasterSubnetId and use it to determine AvailabilityZone
+    try:
+        i = [p[0] for p in config.parameters].index('MasterSubnetId')
+        master_subnet_id = config.parameters[i][1]
+        try:
+            vpcconn = boto.vpc.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                 aws_secret_access_key=config.aws_secret_access_key)
+            availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
+        except boto.exception.BotoServerError as e:
+            print e.message
+            sys.exit(1)
+        config.parameters.append(('AvailabilityZone', availability_zone))
+    except ValueError:
+        pass
+
     try:
         logger.debug((config.template_url, config.parameters))
         stack = cfnconn.update_stack(stack_name,template_url=config.template_url,
