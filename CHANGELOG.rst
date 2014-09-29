@@ -2,18 +2,20 @@
 CHANGELOG
 =========
 
+0.0.13
+======
+* bugfix:``cli``: Fixed missing AvailabilityZone for "update" command
+
 0.0.12
 ======
 
 * updates:``cli``: Simplfied VPC config and removed multi-AZ
-
 
 0.0.11
 ======
 
 * updates:``ami``: Pulled latest CentOS errata
 * updates:``ami``: Removed DKMS Lustre; replaced with Intel Lustre Client
-
 
 0.0.10
 ======
