@@ -18,9 +18,9 @@ import boto.ec2
 import dateutil.parser
 import urllib2
 import ConfigParser
-import logging #http://docs.python.org/2/howto/logging.html
 import boto.ec2.autoscale
 import os
+import time
 import sys
 import tempfile
 
@@ -111,15 +111,17 @@ if __name__ == "__main__":
 
     s = loadSchedulerModule(scheduler)
 
-    jobs = getJobs(s, hostname)
-    print jobs
-    if jobs == True:
-        print('Instance has active jobs. Exiting')
-        sys.exit(0)
+    while True:
+        time.sleep(60)
+        jobs = getJobs(s, hostname)
+        print jobs
+        if jobs == True:
+            print('Instance has active jobs.')
+            continue
 
-    conn = boto.ec2.connect_to_region(region)
-    hour_percentile = getHourPercentile(instance_id,conn)
-    print('Percent of hour used: %d' % hour_percentile)
+        conn = boto.ec2.connect_to_region(region)
+        hour_percentile = getHourPercentile(instance_id,conn)
+        print('Percent of hour used: %d' % hour_percentile)
 
-    if hour_percentile > 95:
-        selfTerminate(asg)
+        if hour_percentile > 95:
+            selfTerminate(asg)

@@ -1167,6 +1167,51 @@
           },
           "deployConfigFiles" : {
             "files" : {
+              "/tmp/cwlogs/cfn-logs.conf" : {
+                "content" : {
+                  "Fn::If" : [
+                    "CloudWatchLogs",
+                    [
+                      "",
+                      [
+                        "[general]\n",
+                        "state_file= /var/awslogs/agent-state\n",
+                        "[/var/log/cloud-init.log]\n",
+                        "file = /var/log/cloud-init.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cloud-init.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                        "[/var/log/cfn-init.log]\n",
+                        "file = /var/log/cfn-init.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cfn-init.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                        "[/var/log/cfn-wire.log]\n",
+                        "file = /var/log/cfn-wire.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cfn-wire.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n"
+                      ]
+                    ],
+                    " "
+                  ]
+                },
+                "mode" : "000444",
+                "owner" : "root",
+                "group" : "root"
+              },
               "/opt/cfncluster/cfnconfig" : {
                 "content" : {
                   "Fn::Join" : [
@@ -1285,47 +1330,6 @@
                   ]
                 },
                 "mode" : "000644",
-                "owner" : "root",
-                "group" : "root"
-              },
-              "/tmp/cwlogs/cfn-logs.conf" : {
-                "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "[general]\n",
-                      "state_file= /var/awslogs/agent-state\n",
-                      "[/var/log/cloud-init.log]\n",
-                      "file = /var/log/cloud-init.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cloud-init.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                      "[/var/log/cfn-init.log]\n",
-                      "file = /var/log/cfn-init.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cfn-init.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                      "[/var/log/cfn-wire.log]\n",
-                      "file = /var/log/cfn-wire.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cfn-wire.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n"
-                    ]
-                  ]
-                },
-                "mode" : "000444",
                 "owner" : "root",
                 "group" : "root"
               },
@@ -1709,39 +1713,43 @@
               },
               "/tmp/cwlogs/cfn-logs.conf" : {
                 "content" : {
-                  "Fn::Join" : [
-                    "",
+                  "Fn::If" : [
+                    "CloudWatchLogs",
                     [
-                      "[general]\n",
-                      "state_file= /var/awslogs/agent-state\n",
-                      "[/var/log/cloud-init.log]\n",
-                      "file = /var/log/cloud-init.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cloud-init.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                      "[/var/log/cfn-init.log]\n",
-                      "file = /var/log/cfn-init.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cfn-init.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                      "[/var/log/cfn-wire.log]\n",
-                      "file = /var/log/cfn-wire.log\n",
-                      "log_group_name = ",
-                      {
-                        "Ref" : "CfnClusterLogs"
-                      },
-                      "\n",
-                      "log_stream_name = {instance_id}/cfn-wire.log\n",
-                      "datetime_format = %d/%b/%Y:%H:%M:%S\n"
-                    ]
+                      "",
+                      [
+                        "[general]\n",
+                        "state_file= /var/awslogs/agent-state\n",
+                        "[/var/log/cloud-init.log]\n",
+                        "file = /var/log/cloud-init.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cloud-init.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                        "[/var/log/cfn-init.log]\n",
+                        "file = /var/log/cfn-init.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cfn-init.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                        "[/var/log/cfn-wire.log]\n",
+                        "file = /var/log/cfn-wire.log\n",
+                        "log_group_name = ",
+                        {
+                          "Ref" : "CfnClusterLogs"
+                        },
+                        "\n",
+                        "log_stream_name = {instance_id}/cfn-wire.log\n",
+                        "datetime_format = %d/%b/%Y:%H:%M:%S\n"
+                      ]
+                    ],
+                    " "
                   ]
                 },
                 "mode" : "000444",
