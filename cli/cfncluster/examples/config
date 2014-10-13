@@ -25,9 +25,6 @@ key_name = mykey
 # Override path to cloudformation in S3
 # (defaults to https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json)
 #template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
-# Cluster user
-# (defaults to ec2-user for the default template)
-#cluster_user = ec2-user
 # Cluster Server EC2 instance type
 # (defaults to t2.micro for default template)
 #compute_instance_type = t2.micro

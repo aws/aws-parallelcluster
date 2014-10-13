@@ -15,7 +15,6 @@ cfncluster is an example framework for launching clusters.
         status              pull the current status of the cluster
         list                display a list of stacks associated with cfncluster
         instances           display a list of all instances in a cluster
-        sshmaster           ssh to Master instance
 
     optional arguments:
       -h, --help            show this help message and exit

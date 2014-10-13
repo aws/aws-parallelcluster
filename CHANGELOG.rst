@@ -2,6 +2,15 @@
 CHANGELOG
 =========
 
+0.0.14
+======
+* feature:``cli``: Introduced sanity_check feature for config
+* updates:``cli``: Simplified EC2 key pair config
+* feature:``cfncluster``: Scale up is now driven by two policies; enables small and large scaling steps
+* feature:``cfnlcuster``: Introduced initial support for CloudWatch logs in us-east-1
+* updates:``ami``: Moved deamon handling to supervisord
+* updates:``ami``: Pulled latest CentOS errata
+
 0.0.13
 ======
 * bugfix:``cli``: Fixed missing AvailabilityZone for "update" command

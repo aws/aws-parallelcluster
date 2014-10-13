@@ -8,7 +8,7 @@ everything is done using CloudFormation or resources within AWS.
 
 ### Installation
 
-The current working version is cfncluster-0.0.13. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.14. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
 
 #### Linux/OSX
 
@@ -61,18 +61,12 @@ Starting: mycluster
 Default config /home/ec2-user/.cfncluster/config not found
 You can copy a template from here: /usr/lib/python2.6/site-packages/cfncluster/examples/config
 $
-$ mkdir ~/.cfncluster
 $ cp /usr/lib/python2.6/site-packages/cfncluster/examples/config ~/.cfncluster
 ```
 
 You should now edit the config and set some defaults before launching the cluster. First define a keypair that already exists in EC2. If you do not already have a keypair, refer to the EC2 documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
 
-```
-[keypair mykey]
-key_location = /path/to/key.pem
-````
-
-Then you should associate that keypair with the cluster template.
+Then you should associate your choosen keypair with the cluster template.
 ````
 [cluster default]
 # Name of an existing EC2 KeyPair to enable SSH access to the instances.

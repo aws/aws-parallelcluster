@@ -1,8 +1,8 @@
-us-west-2 ami-7f8ece4f
-eu-west-1 ami-22953255
-sa-east-1 ami-2962c834
-us-east-1 ami-1a69c072
-ap-northeast-1 ami-8f012e8e
-us-west-1 ami-79afa63c
-ap-southeast-1 ami-44ecc816
-ap-southeast-2 ami-814526bb
+us-west-2 ami-2199d511
+eu-west-1 ami-7eca6609
+sa-east-1 ami-91de6a8c
+us-east-1 ami-6e71c806
+ap-northeast-1 ami-299cab28
+us-west-1 ami-05848e40
+ap-southeast-1 ami-5cac8a0e
+ap-southeast-2 ami-9b6f02a1
