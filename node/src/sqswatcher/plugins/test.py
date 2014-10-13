@@ -13,14 +13,14 @@ __author__ = 'dougalb'
 
 hostfile_path = 'sqswatcher.hosts'
 
-def addHost(hostname):
+def addHost(hostname,cluster_user):
     if hostname != None:
         print('Adding', hostname)
         hostfile = open(hostfile_path, 'a')
         print >> hostfile, hostname
         hostfile.close()
 
-def removeHost(hostname):
+def removeHost(hostname,cluster_user):
     if hostname != None:
         print('Removing', hostname)
         hostfile = open(hostfile_path, 'r')

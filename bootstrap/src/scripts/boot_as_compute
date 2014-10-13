@@ -54,14 +54,9 @@ if [ $RC -ne 0 ]; then
   error_exit "Failed during Ganglia setup"
 fi
 
-# Adding nodewatcher to crontab
-RC=0
-crontab -l > /tmp/root.crontab
-echo "* * * * * cd /opt/cfncluster/nodewatcher && ./nodewatcher.py >> nodewatcher.log 2>&1" >> /tmp/root.crontab || RC=1
-crontab /tmp/root.crontab || RC=1
-if [ $RC -ne 0 ]; then
-  error_exit "Failed to nodewatcher crontab"
-fi
+# Startup nodewatcher
+service supervisord restart
+supervisorctl status
 
 ##
 # Run boot as compute for a specific scheduler

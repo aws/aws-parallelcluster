@@ -4,6 +4,8 @@
 cluster_template = default
 # Check for updates
 update_check = true
+# Check config sanity. (Attempts to validate resources defined in parameters, actually exist)
+sanity_check = true
 
 [aws]
 # This is the AWS credentials section (required).
@@ -15,9 +17,6 @@ update_check = true
 #aws_secret_access_key = #your_secret_access_key
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
 #aws_region_name = us-west-2
-
-[keypair mykey]
-key_location = /path/to/key.pem
 
 ## cfncluster templates
 [cluster default]
@@ -87,6 +86,9 @@ key_name = mykey
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false in default template)
 #encrypted_ephemeral = false
+# OS type used in the cluster
+# (defaults to centos6 in the default template)
+#base_os = centos6
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume
@@ -143,9 +145,21 @@ master_subnet_id = subnet-
 # Threshold for triggering CloudWatch ScaleUp action
 # (defaults to 4 for default template)
 #scaling_threshold = 4
+# Number of instances to add when called CloudWatch ScaleUp action
+# (defaults to 2 for default template)
+#scaling_adjustment = 2
+# Threshold for triggering CloudWatch ScaleUp action
+# (defaults to 4 for default template)
+#scaling_threshold2 = 200
+# Number of instances to add when called CloudWatch ScaleUp2 action
+# (defaults to 20 for default template)
+#scaling_adjustment = 20
 # Period to measure ScalingThreshold
 # (defaults to 60 for default template)
 #scaling_period = 60
 # Period to measure ScalingThreshold
 # (defaults to 2 for default template)
 #scaling_evaluation_periods = 2
+# Amount of time in seconds to wait before attempting further scaling actions
+# (defaults to 120 for the default template
+#scaling_cooldown = 120

@@ -39,10 +39,15 @@ def update(args):
 
 def main():
     # set up logging to file
+
     if platform.system() is 'Windows':
+        if not os.path.exists(os.path.expanduser('~\.cfncluster')):
+            os.makedirs(os.path.expanduser('~\.cfncluster'))
         logfile = os.path.expanduser('~\.cfncluster\cfncluster-cli.log')
     else:
-        logfile = '/tmp/cfncluster-cli.log'
+        if not os.path.exists(os.path.expanduser('~/.cfncluster')):
+            os.makedirs(os.path.expanduser('~/.cfncluster'))
+        logfile = os.path.expanduser('~/.cfncluster/cfncluster-cli.log')
     logging.basicConfig(level=logging.DEBUG,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M',

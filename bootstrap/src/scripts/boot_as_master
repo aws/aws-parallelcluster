@@ -155,7 +155,8 @@ if [ $RC -ne 0 ]; then
 fi
 
 # Start sqswatcher
-cd /opt/cfncluster/sqswatcher && ./sqswatcher.py 2>&1
+service supervisord restart
+supervisorctl status
 
 # Run postinstall script if defined
 run_postinstall

@@ -14,7 +14,6 @@ __author__ = 'dougalb'
 
 import json
 import time
-import os
 import sys
 import ConfigParser
 
@@ -24,8 +23,6 @@ import boto.dynamodb
 import boto.dynamodb2
 import boto.dynamodb2.exceptions
 import boto.exception
-import daemon
-import daemon.pidfile
 from boto.sqs.message import RawMessage
 from boto.dynamodb2.fields import HashKey
 from boto.dynamodb2.table import Table
@@ -40,8 +37,9 @@ def getConfig():
     _sqsqueue = config.get('sqswatcher', 'sqsqueue')
     _table_name = config.get('sqswatcher', 'table_name')
     _scheduler = config.get('sqswatcher', 'scheduler')
+    _cluster_user = config.get('sqswatcher', 'cluster_user')
 
-    return _region, _sqsqueue, _table_name, _scheduler
+    return _region, _sqsqueue, _table_name, _scheduler, _cluster_user
 
 
 def setupQueue(region, sqsqueue):
@@ -124,7 +122,7 @@ def pollQueue():
                                 else:
                                     raise e
 
-                        s.addHost(hostname)
+                        s.addHost(hostname,cluster_user)
 
                         t.put_item(data={
                             'instanceId': instanceId,
@@ -140,7 +138,7 @@ def pollQueue():
                             item = t.get_item(consistent=True, instanceId=instanceId)
                             hostname = item['hostname']
 
-                            s.removeHost(hostname)
+                            s.removeHost(hostname,cluster_user)
 
                             item.delete()
 
@@ -153,23 +151,10 @@ def pollQueue():
 
         time.sleep(30)
 
-
-def run():
-    print('running run')
-    with daemon.DaemonContext(detach_process=True, stderr=logfile, stdout=logfile,
-                              working_directory=os.getcwd(),
-                              pidfile=daemon.pidfile.TimeoutPIDLockFile('sqswatcher.pid')):
-        print('about to call pollQueue')
-        pollQueue()
-
-
 if __name__ == "__main__":
     print('running __main__')
-    logfile = open('sqswatcher.log', 'w')
-    print >> logfile, time.ctime()
-    logfile.flush()
-    region, sqsqueue, table_name, scheduler = getConfig()
+    print time.ctime()
+    region, sqsqueue, table_name, scheduler, cluster_user = getConfig()
     q = setupQueue(region, sqsqueue)
     t = setupDDBTable(region, table_name)
-    #s = loadSchedulerModule(scheduler)
-    run()
+    pollQueue()

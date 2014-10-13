@@ -17,6 +17,7 @@ import pkg_resources
 import logging
 import json
 import urllib2
+import config_sanity
 
 class CfnClusterConfig:
 
@@ -73,25 +74,11 @@ class CfnClusterConfig:
             except Exception:
                 pass
 
-        # Get the EC2 keypair name to be used, exit if not set
+        # Check if config sanity should be run
         try:
-            self.key_name = __config.get(self.__cluster_section, 'key_name')
-            if not self.key_name:
-                raise Exception
+            self.__sanity_check = __config.getboolean('global', 'sanity_check')
         except ConfigParser.NoOptionError:
-            raise Exception
-        self.parameters.append(('KeyName', self.key_name))
-
-        # Determine which keypair config will be used
-        self.__keypair_section = ('keypair %s' % self.key_name)
-
-        # Get the location of the keypair file
-        try:
-            self.key_location = __config.get(self.__keypair_section, 'key_location')
-            if not self.key_location:
-                raise Exception
-        except ConfigParser.NoOptionError:
-            raise Exception
+            self.__sanity_check = False
 
         # Determine the EC2 region to used used or default to us-east-1
         # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
@@ -116,6 +103,18 @@ class CfnClusterConfig:
         except ConfigParser.NoOptionError:
             self.aws_secret_access_key=None
 
+        # Get the EC2 keypair name to be used, exit if not set
+        try:
+            self.key_name = __config.get(self.__cluster_section, 'key_name')
+            if not self.key_name:
+                raise Exception
+            if self.__sanity_check:
+                config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                             'EC2KeyPair', self.key_name)
+        except ConfigParser.NoOptionError:
+            raise Exception
+        self.parameters.append(('KeyName', self.key_name))
+
         # Determine the CloudFormation URL to be used
         # Order is 1) CLI arg 2) Config file 3) default for version + region
         try:
@@ -126,6 +125,9 @@ class CfnClusterConfig:
                                                  'template_url')
                 if not self.template_url:
                     raise Exception
+                if self.__sanity_check:
+                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                             'URL', self.template_url)
             except ConfigParser.NoOptionError:
                 self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
         except AttributeError:
@@ -136,8 +138,10 @@ class CfnClusterConfig:
         self.__vpc_section = ('vpc %s' % self.__vpc_settings)
 
         # Dictionary list of all VPC options
-        self.__vpc_options = dict(vpc_id='VPCId', master_subnet_id='MasterSubnetId', compute_subnet_cidr='ComputeSubnetCidr',
-                                  compute_subnet_id='ComputeSubnetId', use_public_ips='UsePublicIps' , ssh_from='SSHFrom')
+        self.__vpc_options = dict(vpc_id=('VPCId','VPC'), master_subnet_id=('MasterSubnetId', 'VPCSubnet'),
+                                  compute_subnet_cidr=('ComputeSubnetCidr',None),
+                                  compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps', None),
+                                  ssh_from=('SSHFrom', None))
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
@@ -145,21 +149,24 @@ class CfnClusterConfig:
                 __temp__ = __config.get(self.__vpc_section, key)
                 if not __temp__:
                     raise Exception
-                self.parameters.append((self.__vpc_options.get(key),__temp__))
+                if self.__sanity_check and self.__vpc_options.get(key)[1] is not None:
+                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                                self.__vpc_options.get(key)[1],__temp__)
+                self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
             except ConfigParser.NoOptionError:
                 pass
 
         # Dictionary list of all cluster section options
-        self.__cluster_options = dict(cluster_user='ClusterUser', compute_instance_type='ComputeInstanceType',
-                                      master_instance_type='MasterInstanceType', initial_queue_size='InitialQueueSize',
-                                      max_queue_size='MaxQueueSize', maintain_initial_size='MaintainInitialSize',
-                                      scheduler='Scheduler', cluster_type='ClusterType', ephemeral_dir='EphemeralDir',
-                                      spot_price='SpotPrice', custom_ami='CustomAMI', pre_install='PreInstallScript',
-                                      post_install='PostInstallScript', proxy_server='ProxyServer',
-                                      placement='Placement', placement_group='PlacementGroup',
-                                      encrypted_ephemeral='EncryptedEphemeral',pre_install_args='PreInstallArgs',
-                                      post_install_args='PostInstallArgs', s3_read_resource='S3ReadResource',
-                                      s3_read_write_resource='S3ReadWriteResource')
+        self.__cluster_options = dict(cluster_user=('ClusterUser', None), compute_instance_type=('ComputeInstanceType',None),
+                                      master_instance_type=('MasterInstanceType', None), initial_queue_size=('InitialQueueSize',None),
+                                      max_queue_size=('MaxQueueSize',None), maintain_initial_size=('MaintainInitialSize',None),
+                                      scheduler=('Scheduler',None), cluster_type=('ClusterType',None), ephemeral_dir=('EphemeralDir',None),
+                                      spot_price=('SpotPrice',None), custom_ami=('CustomAMI','EC2Ami'), pre_install=('PreInstallScript','URL'),
+                                      post_install=('PostInstallScript','URL'), proxy_server=('ProxyServer',None),
+                                      placement=('Placement',None), placement_group=('PlacementGroup','EC2PlacementGroup'),
+                                      encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
+                                      post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
+                                      s3_read_write_resource=('S3ReadWriteResource',None))
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.__cluster_options:
@@ -167,7 +174,10 @@ class CfnClusterConfig:
                 __temp__ = __config.get(self.__cluster_section, key)
                 if not __temp__:
                     raise Exception
-                self.parameters.append((self.__cluster_options.get(key),__temp__))
+                if self.__sanity_check and self.__cluster_options.get(key)[1] is not None:
+                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                                self.__cluster_options.get(key)[1],__temp__)
+                self.parameters.append((self.__cluster_options.get(key)[0],__temp__))
             except ConfigParser.NoOptionError:
                 pass
 
@@ -181,8 +191,9 @@ class CfnClusterConfig:
             pass
 
         # Dictionary list of all EBS options
-        self.__ebs_options = dict(ebs_snapshot_id='EBSSnapshotId', volume_type='VolumeType', volume_size='VolumeSize',
-                                  volume_iops='VolumeIOPS', encrypted='EBSEncryption')
+        self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId','EC2Snapshot'), volume_type=('VolumeType',None),
+                                  volume_size=('VolumeSize',None),
+                                  volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None))
 
         try:
             if self.__ebs_section:
@@ -191,7 +202,10 @@ class CfnClusterConfig:
                         __temp__ = __config.get(self.__ebs_section, key)
                         if not __temp__:
                             raise Exception
-                        self.parameters.append((self.__ebs_options.get(key),__temp__))
+                        if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
+                            config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                                self.__ebs_options.get(key)[1],__temp__)
+                        self.parameters.append((self.__ebs_options.get(key)[0],__temp__))
                     except ConfigParser.NoOptionError:
                         pass
         except AttributeError:
@@ -207,8 +221,10 @@ class CfnClusterConfig:
             pass
 
         # Dictionary list of all scaling options
-        self.__scaling_options = dict(scaling_threshold='ScalingThreshold', scaling_period='ScalingPeriod',
-                                      scaling_evaluation_periods='ScalingEvaluationPeriods')
+        self.__scaling_options = dict(scaling_threshold=('ScalingThreshold',None), scaling_period=('ScalingPeriod',None),
+                                      scaling_evaluation_periods=('ScalingEvaluationPeriods',None),
+                                      scaling_adjustment=('ScalingAdjustment',None),scaling_adjustment2=('ScalingAdjustment2',None),
+                                      scaling_cooldonw=('ScalingCooldown',None),scaling_threshold2=('ScalingThreshold2',None))
 
         try:
             if self.__scaling_section:
@@ -217,7 +233,10 @@ class CfnClusterConfig:
                         __temp__ = __config.get(self.__scaling_section, key)
                         if not __temp__:
                             raise Exception
-                        self.parameters.append((self.__scaling_options.get(key),__temp__))
+                        if self.__sanity_check and self.__scaling_options.get(key)[1] is not None:
+                            config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                                self.__scaling_options.get(key)[1],__temp__)
+                        self.parameters.append((self.__scaling_options.get(key)[0],__temp__))
                     except ConfigParser.NoOptionError:
                         pass
         except AttributeError:

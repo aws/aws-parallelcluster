@@ -13,7 +13,6 @@ __author__ = 'dougalb'
 
 import subprocess as sub
 import paramiko
-from tempfile import mkstemp
 from tempfile import NamedTemporaryFile
 import time
 import os
@@ -26,7 +25,7 @@ def __runSgeCommand(command):
     except sub.CalledProcessError:
         print ("Failed to run %s\n" % _command)
 
-def addHost(hostname):
+def addHost(hostname, cluster_user):
     print('Adding %s', hostname)
 
     # Adding host as administrative host
@@ -58,8 +57,8 @@ report_variables      NONE
     # Connect and start SGE
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    hosts_key_file = '/home/' + os.environ['cfn_cluster_user'] + '.ssh/known_hosts'
-    user_key_file = '/home/' + os.environ['cfn_cluster_user'] + '.ssh/id_rsa'
+    hosts_key_file = '/home/' + cluster_user + '/.ssh/known_hosts'
+    user_key_file = '/home/' + cluster_user + '/.ssh/id_rsa'
     try:
         ssh.load_host_keys(hosts_key_file)
     except IOError:
@@ -70,7 +69,7 @@ report_variables      NONE
     while iter < 3 and connected == False:
         try:
             print('Connecting to host: %s iter: %d' % (hostname, iter))
-            ssh.connect(hostname, username=os.environ['cfn_cluster_user'], key_filename=user_key_file)
+            ssh.connect(hostname, username=cluster_user, key_filename=user_key_file)
             connected=True
         except socket.error, e:
             print('Socket error: %s' % e)
@@ -84,7 +83,7 @@ report_variables      NONE
     stdin, stdout, stderr = ssh.exec_command(command)
     ssh.close()
 
-def removeHost(hostname):
+def removeHost(hostname,cluster_user):
     print('Removing %s', hostname)
 
     # Purge hostname from all.q
