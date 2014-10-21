@@ -79,6 +79,12 @@ class CfnClusterConfig:
             self.__sanity_check = __config.getboolean('global', 'sanity_check')
         except ConfigParser.NoOptionError:
             self.__sanity_check = False
+        # Only check config on calls that mutate it
+        __args_func = self.args.func.func_name
+        if (__args_func == 'create' or __args_func == 'update') and self.__sanity_check is True:
+            pass
+        else:
+            self.__sanity_check = False
 
         # Determine the EC2 region to used used or default to us-east-1
         # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
