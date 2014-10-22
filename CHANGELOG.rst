@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.15
+======
+
+* feature:``cli``: status call now outputs CREATE_FAILED messages for stacks in error state
+* update:``cli``: Improved tags and extra_parameters on CLI
+* bugfix:``cli``: Only check config sanity on calls that mutate stack
+
 0.0.14
 ======
 * feature:``cli``: Introduced sanity_check feature for config
