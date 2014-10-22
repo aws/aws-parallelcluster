@@ -13,6 +13,7 @@ import os
 import argparse
 import logging
 import platform
+import json
 
 import cfncluster
 
@@ -81,9 +82,9 @@ def main():
                          help='specify a URL for a custom cloudformation template')
     pcreate.add_argument("--cluster-template", "-t", type=str, dest="cluster_template", default=None,
                          help='specify a specific cluster template to use')
-    pcreate.add_argument("--extra-parameters", "-p", type=str, dest="extra_parameters", default=None,
+    pcreate.add_argument("--extra-parameters", "-p", type=json.loads, dest="extra_parameters", default=None,
                          help='add extra parameters to stack create')
-    pcreate.add_argument("--tags", "-g", type=str, dest="tags", default=None,
+    pcreate.add_argument("--tags", "-g", type=json.loads, dest="tags", default=None,
                          help='tags to be added to the stack')
     pcreate.set_defaults(func=create)
 

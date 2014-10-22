@@ -248,3 +248,14 @@ class CfnClusterConfig:
         except AttributeError:
             pass
 
+        if self.args.extra_parameters is not None:
+            try:
+                self.parameters = dict(self.parameters)
+                self.__temp_dict = dict(self.parameters.items() + self.args.extra_parameters.items())
+                self.__dictlist = []
+                for key, value in self.__temp_dict.iteritems():
+                    temp = [str(key),str(value)]
+                    self.__dictlist.append(temp)
+                self.parameters = self.__dictlist
+            except AttributeError:
+                pass
