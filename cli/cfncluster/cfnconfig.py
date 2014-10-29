@@ -138,7 +138,7 @@ class CfnClusterConfig:
                 if self.region == 'eu-central-1':
                     self.template_url = ('https://s3.%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.region, self.version))
                 else:
-                    self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.region, self.version))
+                    self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
         except AttributeError:
             pass
 
