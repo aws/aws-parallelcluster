@@ -79,6 +79,12 @@ class CfnClusterConfig:
             self.__sanity_check = __config.getboolean('global', 'sanity_check')
         except ConfigParser.NoOptionError:
             self.__sanity_check = False
+        # Only check config on calls that mutate it
+        __args_func = self.args.func.func_name
+        if (__args_func == 'create' or __args_func == 'update') and self.__sanity_check is True:
+            pass
+        else:
+            self.__sanity_check = False
 
         # Determine the EC2 region to used used or default to us-east-1
         # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
@@ -129,7 +135,10 @@ class CfnClusterConfig:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'URL', self.template_url)
             except ConfigParser.NoOptionError:
-                self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
+                if self.region == 'eu-central-1':
+                    self.template_url = ('https://s3.%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.region, self.version))
+                else:
+                    self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.region, self.version))
         except AttributeError:
             pass
 
@@ -242,3 +251,15 @@ class CfnClusterConfig:
         except AttributeError:
             pass
 
+        # Handle extra parameters supplied on command-line
+        try:
+            if self.args.extra_parameters is not None:
+                self.parameters = dict(self.parameters)
+                self.__temp_dict = dict(self.parameters.items() + self.args.extra_parameters.items())
+                self.__dictlist = []
+                for key, value in self.__temp_dict.iteritems():
+                    temp = [str(key),str(value)]
+                    self.__dictlist.append(temp)
+                self.parameters = self.__dictlist
+        except AttributeError:
+            pass

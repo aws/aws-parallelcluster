@@ -20,8 +20,8 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "0.0.14"
-requires = ['boto>=2.33', 'botocore'] 
+version = "0.0.15"
+requires = ['boto>=2.34'] 
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it
