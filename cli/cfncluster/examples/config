@@ -13,10 +13,11 @@ sanity_check = true
 # replace these with your AWS keys
 # If not defined, boto will attempt to use a) enviornment
 # or b) EC2 IAM role.
-#aws_access_key_id= #your_aws_access_key_id
+#aws_access_key_id = #your_aws_access_key_id
 #aws_secret_access_key = #your_secret_access_key
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
-#aws_region_name = us-west-2
+# (Defaults to us-east-1 if not defined in enviornment or below)
+#aws_region_name = #region
 
 ## cfncluster templates
 [cluster default]
