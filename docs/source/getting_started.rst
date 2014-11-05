@@ -1,14 +1,19 @@
-cfncluster
-==========
+.. _getting-started:
+
+===============================
+Getting started with cfncluster
+===============================
 
 cfncluster is a framework that deploys and maintains HPC clusters on 
 AWS. It is reasonably agnostic to what the cluster is for and can easily be 
 extended to support different frameworks. The CLI is stateless, 
 everything is done using CloudFormation or resources within AWS.
 
-### Installation
+Installing cfncluster
+---------------------
 
-The current working version is cfncluster-0.0.16. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.16. The CLI is written in python 
+and uses BOTO for AWS actions. You can install the CLI with the following command:
 
 #### Linux/OSX
 
@@ -39,7 +44,8 @@ C:\> easy_install cfncluster
 
 #### Upgrading
 
-To upgrade an older version of cfncluster, you can use either of the following commands, depening on how it was originally installed:
+To upgrade an older version of cfncluster, you can use either of the following commands, 
+depening on how it was originally installed:
 
 ```
 $ sudo pip install --upgrade cfncluster
@@ -49,9 +55,12 @@ or
 $ sudo easy_install -U cfncluster
 ```
 
-** Remember when upgrading to check that the exiting config is compatible with the latest version installed.
+** Remember when upgrading to check that the exiting config is compatible with the latest 
+version installed.
 
-### Configuration
+======================
+Configuring cfncluster
+======================
 
 Once installed you will need to setup some initial config. The easiest way to do this is below:
 
@@ -64,7 +73,9 @@ $
 $ cp /usr/lib/python2.6/site-packages/cfncluster/examples/config ~/.cfncluster
 ```
 
-You should now edit the config and set some defaults before launching the cluster. First define a keypair that already exists in EC2. If you do not already have a keypair, refer to the EC2 documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
+You should now edit the config and set some defaults before launching the cluster. First define 
+a keypair that already exists in EC2. If you do not already have a keypair, refer to the EC2 
+documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
 
 Then you should associate your choosen keypair with the cluster template.
 ````
@@ -73,7 +84,10 @@ Then you should associate your choosen keypair with the cluster template.
 key_name = mykey
 ```
 
-Next, a simple cluster launches into a VPC and uses an existing subnet which supports public IP's i.e. the route table for the subnet is 0.0.0.0/0 => igw-xxxxxx. The VPC must have "DNS Resolution = yes" and "DNS Hostnames = yes". It should also have DHCP options with the correct "domain-name" for the region, as defined in the docs: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html
+Next, a simple cluster launches into a VPC and uses an existing subnet which supports public 
+IP's i.e. the route table for the subnet is 0.0.0.0/0 => igw-xxxxxx. The VPC must have 
+"DNS Resolution = yes" and "DNS Hostnames = yes". It should also have DHCP options with the 
+correct "domain-name" for the region, as defined in the docs: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html
 
 ```
 ## VPC Settings
