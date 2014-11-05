@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'cfncluster'
-copyright = u'2014, Dougal Ballantyne'
+copyright = u'2014, Amazon Web Services'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -199,7 +199,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   ('index', 'cfncluster.tex', u'cfncluster Documentation',
-   u'Dougal Ballantyne', 'manual'),
+   u'Dougal Ballantyne', u'Amazon Web Services', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
