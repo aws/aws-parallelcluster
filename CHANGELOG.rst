@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+0.0.16
+======
+* feature:``cfncluster``: Support for GovCloud region
+* updates:``cli``: Improved error messages parsing config file
+
 0.0.15
 ======
 

@@ -113,12 +113,14 @@ class CfnClusterConfig:
         try:
             self.key_name = __config.get(self.__cluster_section, 'key_name')
             if not self.key_name:
-                raise Exception
+                print("ERROR: key_name set in [%s] section but not defined." % self.__cluster_section)
+                sys.exit(1)
             if self.__sanity_check:
                 config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'EC2KeyPair', self.key_name)
         except ConfigParser.NoOptionError:
-            raise Exception
+            print("ERROR: Missing key_name option in [%s] section." % self.__cluster_section)
+            sys.exit(1)
         self.parameters.append(('KeyName', self.key_name))
 
         # Determine the CloudFormation URL to be used
@@ -130,15 +132,21 @@ class CfnClusterConfig:
                 self.template_url = __config.get(self.__cluster_section,
                                                  'template_url')
                 if not self.template_url:
-                    raise Exception
+                    print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
+                    sys.exit(1)
                 if self.__sanity_check:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'URL', self.template_url)
             except ConfigParser.NoOptionError:
                 if self.region == 'eu-central-1':
-                    self.template_url = ('https://s3.%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.region, self.version))
+                    self.template_url = ('https://s3.%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                                         % (self.region, self.region, self.version))
+                elif self.region == 'us-gov-west-1':
+                    self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                                         % (self.region, self.region, self.version))
                 else:
-                    self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json' % (self.region, self.version))
+                    self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                                         % (self.region, self.version))
         except AttributeError:
             pass
 
@@ -149,7 +157,8 @@ class CfnClusterConfig:
         # Dictionary list of all VPC options
         self.__vpc_options = dict(vpc_id=('VPCId','VPC'), master_subnet_id=('MasterSubnetId', 'VPCSubnet'),
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
-                                  compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps', None),
+                                  compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
+                                                                                                      None),
                                   ssh_from=('SSHFrom', None))
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
@@ -157,7 +166,9 @@ class CfnClusterConfig:
             try:
                 __temp__ = __config.get(self.__vpc_section, key)
                 if not __temp__:
-                    raise Exception
+                    print("ERROR: %s defined but not set in [%s] section"
+                                                    % (key, self.__vpc_section))
+                    sys.exit(1)
                 if self.__sanity_check and self.__vpc_options.get(key)[1] is not None:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__vpc_options.get(key)[1],__temp__)
@@ -182,7 +193,9 @@ class CfnClusterConfig:
             try:
                 __temp__ = __config.get(self.__cluster_section, key)
                 if not __temp__:
-                    raise Exception
+                    print("ERROR: %s defined but not set in [%s] section"
+                                                    % (key, self.__cluster_section))
+                    sys.exit(1)
                 if self.__sanity_check and self.__cluster_options.get(key)[1] is not None:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__cluster_options.get(key)[1],__temp__)
@@ -194,7 +207,9 @@ class CfnClusterConfig:
         try:
             self.__ebs_settings = __config.get(self.__cluster_section, 'ebs_settings')
             if not self.__ebs_settings:
-                raise Exception
+                print("ERROR: ebs_settings defined by not set in [%s] section"
+                                                % self.__cluster_section)
+                sys.exit(1)
             self.__ebs_section = ('ebs %s' % self.__ebs_settings)
         except ConfigParser.NoOptionError:
             pass
@@ -210,7 +225,9 @@ class CfnClusterConfig:
                     try:
                         __temp__ = __config.get(self.__ebs_section, key)
                         if not __temp__:
-                            raise Exception
+                            print("ERROR: %s defined but not set in [%s] section"
+                                                    % (key, self.__ebs_section))
+                            sys.exit(1)
                         if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
                             config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__ebs_options.get(key)[1],__temp__)
@@ -224,7 +241,9 @@ class CfnClusterConfig:
         try:
             self.__scaling_settings = __config.get(self.__cluster_section, 'scaling_settings')
             if not self.__scaling_settings:
-                raise Exception
+                print("ERROR: scaling_settings defined by not set in [%s] section"
+                                                % self.__cluster_section)
+                sys.exit(1)
             self.__scaling_section = ('scaling %s' % self.__scaling_settings)
         except ConfigParser.NoOptionError:
             pass
@@ -241,7 +260,9 @@ class CfnClusterConfig:
                     try:
                         __temp__ = __config.get(self.__scaling_section, key)
                         if not __temp__:
-                            raise Exception
+                            print("ERROR: %s defined but not set in [%s] section"
+                                                    % (key, self.__scaling_section))
+                            sys.exit(1)
                         if self.__sanity_check and self.__scaling_options.get(key)[1] is not None:
                             config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__scaling_options.get(key)[1],__temp__)
