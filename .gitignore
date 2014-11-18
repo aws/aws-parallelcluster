@@ -5,5 +5,5 @@
 *#
 dist/
 build/
-cfncluster.egg-info/
+*.egg-info/
 .idea/
