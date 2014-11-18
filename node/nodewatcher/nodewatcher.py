@@ -28,7 +28,7 @@ def getConfig(instance_id):
     print('running getConfig')
 
     config = ConfigParser.RawConfigParser()
-    config.read('nodewatcher.cfg')
+    config.read('/etc/nodewatcher.cfg')
     _region = config.get('nodewatcher', 'region')
     _scheduler = config.get('nodewatcher', 'scheduler')
     try:
@@ -103,7 +103,7 @@ def selfTerminate(asg):
     if _capacity > 0:
         _as_conn.terminate_instance(instance_id, decrement_capacity=True)
 
-if __name__ == "__main__":
+def main():
     print('Running __main__')
     instance_id = getInstanceId()
     hostname = getHostname()
@@ -125,3 +125,6 @@ if __name__ == "__main__":
 
         if hour_percentile > 95:
             selfTerminate(asg)
+
+if __name__ == "__main__":
+    main()

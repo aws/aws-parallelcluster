@@ -32,7 +32,7 @@ def getConfig():
     print('running getConfig')
 
     config = ConfigParser.RawConfigParser()
-    config.read('sqswatcher.cfg')
+    config.read('/etc/sqswatcher.cfg')
     _region = config.get('sqswatcher', 'region')
     _sqsqueue = config.get('sqswatcher', 'sqsqueue')
     _table_name = config.get('sqswatcher', 'table_name')
@@ -151,10 +151,13 @@ def pollQueue():
 
         time.sleep(30)
 
-if __name__ == "__main__":
+def main():
     print('running __main__')
     print time.ctime()
     region, sqsqueue, table_name, scheduler, cluster_user = getConfig()
     q = setupQueue(region, sqsqueue)
     t = setupDDBTable(region, table_name)
     pollQueue()
+
+if __name__ == "__main__":
+    main()
