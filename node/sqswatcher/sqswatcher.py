@@ -45,7 +45,8 @@ def getConfig():
 def setupQueue(region, sqsqueue):
     print('running setupQueue')
 
-    conn = boto.sqs.connect_to_region(region)
+    conn = boto.sqs.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
 
     _q = conn.get_queue(sqsqueue)
     if _q != None:
@@ -56,10 +57,12 @@ def setupQueue(region, sqsqueue):
 def setupDDBTable(region, table_name):
     print('running setupDDBTable')
 
-    conn = boto.dynamodb.connect_to_region(region)
+    conn = boto.dynamodb.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
     tables = conn.list_tables()
     check = [t for t in tables if t == table_name]
-    conn = boto.dynamodb2.connect_to_region(region)
+    conn = boto.dynamodb2.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
     if check:
         _table = Table(table_name,connection=conn)
     else:
@@ -105,7 +108,8 @@ def pollQueue():
                         print eventType, instanceId
 
                         ec2 = boto.connect_ec2()
-                        ec2 = boto.ec2.connect_to_region(region)
+                        ec2 = boto.ec2.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
 
                         retry = 0
                         wait = 15

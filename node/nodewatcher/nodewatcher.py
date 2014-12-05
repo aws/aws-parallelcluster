@@ -34,7 +34,8 @@ def getConfig(instance_id):
     try:
         _asg = config.get('nodewatcher', 'asg')
     except ConfigParser.NoOptionError:
-        conn = boto.ec2.connect_to_region(_region)
+        conn = boto.ec2.connect_to_region(_region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
         _asg = conn.get_all_instances(instance_ids=instance_id)[0].instances[0].tags['aws:autoscaling:groupName']
         config.set('nodewatcher', 'asg', _asg)
 
@@ -97,7 +98,8 @@ def getJobs(s,hostname):
 
 
 def selfTerminate(asg):
-    _as_conn = boto.ec2.autoscale.connect_to_region(region)
+    _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
     _asg = _as_conn.get_all_groups(names=[asg])[0]
     _capacity = _asg.desired_capacity
     if _capacity > 0:
