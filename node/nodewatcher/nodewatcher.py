@@ -84,7 +84,7 @@ def getHostname():
 def loadSchedulerModule(scheduler):
     print 'running loadSchedulerModule'
 
-    scheduler = 'plugins.' + scheduler
+    scheduler = 'nodewatcher.plugins.' + scheduler
     _scheduler = __import__(scheduler)
     _scheduler = sys.modules[scheduler]
 

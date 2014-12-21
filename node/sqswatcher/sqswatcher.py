@@ -76,14 +76,14 @@ def setupDDBTable(region, table_name):
 def loadSchedulerModule(scheduler):
     print 'running loadSchedulerModule'
 
-    scheduler = 'plugins.' + scheduler
+    scheduler = 'sqswatcher.plugins.' + scheduler
     _scheduler = __import__(scheduler)
     _scheduler = sys.modules[scheduler]
 
     return _scheduler
 
 
-def pollQueue():
+def pollQueue(scheduler, q, t):
     print 'running pollQueue'
     s = loadSchedulerModule(scheduler)
 
@@ -158,10 +158,11 @@ def pollQueue():
 def main():
     print('running __main__')
     print time.ctime()
+    global region, cluster_user
     region, sqsqueue, table_name, scheduler, cluster_user = getConfig()
     q = setupQueue(region, sqsqueue)
     t = setupDDBTable(region, table_name)
-    pollQueue()
+    pollQueue(scheduler, q, t)
 
 if __name__ == "__main__":
     main()
