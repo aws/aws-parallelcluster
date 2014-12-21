@@ -15,12 +15,19 @@ set -x
 
 . /opt/cfncluster/cfnconfig
 
+# Source functions
+. ../functions.shlib
+
 function error_exit () {
   script=`basename $0`
   echo "cfncluster: $script - $1"
   logger -t cfncluster "$script - $1"
   exit 1
 }
+
+# Check FQDN dns
+check_dns_fqdn || error_exit "FQDN DNS checks failed."
+
 
 if [ "x$cfn_master" == "x" ]; then
   error_exit 'No master server specified.'

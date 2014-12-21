@@ -16,12 +16,18 @@ set -x
 # Source cfncluster config
 . /opt/cfncluster/cfnconfig
 
+# Source functions
+. ../functions.shlib
+
 function error_exit () {
   script=`basename $0`
   echo "cfncluster: $script - $1"
   logger -t cfncluster "$script - $1" 
   exit 1
 }
+
+# Check FQDN dns
+check_dns_fqdn || error_exit "FQDN DNS checks failed."
 
 myhostname=$(hostname -s)
 if [ $? != 0 ]; then
