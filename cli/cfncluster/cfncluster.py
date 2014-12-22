@@ -305,6 +305,7 @@ def delete(args):
                                                     aws_secret_access_key=config.aws_secret_access_key)
     try:
         cfnconn.delete_stack(stack)
+        time.sleep(5)
         status = cfnconn.describe_stacks(stack)[0].stack_status
         sys.stdout.write('\rStatus: %s' % status)
         sys.stdout.flush()

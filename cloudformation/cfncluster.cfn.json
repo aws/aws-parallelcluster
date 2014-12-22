@@ -1339,6 +1339,11 @@
                         "Ref" : "EphemeralDir"
                       },
                       "\n",
+                      "cfn_proxy=",
+                      {
+                        "Ref" : "ProxyServer"
+                      },
+                      "\n",
                       "cfn_node_type=MasterServer\n",
                       "cfn_cluster_user=",
                       {
@@ -1718,6 +1723,11 @@
                       "cfn_sqs_url=",
                       {
                         "Ref" : "SQS"
+                      },
+                      "\n",
+                      "cfn_proxy=",
+                      {
+                        "Ref" : "ProxyServer"
                       },
                       "\n",
                       "cfn_master=",
