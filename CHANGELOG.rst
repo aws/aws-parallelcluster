@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+0.0.17
+======
+* updates:``ami``: Pulled latest CentOS errata. Now CentOS 6.6.
+* updates:``ami``: Updated SGE to 8.1.6
+* updates:``ami``: Updates openlava to latest pull from GitHub
+* bugfix:``ami``: Fixed handling of HTTP(S) proxies
+* feature:``ami``: Moved sqswatcher and nodewatcher into Python package cfncluster-node
+
 0.0.16
 ======
 * feature:``cfncluster``: Support for GovCloud region

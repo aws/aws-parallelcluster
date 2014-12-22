@@ -8,7 +8,7 @@ everything is done using CloudFormation or resources within AWS.
 
 ### Installation
 
-The current working version is cfncluster-0.0.16. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.17. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following command:
 
 #### Linux/OSX
 
