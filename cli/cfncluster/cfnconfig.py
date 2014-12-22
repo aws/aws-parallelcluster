@@ -59,6 +59,7 @@ class CfnClusterConfig:
         except AttributeError:
             self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
+        self.parameters.append(('CLITemplate',self.__cluster_template))
 
         # Check if package updates should be checked
         try:

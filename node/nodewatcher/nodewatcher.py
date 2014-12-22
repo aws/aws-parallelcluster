@@ -28,13 +28,14 @@ def getConfig(instance_id):
     print('running getConfig')
 
     config = ConfigParser.RawConfigParser()
-    config.read('nodewatcher.cfg')
+    config.read('/etc/nodewatcher.cfg')
     _region = config.get('nodewatcher', 'region')
     _scheduler = config.get('nodewatcher', 'scheduler')
     try:
         _asg = config.get('nodewatcher', 'asg')
     except ConfigParser.NoOptionError:
-        conn = boto.ec2.connect_to_region(_region)
+        conn = boto.ec2.connect_to_region(_region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
         _asg = conn.get_all_instances(instance_ids=instance_id)[0].instances[0].tags['aws:autoscaling:groupName']
         config.set('nodewatcher', 'asg', _asg)
 
@@ -83,7 +84,7 @@ def getHostname():
 def loadSchedulerModule(scheduler):
     print 'running loadSchedulerModule'
 
-    scheduler = 'plugins.' + scheduler
+    scheduler = 'nodewatcher.plugins.' + scheduler
     _scheduler = __import__(scheduler)
     _scheduler = sys.modules[scheduler]
 
@@ -97,13 +98,14 @@ def getJobs(s,hostname):
 
 
 def selfTerminate(asg):
-    _as_conn = boto.ec2.autoscale.connect_to_region(region)
+    _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
     _asg = _as_conn.get_all_groups(names=[asg])[0]
     _capacity = _asg.desired_capacity
     if _capacity > 0:
         _as_conn.terminate_instance(instance_id, decrement_capacity=True)
 
-if __name__ == "__main__":
+def main():
     print('Running __main__')
     instance_id = getInstanceId()
     hostname = getHostname()
@@ -125,3 +127,6 @@ if __name__ == "__main__":
 
         if hour_percentile > 95:
             selfTerminate(asg)
+
+if __name__ == "__main__":
+    main()

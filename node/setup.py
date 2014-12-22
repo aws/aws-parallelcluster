@@ -19,9 +19,10 @@ from setuptools import setup, find_packages
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
-console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "0.0.17"
-requires = ['boto>=2.34'] 
+console_scripts = ['sqswatcher = sqswatcher.sqswatcher:main', 
+                   'nodewatcher = nodewatcher.nodewatcher:main']
+version = "0.0.2"
+requires = ['boto>=2.34', 'paramiko', 'python-dateutil'] 
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it
@@ -29,11 +30,11 @@ if sys.version_info[:2] == (2, 6):
     requires.append('argparse>=1.1')
 
 setup(
-    name = "cfncluster",
+    name = "cfncluster-node",
     version = version,
     author = "Dougal Ballantyne",
     author_email = "dougalb@amazon.com",
-    description = ("A simple tool to launch and manage HPC clusters as CloudFormation stacks."),
+    description = ("cfncluster-node provides the scripts for a cfncluster node."),
     url = ("https://github.com/awslabs/cfncluster"),
     license = "Amazon Software License",
     packages = find_packages(),

@@ -1,14 +1,10 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20141013-1 cfn-20141013-0",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20141222-0 cfncluster-0.0.17",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
-      "Type" : "String",
-      "MinLength" : "1",
-      "MaxLength" : "64",
-      "AllowedPattern" : "[-+_.@ a-zA-Z0-9]+",
-      "ConstraintDescription" : "can contain only alphanumeric characters, spaces, dashes, plusses, underscores, dots, and at signs."
+      "Type" : "AWS::EC2::KeyPair::KeyName"
     },
     "MasterInstanceType" : {
       "Description" : "Master Server EC2 instance type",
@@ -164,7 +160,7 @@
     },
     "VPCId" : {
       "Description" : "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
-      "Type" : "String"
+      "Type" : "AWS::EC2::VPC::Id"
     },
     "SSHFrom" : {
       "Description" : "Lockdown SSH access (default can be accessed from anywhere)",
@@ -321,6 +317,14 @@
         "torque",
         "test"
       ]
+    },
+    "SharedDir" : {
+      "Description" : "The path/mountpoint for the shared drive",
+      "Type" : "String",
+      "Default" : "/shared"
+    },
+    "CLITemplate" : {
+      "Type" : "String"
     }
   },
   "Conditions" : {
@@ -646,34 +650,34 @@
     },
     "AWSRegionOS2AMI" : {
       "eu-west-1" : {
-        "centos6" : "ami-3470d943"
+        "centos6" : "ami-c215adb5"
       },
       "us-east-1" : {
-        "centos6" : "ami-f4ea6b9c"
+        "centos6" : "ami-0e274866"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-2188bb20"
+        "centos6" : "ami-f2171ff3"
       },
       "us-west-2" : {
-        "centos6" : "ami-ef632ddf"
+        "centos6" : "ami-2b095a1b"
       },
       "sa-east-1" : {
-        "centos6" : "ami-d3d364ce"
+        "centos6" : "ami-f18635ec"
       },
       "us-west-1" : {
-        "centos6" : "ami-c30e1a86"
+        "centos6" : "ami-abddc0ee"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-0c70505e"
+        "centos6" : "ami-839bb4d1"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-537e1269"
+        "centos6" : "ami-a5701b9f"
       },
       "eu-central-1" : {
-        "centos6" : "ami-1c132501"
+        "centos6" : "ami-b03606ad"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-8f1573ac"
+        "centos6" : "ami-9196f0b2"
       }
     },
     "ClusterUser" : {
@@ -686,7 +690,7 @@
     },
     "AWSRegion2Capabilites" : {
       "eu-west-1" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "us-east-1" : {
@@ -694,11 +698,11 @@
         "arn" : "aws"
       },
       "ap-northeast-1" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "us-west-2" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "sa-east-1" : {
@@ -710,15 +714,15 @@
         "arn" : "aws"
       },
       "ap-southeast-1" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "ap-southeast-2" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "eu-central-1" : {
-        "cwl" : "false",
+        "cwl" : "true",
         "arn" : "aws"
       },
       "us-gov-west-1" : {
@@ -1051,13 +1055,10 @@
       },
       "Condition" : "UseS3ReadWritePolicy"
     },
-    "MasterIPAddress" : {
+    "MasterEIP" : {
       "Type" : "AWS::EC2::EIP",
       "Properties" : {
-        "Domain" : "vpc",
-        "InstanceId" : {
-          "Ref" : "MasterServer"
-        }
+        "Domain" : "vpc"
       },
       "Condition" : "MasterPublicIp"
     },
@@ -1108,11 +1109,15 @@
                 "#!/bin/bash\n\n",
                 "function error_exit\n",
                 "{\n",
-                "  cfn-signal ${proxy_args} -e 1 -r \"$1\" '",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
                 {
-                  "Ref" : "MasterServerWaitHandle"
+                  "Ref" : "AWS::StackName"
                 },
-                "'\n",
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
                 "  exit 1\n",
                 "}\n",
                 "proxy=",
@@ -1121,7 +1126,10 @@
                 },
                 "\n",
                 "if [ \"$proxy\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=$proxy\"\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
                 "else\n",
                 "  proxy_args=\"\"\n",
                 "fi\n",
@@ -1153,11 +1161,15 @@
                 },
                 " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
                 "fi\n",
-                "cfn-signal ${proxy_args} -e 0 -r \"MasterServer setup complete\" '",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                 {
-                  "Ref" : "MasterServerWaitHandle"
+                  "Ref" : "AWS::StackName"
                 },
-                "'\n",
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
                 "# End of file\n"
               ]
             ]
@@ -1327,6 +1339,11 @@
                         "Ref" : "EphemeralDir"
                       },
                       "\n",
+                      "cfn_proxy=",
+                      {
+                        "Ref" : "ProxyServer"
+                      },
+                      "\n",
                       "cfn_node_type=MasterServer\n",
                       "cfn_cluster_user=",
                       {
@@ -1346,7 +1363,7 @@
                 "owner" : "root",
                 "group" : "root"
               },
-              "/opt/cfncluster/sqswatcher/sqswatcher.cfg" : {
+              "/etc/sqswatcher.cfg" : {
                 "content" : {
                   "Fn::Join" : [
                     "",
@@ -1393,14 +1410,13 @@
                 "owner" : "root",
                 "group" : "root"
               },
-              "/opt/cfncluster/cfncluster_supervisord.conf" : {
+              "/etc/cfncluster/cfncluster_supervisord.conf" : {
                 "content" : {
                   "Fn::Join" : [
                     "",
                     [
                       "[program:sqswatcher]\n",
-                      "directory = /opt/cfncluster/sqswatcher\n",
-                      "command = python ./sqswatcher.py\n"
+                      "command = /usr/bin/sqswatcher\n"
                     ]
                   ]
                 },
@@ -1418,19 +1434,13 @@
             }
           }
         }
+      },
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Count" : "1",
+          "Timeout" : "PT30M"
+        }
       }
-    },
-    "MasterServerWaitCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "Properties" : {
-        "Handle" : {
-          "Ref" : "MasterServerWaitHandle"
-        },
-        "Timeout" : "1800"
-      }
-    },
-    "MasterServerWaitHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
     },
     "ComputeFleet" : {
       "Type" : "AWS::AutoScaling::AutoScalingGroup",
@@ -1506,7 +1516,15 @@
           ]
         }
       },
-      "DependsOn" : "MasterServerWaitCondition"
+      "DependsOn" : "MasterServer",
+      "CreationPolicy" : {
+        "ResourceSignal" : {
+          "Timeout" : "PT30M",
+          "Count" : {
+            "Ref" : "ComputeWaitConditionCount"
+          }
+        }
+      }
     },
     "ComputeServerLaunchConfig" : {
       "Type" : "AWS::AutoScaling::LaunchConfiguration",
@@ -1555,11 +1573,15 @@
                 "#!/bin/bash\n",
                 "function error_exit\n",
                 "{\n",
-                "  cfn-signal ${proxy_args} -e 1 -r \"$1\" '",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
                 {
-                  "Ref" : "ComputeWaitHandle"
+                  "Ref" : "AWS::StackName"
                 },
-                "'\n",
+                " --resource=ComputeFleet --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
                 "  exit 1\n",
                 "}\n",
                 "proxy=",
@@ -1568,7 +1590,10 @@
                 },
                 "\n",
                 "if [ \"$proxy\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=$proxy\"\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
                 "else\n",
                 "  proxy_args=\"\"\n",
                 "fi\n",
@@ -1601,11 +1626,15 @@
                 },
                 " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
                 "fi\n",
-                "cfn-signal ${proxy_args} -e 0 -r \"Compute setup complete\" '",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"Compute setup complete\" --stack=",
                 {
-                  "Ref" : "ComputeWaitHandle"
+                  "Ref" : "AWS::StackName"
                 },
-                "'\n"
+                " --resource=ComputeFleet --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n"
               ]
             ]
           }
@@ -1696,6 +1725,11 @@
                         "Ref" : "SQS"
                       },
                       "\n",
+                      "cfn_proxy=",
+                      {
+                        "Ref" : "ProxyServer"
+                      },
+                      "\n",
                       "cfn_master=",
                       {
                         "Fn::GetAtt" : [
@@ -1733,7 +1767,7 @@
                 "owner" : "root",
                 "group" : "root"
               },
-              "/opt/cfncluster/nodewatcher/nodewatcher.cfg" : {
+              "/etc/nodewatcher.cfg" : {
                 "content" : {
                   "Fn::Join" : [
                     "",
@@ -1756,14 +1790,13 @@
                 "owner" : "root",
                 "group" : "root"
               },
-              "/opt/cfncluster/cfncluster_supervisord.conf" : {
+              "/etc/cfncluster/cfncluster_supervisord.conf" : {
                 "content" : {
                   "Fn::Join" : [
                     "",
                     [
                       "[program:nodewatcher]\n",
-                      "directory = /opt/cfncluster/nodewatcher\n",
-                      "command = python ./nodewatcher.py\n"
+                      "command = /usr/bin/nodewatcher\n"
                     ]
                   ]
                 },
@@ -1827,21 +1860,6 @@
               }
             }
           }
-        }
-      }
-    },
-    "ComputeWaitHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle"
-    },
-    "ComputeWaitCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "Properties" : {
-        "Handle" : {
-          "Ref" : "ComputeWaitHandle"
-        },
-        "Timeout" : "900",
-        "Count" : {
-          "Ref" : "ComputeWaitConditionCount"
         }
       }
     },
@@ -2152,6 +2170,21 @@
         "RetentionInDays" : 7
       },
       "Condition" : "CloudWatchLogs"
+    },
+    "AssosiateEIP" : {
+      "Type" : "AWS::EC2::EIPAssociation",
+      "Properties" : {
+        "AllocationId" : {
+          "Fn::GetAtt" : [
+            "MasterEIP",
+            "AllocationId"
+          ]
+        },
+        "NetworkInterfaceId" : {
+          "Ref" : "MasterENI"
+        }
+      },
+      "Condition" : "MasterPublicIp"
     }
   },
   "Outputs" : {
