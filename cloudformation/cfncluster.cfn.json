@@ -722,7 +722,7 @@
         "arn" : "aws"
       },
       "eu-central-1" : {
-        "cwl" : "true",
+        "cwl" : "false",
         "arn" : "aws"
       },
       "us-gov-west-1" : {
