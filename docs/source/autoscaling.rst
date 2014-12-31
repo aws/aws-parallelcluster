@@ -1,0 +1,48 @@
+.. _autoscaling:
+
+cfncluster auto-scaling
+=======================
+
+Clusters deployed with cfncluster are elastic in several ways. The first is by 
+simply setting the initial_queue_size and max_queue_size parameters of a cluster 
+settings. The initial_queue_size sets minimum size value of the ComputeFleet 
+Auto Scaling Group(ASG) and also the desired capacity value . The max_queue_size 
+sets maximum size value of the ComputeFleet ASG. As part of the cfncluster, two 
+Amazon CloudWatch alarms are created. These alarms monitor a custom Amazon 
+CloudWatch metric[1] that is published by the MasterServer of each cluster, this 
+is the second elastic nature of cfncluster. This metric is called pending and is 
+created per Stack and unique to each cluster. These Amazon CloudWatch alarms 
+call ScaleUp policies associated with the ComputeFleet ASG. This is what handles 
+the automatic addition of compute nodes when there is pending tasks in the 
+cluster. It is actually capable to scaling the cluster with zero compute nodes 
+until the alarms no longer trigger or the max_queue_size is reached. 
+
+Within AutoScaling, there is typically a Amazon CloudWatch alarm to remove 
+instances when no longer needed. This alarm would operate on a aggregate metric 
+such as CPU or network. When the aggregate metric fell below a certain level, it 
+would make a call to a ScaleDown policy. The decision to remove which instance 
+is complex[2] and is not aware of individual instance utilization. For that 
+reason, each one of the instances in the ComputeFleet ASG run a process called 
+nodewatcher[3]. The purpose of this process is to monitor the instance and if 
+idle AND close to the end of the current hour, remove it from the ComputeFleet 
+ASG. It specifically calls the TerminateInstanceInAutoScalingGroup[4] API call, 
+which will remove an instance as long as the size of the ASG is larger than the 
+desired capacity. That is what handles the scale down of the cluster, without 
+affecting any running jobs and also enables an elastic cluster with a fixed base 
+number of instances.
+
+The value of the auto scaling is the same for HPC as with any other workloads, 
+the only difference here is cfncluster has code to specifically make it interact 
+in a more intelligent manner. If a static cluster is required, this can be 
+achieved by setting initial_queue_size and max_queue_size parameters to the size 
+of cluster required and also setting the maintain_initial_size parameter to 
+true. This will cause the ComputeFleet ASG to have the same value for minimum, 
+maximum and desired capacity. 
+
+References
+==========
+
+1. http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/publishingMetrics.html
+2. http://docs.aws.amazon.com/AutoScaling/latest/DeveloperGuide/AutoScalingBehavior.InstanceTermination.html
+3. https://github.com/awslabs/cfncluster/tree/master/node/src/nodewatcher
+4. http://docs.aws.amazon.com/AutoScaling/latest/APIReference/API_TerminateInstanceInAutoScalingGroup.html

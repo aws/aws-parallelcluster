@@ -11,17 +11,22 @@ cfncluster is a framework that deploys and maintains HPC clusters on AWS. It is 
 Getting Started
 ---------------
 
-If you've never used ``cfncluster`` before, you should read the
-:doc:`Getting Started with cfncluster <getting_started>` guide to get familiar
-with ``cfncluster`` & its usage.
+If you've never used ``cfncluster`` before, you should read the :doc:`Getting Started with cfncluster <getting_started>` guide to get familiar with ``cfncluster`` & its usage.
 
+Additional Docs
+---------------
 
-Contents:
+* :doc:`pre & post install actions <pre_post_install>`
+* :doc:`cfncluster auto-scaling <autoscaling>`
 
-.. toctree::
-   :maxdepth: 2
+Additional Resources
+--------------------
 
+* `cfncluster Source Repository`_
+* `cfncluster Issue Tracker`_
 
+.. _cfncluster Issue Tracker: https://github.com/awslabs/cfncluster/issues
+.. _cfncluster Source Repository: https://github.com/awslabs/cfncluster
 
 Indices and tables
 ==================
