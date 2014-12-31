@@ -12,8 +12,9 @@ everything is done using CloudFormation or resources within AWS.
 Installing cfncluster
 =====================
 
-The current working version is cfncluster-0.0.16. The CLI is written in python 
-and uses BOTO for AWS actions. You can install the CLI with the following command:
+The current working version is cfncluster-0.0.17. The CLI is written in python 
+and uses BOTO for AWS actions. You can install the CLI with the following commands,
+depending on your OS.
 
 Linux/OSX
 ---------
@@ -32,12 +33,17 @@ Windows support is experimental!!
 Install the following packages:
 
 Python2.7 - https://www.python.org/download/
-
 setuptools - https://pypi.python.org/pypi/setuptools#windows-7-or-graphical-install
 
-Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example: C:\Python27;C:\Python27\Scripts
+Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example:
 
-Now it should be possible to run the following within a command prompt window::
+::
+
+	C:\Python27;C:\Python27\Scripts
+
+Now it should be possible to run the following within a command prompt window:
+
+::
 
 	C:\> easy_install cfncluster
 
@@ -51,12 +57,14 @@ depening on how it was originally installed:
 
   $ sudo pip install --upgrade cfncluster
 
-or::
+or
+
+::
 
 	$ sudo easy_install -U cfncluster
 
-** Remember when upgrading to check that the exiting config is compatible with the latest 
-version installed.
+**Remember when upgrading to check that the exiting config is compatible with the latest 
+version installed.**
 
 ======================
 Configuring cfncluster
@@ -65,6 +73,7 @@ Configuring cfncluster
 Once installed you will need to setup some initial config. The easiest way to do this is below:
 
 ::
+
 	$ cfncluster create mycluster
 	Starting: mycluster
 	Default config /home/ec2-user/.cfncluster/config not found
@@ -79,6 +88,7 @@ documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGu
 Then you should associate your choosen keypair with the cluster template.
 
 ::
+
 	[cluster default]
 	# Name of an existing EC2 KeyPair to enable SSH access to the instances.
 	key_name = mykey
@@ -89,6 +99,7 @@ IP's i.e. the route table for the subnet is 0.0.0.0/0 => igw-xxxxxx. The VPC mus
 correct "domain-name" for the region, as defined in the docs: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html
 
 ::
+
 	## VPC Settings
 	[vpc public]
 	# ID of the VPC you want to provision cluster into.
@@ -96,7 +107,10 @@ correct "domain-name" for the region, as defined in the docs: http://docs.aws.am
 	# ID of the Subnet you want to provision the Master server into
 	master_subnet_id = CHANGE ME, for exaple subnet-1ab2c3d4
 
-Once all of those settings contain valid values, you can launch the cluster by repeating the command that was used at the start.::
+Once all of those settings contain valid values, you can launch the cluster by repeating the command that was used at the start.
+
+::
+
 	$ cfncluster create mycluster
 
 Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings. For more details on connecting to EC2 instances, check the EC2 User Guide - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client
