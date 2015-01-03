@@ -34,7 +34,7 @@ setup_ephemeral_drives
 # Mount NFS exports
 RC=0
 echo "$cfn_master:/home /home nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
-echo "$cfn_master:/shared /shared nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
+echo "$cfn_master:${cfn_shared_dir} ${cfn_shared_dir} nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
 mount -v /home || RC=1
 mount -v /shared || RC=1
 if [ $RC -ne 0 ]; then
