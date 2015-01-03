@@ -81,6 +81,9 @@ key_name = mykey
 # Path/mountpoint for ephemeral drives
 # (defaults to /scratch in the default template)
 #ephemeral_dir = /scratch
+# Path/mountpoint for shared EBS volume
+# (defaults to /shared in the default template)
+#shared_dir = /shared
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false in default template)
 #encrypted_ephemeral = false
@@ -104,6 +107,9 @@ master_subnet_id = subnet-
 # This is only used when cfncluster creates the security group
 # (defaults to 0.0.0.0/0 in the default template)
 #ssh_from = 0.0.0.0/0
+# Additional VPC security group Id for all instances
+# (defaults to NONE in the default template)
+#additional_sg = sg-
 
 #[vpc private-new]
 # ID of the VPC you want to provision cluster into.

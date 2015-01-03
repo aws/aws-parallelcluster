@@ -160,7 +160,7 @@ class CfnClusterConfig:
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('SSHFrom', None))
+                                  ssh_from=('SSHFrom', None), additional_sg=('AdditionalSG','VPCSecurityGroup'))
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
