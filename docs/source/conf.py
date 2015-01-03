@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'cfncluster'
-copyright = u'2014, Amazon Web Services'
+copyright = u'2014-2015, Amazon Web Services'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -97,10 +97,13 @@ pygments_style = 'sphinx'
 
 
 # -- Options for HTML output ----------------------------------------------
+import sphinx_rtd_theme
+html_theme = "sphinx_rtd_theme"
+html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+#html_theme = 'default'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -266,7 +269,7 @@ texinfo_documents = [
 epub_title = u'cfncluster'
 epub_author = u'Dougal Ballantyne'
 epub_publisher = u'Dougal Ballantyne'
-epub_copyright = u'2014, Dougal Ballantyne'
+epub_copyright = u'2014-2015, Dougal Ballantyne'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'cfncluster'

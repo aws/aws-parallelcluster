@@ -18,6 +18,9 @@ Additional Docs
 
 * :doc:`pre & post install actions <pre_post_install>`
 * :doc:`cfncluster auto-scaling <autoscaling>`
+* :doc:`AWS services used in cfncluster <aws_services>`
+* :doc:`cfncluster networking configurations <networking>`
+* :doc:`working with S3 <s3_resources>`
 
 Additional Resources
 --------------------
