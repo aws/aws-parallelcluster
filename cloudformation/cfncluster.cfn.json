@@ -325,6 +325,11 @@
     },
     "CLITemplate" : {
       "Type" : "String"
+    },
+    "AdditionalSG" : {
+      "Description" : "Additional VPC secuirty group to be added to instances. Defaults to NONE",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -538,6 +543,18 @@
           ]
         },
         "true"
+      ]
+    },
+    "AddAdditionalSG" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "AdditionalSG"
+            },
+            "NONE"
+          ]
+        }
       ]
     }
   },
@@ -1532,6 +1549,17 @@
         "SecurityGroups" : [
           {
             "Ref" : "ComputeSecurityGroup"
+          },
+          {
+            "Fn::If" : [
+              "AddAdditionalSG",
+              {
+                "Ref" : "AdditionalSG"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
           }
         ],
         "AssociatePublicIpAddress" : {
@@ -2105,6 +2133,17 @@
         "GroupSet" : [
           {
             "Ref" : "MasterSecurityGroup"
+          },
+          {
+            "Fn::If" : [
+              "AddAdditionalSG",
+              {
+                "Ref" : "AdditionalSG"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
           }
         ]
       }
