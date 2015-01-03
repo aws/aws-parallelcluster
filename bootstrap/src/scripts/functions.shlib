@@ -52,8 +52,13 @@ function check_dns_fqdn () {
 function run_preinstall () {
   RC=0
   if [ "${cfn_preinstall}" != "NONE" ]; then
+    scheme=$(echo "${cfn_preinstall}"| cut -d: -f1)
     tmpfile=$(mktemp)
-    wget -qO- ${cfn_preinstall} > $tmpfile || RC=1
+    if [ "${scheme}" == "s3" ]; then
+      aws --region ${cfn_region} s3 cp ${cfn_preinstall} - > $tmpfile || RC=1
+    else
+      wget -qO- ${cfn_preinstall} > $tmpfile || RC=1
+    fi
     if [ "${cfn_preinstall_args}" != "NONE" ]; then
       args=${cfn_preinstall_args}
     fi
@@ -128,8 +133,13 @@ function setup_ephemeral_drives () {
 function run_postinstall () {
   RC=0
   if [ "${cfn_postinstall}" != "NONE" ]; then
+    scheme=$(echo "${cfn_postinstall}"| cut -d: -f1)
     tmpfile=$(mktemp)
-    wget -qO- ${cfn_postinstall} > $tmpfile || RC=1
+    if [ "${scheme}" == "s3" ]; then
+      aws --region ${cfn_region} s3 cp ${cfn_postinstall} - > $tmpfile || RC=1
+    else
+      wget -qO- ${cfn_postinstall} > $tmpfile || RC=1
+    fi
     if [ "${cfn_postinstall_args}" != "NONE" ]; then
       args=${cfn_postinstall_args}
     fi
