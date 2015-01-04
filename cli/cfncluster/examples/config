@@ -90,6 +90,12 @@ key_name = mykey
 # OS type used in the cluster
 # (defaults to centos6 in the default template)
 #base_os = centos6
+# CloudWatch Logs region
+# (defaults to NONE in the default template)
+#cwl_region = NONE
+# CloudWatch Logs Log Group name
+# (defaults to NONE in the default template
+#cwl_log_group = NONE
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume
