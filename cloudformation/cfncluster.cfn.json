@@ -18,6 +18,11 @@
         "c3.2xlarge",
         "c3.xlarge",
         "c3.large",
+        "c4.8xlarge",
+        "c4.4xlarge",
+        "c4.2xlarge",
+        "c4.xlarge",
+        "c4.large",
         "r3.8xlarge",
         "r3.4xlarge",
         "r3.2xlarge",
@@ -52,6 +57,11 @@
         "c3.2xlarge",
         "c3.xlarge",
         "c3.large",
+        "c4.8xlarge",
+        "c4.4xlarge",
+        "c4.2xlarge",
+        "c4.xlarge",
+        "c4.large",
         "r3.8xlarge",
         "r3.4xlarge",
         "r3.2xlarge",
@@ -330,6 +340,16 @@
       "Description" : "Additional VPC secuirty group to be added to instances. Defaults to NONE",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "CWLRegion" : {
+      "Description" : "CloudWatch Logs region",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "CWLLogGroup" : {
+      "Description" : "CloudWatch Logs LogGroup",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -532,17 +552,31 @@
       ]
     },
     "CloudWatchLogs" : {
-      "Fn::Equals" : [
+      "Fn::And" : [
         {
-          "Fn::FindInMap" : [
-            "AWSRegion2Capabilites",
+          "Fn::Not" : [
             {
-              "Ref" : "AWS::Region"
-            },
-            "cwl"
+              "Fn::Equals" : [
+                {
+                  "Ref" : "CWLRegion"
+                },
+                "NONE"
+              ]
+            }
           ]
         },
-        "true"
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "CWLLogGroup"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        }
       ]
     },
     "AddAdditionalSG" : {
@@ -607,6 +641,26 @@
       "c3.large" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
+      },
+      "c4.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c4.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c4.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c4.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "c4.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
       },
       "r3.8xlarge" : {
         "Arch" : "64HVM",
@@ -701,49 +755,42 @@
       "centos6" : {
         "User" : "ec2-user"
       },
+      "alinux" : {
+        "User" : "ec2-user"
+      },
       "ubuntu" : {
         "User" : "ubuntu"
       }
     },
     "AWSRegion2Capabilites" : {
       "eu-west-1" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "us-east-1" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "ap-northeast-1" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "us-west-2" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "sa-east-1" : {
-        "cwl" : "false",
         "arn" : "aws"
       },
       "us-west-1" : {
-        "cwl" : "false",
         "arn" : "aws"
       },
       "ap-southeast-1" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "ap-southeast-2" : {
-        "cwl" : "true",
         "arn" : "aws"
       },
       "eu-central-1" : {
-        "cwl" : "false",
         "arn" : "aws"
       },
       "us-gov-west-1" : {
-        "cwl" : "false",
         "arn" : "aws-us-gov"
       }
     }
@@ -1161,12 +1208,10 @@
                 " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
                 "cfn_cwl=",
                 {
-                  "Fn::FindInMap" : [
-                    "AWSRegion2Capabilites",
-                    {
-                      "Ref" : "AWS::Region"
-                    },
-                    "cwl"
+                  "Fn::If" : [
+                    "CloudWatchLogs",
+                    "true",
+                    "false"
                   ]
                 },
                 "\n",
@@ -1174,7 +1219,7 @@
                 "# Setup CloudWatch Logs agent\n",
                 "python /root/awslogs-agent-setup.py -n -r ",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref" : "CWLRegion"
                 },
                 " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
                 "fi\n",
@@ -1268,16 +1313,25 @@
                           "file = /var/log/cloud-init.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cloud-init.log\n",
+                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                          "[/var/log/cloud-init-output.log]\n",
+                          "file = /var/log/cloud-init-output.log\n",
+                          "log_group_name = ",
+                          {
+                            "Ref" : "CWLLogGroup"
+                          },
+                          "\n",
+                          "log_stream_name = {instance_id}/cloud-init-output.log\n",
                           "datetime_format = %d/%b/%Y:%H:%M:%S\n",
                           "[/var/log/cfn-init.log]\n",
                           "file = /var/log/cfn-init.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cfn-init.log\n",
@@ -1286,7 +1340,7 @@
                           "file = /var/log/cfn-wire.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cfn-wire.log\n",
@@ -1354,6 +1408,11 @@
                       "cfn_ephemeral_dir=",
                       {
                         "Ref" : "EphemeralDir"
+                      },
+                      "\n",
+                      "cfn_shared_dir=",
+                      {
+                        "Ref" : "SharedDir"
                       },
                       "\n",
                       "cfn_proxy=",
@@ -1637,12 +1696,10 @@
                 " || error_exit 'Failed to run cfn-init'\n",
                 "cfn_cwl=",
                 {
-                  "Fn::FindInMap" : [
-                    "AWSRegion2Capabilites",
-                    {
-                      "Ref" : "AWS::Region"
-                    },
-                    "cwl"
+                  "Fn::If" : [
+                    "CloudWatchLogs",
+                    "true",
+                    "false"
                   ]
                 },
                 "\n",
@@ -1650,7 +1707,7 @@
                 "# Setup CloudWatch Logs agent\n",
                 "python /root/awslogs-agent-setup.py -n -r ",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref" : "CWLRegion"
                 },
                 " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
                 "fi\n",
@@ -1772,6 +1829,11 @@
                         "Ref" : "EphemeralDir"
                       },
                       "\n",
+                      "cfn_shared_dir=",
+                      {
+                        "Ref" : "SharedDir"
+                      },
+                      "\n",
                       "cfn_encrypted_ephemeral=",
                       {
                         "Ref" : "EncryptedEphemeral"
@@ -1846,16 +1908,25 @@
                           "file = /var/log/cloud-init.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cloud-init.log\n",
+                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
+                          "[/var/log/cloud-init-output.log]\n",
+                          "file = /var/log/cloud-init-output.log\n",
+                          "log_group_name = ",
+                          {
+                            "Ref" : "CWLLogGroup"
+                          },
+                          "\n",
+                          "log_stream_name = {instance_id}/cloud-init-output.log\n",
                           "datetime_format = %d/%b/%Y:%H:%M:%S\n",
                           "[/var/log/cfn-init.log]\n",
                           "file = /var/log/cfn-init.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cfn-init.log\n",
@@ -1864,7 +1935,7 @@
                           "file = /var/log/cfn-wire.log\n",
                           "log_group_name = ",
                           {
-                            "Ref" : "CfnClusterLogs"
+                            "Ref" : "CWLLogGroup"
                           },
                           "\n",
                           "log_stream_name = {instance_id}/cfn-wire.log\n",
@@ -2202,13 +2273,6 @@
           ]
         }
       }
-    },
-    "CfnClusterLogs" : {
-      "Type" : "AWS::Logs::LogGroup",
-      "Properties" : {
-        "RetentionInDays" : 7
-      },
-      "Condition" : "CloudWatchLogs"
     },
     "AssosiateEIP" : {
       "Type" : "AWS::EC2::EIPAssociation",
