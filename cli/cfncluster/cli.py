@@ -38,6 +38,9 @@ def instances(args):
 def update(args):
     cfncluster.update(args)
 
+def version(args):
+    cfncluster.version(args)
+
 def main():
     # set up logging to file
 
@@ -125,6 +128,9 @@ def main():
     pinstances.add_argument("cluster_name", type=str, default=None,
                         help='show the status of cfncluster with the provided name.')
     pinstances.set_defaults(func=instances)
+
+    pversion = subparsers.add_parser('version', help='display version of cfncluster')
+    pversion.set_defaults(func=version)
 
     args = parser.parse_args()
     logging.debug(args)
