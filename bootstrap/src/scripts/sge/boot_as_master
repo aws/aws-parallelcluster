@@ -17,7 +17,7 @@ set -x
 . /opt/cfncluster/cfnconfig
 
 # Source functions
-. ../functions.shlib
+. /opt/cfncluster/scripts/functions.shlib
 
 function error_exit () {
   script=`basename $0`
