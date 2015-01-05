@@ -15,21 +15,21 @@ function error_exit () {
   exit 1
 }
 
-# Basic DNS check, using dnsdomain and checking for NS record
-function check_dns_ns () {
+# Basic DNS check, using A record for cloudformation endpoint
+function check_dns_basic () {
   TRY=0
-  domain=$(dnsdomainname)
+  domain="cloudformation.${cfn_region}.amazonaws.com"
   while [ $TRY -lt 3 ]; do
-    host -t ns $domain >/dev/null
-    check_ns=$?
-    if [ $check_ns -eq 0 ]; then
+    host $domain >/dev/null
+    check_dns=$?
+    if [ $check_dns -eq 0 ]; then
       break
     else
       sleep 10
       TRY=$(( $TRY + 1 ))
     fi
   done
-  return $check_ns
+  return $check_dns
 }
 
 # Check DNS is working, as it is required for correct operation

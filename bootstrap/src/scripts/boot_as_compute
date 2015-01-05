@@ -20,7 +20,7 @@ set -x
 . /opt/cfncluster/scripts/functions.shlib
 
 # Check basic DNS
-check_dns_ns || error_exit "Basic DNS checks failed."
+check_dns_basic || error_exit "Basic DNS checks failed."
 
 # Run preinstall script if defined
 run_preinstall
