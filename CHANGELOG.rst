@@ -2,6 +2,17 @@
 CHANGELOG
 =========
 
+0.0.18
+======
+* updates:``ami``: Custom CentOS 6 kernel repo added, support for >32 vCPUs
+* feature:``ami``: Chef 11.x client + berkshelf
+* feature:``cfncluster``: Support for S3 based pre/post install scripts
+* feature:``cfncluster``: Support for EBS shared directory variable
+* feature:``cfncluster``: Support for C4 instances
+* feature:``cfncluster``: Support for additional VPC security group
+* updates:``ami``: Pulled latest NVIDIA driver 340.65
+* feature:``cli``: Added support for version command
+
 0.0.17
 ======
 * updates:``ami``: Pulled latest CentOS errata. Now CentOS 6.6.
