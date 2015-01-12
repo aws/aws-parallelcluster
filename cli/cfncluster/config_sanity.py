@@ -14,6 +14,7 @@ __author__ = 'dougalb'
 import boto.ec2
 import boto.vpc
 import urllib2
+from urlparse import urlparse
 import boto.exception
 import sys
 
@@ -76,14 +77,18 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             sys.exit(1)
     # URL
     elif resource_type == 'URL':
-        try:
-            urllib2.urlopen(resource_value)
-        except urllib2.HTTPError, e:
-            print(e.code)
-            sys.exit(1)
-        except urllib2.URLError, e:
-            print(e.args)
-            sys.exit(1)
+        scheme = urlparse(resource_value).scheme
+        if scheme == 's3':
+            pass
+        else:
+            try:
+                urllib2.urlopen(resource_value)
+            except urllib2.HTTPError, e:
+                print(e.code)
+                sys.exit(1)
+            except urllib2.URLError, e:
+                print(e.args)
+                sys.exit(1)
     # EC2 EBS Snapshot Id
     elif resource_type == 'EC2Snapshot':
         try:
