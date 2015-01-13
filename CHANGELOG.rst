@@ -12,6 +12,7 @@ CHANGELOG
 * feature:``cfncluster``: Support for additional VPC security group
 * updates:``ami``: Pulled latest NVIDIA driver 340.65
 * feature:``cli``: Added support for version command
+* updates:``cli``: Removed unimplemented stop command from CLI
 
 0.0.17
 ======

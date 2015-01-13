@@ -1,7 +1,7 @@
 cfncluster is an example framework for launching clusters.
 
     usage: cfncluster [-h] [--config CONFIG_FILE] [--region REGION] [--nowait]
-                      {create,update,stop,delete,status,list,instances,sshmaster}
+                      {create,update,delete,status,list,instances,version}
                       ...
 
     cfncluster is the a tool to launch and manage cluster.
@@ -10,11 +10,11 @@ cfncluster is an example framework for launching clusters.
       {create,update,stop,delete,status,list,instances,sshmaster}
         create              creates a cluster
         update              update a running cluster
-        stop                stop a cluster
         delete              delete a cluster
         status              pull the current status of the cluster
         list                display a list of stacks associated with cfncluster
         instances           display a list of all instances in a cluster
+        version             display the version of cfncluster cli
 
     optional arguments:
       -h, --help            show this help message and exit

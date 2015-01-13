@@ -20,9 +20,6 @@ import cfncluster
 def create(args):
     cfncluster.create(args)
 
-def stop(args):
-    pass
-
 def status(args):
     cfncluster.status(args)
 
@@ -105,11 +102,6 @@ def main():
     pupdate.add_argument("--reset-desired", "-rd", action='store_true', dest="reset_desired", default=False,
                          help='reset the current ASG desired capacity to initial config values')
     pupdate.set_defaults(func=update)
-
-    pstop = subparsers.add_parser('stop', help='stop a cluster')
-    pstop.add_argument("cluster_name", type=str, default=None,
-                        help='stop a cfncluster with the provided name.')
-    pstop.set_defaults(func=stop)
 
     pdelete = subparsers.add_parser('delete', help='delete a cluster')
     pdelete.add_argument("cluster_name", type=str, default=None,

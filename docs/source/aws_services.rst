@@ -3,54 +3,85 @@
 AWS Services used in cfncluster
 ===============================
 
-The following Amazon Web Services(AWS) services are used in cfncluster. 
+The following Amazon Web Services (AWS) services are used in cfncluster. 
 
-* CloudFormation
-* IAM
-* SNS
-* SQS
-* EC2
-* AutoScaling
-* EBS
-* Cloudwatch
-* S3
-* DynamoDB
+* AWS CloudFormation
+* AWS Identity and Access Management (IAM)
+* Amazon SNS
+* Amazon SQS
+* Amazon EC2
+* Auto Scaling
+* Amazon EBS
+* Amazon Cloud Watch
+* Amazon S3
+* Amazon DynamoDB
 
-CloudFormation
---------------
+AWS CloudFormation
+------------------
 
-CloudFormation is the core service used by cfncluster. Each cluster is representated as a stack. All resources required by the cluster are defined within the cfncluster CloudFormation template. cfncluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
+AWS CloudFormation is the core service used by cfncluster. Each cluster is representated as a stack. All resources required by the cluster are defined within the cfncluster CloudFormation template. cfncluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
 
-IAM
----
+For more details about AWS CloudFormation, see http://aws.amazon.com/cloudformation/
 
-Idenity and Access Management is used within cfncluster to provide an EC2 IAM Role for the instances. This role is a least privilged role specifically created for each cluster. cfncluster instances are given access only to the specific API calls that are required to deploy and manage the cluster. 
+AWS Identity and Access Management (IAM)
+----------------------------------------
 
-SNS
----
+IAM is used within cfncluster to provide an Amazon EC2 IAM Role for the instances. This role is a least privilged role specifically created for each cluster. cfncluster instances are given access only to the specific API calls that are required to deploy and manage the cluster. 
 
-Simple Notification Service is used to receive notifications from Autoscaling. These events are called life cycle events, and are generated when an instance lauches or terminates in an Autoscaling Grpoup. Within cfncluster, the SNS topic for the Autoscaling Group is subnscibred to an SQS queue.
+For more details about AWS Identity and Access Management, see http://aws.amazon.com/iam/
 
-SQS
----
-
-Simple Queuing Service is used to hold notifications(messages) from Autoscaling, sent through SNS. This decouples the 
-
-EC2
----
-
-Autscaling
+Amazon SNS
 ----------
 
-EBS
----
+Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance lauches or terminates in an Autoscaling Grpoup. Within cfncluster, the Amazon SNS topic for the Autoscaling Group is subnscibred to an Amazon SQS queue.
 
-Cloudwatch
+For more details about Amazon SNS, see http://aws.amazon.com/sns/
+
+Amazon SQS
 ----------
 
-S3
---
+Amazon Simple Queuing Service is used to hold notifications(messages) from Auto Scaling, sent through Amazon SNS and notifications from the ComputeFleet instanes. This decouples the sending of notifications from the receiving and allows the Master to handle them through polling. The MasterServer runs Amazon SQSwatcher and polls the queue. AutoScaling and the ComputeFleet instanes post messages to the queue.
 
-DynamoDB
---------
+For more details about Amazon SQS, see http://aws.amazon.com/sqs/
 
+Amazon EC2
+----------
+
+Amazon EC2 provides the compute for cfncluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be laucnhed as Spot instances. Ephmeral storage found on the instances is mounted as a RAID0 volume.
+
+For more details about Amazon EC2, see http://aws.amazon.com/ec2/
+
+Auto Scaling
+------------
+
+Auto Scaling is used to manage the ComputeFleet instances. These are managed as an AutoScaling Group and can either be elastic driven by workload or static driven by the config. 
+
+For more details about Auto Scaling, see http://aws.amazon.com/autoscaling/
+
+Amazon EBS
+----------
+
+Amazon EBS provides the storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an exisiting EBS snapshot.
+
+For more details about Amazon EBS, see http://aws.amazon.com/ebs/
+
+Amazon Cloud Watch
+------------------
+
+Amazon Cloud Watch provides metric collection and alarms for cfncluster. The MasterServer publishs pending tasks(jobs) for each cluster. Two alarms are defined that based on parameters defined in the config will automatically increase the size of the ComputeFleet Auto Scaling group.
+
+For more details, see http://aws.amazon.com/cloudwatch/
+
+Amazon S3
+---------
+
+Amazon S3 is used to store the cfncluster templates. Each region has a bucket with all templates. Within cfncluster, access to S3 can be controlled to allow CLI/SDK tools to use S3.
+
+For more details, see http://aws.amazon.com/s3/
+
+Amazon DynamoDB
+---------------
+
+Amazon DynamoDB is used to store minimal state of the cluster. The MasterServer tracks provisioned instances in a DynamoDB table.
+
+For more details, see http://aws.amazon.com/dynamodb/
