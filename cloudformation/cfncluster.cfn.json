@@ -2313,7 +2313,7 @@
     "GangliaPrivateURL" : {
       "Description" : "Private URL to access Ganglia",
       "Value" : {
-        "Fn:Join" : [
+        "Fn::Join" : [
           "",
           [
             "http://",
@@ -2331,7 +2331,7 @@
     "GangliaPublicURL" : {
       "Description" : "Public URL to access Ganglia",
       "Value" : {
-        "Fn:Join" : [
+        "Fn::Join" : [
           "",
           [
             "http://",
