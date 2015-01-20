@@ -1819,7 +1819,7 @@
                       {
                         "Fn::GetAtt" : [
                           "MasterServer",
-                          "PrivateDnsName"
+                          "PrivateIp"
                         ]
                       },
                       "\n",
@@ -2306,6 +2306,43 @@
         "Fn::GetAtt" : [
           "MasterServer",
           "PublicIp"
+        ]
+      },
+      "Condition" : "MasterPublicIp"
+    },
+    "GangliaPrivateURL" : {
+      "Description" : "Private URL to access Ganglia",
+      "Value" : {
+        "Fn:Join" : [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt" : [
+                "MasterServer",
+                "PrivateIp"
+              ]
+            },
+            "/ganglia/"
+          ]
+        ]
+      }
+    },
+    "GangliaPublicURL" : {
+      "Description" : "Public URL to access Ganglia",
+      "Value" : {
+        "Fn:Join" : [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt" : [
+                "MasterServer",
+                "PublicIp"
+              ]
+            },
+            "/ganglia/"
+          ]
         ]
       },
       "Condition" : "MasterPublicIp"
