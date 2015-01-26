@@ -39,6 +39,12 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
         except boto.exception.BotoServerError as e:
             print('Config sanity error: %s' % e.message)
             sys.exit(1)
+
+        # Check for DNS support in the VPC
+        if not vpc_conn.describe_vpc_attribute(test[0].id, attribute='enableDnsSupport').enable_dns_support:
+            raise Exception("DNS Support is not enabled in %s" % test[0].id)
+        if not vpc_conn.describe_vpc_attribute(test[0].id, attribute='enableDnsHostnames').enable_dns_hostnames:
+            raise Exception("DNS Hostnames not enabled in %s" % test[0].id)
     # VPC Subnet Id
     elif resource_type == 'VPCSubnet':
         try:
