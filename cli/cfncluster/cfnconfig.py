@@ -14,10 +14,20 @@ import os
 import sys
 import inspect
 import pkg_resources
-import logging
 import json
 import urllib2
 import config_sanity
+import boto.cloudformation
+
+def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
+
+    cfn_conn = boto.cloudformation.connect_to_region(region,aws_access_key_id=aws_access_key_id,
+                                                 aws_secret_access_key=aws_secret_access_key)
+    __stack_name = ('cfncluster-' + stack)
+    __stack = cfn_conn.describe_stacks(stack_name_or_id=__stack_name)[0]
+    __cli_template = [p.value for p in __stack.parameters if p.key == 'CLITemplate'][0]
+
+    return __cli_template
 
 class CfnClusterConfig:
 
@@ -26,6 +36,7 @@ class CfnClusterConfig:
         self.parameters = []
         self.version = pkg_resources.get_distribution("cfncluster").version
         self.__DEFAULT_CONFIG = False
+        __args_func = self.args.func.func_name
 
         # Determine config file name based on args or default
         if args.config_file is not None:
@@ -50,12 +61,39 @@ class CfnClusterConfig:
         __config = ConfigParser.ConfigParser()
         __config.read(self.__config_file)
 
+        # Determine the EC2 region to used used or default to us-east-1
+        # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
+        if args.region:
+            self.region = args.region
+        else:
+            if os.environ.get('AWS_DEFAULT_REGION'):
+                self.region = os.environ.get('AWS_DEFAULT_REGION')
+            else:
+                try:
+                    self.region = __config.get('aws', 'aws_region_name')
+                except ConfigParser.NoOptionError:
+                    self.region = 'us-east-1'
+
+        # Check if credentials have been provided in config
+        try:
+            self.aws_access_key_id = __config.get('aws', 'aws_access_key_id')
+        except ConfigParser.NoOptionError:
+            self.aws_access_key_id=None
+        try:
+            self.aws_secret_access_key = __config.get('aws', 'aws_secret_access_key')
+        except ConfigParser.NoOptionError:
+            self.aws_secret_access_key=None
+
         # Determine which cluster template will be used
         try:
             if args.cluster_template is not None:
                 self.__cluster_template = args.cluster_template
             else:
-                self.__cluster_template = __config.get('global', 'cluster_template')
+                if __args_func == 'update':
+                    self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
+                                                               self.aws_secret_access_key, self.args.cluster_name)
+                else:
+                    self.__cluster_template = __config.get('global', 'cluster_template')
         except AttributeError:
             self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
@@ -81,34 +119,10 @@ class CfnClusterConfig:
         except ConfigParser.NoOptionError:
             self.__sanity_check = False
         # Only check config on calls that mutate it
-        __args_func = self.args.func.func_name
         if (__args_func == 'create' or __args_func == 'update') and self.__sanity_check is True:
             pass
         else:
             self.__sanity_check = False
-
-        # Determine the EC2 region to used used or default to us-east-1
-        # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
-        if args.region:
-            self.region = args.region
-        else:
-            if os.environ.get('AWS_DEFAULT_REGION'):
-                self.region = os.environ.get('AWS_DEFAULT_REGION')
-            else:
-                try:
-                    self.region = __config.get('aws', 'aws_region_name')
-                except ConfigParser.NoOptionError:
-                    self.region = 'us-east-1'
-
-        # Check if credentials have been provided in config
-        try:
-            self.aws_access_key_id = __config.get('aws', 'aws_access_key_id')
-        except ConfigParser.NoOptionError:
-            self.aws_access_key_id=None
-        try:
-            self.aws_secret_access_key = __config.get('aws', 'aws_secret_access_key')
-        except ConfigParser.NoOptionError:
-            self.aws_secret_access_key=None
 
         # Get the EC2 keypair name to be used, exit if not set
         try:
