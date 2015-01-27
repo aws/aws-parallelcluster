@@ -7,7 +7,7 @@
       "Type" : "AWS::EC2::KeyPair::KeyName"
     },
     "MasterInstanceType" : {
-      "Description" : "Master Server EC2 instance type",
+      "Description" : "MasterServer EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
@@ -46,7 +46,7 @@
       ]
     },
     "ComputeInstanceType" : {
-      "Description" : "Cluster Server EC2 instance type",
+      "Description" : "ComputeFleet EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
