@@ -1,5 +1,8 @@
 .. _getting_started:
 
+.. toctree::
+   :maxdepth: 2
+
 ###############################
 Getting started with cfncluster
 ###############################
@@ -62,33 +65,76 @@ Once installed you will need to setup some initial config. The easiest way to do
 
 ::
 
-	$ cfncluster create mycluster
-	Starting: mycluster
-	Default config /home/ec2-user/.cfncluster/config not found
-	You can copy a template from here: /usr/lib/python2.6/site-packages/cfncluster/examples/config
-	$
-	$ cp /usr/lib/python2.6/site-packages/cfncluster/examples/config ~/.cfncluster
+	$ cfncluster configure
 
-You should now edit the config and set some defaults before launching the cluster. First define a keypair that already exists in EC2. If you do not already have a keypair, refer to the EC2 documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
-
-Then you should associate your choosen keypair with the cluster template.
+This configure wizard will prompt you for everything you need to create your cluster.  You will first be prompted for your cluster name, which is the logical name of your cluster.
 
 ::
 
-	[cluster default]
-	# Name of an existing EC2 KeyPair to enable SSH access to the instances.
-	key_name = mykey
+        Cluster Name [mycluster]:
+
+Next, you will be prompted for your AWS Access & Secret Keys.  You can leave these blank to use keys defined in your environment variaables or aws config.  Othewise, set them here to be used by cfncluster.
+
+::
+
+        AWS Access Key ID []:
+        AWS Secret Access Key ID []:
+
+Now, you will be presented with a list of valid AWS region identifiers.  Choose the region in which you'd like your cluster to run.
+
+::
+
+        Acceptable Values for AWS Region ID:
+            us-east-1
+            cn-north-1
+            ap-northeast-1
+            eu-west-1
+            ap-southeast-1
+            ap-southeast-2
+            us-west-2
+            us-gov-west-1
+            us-west-1
+            eu-central-1
+            sa-east-1
+        AWS Region ID []:
+
+Choose a descriptive name for your VPC.  Typically, this will something like "production" or "test".
+
+::
+
+        VPC Name [myvpc]:
+
+Next, you will need to choose a keypair that already exists in EC2 in order to log into your master instance.  If you do not already have a keypair, refer to the EC2 documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
+
+::
+
+        Acceptable Values for Key Name:
+            keypair1
+            keypair-test
+            production-key
+        Key Name []:
+
+Choose the VPC ID in which you'd like your cluster launched into.
+
+::
+
+        Acceptable Values for VPC ID:
+            vpc-1kd24879
+            vpc-blk4982d
+        VPC ID []:
+
+Finally, choose the subnet in which you'd like your master server to run in.
+
+::
+
+        Acceptable Values for Master Subnet ID:
+            subnet-9k284a6f
+            subnet-1k01g357
+            subnet-b921nv04
+        Master Subnet ID []:
+
 
 Next, a simple cluster launches into a VPC and uses an existing subnet which supports public IP's i.e. the route table for the subnet is 0.0.0.0/0 => igw-xxxxxx. The VPC must have "DNS Resolution = yes" and "DNS Hostnames = yes". It should also have DHCP options with the correct "domain-name" for the region, as defined in the docs: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html
-
-::
-
-	## VPC Settings
-	[vpc public]
-	# ID of the VPC you want to provision cluster into.
-	vpc_id = CHANGE ME, for example vpc-a1b2c3d4
-	# ID of the Subnet you want to provision the Master server into
-	master_subnet_id = CHANGE ME, for exaple subnet-1ab2c3d4
 
 Once all of those settings contain valid values, you can launch the cluster by repeating the command that was used at the start.
 

@@ -14,7 +14,7 @@ Arguments can be passed to scripts by specifying them in the config. These will 
 If a pre/post-install actions fails, then the instance bootstrap will be considered failed and it will not continue. Success is signalled with an exit code of 0, any other exit code will be considered a fail.
 
 Configuration
-=============
+-------------
 
 The following config settings are used to define pre/post-install actions and arguments. All options are optional and are not required for basic cluster install.
 
@@ -34,7 +34,7 @@ The following config settings are used to define pre/post-install actions and ar
 	post_install_args = NONE
 
 Example
-=======
+-------
 
 The following are some steps to create a simple post install script that installs the R packages in a cluster.
 

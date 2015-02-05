@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+cli/cfncluster/cfnconfig.py# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -16,9 +16,13 @@ import platform
 import json
 
 import cfncluster
+import easyconfig
 
 def create(args):
     cfncluster.create(args)
+
+def configure(args):
+    easyconfig.configure(args)
 
 def status(args):
     cfncluster.status(args)
@@ -120,6 +124,9 @@ def main():
     pinstances.add_argument("cluster_name", type=str, default=None,
                         help='show the status of cfncluster with the provided name.')
     pinstances.set_defaults(func=instances)
+
+    pconfigure = subparsers.add_parser('configure', help='creating initial cfncluster configuration')
+    pconfigure.set_defaults(func=configure)
 
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)

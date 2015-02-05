@@ -119,7 +119,8 @@ class CfnClusterConfig:
         except ConfigParser.NoOptionError:
             self.__sanity_check = False
         # Only check config on calls that mutate it
-        if (__args_func == 'create' or __args_func == 'update') and self.__sanity_check is True:
+        __args_func = self.args.func.func_name
+        if (__args_func == 'create' or __args_func == 'update' or __args_func == 'configure') and self.__sanity_check is True:
             pass
         else:
             self.__sanity_check = False
