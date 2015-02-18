@@ -129,13 +129,13 @@ def configure(args):
         config_read = True
    
     # Prompt for required values, using existing as defaults 
-    cluster_template = prompt('Cluster Name', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'mycluster')
+    cluster_template = prompt('Cluster Name', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'default')
     aws_access_key_id = prompt('AWS Access Key ID', config.get('aws', 'aws_access_key_id') if config.has_option('aws', 'aws_access_key_id') else None, True)
     aws_secret_access_key = prompt('AWS Secret Access Key ID', config.get('aws', 'aws_secret_access_key') if config.has_option('aws', 'aws_secret_access_key') else None, True)
 
     # Use built in boto regions as an available option
     aws_region_name = prompt('AWS Region ID', config.get('aws', 'aws_region_name') if config.has_option('aws', 'aws_region_name') else None, options=get_regions())
-    vpcname = prompt('VPC Name', config.get('cluster ' + cluster_template, 'vpc_settings') if config.has_option('cluster ' + cluster_template, 'vpc_settings') else 'myvpc')
+    vpcname = prompt('VPC Name', config.get('cluster ' + cluster_template, 'vpc_settings') if config.has_option('cluster ' + cluster_template, 'vpc_settings') else 'public')
 
     # Query EC2 for available keys as options 
     key_name = prompt('Key Name', config.get('cluster ' + cluster_template, 'key_name') if config.has_option('cluster ' + cluster_template, 'key_name') else None, options=list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name))
@@ -148,7 +148,7 @@ def configure(args):
     s_cluster = { '__name__': 'cluster ' + cluster_template, 'key_name': key_name, 'vpc_settings': vpcname }
     s_vpc = { '__name__': 'vpc ' + vpcname, 'vpc_id': vpc_id, 'master_subnet_id': master_subnet_id }
 
-    sections = [s_global, s_aws, s_cluster, s_vpc]
+    sections = [s_aws, s_cluster, s_vpc, s_global]
 
     # Loop through the configuration sections we care about
     for section in sections:
