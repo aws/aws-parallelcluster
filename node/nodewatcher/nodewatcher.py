@@ -97,7 +97,7 @@ def getJobs(s,hostname):
     return _jobs
 
 
-def selfTerminate(asg):
+def selfTerminate(region,asg,instance_id):
     _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
     _asg = _as_conn.get_all_groups(names=[asg])[0]
@@ -126,7 +126,7 @@ def main():
         print('Percent of hour used: %d' % hour_percentile)
 
         if hour_percentile > 95:
-            selfTerminate(asg)
+            selfTerminate(region,asg,instance_id)
 
 if __name__ == "__main__":
     main()
