@@ -9,7 +9,7 @@ cfncluster is a framework that deploys and maintains HPC clusters on AWS. It is 
 Installing cfncluster
 =====================
 
-The current working version is cfncluster-0.0.17. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
+The current working version is cfncluster-0.0.19. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
 
 Linux/OSX
 ---------
