@@ -15,6 +15,7 @@ set -x
 
 # Source config
 . /opt/cfncluster/cfnconfig
+cfn_master=$(echo $cfn_master|cut -d. -f1)
 
 # Source functions
 . /opt/cfncluster/scripts/functions.shlib

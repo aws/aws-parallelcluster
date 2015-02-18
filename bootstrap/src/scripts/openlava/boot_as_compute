@@ -14,6 +14,7 @@
 set -x
 
 . /opt/cfncluster/cfnconfig
+cfn_master=$(echo $cfn_master|cut -d. -f1)
 
 function error_exit () {
   script=`basename $0`
