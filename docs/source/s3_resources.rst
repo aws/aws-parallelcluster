@@ -1,6 +1,6 @@
 .. _s3_resources:
 
-working with S3
+Working with S3
 ===============
 
 Accessing S3 within cfncluster can be controlled through two parameters in the cfncluster config.

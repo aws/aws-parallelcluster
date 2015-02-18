@@ -1,7 +1,7 @@
 .. _networking:
 
-cfncluster Networking Configurations
-====================================
+Network Configurations
+======================
 
 cfncluster leverages Amazon Virtual Private Cloud(VPC) for networking. This provides a very flexiable and configurable networking platform to deploy clusters within. cfncluster support the following high-level configurations:
 

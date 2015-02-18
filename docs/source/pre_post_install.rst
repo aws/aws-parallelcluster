@@ -1,7 +1,7 @@
 .. _pre_post_install:
 
-Pre & Post Install Actions
-==========================
+Custom Bootstrap Actions
+========================
 
 cfncluster can execute arbritary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supppoted by the cluster OS, typically `bash` or `python`. 
 
