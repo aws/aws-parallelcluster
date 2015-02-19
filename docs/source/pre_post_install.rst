@@ -1,7 +1,7 @@
 .. _pre_post_install:
 
-Pre & Post Install Actions
-==========================
+Custom Bootstrap Actions
+========================
 
 cfncluster can execute arbritary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supppoted by the cluster OS, typically `bash` or `python`. 
 
@@ -14,7 +14,7 @@ Arguments can be passed to scripts by specifying them in the config. These will 
 If a pre/post-install actions fails, then the instance bootstrap will be considered failed and it will not continue. Success is signalled with an exit code of 0, any other exit code will be considered a fail.
 
 Configuration
-=============
+-------------
 
 The following config settings are used to define pre/post-install actions and arguments. All options are optional and are not required for basic cluster install.
 
@@ -34,7 +34,7 @@ The following config settings are used to define pre/post-install actions and ar
 	post_install_args = NONE
 
 Example
-=======
+-------
 
 The following are some steps to create a simple post install script that installs the R packages in a cluster.
 

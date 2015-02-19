@@ -7,7 +7,7 @@
       "Type" : "AWS::EC2::KeyPair::KeyName"
     },
     "MasterInstanceType" : {
-      "Description" : "Master Server EC2 instance type",
+      "Description" : "MasterServer EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
@@ -46,7 +46,7 @@
       ]
     },
     "ComputeInstanceType" : {
-      "Description" : "Cluster Server EC2 instance type",
+      "Description" : "ComputeFleet EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
       "ConstraintDescription" : "must be a valid EC2 instance type.",
@@ -720,35 +720,35 @@
       }
     },
     "AWSRegionOS2AMI" : {
-      "eu-west-1" : {
-        "centos6" : "ami-f738be80"
-      },
-      "us-east-1" : {
-        "centos6" : "ami-4ad6a522"
-      },
-      "ap-northeast-1" : {
-        "centos6" : "ami-a8d8c8a9"
-      },
       "us-west-2" : {
-        "centos6" : "ami-87de82b7"
-      },
-      "sa-east-1" : {
-        "centos6" : "ami-2bdd6036"
-      },
-      "us-west-1" : {
-        "centos6" : "ami-298e916c"
-      },
-      "ap-southeast-1" : {
-        "centos6" : "ami-705a7222"
-      },
-      "ap-southeast-2" : {
-        "centos6" : "ami-efc4aed5"
+        "centos6" : "ami-ab7f599b"
       },
       "eu-central-1" : {
-        "centos6" : "ami-8c97a791"
+        "centos6" : "ami-b43705a9"
+      },
+      "sa-east-1" : {
+        "centos6" : "ami-818b359c"
+      },
+      "ap-northeast-1" : {
+        "centos6" : "ami-891bfb89"
+      },
+      "eu-west-1" : {
+        "centos6" : "ami-87fd69f0"
+      },
+      "us-east-1" : {
+        "centos6" : "ami-7660361e"
+      },
+      "us-west-1" : {
+        "centos6" : "ami-86b0aac3"
+      },
+      "ap-southeast-2" : {
+        "centos6" : "ami-7d730547"
+      },
+      "ap-southeast-1" : {
+        "centos6" : "ami-fafcc8a8"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-5fcfa97c"
+        "centos6" : "ami-5d68097e"
       }
     },
     "ClusterUser" : {
@@ -1819,7 +1819,7 @@
                       {
                         "Fn::GetAtt" : [
                           "MasterServer",
-                          "PrivateIp"
+                          "PrivateDnsName"
                         ]
                       },
                       "\n",

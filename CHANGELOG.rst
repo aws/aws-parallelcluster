@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.19
+======
+* feature:``cli``: Added configure command; easy config setup
+* updates:``docs``: Addtional documentation for configuration options
+* updates:``ami``: Pulled latest CentOS6 errata
+* bugfix:``cfncluster``: Fixed issue with nodewatcher not scaling down
+
 0.0.18
 ======
 * updates:``ami``: Custom CentOS 6 kernel repo added, support for >32 vCPUs

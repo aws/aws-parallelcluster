@@ -40,7 +40,7 @@ true. This will cause the ComputeFleet ASG to have the same value for minimum,
 maximum and desired capacity. 
 
 References
-==========
+----------
 
 1. http://docs.aws.amazon.com/AmazonCloudWatch/latest/DeveloperGuide/publishingMetrics.html
 2. http://docs.aws.amazon.com/AutoScaling/latest/DeveloperGuide/AutoScalingBehavior.InstanceTermination.html
