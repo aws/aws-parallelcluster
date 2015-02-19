@@ -129,7 +129,7 @@ def configure(args):
         config_read = True
    
     # Prompt for required values, using existing as defaults 
-    cluster_template = prompt('Cluster Name', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'default')
+    cluster_template = prompt('Cluster Template', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'default')
     aws_access_key_id = prompt('AWS Access Key ID', config.get('aws', 'aws_access_key_id') if config.has_option('aws', 'aws_access_key_id') else None, True)
     aws_secret_access_key = prompt('AWS Secret Access Key ID', config.get('aws', 'aws_secret_access_key') if config.has_option('aws', 'aws_secret_access_key') else None, True)
 
