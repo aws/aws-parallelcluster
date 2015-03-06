@@ -361,6 +361,16 @@ If you wish for cfncluster to create a compute subnet, this is the CIDR that. ::
 
     compute_subnet_cidr = 10.0.100.0/24
 
+use_public_ips
+""""""""""""""
+Define whether or not to assign public IP addresses to EC2 instances.
+
+Set to false if operating in a private VPC.
+
+Defaults to true. ::
+
+    use_public_ips = true
+
 .. _ebs_section:
 
 ebs
