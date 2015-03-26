@@ -16,6 +16,7 @@ cfncluster is a framework that deploys and maintains High Performance Clusters (
     welcome
     configuration
     functional    
+    tutorials
 
 Getting Started
 ---------------
