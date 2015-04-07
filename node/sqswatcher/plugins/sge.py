@@ -59,11 +59,6 @@ report_variables      NONE
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     hosts_key_file = '/home/' + cluster_user + '/.ssh/known_hosts'
     user_key_file = '/home/' + cluster_user + '/.ssh/id_rsa'
-    try:
-        ssh.load_host_keys(hosts_key_file)
-    except IOError:
-        ssh._host_keys_filename = None
-        pass
     iter=0
     connected=False
     while iter < 3 and connected == False:
@@ -78,6 +73,11 @@ report_variables      NONE
             if iter == 3:
                print("Unable to provison host")
                return
+    try:
+        ssh.load_host_keys(hosts_key_file)
+    except IOError:
+        ssh._host_keys_filename = None
+        pass
     ssh.save_host_keys(hosts_key_file)
     command = "sudo sh -c \'cd /opt/sge && /opt/sge/inst_sge -x -auto /opt/cfncluster/templates/sge/sge_inst.conf\'"
     stdin, stdout, stderr = ssh.exec_command(command)

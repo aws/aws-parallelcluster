@@ -35,11 +35,6 @@ def addHost(hostname, cluster_user):
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     hosts_key_file = '/home/' + cluster_user + '/.ssh/known_hosts'
     user_key_file = '/home/' + cluster_user + '/.ssh/id_rsa'
-    try:
-        ssh.load_host_keys(hosts_key_file)
-    except IOError:
-        ssh._host_keys_filename = None
-        pass
     iter=0
     connected=False
     while iter < 3 and connected == False:
@@ -54,6 +49,11 @@ def addHost(hostname, cluster_user):
             if iter == 3:
                print("Unable to provison host")
                return
+    try:
+        ssh.load_host_keys(hosts_key_file)
+    except IOError:
+        ssh._host_keys_filename = None
+        pass
     ssh.save_host_keys(hosts_key_file)
     ssh.close()
 

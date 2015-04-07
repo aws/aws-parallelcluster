@@ -131,7 +131,7 @@ Defaults to false for the default template. ::
 
 scheduler
 """""""""
-Cluster scheduler
+Scheduler to be used with the cluster.  Valid options are sge, openlava, or torque.
 
 Defaults to sge for the default template. ::
 
