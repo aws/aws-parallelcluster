@@ -115,8 +115,21 @@ def pollQueue(scheduler, q, t):
                         wait = 15
                         while retry < 3:
                             try:
-                                hostname = ec2.get_all_instances(instance_ids=instanceId)[
-                                           0].instances[0].private_dns_name.split('.')[:1][0]
+                                hostname = ec2.get_all_instances(instance_ids=instanceId)
+
+                                if not hostname:
+                                    print "Unable to find running instance %s." % instanceId
+                                else:
+				    print "Adding Hostname: %s" % hostname
+                                    hostname = hostname[0].instances[0].private_dns_name.split('.')[:1][0]
+                                    s.addHost(hostname,cluster_user)
+
+                                    t.put_item(data={
+                                        'instanceId': instanceId,
+                                        'hostname': hostname
+                                    })
+
+				q.delete_message(result)
                                 break
                             except boto.exception.BotoServerError as e:
                                 if e.error_code == 'RequestLimitExceeded':
@@ -125,15 +138,9 @@ def pollQueue(scheduler, q, t):
                                     wait = (wait*2+retry)
                                 else:
                                     raise e
-
-                        s.addHost(hostname,cluster_user)
-
-                        t.put_item(data={
-                            'instanceId': instanceId,
-                            'hostname': hostname
-                        })
-
-                        q.delete_message(result)
+                            except:
+                                print "Unexpected error:", sys.exc_info()[0]
+                                raise
 
                     elif eventType == 'autoscaling:EC2_INSTANCE_TERMINATE':
                         print eventType, instanceId
@@ -142,12 +149,16 @@ def pollQueue(scheduler, q, t):
                             item = t.get_item(consistent=True, instanceId=instanceId)
                             hostname = item['hostname']
 
-                            s.removeHost(hostname,cluster_user)
+                            if hostname:
+                                s.removeHost(hostname,cluster_user)
 
                             item.delete()
 
                         except boto.dynamodb2.exceptions.ItemNotFound:
                             print ("Did not find %s in the metadb\n" % instanceId)
+                        except:
+                            print "Unexpected error:", sys.exc_info()[0]
+                            raise
 
                         q.delete_message(result)
 

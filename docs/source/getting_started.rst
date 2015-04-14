@@ -73,7 +73,7 @@ This configure wizard will prompt you for everything you need to create your clu
 
         Cluster Name [mycluster]:
 
-Next, you will be prompted for your AWS Access & Secret Keys.  You can leave these blank to use keys defined in your environment variaables or aws config.  Othewise, set them here to be used by cfncluster.
+Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privledges.  These can also be read from your environment variaables or the  aws CLI config.
 
 ::
 

@@ -1,6 +1,6 @@
 .. _welcome
 
-Working with cfncluster
+Working with CfnCluster
 #######################
 
 .. toctree::
