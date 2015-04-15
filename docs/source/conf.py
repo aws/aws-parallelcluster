@@ -45,7 +45,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'cfncluster'
+project = u'CfnCluster'
 copyright = u'2014-2015, Amazon Web Services'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -201,7 +201,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'cfncluster.tex', u'cfncluster Documentation',
+  ('index', 'cfncluster.tex', u'CfnCluster Documentation',
    u'Dougal Ballantyne', u'Amazon Web Services', 'manual'),
 ]
 
@@ -266,7 +266,7 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'cfncluster'
+epub_title = u'CfnCluster'
 epub_author = u'Dougal Ballantyne'
 epub_publisher = u'Dougal Ballantyne'
 epub_copyright = u'2014-2015, Dougal Ballantyne'

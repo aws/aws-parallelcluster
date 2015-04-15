@@ -4,15 +4,15 @@
    :maxdepth: 2
 
 ###############################
-Getting started with cfncluster
+Getting started with CfnCluster
 ###############################
 
-cfncluster is a framework that deploys and maintains HPC clusters on AWS. It is reasonably agnostic to what the cluster is for and can easily be extended to support different frameworks. The CLI is stateless, everything is done using CloudFormation or resources within AWS.
+CfnCluster ("cloud formation cluster") is a framework that deploys and maintains high performance computing clusters on Amazon Web Services (AWS). Developed by AWS, CfnCluster facilitates both quick start proof of concepts (POCs) and production deployments. CfnCluster supports many different types of clustered applications and can easily be extended to support different frameworks. Download CfnCluster today to see how CfnCluster's command line interface leverages AWS CloudFormation templates and other AWS cloud services.
 
-Installing cfncluster
+Installing CfnCluster
 =====================
 
-The current working version is cfncluster-0.0.19. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
+The current working version is CfnCluster-0.0.20. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
 
 Linux/OSX
 ---------
@@ -39,12 +39,12 @@ Now it should be possible to run the following within a command prompt window:
 
 ::
 
-	C:\> easy_install cfncluster
+	C:\> easy_install CfnCluster
 
 Upgrading
 ---------
 
-To upgrade an older version of cfncluster, you can use either of the following commands, depening on how it was originally installed:
+To upgrade an older version of CfnCluster, you can use either of the following commands, depening on how it was originally installed:
 
 ::
 
@@ -58,7 +58,7 @@ or
 
 **Remember when upgrading to check that the exiting config is compatible with the latest version installed.**
 
-Configuring cfncluster
+Configuring CfnCluster
 ======================
 
 Once installed you will need to setup some initial config. The easiest way to do this is below:

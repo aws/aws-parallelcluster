@@ -3,7 +3,7 @@
 Network Configurations
 ======================
 
-cfncluster leverages Amazon Virtual Private Cloud(VPC) for networking. This provides a very flexiable and configurable networking platform to deploy clusters within. cfncluster support the following high-level configurations:
+CfnCluster leverages Amazon Virtual Private Cloud(VPC) for networking. This provides a very flexiable and configurable networking platform to deploy clusters within. CfnCluster support the following high-level configurations:
 
 * Single subnet, master and compute in the same subnet
 * Two subnets, master in one subnet and compute new private subnet
@@ -14,9 +14,9 @@ All of these configurations can operate with or without public IP addressing. It
 Below are some architeture diagrams for some of those scenarios:
 
 .. figure:: images/networking_single_subnet.jpg
-   :alt: cfncluster single subnet
+   :alt: CfnCluster single subnet
 
-   cfncluster in a single public subnet
+   CfnCluster in a single public subnet
 
 The configuration for this architecture, requires the following settings:
 
@@ -29,9 +29,9 @@ The configuration for this architecture, requires the following settings:
   master_subnet_id = subnet-a1b2c3d4
 
 .. figure:: images/networking_two_subnets.jpg
-   :alt: cfncluster two subnets
+   :alt: CfnCluster two subnets
 
-   cfncluster using two subnets(new private)
+   CfnCluster using two subnets(new private)
 
 The configuration for this architecture, requires the following settings:
 
@@ -45,9 +45,9 @@ The configuration for this architecture, requires the following settings:
   compute_subnet_cidr = 10.0.1.0/24
 
 .. figure:: images/networking_private_dx.jpg
-   :alt: cfncluster private with DX
+   :alt: CfnCluster private with DX
 
-   cfncluster in a private subnet connected using Direct Connect
+   CfnCluster in a private subnet connected using Direct Connect
 
 The configuration for this architecture, requires the following settings:
 

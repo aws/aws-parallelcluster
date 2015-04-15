@@ -3,7 +3,7 @@
 Working with S3
 ===============
 
-Accessing S3 within cfncluster can be controlled through two parameters in the cfncluster config.
+Accessing S3 within CfnCluster can be controlled through two parameters in the CfnCluster config.
 
 ::
 

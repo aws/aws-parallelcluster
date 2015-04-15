@@ -1,9 +1,9 @@
 .. _functional
 
-How cfncluster Works
+How CfnCluster Works
 ####################
 
-cfncluster was built not only as a way to manage clusters, but as a reference on how to use AWS services to build your HPC environment
+CfnCluster was built not only as a way to manage clusters, but as a reference on how to use AWS services to build your HPC environment
 
 .. toctree::
 
