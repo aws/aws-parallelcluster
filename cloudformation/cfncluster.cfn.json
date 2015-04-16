@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20141222-0 cfncluster-0.0.17",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20150415-0 cfncluster-0.0.20",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -729,34 +729,34 @@
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-ab7f599b"
+        "centos6" : "ami-39d1fb09"
       },
       "eu-central-1" : {
-        "centos6" : "ami-b43705a9"
+        "centos6" : "ami-36eed22b"
       },
       "sa-east-1" : {
-        "centos6" : "ami-818b359c"
+        "centos6" : "ami-19890c04"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-891bfb89"
+        "centos6" : "ami-e051abe0"
       },
       "eu-west-1" : {
-        "centos6" : "ami-87fd69f0"
+        "centos6" : "ami-6f305018"
       },
       "us-east-1" : {
-        "centos6" : "ami-7660361e"
+        "centos6" : "ami-f07f4598"
       },
       "us-west-1" : {
-        "centos6" : "ami-86b0aac3"
+        "centos6" : "ami-a703e1e3"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-7d730547"
+        "centos6" : "ami-4709747d"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-fafcc8a8"
+        "centos6" : "ami-d88bb98a"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-5d68097e"
+        "centos6" : "ami-a7f99884"
       }
     },
     "ClusterUser" : {
