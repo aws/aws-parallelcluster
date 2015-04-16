@@ -123,7 +123,9 @@ maintain_initial_size
 """""""""""""""""""""
 Boolean flag to set autoscaling group to maintain initial size.
 
-If set to true, the autoscaling group can scale down to 0 compute instances if there are no jobs for a period of time. 
+If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
+
+Setting to false allows the Auto Scaling group to scale down to 0 members, so resources will not sit idle when they aren't needed.
 
 Defaults to false for the default template. ::
 
@@ -307,7 +309,7 @@ Settings section relation to scaling
 
 See :ref:`Scaling Section <scaling_section>`. ::
 
-    scaling = custom
+    scaling_settings = custom
 
 .. _vpc_section:
 
