@@ -3,7 +3,7 @@
 Tutorials
 #########
 
-Here you can find tutorials for best practices guides for getting started with cfncluster.
+Here you can find tutorials for best practices guides for getting started with CfnCluster.
 
 .. toctree::
 

@@ -2,6 +2,16 @@
 CHANGELOG
 =========
 
+0.0.20
+======
+* feature:``cfncluster``: Support for D2 instances
+* updates:``ami``: Pulled latest CentOS6 errata 
+* updates:``ami``: Pulled latest cfncluster-node package
+* updates:``ami``: Pulled latest ec2-udev-rules package
+* updates:``ami``: Pulled latest NVIDIA driver 346.47
+* updates:``ami``: Removed cfncluster-kernel repo and packages
+* updates:``ami``: Updated Chef client to 12.2.1 + berkshelf
+
 0.0.19
 ======
 * feature:``cli``: Added configure command; easy config setup

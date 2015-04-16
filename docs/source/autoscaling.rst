@@ -1,16 +1,16 @@
 .. _autoscaling:
 
-cfncluster auto-scaling
+CfnCluster auto-scaling
 =======================
 
-Clusters deployed with cfncluster are elastic in several ways. The first is by 
+Clusters deployed with CfnCluster are elastic in several ways. The first is by 
 simply setting the initial_queue_size and max_queue_size parameters of a cluster 
 settings. The initial_queue_size sets minimum size value of the ComputeFleet 
 Auto Scaling Group(ASG) and also the desired capacity value . The max_queue_size 
-sets maximum size value of the ComputeFleet ASG. As part of the cfncluster, two 
+sets maximum size value of the ComputeFleet ASG. As part of the CfnCluster, two 
 Amazon CloudWatch alarms are created. These alarms monitor a custom Amazon 
 CloudWatch metric[1] that is published by the MasterServer of each cluster, this 
-is the second elastic nature of cfncluster. This metric is called pending and is 
+is the second elastic nature of CfnCluster. This metric is called pending and is 
 created per Stack and unique to each cluster. These Amazon CloudWatch alarms 
 call ScaleUp policies associated with the ComputeFleet ASG. This is what handles 
 the automatic addition of compute nodes when there is pending tasks in the 
@@ -32,7 +32,7 @@ affecting any running jobs and also enables an elastic cluster with a fixed base
 number of instances.
 
 The value of the auto scaling is the same for HPC as with any other workloads, 
-the only difference here is cfncluster has code to specifically make it interact 
+the only difference here is CfnCluster has code to specifically make it interact 
 in a more intelligent manner. If a static cluster is required, this can be 
 achieved by setting initial_queue_size and max_queue_size parameters to the size 
 of cluster required and also setting the maintain_initial_size parameter to 
