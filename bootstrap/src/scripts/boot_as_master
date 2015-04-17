@@ -68,9 +68,9 @@ dev=$(stat /dev/disk/by-ebs-volumeid/${cfn_volume}|grep -- 'File:'|awk '{print $
 fs_type=$(blkid -o list /dev/$dev | grep -- "$dev" | awk '{print $2}')
 if [ "${fs_type}x" == "x" ]; then
   mkfs.xfs /dev/disk/by-ebs-volumeid/${cfn_volume} || RC=1
+  fs_type="xfs"
   sleep 5
 fi
-fs_type=$(blkid -o list | grep -- "$dev" | awk '{print $2}')
 echo "/dev/disk/by-ebs-volumeid/${cfn_volume} ${cfn_shared_dir} $fs_type noatime,nodiratime,_netdev 0 0" >> /etc/fstab
 mkdir -p ${cfn_shared_dir} || RC=1
 mount -v ${cfn_shared_dir} || RC=1
