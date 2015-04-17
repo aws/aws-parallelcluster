@@ -725,6 +725,22 @@
       "t2.medium" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
+      },
+      "d2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
       }
     },
     "AWSRegionOS2AMI" : {
