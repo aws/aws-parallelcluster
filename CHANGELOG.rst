@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+develop
+=======
+* feature:``cfncluster``: Support for dedicated tenancy
+* feature:``cfncluster``: Support for customer provided KMS keys (EBS and ephemeral)
+
 0.0.20
 ======
 * feature:``cfncluster``: Support for D2 instances

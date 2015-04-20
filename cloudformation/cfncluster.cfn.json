@@ -358,6 +358,30 @@
       "Description" : "CloudWatch Logs LogGroup",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "Tenancy" : {
+      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type" : "String",
+      "Default" : "default",
+      "AllowedValues" : [
+        "default",
+        "dedicated"
+      ]
+    },
+    "EBSKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for EBS encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "EphemeralKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for ephemeral encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "ClusterReadyScript" : {
+      "Description" : "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -596,6 +620,25 @@
             },
             "NONE"
           ]
+        }
+      ]
+    },
+    "UseEBSKMSKey" : {
+      "Fn::And" : [
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "EBSKMSKeyId"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Condition" : "UseEBSEncryption"
         }
       ]
     }
@@ -1390,6 +1433,9 @@
               "Ref" : "AWS::NoValue"
             }
           ]
+        },
+        "Tenancy" : {
+          "Ref" : "Tenancy"
         }
       },
       "Metadata" : {
@@ -1941,7 +1987,10 @@
             }
           ]
         },
-        "InstanceMonitoring" : "false"
+        "InstanceMonitoring" : "false",
+        "PlacementTenancy" : {
+          "Ref" : "Tenancy"
+        }
       },
       "Metadata" : {
         "Comment" : "cfncluster Compute server",
@@ -2450,6 +2499,17 @@
             "UseEBSEncryption",
             {
               "Ref" : "EBSEncryption"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "KmsKeyId" : {
+          "Fn::If" : [
+            "UseEBSKMSKey",
+            {
+              "Ref" : "EBSKMSKeyId"
             },
             {
               "Ref" : "AWS::NoValue"

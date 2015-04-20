@@ -203,7 +203,8 @@ class CfnClusterConfig:
                                       encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
-                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None)
+                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
+                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL')
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
@@ -234,7 +235,7 @@ class CfnClusterConfig:
 
         # Dictionary list of all EBS options
         self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId','EC2Snapshot'), volume_type=('VolumeType',None),
-                                  volume_size=('VolumeSize',None),
+                                  volume_size=('VolumeSize',None), ebs_kms_key_id=('EBSKMSKeyId', None),
                                   volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None))
 
         try:
