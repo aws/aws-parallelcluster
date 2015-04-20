@@ -111,7 +111,17 @@ function setup_ephemeral_drives () {
       mkfs -q /dev/ram1 1024 || RC=1
       mkdir -p /root/keystore || RC=1
       mount /dev/ram1 /root/keystore || RC=1
-      dd if=/dev/urandom of=/root/keystore/keyfile bs=1024 count=4 || RC=1
+      if [ "${cfn_ephemeral_kms_key_id}" != "NONE" ]; then
+        # Use KMS for keyfile
+        instanceId=$(curl -fs http://169.254.169.254/latest/meta-data/instance-id)
+        kms_array=($(aws --region ${cfn_region} kms generate-data-key --key-id ${cfn_ephemeral_kms_key_id} --number-of-bytes 1024 --encryption-context InstanceId=${instanceId} --output text))
+        echo -n ${kms_array[0]} > /root/keystore/keyfile || RC=1
+        echo -n ${kms_array[2]} > /root/ephemeral_ciphertext.blob || RC=1
+        chmod 0400 /root/ephemeral_ciphertext.blob || RC=1
+      else
+        # Use urandom for keyfile
+        dd if=/dev/urandom of=/root/keystore/keyfile bs=1024 count=4 || RC=1
+      fi
       chmod 0400 /root/keystore/keyfile || RC=1
       cryptsetup -q luksFormat /dev/vg.01/lv_ephemeral /root/keystore/keyfile || RC=1
       cryptsetup -d /root/keystore/keyfile luksOpen /dev/vg.01/lv_ephemeral ephemeral_luks || RC=1
