@@ -8,3 +8,4 @@ Here you can find tutorials for best practices guides for getting started with C
 .. toctree::
 
     hello_world
+    ami_customization
