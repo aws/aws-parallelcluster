@@ -160,11 +160,11 @@
     },
     "MasterSubnetId" : {
       "Description" : "ID of the Subnet you want to provision the Master server into",
-      "Type" : "String"
+      "Type" : "AWS::EC2::Subnet::Id"
     },
     "AvailabilityZone" : {
       "Description" : "Availability Zone the cluster will launch into. THIS IS REQUIRED",
-      "Type" : "String"
+      "Type" : "AWS::EC2::AvailabilityZone::Name"
     },
     "EBSSnapshotId" : {
       "Description" : "Id of EBS snapshot if using snapshot as source for volume",
@@ -368,6 +368,11 @@
       "Description" : "URL of custom cookbooks that will override the default",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "ExtraJson" : {
+      "Description" : "Extra json to be added to Chef dna.json",
+      "Type" : "String",
+      "Default" : "{}"
     }
   },
   "Conditions" : {
@@ -1425,7 +1430,7 @@
           },
           "deployConfigFiles" : {
             "files" : {
-              "/etc/chef/dna.json" : {
+              "/tmp/dna.json" : {
                 "mode" : "000644",
                 "owner" : "root",
                 "group" : "root",
@@ -1521,6 +1526,14 @@
                     ]
                   ]
                 }
+              },
+              "/tmp/extra.json" : {
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root",
+                "content" : {
+                  "Ref" : "ExtraJson"
+                }
               }
             },
             "commands" : {
@@ -1529,6 +1542,9 @@
               },
               "touch" : {
                 "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              },
+              "jq" : {
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json"
               }
             }
           },
