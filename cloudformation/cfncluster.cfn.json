@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20150415-0 cfncluster-0.0.20",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20150609-0 cfncluster-0.0.21",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -46,7 +46,12 @@
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
-        "d2.xlarge"
+        "d2.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge"
       ]
     },
     "ComputeInstanceType" : {
@@ -89,7 +94,12 @@
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
-        "d2.xlarge"
+        "d2.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge"
       ]
     },
     "InitialQueueSize" : {
@@ -358,6 +368,30 @@
       "Description" : "CloudWatch Logs LogGroup",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "Tenancy" : {
+      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type" : "String",
+      "Default" : "default",
+      "AllowedValues" : [
+        "default",
+        "dedicated"
+      ]
+    },
+    "EBSKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for EBS encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "EphemeralKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for ephemeral encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "ClusterReadyScript" : {
+      "Description" : "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -598,6 +632,57 @@
           ]
         }
       ]
+    },
+    "UseEBSKMSKey" : {
+      "Fn::And" : [
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "EBSKMSKeyId"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Condition" : "UseEBSEncryption"
+        }
+      ]
+    },
+    "UseEphemeralKMSKey" : {
+      "Fn::And" : [
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "EphemeralKMSKeyId"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "EncryptedEphemeral"
+            },
+            "true"
+          ]
+        }
+      ]
+    },
+    "UseDedicatedTenancy" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "Tenancy"
+        },
+        "dedicated"
+      ]
     }
   },
   "Mappings" : {
@@ -725,38 +810,74 @@
       "t2.medium" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
+      },
+      "d2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "d2.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.10xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
       }
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-39d1fb09"
+        "centos6" : "ami-b7bb8387"
       },
       "eu-central-1" : {
-        "centos6" : "ami-36eed22b"
+        "centos6" : "ami-9886bf85"
       },
       "sa-east-1" : {
-        "centos6" : "ami-19890c04"
+        "centos6" : "ami-853fbf98"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-e051abe0"
+        "centos6" : "ami-10aa7310"
       },
       "eu-west-1" : {
-        "centos6" : "ami-6f305018"
+        "centos6" : "ami-5d6d132a"
       },
       "us-east-1" : {
-        "centos6" : "ami-f07f4598"
+        "centos6" : "ami-77fe0b1c"
       },
       "us-west-1" : {
-        "centos6" : "ami-a703e1e3"
+        "centos6" : "ami-036f8547"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-4709747d"
+        "centos6" : "ami-8d6b10b7"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-d88bb98a"
+        "centos6" : "ami-b2d7ede0"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-a7f99884"
+        "centos6" : "ami-3d82e21e"
       }
     },
     "ClusterUser" : {
@@ -1374,6 +1495,9 @@
               "Ref" : "AWS::NoValue"
             }
           ]
+        },
+        "Tenancy" : {
+          "Ref" : "Tenancy"
         }
       },
       "Metadata" : {
@@ -1925,7 +2049,18 @@
             }
           ]
         },
-        "InstanceMonitoring" : "false"
+        "InstanceMonitoring" : "false",
+        "PlacementTenancy" : {
+          "Fn::If" : [
+            "UseDedicatedTenancy",
+            {
+              "Ref" : "Tenancy"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        }
       },
       "Metadata" : {
         "Comment" : "cfncluster Compute server",
@@ -2434,6 +2569,17 @@
             "UseEBSEncryption",
             {
               "Ref" : "EBSEncryption"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "KmsKeyId" : {
+          "Fn::If" : [
+            "UseEBSKMSKey",
+            {
+              "Ref" : "EBSKMSKeyId"
             },
             {
               "Ref" : "AWS::NoValue"

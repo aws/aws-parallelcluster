@@ -153,6 +153,8 @@ If cluster_type is set to spot, the maximum spot price for the ComputeFleet. ::
 
     spot_price = 0.00
 
+.. _custom_ami_section:
+
 custom_ami
 """"""""""
 ID of a Custom AMI, to use instead of default published AMI's. ::
@@ -303,8 +305,8 @@ See :ref:`EBS Section <ebs_section>`. ::
 
     ebs_settings = custom
 
-scaling
-"""""""
+scaling_settings
+""""""""""""""""
 Settings section relation to scaling
 
 See :ref:`Scaling Section <scaling_section>`. ::

@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+0.0.21
+=======
+* feature:``cfncluster``: Support for dedicated tenancy
+* feature:``cfncluster``: Support for customer provided KMS keys (EBS and ephemeral)
+* updates:``ami``: Pulled latest CentOS6 errata
+* feature:``cfncluster``: Support for M4 instances
+
 0.0.20
 ======
 * feature:``cfncluster``: Support for D2 instances
