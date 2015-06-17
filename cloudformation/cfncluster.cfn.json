@@ -43,6 +43,7 @@
         "t2.micro",
         "t2.small",
         "t2.medium",
+        "t2.large",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
@@ -91,6 +92,7 @@
         "t2.micro",
         "t2.small",
         "t2.medium",
+        "t2.large",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
@@ -808,6 +810,10 @@
         "EBSOpt" : "False"
       },
       "t2.medium" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.large" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
