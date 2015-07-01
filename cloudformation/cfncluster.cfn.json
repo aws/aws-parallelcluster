@@ -1090,7 +1090,8 @@
               "Sid" : "Autoscaling",
               "Action" : [
                 "autoscaling:DescribeAutoScalingGroups",
-                "autoscaling:TerminateInstanceInAutoScalingGroup"
+                "autoscaling:TerminateInstanceInAutoScalingGroup",
+                "autoscaling:SetDesiredCapacity"
               ],
               "Effect" : "Allow",
               "Resource" : [
