@@ -57,8 +57,8 @@ report_variables      NONE
     # Connect and start SGE
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    hosts_key_file = '/home/' + cluster_user + '/.ssh/known_hosts'
-    user_key_file = '/home/' + cluster_user + '/.ssh/id_rsa'
+    hosts_key_file = os.path.expanduser("~" + cluster_user) + '/.ssh/known_hosts'
+    user_key_file = os.path.expanduser("~" + cluster_user) + '/.ssh/id_rsa'
     iter=0
     connected=False
     while iter < 3 and connected == False:
