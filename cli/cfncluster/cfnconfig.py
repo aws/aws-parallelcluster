@@ -204,7 +204,8 @@ class CfnClusterConfig:
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
                                       cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
-                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL')
+                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
+                                      master_root_volume_size=('MasterServerRootVolumeSize',None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
