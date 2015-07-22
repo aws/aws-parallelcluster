@@ -17,7 +17,7 @@ ec2_region_url="http://169.254.169.254/latest/meta-data/placement/availability-z
 ec2_region=$(curl --retry 3 --retry-delay 0 --silent --fail ${ec2_region_url})
 
 . /opt/sge/default/common/settings.sh
-pending=$(qstat -g d -s p -u '*' | tail -n+3 | awk '{total = total+ $8}END{print total}')
+pending=$(qstat -g d -s p -u '*' | tail -n+3 | awk '$5 == "qw" {total = total+ $8} END {print total}')
 
 if [ "${pending}x" == "x" ]; then
 pending=0
