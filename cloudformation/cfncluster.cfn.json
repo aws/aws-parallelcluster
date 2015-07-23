@@ -395,8 +395,13 @@
       "Type" : "String",
       "Default" : "NONE"
     },
-    "MasterServerRootVolumeSize" : {
+    "MasterRootVolumeSize" : {
       "Description" : "Size of MasterServer EBS root volume in GB",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "ComputeRootVolumeSize" : {
+      "Description" : "Size of ComputeFleet EBS root volume in GB",
       "Type" : "Number",
       "Default" : "10"
     }
@@ -1373,8 +1378,9 @@
             "DeviceName" : "/dev/sda1",
             "Ebs" : {
               "VolumeSize" : {
-                "Ref" : "MasterServerRootVolumeSize"
-              }
+                "Ref" : "MasterRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
             }
           }
         ],
@@ -1958,6 +1964,15 @@
           {
             "DeviceName" : "/dev/xvdbx",
             "VirtualName" : "ephemeral23"
+          },
+          {
+            "DeviceName" : "/dev/sda1",
+            "Ebs" : {
+              "VolumeSize" : {
+                "Ref" : "ComputeRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
+            }
           }
         ],
         "KeyName" : {
