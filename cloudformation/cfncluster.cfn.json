@@ -394,6 +394,16 @@
       "Description" : "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "MasterRootVolumeSize" : {
+      "Description" : "Size of MasterServer EBS root volume in GB",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "ComputeRootVolumeSize" : {
+      "Description" : "Size of ComputeFleet EBS root volume in GB",
+      "Type" : "Number",
+      "Default" : "10"
     }
   },
   "Conditions" : {
@@ -1364,6 +1374,15 @@
           {
             "DeviceName" : "/dev/xvdbx",
             "VirtualName" : "ephemeral23"
+          },
+          {
+            "DeviceName" : "/dev/sda1",
+            "Ebs" : {
+              "VolumeSize" : {
+                "Ref" : "MasterRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
+            }
           }
         ],
         "KeyName" : {
@@ -1946,6 +1965,15 @@
           {
             "DeviceName" : "/dev/xvdbx",
             "VirtualName" : "ephemeral23"
+          },
+          {
+            "DeviceName" : "/dev/sda1",
+            "Ebs" : {
+              "VolumeSize" : {
+                "Ref" : "ComputeRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
+            }
           }
         ],
         "KeyName" : {

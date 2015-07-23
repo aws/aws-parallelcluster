@@ -265,6 +265,22 @@ Defaults to false in default template. ::
 
     encrypted_ephemeral = false
 
+master_root_volume_size
+"""""""""""""""""""""""
+MasterServer root volume size in GB. (AMI must support growroot)
+
+Defaults to 10 in default template. ::
+
+    master_root_volume_size = 10
+
+compute_root_volume_size
+"""""""""""""""""""""""
+ComputeFleet root volume size in GB. (AMI must support growroot)
+
+Defaults to 10 in default template. ::
+
+    master_root_volume_size = 10
+
 base_os
 """""""
 OS type used in the cluster

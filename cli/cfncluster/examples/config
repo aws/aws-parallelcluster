@@ -87,6 +87,12 @@ key_name = mykey
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false in default template)
 #encrypted_ephemeral = false
+# MasterServer root volume size in GB. (AMI must support growroot)
+# (defaults to 10 in default template)
+#master_root_volume_size = 10
+# ComputeFleet root volume size in GB. (AMI must support growroot)
+# (defaults to 10 in default template)
+#compute_root_volume_size = 10
 # OS type used in the cluster
 # (defaults to centos6 in the default template)
 #base_os = centos6
