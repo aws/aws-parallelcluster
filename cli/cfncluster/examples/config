@@ -107,7 +107,7 @@ vpc_settings = public
 # Settings section relating to EBS volume
 #ebs_settings = custom
 # Settings section relation to scaling
-#scaling = custom
+#scaling_settings = custom
 
 ## VPC Settings
 [vpc public]
@@ -164,12 +164,12 @@ master_subnet_id = subnet-
 # Number of instances to add when called CloudWatch ScaleUp action
 # (defaults to 2 for default template)
 #scaling_adjustment = 2
-# Threshold for triggering CloudWatch ScaleUp action
-# (defaults to 4 for default template)
+# Threshold for triggering CloudWatch ScaleUp2 action
+# (defaults to 200 for default template)
 #scaling_threshold2 = 200
 # Number of instances to add when called CloudWatch ScaleUp2 action
 # (defaults to 20 for default template)
-#scaling_adjustment = 20
+#scaling_adjustment2 = 20
 # Period to measure ScalingThreshold
 # (defaults to 60 for default template)
 #scaling_period = 60
