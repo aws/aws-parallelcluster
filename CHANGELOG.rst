@@ -2,6 +2,14 @@
 CHANGELOG
 =========
 
+0.0.22
+======
+* updates:``ami``: Pulled latest CentOS6 errata
+* feature:``cfncluster``: Support for specifiying MasterServer and ComputeFleet root volume size
+* bugfix:``cfncluster-node``: Fix for SGE parallel job detection
+* bugfix:``ami``: Removed ZFS packages
+* bugfix:``cfncluster-node``: Fix torque node additon with pbs_server restart
+
 0.0.21
 =======
 * feature:``cfncluster``: Support for dedicated tenancy
