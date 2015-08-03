@@ -16,16 +16,17 @@ import os
 
 def getJobs(hostname):
     # Checking for running jobs on the node
-    command = ['/opt/sge/bin/lx-amd64/qstat', '-l', 'hostname=%s' % hostname, '-u', '*']
+    command = ['/opt/sge/bin/idle-nodes']
     try:
-       output = subprocess.Popen(command, stdout=subprocess.PIPE, 
+       _output = subprocess.Popen(command, stdout=subprocess.PIPE,
                                  env=dict(os.environ, SGE_ROOT='/opt/sge')).communicate()[0]
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        print ("Failed to run %s\n" % command)
 
-    if output == "":
-        _jobs = False
-    else:
-        _jobs = True
+    _jobs = True
+    for host in _output.split('\n'):
+        if hostname.split('.')[0] in host:
+            _jobs = False
+            break
 
     return _jobs
