@@ -6,4 +6,3 @@ List of contributors:
  - Kenneth Daily - kmdaily at gmail dot com
  - John Lilley - johnbot at ltech dot edu
  - Nelson R Monserrate - MonserrateNelson at JohnDeere dot com
- - 
