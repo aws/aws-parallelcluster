@@ -6,10 +6,13 @@ CHANGELOG
 ======
 * updates:``ami``: Pulled latest CentOS6 errata
 * feature:``cfncluster``: Support for specifiying MasterServer and ComputeFleet root volume size
-* bugfix:``cfncluster-node``: Fix for SGE parallel job detection
+* bugfix:``cfncluster-node``: Fix for SGE parallel job detection 
 * bugfix:``ami``: Removed ZFS packages
 * bugfix:``cfncluster-node``: Fix torque node additon with pbs_server restart
 * updates:``ami``: Updated Chef client to 12.4.1 + berkshelf
+* bugfix:``cfncluster``: Only count pending jobs with status 'qw' (Kenneth Daily <kmdaily@gmail.com>)
+* bugfix::``cli``: Updated example config file (John Lilley <johnbot@caltech.edu>)
+* bugfix::``cli``: Fixed typo on scaling cooldown property (Nelson R Monserrate <MonserrateNelson@JohnDeere.com>)
 
 0.0.21
 =======
