@@ -9,6 +9,7 @@ CHANGELOG
 * bugfix:``cfncluster-node``: Fix for SGE parallel job detection
 * bugfix:``ami``: Removed ZFS packages
 * bugfix:``cfncluster-node``: Fix torque node additon with pbs_server restart
+* updates:``ami``: Updated Chef client to 12.4.1 + berkshelf
 
 0.0.21
 =======
