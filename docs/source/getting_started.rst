@@ -12,7 +12,7 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
 Installing CfnCluster
 =====================
 
-The current working version is CfnCluster-0.0.20. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
+The current working version is CfnCluster-|version|. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
 
 Linux/OSX
 ---------
