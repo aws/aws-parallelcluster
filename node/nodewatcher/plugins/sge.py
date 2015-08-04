@@ -19,7 +19,8 @@ def getJobs(hostname):
     command = ['/opt/sge/bin/idle-nodes']
     try:
        _output = subprocess.Popen(command, stdout=subprocess.PIPE,
-                                 env=dict(os.environ, SGE_ROOT='/opt/sge')).communicate()[0]
+                                 env=dict(os.environ, SGE_ROOT='/opt/sge',
+                                         PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin')).communicate()[0]
     except subprocess.CalledProcessError:
         print ("Failed to run %s\n" % command)
 
