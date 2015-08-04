@@ -345,7 +345,8 @@
         "sge",
         "openlava",
         "torque",
-        "test"
+        "test",
+        "custom"
       ]
     },
     "SharedDir" : {
