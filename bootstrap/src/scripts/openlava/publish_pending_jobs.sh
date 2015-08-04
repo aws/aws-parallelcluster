@@ -12,6 +12,7 @@
 # limitations under the License.
 
 . /opt/cfncluster/cfnconfig
+. /etc/profile.d/openlava.sh
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ec2_region_url="http://169.254.169.254/latest/meta-data/placement/availability-zone"
