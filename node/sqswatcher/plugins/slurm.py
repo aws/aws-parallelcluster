@@ -1,10 +1,8 @@
 import subprocess as sub
-import paramiko
 from tempfile import mkstemp
 from shutil import move
-import time
 import os
-import socket
+
 
 def __runCommand(command):
     _command = command
@@ -15,7 +13,8 @@ def __runCommand(command):
 
 
 def __readNodeList():
-    with open("/opt/slurm/etc/slurm.conf") as slurm_config:
+    _config = "/opt/slurm/etc/slurm.conf"
+    with open(_config) as slurm_config:
         for line in slurm_config:
             if line.startswith('NodeName'):
                 items = line.split(' ')
@@ -25,9 +24,10 @@ def __readNodeList():
 
 
 def __writeNodeList(node_list):
+    _config = "/opt/slurm/etc/slurm.conf"
     fh, abs_path = mkstemp()
     with open(abs_path,'w') as new_file:
-        with open("/opt/slurm/etc/slurm.conf") as slurm_config:
+        with open(_config) as slurm_config:
             for line in slurm_config:
                 if line.startswith('NodeName'):
                     items = line.split(' ')
@@ -41,11 +41,11 @@ def __writeNodeList(node_list):
                     new_file.write(line)
     os.close(fh)
     #Remove original file
-    os.remove("/opt/slurm/etc/slurm.conf")
+    os.remove(_config)
     #Move new file
-    move(abs_path, "/opt/slurm/etc/slurm.conf")
-
-    os.chmod("/opt/slurm/etc/slurm.conf", 0744)
+    move(abs_path, _config)
+    #Update permissions on new file
+    os.chmod(_config, 0744)
 
 
 def addHost(hostname, cluster_user):
