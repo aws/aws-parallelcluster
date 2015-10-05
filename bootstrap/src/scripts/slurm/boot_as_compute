@@ -1,0 +1,105 @@
+#!/bin/bash
+
+set -x
+
+. /opt/cfncluster/cfnconfig
+cfn_master=$(echo $cfn_master|cut -d. -f1)
+
+# Source functions
+. /opt/cfncluster/scripts/functions.shlib
+
+function error_exit () {
+  script=`basename $0`
+  echo "cfncluster: $script - $1"
+  logger -t cfncluster "$script - $1"
+  exit 1
+}
+
+# Check FQDN dns
+check_dns_fqdn || error_exit "FQDN DNS checks failed."
+
+if [ "x$cfn_master" == "x" ]; then
+  error_exit 'No master server specified.'
+  usage
+fi
+
+myhostname=$(hostname -s)
+if [ $? != 0 ]; then
+  error_exit 'Failed to determine short hostname.'
+fi
+
+# Mount Slurm NFS exports
+function mount_nfs () {
+RC=0
+echo "$cfn_master:/opt/slurm /opt/slurm nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
+mount -v /opt/slurm || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed during during Slurm NFS mounts"
+fi
+}
+
+
+function start_munge () {
+RC=0
+chkconfig munge on || RC=1
+service munge start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Munge"
+fi
+}
+
+function add_slurm_user () {
+RC=0
+useradd slurm || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed adding slurm user"
+fi
+}
+
+# Setup Slurm config as compute
+function setup_compute_slurm () {
+RC=0
+cd /opt/slurm/etc || RC=1 
+/bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm /etc/init.d/slurm || RC=1
+chmod 755 /etc/init.d/slurm || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure Slurm"
+fi
+}
+
+# Start Slurmd
+function start_slurm () {
+RC=0
+chkconfig slurm on || RC=1
+# service slurm start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Slurm"
+fi
+}
+
+# Setup slurm profile
+function setup_slurm_profile () {
+RC=0
+ln -s /opt/slurm/etc/slurm.sh  /etc/profile.d/slurm.sh || RC=1
+ln -s /opt/slurm/etc/slurm.csh  /etc/profile.d/slurm.csh || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed during Slurm profile setup"
+fi
+}
+
+function do_install () {
+  mount_nfs
+  start_munge
+  add_slurm_user
+  setup_slurm_profile
+  setup_compute_slurm
+  start_slurm
+}
+
+## Main script
+do_install
+  
+
+script=`basename $0`
+echo "cfncluster: $script - SUCCESS - Booted as cfncluster Compute connected to Master - $cfn_master"
+logger -t cfncluster "$script - SUCCESS - Booted as cfncluster Compute connected to Master - $cfn_master"

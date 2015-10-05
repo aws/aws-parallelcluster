@@ -1,0 +1,100 @@
+#!/bin/bash
+
+#
+# To do list: 
+# 1. setup munge
+# 2. Create slurm users
+# 3. add init.d scripts
+# 4. start slurm and slurm-db
+
+set -x
+
+# Source cfncluster config
+. /opt/cfncluster/cfnconfig
+
+# Source functions
+. /opt/cfncluster/scripts/functions.shlib
+
+function error_exit () {
+  script=`basename $0`
+  echo "cfncluster: $script - $1"
+  logger -t cfncluster "$script - $1" 
+  exit 1
+}
+
+# Check FQDN dns
+check_dns_fqdn || error_exit "FQDN DNS checks failed."
+
+myhostname=$(hostname -s)
+if [ $? != 0 ]; then
+  error_exit 'Failed to determine local hostname'
+fi
+
+function start_munge () {
+RC=0
+chkconfig munge on || RC=1
+service munge start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Munge"
+fi
+}
+
+function add_slurm_user () {
+RC=0
+useradd slurm || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed adding slurm user"
+fi
+}
+
+# Setup Slurm config as Master
+function setup_master_slurm () {
+RC=0
+cd /opt/slurm/etc || RC=1 
+/bin/cp -f /opt/cfncluster/templates/slurm/slurm.conf.MASTER slurm.conf || RC=1
+/bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm /etc/init.d/slurm || RC=1
+ln -s /opt/slurm/etc/slurm.sh  /etc/profile.d/slurm.sh || RC=1
+ln -s /opt/slurm/etc/slurm.csh  /etc/profile.d/slurm.csh || RC=1
+
+chmod 755 /etc/init.d/slurm || RC=1
+sed -i "s/<master>/$myhostname/" slurm.conf || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to configure Slurm"
+fi
+}
+
+# Start Slurmd
+function start_slurm () {
+RC=0
+chkconfig slurm on || RC=1
+service slurm start || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to start Slurm"
+fi
+}
+
+# Adding custom CloudWatch metric to crontab
+function add_custom_metric () {
+RC=0
+crontab -l > /tmp/root.crontab
+echo "* * * * * /opt/cfncluster/scripts/slurm/publish_pending_jobs.sh 2>&1" >> /tmp/root.crontab || RC=1
+crontab /tmp/root.crontab || RC=1
+if [ $RC -ne 0 ]; then
+  error_exit "Failed to add custom metric crontab"
+fi
+}
+
+function do_install () {
+  start_munge
+  add_slurm_user
+  setup_master_slurm
+  start_slurm
+  add_custom_metric
+}
+
+## Main script
+do_install
+
+script=`basename $0`
+echo "cfncluster: $script - SUCCESS - Booted as cfncluster Master"
+logger -t cfncluster "$script - SUCCESS - Booted as cfncluster Master"
