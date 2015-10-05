@@ -16,7 +16,7 @@
 ec2_region_url="http://169.254.169.254/latest/meta-data/placement/availability-zone"
 ec2_region=$(curl --retry 3 --retry-delay 0 --silent --fail ${ec2_region_url})
 
-pending=$(squeue -h -o '%t %D' | awk '$1 == "PD" { total = total + $2} END {print total}')
+pending=$(/opt/slurm/bin/squeue -h -o '%t %D' | awk '$1 == "PD" { total = total + $2} END {print total}')
 
 if [ "${pending}x" == "x" ]; then
 pending=0
