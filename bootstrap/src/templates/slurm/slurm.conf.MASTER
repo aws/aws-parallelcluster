@@ -75,9 +75,9 @@ FastSchedule=1
 #
 # LOGGING
 SlurmctldDebug=3
-#SlurmctldLogFile=
+SlurmctldLogFile=/var/log/slurmctld.log
 SlurmdDebug=3
-#SlurmdLogFile=
+SlurmdLogFile=/var/log/slurmd.log
 JobCompType=jobcomp/none
 #JobCompLoc=
 #
@@ -92,5 +92,5 @@ JobCompType=jobcomp/none
 #AccountingStorageUser=
 #
 # COMPUTE NODES
-NodeName=linux[1-32] Procs=1 State=UNKNOWN
-PartitionName=debug Nodes=linux[1-32] Default=YES MaxTime=INFINITE State=UP
+NodeName=dummy Procs=1 State=UNKNOWN
+PartitionName=debug Nodes=dummy Default=YES MaxTime=INFINITE State=UP

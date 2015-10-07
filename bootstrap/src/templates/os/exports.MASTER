@@ -1,4 +1,4 @@
 /home <cidr>(rw,no_root_squash)
 <shared_dir> <cidr>(rw,no_root_squash)
 /opt/sge <cidr>(rw,no_root_squash)
-/opt/slurm <cidr>(rw,no_root_squash)
+/opt/slurm/etc <cidr>(rw,no_root_squash)

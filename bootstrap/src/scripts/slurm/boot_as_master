@@ -53,9 +53,10 @@ RC=0
 cd /opt/slurm/etc || RC=1 
 /bin/cp -f /opt/cfncluster/templates/slurm/slurm.conf.MASTER slurm.conf || RC=1
 /bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm /etc/init.d/slurm || RC=1
+/bin/cp -f /opt/cfncluster/templates/slurm/slurm.sh /opt/slurm/etc/slurm.sh || RC=1
+/bin/cp -f /opt/cfncluster/templates/slurm/slurm.csh /opt/slurm/etc/slurm.csh || RC=1
 ln -s /opt/slurm/etc/slurm.sh  /etc/profile.d/slurm.sh || RC=1
 ln -s /opt/slurm/etc/slurm.csh  /etc/profile.d/slurm.csh || RC=1
-
 chmod 755 /etc/init.d/slurm || RC=1
 sed -i "s/<master>/$myhostname/" slurm.conf || RC=1
 if [ $RC -ne 0 ]; then

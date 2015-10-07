@@ -1,4 +1,4 @@
-Å#!/bin/bash
+#!/bin/bash
 #
 # chkconfig: 345 90 10
 # description: SLURM is a simple resource management system which \
