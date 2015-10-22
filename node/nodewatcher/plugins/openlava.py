@@ -16,7 +16,7 @@ import os
 
 def getJobs(hostname):
     # Checking for running jobs on the node
-    command = ['/opt/openlava-2.2/bin/bjobs', '-m', hostname, '-u', 'all']
+    command = ['/opt/openlava/bin/bjobs', '-m', hostname, '-u', 'all']
     try:
        output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
     except subprocess.CalledProcessError:

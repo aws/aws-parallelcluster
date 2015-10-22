@@ -18,7 +18,7 @@ import paramiko
 def __runOpenlavaCommand(command):
     _command = command
     try:
-        sub.check_call(_command, env=dict(os.environ, LSF_ENVDIR='/opt/openlava-2.2/etc'))
+        sub.check_call(_command, env=dict(os.environ, LSF_ENVDIR='/opt/openlava/etc'))
     except sub.CalledProcessError:
         print ("Failed to run %s\n" % _command)
 
@@ -26,7 +26,7 @@ def __runOpenlavaCommand(command):
 def addHost(hostname, cluster_user):
     print('Adding %s', hostname)
 
-    command = ['/opt/openlava-2.2/bin/lsaddhost', '-t', 'linux', '-m', 'IntelXeon', hostname]
+    command = ['/opt/openlava/bin/lsaddhost', '-t', 'linux', '-m', 'IntelXeon', hostname]
 
     __runOpenlavaCommand(command)
 
@@ -60,6 +60,6 @@ def addHost(hostname, cluster_user):
 def removeHost(hostname,cluster_user):
     print('Removing %s', hostname)
 
-    command = ['/opt/openlava-2.2/bin/lsrmhost', hostname]
+    command = ['/opt/openlava/bin/lsrmhost', hostname]
 
     __runOpenlavaCommand(command)
