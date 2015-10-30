@@ -16,3 +16,7 @@ def getJobs(hostname):
     _jobs = False
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    pass
+

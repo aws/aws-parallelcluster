@@ -28,3 +28,16 @@ def getJobs(hostname):
         _jobs = True
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    # http://wp.auburn.edu/morgaia/?p=103
+    _mod = unlock and 'hopen' or 'hclose'
+    command = ['/opt/openlava/bin/badmin', _mod, hostname]
+    try:
+        subprocess.check_call(
+            command,
+            env=dict(os.environ, SGE_ROOT='/opt/sge',
+                     PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
+    except subprocess.CalledProcessError:
+        print ("Failed to run %s\n" % command)
+
