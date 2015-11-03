@@ -34,7 +34,7 @@ def getJobs(hostname):
 
 def lockHost(hostname, unlock=False):
     _mod = unlock and '-eq' or '-dq'
-    command = ['/opt/sge/bin/qmod', _mod, 'all.q@%s' % hostname]
+    command = ['/opt/sge/bin/lx-amd64/qmod', _mod, 'all.q@%s' % hostname]
     try:
         subprocess.check_call(
             command,
