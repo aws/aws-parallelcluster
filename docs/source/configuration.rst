@@ -369,11 +369,11 @@ Defaults to NONE in the default template. ::
 
     additional_sg = sg-xxxxxx
 
-master_subnet_id
+compute_subnet_id
 """"""""""""""""
 ID of an existing subnet you want to provision the compute nodes into. ::
 
-    master_subnet_id = subnet-xxxxxx
+    compute_subnet_id = subnet-xxxxxx
 
 compute_subnet_cidr
 """""""""""""""""""
