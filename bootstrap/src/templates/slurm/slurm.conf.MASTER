@@ -63,7 +63,12 @@ SchedulerType=sched/backfill
 #SchedulerPort=
 #SchedulerRootFilter=
 SelectType=select/linear
-FastSchedule=1
+
+# Disable fastscheduling to fall back on resource
+# metrics reported by compute nodes, slower scheduling
+# but more flexible if using different ec2 instance types
+FastSchedule=0
+
 #PriorityType=priority/multifactor
 #PriorityDecayHalfLife=14-0
 #PriorityUsageResetPeriod=14-0
