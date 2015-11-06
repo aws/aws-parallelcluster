@@ -1,12 +1,5 @@
 #!/bin/bash
 
-#
-# To do list: 
-# 1. setup munge
-# 2. Create slurm users
-# 3. add init.d scripts
-# 4. start slurm and slurm-db
-
 set -x
 
 # Source cfncluster config

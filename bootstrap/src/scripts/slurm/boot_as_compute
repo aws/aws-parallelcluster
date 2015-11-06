@@ -71,8 +71,9 @@ fi
 function start_slurm () {
 RC=0
 chkconfig slurm on || RC=1
-service slurm start
-/etc/init.d/slurm restart || RC=1
+# Slurmd start will be done by master node when the node creation is complete
+# this ensures it is in the slurm.conf before we start the daemon.
+# /etc/init.d/slurm restart || RC=1
 if [ $RC -ne 0 ]; then
   error_exit "Failed to start Slurm"
 fi
