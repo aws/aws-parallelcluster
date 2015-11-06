@@ -13,6 +13,9 @@ __author__ = 'dougalb'
 
 import subprocess
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def runPipe(cmds):
     try:
@@ -36,9 +39,9 @@ def getJobs(hostname):
     # Checking for running jobs on the node
     commands = ['/opt/torque/bin/qstat -r -n -1', ('grep ' + hostname.split('.')[0])]
     try:
-       status, output = runPipe(commands)
+        status, output = runPipe(commands)
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        log.error("Failed to run %s\n" % _command)
 
     if output == "":
         _jobs = False
@@ -57,5 +60,5 @@ def lockHost(hostname, unlock=False):
             env=dict(os.environ, SGE_ROOT='/opt/sge',
                      PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % command)
+        log.error("Failed to run %s\n" % command)
 
