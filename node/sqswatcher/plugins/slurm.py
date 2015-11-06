@@ -99,6 +99,10 @@ def addHost(hostname, cluster_user):
     # Restart slurmctl on host
     __restartSlurm(hostname, cluster_user)
 
+    # Reconfifure Slurm, prompts all compute nodes to reread slurm.conf
+    command = ['/opt/slurm/bin/scontrol', 'reconfigure']
+    __runCommand(command)
+
 
 def removeHost(hostname, cluster_user):
     print('Removing %s', hostname)
@@ -113,5 +117,10 @@ def removeHost(hostname, cluster_user):
     # Restart slurmctl
     command = ['/etc/init.d/slurm', 'restart']
     __runCommand(command)
+
+    # Reconfifure Slurm, prompts all compute nodes to reread slurm.conf
+    command = ['/opt/slurm/bin/scontrol', 'reconfigure']
+    __runCommand(command)
+
 
 
