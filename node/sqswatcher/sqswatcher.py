@@ -16,6 +16,7 @@ import json
 import time
 import sys
 import ConfigParser
+import logging
 
 import boto.sqs
 import boto.ec2
@@ -27,23 +28,38 @@ from boto.sqs.message import RawMessage
 from boto.dynamodb2.fields import HashKey
 from boto.dynamodb2.table import Table
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
+)
+log = logging.getLogger(__name__)
 
 def getConfig():
-    print('running getConfig')
+    log.debug('reading /etc/sqswatcher.cfg')
 
     config = ConfigParser.RawConfigParser()
     config.read('/etc/sqswatcher.cfg')
+    if config.has_option('sqswatcher', 'loglevel'):
+        lvl = logging._levelNames[config.get('sqswatcher', 'loglevel')]
+        logging.getLogger().setLevel(lvl)
     _region = config.get('sqswatcher', 'region')
     _sqsqueue = config.get('sqswatcher', 'sqsqueue')
     _table_name = config.get('sqswatcher', 'table_name')
     _scheduler = config.get('sqswatcher', 'scheduler')
     _cluster_user = config.get('sqswatcher', 'cluster_user')
 
+    log.debug(" ".join("%s=%s" % i
+                       for i in [('_region', _region),
+                                 ('_sqsqueue', _sqsqueue),
+                                 ('_table_name', _table_name),
+                                 ('_scheduler', _scheduler),
+                                 ('_cluster_user', _cluster_user)]))
+    
     return _region, _sqsqueue, _table_name, _scheduler, _cluster_user
 
 
 def setupQueue(region, sqsqueue):
-    print('running setupQueue')
+    log.debug('running setupQueue')
 
     conn = boto.sqs.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
@@ -55,7 +71,7 @@ def setupQueue(region, sqsqueue):
 
 
 def setupDDBTable(region, table_name):
-    print('running setupDDBTable')
+    log.debug('running setupDDBTable')
 
     conn = boto.dynamodb.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
@@ -74,17 +90,17 @@ def setupDDBTable(region, table_name):
 
 
 def loadSchedulerModule(scheduler):
-    print 'running loadSchedulerModule'
-
     scheduler = 'sqswatcher.plugins.' + scheduler
     _scheduler = __import__(scheduler)
     _scheduler = sys.modules[scheduler]
+
+    log.debug("scheduler=%s" % repr(_scheduler))
 
     return _scheduler
 
 
 def pollQueue(scheduler, q, t):
-    print 'running pollQueue'
+    log.debug("startup")
     s = loadSchedulerModule(scheduler)
 
     while True:
@@ -98,15 +114,14 @@ def pollQueue(scheduler, q, t):
                 message_attrs = json.loads(message['Message'])
                 eventType = message_attrs['Event']
 
+                log.info("eventType=%s" % eventType)
                 if eventType == 'autoscaling:TEST_NOTIFICATION':
-                    print eventType
                     q.delete_message(result)
 
                 if eventType != 'autoscaling:TEST_NOTIFICATION':
                     instanceId = message_attrs['EC2InstanceId']
+                    log.info("instanceId=" % instanceId)
                     if eventType == 'cfncluster:COMPUTE_READY':
-                        print eventType, instanceId
-
                         ec2 = boto.connect_ec2()
                         ec2 = boto.ec2.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
@@ -118,9 +133,9 @@ def pollQueue(scheduler, q, t):
                                 hostname = ec2.get_all_instances(instance_ids=instanceId)
 
                                 if not hostname:
-                                    print "Unable to find running instance %s." % instanceId
+                                    log.warning("Unable to find running instance %s." % instanceId)
                                 else:
-				    print "Adding Hostname: %s" % hostname
+				    log.info("Adding Hostname: %s" % hostname)
                                     hostname = hostname[0].instances[0].private_dns_name.split('.')[:1][0]
                                     s.addHost(hostname,cluster_user)
 
@@ -139,12 +154,10 @@ def pollQueue(scheduler, q, t):
                                 else:
                                     raise e
                             except:
-                                print "Unexpected error:", sys.exc_info()[0]
+                                log.critical("Unexpected error:", sys.exc_info()[0])
                                 raise
 
                     elif eventType == 'autoscaling:EC2_INSTANCE_TERMINATE':
-                        print eventType, instanceId
-
                         try:
                             item = t.get_item(consistent=True, instanceId=instanceId)
                             hostname = item['hostname']
@@ -155,9 +168,9 @@ def pollQueue(scheduler, q, t):
                             item.delete()
 
                         except boto.dynamodb2.exceptions.ItemNotFound:
-                            print ("Did not find %s in the metadb\n" % instanceId)
+                            log.error("Did not find %s in the metadb\n" % instanceId)
                         except:
-                            print "Unexpected error:", sys.exc_info()[0]
+                            log.critical("Unexpected error:", sys.exc_info()[0])
                             raise
 
                         q.delete_message(result)
@@ -167,8 +180,7 @@ def pollQueue(scheduler, q, t):
         time.sleep(30)
 
 def main():
-    print('running __main__')
-    print time.ctime()
+    log.info("sqswatcher startup")
     global region, cluster_user
     region, sqsqueue, table_name, scheduler, cluster_user = getConfig()
     q = setupQueue(region, sqsqueue)
