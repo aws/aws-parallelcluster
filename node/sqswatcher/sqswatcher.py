@@ -120,7 +120,7 @@ def pollQueue(scheduler, q, t):
 
                 if eventType != 'autoscaling:TEST_NOTIFICATION':
                     instanceId = message_attrs['EC2InstanceId']
-                    log.info("instanceId=" % instanceId)
+                    log.info("instanceId=%s" % instanceId)
                     if eventType == 'cfncluster:COMPUTE_READY':
                         ec2 = boto.connect_ec2()
                         ec2 = boto.ec2.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
