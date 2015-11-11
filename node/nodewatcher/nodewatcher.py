@@ -96,6 +96,12 @@ def getJobs(s,hostname):
 
     return _jobs
 
+def lockHost(s,hostname,unlock=False):
+    _r = s.lockHost(hostname, unlock)
+
+    time.sleep(15) # allow for some settling
+
+    return _r
 
 def selfTerminate(region, asg, instance_id):
     _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
@@ -116,18 +122,26 @@ def main():
 
     while True:
         time.sleep(60)
-        jobs = getJobs(s, hostname)
-        print jobs
-        if jobs == True:
-            print('Instance has active jobs.')
-            continue
-
         conn = boto.ec2.connect_to_region(region)
         hour_percentile = getHourPercentile(instance_id,conn)
         print('Percent of hour used: %d' % hour_percentile)
 
-        if hour_percentile > 95:
-            selfTerminate(region, asg, instance_id)
+        if hour_percentile < 95:
+            continue
+        
+        jobs = getJobs(s, hostname)
+        if jobs == True:
+            print('Instance has active jobs.')
+        else:
+            # avoid race condition by locking and verifying
+            lockHost(s, hostname)
+            jobs = getJobs(s, hostname)
+            if jobs == True:
+                print ('Instance actually has active jobs.')
+                lockHost(s, hostname, unlock=True)
+                continue
+            else:
+                selfTerminate(region, asg, instance_id)
 
 if __name__ == "__main__":
     main()

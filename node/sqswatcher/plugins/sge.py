@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -30,6 +30,10 @@ def addHost(hostname, cluster_user):
 
     # Adding host as administrative host
     command = ['/opt/sge/bin/lx-amd64/qconf', '-ah', hostname]
+    __runSgeCommand(command)
+
+    # Adding host as submit host
+    command = ['/opt/sge/bin/lx-amd64/qconf', '-as', hostname]
     __runSgeCommand(command)
 
     # Setup template to add execution host
@@ -96,6 +100,10 @@ def removeHost(hostname,cluster_user):
 
     # Removing host as execution host
     command = ['/opt/sge/bin/lx-amd64/qconf', '-de', hostname]
+    __runSgeCommand(command)
+
+    # Removing host as submit host
+    command = ['/opt/sge/bin/lx-amd64/qconf', '-ds', hostname]
     __runSgeCommand(command)
 
     # Removing host as administrative host

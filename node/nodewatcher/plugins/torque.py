@@ -46,3 +46,13 @@ def getJobs(hostname):
         _jobs = True
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    # https://lists.sdsc.edu/pipermail/npaci-rocks-discussion/2007-November/027919.html
+    _mod = unlock and '-c' or '-o'
+    command = ['/opt/torque/bin/pbsnodes', _mod, hostname]
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError:
+        print ("Failed to run %s\n" % command)
+

@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20150803-3 cfncluster-0.0.22",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-xxxxxxxxxx cfncluster-1.0.0-beta",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -40,6 +40,7 @@
         "m3.2xlarge",
         "hi1.4xlarge",
         "g2.2xlarge",
+        "g2.8xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
@@ -89,6 +90,7 @@
         "m3.2xlarge",
         "hi1.4xlarge",
         "g2.2xlarge",
+        "g2.8xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
@@ -192,8 +194,8 @@
       "Description" : "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
       "Type" : "AWS::EC2::VPC::Id"
     },
-    "SSHFrom" : {
-      "Description" : "Lockdown SSH access (default can be accessed from anywhere)",
+    "AccessFrom" : {
+      "Description" : "Lockdown SSH/HTTP access (default can be accessed from anywhere)",
       "Type" : "String",
       "MinLength" : "9",
       "MaxLength" : "18",
@@ -313,7 +315,10 @@
       "Default" : "centos6",
       "ConstraintDescription" : "must be a supported base OS",
       "AllowedValues" : [
-        "centos6"
+        "centos6",
+        "centos7",
+        "alinux",
+        "ubuntu1404"
       ]
     },
     "ScalingThreshold2" : {
@@ -345,8 +350,9 @@
         "sge",
         "openlava",
         "torque",
-        "test",
-        "custom"
+        "slurm",
+        "custom",
+        "test"
       ]
     },
     "SharedDir" : {
@@ -371,6 +377,21 @@
       "Description" : "CloudWatch Logs LogGroup",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "CustomChefRunList" : {
+      "Description" : "Custom run list, which will override the default",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "CustomChefCookbooks" : {
+      "Description" : "URL of custom cookbooks that will override the default",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "ExtraJson" : {
+      "Description" : "Extra json to be added to Chef dna.json",
+      "Type" : "String",
+      "Default" : "{}"
     },
     "Tenancy" : {
       "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
@@ -490,6 +511,30 @@
           "Fn::Equals" : [
             {
               "Ref" : "EBSSnapshotId"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseCustomCookbooks" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "CustomChefCookbooks"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseCustomRunList" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "CustomChefRunList"
             },
             "NONE"
           ]
@@ -712,6 +757,10 @@
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
+      "g2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
       "m3.medium" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
@@ -824,10 +873,6 @@
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
-      "t2.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
       "d2.8xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
@@ -843,6 +888,10 @@
       "d2.xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
+      },
+      "t2.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
       },
       "m4.10xlarge" : {
         "Arch" : "64HVM",
@@ -867,45 +916,54 @@
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-f35e56c3"
+        "centos6" : "ami-f2160193",
+        "alinux" : "ami-02687f63",
+        "ubuntu1404" : "ami-659e8904"
       },
       "eu-central-1" : {
-        "centos6" : "ami-0adcd817"
+        "centos6" : "NA"
       },
       "sa-east-1" : {
-        "centos6" : "ami-1ffb7202"
+        "centos6" : "NA"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-4ed26d4e"
+        "centos6" : "NA"
       },
       "eu-west-1" : {
-        "centos6" : "ami-c05203b7"
+        "centos6" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "ami-f1dd7e9a"
+        "centos6" : "NA"
       },
       "us-west-1" : {
-        "centos6" : "ami-b3956af7"
+        "centos6" : "NA"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-83a1e1b9"
+        "centos6" : "NA"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-76f9f524"
+        "centos6" : "NA"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-43563560"
+        "centos6" : "NA"
       }
     },
-    "ClusterUser" : {
+    "OSFeatures" : {
       "centos6" : {
-        "User" : "ec2-user"
+        "User" : "centos",
+        "RootDevice" : "/dev/sda1"
+      },
+      "centos7" : {
+        "User" : "centos",
+        "RootDevice" : "/dev/sda1"
       },
       "alinux" : {
-        "User" : "ec2-user"
+        "User" : "ec2-user",
+        "RootDevice" : "/dev/xvda"
       },
-      "ubuntu" : {
-        "User" : "ubuntu"
+      "ubuntu1404" : {
+        "User" : "ubuntu",
+        "RootDevice" : "/dev/sda1"
       }
     },
     "AWSRegion2Capabilites" : {
@@ -1377,7 +1435,15 @@
             "VirtualName" : "ephemeral23"
           },
           {
-            "DeviceName" : "/dev/sda1",
+            "DeviceName" : {
+              "Fn::FindInMap" : [
+                "OSFeatures",
+                {
+                  "Ref" : "BaseOS"
+                },
+                "RootDevice"
+              ]
+            },
             "Ebs" : {
               "VolumeSize" : {
                 "Ref" : "MasterRootVolumeSize"
@@ -1401,78 +1467,6 @@
             "Value" : "Master"
           }
         ],
-        "UserData" : {
-          "Fn::Base64" : {
-            "Fn::Join" : [
-              "",
-              [
-                "#!/bin/bash\n\n",
-                "function error_exit\n",
-                "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=MasterServer --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n",
-                "  exit 1\n",
-                "}\n",
-                "proxy=",
-                {
-                  "Ref" : "ProxyServer"
-                },
-                "\n",
-                "if [ \"$proxy\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                "else\n",
-                "  proxy_args=\"\"\n",
-                "fi\n",
-                "cfn-init ${proxy_args} -s ",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " -v -c default -r MasterServer --region ",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
-                "cfn_cwl=",
-                {
-                  "Fn::If" : [
-                    "CloudWatchLogs",
-                    "true",
-                    "false"
-                  ]
-                },
-                "\n",
-                "if [ \"$cfn_cwl\" == \"true\" ]; then\n",
-                "# Setup CloudWatch Logs agent\n",
-                "python /root/awslogs-agent-setup.py -n -r ",
-                {
-                  "Ref" : "CWLRegion"
-                },
-                " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
-                "fi\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=MasterServer --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n",
-                "# End of file\n"
-              ]
-            ]
-          }
-        },
         "NetworkInterfaces" : [
           {
             "NetworkInterfaceId" : {
@@ -1525,6 +1519,63 @@
         },
         "Tenancy" : {
           "Ref" : "Tenancy"
+        },
+        "UserData" : {
+          "Fn::Base64" : {
+            "Fn::Join" : [
+              "",
+              [
+                "#!/bin/bash\n\n",
+                "function error_exit\n",
+                "{\n",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "  exit 1\n",
+                "}\n",
+                "proxy=",
+                {
+                  "Ref" : "ProxyServer"
+                },
+                "\n",
+                "if [ \"$proxy\" != \"NONE\" ]; then\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                "else\n",
+                "  proxy_args=\"\"\n",
+                "fi\n",
+                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                "which cfn-init 2>/dev/null || ( wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "cfn-init ${proxy_args} -s ",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " -v -c default -r MasterServer --region ",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "# End of file\n"
+              ]
+            ]
+          }
         }
       },
       "Metadata" : {
@@ -1533,218 +1584,182 @@
           "configSets" : {
             "default" : [
               "deployConfigFiles",
-              "runBootAsMaster"
+              "getCookbooks",
+              "chefPrepEnv",
+              "shellRunPreInstall",
+              "chefConfig",
+              "shellRunPostInstall",
+              "shellForkClusterReadyInstall"
             ]
           },
           "deployConfigFiles" : {
             "files" : {
-              "/tmp/cwlogs/cfn-logs.conf" : {
+              "/tmp/dna.json" : {
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root",
                 "content" : {
-                  "Fn::If" : [
-                    "CloudWatchLogs",
-                    {
-                      "Fn::Join" : [
-                        "",
-                        [
-                          "[general]\n",
-                          "state_file= /var/awslogs/agent-state\n",
-                          "[/var/log/cloud-init.log]\n",
-                          "file = /var/log/cloud-init.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cloud-init.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cloud-init-output.log]\n",
-                          "file = /var/log/cloud-init-output.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cloud-init-output.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cfn-init.log]\n",
-                          "file = /var/log/cfn-init.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cfn-init.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cfn-wire.log]\n",
-                          "file = /var/log/cfn-wire.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cfn-wire.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n"
-                        ]
+                  "cfncluster" : {
+                    "stack_name" : {
+                      "Ref" : "AWS::StackName"
+                    },
+                    "cfn_preinstall" : {
+                      "Ref" : "PreInstallScript"
+                    },
+                    "cfn_preinstall_args" : {
+                      "Ref" : "PreInstallArgs"
+                    },
+                    "cfn_postinstall" : {
+                      "Ref" : "PostInstallScript"
+                    },
+                    "cfn_postinstall_args" : {
+                      "Ref" : "PostInstallArgs"
+                    },
+                    "cfn_region" : {
+                      "Ref" : "AWS::Region"
+                    },
+                    "cfn_volume" : {
+                      "Ref" : "SharedVolume"
+                    },
+                    "cfn_scheduler" : {
+                      "Ref" : "Scheduler"
+                    },
+                    "cfn_encrypted_ephemeral" : {
+                      "Ref" : "EncryptedEphemeral"
+                    },
+                    "cfn_ephemeral_dir" : {
+                      "Ref" : "EphemeralDir"
+                    },
+                    "cfn_shared_dir" : {
+                      "Ref" : "SharedDir"
+                    },
+                    "cfn_proxy" : {
+                      "Ref" : "ProxyServer"
+                    },
+                    "cfn_node_type" : "MasterServer",
+                    "cfn_cluster_user" : {
+                      "Fn::FindInMap" : [
+                        "OSFeatures",
+                        {
+                          "Ref" : "BaseOS"
+                        },
+                        "User"
                       ]
                     },
-                    "\n"
-                  ]
-                },
-                "mode" : "000444",
-                "owner" : "root",
-                "group" : "root"
+                    "cfn_ddb_table" : {
+                      "Ref" : "DynamoDBTable"
+                    },
+                    "cfn_sqs_queue" : {
+                      "Fn::GetAtt" : [
+                        "SQS",
+                        "QueueName"
+                      ]
+                    }
+                  },
+                  "run_list" : {
+                    "Fn::If" : [
+                      "UseCustomRunList",
+                      {
+                        "Ref" : "CustomChefRunList"
+                      },
+                      {
+                        "Fn::Join" : [
+                          "",
+                          [
+                            "recipe[cfncluster::",
+                            {
+                              "Ref" : "Scheduler"
+                            },
+                            "_config]"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                }
               },
-              "/opt/cfncluster/cfnconfig" : {
+              "/etc/chef/client.rb" : {
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root",
                 "content" : {
                   "Fn::Join" : [
                     "",
                     [
-                      "stack_name=",
-                      {
-                        "Ref" : "AWS::StackName"
-                      },
-                      "\n",
-                      "cfn_preinstall=",
-                      {
-                        "Ref" : "PreInstallScript"
-                      },
-                      "\n",
-                      "cfn_preinstall_args=\"",
-                      {
-                        "Ref" : "PreInstallArgs"
-                      },
-                      "\"\n",
-                      "cfn_postinstall=",
-                      {
-                        "Ref" : "PostInstallScript"
-                      },
-                      "\n",
-                      "cfn_postinstall_args=\"",
-                      {
-                        "Ref" : "PostInstallArgs"
-                      },
-                      "\"\n",
-                      "cfn_region=",
-                      {
-                        "Ref" : "AWS::Region"
-                      },
-                      "\n",
-                      "cfn_volume=",
-                      {
-                        "Ref" : "SharedVolume"
-                      },
-                      "\n",
-                      "cfn_scheduler=",
-                      {
-                        "Ref" : "Scheduler"
-                      },
-                      "\n",
-                      "cfn_encrypted_ephemeral=",
-                      {
-                        "Ref" : "EncryptedEphemeral"
-                      },
-                      "\n",
-                      "cfn_ephemeral_dir=",
-                      {
-                        "Ref" : "EphemeralDir"
-                      },
-                      "\n",
-                      "cfn_shared_dir=",
-                      {
-                        "Ref" : "SharedDir"
-                      },
-                      "\n",
-                      "cfn_proxy=",
-                      {
-                        "Ref" : "ProxyServer"
-                      },
-                      "\n",
-                      "cfn_node_type=MasterServer\n",
-                      "cfn_cluster_user=",
-                      {
-                        "Fn::FindInMap" : [
-                          "ClusterUser",
-                          {
-                            "Ref" : "BaseOS"
-                          },
-                          "User"
-                        ]
-                      },
-                      "\n"
+                      "cookbook_path ['/etc/chef/cookbooks']"
                     ]
                   ]
-                },
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root"
+                }
               },
-              "/etc/sqswatcher.cfg" : {
-                "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "[sqswatcher]\n",
-                      "region = ",
-                      {
-                        "Ref" : "AWS::Region"
-                      },
-                      "\n",
-                      "sqsqueue = ",
-                      {
-                        "Fn::GetAtt" : [
-                          "SQS",
-                          "QueueName"
-                        ]
-                      },
-                      "\n",
-                      "table_name = ",
-                      {
-                        "Ref" : "DynamoDBTable"
-                      },
-                      "\n",
-                      "scheduler = ",
-                      {
-                        "Ref" : "Scheduler"
-                      },
-                      "\n",
-                      "cluster_user = ",
-                      {
-                        "Fn::FindInMap" : [
-                          "ClusterUser",
-                          {
-                            "Ref" : "BaseOS"
-                          },
-                          "User"
-                        ]
-                      },
-                      "\n"
-                    ]
-                  ]
-                },
+              "/tmp/extra.json" : {
                 "mode" : "000644",
                 "owner" : "root",
-                "group" : "root"
+                "group" : "root",
+                "content" : {
+                  "Ref" : "ExtraJson"
+                }
+              }
+            },
+            "commands" : {
+              "mkdir" : {
+                "command" : "mkdir -p /etc/chef/ohai/hints"
               },
-              "/etc/cfncluster/cfncluster_supervisord.conf" : {
-                "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "[program:sqswatcher]\n",
-                      "command = /usr/bin/sqswatcher\n"
-                    ]
-                  ]
-                },
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root"
+              "touch" : {
+                "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              },
+              "jq" : {
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json"
               }
             }
           },
-          "runBootAsMaster" : {
+          "getCookbooks" : {
+            "sources" : {
+              "/tmp/cookbooks" : "https://s3-us-west-2.amazonaws.com/cfncluster-us-west-2/cookbooks/cfncluster-cookbook-0.1.0.tgz"
+            },
             "commands" : {
-              "bootasmaster" : {
-                "command" : "/opt/cfncluster/scripts/boot_as_master"
+              "berk" : {
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "cwd" : "/tmp/cookbooks",
+                "env" : {
+                  "HOME" : "/tmp"
+                }
+              }
+            }
+          },
+          "chefPrepEnv" : {
+            "commands" : {
+              "chef" : {
+                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "cwd" : "/etc/chef"
+              }
+            }
+          },
+          "shellRunPreInstall" : {
+            "commands" : {
+              "runpreinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+              }
+            }
+          },
+          "chefConfig" : {
+            "commands" : {
+              "chef" : {
+                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
+                "cwd" : "/etc/chef"
+              }
+            }
+          },
+          "shellRunPostInstall" : {
+            "commands" : {
+              "runpostinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+              }
+            }
+          },
+          "shellForkClusterReadyInstall" : {
+            "commands" : {
+              "clusterreadyinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           }
@@ -1870,6 +1885,43 @@
         "InstanceType" : {
           "Ref" : "ComputeInstanceType"
         },
+        "KeyName" : {
+          "Ref" : "KeyName"
+        },
+        "IamInstanceProfile" : {
+          "Ref" : "RootInstanceProfile"
+        },
+        "SpotPrice" : {
+          "Fn::If" : [
+            "UseSpotInstances",
+            {
+              "Ref" : "SpotPrice"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "ImageId" : {
+          "Fn::If" : [
+            "UseCustomAMI",
+            {
+              "Ref" : "CustomAMI"
+            },
+            {
+              "Fn::FindInMap" : [
+                "AWSRegionOS2AMI",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                {
+                  "Ref" : "BaseOS"
+                }
+              ]
+            }
+          ]
+        },
+        "InstanceMonitoring" : "false",
         "BlockDeviceMappings" : [
           {
             "DeviceName" : "/dev/xvdba",
@@ -1968,7 +2020,15 @@
             "VirtualName" : "ephemeral23"
           },
           {
-            "DeviceName" : "/dev/sda1",
+            "DeviceName" : {
+              "Fn::FindInMap" : [
+                "OSFeatures",
+                {
+                  "Ref" : "BaseOS"
+                },
+                "RootDevice"
+              ]
+            },
             "Ebs" : {
               "VolumeSize" : {
                 "Ref" : "ComputeRootVolumeSize"
@@ -1977,15 +2037,23 @@
             }
           }
         ],
-        "KeyName" : {
-          "Ref" : "KeyName"
+        "PlacementTenancy" : {
+          "Fn::If" : [
+            "UseDedicatedTenancy",
+            {
+              "Ref" : "Tenancy"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
         },
         "UserData" : {
           "Fn::Base64" : {
             "Fn::Join" : [
               "",
               [
-                "#!/bin/bash\n",
+                "#!/bin/bash\n\n",
                 "function error_exit\n",
                 "{\n",
                 "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
@@ -2012,34 +2080,18 @@
                 "else\n",
                 "  proxy_args=\"\"\n",
                 "fi\n",
-                "cfn-init ${proxy_args} -v -s ",
+                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                "which cfn-init 2>/dev/null || ( wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "cfn-init ${proxy_args} -s ",
                 {
                   "Ref" : "AWS::StackName"
                 },
-                " -c default -r ComputeServerLaunchConfig ",
-                "         --region ",
+                " -v -c default -r ComputeServerLaunchConfig --region ",
                 {
                   "Ref" : "AWS::Region"
                 },
-                " || error_exit 'Failed to run cfn-init'\n",
-                "cfn_cwl=",
-                {
-                  "Fn::If" : [
-                    "CloudWatchLogs",
-                    "true",
-                    "false"
-                  ]
-                },
-                "\n",
-                "if [ \"$cfn_cwl\" == \"true\" ]; then\n",
-                "# Setup CloudWatch Logs agent\n",
-                "python /root/awslogs-agent-setup.py -n -r ",
-                {
-                  "Ref" : "CWLRegion"
-                },
-                " -c /tmp/cwlogs/cfn-logs.conf || error_exit 'Failed to run CloudWatch Logs agent setup'\n",
-                "fi\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"Compute setup complete\" --stack=",
+                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                 {
                   "Ref" : "AWS::StackName"
                 },
@@ -2047,55 +2099,11 @@
                 {
                   "Ref" : "AWS::Region"
                 },
-                "\n"
+                "\n",
+                "# End of file\n"
               ]
             ]
           }
-        },
-        "IamInstanceProfile" : {
-          "Ref" : "RootInstanceProfile"
-        },
-        "SpotPrice" : {
-          "Fn::If" : [
-            "UseSpotInstances",
-            {
-              "Ref" : "SpotPrice"
-            },
-            {
-              "Ref" : "AWS::NoValue"
-            }
-          ]
-        },
-        "ImageId" : {
-          "Fn::If" : [
-            "UseCustomAMI",
-            {
-              "Ref" : "CustomAMI"
-            },
-            {
-              "Fn::FindInMap" : [
-                "AWSRegionOS2AMI",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                {
-                  "Ref" : "BaseOS"
-                }
-              ]
-            }
-          ]
-        },
-        "InstanceMonitoring" : "false",
-        "PlacementTenancy" : {
-          "Fn::If" : [
-            "UseDedicatedTenancy",
-            {
-              "Ref" : "Tenancy"
-            },
-            {
-              "Ref" : "AWS::NoValue"
-            }
-          ]
         }
       },
       "Metadata" : {
@@ -2104,197 +2112,187 @@
           "configSets" : {
             "default" : [
               "deployConfigFiles",
-              "runBootAsCompute"
+              "getCookbooks",
+              "chefPrepEnv",
+              "shellRunPreInstall",
+              "chefConfig",
+              "shellRunPostInstall",
+              "shellForkClusterReadyInstall",
+              "signalComputeReady"
             ]
           },
           "deployConfigFiles" : {
             "files" : {
-              "/opt/cfncluster/cfnconfig" : {
-                "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "cfn_scheduler=",
-                      {
-                        "Ref" : "Scheduler"
-                      },
-                      "\n",
-                      "cfn_region=",
-                      {
-                        "Ref" : "AWS::Region"
-                      },
-                      "\n",
-                      "cfn_preinstall=",
-                      {
-                        "Ref" : "PreInstallScript"
-                      },
-                      "\n",
-                      "cfn_preinstall_args=\"",
-                      {
-                        "Ref" : "PreInstallArgs"
-                      },
-                      "\"\n",
-                      "cfn_postinstall=",
-                      {
-                        "Ref" : "PostInstallScript"
-                      },
-                      "\n",
-                      "cfn_postinstall_args=\"",
-                      {
-                        "Ref" : "PostInstallArgs"
-                      },
-                      "\"\n",
-                      "cfn_sqs_url=",
-                      {
-                        "Ref" : "SQS"
-                      },
-                      "\n",
-                      "cfn_proxy=",
-                      {
-                        "Ref" : "ProxyServer"
-                      },
-                      "\n",
-                      "cfn_master=",
-                      {
-                        "Fn::GetAtt" : [
-                          "MasterServer",
-                          "PrivateDnsName"
-                        ]
-                      },
-                      "\n",
-                      "cfn_node_type=ComputeFleet\n",
-                      "cfn_ephemeral_dir=",
-                      {
-                        "Ref" : "EphemeralDir"
-                      },
-                      "\n",
-                      "cfn_shared_dir=",
-                      {
-                        "Ref" : "SharedDir"
-                      },
-                      "\n",
-                      "cfn_encrypted_ephemeral=",
-                      {
-                        "Ref" : "EncryptedEphemeral"
-                      },
-                      "\n",
-                      "cfn_cluster_user=",
-                      {
-                        "Fn::FindInMap" : [
-                          "ClusterUser",
-                          {
-                            "Ref" : "BaseOS"
-                          },
-                          "User"
-                        ]
-                      },
-                      "\n"
-                    ]
-                  ]
-                },
+              "/tmp/dna.json" : {
                 "mode" : "000644",
                 "owner" : "root",
-                "group" : "root"
-              },
-              "/etc/nodewatcher.cfg" : {
+                "group" : "root",
                 "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "[nodewatcher]\n",
-                      "region = ",
-                      {
-                        "Ref" : "AWS::Region"
-                      },
-                      "\n",
-                      "scheduler = ",
-                      {
-                        "Ref" : "Scheduler"
-                      },
-                      "\n"
-                    ]
-                  ]
-                },
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root"
-              },
-              "/etc/cfncluster/cfncluster_supervisord.conf" : {
-                "content" : {
-                  "Fn::Join" : [
-                    "",
-                    [
-                      "[program:nodewatcher]\n",
-                      "command = /usr/bin/nodewatcher\n"
-                    ]
-                  ]
-                },
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root"
-              },
-              "/tmp/cwlogs/cfn-logs.conf" : {
-                "content" : {
-                  "Fn::If" : [
-                    "CloudWatchLogs",
-                    {
-                      "Fn::Join" : [
-                        "",
-                        [
-                          "[general]\n",
-                          "state_file= /var/awslogs/agent-state\n",
-                          "[/var/log/cloud-init.log]\n",
-                          "file = /var/log/cloud-init.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cloud-init.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cloud-init-output.log]\n",
-                          "file = /var/log/cloud-init-output.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cloud-init-output.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cfn-init.log]\n",
-                          "file = /var/log/cfn-init.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cfn-init.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n",
-                          "[/var/log/cfn-wire.log]\n",
-                          "file = /var/log/cfn-wire.log\n",
-                          "log_group_name = ",
-                          {
-                            "Ref" : "CWLLogGroup"
-                          },
-                          "\n",
-                          "log_stream_name = {instance_id}/cfn-wire.log\n",
-                          "datetime_format = %d/%b/%Y:%H:%M:%S\n"
-                        ]
+                  "cfncluster" : {
+                    "stack_name" : {
+                      "Ref" : "AWS::StackName"
+                    },
+                    "cfn_preinstall" : {
+                      "Ref" : "PreInstallScript"
+                    },
+                    "cfn_preinstall_args" : {
+                      "Ref" : "PreInstallArgs"
+                    },
+                    "cfn_postinstall" : {
+                      "Ref" : "PostInstallScript"
+                    },
+                    "cfn_postinstall_args" : {
+                      "Ref" : "PostInstallArgs"
+                    },
+                    "cfn_region" : {
+                      "Ref" : "AWS::Region"
+                    },
+                    "cfn_scheduler" : {
+                      "Ref" : "Scheduler"
+                    },
+                    "cfn_encrypted_ephemeral" : {
+                      "Ref" : "EncryptedEphemeral"
+                    },
+                    "cfn_ephemeral_dir" : {
+                      "Ref" : "EphemeralDir"
+                    },
+                    "cfn_shared_dir" : {
+                      "Ref" : "SharedDir"
+                    },
+                    "cfn_proxy" : {
+                      "Ref" : "ProxyServer"
+                    },
+                    "cfn_sqs_queue" : {
+                      "Ref" : "SQS"
+                    },
+                    "cfn_master" : {
+                      "Fn::GetAtt" : [
+                        "MasterServer",
+                        "PrivateDnsName"
                       ]
                     },
-                    "\n"
-                  ]
-                },
-                "mode" : "000444",
+                    "cfn_node_type" : "ComputeFleet",
+                    "cfn_cluster_user" : {
+                      "Fn::FindInMap" : [
+                        "OSFeatures",
+                        {
+                          "Ref" : "BaseOS"
+                        },
+                        "User"
+                      ]
+                    }
+                  },
+                  "run_list" : {
+                    "Fn::If" : [
+                      "UseCustomRunList",
+                      {
+                        "Ref" : "CustomChefRunList"
+                      },
+                      {
+                        "Fn::Join" : [
+                          "",
+                          [
+                            "recipe[cfncluster::",
+                            {
+                              "Ref" : "Scheduler"
+                            },
+                            "_config]"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "/etc/chef/client.rb" : {
+                "mode" : "000644",
                 "owner" : "root",
-                "group" : "root"
+                "group" : "root",
+                "content" : {
+                  "Fn::Join" : [
+                    "",
+                    [
+                      "cookbook_path ['/etc/chef/cookbooks']"
+                    ]
+                  ]
+                }
+              },
+              "/tmp/extra.json" : {
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root",
+                "content" : {
+                  "Ref" : "ExtraJson"
+                }
+              }
+            },
+            "commands" : {
+              "mkdir" : {
+                "command" : "mkdir -p /etc/chef/ohai/hints"
+              },
+              "touch" : {
+                "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              },
+              "jq" : {
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json"
               }
             }
           },
-          "runBootAsCompute" : {
+          "getCookbooks" : {
+            "sources" : {
+              "/tmp/cookbooks" : "https://s3-us-west-2.amazonaws.com/cfncluster-us-west-2/cookbooks/cfncluster-cookbook-0.1.0.tgz"
+            },
             "commands" : {
-              "bootascompute" : {
-                "command" : "/opt/cfncluster/scripts/boot_as_compute"
+              "berk" : {
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "cwd" : "/tmp/cookbooks",
+                "env" : {
+                  "HOME" : "/tmp"
+                }
+              }
+            }
+          },
+          "chefPrepEnv" : {
+            "commands" : {
+              "chef" : {
+                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "cwd" : "/etc/chef"
+              }
+            }
+          },
+          "shellRunPreInstall" : {
+            "commands" : {
+              "runpreinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+              }
+            }
+          },
+          "chefConfig" : {
+            "commands" : {
+              "chef" : {
+                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
+                "cwd" : "/etc/chef"
+              }
+            }
+          },
+          "shellRunPostInstall" : {
+            "commands" : {
+              "runpostinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+              }
+            }
+          },
+          "shellForkClusterReadyInstall" : {
+            "commands" : {
+              "clusterreadyinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+              }
+            }
+          },
+          "signalComputeReady" : {
+            "commands" : {
+              "compute_ready" : {
+                "command" : "/opt/cfncluster/scripts/compute_ready"
               }
             }
           }
@@ -2473,14 +2471,16 @@
             "FromPort" : "22",
             "ToPort" : "22",
             "CidrIp" : {
-              "Ref" : "SSHFrom"
+              "Ref" : "AccessFrom"
             }
           },
           {
             "IpProtocol" : "tcp",
             "FromPort" : "80",
             "ToPort" : "80",
-            "CidrIp" : "0.0.0.0/0"
+            "CidrIp" : {
+              "Ref" : "AccessFrom"
+            }
           }
         ]
       }

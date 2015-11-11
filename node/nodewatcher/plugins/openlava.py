@@ -28,3 +28,13 @@ def getJobs(hostname):
         _jobs = True
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    # http://wp.auburn.edu/morgaia/?p=103
+    _mod = unlock and 'hopen' or 'hclose'
+    command = ['/opt/openlava/bin/badmin', _mod, hostname]
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError:
+        print ("Failed to run %s\n" % command)
+

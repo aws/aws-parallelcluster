@@ -175,7 +175,8 @@ class CfnClusterConfig:
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('SSHFrom', None), additional_sg=('AdditionalSG','VPCSecurityGroup'))
+                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
+                                  additional_sg=('AdditionalSG','VPCSecurityGroup'))
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
@@ -205,7 +206,8 @@ class CfnClusterConfig:
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
                                       cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
                                       ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
-                                      master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None)
+                                      master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
+                                      base_os=('BaseOS',None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
