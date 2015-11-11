@@ -102,7 +102,8 @@ def selfTerminate(region, asg, instance_id):
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
     _asg = _as_conn.get_all_groups(names=[asg])[0]
     _capacity = _asg.desired_capacity
-    if _capacity > 0:
+    _min_size = _asg.min_size
+    if _capacity > _min_size:
         _as_conn.terminate_instance(instance_id, decrement_capacity=True)
 
 def main():

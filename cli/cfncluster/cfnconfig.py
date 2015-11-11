@@ -175,7 +175,8 @@ class CfnClusterConfig:
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('SSHFrom', None), additional_sg=('AdditionalSG','VPCSecurityGroup'))
+                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
+                                  additional_sg=('AdditionalSG','VPCSecurityGroup'))
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
@@ -203,7 +204,9 @@ class CfnClusterConfig:
                                       encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
-                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),
+                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
+                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
+                                      master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
                                       base_os=('BaseOS',None)
                                       )
 
@@ -235,7 +238,7 @@ class CfnClusterConfig:
 
         # Dictionary list of all EBS options
         self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId','EC2Snapshot'), volume_type=('VolumeType',None),
-                                  volume_size=('VolumeSize',None),
+                                  volume_size=('VolumeSize',None), ebs_kms_key_id=('EBSKMSKeyId', None),
                                   volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None))
 
         try:
@@ -271,7 +274,7 @@ class CfnClusterConfig:
         self.__scaling_options = dict(scaling_threshold=('ScalingThreshold',None), scaling_period=('ScalingPeriod',None),
                                       scaling_evaluation_periods=('ScalingEvaluationPeriods',None),
                                       scaling_adjustment=('ScalingAdjustment',None),scaling_adjustment2=('ScalingAdjustment2',None),
-                                      scaling_cooldonw=('ScalingCooldown',None),scaling_threshold2=('ScalingThreshold2',None))
+                                      scaling_cooldown=('ScalingCooldown',None),scaling_threshold2=('ScalingThreshold2',None))
 
         try:
             if self.__scaling_section:

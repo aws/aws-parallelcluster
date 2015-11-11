@@ -123,7 +123,9 @@ maintain_initial_size
 """""""""""""""""""""
 Boolean flag to set autoscaling group to maintain initial size.
 
-If set to true, the autoscaling group can scale down to 0 compute instances if there are no jobs for a period of time. 
+If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
+
+Setting to false allows the Auto Scaling group to scale down to 0 members, so resources will not sit idle when they aren't needed.
 
 Defaults to false for the default template. ::
 
@@ -150,6 +152,8 @@ spot_price
 If cluster_type is set to spot, the maximum spot price for the ComputeFleet. ::
 
     spot_price = 0.00
+
+.. _custom_ami_section:
 
 custom_ami
 """"""""""
@@ -261,6 +265,22 @@ Defaults to false in default template. ::
 
     encrypted_ephemeral = false
 
+master_root_volume_size
+"""""""""""""""""""""""
+MasterServer root volume size in GB. (AMI must support growroot)
+
+Defaults to 10 in default template. ::
+
+    master_root_volume_size = 10
+
+compute_root_volume_size
+"""""""""""""""""""""""
+ComputeFleet root volume size in GB. (AMI must support growroot)
+
+Defaults to 10 in default template. ::
+
+    compute_root_volume_size = 10
+
 base_os
 """""""
 OS type used in the cluster
@@ -301,13 +321,13 @@ See :ref:`EBS Section <ebs_section>`. ::
 
     ebs_settings = custom
 
-scaling
-"""""""
+scaling_settings
+""""""""""""""""
 Settings section relation to scaling
 
 See :ref:`Scaling Section <scaling_section>`. ::
 
-    scaling = custom
+    scaling_settings = custom
 
 .. _vpc_section:
 
@@ -349,11 +369,11 @@ Defaults to NONE in the default template. ::
 
     additional_sg = sg-xxxxxx
 
-master_subnet_id
+compute_subnet_id
 """"""""""""""""
 ID of an existing subnet you want to provision the compute nodes into. ::
 
-    master_subnet_id = subnet-xxxxxx
+    compute_subnet_id = subnet-xxxxxx
 
 compute_subnet_cidr
 """""""""""""""""""

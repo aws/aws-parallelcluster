@@ -1,0 +1,8 @@
+List of contributors:
+
+ - Dougal Ballantyne - dougalb at amazon dot com
+ - Adam Boeglin - boeglina at amazon dot com
+
+ - Kenneth Daily - kmdaily at gmail dot com
+ - John Lilley - johnbot at ltech dot edu
+ - Nelson R Monserrate - MonserrateNelson at JohnDeere dot com

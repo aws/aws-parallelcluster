@@ -4,10 +4,10 @@
    contain the root `toctree` directive.
 
 
-cfncluster
+CfnCluster
 ##########
 
-cfncluster is a framework that deploys and maintains High Performance Clusters (HPC) on AWS. It is reasonably agnostic to what the cluster is for and can easily be extended to support different frameworks. The CLI is stateless, everything is done using CloudFormation or resources within AWS.
+CfnCluster ("cloud formation cluster") is a framework that deploys and maintains high performance computing clusters on Amazon Web Services (AWS). Developed by AWS, CfnCluster facilitates both quick start proof of concepts (POCs) and production deployments. CfnCluster supports many different types of clustered applications and can easily be extended to support different frameworks. Download CfnCluster today to see how CfnCluster's command line interface leverages AWS CloudFormation templates and other AWS cloud services.
 
 .. toctree::
     :maxdepth: 2
@@ -21,23 +21,23 @@ cfncluster is a framework that deploys and maintains High Performance Clusters (
 Getting Started
 ---------------
 
-If you've never used ``cfncluster`` before, you should read the :doc:`Getting Started with cfncluster <getting_started>` guide to get familiar with ``cfncluster`` & its usage.
+If you've never used ``CfnCluster`` before, you should read the :doc:`Getting Started with cfncluster <getting_started>` guide to get familiar with ``cfncluster`` & its usage.
 
 Additional Docs
 ---------------
 
 * :doc:`pre & post install actions <pre_post_install>`
-* :doc:`cfncluster auto-scaling <autoscaling>`
-* :doc:`AWS services used in cfncluster <aws_services>`
-* :doc:`cfncluster networking configurations <networking>`
+* :doc:`CfnCluster auto-scaling <autoscaling>`
+* :doc:`AWS services used in CfnCluster <aws_services>`
+* :doc:`CfnCluster networking configurations <networking>`
 * :doc:`working with S3 <s3_resources>`
 
 Additional Resources
 --------------------
 
-* `cfncluster Source Repository`_
-* `cfncluster Issue Tracker`_
-* `cfncluster Webcast - HPC Scalability in the Cloud`_
+* `CfnCluster Source Repository`_
+* `CfnCluster Issue Tracker`_
+* `CfnCluster Webcast - HPC Scalability in the Cloud`_
 
 .. _cfncluster Issue Tracker: https://github.com/awslabs/cfncluster/issues
 .. _cfncluster Source Repository: https://github.com/awslabs/cfncluster

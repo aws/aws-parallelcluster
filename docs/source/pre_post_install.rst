@@ -3,7 +3,7 @@
 Custom Bootstrap Actions
 ========================
 
-cfncluster can execute arbritary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supppoted by the cluster OS, typically `bash` or `python`. 
+CfnCluster can execute arbritary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supppoted by the cluster OS, typically `bash` or `python`. 
 
 pre-install actions are called before any cluster deployment bootstrap such as configuring NAT, EBS and the scheduler. Typical pre-install actions may include modifying storage, adding extra users or packages. 
 
@@ -50,7 +50,7 @@ The following are some steps to create a simple post install script that install
 
 ``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
 
-3. Update cfncluster config to include the new post install action
+3. Update CfnCluster config to include the new post install action
 
 ::
 

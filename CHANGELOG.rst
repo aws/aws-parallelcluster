@@ -2,6 +2,35 @@
 CHANGELOG
 =========
 
+0.0.22
+======
+* updates:``ami``: Pulled latest CentOS6 errata
+* feature:``cfncluster``: Support for specifiying MasterServer and ComputeFleet root volume size
+* bugfix:``cfncluster-node``: Fix for SGE parallel job detection 
+* bugfix:``ami``: Removed ZFS packages
+* bugfix:``cfncluster-node``: Fix torque node additon with pbs_server restart
+* updates:``ami``: Updated Chef client to 12.4.1 + berkshelf
+* bugfix:``cfncluster``: Only count pending jobs with status 'qw' (Kenneth Daily <kmdaily@gmail.com>)
+* bugfix::``cli``: Updated example config file (John Lilley <johnbot@caltech.edu>)
+* bugfix::``cli``: Fixed typo on scaling cooldown property (Nelson R Monserrate <MonserrateNelson@JohnDeere.com>)
+
+0.0.21
+=======
+* feature:``cfncluster``: Support for dedicated tenancy
+* feature:``cfncluster``: Support for customer provided KMS keys (EBS and ephemeral)
+* updates:``ami``: Pulled latest CentOS6 errata
+* feature:``cfncluster``: Support for M4 instances
+
+0.0.20
+======
+* feature:``cfncluster``: Support for D2 instances
+* updates:``ami``: Pulled latest CentOS6 errata 
+* updates:``ami``: Pulled latest cfncluster-node package
+* updates:``ami``: Pulled latest ec2-udev-rules package
+* updates:``ami``: Pulled latest NVIDIA driver 346.47
+* updates:``ami``: Removed cfncluster-kernel repo and packages
+* updates:``ami``: Updated Chef client to 12.2.1 + berkshelf
+
 0.0.19
 ======
 * feature:``cli``: Added configure command; easy config setup

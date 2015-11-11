@@ -194,8 +194,8 @@
       "Description" : "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
       "Type" : "AWS::EC2::VPC::Id"
     },
-    "SSHFrom" : {
-      "Description" : "Lockdown SSH access (default can be accessed from anywhere)",
+    "AccessFrom" : {
+      "Description" : "Lockdown SSH/HTTP access (default can be accessed from anywhere)",
       "Type" : "String",
       "MinLength" : "9",
       "MaxLength" : "18",
@@ -948,18 +948,22 @@
         "centos6" : "NA"
       }
     },
-    "ClusterUser" : {
+    "OSFeatures" : {
       "centos6" : {
-        "User" : "centos"
+        "User" : "centos",
+        "RootDevice" : "/dev/sda1"
       },
       "centos7" : {
-        "User" : "centos"
+        "User" : "centos",
+        "RootDevice" : "/dev/sda1"
       },
       "alinux" : {
-        "User" : "ec2-user"
+        "User" : "ec2-user",
+        "RootDevice" : "/dev/xvda"
       },
       "ubuntu1404" : {
-        "User" : "ubuntu"
+        "User" : "ubuntu",
+        "RootDevice" : "/dev/sda1"
       }
     },
     "AWSRegion2Capabilites" : {
@@ -1431,7 +1435,15 @@
             "VirtualName" : "ephemeral23"
           },
           {
-            "DeviceName" : "/dev/sda1",
+            "DeviceName" : {
+              "Fn::FindInMap" : [
+                "OSFeatures",
+                {
+                  "Ref" : "BaseOS"
+                },
+                "RootDevice"
+              ]
+            },
             "Ebs" : {
               "VolumeSize" : {
                 "Ref" : "MasterRootVolumeSize"
@@ -1627,7 +1639,7 @@
                     "cfn_node_type" : "MasterServer",
                     "cfn_cluster_user" : {
                       "Fn::FindInMap" : [
-                        "ClusterUser",
+                        "OSFeatures",
                         {
                           "Ref" : "BaseOS"
                         },
@@ -2008,7 +2020,15 @@
             "VirtualName" : "ephemeral23"
           },
           {
-            "DeviceName" : "/dev/sda1",
+            "DeviceName" : {
+              "Fn::FindInMap" : [
+                "OSFeatures",
+                {
+                  "Ref" : "BaseOS"
+                },
+                "RootDevice"
+              ]
+            },
             "Ebs" : {
               "VolumeSize" : {
                 "Ref" : "ComputeRootVolumeSize"
@@ -2154,7 +2174,7 @@
                     "cfn_node_type" : "ComputeFleet",
                     "cfn_cluster_user" : {
                       "Fn::FindInMap" : [
-                        "ClusterUser",
+                        "OSFeatures",
                         {
                           "Ref" : "BaseOS"
                         },
@@ -2451,14 +2471,16 @@
             "FromPort" : "22",
             "ToPort" : "22",
             "CidrIp" : {
-              "Ref" : "SSHFrom"
+              "Ref" : "AccessFrom"
             }
           },
           {
             "IpProtocol" : "tcp",
             "FromPort" : "80",
             "ToPort" : "80",
-            "CidrIp" : "0.0.0.0/0"
+            "CidrIp" : {
+              "Ref" : "AccessFrom"
+            }
           }
         ]
       }

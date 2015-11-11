@@ -12,15 +12,12 @@
 # limitations under the License.
 
 . /opt/cfncluster/cfnconfig
+. /etc/profile.d/openlava.sh
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ec2_region_url="http://169.254.169.254/latest/meta-data/placement/availability-zone"
 ec2_region=$(curl --retry 3 --retry-delay 0 --silent --fail ${ec2_region_url})
 
-pending=$($DIR/openlava_pending.py)
-
-if [ "${pending}x" == "x" ]; then
-pending=0
-fi
+pending=$(bqueues normal | awk '{ if (NR > 1) { total += $9; } } END { print total; }')
 
 aws --region ${ec2_region%?} cloudwatch put-metric-data --namespace cfncluster --metric-name pending --unit Count --value ${pending} --dimensions Stack=${stack_name}

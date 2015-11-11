@@ -35,8 +35,8 @@ def addHost(hostname,cluster_user):
     # Connect and hostkey
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    hosts_key_file = '/home/' + cluster_user + '/.ssh/known_hosts'
-    user_key_file = '/home/' + cluster_user + '/.ssh/id_rsa'
+    hosts_key_file = os.path.expanduser("~" + cluster_user) + '/.ssh/known_hosts'
+    user_key_file = os.path.expanduser("~" + cluster_user) + '/.ssh/id_rsa'
     iter=0
     connected=False
     while iter < 3 and connected == False:
@@ -59,6 +59,9 @@ def addHost(hostname,cluster_user):
     ssh.save_host_keys(hosts_key_file)
     ssh.close()
 
+    command = ['/etc/init.d/pbs_server', 'restart']
+    __runCommand(command)
+
 def removeHost(hostname, cluster_user):
     print('Removing %s', hostname)
 
@@ -66,5 +69,8 @@ def removeHost(hostname, cluster_user):
     __runCommand(command)
 
     command = ['/opt/torque/bin/qmgr', '-c', ('delete node %s' % hostname)]
+    __runCommand(command)
+
+    command = ['/etc/init.d/pbs_server', 'restart']
     __runCommand(command)
 
