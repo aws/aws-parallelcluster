@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-20141222-0 cfncluster-0.0.17",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-xxxxxxxxxx cfncluster-1.0.0-beta",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -40,13 +40,20 @@
         "m3.2xlarge",
         "hi1.4xlarge",
         "g2.2xlarge",
+        "g2.8xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
+        "t2.large",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
-        "d2.xlarge"
+        "d2.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge"
       ]
     },
     "ComputeInstanceType" : {
@@ -83,13 +90,20 @@
         "m3.2xlarge",
         "hi1.4xlarge",
         "g2.2xlarge",
+        "g2.8xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
+        "t2.large",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
-        "d2.xlarge"
+        "d2.xlarge",
+        "m4.large",
+        "m4.xlarge",
+        "m4.2xlarge",
+        "m4.4xlarge",
+        "m4.10xlarge"
       ]
     },
     "InitialQueueSize" : {
@@ -160,11 +174,11 @@
     },
     "MasterSubnetId" : {
       "Description" : "ID of the Subnet you want to provision the Master server into",
-      "Type" : "AWS::EC2::Subnet::Id"
+      "Type" : "String"
     },
     "AvailabilityZone" : {
       "Description" : "Availability Zone the cluster will launch into. THIS IS REQUIRED",
-      "Type" : "AWS::EC2::AvailabilityZone::Name"
+      "Type" : "String"
     },
     "EBSSnapshotId" : {
       "Description" : "Id of EBS snapshot if using snapshot as source for volume",
@@ -301,7 +315,10 @@
       "Default" : "centos6",
       "ConstraintDescription" : "must be a supported base OS",
       "AllowedValues" : [
-        "centos6"
+        "centos6",
+        "centos7",
+        "alinux",
+        "ubuntu1404"
       ]
     },
     "ScalingThreshold2" : {
@@ -333,6 +350,8 @@
         "sge",
         "openlava",
         "torque",
+        "slurm",
+        "custom",
         "test"
       ]
     },
@@ -373,6 +392,40 @@
       "Description" : "Extra json to be added to Chef dna.json",
       "Type" : "String",
       "Default" : "{}"
+    },
+    "Tenancy" : {
+      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type" : "String",
+      "Default" : "default",
+      "AllowedValues" : [
+        "default",
+        "dedicated"
+      ]
+    },
+    "EBSKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for EBS encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "EphemeralKMSKeyId" : {
+      "Description" : "KMS ARN for customer created master key, will be used for ephemeral encryption",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "ClusterReadyScript" : {
+      "Description" : "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "MasterRootVolumeSize" : {
+      "Description" : "Size of MasterServer EBS root volume in GB",
+      "Type" : "Number",
+      "Default" : "10"
+    },
+    "ComputeRootVolumeSize" : {
+      "Description" : "Size of ComputeFleet EBS root volume in GB",
+      "Type" : "Number",
+      "Default" : "10"
     }
   },
   "Conditions" : {
@@ -637,6 +690,57 @@
           ]
         }
       ]
+    },
+    "UseEBSKMSKey" : {
+      "Fn::And" : [
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "EBSKMSKeyId"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Condition" : "UseEBSEncryption"
+        }
+      ]
+    },
+    "UseEphemeralKMSKey" : {
+      "Fn::And" : [
+        {
+          "Fn::Not" : [
+            {
+              "Fn::Equals" : [
+                {
+                  "Ref" : "EphemeralKMSKeyId"
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "EncryptedEphemeral"
+            },
+            "true"
+          ]
+        }
+      ]
+    },
+    "UseDedicatedTenancy" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "Tenancy"
+        },
+        "dedicated"
+      ]
     }
   },
   "Mappings" : {
@@ -650,6 +754,10 @@
         "EBSOpt" : "False"
       },
       "g2.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "g2.8xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
@@ -780,48 +888,77 @@
       "d2.xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
+      },
+      "t2.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "m4.10xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
       }
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-ab7f599b"
+        "centos6" : "ami-f2160193",
+        "alinux" : "ami-02687f63",
+        "ubuntu1404" : "ami-659e8904"
       },
       "eu-central-1" : {
-        "centos6" : "ami-b43705a9"
+        "centos6" : "NA"
       },
       "sa-east-1" : {
-        "centos6" : "ami-818b359c"
+        "centos6" : "NA"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-891bfb89"
+        "centos6" : "NA"
       },
       "eu-west-1" : {
-        "centos6" : "ami-87fd69f0"
+        "centos6" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "ami-7660361e"
+        "centos6" : "NA"
       },
       "us-west-1" : {
-        "centos6" : "ami-86b0aac3"
+        "centos6" : "NA"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-7d730547"
+        "centos6" : "NA"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-fafcc8a8"
+        "centos6" : "NA"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-5d68097e"
+        "centos6" : "NA"
       }
     },
     "ClusterUser" : {
       "centos6" : {
-        "User" : "ec2-user"
+        "User" : "centos"
+      },
+      "centos7" : {
+        "User" : "centos"
       },
       "alinux" : {
         "User" : "ec2-user"
       },
-      "ubuntu" : {
+      "ubuntu1404" : {
         "User" : "ubuntu"
       }
     },
@@ -1018,7 +1155,8 @@
               "Sid" : "Autoscaling",
               "Action" : [
                 "autoscaling:DescribeAutoScalingGroups",
-                "autoscaling:TerminateInstanceInAutoScalingGroup"
+                "autoscaling:TerminateInstanceInAutoScalingGroup",
+                "autoscaling:SetDesiredCapacity"
               ],
               "Effect" : "Allow",
               "Resource" : [
@@ -1291,6 +1429,15 @@
           {
             "DeviceName" : "/dev/xvdbx",
             "VirtualName" : "ephemeral23"
+          },
+          {
+            "DeviceName" : "/dev/sda1",
+            "Ebs" : {
+              "VolumeSize" : {
+                "Ref" : "MasterRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
+            }
           }
         ],
         "KeyName" : {
@@ -1308,61 +1455,6 @@
             "Value" : "Master"
           }
         ],
-        "UserData" : {
-          "Fn::Base64" : {
-            "Fn::Join" : [
-              "",
-              [
-                "#!/bin/bash\n\n",
-                "function error_exit\n",
-                "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=MasterServer --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n",
-                "  exit 1\n",
-                "}\n",
-                "proxy=",
-                {
-                  "Ref" : "ProxyServer"
-                },
-                "\n",
-                "if [ \"$proxy\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                "else\n",
-                "  proxy_args=\"\"\n",
-                "fi\n",
-                "cfn-init ${proxy_args} -s ",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " -v -c default -r MasterServer --region ",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=MasterServer --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n",
-                "# End of file\n"
-              ]
-            ]
-          }
-        },
         "NetworkInterfaces" : [
           {
             "NetworkInterfaceId" : {
@@ -1412,6 +1504,66 @@
               "Ref" : "AWS::NoValue"
             }
           ]
+        },
+        "Tenancy" : {
+          "Ref" : "Tenancy"
+        },
+        "UserData" : {
+          "Fn::Base64" : {
+            "Fn::Join" : [
+              "",
+              [
+                "#!/bin/bash\n\n",
+                "function error_exit\n",
+                "{\n",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "  exit 1\n",
+                "}\n",
+                "proxy=",
+                {
+                  "Ref" : "ProxyServer"
+                },
+                "\n",
+                "if [ \"$proxy\" != \"NONE\" ]; then\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                "else\n",
+                "  proxy_args=\"\"\n",
+                "fi\n",
+                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                "which cfn-init 2>/dev/null || ( wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "cfn-init ${proxy_args} -s ",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " -v -c default -r MasterServer --region ",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=MasterServer --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "# End of file\n"
+              ]
+            ]
+          }
         }
       },
       "Metadata" : {
@@ -1423,7 +1575,7 @@
               "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
-              "chefMasterConfig",
+              "chefConfig",
               "shellRunPostInstall",
               "shellForkClusterReadyInstall"
             ]
@@ -1522,7 +1674,7 @@
                   "Fn::Join" : [
                     "",
                     [
-                      "cookbook_path ['/opt/cfncluster/chef/cookbooks']"
+                      "cookbook_path ['/etc/chef/cookbooks']"
                     ]
                   ]
                 }
@@ -1554,7 +1706,7 @@
             },
             "commands" : {
               "berk" : {
-                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /opt/cfncluster/chef/cookbooks; done ",
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd" : "/tmp/cookbooks",
                 "env" : {
                   "HOME" : "/tmp"
@@ -1566,7 +1718,7 @@
             "commands" : {
               "chef" : {
                 "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
-                "cwd" : "/opt/cfncluster/chef"
+                "cwd" : "/etc/chef"
               }
             }
           },
@@ -1577,11 +1729,11 @@
               }
             }
           },
-          "chefMasterConfig" : {
+          "chefConfig" : {
             "commands" : {
               "chef" : {
                 "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
-                "cwd" : "/opt/cfncluster/chef"
+                "cwd" : "/etc/chef"
               }
             }
           },
@@ -1724,61 +1876,6 @@
         "KeyName" : {
           "Ref" : "KeyName"
         },
-        "UserData" : {
-          "Fn::Base64" : {
-            "Fn::Join" : [
-              "",
-              [
-                "#!/bin/bash\n",
-                "function error_exit\n",
-                "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=ComputeFleet --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n",
-                "  exit 1\n",
-                "}\n",
-                "proxy=",
-                {
-                  "Ref" : "ProxyServer"
-                },
-                "\n",
-                "if [ \"$proxy\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                "else\n",
-                "  proxy_args=\"\"\n",
-                "fi\n",
-                "cfn-init ${proxy_args} -v -s ",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " -c default -r ComputeServerLaunchConfig ",
-                "         --region ",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                " || error_exit 'Failed to run cfn-init'\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"Compute setup complete\" --stack=",
-                {
-                  "Ref" : "AWS::StackName"
-                },
-                " --resource=ComputeFleet --region=",
-                {
-                  "Ref" : "AWS::Region"
-                },
-                "\n"
-              ]
-            ]
-          }
-        },
         "IamInstanceProfile" : {
           "Ref" : "RootInstanceProfile"
         },
@@ -1909,8 +2006,85 @@
           {
             "DeviceName" : "/dev/xvdbx",
             "VirtualName" : "ephemeral23"
+          },
+          {
+            "DeviceName" : "/dev/sda1",
+            "Ebs" : {
+              "VolumeSize" : {
+                "Ref" : "ComputeRootVolumeSize"
+              },
+              "VolumeType" : "gp2"
+            }
           }
-        ]
+        ],
+        "PlacementTenancy" : {
+          "Fn::If" : [
+            "UseDedicatedTenancy",
+            {
+              "Ref" : "Tenancy"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "UserData" : {
+          "Fn::Base64" : {
+            "Fn::Join" : [
+              "",
+              [
+                "#!/bin/bash\n\n",
+                "function error_exit\n",
+                "{\n",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=ComputeFleet --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "  exit 1\n",
+                "}\n",
+                "proxy=",
+                {
+                  "Ref" : "ProxyServer"
+                },
+                "\n",
+                "if [ \"$proxy\" != \"NONE\" ]; then\n",
+                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                "  proxy_host=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                "  proxy_port=$(echo \"$proxy\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                "else\n",
+                "  proxy_args=\"\"\n",
+                "fi\n",
+                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                "which cfn-init 2>/dev/null || ( wget -O /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "cfn-init ${proxy_args} -s ",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " -v -c default -r ComputeServerLaunchConfig --region ",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cfncluster.log.'\n",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                {
+                  "Ref" : "AWS::StackName"
+                },
+                " --resource=ComputeFleet --region=",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "# End of file\n"
+              ]
+            ]
+          }
+        }
       },
       "Metadata" : {
         "Comment" : "cfncluster Compute server",
@@ -1921,14 +2095,15 @@
               "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
-              "chefMasterConfig",
+              "chefConfig",
               "shellRunPostInstall",
-              "sendComputeReady"
+              "shellForkClusterReadyInstall",
+              "signalComputeReady"
             ]
           },
           "deployConfigFiles" : {
             "files" : {
-              "/etc/chef/dna.json" : {
+              "/tmp/dna.json" : {
                 "mode" : "000644",
                 "owner" : "root",
                 "group" : "root",
@@ -1952,9 +2127,6 @@
                     "cfn_region" : {
                       "Ref" : "AWS::Region"
                     },
-                    "cfn_volume" : {
-                      "Ref" : "SharedVolume"
-                    },
                     "cfn_scheduler" : {
                       "Ref" : "Scheduler"
                     },
@@ -1970,6 +2142,15 @@
                     "cfn_proxy" : {
                       "Ref" : "ProxyServer"
                     },
+                    "cfn_sqs_queue" : {
+                      "Ref" : "SQS"
+                    },
+                    "cfn_master" : {
+                      "Fn::GetAtt" : [
+                        "MasterServer",
+                        "PrivateDnsName"
+                      ]
+                    },
                     "cfn_node_type" : "ComputeFleet",
                     "cfn_cluster_user" : {
                       "Fn::FindInMap" : [
@@ -1979,20 +2160,28 @@
                         },
                         "User"
                       ]
-                    },
-                    "cfn_master" : {
-                      "Fn::GetAtt" : [
-                        "MasterServer",
-                        "PrivateDnsName"
-                      ]
-                    },
-                    "cfn_sqs_url" : {
-                      "Ref" : "SQS"
                     }
                   },
-                  "run_list" : [
-                    "recipe[cfncluster::sge_config]"
-                  ]
+                  "run_list" : {
+                    "Fn::If" : [
+                      "UseCustomRunList",
+                      {
+                        "Ref" : "CustomChefRunList"
+                      },
+                      {
+                        "Fn::Join" : [
+                          "",
+                          [
+                            "recipe[cfncluster::",
+                            {
+                              "Ref" : "Scheduler"
+                            },
+                            "_config]"
+                          ]
+                        ]
+                      }
+                    ]
+                  }
                 }
               },
               "/etc/chef/client.rb" : {
@@ -2003,9 +2192,17 @@
                   "Fn::Join" : [
                     "",
                     [
-                      "cookbook_path ['/opt/cfncluster/chef/cookbooks']"
+                      "cookbook_path ['/etc/chef/cookbooks']"
                     ]
                   ]
+                }
+              },
+              "/tmp/extra.json" : {
+                "mode" : "000644",
+                "owner" : "root",
+                "group" : "root",
+                "content" : {
+                  "Ref" : "ExtraJson"
                 }
               }
             },
@@ -2015,6 +2212,9 @@
               },
               "touch" : {
                 "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              },
+              "jq" : {
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json"
               }
             }
           },
@@ -2024,7 +2224,7 @@
             },
             "commands" : {
               "berk" : {
-                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /opt/cfncluster/chef/cookbooks; done ",
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd" : "/tmp/cookbooks",
                 "env" : {
                   "HOME" : "/tmp"
@@ -2036,7 +2236,7 @@
             "commands" : {
               "chef" : {
                 "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
-                "cwd" : "/opt/cfncluster/chef"
+                "cwd" : "/etc/chef"
               }
             }
           },
@@ -2047,11 +2247,11 @@
               }
             }
           },
-          "chefMasterConfig" : {
+          "chefConfig" : {
             "commands" : {
               "chef" : {
                 "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
-                "cwd" : "/opt/cfncluster/chef"
+                "cwd" : "/etc/chef"
               }
             }
           },
@@ -2062,9 +2262,16 @@
               }
             }
           },
-          "sendComputeReady" : {
+          "shellForkClusterReadyInstall" : {
             "commands" : {
-              "computeready" : {
+              "clusterreadyinstall" : {
+                "command" : "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+              }
+            }
+          },
+          "signalComputeReady" : {
+            "commands" : {
+              "compute_ready" : {
                 "command" : "/opt/cfncluster/scripts/compute_ready"
               }
             }
@@ -2376,6 +2583,17 @@
             "UseEBSEncryption",
             {
               "Ref" : "EBSEncryption"
+            },
+            {
+              "Ref" : "AWS::NoValue"
+            }
+          ]
+        },
+        "KmsKeyId" : {
+          "Fn::If" : [
+            "UseEBSKMSKey",
+            {
+              "Ref" : "EBSKMSKeyId"
             },
             {
               "Ref" : "AWS::NoValue"

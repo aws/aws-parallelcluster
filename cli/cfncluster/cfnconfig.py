@@ -203,7 +203,8 @@ class CfnClusterConfig:
                                       encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
-                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None)
+                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),
+                                      base_os=('BaseOS',None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
