@@ -32,6 +32,10 @@ def addHost(hostname, cluster_user):
     command = ['/opt/sge/bin/lx-amd64/qconf', '-ah', hostname]
     __runSgeCommand(command)
 
+    # Adding host as submit host
+    command = ['/opt/sge/bin/lx-amd64/qconf', '-as', hostname]
+    __runSgeCommand(command)
+
     # Setup template to add execution host
     qconf_Ae_template = """hostname              %s
 load_scaling          NONE
@@ -96,6 +100,10 @@ def removeHost(hostname,cluster_user):
 
     # Removing host as execution host
     command = ['/opt/sge/bin/lx-amd64/qconf', '-de', hostname]
+    __runSgeCommand(command)
+
+    # Removing host as submit host
+    command = ['/opt/sge/bin/lx-amd64/qconf', '-ds', hostname]
     __runSgeCommand(command)
 
     # Removing host as administrative host
