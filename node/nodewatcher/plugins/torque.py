@@ -52,10 +52,7 @@ def lockHost(hostname, unlock=False):
     _mod = unlock and '-c' or '-o'
     command = ['/opt/torque/bin/pbsnodes', _mod, hostname]
     try:
-        subprocess.check_call(
-            command,
-            env=dict(os.environ, SGE_ROOT='/opt/sge',
-                     PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
+        subprocess.check_call(command)
     except subprocess.CalledProcessError:
         print ("Failed to run %s\n" % command)
 
