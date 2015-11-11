@@ -31,3 +31,15 @@ def getJobs(hostname):
             break
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    _mod = unlock and '-e' or '-d'
+    command = ['/opt/sge/bin/lx-amd64/qmod', _mod, 'all.q@%s' % hostname]
+    try:
+        subprocess.check_call(
+            command,
+            env=dict(os.environ, SGE_ROOT='/opt/sge',
+                     PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
+    except subprocess.CalledProcessError:
+        print ("Failed to run %s\n" % command)
+
