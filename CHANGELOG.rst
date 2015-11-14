@@ -2,6 +2,15 @@
 CHANGELOG
 =========
 
+1.0.0-beta
+==========
+
+This is a major update for CfnCluster. Boostrapping of the instances has moved from shell scripts into Chef
+receipes. Through the use of Chef, there is now wider base OS support, covering Amazon Linux, CentOS 6 & 7
+and also Ubuntu. All AMIs are now created using the same receipes. All previously capabilites exisit and the 
+changes should be non-instrusive.
+
+
 0.0.22
 ======
 * updates:``ami``: Pulled latest CentOS6 errata
