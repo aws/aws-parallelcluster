@@ -28,10 +28,6 @@ from boto.sqs.message import RawMessage
 from boto.dynamodb2.fields import HashKey
 from boto.dynamodb2.table import Table
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
-)
 log = logging.getLogger(__name__)
 
 def getConfig():
@@ -180,6 +176,10 @@ def pollQueue(scheduler, q, t):
         time.sleep(30)
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
+    )
     log.info("sqswatcher startup")
     global region, cluster_user
     region, sqsqueue, table_name, scheduler, cluster_user = getConfig()

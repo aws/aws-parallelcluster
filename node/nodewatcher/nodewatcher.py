@@ -25,10 +25,6 @@ import sys
 import tempfile
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
-)
 log = logging.getLogger(__name__)
 
 def getConfig(instance_id):
@@ -137,6 +133,10 @@ def selfTerminate(region, asg, instance_id):
         _as_conn.terminate_instance(instance_id, decrement_capacity=True)
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
+    )
     log.info("nodewatcher startup")
     instance_id = getInstanceId()
     hostname = getHostname()
