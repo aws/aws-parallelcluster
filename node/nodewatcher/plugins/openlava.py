@@ -13,6 +13,9 @@ __author__ = 'dougalb'
 
 import subprocess
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def getJobs(hostname):
     # Checking for running jobs on the node
@@ -20,7 +23,7 @@ def getJobs(hostname):
     try:
        output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        log.error("Failed to run %s\n" % _command)
 
     if output == "":
         _jobs = False
@@ -36,5 +39,5 @@ def lockHost(hostname, unlock=False):
     try:
         subprocess.check_call(command)
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % command)
+        log.error("Failed to run %s\n" % command)
 

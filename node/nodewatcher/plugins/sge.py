@@ -13,6 +13,9 @@ __author__ = 'dougalb'
 
 import subprocess
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def getJobs(hostname):
     # Checking for running jobs on the node
@@ -22,7 +25,7 @@ def getJobs(hostname):
                                  env=dict(os.environ, SGE_ROOT='/opt/sge',
                                          PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin')).communicate()[0]
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % command)
+        log.error("Failed to run %s\n" % command)
 
     _jobs = True
     for host in _output.split('\n'):
@@ -41,5 +44,5 @@ def lockHost(hostname, unlock=False):
             env=dict(os.environ, SGE_ROOT='/opt/sge',
                      PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % command)
+        log.error("Failed to run %s\n" % command)
 

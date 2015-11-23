@@ -14,17 +14,21 @@ __author__ = 'dougalb'
 import subprocess as sub
 import os
 import paramiko
+import logging
+
+log = logging.getLogger(__name__)
 
 def __runCommand(command):
+    log.debug(repr(command))
     _command = command
     try:
         sub.check_call(_command, env=dict(os.environ))
     except sub.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        log.error("Failed to run %s\n" % _command)
 
 
 def addHost(hostname,cluster_user):
-    print('Adding %s', hostname)
+    log.info('Adding %s', hostname)
 
     command = ['/opt/torque/bin/qmgr', '-c', ('create node %s' % hostname)]
     __runCommand(command)
@@ -41,15 +45,15 @@ def addHost(hostname,cluster_user):
     connected=False
     while iter < 3 and connected == False:
         try:
-            print('Connecting to host: %s iter: %d' % (hostname, iter))
+            log.info('Connecting to host: %s iter: %d' % (hostname, iter))
             ssh.connect(hostname, username=cluster_user, key_filename=user_key_file)
             connected=True
         except socket.error, e:
-            print('Socket error: %s' % e)
+            log.info('Socket error: %s' % e)
             time.sleep(10 + iter)
             iter = iter + 1
             if iter == 3:
-               print("Unable to provison host")
+               log.info("Unable to provison host")
                return
     try:
         ssh.load_host_keys(hosts_key_file)
@@ -63,7 +67,7 @@ def addHost(hostname,cluster_user):
     __runCommand(command)
 
 def removeHost(hostname, cluster_user):
-    print('Removing %s', hostname)
+    log.info('Removing %s', hostname)
 
     command = ['/opt/torque/bin/pbsnodes', '-o', hostname]
     __runCommand(command)
