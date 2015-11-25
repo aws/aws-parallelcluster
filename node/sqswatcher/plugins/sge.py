@@ -17,16 +17,20 @@ from tempfile import NamedTemporaryFile
 import time
 import os
 import socket
+import logging
+
+log = logging.getLogger(__name__)
 
 def __runSgeCommand(command):
+    log.debug(repr(command))
     _command = command
     try:
         sub.check_call(_command, env=dict(os.environ, SGE_ROOT='/opt/sge'))
     except sub.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        log.error("Failed to run %s\n" % _command)
 
 def addHost(hostname, cluster_user):
-    print('Adding %s', hostname)
+    log.info('Adding %s', hostname)
 
     # Adding host as administrative host
     command = ['/opt/sge/bin/lx-amd64/qconf', '-ah', hostname]
@@ -67,15 +71,15 @@ report_variables      NONE
     connected=False
     while iter < 3 and connected == False:
         try:
-            print('Connecting to host: %s iter: %d' % (hostname, iter))
+            log.info('Connecting to host: %s iter: %d' % (hostname, iter))
             ssh.connect(hostname, username=cluster_user, key_filename=user_key_file)
             connected=True
         except socket.error, e:
-            print('Socket error: %s' % e)
+            log.error('Socket error: %s' % e)
             time.sleep(10 + iter)
             iter = iter + 1
             if iter == 3:
-               print("Unable to provison host")
+               log.critical("Unable to provison host")
                return
     try:
         ssh.load_host_keys(hosts_key_file)
@@ -88,7 +92,7 @@ report_variables      NONE
     ssh.close()
 
 def removeHost(hostname,cluster_user):
-    print('Removing %s', hostname)
+    log.info('Removing %s', hostname)
 
     # Purge hostname from all.q
     command = ['/opt/sge/bin/lx-amd64/qconf', '-purge', 'queue', '*', 'all.q@%s' % hostname]

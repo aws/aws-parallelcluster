@@ -23,12 +23,18 @@ import os
 import time
 import sys
 import tempfile
+import logging
+
+log = logging.getLogger(__name__)
 
 def getConfig(instance_id):
-    print('running getConfig')
+    log.debug('reading /etc/nodewatcher.cfg')
 
     config = ConfigParser.RawConfigParser()
     config.read('/etc/nodewatcher.cfg')
+    if config.has_option('nodewatcher', 'loglevel'):
+        lvl = logging._levelNames[config.get('nodewatcher', 'loglevel')]
+        logging.getLogger().setLevel(lvl)
     _region = config.get('nodewatcher', 'region')
     _scheduler = config.get('nodewatcher', 'scheduler')
     try:
@@ -37,6 +43,7 @@ def getConfig(instance_id):
         conn = boto.ec2.connect_to_region(_region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
         _asg = conn.get_all_instances(instance_ids=instance_id)[0].instances[0].tags['aws:autoscaling:groupName']
+        log.debug("discovered asg: %s" % _asg)
         config.set('nodewatcher', 'asg', _asg)
 
         tup = tempfile.mkstemp(dir=os.getcwd())
@@ -46,11 +53,10 @@ def getConfig(instance_id):
 
         os.rename(tup[1], 'nodewatcher.cfg')
 
+    log.debug("region=%s asg=%s scheduler=%s" % (_region, _asg, _scheduler))
     return _region, _asg, _scheduler
 
 def getHourPercentile(instance_id, conn):
-    print('running checkRunTime')
-
     _reservations = conn.get_all_instances(instance_ids=[instance_id])
     _instance = _reservations[0].instances[0]
     _launch_time = dateutil.parser.parse(_instance.launch_time).replace(tzinfo=None)
@@ -59,6 +65,9 @@ def getHourPercentile(instance_id, conn):
     _delta_in_hours = _delta.seconds / 3600.0
     _hour_percentile = (_delta_in_hours % 1) * 100
 
+    log.debug("launch=%s delta=%s percentile=%s" % (_launch_time, _delta,
+                                                    _hour_percentile))
+
     return _hour_percentile
 
 def getInstanceId():
@@ -66,8 +75,10 @@ def getInstanceId():
     try:
         _instance_id = urllib2.urlopen("http://169.254.169.254/latest/meta-data/instance-id").read()
     except urllib2.URLError:
-        print('Unable to get instance-id from metadata')
+        log.critical('Unable to get instance-id from metadata')
         sys.exit(1)
+
+    log.debug("instance_id=%s" % _instance_id)
 
     return _instance_id
 
@@ -76,17 +87,19 @@ def getHostname():
     try:
         _hostname = urllib2.urlopen("http://169.254.169.254/latest/meta-data/local-hostname").read()
     except urllib2.URLError:
-        print('Unable to get hostname from metadata')
+        log.critical('Unable to get hostname from metadata')
         sys.exit(1)
+
+    log.debug("hostname=%s" % _hostname)
 
     return _hostname
 
 def loadSchedulerModule(scheduler):
-    print 'running loadSchedulerModule'
-
     scheduler = 'nodewatcher.plugins.' + scheduler
     _scheduler = __import__(scheduler)
     _scheduler = sys.modules[scheduler]
+
+    log.debug("scheduler=%s" % repr(_scheduler))
 
     return _scheduler
 
@@ -94,9 +107,14 @@ def getJobs(s,hostname):
 
     _jobs = s.getJobs(hostname)
 
+    log.debug("jobs=%s" % _jobs)
+
     return _jobs
 
 def lockHost(s,hostname,unlock=False):
+    log.debug("%s %s" % (unlock and "unlocking" or "locking",
+                         hostname))
+
     _r = s.lockHost(hostname, unlock)
 
     time.sleep(15) # allow for some settling
@@ -109,11 +127,17 @@ def selfTerminate(region, asg, instance_id):
     _asg = _as_conn.get_all_groups(names=[asg])[0]
     _capacity = _asg.desired_capacity
     _min_size = _asg.min_size
+    log.debug("capacity=%d min_size=%d" % (_capacity, _min_size))
     if _capacity > _min_size:
+        log.info("terminating %s" % instance_id)
         _as_conn.terminate_instance(instance_id, decrement_capacity=True)
 
 def main():
-    print('Running __main__')
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s'
+    )
+    log.info("nodewatcher startup")
     instance_id = getInstanceId()
     hostname = getHostname()
     region, asg, scheduler = getConfig(instance_id)
@@ -124,20 +148,20 @@ def main():
         time.sleep(60)
         conn = boto.ec2.connect_to_region(region)
         hour_percentile = getHourPercentile(instance_id,conn)
-        print('Percent of hour used: %d' % hour_percentile)
+        log.info('Percent of hour used: %d' % hour_percentile)
 
         if hour_percentile < 95:
             continue
         
         jobs = getJobs(s, hostname)
         if jobs == True:
-            print('Instance has active jobs.')
+            log.info('Instance has active jobs.')
         else:
             # avoid race condition by locking and verifying
             lockHost(s, hostname)
             jobs = getJobs(s, hostname)
             if jobs == True:
-                print ('Instance actually has active jobs.')
+                log.info('Instance actually has active jobs.')
                 lockHost(s, hostname, unlock=True)
                 continue
             else:
