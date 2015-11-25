@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-xxxxxxxxxx cfncluster-1.0.0-beta",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201511250257 cfncluster-1.0.0-beta",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -312,7 +312,7 @@
     "BaseOS" : {
       "Description" : "Base OS type for cluster AMI",
       "Type" : "String",
-      "Default" : "centos6",
+      "Default" : "alinux",
       "ConstraintDescription" : "must be a supported base OS",
       "AllowedValues" : [
         "centos6",
@@ -916,36 +916,64 @@
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-f2160193",
-        "alinux" : "ami-02687f63",
-        "ubuntu1404" : "ami-659e8904"
+        "centos6" : "ami-e2263583",
+        "centos7" : "ami-3b25365a",
+        "alinux" : "ami-6f26350e",
+        "ubuntu1404" : "ami-9b2a39fa"
       },
       "eu-central-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "sa-east-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "ap-northeast-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "eu-west-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "us-west-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "ap-southeast-2" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "ap-southeast-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "us-gov-west-1" : {
-        "centos6" : "NA"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       }
     },
     "OSFeatures" : {
