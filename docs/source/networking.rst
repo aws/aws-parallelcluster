@@ -3,22 +3,22 @@
 Network Configurations
 ======================
 
-CfnCluster leverages Amazon Virtual Private Cloud(VPC) for networking. This provides a very flexiable and configurable networking platform to deploy clusters within. CfnCluster support the following high-level configurations:
+CfnCluster leverages Amazon Virtual Private Cloud (VPC) for networking. This provides a very flexible and configurable networking platform to deploy clusters within. CfnCluster support the following high-level configurations:
 
 * Single subnet, master and compute in the same subnet
 * Two subnets, master in one subnet and compute new private subnet
-* Two subnets, master in one subnet and compute in exisiting private subnet
+* Two subnets, master in one subnet and compute in existing private subnet
 
-All of these configurations can operate with or without public IP addressing. It can also be deployed to leverage an HTTP proxy for all AWS requests. The combinations of these configurations result in many different deployment scenario's, ranging from a single public subnet with all access over the Internet, to fully private via AWS Direct Connect and HTTP proxy for all traffic.
+All of these configurations can operate with or without public IP addressing. It can also be deployed to leverage an HTTP proxy for all AWS requests. The combinations of these configurations result in many different deployment scenarios, ranging from a single public subnet with all access over the Internet, to fully private via AWS Direct Connect and HTTP proxy for all traffic.
 
-Below are some architeture diagrams for some of those scenarios:
+Below are some architecture diagrams for some of those scenarios:
 
 .. figure:: images/networking_single_subnet.jpg
    :alt: CfnCluster single subnet
 
    CfnCluster in a single public subnet
 
-The configuration for this architecture, requires the following settings:
+The configuration for this architecture requires the following settings:
 
 `note that all values are examples only`
 
@@ -31,9 +31,9 @@ The configuration for this architecture, requires the following settings:
 .. figure:: images/networking_two_subnets.jpg
    :alt: CfnCluster two subnets
 
-   CfnCluster using two subnets(new private)
+   CfnCluster using two subnets (new private)
 
-The configuration for this architecture, requires the following settings:
+The configuration for this architecture requires the following settings:
 
 `note that all values are examples only`
 
@@ -49,7 +49,7 @@ The configuration for this architecture, requires the following settings:
 
    CfnCluster in a private subnet connected using Direct Connect
 
-The configuration for this architecture, requires the following settings:
+The configuration for this architecture requires the following settings:
 
 `note that all values are examples only`
 
