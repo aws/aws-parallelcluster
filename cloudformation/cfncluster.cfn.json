@@ -1746,7 +1746,7 @@
             },
             "commands" : {
               "berk" : {
-                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd" : "/tmp/cookbooks",
                 "env" : {
                   "HOME" : "/tmp"
@@ -2272,7 +2272,7 @@
             },
             "commands" : {
               "berk" : {
-                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d; /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "command" : "for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd" : "/tmp/cookbooks",
                 "env" : {
                   "HOME" : "/tmp"
