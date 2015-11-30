@@ -98,13 +98,13 @@ def __writeNodeList(node_list):
 
 
 def addHost(hostname, cluster_user):
-    print('Adding %s', hostname)
+    print('Adding %s' % hostname)
 
     # Get the current node list
     node_list = __readNodeList()
 
     # Add new node
-    node_list['default'].append(hostname)
+    node_list['compute'].append(hostname)
     __writeNodeList(node_list)
 
     # Restart slurmctl locally
@@ -126,7 +126,7 @@ def removeHost(hostname, cluster_user):
     node_list = __readNodeList()
 
     # Remove node
-    node_list['default'].remove(hostname)
+    node_list['compute'].remove(hostname)
     __writeNodeList(node_list)
 
     # Restart slurmctl

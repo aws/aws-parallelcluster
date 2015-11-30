@@ -43,6 +43,9 @@ fi
 # Setup Slurm config as Master
 function setup_master_slurm () {
 RC=0
+if [ ! -d "/opt/slurm/etc" ]; then
+  /bin/mkdir /opt/slurm/etc || RC=1
+fi
 cd /opt/slurm/etc || RC=1 
 /bin/cp -f /opt/cfncluster/templates/slurm/slurm.conf.MASTER slurm.conf || RC=1
 /bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm /etc/init.d/slurm || RC=1

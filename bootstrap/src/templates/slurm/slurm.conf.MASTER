@@ -100,7 +100,7 @@ JobCompType=jobcomp/none
 # get updated by the sqswatcher process, be careful
 # when manually editing! Default node is there to allow
 # submission of jobs to an empty cluster.
-#PARTITION:default
-NodeName=dummy-default Procs=2048 State=UNKNOWN
+#PARTITION:compute
+NodeName=dummy-compute Procs=2048 State=UNKNOWN
 #NodeName= Procs=1 State=UNKNOWN
-PartitionName=default Nodes=dummy-default Default=YES MaxTime=INFINITE State=UP
+PartitionName=compute Nodes=dummy-compute Default=YES MaxTime=INFINITE State=UP

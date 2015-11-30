@@ -31,6 +31,9 @@ fi
 # Mount Slurm NFS exports
 function mount_nfs () {
 RC=0
+if [ ! -d "/opt/slurm/etc" ]; then
+  /bin/mkdir /opt/slurm/etc || RC=1
+fi
 echo "$cfn_master:/opt/slurm/etc /opt/slurm/etc nfs hard,intr,noatime,vers=3,_netdev 0 0" >> /etc/fstab || RC=1
 mount -v /opt/slurm/etc || RC=1
 if [ $RC -ne 0 ]; then
@@ -59,8 +62,7 @@ fi
 # Setup Slurm config as compute
 function setup_compute_slurm () {
 RC=0
-cd /opt/slurm/etc || RC=1 
-/bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm.compute /etc/init.d/slurm || RC=1
+/bin/cp -f /opt/cfncluster/templates/slurm/init.d.slurm /etc/init.d/slurm || RC=1
 chmod 755 /etc/init.d/slurm || RC=1
 if [ $RC -ne 0 ]; then
   error_exit "Failed to configure Slurm"
