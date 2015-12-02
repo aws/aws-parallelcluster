@@ -176,7 +176,9 @@ class CfnClusterConfig:
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
                                   ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
-                                  additional_sg=('AdditionalSG','VPCSecurityGroup'))
+                                  additional_sg=('AdditionalSG','VPCSecurityGroup'),
+                                  vpc_security_group_id=('VPCSecurityGroupId','VPCSecurityGroup')
+                                  )
 
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
@@ -207,7 +209,7 @@ class CfnClusterConfig:
                                       cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
                                       ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
                                       master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
-                                      base_os=('BaseOS',None)
+                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName',None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
@@ -239,7 +241,9 @@ class CfnClusterConfig:
         # Dictionary list of all EBS options
         self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId','EC2Snapshot'), volume_type=('VolumeType',None),
                                   volume_size=('VolumeSize',None), ebs_kms_key_id=('EBSKMSKeyId', None),
-                                  volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None))
+                                  volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None),
+                                  ebs_volume_id=('EBSVolumeId','EC2Volume')
+                                  )
 
         try:
             if self.__ebs_section:

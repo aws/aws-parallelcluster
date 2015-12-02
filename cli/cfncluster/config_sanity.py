@@ -105,3 +105,12 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
         except boto.exception.BotoServerError as e:
             print('Config sanity error: %s' % e.message)
             sys.exit(1)
+    # EC2 EBS Volume Id
+    elif resource_type == 'EC2Volume':
+        try:
+            ec2_conn = boto.ec2.connect_to_region(region,aws_access_key_id=aws_access_key_id,
+                                                 aws_secret_access_key=aws_secret_access_key)
+            test = ec2_conn.get_all_volumes(volume_ids=resource_value)
+        except boto.exception.BotoServerError as e:
+            print('Config sanity error: %s' % e.message)
+            sys.exit(1)

@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201511250257 cfncluster-1.0.0-beta",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201512011927 cfncluster-1.0.1-beta",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -124,7 +124,7 @@
     "ScalingThreshold" : {
       "Description" : "Threshold for triggering CloudWatch ScaleUp action",
       "Type" : "String",
-      "Default" : "4"
+      "Default" : "1"
     },
     "ScalingEvaluationPeriods" : {
       "Description" : "Number of periods consective periods required to trigger the scaling adjustment",
@@ -329,17 +329,17 @@
     "ScalingCooldown" : {
       "Description" : "Period in seconds to wait before allowing further scaling actions",
       "Type" : "String",
-      "Default" : "120"
+      "Default" : "300"
     },
     "ScalingAdjustment" : {
       "Description" : "Number of instances to add to cluster when the CloudWatch ScaleUp action is called.",
       "Type" : "String",
-      "Default" : "2"
+      "Default" : "1"
     },
     "ScalingAdjustment2" : {
       "Description" : "Number of instances to add to cluster when the CloudWatch ScaleUp2 action is called.",
       "Type" : "String",
-      "Default" : "20"
+      "Default" : "10"
     },
     "Scheduler" : {
       "Description" : "Cluster scheduler",
@@ -426,6 +426,21 @@
       "Description" : "Size of ComputeFleet EBS root volume in GB",
       "Type" : "Number",
       "Default" : "10"
+    },
+    "EC2IAMRoleName" : {
+      "Description" : "Existing EC2 IAM role name",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "VPCSecurityGroupId" : {
+      "Description" : "Existing VPC security group Id",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "EBSVolumeId" : {
+      "Description" : "Existing EBS volume Id",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -741,6 +756,66 @@
         },
         "dedicated"
       ]
+    },
+    "UseEC2IAMRole" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "EC2IAMRoleName"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "CreateEC2IAMRole" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "EC2IAMRoleName"
+        },
+        "NONE"
+      ]
+    },
+    "UseExistingSecurityGroup" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "VPCSecurityGroupId"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseExistingEBSVolume" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "EBSVolumeId"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "CreateEBSVolume" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "EBSVolumeId"
+        },
+        "NONE"
+      ]
+    },
+    "CreateSecurityGroups" : {
+      "Fn::Equals" : [
+        {
+          "Ref" : "VPCSecurityGroupId"
+        },
+        "NONE"
+      ]
     }
   },
   "Mappings" : {
@@ -916,10 +991,10 @@
     },
     "AWSRegionOS2AMI" : {
       "us-west-2" : {
-        "centos6" : "ami-e2263583",
-        "centos7" : "ami-3b25365a",
-        "alinux" : "ami-6f26350e",
-        "ubuntu1404" : "ami-9b2a39fa"
+        "centos6" : "ami-e0d9cb81",
+        "centos7" : "ami-48d8ca29",
+        "alinux" : "ami-fbdbc99a",
+        "ubuntu1404" : "ami-29d9cb48"
       },
       "eu-central-1" : {
         "centos6" : "NA",
@@ -1122,7 +1197,8 @@
           ]
         },
         "Path" : "/"
-      }
+      },
+      "Condition" : "CreateEC2IAMRole"
     },
     "RootInstanceProfile" : {
       "Type" : "AWS::IAM::InstanceProfile",
@@ -1133,7 +1209,8 @@
             "Ref" : "RootRole"
           }
         ]
-      }
+      },
+      "Condition" : "CreateEC2IAMRole"
     },
     "CfnClusterPolicies" : {
       "Type" : "AWS::IAM::Policy",
@@ -1291,7 +1368,8 @@
             "Ref" : "RootRole"
           }
         ]
-      }
+      },
+      "Condition" : "CreateEC2IAMRole"
     },
     "S3ReadRolePolicies" : {
       "Type" : "AWS::IAM::Policy",
@@ -1532,7 +1610,15 @@
           ]
         },
         "IamInstanceProfile" : {
-          "Ref" : "RootInstanceProfile"
+          "Fn::If" : [
+            "UseEC2IAMRole",
+            {
+              "Ref" : "EC2IAMRoleName"
+            },
+            {
+              "Ref" : "RootInstanceProfile"
+            }
+          ]
         },
         "PlacementGroupName" : {
           "Fn::If" : [
@@ -1647,7 +1733,15 @@
                       "Ref" : "AWS::Region"
                     },
                     "cfn_volume" : {
-                      "Ref" : "SharedVolume"
+                      "Fn::If" : [
+                        "UseExistingEBSVolume",
+                        {
+                          "Ref" : "EBSVolumeId"
+                        },
+                        {
+                          "Ref" : "SharedVolume"
+                        }
+                      ]
                     },
                     "cfn_scheduler" : {
                       "Ref" : "Scheduler"
@@ -1889,13 +1983,32 @@
       "Properties" : {
         "SecurityGroups" : [
           {
-            "Ref" : "ComputeSecurityGroup"
+            "Fn::If" : [
+              "CreateSecurityGroups",
+              {
+                "Ref" : "ComputeSecurityGroup"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
           },
           {
             "Fn::If" : [
               "AddAdditionalSG",
               {
                 "Ref" : "AdditionalSG"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
+          },
+          {
+            "Fn::If" : [
+              "UseExistingSecurityGroup",
+              {
+                "Ref" : "VPCSecurityGroupId"
               },
               {
                 "Ref" : "AWS::NoValue"
@@ -1917,7 +2030,15 @@
           "Ref" : "KeyName"
         },
         "IamInstanceProfile" : {
-          "Ref" : "RootInstanceProfile"
+          "Fn::If" : [
+            "UseEC2IAMRole",
+            {
+              "Ref" : "EC2IAMRoleName"
+            },
+            {
+              "Ref" : "RootInstanceProfile"
+            }
+          ]
         },
         "SpotPrice" : {
           "Fn::If" : [
@@ -2511,7 +2632,8 @@
             }
           }
         ]
-      }
+      },
+      "Condition" : "CreateSecurityGroups"
     },
     "MasterSecurityGroupIngress" : {
       "Type" : "AWS::EC2::SecurityGroupIngress",
@@ -2525,7 +2647,8 @@
         "GroupId" : {
           "Ref" : "MasterSecurityGroup"
         }
-      }
+      },
+      "Condition" : "CreateSecurityGroups"
     },
     "ComputeSecurityGroup" : {
       "Type" : "AWS::EC2::SecurityGroup",
@@ -2544,7 +2667,8 @@
             "ToPort" : "65535"
           }
         ]
-      }
+      },
+      "Condition" : "CreateSecurityGroups"
     },
     "ComputeSecurityGroupIngress" : {
       "Type" : "AWS::EC2::SecurityGroupIngress",
@@ -2558,7 +2682,8 @@
         "GroupId" : {
           "Ref" : "ComputeSecurityGroup"
         }
-      }
+      },
+      "Condition" : "CreateSecurityGroups"
     },
     "MasterENI" : {
       "Type" : "AWS::EC2::NetworkInterface",
@@ -2570,13 +2695,32 @@
         "SourceDestCheck" : "false",
         "GroupSet" : [
           {
-            "Ref" : "MasterSecurityGroup"
+            "Fn::If" : [
+              "CreateSecurityGroups",
+              {
+                "Ref" : "MasterSecurityGroup"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
           },
           {
             "Fn::If" : [
               "AddAdditionalSG",
               {
                 "Ref" : "AdditionalSG"
+              },
+              {
+                "Ref" : "AWS::NoValue"
+              }
+            ]
+          },
+          {
+            "Fn::If" : [
+              "UseExistingSecurityGroup",
+              {
+                "Ref" : "VPCSecurityGroupId"
               },
               {
                 "Ref" : "AWS::NoValue"
@@ -2650,7 +2794,8 @@
             }
           ]
         }
-      }
+      },
+      "Condition" : "CreateEBSVolume"
     },
     "AssosiateEIP" : {
       "Type" : "AWS::EC2::EIPAssociation",
