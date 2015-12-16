@@ -313,6 +313,14 @@ Defaults to NONE in the default template. ::
 
     ec2_iam_role = NONE
 
+extra_json
+""""""""""
+Extra JSON that will be merged into the dna.json used by Chef.
+
+Defaults to {} in the default template. ::
+
+    extra_json = {}
+
 vpc_settings
 """"""""""""
 Settings section relating to VPC to be used

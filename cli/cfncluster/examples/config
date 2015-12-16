@@ -105,6 +105,9 @@ key_name = mykey
 # Existing EC2 IAM role to be assosiated with the EC2 instances
 # (defaults to NONE in the default template)
 #ec2_iam_role = NONE
+# Extra Json to be merged with the dna.json used by Chef
+# (defaults to {} in the default template)
+#extra_json = {}
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume
