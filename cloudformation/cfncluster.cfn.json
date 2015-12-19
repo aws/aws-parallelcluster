@@ -270,7 +270,7 @@
       ]
     },
     "PlacementGroup" : {
-      "Description" : "The name of an exisiting placement group",
+      "Description" : "The name of an existing placement group",
       "Type" : "String",
       "Default" : "NONE"
     },
