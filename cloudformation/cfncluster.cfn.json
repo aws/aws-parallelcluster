@@ -1059,8 +1059,8 @@
     },
     "CfnClusterVersions" : {
       "default" : {
-        "cfncluster" : "cfncluster-1.0.1b",
-        "cookbook" : "cfncluster-cookbook-0.2.0",
+        "cfncluster" : "cfncluster-1.0.0b2",
+        "cookbook" : "cfncluster-cookbook-0.3.0",
         "chef" : "12.4.3",
         "ami" : "201512082118"
       }
