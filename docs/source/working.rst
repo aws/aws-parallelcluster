@@ -1,4 +1,4 @@
-.. _welcome
+.. _working
 
 Working with CfnCluster
 #######################
@@ -8,3 +8,4 @@ Working with CfnCluster
     networking
     pre_post_install
     s3_resources
+    iam

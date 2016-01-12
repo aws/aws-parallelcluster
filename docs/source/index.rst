@@ -13,7 +13,7 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
     :maxdepth: 2
 
     getting_started
-    welcome
+    working
     configuration
     functional    
     tutorials
