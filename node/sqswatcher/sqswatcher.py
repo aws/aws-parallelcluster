@@ -108,7 +108,12 @@ def pollQueue(scheduler, q, t):
             for result in results:
                 message = json.loads(result.get_body())
                 message_attrs = json.loads(message['Message'])
-                eventType = message_attrs['Event']
+                try:
+                    eventType = message_attrs['Event']
+                except KeyError:
+                    log.warn("Unable to read message. Deleting.")
+                    q.delete_message(result)
+                    break
 
                 log.info("eventType=%s" % eventType)
                 if eventType == 'autoscaling:TEST_NOTIFICATION':
