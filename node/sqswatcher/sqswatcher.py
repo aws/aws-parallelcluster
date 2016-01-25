@@ -107,22 +107,27 @@ def pollQueue(scheduler, q, t):
 
             for result in results:
                 message = json.loads(result.get_body())
+                log.debug("Full Messge: %s" % message)
                 message_attrs = json.loads(message['Message'])
-                try:
+
+                try: 
                     eventType = message_attrs['Event']
-                except KeyError:
-                    log.warn("Unable to read message. Deleting.")
-                    q.delete_message(result)
-                    break
+                except:
+                    try:
+                        eventType = message_attrs['detail-type']
+                    except KeyError:
+                        log.warn("Unable to read message. Deleting.")
+                        q.delete_message(result)
+                        break
 
                 log.info("eventType=%s" % eventType)
                 if eventType == 'autoscaling:TEST_NOTIFICATION':
                     q.delete_message(result)
 
                 if eventType != 'autoscaling:TEST_NOTIFICATION':
-                    instanceId = message_attrs['EC2InstanceId']
-                    log.info("instanceId=%s" % instanceId)
                     if eventType == 'cfncluster:COMPUTE_READY':
+                        instanceId = message_attrs['EC2InstanceId']
+                        log.info("instanceId=%s" % instanceId)
                         ec2 = boto.connect_ec2()
                         ec2 = boto.ec2.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
@@ -136,7 +141,7 @@ def pollQueue(scheduler, q, t):
                                 if not hostname:
                                     log.warning("Unable to find running instance %s." % instanceId)
                                 else:
-				    log.info("Adding Hostname: %s" % hostname)
+                                    log.info("Adding Hostname: %s" % hostname)
                                     hostname = hostname[0].instances[0].private_dns_name.split('.')[:1][0]
                                     s.addHost(hostname,cluster_user)
 
@@ -145,7 +150,7 @@ def pollQueue(scheduler, q, t):
                                         'hostname': hostname
                                     })
 
-				q.delete_message(result)
+                                q.delete_message(result)
                                 break
                             except boto.exception.BotoServerError as e:
                                 if e.error_code == 'RequestLimitExceeded':
@@ -158,7 +163,19 @@ def pollQueue(scheduler, q, t):
                                 log.critical("Unexpected error:", sys.exc_info()[0])
                                 raise
 
-                    elif eventType == 'autoscaling:EC2_INSTANCE_TERMINATE':
+                    elif (eventType == 'autoscaling:EC2_INSTANCE_TERMINATE') or (eventType == 'EC2 Instance State-change Notification'):
+                        if eventType == 'autoscaling:EC2_INSTANCE_TERMINATE':
+                            instanceId = message_attrs['EC2InstanceId']
+                        elif eventType == 'EC2 Instance State-change Notification':
+                            if message_attrs['detail']['state'] == 'terminated':
+                                log.info('Terminated instance state from CloudWatch')
+                                instanceId = message_attrs['detail']['instance-id']
+                            else:
+                                log.info('Not Terminated, ignoring')
+                                q.delete_message(result)
+                                break
+
+                        log.info("instanceId=%s" % instanceId)
                         try:
                             item = t.get_item(consistent=True, instanceId=instanceId)
                             hostname = item['hostname']
