@@ -1700,11 +1700,20 @@
                 "if [ \"$custom_cookbook\" != \"NONE\" ]; then\n",
                 "  cookbook_url=$custom_cookbook\n",
                 "else\n",
-                "  cookbook_url=https://s3-",
+                "  if [ \"",
                 {
                   "Ref" : "AWS::Region"
                 },
-                ".amazonaws.com/cfncluster-",
+                "\" == \"us-east-1\" ]; then\n",
+                "    s3_prefix=s3\n",
+                "  else\n",
+                "    s3_prefix=s3-",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "  fi\n",
+                "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-",
                 {
                   "Ref" : "AWS::Region"
                 },
@@ -2343,11 +2352,20 @@
                 "if [ \"$custom_cookbook\" != \"NONE\" ]; then\n",
                 "  cookbook_url=$custom_cookbook\n",
                 "else\n",
-                "  cookbook_url=https://s3-",
+                "  if [ \"",
                 {
                   "Ref" : "AWS::Region"
                 },
-                ".amazonaws.com/cfncluster-",
+                "\" == \"us-east-1\" ]; then\n",
+                "    s3_prefix=s3\n",
+                "  else\n",
+                "    s3_prefix=s3-",
+                {
+                  "Ref" : "AWS::Region"
+                },
+                "\n",
+                "  fi\n",
+                "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-",
                 {
                   "Ref" : "AWS::Region"
                 },
