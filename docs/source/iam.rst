@@ -22,259 +22,259 @@ CfnClusterInstancePolicy
 
 ::
 
-				{
-						"Version": "2012-10-17",
-						"Statement": [
-								{
-										"Resource": [
-												"*"
-										],
-										"Action": [
-												"ec2:AttachVolume",
-												"ec2:DescribeInstanceAttribute",
-												"ec2:DescribeInstanceStatus",
-												"ec2:DescribeInstances"
-										],
-										"Sid": "EC2",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"*"
-										],
-										"Action": [
-												"dynamodb:ListTables"
-										],
-										"Sid": "DynamoDBList",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"arn:aws:sqs:<REGION>:<AWS ACCOUNT ID>:cfncluster-*"
-										],
-										"Action": [
-												"sqs:SendMessage",
-												"sqs:ReceiveMessage",
-												"sqs:ChangeMessageVisibility",
-												"sqs:DeleteMessage",
-												"sqs:GetQueueUrl"
-										],
-										"Sid": "SQSQueue",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"*"
-										],
-										"Action": [
-												"autoscaling:DescribeAutoScalingGroups",
-												"autoscaling:TerminateInstanceInAutoScalingGroup",
-												"autoscaling:SetDesiredCapacity"
-										],
-										"Sid": "Autoscaling",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"*"
-										],
-										"Action": [
-												"cloudwatch:PutMetricData"
-										],
-										"Sid": "CloudWatch",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/cfncluster-*"
-										],
-										"Action": [
-												"dynamodb:PutItem",
-												"dynamodb:Query",
-												"dynamodb:GetItem",
-												"dynamodb:DeleteItem",
-												"dynamodb:DescribeTable"
-										],
-										"Sid": "DynamoDBTable",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"*"
-										],
-										"Action": [
-												"sqs:ListQueues"
-										],
-										"Sid": "SQSList",
-										"Effect": "Allow"
-								},
-								{
-										"Resource": [
-												"arn:aws:logs:*:*:*"
-										],
-										"Action": [
-												"logs:*"
-										],
-										"Sid": "CloudWatchLogs",
-										"Effect": "Allow"
-								}
-						]
-				}
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Resource": [
+                  "*"
+              ],
+              "Action": [
+                  "ec2:AttachVolume",
+                  "ec2:DescribeInstanceAttribute",
+                  "ec2:DescribeInstanceStatus",
+                  "ec2:DescribeInstances"
+              ],
+              "Sid": "EC2",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "*"
+              ],
+              "Action": [
+                  "dynamodb:ListTables"
+              ],
+              "Sid": "DynamoDBList",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "arn:aws:sqs:<REGION>:<AWS ACCOUNT ID>:cfncluster-*"
+              ],
+              "Action": [
+                  "sqs:SendMessage",
+                  "sqs:ReceiveMessage",
+                  "sqs:ChangeMessageVisibility",
+                  "sqs:DeleteMessage",
+                  "sqs:GetQueueUrl"
+              ],
+              "Sid": "SQSQueue",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "*"
+              ],
+              "Action": [
+                  "autoscaling:DescribeAutoScalingGroups",
+                  "autoscaling:TerminateInstanceInAutoScalingGroup",
+                  "autoscaling:SetDesiredCapacity"
+              ],
+              "Sid": "Autoscaling",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "*"
+              ],
+              "Action": [
+                  "cloudwatch:PutMetricData"
+              ],
+              "Sid": "CloudWatch",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/cfncluster-*"
+              ],
+              "Action": [
+                  "dynamodb:PutItem",
+                  "dynamodb:Query",
+                  "dynamodb:GetItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:DescribeTable"
+              ],
+              "Sid": "DynamoDBTable",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "*"
+              ],
+              "Action": [
+                  "sqs:ListQueues"
+              ],
+              "Sid": "SQSList",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
+                  "arn:aws:logs:*:*:*"
+              ],
+              "Action": [
+                  "logs:*"
+              ],
+              "Sid": "CloudWatchLogs",
+              "Effect": "Allow"
+          }
+      ]
+  }
 
 CfnClusterUserPolicy
 --------------------
 
 ::
 
-				{
-						"Version": "2012-10-17",
-						"Statement": [
-								{
-										"Sid": "EC2Describe",
-										"Action": [
-												"ec2:DescribeKeyPairs",
-												"ec2:DescribeVpcs",
-												"ec2:DescribeSubnets",
-												"ec2:DescribeSecurityGroups",
-												"ec2:DescribePlacementGroups",
-												"ec2:DescribeImages",
-												"ec2:DescribeInstances",
-												"ec2:DescribeSnapshots",
-												"ec2:DescribeVolumes",
-												"ec2:DescribeVpcAttribute",
-												"ec2:DescribeAddresses",
-												"ec2:CreateTags",
-												"ec2:DescribeNetworkInterfaces"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "EC2Modify",
-										"Action": [
-												"ec2:CreateVolume",
-												"ec2:RunInstances",
-												"ec2:AllocateAddress",
-												"ec2:AssociateAddress",
-												"ec2:AttachNetworkInterface",
-												"ec2:AuthorizeSecurityGroupEgress",
-												"ec2:AuthorizeSecurityGroupIngress",
-												"ec2:CreateNetworkInterface",
-												"ec2:CreateSecurityGroup",
-												"ec2:ModifyVolumeAttribute",
-												"ec2:ModifyNetworkInterfaceAttribute"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "AutoScalingDescribe",
-										"Action": [
-												"autoscaling:DescribeAutoScalingGroups",
-												"autoscaling:DescribeLaunchConfigurations",
-												"autoscaling:DescribeAutoScalingInstances"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "AutoScalingModify",
-										"Action": [
-												"autoscaling:CreateAutoScalingGroup",
-												"autoscaling:CreateLaunchConfiguration",
-												"autoscaling:PutNotificationConfiguration",
-												"autoscaling:UpdateAutoScalingGroup",
-												"autoscaling:PutScalingPolicy"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "DynamoDBDescribe",
-										"Action": [
-												"dynamodb:DescribeTable"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "DynamoDBModify",
-										"Action": [
-												"dynamodb:CreateTable"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "CloudWatchModify",
-										"Action": [
-												"cloudwatch:PutMetricAlarm"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "SQSDescribe",
-										"Action": [
-												"sqs:GetQueueAttributes"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "SQSModify",
-										"Action": [
-												"sqs:CreateQueue",
-												"sqs:SetQueueAttributes"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "SNSDescribe",
-										"Action": [
-												"sns:ListTopics"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "SNSModify",
-										"Action": [
-												"sns:CreateTopic",
-												"sns:Subscribe"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "CloudFormationDescribe",
-										"Action": [
-												"cloudformation:DescribeStackEvents",
-												"cloudformation:DescribeStackResources",
-												"cloudformation:DescribeStacks",
-												"cloudformation:ListStacks"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "CloudFormationModify",
-										"Action": [
-												"cloudformation:CreateStack",
-												"cloudformation:DeleteStack",
-												"cloudformation:UpdateStack"
-										],
-										"Effect": "Allow",
-										"Resource": "*"
-								},
-								{
-										"Sid": "IAMModify",
-										"Action": [
-												"iam:PassRole"
-										],
-										"Effect": "Allow",
-										"Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
-								}
-						]
-				}
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Sid": "EC2Describe",
+              "Action": [
+                  "ec2:DescribeKeyPairs",
+                  "ec2:DescribeVpcs",
+                  "ec2:DescribeSubnets",
+                  "ec2:DescribeSecurityGroups",
+                  "ec2:DescribePlacementGroups",
+                  "ec2:DescribeImages",
+                  "ec2:DescribeInstances",
+                  "ec2:DescribeSnapshots",
+                  "ec2:DescribeVolumes",
+                  "ec2:DescribeVpcAttribute",
+                  "ec2:DescribeAddresses",
+                  "ec2:CreateTags",
+                  "ec2:DescribeNetworkInterfaces"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "EC2Modify",
+              "Action": [
+                  "ec2:CreateVolume",
+                  "ec2:RunInstances",
+                  "ec2:AllocateAddress",
+                  "ec2:AssociateAddress",
+                  "ec2:AttachNetworkInterface",
+                  "ec2:AuthorizeSecurityGroupEgress",
+                  "ec2:AuthorizeSecurityGroupIngress",
+                  "ec2:CreateNetworkInterface",
+                  "ec2:CreateSecurityGroup",
+                  "ec2:ModifyVolumeAttribute",
+                  "ec2:ModifyNetworkInterfaceAttribute"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "AutoScalingDescribe",
+              "Action": [
+                  "autoscaling:DescribeAutoScalingGroups",
+                  "autoscaling:DescribeLaunchConfigurations",
+                  "autoscaling:DescribeAutoScalingInstances"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "AutoScalingModify",
+              "Action": [
+                  "autoscaling:CreateAutoScalingGroup",
+                  "autoscaling:CreateLaunchConfiguration",
+                  "autoscaling:PutNotificationConfiguration",
+                  "autoscaling:UpdateAutoScalingGroup",
+                  "autoscaling:PutScalingPolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "DynamoDBDescribe",
+              "Action": [
+                  "dynamodb:DescribeTable"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "DynamoDBModify",
+              "Action": [
+                  "dynamodb:CreateTable"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "CloudWatchModify",
+              "Action": [
+                  "cloudwatch:PutMetricAlarm"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "SQSDescribe",
+              "Action": [
+                  "sqs:GetQueueAttributes"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "SQSModify",
+              "Action": [
+                  "sqs:CreateQueue",
+                  "sqs:SetQueueAttributes"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "SNSDescribe",
+              "Action": [
+                  "sns:ListTopics"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "SNSModify",
+              "Action": [
+                  "sns:CreateTopic",
+                  "sns:Subscribe"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "CloudFormationDescribe",
+              "Action": [
+                  "cloudformation:DescribeStackEvents",
+                  "cloudformation:DescribeStackResources",
+                  "cloudformation:DescribeStacks",
+                  "cloudformation:ListStacks"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "CloudFormationModify",
+              "Action": [
+                  "cloudformation:CreateStack",
+                  "cloudformation:DeleteStack",
+                  "cloudformation:UpdateStack"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "IAMModify",
+              "Action": [
+                  "iam:PassRole"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
+          }
+      ]
+  }
