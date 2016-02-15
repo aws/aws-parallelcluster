@@ -1,4 +1,4 @@
-.. _working
+.. _working:
 
 Working with CfnCluster
 #######################

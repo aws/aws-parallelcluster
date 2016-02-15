@@ -274,7 +274,7 @@ Defaults to 10 in default template. ::
     master_root_volume_size = 10
 
 compute_root_volume_size
-"""""""""""""""""""""""
+""""""""""""""""""""""""
 ComputeFleet root volume size in GB. (AMI must support growroot)
 
 Defaults to 10 in default template. ::
@@ -386,7 +386,7 @@ Defaults to NONE in the default template. ::
     additional_sg = sg-xxxxxx
 
 compute_subnet_id
-""""""""""""""""
+"""""""""""""""""
 ID of an existing subnet you want to provision the compute nodes into. ::
 
     compute_subnet_id = subnet-xxxxxx

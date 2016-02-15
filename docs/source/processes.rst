@@ -1,4 +1,4 @@
-.. _processes
+.. _processes:
 
 CfnCluster Processes
 ====================

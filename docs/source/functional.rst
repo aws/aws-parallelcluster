@@ -1,4 +1,4 @@
-.. _functional
+.. _functional:
 
 How CfnCluster Works
 ####################

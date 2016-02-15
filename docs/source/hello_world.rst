@@ -61,7 +61,7 @@ Once logged in, run the command "qhost" to ensure that your compute nodes are se
 As you can see, we have two compute nodes in our cluster, both with 2 threads available to them.
 
 Running your first job
-=====================
+======================
 Now we'll create a simple job which sleeps for a little while and then outputs it's own hostname.
 
 Create a file called "hellojob.sh" with the following contents. ::
