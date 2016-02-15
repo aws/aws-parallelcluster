@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -11,18 +11,22 @@
 
 __author__ = 'dougalb'
 
+import logging
+
+log = logging.getLogger(__name__)
+
 hostfile_path = 'sqswatcher.hosts'
 
 def addHost(hostname,cluster_user):
     if hostname != None:
-        print('Adding', hostname)
+        log.info('Adding', hostname)
         hostfile = open(hostfile_path, 'a')
         print >> hostfile, hostname
         hostfile.close()
 
 def removeHost(hostname,cluster_user):
     if hostname != None:
-        print('Removing', hostname)
+        log.info('Removing', hostname)
         hostfile = open(hostfile_path, 'r')
         lines = hostfile.readlines()
         hostfile.close()

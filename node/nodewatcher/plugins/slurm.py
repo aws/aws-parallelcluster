@@ -9,19 +9,19 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-__author__ = 'dougalb'
-
 import subprocess
-import os
 import logging
 
 log = logging.getLogger(__name__)
 
+
 def getJobs(hostname):
+    # Slurm won't use FQDN
+    short_name = hostname.split('.')[0]
     # Checking for running jobs on the node
-    command = ['/opt/openlava/bin/bjobs', '-m', hostname, '-u', 'all']
+    _command = ['/opt/slurm/bin/squeue', '-w', short_name, '-h']
     try:
-       output = subprocess.Popen(command, stdout=subprocess.PIPE).communicate()[0]
+        output = subprocess.Popen(_command, stdout=subprocess.PIPE).communicate()[0]
     except subprocess.CalledProcessError:
         log.error("Failed to run %s\n" % _command)
 
@@ -33,11 +33,4 @@ def getJobs(hostname):
     return _jobs
 
 def lockHost(hostname, unlock=False):
-    # http://wp.auburn.edu/morgaia/?p=103
-    _mod = unlock and 'hopen' or 'hclose'
-    command = ['/opt/openlava/bin/badmin', _mod, hostname]
-    try:
-        subprocess.check_call(command)
-    except subprocess.CalledProcessError:
-        log.error("Failed to run %s\n" % command)
-
+    pass

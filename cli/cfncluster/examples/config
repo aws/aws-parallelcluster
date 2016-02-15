@@ -34,7 +34,7 @@ key_name = mykey
 #master_instance_type = t2.micro
 # Inital number of EC2 instances to launch as compute nodes in the cluster.
 # (defaults to 2 for default template)
-#initial_queue_size = 1
+#initial_queue_size = 2
 # Maximum number of EC2 instances that can be launched in the cluster.
 # (defaults to 10 for the default template)
 #max_queue_size = 10
@@ -94,14 +94,20 @@ key_name = mykey
 # (defaults to 10 in default template)
 #compute_root_volume_size = 10
 # OS type used in the cluster
-# (defaults to centos6 in the default template)
-#base_os = centos6
+# (defaults to alinux in the default template)
+#base_os = alinux
 # CloudWatch Logs region
 # (defaults to NONE in the default template)
 #cwl_region = NONE
 # CloudWatch Logs Log Group name
-# (defaults to NONE in the default template
+# (defaults to NONE in the default template)
 #cwl_log_group = NONE
+# Existing EC2 IAM role to be assosiated with the EC2 instances
+# (defaults to NONE in the default template)
+#ec2_iam_role = NONE
+# Extra Json to be merged with the dna.json used by Chef
+# (defaults to {} in the default template)
+#extra_json = {}
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume
@@ -122,6 +128,9 @@ master_subnet_id = subnet-
 # Additional VPC security group Id for all instances
 # (defaults to NONE in the default template)
 #additional_sg = sg-
+# Existing EC2 security group to be assosiated with the EC2 instances
+# (defaults to NONE in the default template)
+#vpc_security_group_id = sg-
 
 #[vpc private-new]
 # ID of the VPC you want to provision cluster into.
@@ -155,15 +164,18 @@ master_subnet_id = subnet-
 # Use encrypted volume (should not be used with snapshots)
 # (defaults to false for default template)
 #encrypted = false
+# Existing EBS volume to be attached to the MasterServer
+# (defaults to NONE in the default template)
+#ebs_volume_id = NONE
 
 ## Scaling settings
 #[scaling custom]
 # Threshold for triggering CloudWatch ScaleUp action
-# (defaults to 4 for default template)
-#scaling_threshold = 4
+# (defaults to 1 for default template)
+#scaling_threshold = 1
 # Number of instances to add when called CloudWatch ScaleUp action
-# (defaults to 2 for default template)
-#scaling_adjustment = 2
+# (defaults to 1 for default template)
+#scaling_adjustment = 1
 # Threshold for triggering CloudWatch ScaleUp2 action
 # (defaults to 200 for default template)
 #scaling_threshold2 = 200
@@ -177,5 +189,5 @@ master_subnet_id = subnet-
 # (defaults to 2 for default template)
 #scaling_evaluation_periods = 2
 # Amount of time in seconds to wait before attempting further scaling actions
-# (defaults to 120 for the default template
-#scaling_cooldown = 120
+# (defaults to 300 for the default template
+#scaling_cooldown = 300

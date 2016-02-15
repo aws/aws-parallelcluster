@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -13,6 +13,9 @@ __author__ = 'dougalb'
 
 import subprocess
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def runPipe(cmds):
     try:
@@ -36,9 +39,9 @@ def getJobs(hostname):
     # Checking for running jobs on the node
     commands = ['/opt/torque/bin/qstat -r -n -1', ('grep ' + hostname.split('.')[0])]
     try:
-       status, output = runPipe(commands)
+        status, output = runPipe(commands)
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % _command)
+        log.error("Failed to run %s\n" % _command)
 
     if output == "":
         _jobs = False
@@ -46,3 +49,13 @@ def getJobs(hostname):
         _jobs = True
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    # https://lists.sdsc.edu/pipermail/npaci-rocks-discussion/2007-November/027919.html
+    _mod = unlock and '-c' or '-o'
+    command = ['/opt/torque/bin/pbsnodes', _mod, hostname]
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError:
+        log.error("Failed to run %s\n" % command)
+

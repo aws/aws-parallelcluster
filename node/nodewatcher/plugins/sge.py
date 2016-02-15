@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -13,6 +13,9 @@ __author__ = 'dougalb'
 
 import subprocess
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 def getJobs(hostname):
     # Checking for running jobs on the node
@@ -22,7 +25,7 @@ def getJobs(hostname):
                                  env=dict(os.environ, SGE_ROOT='/opt/sge',
                                          PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin')).communicate()[0]
     except subprocess.CalledProcessError:
-        print ("Failed to run %s\n" % command)
+        log.error("Failed to run %s\n" % command)
 
     _jobs = True
     for host in _output.split('\n'):
@@ -31,3 +34,15 @@ def getJobs(hostname):
             break
 
     return _jobs
+
+def lockHost(hostname, unlock=False):
+    _mod = unlock and '-e' or '-d'
+    command = ['/opt/sge/bin/lx-amd64/qmod', _mod, 'all.q@%s' % hostname]
+    try:
+        subprocess.check_call(
+            command,
+            env=dict(os.environ, SGE_ROOT='/opt/sge',
+                     PATH='/opt/sge/bin:/opt/sge/bin/lx-amd64:/bin:/usr/bin'))
+    except subprocess.CalledProcessError:
+        log.error("Failed to run %s\n" % command)
+

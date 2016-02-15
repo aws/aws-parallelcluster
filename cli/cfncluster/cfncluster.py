@@ -264,7 +264,7 @@ def status(args):
         sys.stdout.write('\rStatus: %s' % status)
         sys.stdout.flush()
         if not args.nowait:
-            while ((status != 'CREATE_COMPLETE') and (status != 'UPDATE_COMPLETE')
+            while ((status != 'CREATE_COMPLETE') and (status != 'UPDATE_COMPLETE') and (status != 'UPDATE_ROLLBACK_COMPLETE')
                    and (status != 'ROLLBACK_COMPLETE') and (status != 'CREATE_FAILED') and (status != 'DELETE_FAILED')):
                 time.sleep(5)
                 status = cfnconn.describe_stacks(stack)[0].stack_status
@@ -278,10 +278,12 @@ def status(args):
                 outputs = cfnconn.describe_stacks(stack)[0].outputs
                 for output in outputs:
                     print output
-            elif ((status == 'ROLLBACK_COMPLETE') or (status == 'CREATE_FAILED') or (status == 'DELETE_FAILED')):
+            elif ((status == 'ROLLBACK_COMPLETE') or (status == 'CREATE_FAILED') or (status == 'DELETE_FAILED') or
+                      (status == 'UPDATE_ROLLBACK_COMPLETE')):
                 events = cfnconn.describe_stack_events(stack)
                 for event in events:
-                    if ((event.resource_status == 'CREATE_FAILED') or (event.resource_status == 'DELETE_FAILED')):
+                    if ((event.resource_status == 'CREATE_FAILED') or (event.resource_status == 'DELETE_FAILED') or
+                            (event.resource_status == 'UPDATE_FAILED')):
                         print event.timestamp, event.resource_status, event.resource_type, event.logical_resource_id, \
                             event.resource_status_reason
         else:

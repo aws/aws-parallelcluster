@@ -274,7 +274,7 @@ Defaults to 10 in default template. ::
     master_root_volume_size = 10
 
 compute_root_volume_size
-"""""""""""""""""""""""
+""""""""""""""""""""""""
 ComputeFleet root volume size in GB. (AMI must support growroot)
 
 Defaults to 10 in default template. ::
@@ -285,9 +285,9 @@ base_os
 """""""
 OS type used in the cluster
  
-Defaults to centos6 in the default template. ::
+Defaults to alinux in the default template. ::
 
-    base_os = centos6
+    base_os = alinux
 
 cwl_region
 """"""""""
@@ -304,6 +304,22 @@ CloudWatch Logs Log Group name
 Defaults to NONE in the default template. ::
 
     cwl_log_group = NONE
+
+ec2_iam_role
+""""""""""""
+Existing EC2 IAM Role that will be attached to all instances in the cluster.
+
+Defaults to NONE in the default template. ::
+
+    ec2_iam_role = NONE
+
+extra_json
+""""""""""
+Extra JSON that will be merged into the dna.json used by Chef.
+
+Defaults to {} in the default template. ::
+
+    extra_json = {}
 
 vpc_settings
 """"""""""""
@@ -369,11 +385,11 @@ Defaults to NONE in the default template. ::
 
     additional_sg = sg-xxxxxx
 
-master_subnet_id
-""""""""""""""""
+compute_subnet_id
+"""""""""""""""""
 ID of an existing subnet you want to provision the compute nodes into. ::
 
-    master_subnet_id = subnet-xxxxxx
+    compute_subnet_id = subnet-xxxxxx
 
 compute_subnet_cidr
 """""""""""""""""""
@@ -390,6 +406,14 @@ Set to false if operating in a private VPC.
 Defaults to true. ::
 
     use_public_ips = true
+
+vpc_security_group_id
+"""""""""""""""""""""
+Use an existing security group for all instances.
+
+Defaults to NONE in the default template. ::
+
+    vpc_security_group_id = sg-xxxxxx
 
 .. _ebs_section:
 
@@ -440,6 +464,14 @@ Defaults to false for default template. ::
 
     encrypted = false
 
+ebs_volume_id
+"""""""""""""
+EBS Volume Id of an existing volume that will be attached to the MasterServer.
+
+Defaults to NONE for default template. ::
+
+    ebs_volume_id = vol-xxxxxx
+
 .. _scaling_section:
 
 scaling
@@ -449,23 +481,23 @@ Settings which define how the compute nodes scale. ::
 
     [scaling custom]
     scaling_period = 60
-    scaling_cooldown = 120
+    scaling_cooldown = 300
 
 scaling_threshold
 """""""""""""""""
 Threshold for triggering CloudWatch ScaleUp action.
  
-Defaults to 4 for default template. ::
+Defaults to 1 for default template. ::
 
-    scaling_threshold = 4
+    scaling_threshold = 1
 
 scaling_adjustment
 """"""""""""""""""
 Number of instances to add when called CloudWatch ScaleUp action.
  
-Defaults to 2 for default template. ::
+Defaults to 1 for default template. ::
 
-    scaling_adjustment = 2
+    scaling_adjustment = 1
 
 
 scaling_threshold2
@@ -504,6 +536,6 @@ scaling_cooldown
 """"""""""""""""
 Amount of time in seconds to wait before attempting further scaling actions.
  
-Defaults to 120 for the default template. ::
+Defaults to 300 for the default template. ::
 
-    scaling_cooldown = 120
+    scaling_cooldown = 300
