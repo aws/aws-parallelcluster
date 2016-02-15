@@ -2,6 +2,12 @@
 CHANGELOG
 =========
 
+1.0.0
+=====
+Offiical release of the CfnCluster 1.x CLI, templates and AMIs. Available in all regions except BJS, with
+support for Amazon Linux, CentOS 6 & 7 and Ubuntu 14.04 LTS. All AMIs are built via packer from the CfnCluster
+Cookbook project (https://github.com/awslabs/cfncluster-cookbook). 
+
 1.0.0-beta
 ==========
 
