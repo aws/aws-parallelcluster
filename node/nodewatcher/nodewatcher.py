@@ -1,6 +1,6 @@
 #!/usr/bin/env python2.6
 
-# Copyright 2013-2015 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -124,13 +124,23 @@ def lockHost(s,hostname,unlock=False):
 def selfTerminate(region, asg, instance_id):
     _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
                                           proxy_port=boto.config.get('Boto', 'proxy_port'))
+    if not maintainSize(region, asg):
+        log.info("terminating %s" % instance_id)
+        _as_conn.terminate_instance(instance_id, decrement_capacity=True)
+
+def maintainSize(region, asg):
+    _as_conn = boto.ec2.autoscale.connect_to_region(region,proxy=boto.config.get('Boto', 'proxy'),
+                                          proxy_port=boto.config.get('Boto', 'proxy_port'))
     _asg = _as_conn.get_all_groups(names=[asg])[0]
     _capacity = _asg.desired_capacity
     _min_size = _asg.min_size
     log.debug("capacity=%d min_size=%d" % (_capacity, _min_size))
     if _capacity > _min_size:
-        log.info("terminating %s" % instance_id)
-        _as_conn.terminate_instance(instance_id, decrement_capacity=True)
+        log.debug('capacity greater then min size.')
+        return False
+    else:
+        log.debug('capacity less then or equal to min size.')
+        return True
 
 def main():
     logging.basicConfig(
@@ -157,6 +167,8 @@ def main():
         if jobs == True:
             log.info('Instance has active jobs.')
         else:
+            if maintainSize(region, asg):
+                continue
             # avoid race condition by locking and verifying
             lockHost(s, hostname)
             jobs = getJobs(s, hostname)
