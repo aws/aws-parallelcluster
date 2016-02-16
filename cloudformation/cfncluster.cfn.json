@@ -804,6 +804,21 @@
         },
         "NONE"
       ]
+    },
+    "CreatePlacementGroup" : {
+      "Fn::And" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "PlacementGroup"
+            },
+            "DYNAMIC"
+          ]
+        },
+        {
+          "Condition" : "UsePlacementGroup"
+        }
+      ]
     }
   },
   "Mappings" : {
@@ -1635,7 +1650,15 @@
           "Fn::If" : [
             "UseClusterPlacement",
             {
-              "Ref" : "PlacementGroup"
+              "Fn::If" : [
+                "CreatePlacementGroup",
+                {
+                  "Ref" : "DynamicPlacementGroup"
+                },
+                {
+                  "Ref" : "PlacementGroup"
+                }
+              ]
             },
             {
               "Ref" : "AWS::NoValue"
@@ -2079,7 +2102,15 @@
           "Fn::If" : [
             "UsePlacementGroup",
             {
-              "Ref" : "PlacementGroup"
+              "Fn::If" : [
+                "CreatePlacementGroup",
+                {
+                  "Ref" : "DynamicPlacementGroup"
+                },
+                {
+                  "Ref" : "PlacementGroup"
+                }
+              ]
             },
             {
               "Ref" : "AWS::NoValue"
@@ -3038,6 +3069,13 @@
         }
       },
       "Condition" : "MasterPublicIp"
+    },
+    "DynamicPlacementGroup" : {
+      "Type" : "AWS::EC2::PlacementGroup",
+      "Properties" : {
+        "Strategy" : "cluster"
+      },
+      "Condition" : "CreatePlacementGroup"
     }
   },
   "Outputs" : {

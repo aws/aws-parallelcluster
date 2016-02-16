@@ -227,7 +227,7 @@ Defaults to NONE for the default template. ::
 
 placement_group
 """""""""""""""
-Cluster placement group. This placement group must already exist.
+Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted. 
  
 Defaults to NONE for the default template. ::
 
