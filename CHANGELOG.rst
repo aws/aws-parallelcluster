@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.1.0
+=====
+* feature:``cfncluster``: Support for dynamic placement groups
+
 1.0.1
 =====
 * bugfix:``cfncluster-node``: Fix for nodes being disabled when maintain_initial_size is true
