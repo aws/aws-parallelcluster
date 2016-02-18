@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.0.1
+=====
+* bugfix:``cfncluster-node``: Fix for nodes being disabled when maintain_initial_size is true
+
 1.0.0
 =====
 Offiical release of the CfnCluster 1.x CLI, templates and AMIs. Available in all regions except BJS, with
