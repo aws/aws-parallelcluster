@@ -6,4 +6,5 @@ List of contributors:
  - Kenneth Daily - kmdaily at gmail dot com
  - John Lilley - johnbot at ltech dot edu
  - Nelson R Monserrate - MonserrateNelson at JohnDeere dot com
- - Karl Gutwin - https://github.com/kgutwin
+ - Karl Gutwin - karl dot gutwin at biogen dot com
+ - Josh Clausman - jclausman at semanticmachines dot com
