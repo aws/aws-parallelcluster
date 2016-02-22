@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201602120030 cfncluster-1.0.0",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201602192042 cfncluster-1.1.0",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -804,6 +804,21 @@
         },
         "NONE"
       ]
+    },
+    "CreatePlacementGroup" : {
+      "Fn::And" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "PlacementGroup"
+            },
+            "DYNAMIC"
+          ]
+        },
+        {
+          "Condition" : "UsePlacementGroup"
+        }
+      ]
     }
   },
   "Mappings" : {
@@ -983,70 +998,70 @@
     },
     "AWSRegionOS2AMI" : {
       "eu-west-1" : {
-        "centos6" : "ami-b9e95aca",
-        "centos7" : "ami-25d56656",
-        "alinux" : "ami-88d360fb",
-        "ubuntu1404" : "ami-c5d261b6"
+        "centos6" : "ami-6aba0719",
+        "centos7" : "ami-b5bb06c6",
+        "alinux" : "ami-0ab70a79",
+        "ubuntu1404" : "ami-1cb70a6f"
       },
       "us-west-2" : {
-        "centos6" : "ami-46ec0c26",
-        "centos7" : "ami-04f11164",
-        "alinux" : "ami-31f01051",
-        "ubuntu1404" : "ami-72f31312"
+        "centos6" : "ami-6c46a50c",
+        "centos7" : "ami-5447a434",
+        "alinux" : "ami-b347a4d3",
+        "ubuntu1404" : "ami-534ba833"
       },
       "eu-central-1" : {
-        "centos6" : "ami-3fc4df53",
-        "centos7" : "ami-e7fbe08b",
-        "alinux" : "ami-79c4df15",
-        "ubuntu1404" : "ami-17fbe07b"
+        "centos6" : "ami-e53d2789",
+        "centos7" : "ami-45302a29",
+        "alinux" : "ami-a6302aca",
+        "ubuntu1404" : "ami-a8302ac4"
       },
       "sa-east-1" : {
-        "centos6" : "ami-87890aeb",
-        "centos7" : "ami-e48d0e88",
-        "alinux" : "ami-af9211c3",
-        "ubuntu1404" : "ami-998d0ef5"
+        "centos6" : "ami-192fac75",
+        "centos7" : "ami-162caf7a",
+        "alinux" : "ami-472caf2b",
+        "ubuntu1404" : "ami-1632b17a"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-37060159",
-        "centos7" : "ami-b40304da",
-        "alinux" : "ami-5503043b",
-        "ubuntu1404" : "ami-ba0106d4"
+        "centos6" : "ami-4540402b",
+        "centos7" : "ami-2c424242",
+        "alinux" : "ami-824646ec",
+        "ubuntu1404" : "ami-5245453c"
       },
       "us-east-1" : {
-        "centos6" : "ami-a22114c8",
-        "centos7" : "ami-682e1b02",
-        "alinux" : "ami-0b2b1e61",
-        "ubuntu1404" : "ami-5114213b"
+        "centos6" : "ami-ac7343c6",
+        "centos7" : "ami-d77343bd",
+        "alinux" : "ami-9c7646f6",
+        "ubuntu1404" : "ami-f3764699"
       },
       "us-west-1" : {
-        "centos6" : "ami-cdd4a2ad",
-        "centos7" : "ami-1ad7a17a",
-        "alinux" : "ami-3bd6a05b",
-        "ubuntu1404" : "ami-3be99f5b"
+        "centos6" : "ami-3f8ffe5f",
+        "centos7" : "ami-128ffe72",
+        "alinux" : "ami-898ffee9",
+        "ubuntu1404" : "ami-bf8effdf"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-d91e39ba",
-        "centos7" : "ami-801c3be3",
-        "alinux" : "ami-8a1c3be9",
-        "ubuntu1404" : "ami-ab1a3dc8"
+        "centos6" : "ami-d17c5ab2",
+        "centos7" : "ami-b17b5dd2",
+        "alinux" : "ami-cb7d5ba8",
+        "ubuntu1404" : "ami-f97b5d9a"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-3a2ee059",
-        "centos7" : "ami-1b2ae478",
-        "alinux" : "ami-b42ee0d7",
-        "ubuntu1404" : "ami-832fe1e0"
+        "centos6" : "ami-00ce0763",
+        "centos7" : "ami-4cc0092f",
+        "alinux" : "ami-b0ce07d3",
+        "ubuntu1404" : "ami-cdc20bae"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-1dc27e7c",
-        "centos7" : "ami-3cbe025d",
-        "alinux" : "ami-6eb8040f",
-        "ubuntu1404" : "ami-a0ba06c1"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA"
       },
       "ap-northeast-2" : {
-        "centos6" : "ami-0e1ad460",
-        "centos7" : "ami-991fd1f7",
-        "alinux" : "ami-591fd137",
-        "ubuntu1404" : "ami-581fd136"
+        "centos6" : "ami-bb29e7d5",
+        "centos7" : "ami-df27e9b1",
+        "alinux" : "ami-ec2be582",
+        "ubuntu1404" : "ami-5c2ae432"
       }
     },
     "OSFeatures" : {
@@ -1069,12 +1084,12 @@
     },
     "CfnClusterVersions" : {
       "default" : {
-        "cfncluster" : "cfncluster-1.0.0",
+        "cfncluster" : "cfncluster-1.1.0",
         "cookbook" : "cfncluster-cookbook-1.0.0",
         "chef" : "12.4.3",
         "ridley" : "4.3.2",
         "berkshelf" : "4.0.1",
-        "ami" : "201602120030"
+        "ami" : "201602192042"
       }
     },
     "AWSRegion2Capabilites" : {
@@ -1635,7 +1650,15 @@
           "Fn::If" : [
             "UseClusterPlacement",
             {
-              "Ref" : "PlacementGroup"
+              "Fn::If" : [
+                "CreatePlacementGroup",
+                {
+                  "Ref" : "DynamicPlacementGroup"
+                },
+                {
+                  "Ref" : "PlacementGroup"
+                }
+              ]
             },
             {
               "Ref" : "AWS::NoValue"
@@ -1952,7 +1975,7 @@
                 "command" : "touch /etc/chef/ohai/hints/ec2.json"
               },
               "jq" : {
-                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json"
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
               }
             }
           },
@@ -2079,7 +2102,15 @@
           "Fn::If" : [
             "UsePlacementGroup",
             {
-              "Ref" : "PlacementGroup"
+              "Fn::If" : [
+                "CreatePlacementGroup",
+                {
+                  "Ref" : "DynamicPlacementGroup"
+                },
+                {
+                  "Ref" : "PlacementGroup"
+                }
+              ]
             },
             {
               "Ref" : "AWS::NoValue"
@@ -2613,7 +2644,7 @@
                 "command" : "touch /etc/chef/ohai/hints/ec2.json"
               },
               "jq" : {
-                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json"
+                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
               }
             }
           },
@@ -3038,6 +3069,13 @@
         }
       },
       "Condition" : "MasterPublicIp"
+    },
+    "DynamicPlacementGroup" : {
+      "Type" : "AWS::EC2::PlacementGroup",
+      "Properties" : {
+        "Strategy" : "cluster"
+      },
+      "Condition" : "CreatePlacementGroup"
     }
   },
   "Outputs" : {
