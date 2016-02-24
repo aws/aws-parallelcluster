@@ -7,7 +7,13 @@ python:
   - "3.4"
   - "3.5"
 
-install: sh tests/install.sh
+install: 
+  - cd cli
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; 
+    then pip install -r requirements26.txt; 
+    else pip install -r requirements.txt;
+    fi
+  - pip install -e .
 
 sudo: false
 

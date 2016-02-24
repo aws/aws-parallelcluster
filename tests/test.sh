@@ -4,4 +4,3 @@
 set -x
 echo $PATH
 which cfncluster
-cfncluster version
