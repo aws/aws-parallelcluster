@@ -14,6 +14,7 @@ install:
     else pip install -r requirements.txt;
     fi
   - pip install -e .
+  - cd -
 
 sudo: false
 
