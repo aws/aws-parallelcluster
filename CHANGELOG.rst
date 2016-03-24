@@ -2,6 +2,19 @@
 CHANGELOG
 =========
 
+1.2.1
+=====
+* bugfix:``cfncluster-node``: Use strings in command for sqswatcher on Python 2.6
+* updates:``ami``: Update all base AMIs to latest patch levels
+
+1.2.0
+=====
+* bugfix:``cfncluster-node``: Correctly set slots per host for Openlava
+* updates:``cfncluster-cookbook``: Updated to cfncluster-cookbook-1.2.0
+* updates:``ami``: Updated to SGE 8.1.9
+* updates:``ami``: Updated to Openlava 3.1.3
+* updates:``ami``: Updated to Chef 12.8.1
+
 1.1.0
 =====
 * feature:``cfncluster``: Support for dynamic placement groups
