@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.2.1
+=====
+* bugfix:``cfncluster-node``: Use strings in command for sqswatcher on Python 2.6
+* updates:``ami``: Update all base AMIs to latest patch levels
+
 1.2.0
 =====
 * bugfix:``cfncluster-node``: Correctly set slots per host for Openlava
