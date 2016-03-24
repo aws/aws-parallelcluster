@@ -133,7 +133,7 @@ Defaults to false for the default template. ::
 
 scheduler
 """""""""
-Scheduler to be used with the cluster.  Valid options are sge, openlava, or torque.
+Scheduler to be used with the cluster.  Valid options are sge, openlava, torque, or slurm.
 
 Defaults to sge for the default template. ::
 
@@ -149,7 +149,7 @@ Defaults to ondemand for the default template. ::
 
 spot_price
 """""""""""
-If cluster_type is set to spot, the maximum spot price for the ComputeFleet. ::
+If cluster_type is set to spot, the maximum spot price for the ComputeFleet. See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
     spot_price = 0.00
 
@@ -157,13 +157,13 @@ If cluster_type is set to spot, the maximum spot price for the ComputeFleet. ::
 
 custom_ami
 """"""""""
-ID of a Custom AMI, to use instead of default published AMI's. ::
+ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/awslabs/cfncluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
 s3_read_resource
 """"""""""""""""
-Specify S3 resource which cfncluster nodes will be granted read-only access
+Specify S3 resource for which cfncluster nodes will be granted read-only access
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -173,7 +173,7 @@ Defaults to NONE for the default template. ::
 
 s3_read_write_resource
 """"""""""""""""""""""
-Specify S3 resource which cfncluster nodes will be granted read-write access
+Specify S3 resource for which cfncluster nodes will be granted read-write access
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -229,7 +229,7 @@ placement_group
 """""""""""""""
 Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted. 
  
-Defaults to NONE for the default template. ::
+Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
 
@@ -253,13 +253,13 @@ shared_dir
 """"""""""
 Path/mountpoint for shared EBS volume
  
-Defaults to /shared in the default template. ::
+Defaults to /shared in the default template. See :ref:`EBS Section <ebs_section>` for details on working with EBS volumes::
 
     shared_dir = /shared
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, CfnCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes. 
  
 Defaults to false in default template. ::
 
