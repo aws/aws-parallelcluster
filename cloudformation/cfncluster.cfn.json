@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201603212132 cfncluster-1.2.0",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201603231645 cfncluster-1.2.1",
   "Parameters" : {
     "KeyName" : {
       "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances",
@@ -998,58 +998,58 @@
     },
     "AWSRegionOS2AMI" : {
       "eu-west-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-b30a8ec0",
+        "centos7" : "ami-2d0e8a5e",
+        "alinux" : "ami-6a0e8a19",
+        "ubuntu1404" : "ami-7b088c08"
       },
       "us-west-2" : {
-        "centos6" : "ami-e60ee686",
-        "centos7" : "ami-920be3f2",
-        "alinux" : "ami-d10ae2b1",
-        "ubuntu1404" : "ami-200ee640"
+        "centos6" : "ami-e5b25985",
+        "centos7" : "ami-148b6074",
+        "alinux" : "ami-5ab15a3a",
+        "ubuntu1404" : "ami-f2bf5492"
       },
       "eu-central-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-1ee90f71",
+        "centos7" : "ami-1fe90f70",
+        "alinux" : "ami-48f71127",
+        "ubuntu1404" : "ami-38e80e57"
       },
       "sa-east-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-12b8347e",
+        "centos7" : "ami-20b63a4c",
+        "alinux" : "ami-24bf3348",
+        "ubuntu1404" : "ami-97b73bfb"
       },
       "ap-northeast-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-3b809555",
+        "centos7" : "ami-f284919c",
+        "alinux" : "ami-5c839632",
+        "ubuntu1404" : "ami-5d839633"
       },
       "us-east-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-a8535cc2",
+        "centos7" : "ami-7c555a16",
+        "alinux" : "ami-1d585777",
+        "ubuntu1404" : "ami-7a585710"
       },
       "us-west-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-6ac2b00a",
+        "centos7" : "ami-18d8aa78",
+        "alinux" : "ami-1dd8aa7d",
+        "ubuntu1404" : "ami-0bdeac6b"
       },
       "ap-southeast-2" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-20b99943",
+        "centos7" : "ami-cfba9aac",
+        "alinux" : "ami-9fb999fc",
+        "ubuntu1404" : "ami-c7ba9aa4"
       },
       "ap-southeast-1" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-2b945e48",
+        "centos7" : "ami-87945ee4",
+        "alinux" : "ami-ef955f8c",
+        "ubuntu1404" : "ami-72945e11"
       },
       "us-gov-west-1" : {
         "centos6" : "NA",
@@ -1058,10 +1058,10 @@
         "ubuntu1404" : "NA"
       },
       "ap-northeast-2" : {
-        "centos6" : "",
-        "centos7" : "",
-        "alinux" : "",
-        "ubuntu1404" : ""
+        "centos6" : "ami-0ea26b60",
+        "centos7" : "ami-79a06917",
+        "alinux" : "ami-85a069eb",
+        "ubuntu1404" : "ami-30a36a5e"
       }
     },
     "OSFeatures" : {
@@ -1084,12 +1084,12 @@
     },
     "CfnClusterVersions" : {
       "default" : {
-        "cfncluster" : "cfncluster-1.2.0",
-        "cookbook" : "cfncluster-cookbook-1.2.0",
+        "cfncluster" : "cfncluster-1.2.1",
+        "cookbook" : "cfncluster-cookbook-1.2.1",
         "chef" : "12.8.1",
         "ridley" : "4.5.0",
         "berkshelf" : "4.3.0",
-        "ami" : "201603212132"
+        "ami" : "201603231645"
       }
     },
     "AWSRegion2Capabilites" : {
