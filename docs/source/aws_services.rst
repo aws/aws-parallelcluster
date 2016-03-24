@@ -47,35 +47,35 @@ For more details about Amazon SQS, see http://aws.amazon.com/sqs/
 Amazon EC2
 ----------
 
-Amazon EC2 provides the compute for CfnCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be laucnhed as Spot instances. Ephmeral storage found on the instances is mounted as a RAID0 volume.
+Amazon EC2 provides the compute for CfnCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be laucnhed as Spot instances. Instance store volumes found on the instances are mounted as a RAID0 volume.
 
 For more details about Amazon EC2, see http://aws.amazon.com/ec2/
 
 Auto Scaling
 ------------
 
-Auto Scaling is used to manage the ComputeFleet instances. These are managed as an AutoScaling Group and can either be elastic driven by workload or static driven by the config. 
+Auto Scaling is used to manage the ComputeFleet instances. These instances are managed as an AutoScaling Group and can either be elastically driven by workload or static and driven by the config. 
 
 For more details about Auto Scaling, see http://aws.amazon.com/autoscaling/
 
 Amazon EBS
 ----------
 
-Amazon EBS provides the storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an exisiting EBS snapshot.
+Amazon EBS provides the persistent storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an exisiting EBS snapshot.
 
 For more details about Amazon EBS, see http://aws.amazon.com/ebs/
 
-Amazon Cloud Watch
+Amazon CloudWatch
 ------------------
 
-Amazon Cloud Watch provides metric collection and alarms for CfnCluster. The MasterServer publishs pending tasks(jobs) for each cluster. Two alarms are defined that based on parameters defined in the config will automatically increase the size of the ComputeFleet Auto Scaling group.
+Amazon CloudWatch provides metric collection and alarms for CfnCluster. The MasterServer publishes pending tasks (jobs) for each cluster. Two alarms are defined that based on parameters defined in the config will automatically increase the size of the ComputeFleet Auto Scaling group.
 
 For more details, see http://aws.amazon.com/cloudwatch/
 
 Amazon S3
 ---------
 
-Amazon S3 is used to store the CfnCluster templates. Each region has a bucket with all templates. Within CfnCluster, access to S3 can be controlled to allow CLI/SDK tools to use S3.
+Amazon S3 is used to store the CfnCluster templates. Each region has a bucket with all templates. CfnCluster can be configured to allow allow CLI/SDK tools to use S3.
 
 For more details, see http://aws.amazon.com/s3/
 

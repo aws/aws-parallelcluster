@@ -37,11 +37,11 @@ Additional Resources
 
 * `CfnCluster Source Repository`_
 * `CfnCluster Issue Tracker`_
-* `CfnCluster Webcast - HPC Scalability in the Cloud`_
+* `CfnCluster Webcast - ResearchCloud - CfnCluster and Internet2 for Enterprise HPC`_
 
 .. _cfncluster Issue Tracker: https://github.com/awslabs/cfncluster/issues
 .. _cfncluster Source Repository: https://github.com/awslabs/cfncluster
-.. _cfncluster Webcast - HPC Scalability in the Cloud: https://www.youtube.com/watch?v=iHtzy6_WytE
+.. _cfncluster Webcast - ResearchCloud - CfnCluster and Internet2 for Enterprise HPC: https://www.youtube.com/watch?v=2WJcKwAChHE&feature=youtu.be&t=22m17s
 
 Indices and tables
 ==================
