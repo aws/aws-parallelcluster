@@ -1052,10 +1052,10 @@
         "ubuntu1404" : "ami-72945e11"
       },
       "us-gov-west-1" : {
-        "centos6" : "NA",
-        "centos7" : "NA",
-        "alinux" : "NA",
-        "ubuntu1404" : "NA"
+        "centos6" : "ami-cd14a8ac",
+        "centos7" : "ami-eb15a98a",
+        "alinux" : "ami-c016aaa1",
+        "ubuntu1404" : "ami-ee15a98f"
       },
       "ap-northeast-2" : {
         "centos6" : "ami-0ea26b60",
