@@ -9,6 +9,7 @@ sa-east-1: ami-12b8347e
 us-east-1: ami-a8535cc2
 us-west-1: ami-6ac2b00a
 us-west-2: ami-e5b25985
+us-gov-west-1: ami-cd14a8ac
 # centos7
 ap-northeast-1: ami-f284919c
 ap-northeast-2: ami-79a06917
@@ -20,6 +21,7 @@ sa-east-1: ami-20b63a4c
 us-east-1: ami-7c555a16
 us-west-1: ami-18d8aa78
 us-west-2: ami-148b6074
+us-gov-west-1: ami-eb15a98a
 # alinux
 ap-northeast-1: ami-5c839632
 ap-northeast-2: ami-85a069eb
@@ -31,6 +33,7 @@ sa-east-1: ami-24bf3348
 us-east-1: ami-1d585777
 us-west-1: ami-1dd8aa7d
 us-west-2: ami-5ab15a3a
+us-gov-west-1: ami-c016aaa1
 # ubuntu1404
 ap-northeast-1: ami-5d839633
 ap-northeast-2: ami-30a36a5e
@@ -42,3 +45,4 @@ sa-east-1: ami-97b73bfb
 us-east-1: ami-7a585710
 us-west-1: ami-0bdeac6b
 us-west-2: ami-f2bf5492
+us-gov-west-1: ami-ee15a98f
