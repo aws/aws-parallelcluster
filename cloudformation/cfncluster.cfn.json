@@ -165,11 +165,13 @@
       "Description" : "Type of volume to create either new or from snapshot",
       "Type" : "String",
       "Default" : "gp2",
-      "ConstraintDescription" : "must be a supported volume type: standard, io1, gp2",
+      "ConstraintDescription" : "must be a supported volume type: standard, io1, gp2, st1, sc1",
       "AllowedValues" : [
         "standard",
         "gp2",
-        "io1"
+        "io1",
+        "st1",
+        "sc1"
       ]
     },
     "MasterSubnetId" : {
@@ -1052,10 +1054,10 @@
         "ubuntu1404" : "ami-72945e11"
       },
       "us-gov-west-1" : {
-        "centos6" : "NA",
-        "centos7" : "NA",
-        "alinux" : "NA",
-        "ubuntu1404" : "NA"
+        "centos6" : "ami-cd14a8ac",
+        "centos7" : "ami-eb15a98a",
+        "alinux" : "ami-c016aaa1",
+        "ubuntu1404" : "ami-ee15a98f"
       },
       "ap-northeast-2" : {
         "centos6" : "ami-0ea26b60",
@@ -1085,7 +1087,7 @@
     "CfnClusterVersions" : {
       "default" : {
         "cfncluster" : "cfncluster-1.2.1",
-        "cookbook" : "cfncluster-cookbook-1.2.1",
+        "cookbook" : "cfncluster-cookbook-1.2.2",
         "chef" : "12.8.1",
         "ridley" : "4.5.0",
         "berkshelf" : "4.3.0",
@@ -2042,11 +2044,6 @@
         "MaxSize" : {
           "Ref" : "MaxQueueSize"
         },
-        "AvailabilityZones" : [
-          {
-            "Ref" : "AvailabilityZone"
-          }
-        ],
         "VPCZoneIdentifier" : [
           {
             "Fn::If" : [
