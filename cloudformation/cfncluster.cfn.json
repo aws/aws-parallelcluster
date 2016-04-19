@@ -169,8 +169,8 @@
       "AllowedValues" : [
         "standard",
         "gp2",
-        "io1"
-        "st1"
+        "io1",
+        "st1",
         "sc1"
       ]
     },
@@ -1087,7 +1087,7 @@
     "CfnClusterVersions" : {
       "default" : {
         "cfncluster" : "cfncluster-1.2.1",
-        "cookbook" : "cfncluster-cookbook-1.2.1",
+        "cookbook" : "cfncluster-cookbook-1.2.2",
         "chef" : "12.8.1",
         "ridley" : "4.5.0",
         "berkshelf" : "4.3.0",
