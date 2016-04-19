@@ -165,11 +165,13 @@
       "Description" : "Type of volume to create either new or from snapshot",
       "Type" : "String",
       "Default" : "gp2",
-      "ConstraintDescription" : "must be a supported volume type: standard, io1, gp2",
+      "ConstraintDescription" : "must be a supported volume type: standard, io1, gp2, st1, sc1",
       "AllowedValues" : [
         "standard",
         "gp2",
         "io1"
+        "st1"
+        "sc1"
       ]
     },
     "MasterSubnetId" : {
