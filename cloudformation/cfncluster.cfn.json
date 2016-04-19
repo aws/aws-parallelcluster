@@ -2042,11 +2042,6 @@
         "MaxSize" : {
           "Ref" : "MaxQueueSize"
         },
-        "AvailabilityZones" : [
-          {
-            "Ref" : "AvailabilityZone"
-          }
-        ],
         "VPCZoneIdentifier" : [
           {
             "Fn::If" : [
