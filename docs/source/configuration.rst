@@ -327,6 +327,17 @@ Defaults to {} in the default template. ::
 
     extra_json = {}
 
+additional_cfn_template
+"""""""""""""""""""""""
+An additional CloudFormation template to launch along with the cluster. This allows you to create resources that exist outside of the cluster but are part of the cluster's lifecycle.
+
+Must be a HTTP URL to a public template with all parameters provided.
+
+Defaults to NONE in the default template. ::
+
+    additional_cfn_template = NONE
+
+
 vpc_settings
 """"""""""""
 Settings section relating to VPC to be used
