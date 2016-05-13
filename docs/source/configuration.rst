@@ -165,6 +165,8 @@ s3_read_resource
 """"""""""""""""
 Specify S3 resource for which cfncluster nodes will be granted read-only access
 
+For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
+
 See :doc:`working with S3 <s3_resources>` for details on format.
 
 Defaults to NONE for the default template. ::
@@ -174,6 +176,8 @@ Defaults to NONE for the default template. ::
 s3_read_write_resource
 """"""""""""""""""""""
 Specify S3 resource for which cfncluster nodes will be granted read-write access
+
+For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the Development folder of the my_corporate_bucket bucket.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
