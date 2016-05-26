@@ -175,7 +175,7 @@ class CfnClusterConfig:
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
+                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None),
                                   additional_sg=('AdditionalSG','VPCSecurityGroup'),
                                   vpc_security_group_id=('VPCSecurityGroupId','VPCSecurityGroup')
                                   )
@@ -207,9 +207,11 @@ class CfnClusterConfig:
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
                                       s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
                                       cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
-                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
+                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None),cluster_ready=('ClusterReadyScript','URL'),
+                                      cluster_ready_args=('ClusterReadyScriptArgs','URL'),
                                       master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
-                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName',None),extra_json=('ExtraJson',None)
+                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName',None),extra_json=('ExtraJson',None),
+                                      custom_chef_cookbook=('CustomChefCookbook',None),custom_chef_runlist=('CustomChefRunList',None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
