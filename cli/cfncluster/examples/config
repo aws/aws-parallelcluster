@@ -108,6 +108,8 @@ key_name = mykey
 # Extra Json to be merged with the dna.json used by Chef
 # (defaults to {} in the default template)
 #extra_json = {}
+# Additional CloudFormation template to launch with the cluster
+#additional_cfn_template = NONE
 # Settings section relating to VPC to be used
 vpc_settings = public
 # Settings section relating to EBS volume

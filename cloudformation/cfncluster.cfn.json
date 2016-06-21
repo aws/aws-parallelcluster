@@ -443,6 +443,11 @@
       "Description" : "Existing EBS volume Id",
       "Type" : "String",
       "Default" : "NONE"
+    },
+    "AdditionalCfnTemplate": {
+        "Description": "A second CloudFormation template to launch with the cluster",
+        "Type": "String",
+        "Default": "NONE"
     }
   },
   "Conditions" : {
@@ -805,6 +810,18 @@
           "Ref" : "VPCSecurityGroupId"
         },
         "NONE"
+      ]
+    },
+    "CreateSubStack" : {
+      "Fn::Not" : [
+        {
+          "Fn::Equals" : [
+            {
+              "Ref" : "AdditionalCfnTemplate"
+            },
+            "NONE"
+          ]
+        }
       ]
     },
     "CreatePlacementGroup" : {
@@ -2990,6 +3007,15 @@
           }
         ]
       }
+    },
+    "AdditionalCfnStack": {
+        "Type": "AWS::CloudFormation::Stack",
+        "Properties": {
+            "TemplateURL": {
+                "Ref": "AdditionalCfnTemplate"
+            }
+        },
+        "Condition": "CreateSubStack"
     },
     "SharedVolume" : {
       "Type" : "AWS::EC2::Volume",
