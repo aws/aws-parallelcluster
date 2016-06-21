@@ -1,4 +1,4 @@
-cfncluster
+CfnCluster
 ==========
 
 .. image:: https://travis-ci.org/awslabs/cfncluster.png?branch=develop
@@ -10,7 +10,7 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
 Documentation
 =============
 
-Documentation is part of the project and is published to - http://cfncluster.readthedocs.org/. Of most interest to new users is the Getting Started Guide - http://cfncluster.readthedocs.org/en/latest/getting_started.html.
+Documentation is part of the project and is published to - http://cfncluster.readthedocs.io/. Of most interest to new users is the Getting Started Guide - http://cfncluster.readthedocs.io/en/latest/getting_started.html.
 
 Issues
 ======
