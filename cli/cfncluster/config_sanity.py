@@ -75,13 +75,16 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             sys.exit(1)
     # EC2 Placement Group
     elif resource_type == 'EC2PlacementGroup':
-        try:
-            ec2_conn = boto.ec2.connect_to_region(region,aws_access_key_id=aws_access_key_id,
-                                                 aws_secret_access_key=aws_secret_access_key)
-            test = ec2_conn.get_all_placement_groups(groupnames=resource_value)
-        except boto.exception.BotoServerError as e:
-            print('Config sanity error: %s' % e.message)
-            sys.exit(1)
+        if resource_value == 'DYNAMIC':
+            pass
+        else:
+            try:
+                ec2_conn = boto.ec2.connect_to_region(region,aws_access_key_id=aws_access_key_id,
+                                                     aws_secret_access_key=aws_secret_access_key)
+                test = ec2_conn.get_all_placement_groups(groupnames=resource_value)
+            except boto.exception.BotoServerError as e:
+                print('Config sanity error: %s' % e.message)
+                sys.exit(1)
     # URL
     elif resource_type == 'URL':
         scheme = urlparse(resource_value).scheme
