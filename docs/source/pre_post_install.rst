@@ -3,11 +3,11 @@
 Custom Bootstrap Actions
 ========================
 
-CfnCluster can execute arbritary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supppoted by the cluster OS, typically `bash` or `python`. 
+CfnCluster can execute arbitrary code either before(pre) or after(post) the main bootstrap action during cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will be executed as root and can be in any script language supported by the cluster OS, typically `bash` or `python`. 
 
 pre-install actions are called before any cluster deployment bootstrap such as configuring NAT, EBS and the scheduler. Typical pre-install actions may include modifying storage, adding extra users or packages. 
 
-post-install actions are called after cluster bootstrap is complete, as the last action before an instance is considered complete. Typical post-install actions may include changing scheduler settings, modofying storage or packages.
+post-install actions are called after cluster bootstrap is complete, as the last action before an instance is considered complete. Typical post-install actions may include changing scheduler settings, modifying storage or packages.
 
 Arguments can be passed to scripts by specifying them in the config. These will be passed double-quoted to the pre/post-install actions.
 
@@ -38,7 +38,7 @@ Example
 
 The following are some steps to create a simple post install script that installs the R packages in a cluster.
 
-1. Create an script. For the R example, see below
+1. Create a script. For the R example, see below
 
 ::
 
@@ -58,6 +58,6 @@ The following are some steps to create a simple post install script that install
 	...
 	post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
 
-4. Lauch a cluster
+4. Launch a cluster
 
 ``cfncluster create mycluster``
