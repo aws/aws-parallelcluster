@@ -154,14 +154,11 @@ class CfnClusterConfig:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'URL', self.template_url)
             except ConfigParser.NoOptionError:
-                if self.region == 'eu-central-1':
-                    self.template_url = ('https://s3.%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
-                                         % (self.region, self.region, self.version))
-                elif self.region == 'us-gov-west-1':
+                if self.region == 'us-gov-west-1':
                     self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
                                          % (self.region, self.region, self.version))
                 else:
-                    self.template_url = ('https://s3.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                    self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
                                          % (self.region, self.version))
         except AttributeError:
             pass

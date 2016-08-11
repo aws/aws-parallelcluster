@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201603231645 cfncluster-1.3.0",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201600811HHMM cfncluster-1.3.0",
   "Metadata" : {
     "AWS::CloudFormation::Interface" : {
       "ParameterGroups" : [
@@ -1155,9 +1155,9 @@
       "AllowedPattern" : "(NONE|^vol-[0-9a-z]{8}$)"
     },
     "AdditionalCfnTemplate" : {
-        "Description" : "A second CloudFormation template to launch with the cluster",
-        "Type" : "String",
-        "Default" : "NONE"
+      "Description" : "A second CloudFormation template to launch with the cluster",
+      "Type" : "String",
+      "Default" : "NONE"
     }
   },
   "Conditions" : {
@@ -1727,70 +1727,88 @@
     },
     "AWSRegionOS2AMI" : {
       "eu-west-1" : {
-        "centos6" : "ami-b30a8ec0",
-        "centos7" : "ami-2d0e8a5e",
-        "alinux" : "ami-6a0e8a19",
-        "ubuntu1404" : "ami-7b088c08"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "us-west-2" : {
-        "centos6" : "ami-e5b25985",
-        "centos7" : "ami-148b6074",
-        "alinux" : "ami-5ab15a3a",
-        "ubuntu1404" : "ami-f2bf5492"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "eu-central-1" : {
-        "centos6" : "ami-1ee90f71",
-        "centos7" : "ami-1fe90f70",
-        "alinux" : "ami-48f71127",
-        "ubuntu1404" : "ami-38e80e57"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "sa-east-1" : {
-        "centos6" : "ami-12b8347e",
-        "centos7" : "ami-20b63a4c",
-        "alinux" : "ami-24bf3348",
-        "ubuntu1404" : "ami-97b73bfb"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "ap-northeast-1" : {
-        "centos6" : "ami-3b809555",
-        "centos7" : "ami-f284919c",
-        "alinux" : "ami-5c839632",
-        "ubuntu1404" : "ami-5d839633"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "ami-a8535cc2",
-        "centos7" : "ami-7c555a16",
-        "alinux" : "ami-1d585777",
-        "ubuntu1404" : "ami-7a585710"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "us-west-1" : {
-        "centos6" : "ami-6ac2b00a",
-        "centos7" : "ami-18d8aa78",
-        "alinux" : "ami-1dd8aa7d",
-        "ubuntu1404" : "ami-0bdeac6b"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "ap-southeast-2" : {
-        "centos6" : "ami-20b99943",
-        "centos7" : "ami-cfba9aac",
-        "alinux" : "ami-9fb999fc",
-        "ubuntu1404" : "ami-c7ba9aa4"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-2b945e48",
-        "centos7" : "ami-87945ee4",
-        "alinux" : "ami-ef955f8c",
-        "ubuntu1404" : "ami-72945e11"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       },
       "us-gov-west-1" : {
-        "centos6" : "ami-cd14a8ac",
-        "centos7" : "ami-eb15a98a",
-        "alinux" : "ami-c016aaa1",
-        "ubuntu1404" : "ami-ee15a98f"
+        "centos6" : "NOT_SUPPORTED",
+        "centos7" : "NOT_SUPPORTED",
+        "alinux" : "NOT_SUPPORTED",
+        "ubuntu1404" : "NOT_SUPPORTED",
+        "ubuntu1604" : "NOT_SUPPORTED"
       },
       "ap-northeast-2" : {
-        "centos6" : "ami-0ea26b60",
-        "centos7" : "ami-79a06917",
-        "alinux" : "ami-85a069eb",
-        "ubuntu1404" : "ami-30a36a5e"
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
+      },
+      "ap-south-1" : {
+        "centos6" : "NA",
+        "centos7" : "NA",
+        "alinux" : "NA",
+        "ubuntu1404" : "NA",
+        "ubuntu1604" : "NA"
       }
     },
     "OSFeatures" : {
@@ -1809,16 +1827,20 @@
       "ubuntu1404" : {
         "User" : "ubuntu",
         "RootDevice" : "/dev/sda1"
+      },
+      "ubuntu1604" : {
+        "User" : "ubuntu",
+        "RootDevice" : "/dev/sda1"
       }
     },
     "CfnClusterVersions" : {
       "default" : {
         "cfncluster" : "cfncluster-1.3.0",
         "cookbook" : "cfncluster-cookbook-1.3.0",
-        "chef" : "12.11.18",
-        "ridley" : "4.5.0",
-        "berkshelf" : "4.3.0",
-        "ami" : "201603231645"
+        "chef" : "12.13.30",
+        "ridley" : "4.5.1",
+        "berkshelf" : "4.6.1",
+        "ami" : "20160811HHMM"
       }
     },
     "AWSRegion2Capabilites" : {
@@ -1853,6 +1875,9 @@
         "arn" : "aws-us-gov"
       },
       "ap-northeast-2" : {
+        "arn" : "aws"
+      },
+      "ap-south-1" : {
         "arn" : "aws"
       }
     }
@@ -2452,13 +2477,11 @@
             "Fn::Join" : [
               "",
               [
-                "Content-Type: multipart/mixed; boundary=\"===============8015245837462016522==\"\n",
+                "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
                 "MIME-Version: 1.0\n\n",
-                "--===============8015245837462016522==\n",
+                "--==BOUNDARY==\n",
                 "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
-                "Content-Transfer-Encoding: 7bit\n",
-                "Content-Disposition: attachment; filename=\"cloud-config.txt\"\n\n",
                 "#cloud-config:\n",
                 "runcmd:\n",
                 " - [  sh, \"which yum && echo ",
@@ -2471,11 +2494,9 @@
                   "Ref" : "ProxyServer"
                 },
                 "\"; >> /etc/apt/aot.conf\" ]\n",
-                "--===============8015245837462016522==\n",
+                "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
-                "Content-Transfer-Encoding: 7bit\n",
-                "Content-Disposition: attachment; filename=\"user-data.txt\"\n\n",
                 "#!/bin/bash -x\n\n",
                 "function error_exit\n",
                 "{\n",
@@ -2638,7 +2659,7 @@
                 },
                 "\n",
                 "# End of file\n",
-                "--===============8015245837462016522==\n"
+                "--==BOUNDARY==\n"
               ]
             ]
           }
@@ -3162,13 +3183,11 @@
             "Fn::Join" : [
               "",
               [
-                "Content-Type: multipart/mixed; boundary=\"===============8015245837462016522==\"\n",
+                "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
                 "MIME-Version: 1.0\n\n",
-                "--===============8015245837462016522==\n",
+                "--==BOUNDARY==\n",
                 "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
-                "Content-Transfer-Encoding: 7bit\n",
-                "Content-Disposition: attachment; filename=\"cloud-config.txt\"\n\n",
                 "#cloud-config:\n",
                 "runcmd:\n",
                 " - [  sh, \"which yum && echo ",
@@ -3181,11 +3200,9 @@
                   "Ref" : "ProxyServer"
                 },
                 "\"; >> /etc/apt/aot.conf\" ]\n",
-                "--===============8015245837462016522==\n",
+                "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
-                "Content-Transfer-Encoding: 7bit\n",
-                "Content-Disposition: attachment; filename=\"user-data.txt\"\n\n",
                 "#!/bin/bash -x\n\n",
                 "function error_exit\n",
                 "{\n",
@@ -3348,7 +3365,7 @@
                 },
                 "\n",
                 "# End of file\n",
-                "--===============8015245837462016522==\n"
+                "--==BOUNDARY==\n"
               ]
             ]
           }
@@ -3889,14 +3906,14 @@
         }
       }
     },
-    "AdditionalCfnStack": {
-        "Type": "AWS::CloudFormation::Stack",
-        "Properties": {
-            "TemplateURL": {
-                "Ref": "AdditionalCfnTemplate"
-            }
-        },
-        "Condition": "CreateSubStack"
+    "AdditionalCfnStack" : {
+      "Type" : "AWS::CloudFormation::Stack",
+      "Properties" : {
+        "TemplateURL" : {
+          "Ref" : "AdditionalCfnTemplate"
+        }
+      },
+      "Condition" : "CreateSubStack"
     },
     "SharedVolume" : {
       "Type" : "AWS::EC2::Volume",
