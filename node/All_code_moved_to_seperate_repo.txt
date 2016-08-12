@@ -1,1 +1,0 @@
-All of the cfncluster-node code has moved to https://github.com/awslabs/cfncluster-node.
