@@ -1762,11 +1762,11 @@
         "ubuntu1604" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "NA",
-        "centos7" : "NA",
-        "alinux" : "NA",
-        "ubuntu1404" : "NA",
-        "ubuntu1604" : "NA"
+        "centos6" : "ami-4cc35a5b",
+        "centos7" : "ami-54c25b43",
+        "alinux" : "ami-b6c158a1",
+        "ubuntu1404" : "ami-dac35acd",
+        "ubuntu1604" : "ami-94cf5683"
       },
       "us-west-1" : {
         "centos6" : "NA",
