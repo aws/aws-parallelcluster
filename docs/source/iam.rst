@@ -5,7 +5,7 @@ IAM in CfnCluster
 
 CfnCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in CfnCluster <aws_services>` section of the documentation.
  
-CfnCluster uses EC2 IAM roles to enable instances access to AWS services for the deplpyment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
+CfnCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
 
 Defaults
 --------
