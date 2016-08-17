@@ -366,6 +366,20 @@ See :ref:`Scaling Section <scaling_section>`. ::
 
     scaling_settings = custom
 
+tags
+""""
+Defines tags to be used in CloudFormation.
+
+If command line tags are specified via `--tags`, they get merged with config tags.
+
+Command line tags overwrite config tags that have the same key.
+
+Tags are JSON formatted and should not have quotes outside the curly braces.
+
+See `AWS CloudFormation Resource Tags Type <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
+
+    tags = {"key": "value", "key2", "value2"}
+
 .. _vpc_section:
 
 vpc
