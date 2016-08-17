@@ -63,7 +63,7 @@ def create(args):
         logger.debug((config.template_url, config.parameters))
         stack = cfnconn.create_stack(('cfncluster-' + args.cluster_name),template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
-                                     disable_rollback=args.norollback, tags=args.tags)
+                                     disable_rollback=args.norollback, tags=config.tags)
         status = cfnconn.describe_stacks(stack)[0].stack_status
         if not args.nowait:
             while status == 'CREATE_IN_PROGRESS':

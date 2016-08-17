@@ -226,6 +226,21 @@ class CfnClusterConfig:
             except ConfigParser.NoOptionError:
                 pass
 
+        # Merge tags from config with tags from command line args
+        # Command line args take precedent and overwite tags supplied in the config
+        self.tags = {}
+        try:
+            tags = __config.get(self.__cluster_section, 'tags')
+            self.tags = json.loads(tags);
+        except ConfigParser.NoOptionError:
+            pass
+        try:
+            if args.tags is not None:
+                for key in args.tags:
+                    self.tags[key] = args.tags[key]
+        except AttributeError:
+            pass
+
         # Determine if EBS settings are defined and set section
         try:
             self.__ebs_settings = __config.get(self.__cluster_section, 'ebs_settings')
