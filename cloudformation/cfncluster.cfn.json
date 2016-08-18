@@ -3989,7 +3989,7 @@
         }
       }
     },
-    "AssosiateEIP" : {
+    "AssociateEIP" : {
       "Type" : "AWS::EC2::EIPAssociation",
       "Properties" : {
         "AllocationId" : {
