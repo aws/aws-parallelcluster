@@ -13,7 +13,7 @@ modifying storage, adding extra users or packages.
 
 post-install actions are called after cluster bootstrap is complete, as the
 last action before an instance is considered complete. Typical post-install
-actions may include changing scheduler settings, modofying storage or packages.
+actions may include changing scheduler settings, modifying storage or packages.
 
 Arguments can be passed to scripts by specifying them in the config. These will
 be passed double-quoted to the pre/post-install actions.
