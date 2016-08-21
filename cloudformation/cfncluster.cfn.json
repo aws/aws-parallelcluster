@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201608122022 cfncluster-1.3.0",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201608210609 cfncluster-1.3.0",
   "Metadata" : {
     "AWS::CloudFormation::Interface" : {
       "ParameterGroups" : [
@@ -1762,11 +1762,11 @@
         "ubuntu1604" : "NA"
       },
       "us-east-1" : {
-        "centos6" : "ami-78d0486f",
-        "centos7" : "ami-8add459d",
-        "alinux" : "ami-8bde469c",
-        "ubuntu1404" : "ami-38de462f",
-        "ubuntu1604" : "ami-10df4707"
+        "centos6" : "ami-ecbfd9fb",
+        "centos7" : "ami-e0bfd9f7",
+        "alinux" : "ami-c8b1d7df",
+        "ubuntu1404" : "ami-f9bed8ee",
+        "ubuntu1604" : "ami-25bed832"
       },
       "us-west-1" : {
         "centos6" : "NA",
@@ -1840,7 +1840,7 @@
         "chef" : "12.13.30",
         "ridley" : "4.5.1",
         "berkshelf" : "4.6.1",
-        "ami" : "201608122022"
+        "ami" : "201608210609"
       }
     },
     "AWSRegion2Capabilites" : {
