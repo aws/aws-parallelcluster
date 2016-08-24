@@ -98,13 +98,13 @@ Now, you will be presented with a list of valid AWS region identifiers.  Choose 
             sa-east-1
         AWS Region ID []:
 
-Choose a descriptive name for your VPC.  Typically, this will something like "production" or "test".
+Choose a descriptive name for your VPC. Typically, this will something like :code:`production` or :code:`test`.
 
 ::
 
         VPC Name [myvpc]:
 
-Next, you will need to choose a keypair that already exists in EC2 in order to log into your master instance.  If you do not already have a keypair, refer to the EC2 documentation on EC2 Key Pairs - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html
+Next, you will need to choose a keypair that already exists in EC2 in order to log into your master instance.  If you do not already have a keypair, refer to the EC2 documentation on `EC2 Key Pairs <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html>`_.
 
 ::
 
@@ -134,7 +134,7 @@ Finally, choose the subnet in which you'd like your master server to run in.
         Master Subnet ID []:
 
 
-Next, a simple cluster launches into a VPC and uses an existing subnet which supports public IP's i.e. the route table for the subnet is 0.0.0.0/0 => igw-xxxxxx. The VPC must have "DNS Resolution = yes" and "DNS Hostnames = yes". It should also have DHCP options with the correct "domain-name" for the region, as defined in the docs: http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html
+Next, a simple cluster launches into a VPC and uses an existing subnet which supports public IP's i.e. the route table for the subnet is :code:`0.0.0.0/0 => igw-xxxxxx`. The VPC must have :code:`DNS Resolution = yes` and :code:`DNS Hostnames = yes`. It should also have DHCP options with the correct :code:`domain-name` for the region, as defined in the docs: `VPC DHCP Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_.
 
 Once all of those settings contain valid values, you can launch the cluster by repeating the command that was used at the start.
 
@@ -142,4 +142,4 @@ Once all of those settings contain valid values, you can launch the cluster by r
 
 	$ cfncluster create mycluster
 
-Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings. For more details on connecting to EC2 instances, check the EC2 User Guide - http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client
+Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings. For more details on connecting to EC2 instances, check the `EC2 User Guide <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client>`_.
