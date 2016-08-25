@@ -148,12 +148,70 @@ def update(args):
         print('\nExiting...')
         sys.exit(0)
 
+def start(args):
+    # 1) Start master server
+    # 2) Set resource limits on compute fleet to min/max/desired = 0/max/0
+    print('Starting: %s' % args.cluster_name)
+    stack_name = ('cfncluster-' + args.cluster_name)
+    config = cfnconfig.CfnClusterConfig(args)
+    master_server_id = get_master_server_id(stack_name, config)
+    ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    try:
+        response = ec2conn.start_instances(master_server_id)
+    except boto.exception.BotoServerError as e:
+        if e.message.endswith("does not exist"):
+            print e.message
+            sys.stdout.flush()
+            sys.exit(0)
+        else:
+            raise e
+    except KeyboardInterrupt:
+        print('\nExiting...')
+        sys.exit(0)
+
+    # Set asg limits
+    max_queue_size = [param[1] for param in config.parameters if param[0] == 'MaxQueueSize']
+    max_queue_size = max_queue_size[0] if len(max_queue_size) > 0 else 10
+    initial_queue_size = [param[1] for param in config.parameters if param[0] == 'InitialQueueSize'] if args.reset_desired else [0]
+    initial_queue_size = initial_queue_size[0] if len(initial_queue_size) > 0 else 0
+
+    asg = get_asg(stack_name=stack_name, config=config)
+    set_asg_limits(asg=asg, min=initial_queue_size, max=max_queue_size, desired=initial_queue_size)
+
+    # Poll for status
+    poll_master_server_state(stack_name, config)
+
 def stop(args):
-    ## The goal here is to a) stop scaling activities on a cluster
-    ## b) stop all compute instances and then c) stop the master
-    ## instance. Might also need to track somewhere that there is
-    ## a stopped cluster, so that start can (start) it??
+    # 1) Set resource limits on compute fleet to min/max/desired = 0/0/0
+    # 2) Stop master server
     print('Stopping: %s' % args.cluster_name)
+    stack_name = ('cfncluster-' + args.cluster_name)
+    config = cfnconfig.CfnClusterConfig(args)
+
+    # Set Resource limits
+    asg = get_asg(stack_name=stack_name, config=config)
+    set_asg_limits(asg=asg, min=0, max=0, desired=0)
+
+    # Stop master Server
+    master_server_id = get_master_server_id(stack_name, config)
+    ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    try:
+        response = ec2conn.stop_instances(master_server_id)
+    except boto.exception.BotoServerError as e:
+        if e.message.endswith("does not exist"):
+            print e.message
+            sys.stdout.flush()
+            sys.exit(0)
+        else:
+            raise e
+    except KeyboardInterrupt:
+        print('\nExiting...')
+        sys.exit(0)
+    
+    # Poll for status
+    poll_master_server_state(stack_name, config)
 
 def list(args):
     config = cfnconfig.CfnClusterConfig(args)
@@ -172,6 +230,66 @@ def list(args):
     except KeyboardInterrupt:
         print('Exiting...')
         sys.exit(0)
+
+def get_master_server_id(stack_name, config):
+    # returns the physical id of the master server
+    # if no master server returns []
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    temp_resources = []
+
+    while True:
+        try:
+            resources = cfnconn.describe_stack_resources(stack_name)
+        except boto.exception.BotoServerError as e:
+            if e.message.endswith("does not exist"):
+                print e.message
+                sys.stdout.flush()
+                sys.exit(0)
+            else:
+                raise e
+        temp_resources.extend(resources)
+        if not resources.next_token:
+            break
+        resources = cfnconn.describe_stack_resources(stack, next_token=resources.next_token)
+
+    return [r.physical_resource_id for r in resources if r.logical_resource_id == 'MasterServer'][0]
+
+def poll_master_server_state(stack_name, config):
+    ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+
+    master_id = get_master_server_id(stack_name, config)
+
+    try:
+        instance = ec2conn.get_only_instances(instance_ids=[master_id])[0]
+        state = instance.state
+        sys.stdout.write('\rMasterServer: %s' % state.upper())
+        sys.stdout.flush()
+        while (state != 'running' and state != 'stopped' and state != 'terminated' and state != 'shutting-down'):
+            time.sleep(5)
+            state = instance.update()
+            status = ('\r\033[KMasterServer: %s' % state.upper())
+            sys.stdout.write(status)
+            sys.stdout.flush()
+        if (state == 'terminated' or state == 'shutting-down'):
+            print("State: %s is irrecoverable. Cluster needs to be re-created.")
+            sys.exit(1)
+        status = ('\rMasterServer: %s\n' % state.upper())
+        sys.stdout.write(status)
+        sys.stdout.flush()
+    except boto.exception.BotoServerError as e:
+        if e.message.endswith("does not exist"):
+            print e.message
+            sys.stdout.flush()
+            sys.exit(0)
+        else:
+            raise e
+    except KeyboardInterrupt:
+        print('\nExiting...')
+        sys.exit(0)
+
+    return state
 
 def get_ec2_instances(stack, config):
     cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
@@ -204,14 +322,41 @@ def get_ec2_instances(stack, config):
 
     return instances
 
-def get_asg_instances(stack, config):
-    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
-                                                    aws_secret_access_key=config.aws_secret_access_key)
+def get_asg(stack_name, config):
+    # Gets the id of the Autoscaling group
+    # Assumes only one Autoscaling Group
     asgconn = boto.ec2.autoscale.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+    asg_ids = get_asg_ids(stack_name, config)
+    asg_id = [asg[1] for asg in asg_ids if asg[0] == 'ComputeFleet'][0]
+
+    try:
+        return asgconn.get_all_groups(names=[asg_id])[0]
+    except boto.exception.BotoServerError as e:
+        if e.message.endswith("does not exist"):
+            print e.message
+            sys.stdout.flush()
+            sys.exit(0)
+        else:
+            raise e
+    except KeyboardInterrupt:
+        print('\nExiting...')
+        sys.exit(0)
+
+def set_asg_limits(asg, min, max, desired):
+    asg.max_size = max
+    asg.min_size = min
+    asg.desired_capacity = desired
+    try:
+        return asg.update()
+    except:
+        raise e
+
+def get_asg_ids(stack, config):
+    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
                                                     aws_secret_access_key=config.aws_secret_access_key)
 
     temp_resources = []
-
     while True:
         try:
             resources = cfnconn.describe_stack_resources(stack)
@@ -231,9 +376,17 @@ def get_asg_instances(stack, config):
     resources = temp_resources
     temp_asgs = [r for r in resources if r.resource_type == 'AWS::AutoScaling::AutoScalingGroup']
 
-    asgs = []
+    asg_ids = []
     for asg in temp_asgs:
-        asgs.append([asg.logical_resource_id,asg.physical_resource_id])
+        asg_ids.append([asg.logical_resource_id,asg.physical_resource_id])
+
+    return asg_ids
+
+def get_asg_instances(stack, config):
+    asgconn = boto.ec2.autoscale.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                    aws_secret_access_key=config.aws_secret_access_key)
+
+    asgs = get_asg_ids(stack, config)
 
     temp_instances = []
     for asg in asgs:
@@ -245,6 +398,7 @@ def get_asg_instances(stack, config):
 
 def instances(args):
     stack = ('cfncluster-' + args.cluster_name)
+
     config = cfnconfig.CfnClusterConfig(args)
     instances = []
     instances.extend(get_ec2_instances(stack, config))
@@ -275,9 +429,11 @@ def status(args):
             sys.stdout.write('\rStatus: %s\n' % status)
             sys.stdout.flush()
             if ((status == 'CREATE_COMPLETE') or (status == 'UPDATE_COMPLETE')):
-                outputs = cfnconn.describe_stacks(stack)[0].outputs
-                for output in outputs:
-                    print output
+                state = poll_master_server_state(stack, config)
+                if state == 'running':
+                    outputs = cfnconn.describe_stacks(stack)[0].outputs
+                    for output in outputs:
+                        print output
             elif ((status == 'ROLLBACK_COMPLETE') or (status == 'CREATE_FAILED') or (status == 'DELETE_FAILED') or
                       (status == 'UPDATE_ROLLBACK_COMPLETE')):
                 events = cfnconn.describe_stack_events(stack)
@@ -300,7 +456,6 @@ def status(args):
     except KeyboardInterrupt:
         print('\nExiting...')
         sys.exit(0)
-
 
 def delete(args):
     print('Deleting: %s' % args.cluster_name)
