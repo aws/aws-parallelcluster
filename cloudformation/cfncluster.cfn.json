@@ -53,7 +53,8 @@
         "m4.xlarge",
         "m4.2xlarge",
         "m4.4xlarge",
-        "m4.10xlarge"
+        "m4.10xlarge",
+        "x1.32xlarge"
       ]
     },
     "ComputeInstanceType" : {
