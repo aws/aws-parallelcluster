@@ -12,7 +12,7 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
 Installing CfnCluster
 =====================
 
-The current working version is CfnCluster-|version|. The CLI is written in python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
+The current working version is CfnCluster-|version|. The CLI is written in Python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
 
 Linux/OSX
 ---------
@@ -67,13 +67,13 @@ Once installed you will need to setup some initial config. The easiest way to do
 
 	$ cfncluster configure
 
-This configure wizard will prompt you for everything you need to create your cluster.  You will first be prompted for your cluster name, which is the logical name of your cluster.
+This configure wizard will prompt you for everything you need to create your cluster.  You will first be prompted for your cluster template name, which is the logical name of the template you will create a cluster from.
 
 ::
 
-        Cluster Name [mycluster]:
+        Cluster Template [mycluster]:
 
-Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privledges.  These can also be read from your environment variaables or the  aws CLI config.
+Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privledges.  These can also be read from your environment variables or the  aws CLI config.
 
 ::
 
