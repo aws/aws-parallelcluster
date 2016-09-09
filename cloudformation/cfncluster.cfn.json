@@ -2585,7 +2585,7 @@
                     "cookbook"
                   ]
                 },
-                "\n",
+                ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
                 "export cfncluster_version=",
@@ -2643,7 +2643,7 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -L -o /etc/chef/cfncluster-cookbook.tgz -z /etc/chef/cfncluster-cookbook.tgz $cookbook_url\n",
+                "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z /etc/chef/cfncluster-cookbook.tgz $cookbook_url\n",
                 "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
@@ -3350,7 +3350,7 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -L -o /etc/chef/cfncluster-cookbook.tgz -z /etc/chef/cfncluster-cookbook.tgz $cookbook_url\n",
+                "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z /etc/chef/cfncluster-cookbook.tgz $cookbook_url\n",
                 "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
