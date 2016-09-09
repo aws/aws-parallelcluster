@@ -2585,7 +2585,7 @@
                     "cookbook"
                   ]
                 },
-                "\n",
+                ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
                 "export cfncluster_version=",
