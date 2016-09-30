@@ -33,7 +33,7 @@ This guide is written assuming your OS is Ubuntu 14.04. If you don't have an Ubu
 
 		wget https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
 		cd /usr/local
-		tar -xz ~/go1.7.linux-amd64.tar.gz
+		sudo tar xf ~/go1.7.linux-amd64.tar.gz
 		echo 'export GOPATH=~/work' >> ~/.bashrc
 		echo 'export PATH=$GOPATH/bin:/usr/local/go/bin:$PATH' >> ~/.bashrc
 
