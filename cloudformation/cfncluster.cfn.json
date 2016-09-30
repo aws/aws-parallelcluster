@@ -740,6 +740,9 @@
         "hi1.4xlarge",
         "g2.2xlarge",
         "g2.8xlarge",
+        "p2.large",
+        "p2.8xlarge",
+        "p2.16xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
@@ -791,6 +794,9 @@
         "hi1.4xlarge",
         "g2.2xlarge",
         "g2.8xlarge",
+        "p2.large",
+        "p2.8xlarge",
+        "p2.16xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
@@ -1567,6 +1573,18 @@
         "EBSOpt" : "True"
       },
       "g2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "p2.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "p2.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "p2.16xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
