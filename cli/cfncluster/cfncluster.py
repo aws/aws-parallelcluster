@@ -173,11 +173,13 @@ def start(args):
     # Set asg limits
     max_queue_size = [param[1] for param in config.parameters if param[0] == 'MaxQueueSize']
     max_queue_size = max_queue_size[0] if len(max_queue_size) > 0 else 10
-    initial_queue_size = [param[1] for param in config.parameters if param[0] == 'InitialQueueSize'] if args.reset_desired else [0]
-    initial_queue_size = initial_queue_size[0] if len(initial_queue_size) > 0 else 0
+    desired_queue_size = [param[1] for param in config.parameters if param[0] == 'InitialQueueSize']
+    desired_queue_size = desired_queue_size[0] if len(desired_queue_size) > 0 else 2
+    min_queue_size = [desired_queue_size for param in config.parameters if param[0] == 'MaintainInitialSize' and param[1] == "true"]
+    min_queue_size = min_queue_size[0] if len(min_queue_size) > 0 else 0
 
     asg = get_asg(stack_name=stack_name, config=config)
-    set_asg_limits(asg=asg, min=initial_queue_size, max=max_queue_size, desired=initial_queue_size)
+    set_asg_limits(asg=asg, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
 
     # Poll for status
     poll_master_server_state(stack_name, config)
