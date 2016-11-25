@@ -1,9 +1,9 @@
 # Copyright 2013-2016 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Amazon Software License (the "License"). You may not use this file except in compliance with the
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
 #
-# http://aws.amazon.com/asl/
+# http://aws.amazon.com/apache2.0/
 #
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
@@ -35,7 +35,7 @@ setup(
     author_email = "dougalb@amazon.com",
     description = ("A simple tool to launch and manage HPC clusters as CloudFormation stacks."),
     url = ("https://github.com/awslabs/cfncluster"),
-    license = "Amazon Software License",
+    license = "Apache License 2.0",
     packages = find_packages(),
     install_requires = requires,
     entry_points=dict(console_scripts=console_scripts),
@@ -50,6 +50,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering",
-        "License :: Other/Proprietary License",
+        "License :: Apache Software License",
     ],
 )
