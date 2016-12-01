@@ -108,7 +108,7 @@ optional arguments:
 
 ::
 
-    $ cfncluster update mycluster
+    $ cfncluster delete mycluster
 
 status
 ======
