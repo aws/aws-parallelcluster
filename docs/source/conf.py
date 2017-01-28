@@ -205,7 +205,7 @@ html_theme_options = {
     "bind_key_events": False,
     # Specify a base_url used to generate sitemap.xml links. If not
     # specified, then no sitemap will be built.
-    "base_url": "http://cfncluster.readthedocs.org/lastet/"
+    "base_url": "https://cfncluster.readthedocs.io/latest/"
 }
 
 

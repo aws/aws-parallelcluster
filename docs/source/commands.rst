@@ -14,7 +14,7 @@ Most commands provided are just wrappers around CloudFormation functions.
 create
 ======
 
-Creates a CloudFormation stack with the name :code:`cfncluster-[stack_name]`. To read more about CloudFormation see `AWS CloudFormation <http://cfncluster.readthedocs.io/en/latest/aws_services.html#aws-cloudformation>`_.
+Creates a CloudFormation stack with the name :code:`cfncluster-[stack_name]`. To read more about CloudFormation see `AWS CloudFormation <https://cfncluster.readthedocs.io/en/latest/aws_services.html#aws-cloudformation>`_.
 
 positional arguments:
   cluster_name          create a cfncluster with the provided name.
@@ -80,7 +80,7 @@ optional arguments:
 start
 =====
 
-Starts a cluster. This starts the Master Server and sets Auto Scaling Group parameters to :code:`min/max/desired = 0/max_queue_size/0` where `max_queue_size <http://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_ defaults to 10. If you specify the :code:`--reset-desired` flag, the :code:`min/desired` values will be set to the `initial_queue_size <http://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_. Since the EC2 instances in the compute fleet try and mount the nfs drive from the master server this causes a race condition such that if the master server starts after the compute nodes, the compute nodes will terminate since they can't mount the nfs drive.
+Starts a cluster. This starts the Master Server and sets Auto Scaling Group parameters to :code:`min/max/desired = 0/max_queue_size/0` where `max_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_ defaults to 10. If you specify the :code:`--reset-desired` flag, the :code:`min/desired` values will be set to the `initial_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_. Since the EC2 instances in the compute fleet try and mount the nfs drive from the master server this causes a race condition such that if the master server starts after the compute nodes, the compute nodes will terminate since they can't mount the nfs drive.
 
 positional arguments:
   cluster_name          start a cfncluster with the provided name.
@@ -156,7 +156,7 @@ optional arguments:
 configure
 =========
 
-Configures the cluster. See `Configuring CfnCluster <http://cfncluster.readthedocs.io/en/latest/getting_started.html#configuring-cfncluster>`_.
+Configures the cluster. See `Configuring CfnCluster <https://cfncluster.readthedocs.io/en/latest/getting_started.html#configuring-cfncluster>`_.
 
 optional arguments:
   -h, --help  show this help message and exit
