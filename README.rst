@@ -10,7 +10,7 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
 Documentation
 =============
 
-Documentation is part of the project and is published to - http://cfncluster.readthedocs.io/. Of most interest to new users is the Getting Started Guide - http://cfncluster.readthedocs.io/en/latest/getting_started.html.
+Documentation is part of the project and is published to - https://cfncluster.readthedocs.io/. Of most interest to new users is the Getting Started Guide - https://cfncluster.readthedocs.io/en/latest/getting_started.html.
 
 Issues
 ======

@@ -83,7 +83,7 @@ The next part of setting up your environment involves setting a lot of environme
 
 		export AWS_SECURITY_GROUP_ID=sg-XXXXXXXX
 
-#.	Create an IAM Profile from the template `here <http://cfncluster.readthedocs.io/en/latest/iam.html>`_.
+#.	Create an IAM Profile from the template `here <https://cfncluster.readthedocs.io/en/latest/iam.html>`_.
 
 	::
 
