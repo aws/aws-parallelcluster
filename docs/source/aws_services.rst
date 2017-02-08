@@ -33,7 +33,7 @@ For more details about AWS Identity and Access Management, see http://aws.amazon
 Amazon SNS
 ----------
 
-Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance lauches or terminates in an Autoscaling Grpoup. Within CfnCluster, the Amazon SNS topic for the Autoscaling Group is subnscibred to an Amazon SQS queue.
+Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance lauches or terminates in an Autoscaling Group. Within CfnCluster, the Amazon SNS topic for the Autoscaling Group is subscribed to an Amazon SQS queue.
 
 For more details about Amazon SNS, see http://aws.amazon.com/sns/
 
