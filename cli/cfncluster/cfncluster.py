@@ -19,13 +19,13 @@ import os
 import socket
 import logging
 
-import cfnconfig
+from . import cfnconfig
 
 logger = logging.getLogger('cfncluster.cfncluster')
 
 def version(args):
     config = cfnconfig.CfnClusterConfig(args)
-    print config.version
+    print(config.version)
 
 def create(args):
     print('Starting: %s' % (args.cluster_name))
@@ -50,7 +50,7 @@ def create(args):
                                                  aws_secret_access_key=config.aws_secret_access_key)
             availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
         except boto.exception.BotoServerError as e:
-            print e.message
+            print(e.message)
             sys.exit(1)
         config.parameters.append(('AvailabilityZone', availability_zone))
     except ValueError:
@@ -73,14 +73,15 @@ def create(args):
                 sys.stdout.write('\r%s' % resource_status)
                 sys.stdout.flush()
                 time.sleep(5)
+                print("")
             outputs = cfnconn.describe_stacks(stack)[0].outputs
             for output in outputs:
-                print output
+                print(output)
         else:
             status = cfnconn.describe_stacks(stack)[0].stack_status
             print('Status: %s' % status)
     except boto.exception.BotoServerError as e:
-        print e.message
+        print(e.message)
         sys.exit(1)
     except KeyboardInterrupt:
         print('\nExiting...')
@@ -118,7 +119,7 @@ def update(args):
                                                  aws_secret_access_key=config.aws_secret_access_key)
             availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
         except boto.exception.BotoServerError as e:
-            print e.message
+            print(e.message)
             sys.exit(1)
         config.parameters.append(('AvailabilityZone', availability_zone))
     except ValueError:
@@ -142,7 +143,7 @@ def update(args):
             status = cfnconn.describe_stacks(stack)[0].stack_status
             print('Status: %s' % status)
     except boto.exception.BotoServerError as e:
-        print e.message
+        print(e.message)
         sys.exit(1)
     except KeyboardInterrupt:
         print('\nExiting...')
@@ -161,7 +162,7 @@ def start(args):
         response = ec2conn.start_instances(master_server_id)
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
@@ -201,7 +202,7 @@ def stop(args):
         response = ec2conn.stop_instances(master_server_id)
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
@@ -224,7 +225,7 @@ def list(args):
                 print('%s' % (stack.stack_name[11:]))
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print e.message
+            print(e.message)
         else:
             raise e
     except KeyboardInterrupt:
@@ -243,7 +244,7 @@ def get_master_server_id(stack_name, config):
             resources = cfnconn.describe_stack_resources(stack_name)
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
-                print e.message
+                print(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -280,7 +281,7 @@ def poll_master_server_state(stack_name, config):
         sys.stdout.flush()
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
@@ -303,7 +304,7 @@ def get_ec2_instances(stack, config):
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
                 #sys.stdout.write('\r\n')
-                print e.message
+                print(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -334,7 +335,7 @@ def get_asg(stack_name, config):
         return asgconn.get_all_groups(names=[asg_id])[0]
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
@@ -363,7 +364,7 @@ def get_asg_ids(stack, config):
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
                 #sys.stdout.write('\r\n')
-                print e.message
+                print(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -433,22 +434,22 @@ def status(args):
                 if state == 'running':
                     outputs = cfnconn.describe_stacks(stack)[0].outputs
                     for output in outputs:
-                        print output
+                        print(output)
             elif ((status == 'ROLLBACK_COMPLETE') or (status == 'CREATE_FAILED') or (status == 'DELETE_FAILED') or
                       (status == 'UPDATE_ROLLBACK_COMPLETE')):
                 events = cfnconn.describe_stack_events(stack)
                 for event in events:
                     if ((event.resource_status == 'CREATE_FAILED') or (event.resource_status == 'DELETE_FAILED') or
                             (event.resource_status == 'UPDATE_FAILED')):
-                        print event.timestamp, event.resource_status, event.resource_type, event.logical_resource_id, \
-                            event.resource_status_reason
+                        print(event.timestamp, event.resource_status, event.resource_type, event.logical_resource_id, \
+                            event.resource_status_reason)
         else:
             sys.stdout.write('\n')
             sys.stdout.flush()
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
             sys.stdout.write('\r')
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
@@ -489,7 +490,7 @@ def delete(args):
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
             #sys.stdout.write('\r\n')
-            print e.message
+            print(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
