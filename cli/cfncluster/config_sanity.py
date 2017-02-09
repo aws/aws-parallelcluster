@@ -10,12 +10,14 @@ from __future__ import print_function
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from future import standard_library
+standard_library.install_aliases()
 __author__ = 'dougalb'
 
 import boto.ec2
 import boto.vpc
-import urllib2
-from urlparse import urlparse
+import urllib.request, urllib.error, urllib.parse
+from urllib.parse import urlparse
 import boto.exception
 import sys
 
@@ -93,11 +95,11 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             pass
         else:
             try:
-                urllib2.urlopen(resource_value)
-            except urllib2.HTTPError as e:
+                urllib.request.urlopen(resource_value)
+            except urllib.error.HTTPError as e:
                 print(e.code)
                 sys.exit(1)
-            except urllib2.URLError as e:
+            except urllib.error.URLError as e:
                 print(e.args)
                 sys.exit(1)
     # EC2 EBS Snapshot Id
