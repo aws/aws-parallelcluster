@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -15,8 +16,8 @@ import logging
 import platform
 import json
 
-import cfncluster
-import easyconfig
+from . import cfncluster
+from . import easyconfig
 
 def create(args):
     cfncluster.create(args)

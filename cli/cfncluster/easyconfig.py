@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance with the
@@ -16,7 +18,7 @@ import boto.vpc
 import os
 import logging
 
-import cfnconfig
+from . import cfnconfig
 
 logger = logging.getLogger('cfncluster.cfncluster')
 
@@ -31,9 +33,9 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
             user_prompt = user_prompt + ']: '
 
     if isinstance(options, list):
-        print 'Acceptable Values for %s: ' % prompt
+        print('Acceptable Values for %s: ' % prompt)
         for o in options:
-            print '    %s' % o
+            print('    %s' % o)
 
     var = raw_input(user_prompt)
 
@@ -79,8 +81,8 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
         keynames.append(key.name)
 
     if not keynames:
-        print 'ERROR: No keys found in region ' + aws_region_name
-        print 'Please create an EC2 keypair before continuing'
+        print('ERROR: No keys found in region ' + aws_region_name)
+        print('Please create an EC2 keypair before continuing')
         sys.exit(1)
 
     return keynames
@@ -93,8 +95,8 @@ def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
         vpcids.append(vpc.id)
 
     if not vpcids:
-        print 'ERROR: No vpcs found in region ' + aws_region_name
-        print 'Please create an EC2 vpcpair before continuing'
+        print('ERROR: No vpcs found in region ' + aws_region_name)
+        print('Please create an EC2 vpcpair before continuing')
         sys.exit(1)
 
     return vpcids
@@ -107,8 +109,8 @@ def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_
         subnetids.append(subnet.id)
 
     if not subnetids:
-        print 'ERROR: No subnets found in region ' + aws_region_name
-        print 'Please create an EC2 subnetpair before continuing'
+        print('ERROR: No subnets found in region ' + aws_region_name)
+        print('Please create an EC2 subnetpair before continuing')
         sys.exit(1)
 
     return subnetids
