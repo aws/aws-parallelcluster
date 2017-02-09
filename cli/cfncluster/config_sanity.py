@@ -13,10 +13,16 @@ __author__ = 'dougalb'
 
 import boto.ec2
 import boto.vpc
-import urllib2
-from urlparse import urlparse
 import boto.exception
 import sys
+
+if sys.version_info.major < 3:
+    from urllib2 import urlopen, HTTPError, URLError
+    from urlparse import urlparse
+else:
+    from urllib.request import urlopen
+    from urllib.error import HTTPError, URLError
+    from urllib.parse import urlparse
 
 def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_type,resource_value):
 
@@ -92,11 +98,11 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             pass
         else:
             try:
-                urllib2.urlopen(resource_value)
-            except urllib2.HTTPError, e:
+                urlopen(resource_value)
+            except HTTPError as e:
                 print(e.code)
                 sys.exit(1)
-            except urllib2.URLError, e:
+            except URLError as e:
                 print(e.args)
                 sys.exit(1)
     # EC2 EBS Snapshot Id

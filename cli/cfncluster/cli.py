@@ -16,8 +16,8 @@ import logging
 import platform
 import json
 
-import cfncluster
-import easyconfig
+from . import cfncluster
+from . import easyconfig
 
 def create(args):
     cfncluster.create(args)
