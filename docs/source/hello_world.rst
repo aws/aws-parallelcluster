@@ -75,14 +75,14 @@ Next, submit the job using "qsub" and ensure it runs. ::
         $ qsub hellojob.sh
         Your job 1 ("hellojob.sh") has been submitted
 
-Now, you can vew your queue and check the status of the job. ::
+Now, you can view your queue and check the status of the job. ::
 
         $ qstat
         job-ID  prior   name       user         state submit/start at     queue                          slots ja-task-ID
         -----------------------------------------------------------------------------------------------------------------
               1 0.55500 hellojob.s ec2-user     r     03/24/2015 22:23:48 all.q@ip-192-168-1-125.us-west     1
 
-The job is currently in a running state.  Wait 30 seconds for the job to finish and run qsub again. ::
+The job is currently in a running state.  Wait 30 seconds for the job to finish and run qstat again. ::
 
         $ qstat
         $
