@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import os
+import sys
 import argparse
 import logging
 import platform
@@ -148,6 +149,11 @@ def main():
 
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)
+
+    # if no arguments are given display help message
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
 
     args = parser.parse_args()
     logging.debug(args)
