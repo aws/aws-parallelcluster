@@ -28,7 +28,7 @@ if sys.version_info[:2] == (2, 6):
     # was not in stdlib until 2.7.
     requires.append('argparse>=1.4.0')
 
-if sys.version_info.major == 2:
+if sys.version_info[0] == 2:
     requires.append('configparser>=3.5.0')
 
 setup(
