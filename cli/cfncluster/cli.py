@@ -83,6 +83,8 @@ def main():
                         help='do not wait for stack events, after executing stack command')
 
     subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = 'command'
 
     pcreate = subparsers.add_parser('create', help='creates a cluster')
     pcreate.add_argument("cluster_name", type=str, default=None,

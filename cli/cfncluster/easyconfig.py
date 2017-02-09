@@ -11,7 +11,10 @@ from __future__ import absolute_import
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ConfigParser
+from future import standard_library
+standard_library.install_aliases()
+from builtins import input
+import configparser
 import sys
 import boto.ec2
 import boto.vpc
@@ -37,7 +40,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
         for o in options:
             print('    %s' % o)
 
-    var = raw_input(user_prompt)
+    var = input(user_prompt)
 
     if var == '':
         return default_value
@@ -123,7 +126,7 @@ def configure(args):
     else:
         config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
 
     # Check if configuration file exists
     if os.path.isfile(config_file):
@@ -156,9 +159,9 @@ def configure(args):
     for section in sections:
         try:
             config.add_section(section['__name__'])
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
-        for key, value in section.iteritems():
+        for key, value in section.items():
             # Only update configuration if not set
             if value is not None and key is not '__name__':
                 config.set(section['__name__'], key, value)

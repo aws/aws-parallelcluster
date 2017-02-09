@@ -11,13 +11,17 @@ from __future__ import absolute_import
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ConfigParser
+from future import standard_library
+standard_library.install_aliases()
+from builtins import str
+from builtins import object
+import configparser
 import os
 import sys
 import inspect
 import pkg_resources
 import json
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 from . import config_sanity
 import boto.cloudformation
 
@@ -31,7 +35,7 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
 
     return __cli_template
 
-class CfnClusterConfig:
+class CfnClusterConfig(object):
 
     def __init__(self, args):
         self.args = args
@@ -60,7 +64,7 @@ class CfnClusterConfig:
                 sys.exit(1)
 
 
-        __config = ConfigParser.ConfigParser()
+        __config = configparser.ConfigParser()
         __config.read(self.__config_file)
 
         # Determine the EC2 region to used used or default to us-east-1
@@ -73,17 +77,17 @@ class CfnClusterConfig:
             else:
                 try:
                     self.region = __config.get('aws', 'aws_region_name')
-                except ConfigParser.NoOptionError:
+                except configparser.NoOptionError:
                     self.region = 'us-east-1'
 
         # Check if credentials have been provided in config
         try:
             self.aws_access_key_id = __config.get('aws', 'aws_access_key_id')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             self.aws_access_key_id=None
         try:
             self.aws_secret_access_key = __config.get('aws', 'aws_secret_access_key')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             self.aws_secret_access_key=None
 
         # Determine which cluster template will be used
@@ -104,12 +108,12 @@ class CfnClusterConfig:
         # Check if package updates should be checked
         try:
             self.__update_check = __config.getboolean('global', 'update_check')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             self.__update_check = True
 
         if self.__update_check == True:
             try:
-                __latest = json.loads(urllib2.urlopen("http://pypi.python.org/pypi/cfncluster/json").read())['info']['version']
+                __latest = json.loads(urllib.request.urlopen("http://pypi.python.org/pypi/cfncluster/json").read())['info']['version']
                 if self.version < __latest:
                     print('warning: There is a newer version %s of cfncluster available.' % __latest)
             except Exception:
@@ -118,7 +122,7 @@ class CfnClusterConfig:
         # Check if config sanity should be run
         try:
             self.__sanity_check = __config.getboolean('global', 'sanity_check')
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             self.__sanity_check = False
         # Only check config on calls that mutate it
         __args_func = self.args.func.__name__
@@ -136,7 +140,7 @@ class CfnClusterConfig:
             if self.__sanity_check:
                 config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'EC2KeyPair', self.key_name)
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             print("ERROR: Missing key_name option in [%s] section." % self.__cluster_section)
             sys.exit(1)
         self.parameters.append(('KeyName', self.key_name))
@@ -155,7 +159,7 @@ class CfnClusterConfig:
                 if self.__sanity_check:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'URL', self.template_url)
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 if self.region == 'us-gov-west-1':
                     self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
                                          % (self.region, self.region, self.version))
@@ -191,7 +195,7 @@ class CfnClusterConfig:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__vpc_options.get(key)[1],__temp__)
                 self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 pass
 
         # Dictionary list of all cluster section options
@@ -225,7 +229,7 @@ class CfnClusterConfig:
                     config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__cluster_options.get(key)[1],__temp__)
                 self.parameters.append((self.__cluster_options.get(key)[0],__temp__))
-            except ConfigParser.NoOptionError:
+            except configparser.NoOptionError:
                 pass
 
         # Merge tags from config with tags from command line args
@@ -234,7 +238,7 @@ class CfnClusterConfig:
         try:
             tags = __config.get(self.__cluster_section, 'tags')
             self.tags = json.loads(tags);
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
         try:
             if args.tags is not None:
@@ -251,7 +255,7 @@ class CfnClusterConfig:
                                                 % self.__cluster_section)
                 sys.exit(1)
             self.__ebs_section = ('ebs %s' % self.__ebs_settings)
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         # Dictionary list of all EBS options
@@ -274,7 +278,7 @@ class CfnClusterConfig:
                             config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__ebs_options.get(key)[1],__temp__)
                         self.parameters.append((self.__ebs_options.get(key)[0],__temp__))
-                    except ConfigParser.NoOptionError:
+                    except configparser.NoOptionError:
                         pass
         except AttributeError:
             pass
@@ -287,7 +291,7 @@ class CfnClusterConfig:
                                                 % self.__cluster_section)
                 sys.exit(1)
             self.__scaling_section = ('scaling %s' % self.__scaling_settings)
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             pass
 
         # Dictionary list of all scaling options
@@ -309,7 +313,7 @@ class CfnClusterConfig:
                             config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__scaling_options.get(key)[1],__temp__)
                         self.parameters.append((self.__scaling_options.get(key)[0],__temp__))
-                    except ConfigParser.NoOptionError:
+                    except configparser.NoOptionError:
                         pass
         except AttributeError:
             pass
@@ -318,9 +322,9 @@ class CfnClusterConfig:
         try:
             if self.args.extra_parameters is not None:
                 self.parameters = dict(self.parameters)
-                self.__temp_dict = dict(self.parameters.items() + self.args.extra_parameters.items())
+                self.__temp_dict = dict(list(self.parameters.items()) + list(self.args.extra_parameters.items()))
                 self.__dictlist = []
-                for key, value in self.__temp_dict.iteritems():
+                for key, value in self.__temp_dict.items():
                     temp = [str(key),str(value)]
                     self.__dictlist.append(temp)
                 self.parameters = self.__dictlist
