@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -93,10 +94,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
         else:
             try:
                 urllib2.urlopen(resource_value)
-            except urllib2.HTTPError, e:
+            except urllib2.HTTPError as e:
                 print(e.code)
                 sys.exit(1)
-            except urllib2.URLError, e:
+            except urllib2.URLError as e:
                 print(e.args)
                 sys.exit(1)
     # EC2 EBS Snapshot Id

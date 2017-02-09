@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -16,7 +18,7 @@ import inspect
 import pkg_resources
 import json
 import urllib2
-import config_sanity
+from . import config_sanity
 import boto.cloudformation
 
 def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
@@ -36,7 +38,7 @@ class CfnClusterConfig:
         self.parameters = []
         self.version = pkg_resources.get_distribution("cfncluster").version
         self.__DEFAULT_CONFIG = False
-        __args_func = self.args.func.func_name
+        __args_func = self.args.func.__name__
 
         # Determine config file name based on args or default
         if args.config_file is not None:
@@ -119,7 +121,7 @@ class CfnClusterConfig:
         except ConfigParser.NoOptionError:
             self.__sanity_check = False
         # Only check config on calls that mutate it
-        __args_func = self.args.func.func_name
+        __args_func = self.args.func.__name__
         if (__args_func == 'create' or __args_func == 'update' or __args_func == 'configure') and self.__sanity_check is True:
             pass
         else:
