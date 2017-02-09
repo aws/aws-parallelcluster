@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+develop
+=======
+* updates:``cfncluster``: Moved to Apache 2.0 license
+* updates:``cfncluster``: Support for Python 3
+
 1.3.1
 =====
 * feature:``ami``: Added support for Ubuntu 16.04 LTS
