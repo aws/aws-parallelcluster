@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -15,8 +16,8 @@ import logging
 import platform
 import json
 
-import cfncluster
-import easyconfig
+from . import cfncluster
+from . import easyconfig
 
 def create(args):
     cfncluster.create(args)
@@ -82,6 +83,8 @@ def main():
                         help='do not wait for stack events, after executing stack command')
 
     subparsers = parser.add_subparsers()
+    subparsers.required = True
+    subparsers.dest = 'command'
 
     pcreate = subparsers.add_parser('create', help='creates a cluster')
     pcreate.add_argument("cluster_name", type=str, default=None,

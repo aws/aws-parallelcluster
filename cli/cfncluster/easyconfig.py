@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance with the
@@ -9,14 +11,17 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import ConfigParser
+from future import standard_library
+standard_library.install_aliases()
+from builtins import input
+import configparser
 import sys
 import boto.ec2
 import boto.vpc
 import os
 import logging
 
-import cfnconfig
+from . import cfnconfig
 
 logger = logging.getLogger('cfncluster.cfncluster')
 
@@ -31,11 +36,11 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
             user_prompt = user_prompt + ']: '
 
     if isinstance(options, list):
-        print 'Acceptable Values for %s: ' % prompt
+        print('Acceptable Values for %s: ' % prompt)
         for o in options:
-            print '    %s' % o
+            print('    %s' % o)
 
-    var = raw_input(user_prompt)
+    var = input(user_prompt)
 
     if var == '':
         return default_value
@@ -79,8 +84,8 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
         keynames.append(key.name)
 
     if not keynames:
-        print 'ERROR: No keys found in region ' + aws_region_name
-        print 'Please create an EC2 keypair before continuing'
+        print('ERROR: No keys found in region ' + aws_region_name)
+        print('Please create an EC2 keypair before continuing')
         sys.exit(1)
 
     return keynames
@@ -93,8 +98,8 @@ def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
         vpcids.append(vpc.id)
 
     if not vpcids:
-        print 'ERROR: No vpcs found in region ' + aws_region_name
-        print 'Please create an EC2 vpcpair before continuing'
+        print('ERROR: No vpcs found in region ' + aws_region_name)
+        print('Please create an EC2 vpcpair before continuing')
         sys.exit(1)
 
     return vpcids
@@ -107,8 +112,8 @@ def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_
         subnetids.append(subnet.id)
 
     if not subnetids:
-        print 'ERROR: No subnets found in region ' + aws_region_name
-        print 'Please create an EC2 subnetpair before continuing'
+        print('ERROR: No subnets found in region ' + aws_region_name)
+        print('Please create an EC2 subnetpair before continuing')
         sys.exit(1)
 
     return subnetids
@@ -121,7 +126,7 @@ def configure(args):
     else:
         config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
 
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
 
     # Check if configuration file exists
     if os.path.isfile(config_file):
@@ -154,9 +159,9 @@ def configure(args):
     for section in sections:
         try:
             config.add_section(section['__name__'])
-        except ConfigParser.DuplicateSectionError:
+        except configparser.DuplicateSectionError:
             pass
-        for key, value in section.iteritems():
+        for key, value in section.items():
             # Only update configuration if not set
             if value is not None and key is not '__name__':
                 config.set(section['__name__'], key, value)
