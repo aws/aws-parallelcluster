@@ -273,17 +273,17 @@ master_root_volume_size
 """""""""""""""""""""""
 MasterServer root volume size in GB. (AMI must support growroot)
 
-Defaults to 10 in default template. ::
+Defaults to 15 in default template. ::
 
-    master_root_volume_size = 10
+    master_root_volume_size = 15
 
 compute_root_volume_size
 """"""""""""""""""""""""
 ComputeFleet root volume size in GB. (AMI must support growroot)
 
-Defaults to 10 in default template. ::
+Defaults to 15 in default template. ::
 
-    compute_root_volume_size = 10
+    compute_root_volume_size = 15
 
 base_os
 """""""
@@ -378,7 +378,7 @@ Tags are JSON formatted and should not have quotes outside the curly braces.
 
 See `AWS CloudFormation Resource Tags Type <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
 
-    tags = {"key": "value", "key2", "value2"}
+    tags = {"key" : "value", "key2" : "value2"}
 
 .. _vpc_section:
 

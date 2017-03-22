@@ -144,7 +144,8 @@ CfnClusterUserPolicy
                   "ec2:DescribeVpcAttribute",
                   "ec2:DescribeAddresses",
                   "ec2:CreateTags",
-                  "ec2:DescribeNetworkInterfaces"
+	          "ec2:DescribeNetworkInterfaces",
+	          "ec2:DescribeAvailabilityZones"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -162,7 +163,10 @@ CfnClusterUserPolicy
                   "ec2:CreateNetworkInterface",
                   "ec2:CreateSecurityGroup",
                   "ec2:ModifyVolumeAttribute",
-                  "ec2:ModifyNetworkInterfaceAttribute"
+                  "ec2:ModifyNetworkInterfaceAttribute",
+	          "ec2:DeleteNetworkInterface",
+	          "ec2:DeleteVolume",
+	          "ec2:TerminateInstances"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -200,7 +204,8 @@ CfnClusterUserPolicy
           {
               "Sid": "DynamoDBModify",
               "Action": [
-                  "dynamodb:CreateTable"
+              "dynamodb:CreateTable",
+	      "dynamodb:DeleteTable"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -225,7 +230,8 @@ CfnClusterUserPolicy
               "Sid": "SQSModify",
               "Action": [
                   "sqs:CreateQueue",
-                  "sqs:SetQueueAttributes"
+                  "sqs:SetQueueAttributes",
+	          "sqs:DeleteQueue"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -233,7 +239,8 @@ CfnClusterUserPolicy
           {
               "Sid": "SNSDescribe",
               "Action": [
-                  "sns:ListTopics"
+              "sns:ListTopics",
+	      “sns:GetTopicAttributes"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -242,7 +249,8 @@ CfnClusterUserPolicy
               "Sid": "SNSModify",
               "Action": [
                   "sns:CreateTopic",
-                  "sns:Subscribe"
+                  "sns:Subscribe",
+	          “sns:DeleteTopic”
               ],
               "Effect": "Allow",
               "Resource": "*"
