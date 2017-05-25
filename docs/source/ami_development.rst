@@ -16,7 +16,7 @@ Steps
 
 This guide is written assuming your OS is Ubuntu 14.04. If you don't have an Ubuntu machine you can easily get an `EC2 instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_ running Ubuntu. 
 
-#.	:code:`sudo apt-get install build-essential`
+#.	:code:`sudo apt-get -y install build-essential git`
 #.	Go to https://downloads.chef.io/chef-dk, grab the latest version for your OS and install.
 
 	For example:
@@ -36,6 +36,7 @@ This guide is written assuming your OS is Ubuntu 14.04. If you don't have an Ubu
 		sudo tar xf ~/go1.7.linux-amd64.tar.gz
 		echo 'export GOPATH=~/work' >> ~/.bashrc
 		echo 'export PATH=$GOPATH/bin:/usr/local/go/bin:$PATH' >> ~/.bashrc
+		. ~/.bashrc
 
 #.	Install packer from source
 
