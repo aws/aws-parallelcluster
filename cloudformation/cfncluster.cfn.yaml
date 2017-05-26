@@ -4,7 +4,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS CloudFormation Sample Template cfncluster.cfn.yaml: Sample template
   showing an framework for deploying master + compute type clusters on AWS.  **WARNING**
   This template creates AWS resources. You will be billed for the AWS resources used
-  if you create a stack from this template. Version: ami-201609030709 cfncluster-1.3.1'
+  if you create a stack from this template. Version: ami-dev cfncluster-1.3.2'
 
 Metadata:
   AWS::CloudFormation::Designer:
@@ -1173,12 +1173,12 @@ Mappings:
       ubuntu1604: ami-870edfe7
   CfnClusterVersions:
     default:
-      ami: '201609030709'
-      berkshelf: 4.6.1
-      cfncluster: cfncluster-1.3.1
-      chef: 12.13.30
-      cookbook: cfncluster-cookbook-1.3.0
-      ridley: 4.5.1
+      ami: 'dev'
+      berkshelf: 5.6.4
+      cfncluster: cfncluster-1.3.2
+      chef: 12.19.36
+      cookbook: cfncluster-cookbook-1.3.2
+      ridley: 5.1.0
   OSFeatures:
     alinux:
       RootDevice: /dev/xvda
