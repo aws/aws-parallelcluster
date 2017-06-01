@@ -97,10 +97,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             try:
                 urllib.request.urlopen(resource_value)
             except urllib.error.HTTPError as e:
-                print(e.code)
+                print('Config sanity error:', resource_value, e.code, e.reason)
                 sys.exit(1)
             except urllib.error.URLError as e:
-                print(e.args)
+                print('Config sanity error:', resource_value, e.reason)
                 sys.exit(1)
     # EC2 EBS Snapshot Id
     elif resource_type == 'EC2Snapshot':
