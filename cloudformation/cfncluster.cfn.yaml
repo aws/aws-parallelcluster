@@ -1288,7 +1288,11 @@ Mappings:
   AWSRegion2Capabilites:
     eu-west-1:
       arn: aws
+    eu-west-2:
+      arn: aws
     us-east-1:
+      arn: aws
+    us-east-2:
       arn: aws
     ap-northeast-1:
       arn: aws
@@ -1309,6 +1313,8 @@ Mappings:
     ap-northeast-2:
       arn: aws
     ap-south-1:
+      arn: aws
+    ca-central-1:
       arn: aws
 Resources:
   SQS:
