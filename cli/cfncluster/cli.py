@@ -58,7 +58,7 @@ def get_logger(name):
     ch.setLevel(logging.INFO)
 
     
-    formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d - %(name)s - %(levelname)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S')
+    formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S')
     ch.setFormatter(formatter)
 
     logger.addHandler(ch)
