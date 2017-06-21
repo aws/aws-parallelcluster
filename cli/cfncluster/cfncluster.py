@@ -24,15 +24,15 @@ import logging
 
 from . import cfnconfig
 
-logger = logging.getLogger('cfncluster.cfncluster')
-
 def version(args):
     config = cfnconfig.CfnClusterConfig(args)
     print(config.version)
 
 def create(args):
-    print('Starting: %s' % (args.cluster_name))
+    logger = logging.getLogger('cfncluster.cfncluster.create')
+    logger.info('Beginning cluster creation for cluster: %s' % (args.cluster_name))
 
+    logger.debug('Building cluster config based on args')
     # Build the config based on args
     config = cfnconfig.CfnClusterConfig(args)
 
@@ -44,6 +44,7 @@ def create(args):
     except ValueError:
         pass
 
+
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     try:
         i = [p[0] for p in config.parameters].index('MasterSubnetId')
@@ -52,22 +53,36 @@ def create(args):
             vpcconn = boto.vpc.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
                                                  aws_secret_access_key=config.aws_secret_access_key)
             availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
-        except boto.exception.BotoServerError as e:
-            print(e.message)
+        except Exception, e:
+            logger.critical(e.message)
             sys.exit(1)
         config.parameters.append(('AvailabilityZone', availability_zone))
     except ValueError:
         pass
 
+
+
     capabilities = ["CAPABILITY_IAM"]
-    cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
-                                                    aws_secret_access_key=config.aws_secret_access_key)
+    try: 
+        cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
+                                                        aws_secret_access_key=config.aws_secret_access_key)
+    except Exception, e:
+        logger.critical(e.message)
+        sys.exit(1)
+
+
+
+        
     try:
-        logger.debug((config.template_url, config.parameters))
-        stack = cfnconn.create_stack(('cfncluster-' + args.cluster_name),template_url=config.template_url,
+        stack_name = 'cfncluster-' + args.cluster_name
+        logger.info("Creating stack named: " + stack_name)
+        stack = cfnconn.create_stack(stack_name,template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
                                      disable_rollback=args.norollback, tags=config.tags)
+        logger.info("foo")    
         status = cfnconn.describe_stacks(stack)[0].stack_status
+
+
         if not args.nowait:
             while status == 'CREATE_IN_PROGRESS':
                 status = cfnconn.describe_stacks(stack)[0].stack_status
@@ -82,13 +97,14 @@ def create(args):
         else:
             status = cfnconn.describe_stacks(stack)[0].stack_status
             print('Status: %s' % status)
-    except boto.exception.BotoServerError as e:
-        print(e.message)
-        sys.exit(1)
     except KeyboardInterrupt:
         print('\nExiting...')
         sys.exit(0)
+    except Exception, e:
+        logger.critical(e.message)
+        sys.exit(1)
 
+        
 def update(args):
     print('Updating: %s' % (args.cluster_name))
     stack_name = ('cfncluster-' + args.cluster_name)

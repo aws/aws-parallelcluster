@@ -20,6 +20,7 @@ import sys
 from . import cfncluster
 from . import easyconfig
 
+
 def create(args):
     cfncluster.create(args)
 
@@ -50,23 +51,13 @@ def start(args):
 def stop(args):
     cfncluster.stop(args)
 
-def get_logger(name):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.INFO)
-
-    ch = logging.StreamHandler(stream=sys.stdout)
-    ch.setLevel(logging.INFO)
-
-    
-    formatter = logging.Formatter(fmt='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S')
-    ch.setFormatter(formatter)
-
-    logger.addHandler(ch)
-    
-    return logger
+def config_logger():
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S',level=logging.INFO)
     
 def main():
-    logger = get_logger('cfncluster')
+    config_logger()
+    
+    logger = logging.getLogger(__name__)
     logger.info("CfnCluster cli starting")
     
     parser = argparse.ArgumentParser(description='cfncluster is a tool to launch and manage a cluster.')
