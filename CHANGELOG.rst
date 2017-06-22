@@ -2,8 +2,15 @@
 CHANGELOG
 =========
 
-develop
-=======
+1.3.2
+=====
+* feature:``cfncluster``: Add support for r2.xlarge/t2.2xlarge,
+  x1.16xlarge, r4.*, f1.*, and i3.* instance types
+* bugfix:``cfncluster``: Fix support for p2.2xlarge instance type
+* feature:``cfncluster``: Add support for eu-west-2, us-east-2, and
+  ca-central-1 regions
+* updates:``cfncluster-cookbook``: Updated to cfncluster-cookbook-1.3.2
+* updates:``ami``: Update all base AMIs to latest patch levels
 * updates:``cfncluster``: Moved to Apache 2.0 license
 * updates:``cfncluster``: Support for Python 3
 
