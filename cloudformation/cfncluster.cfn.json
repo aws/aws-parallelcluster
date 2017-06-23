@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201609030709 cfncluster-1.3.1",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201609030709 cfncluster-1.3.2",
   "Metadata" : {
     "AWS::CloudFormation::Interface" : {
       "ParameterGroups" : [
@@ -727,10 +727,22 @@
         "r3.2xlarge",
         "r3.xlarge",
         "r3.large",
+        "r4.large",
+        "r4.xlarge",
+        "r4.2xlarge",
+        "r4.4xlarge",
+        "r4.8xlarge",
+        "r4.16xlarge",
         "i2.8xlarge",
         "i2.4xlarge",
         "i2.2xlarge",
         "i2.xlarge",
+        "i3.large",
+        "i3.xlarge",
+        "i3.2xlarge",
+        "i3.4xlarge",
+        "i3.8xlarge",
+        "i3.16xlarge",
         "cr1.8xlarge",
         "cg1.4xlarge",
         "m3.medium",
@@ -740,13 +752,15 @@
         "hi1.4xlarge",
         "g2.2xlarge",
         "g2.8xlarge",
-        "p2.large",
+        "p2.xlarge",
         "p2.8xlarge",
         "p2.16xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
         "t2.large",
+        "t2.xlarge",
+        "t2.2xlarge",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
@@ -756,7 +770,11 @@
         "m4.2xlarge",
         "m4.4xlarge",
         "m4.10xlarge",
-        "x1.32xlarge"
+        "m4.16xlarge",
+        "x1.16xlarge",
+        "x1.32xlarge",
+        "f1.2xlarge",
+        "f1.16xlarge"
       ]
     },
     "ComputeInstanceType" : {
@@ -781,10 +799,22 @@
         "r3.2xlarge",
         "r3.xlarge",
         "r3.large",
+        "r4.large",
+        "r4.xlarge",
+        "r4.2xlarge",
+        "r4.4xlarge",
+        "r4.8xlarge",
+        "r4.16xlarge",
         "i2.8xlarge",
         "i2.4xlarge",
         "i2.2xlarge",
         "i2.xlarge",
+        "i3.large",
+        "i3.xlarge",
+        "i3.2xlarge",
+        "i3.4xlarge",
+        "i3.8xlarge",
+        "i3.16xlarge",
         "cr1.8xlarge",
         "cg1.4xlarge",
         "m3.medium",
@@ -794,13 +824,15 @@
         "hi1.4xlarge",
         "g2.2xlarge",
         "g2.8xlarge",
-        "p2.large",
+        "p2.xlarge",
         "p2.8xlarge",
         "p2.16xlarge",
         "t2.micro",
         "t2.small",
         "t2.medium",
         "t2.large",
+        "t2.xlarge",
+        "t2.2xlarge",
         "d2.8xlarge",
         "d2.4xlarge",
         "d2.2xlarge",
@@ -810,7 +842,11 @@
         "m4.2xlarge",
         "m4.4xlarge",
         "m4.10xlarge",
-        "x1.32xlarge"
+        "m4.16xlarge",
+        "x1.16xlarge",
+        "x1.32xlarge",
+        "f1.2xlarge",
+        "f1.16xlarge"
       ]
     },
     "InitialQueueSize" : {
@@ -1576,7 +1612,7 @@
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
-      "p2.large" : {
+      "p2.xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
@@ -1664,6 +1700,34 @@
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
+      "r3.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "r4.16xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
       "i2.8xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
@@ -1684,7 +1748,35 @@
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
+      "i3.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i3.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i3.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i3.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i3.8xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "i3.16xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
       "cg1.4xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.nano" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
@@ -1697,6 +1789,18 @@
         "EBSOpt" : "False"
       },
       "t2.medium" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.large" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "False"
+      },
+      "t2.2xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "False"
       },
@@ -1716,11 +1820,23 @@
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
-      "t2.large" : {
+      "x1.16xlarge" : {
         "Arch" : "64HVM",
-        "EBSOpt" : "False"
+        "EBSOpt" : "True"
       },
       "x1.32xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "f1.2xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "f1.16xlarge" : {
+        "Arch" : "64HVM",
+        "EBSOpt" : "True"
+      },
+      "m4.16xlarge" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
       },
@@ -1743,75 +1859,106 @@
       "m4.large" : {
         "Arch" : "64HVM",
         "EBSOpt" : "True"
-      },
-      "t2.nano" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
       }
     },
     "AWSRegionOS2AMI" : {
-      "eu-west-1" : {
-        "centos6" : "ami-27f78554",
-        "centos7" : "ami-5af48629",
-        "alinux" : "ami-d8f785ab",
-        "ubuntu1404" : "ami-3ff0824c",
-        "ubuntu1604" : "ami-99f082ea"
-      },
-      "us-west-2" : {
-        "centos6" : "ami-6e30e10e",
-        "centos7" : "ami-2e1dcc4e",
-        "alinux" : "ami-1e31e07e",
-        "ubuntu1404" : "ami-4633e226",
-        "ubuntu1604" : "ami-870edfe7"
-      },
-      "eu-central-1" : {
-        "centos6" : "ami-5fd92a30",
-        "centos7" : "ami-fcda2993",
-        "alinux" : "ami-96db28f9",
-        "ubuntu1404" : "ami-89db28e6",
-        "ubuntu1604" : "ami-9dd427f2"
-      },
-      "sa-east-1" : {
-        "centos6" : "ami-8ad848e6",
-        "centos7" : "ami-f8d84894",
-        "alinux" : "ami-8bd848e7",
-        "ubuntu1404" : "ami-3f34a553",
-        "ubuntu1604" : "ami-8d0e9fe1"
-      },
       "ap-northeast-1" : {
-        "centos6" : "ami-46b17b27",
-        "centos7" : "ami-43c90322",
-        "alinux" : "ami-50bd7731",
-        "ubuntu1404" : "ami-89bd77e8",
-        "ubuntu1604" : "ami-eabe748b"
+        "alinux" : "ami-586b653f",
+        "centos6" : "ami-10686677",
+        "centos7" : "ami-0e6b6569",
+        "ubuntu1404" : "ami-466c6221",
+        "ubuntu1604" : "ami-ce6c62a9"
       },
-      "us-east-1" : {
-        "centos6" : "ami-504b2047",
-        "centos7" : "ami-e94328fe",
-        "alinux" : "ami-d5751ec2",
-        "ubuntu1404" : "ami-ba4a21ad",
-        "ubuntu1604" : "ami-d6751ec1"
+      "ap-northeast-2" : {
+        "alinux" : "ami-ea71ad84",
+        "centos6" : "ami-bb77abd5",
+        "centos7" : "ami-9377abfd",
+        "ubuntu1404" : "ami-2877ab46",
+        "ubuntu1604" : "ami-d072aebe"
       },
-      "us-west-1" : {
-        "centos6" : "ami-051f5365",
-        "centos7" : "ami-a51955c5",
-        "alinux" : "ami-5f19553f",
-        "ubuntu1404" : "ami-40185420",
-        "ubuntu1604" : "ami-751f5315"
-      },
-      "ap-southeast-2" : {
-        "centos6" : "ami-0ea6906d",
-        "centos7" : "ami-79a5931a",
-        "alinux" : "ami-51b98f32",
-        "ubuntu1404" : "ami-d3b98fb0",
-        "ubuntu1604" : "ami-c1b98fa2"
+      "ap-south-1" : {
+        "alinux" : "ami-1f720d70",
+        "centos6" : "ami-0a710e65",
+        "centos7" : "ami-546d123b",
+        "ubuntu1404" : "ami-11700f7e",
+        "ubuntu1604" : "ami-446f102b"
       },
       "ap-southeast-1" : {
-        "centos6" : "ami-23f22940",
-        "centos7" : "ami-d5f52eb6",
-        "alinux" : "ami-9af229f9",
-        "ubuntu1404" : "ami-95f229f6",
-        "ubuntu1604" : "ami-23f32840"
+        "alinux" : "ami-1f1b987c",
+        "centos6" : "ami-9b1596f8",
+        "centos7" : "ami-da1596b9",
+        "ubuntu1404" : "ami-be1497dd",
+        "ubuntu1604" : "ami-951596f6"
+      },
+      "ap-southeast-2" : {
+        "alinux" : "ami-56b9af35",
+        "centos6" : "ami-c7b9afa4",
+        "centos7" : "ami-afa6b0cc",
+        "ubuntu1404" : "ami-37a4b254",
+        "ubuntu1604" : "ami-cca6b0af"
+      },
+      "ca-central-1" : {
+        "alinux" : "ami-65f94601",
+        "centos6" : "ami-a6f847c2",
+        "centos7" : "ami-62f94606",
+        "ubuntu1404" : "ami-eefc438a",
+        "ubuntu1604" : "ami-a7fa45c3"
+      },
+      "eu-central-1" : {
+        "alinux" : "ami-7fd17510",
+        "centos6" : "ami-56d67239",
+        "centos7" : "ami-9cd571f3",
+        "ubuntu1404" : "ami-bcd773d3",
+        "ubuntu1604" : "ami-40d6722f"
+      },
+      "eu-west-1" : {
+        "alinux" : "ami-6ddac60b",
+        "centos6" : "ami-abd5c9cd",
+        "centos7" : "ami-6dd8c40b",
+        "ubuntu1404" : "ami-83d4c8e5",
+        "ubuntu1604" : "ami-e6d5c980"
+      },
+      "eu-west-2" : {
+        "alinux" : "ami-f1bbac95",
+        "centos6" : "ami-cabcabae",
+        "centos7" : "ami-9cb9aef8",
+        "ubuntu1404" : "ami-5cb9ae38",
+        "ubuntu1604" : "ami-5eb9ae3a"
+      },
+      "sa-east-1" : {
+        "alinux" : "ami-a990f8c5",
+        "centos6" : "ami-b491f9d8",
+        "centos7" : "ami-5092fa3c",
+        "ubuntu1404" : "ami-6d91f901",
+        "ubuntu1604" : "ami-df90f8b3"
+      },
+      "us-east-1" : {
+        "alinux" : "ami-2492c832",
+        "centos6" : "ami-a293c9b4",
+        "centos7" : "ami-d29cc6c4",
+        "ubuntu1404" : "ami-a192c8b7",
+        "ubuntu1604" : "ami-8c9fc59a"
+      },
+      "us-east-2" : {
+        "alinux" : "ami-a6d3f5c3",
+        "centos6" : "ami-2cd3f549",
+        "centos7" : "ami-c3d2f4a6",
+        "ubuntu1404" : "ami-e2d3f587",
+        "ubuntu1604" : "ami-54d5f331"
+      },
+      "us-west-1" : {
+        "alinux" : "ami-39c2e059",
+        "centos6" : "ami-65c2e005",
+        "centos7" : "ami-17fcde77",
+        "ubuntu1404" : "ami-b5c2e0d5",
+        "ubuntu1604" : "ami-0dfddf6d"
+      },
+      "us-west-2" : {
+        "alinux" : "ami-f4b0b98d",
+        "centos6" : "ami-6bb1b812",
+        "centos7" : "ami-22b2bb5b",
+        "ubuntu1404" : "ami-f5b0b98c",
+        "ubuntu1604" : "ami-c4b1b8bd"
       },
       "us-gov-west-1" : {
         "centos6" : "NOT_SUPPORTED",
@@ -1819,20 +1966,6 @@
         "alinux" : "NOT_SUPPORTED",
         "ubuntu1404" : "NOT_SUPPORTED",
         "ubuntu1604" : "NOT_SUPPORTED"
-      },
-      "ap-northeast-2" : {
-        "centos6" : "ami-75e1341b",
-        "centos7" : "ami-5cec3932",
-        "alinux" : "ami-afe431c1",
-        "ubuntu1404" : "ami-bae732d4",
-        "ubuntu1604" : "ami-7eef3a10"
-      },
-      "ap-south-1" : {
-        "centos6" : "ami-a392e7cc",
-        "centos7" : "ami-bf90e5d0",
-        "alinux" : "ami-0495e06b",
-        "ubuntu1404" : "ami-489de827",
-        "ubuntu1604" : "ami-5d90e532"
       }
     },
     "OSFeatures" : {
@@ -1859,19 +1992,25 @@
     },
     "CfnClusterVersions" : {
       "default" : {
-        "cfncluster" : "cfncluster-1.3.1",
-        "cookbook" : "cfncluster-cookbook-1.3.0",
-        "chef" : "12.13.30",
-        "ridley" : "4.5.1",
-        "berkshelf" : "4.6.1",
-        "ami" : "201609030709"
+        "cfncluster" : "cfncluster-1.3.2",
+        "cookbook" : "cfncluster-cookbook-1.3.2",
+        "chef" : "12.19.36",
+        "ridley" : "5.1.0",
+        "berkshelf" : "5.6.4",
+        "ami" : "dev"
       }
     },
     "AWSRegion2Capabilites" : {
       "eu-west-1" : {
         "arn" : "aws"
       },
+      "eu-west-2" : {
+        "arn" : "aws"
+      },
       "us-east-1" : {
+        "arn" : "aws"
+      },
+      "us-east-2" : {
         "arn" : "aws"
       },
       "ap-northeast-1" : {
@@ -1902,6 +2041,9 @@
         "arn" : "aws"
       },
       "ap-south-1" : {
+        "arn" : "aws"
+      },
+      "ca-central-1" : {
         "arn" : "aws"
       }
     }

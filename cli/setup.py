@@ -20,13 +20,16 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
-version = "1.3.1"
-requires = ['boto>=2.42.0', 'awscli>=1.10.56'] 
+version = "1.3.2"
+requires = ['boto>=2.42.0', 'awscli>=1.10.56', 'future>=0.16.0'] 
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it
     # was not in stdlib until 2.7.
     requires.append('argparse>=1.4.0')
+
+if sys.version_info[0] == 2:
+    requires.append('configparser>=3.5.0')
 
 setup(
     name = "cfncluster",
@@ -50,6 +53,6 @@ setup(
         "Environment :: Console",
         "Programming Language :: Python",
         "Topic :: Scientific/Engineering",
-        "License :: Apache Software License",
+        "License :: OSI Approved :: Apache Software License",
     ],
 )

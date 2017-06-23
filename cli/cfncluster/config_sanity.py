@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -9,12 +10,14 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from future import standard_library
+standard_library.install_aliases()
 __author__ = 'dougalb'
 
 import boto.ec2
 import boto.vpc
-import urllib2
-from urlparse import urlparse
+import urllib.request, urllib.error, urllib.parse
+from urllib.parse import urlparse
 import boto.exception
 import sys
 
@@ -92,12 +95,12 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             pass
         else:
             try:
-                urllib2.urlopen(resource_value)
-            except urllib2.HTTPError, e:
-                print(e.code)
+                urllib.request.urlopen(resource_value)
+            except urllib.error.HTTPError as e:
+                print('Config sanity error:', resource_value, e.code, e.reason)
                 sys.exit(1)
-            except urllib2.URLError, e:
-                print(e.args)
+            except urllib.error.URLError as e:
+                print('Config sanity error:', resource_value, e.reason)
                 sys.exit(1)
     # EC2 EBS Snapshot Id
     elif resource_type == 'EC2Snapshot':
