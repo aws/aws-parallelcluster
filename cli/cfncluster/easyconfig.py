@@ -20,6 +20,7 @@ import boto.ec2
 import boto.vpc
 import os
 import logging
+import stat
 
 from . import cfnconfig
 
@@ -167,9 +168,10 @@ def configure(args):
                 config.set(section['__name__'], key, value)
 
     # Write configuration to disk
-    cfgfile = open(config_file,'w')
-    config.write(cfgfile)
-    cfgfile.close()
+    open(config_file,'a').close()
+    os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)    
+    with open(config_file,'w') as cf:
+        config.write(cf)
     
     # Verify the configuration
     cfnconfig.CfnClusterConfig(args)

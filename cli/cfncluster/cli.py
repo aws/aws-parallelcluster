@@ -15,9 +15,11 @@ import argparse
 import logging
 import platform
 import json
+import sys
 
 from . import cfncluster
 from . import easyconfig
+
 
 def create(args):
     cfncluster.create(args)
@@ -49,32 +51,15 @@ def start(args):
 def stop(args):
     cfncluster.stop(args)
 
+def config_logger():
+    logging.basicConfig(format='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S',level=logging.INFO)
+    
 def main():
-    # set up logging to file
-
-    if platform.system() is 'Windows':
-        if not os.path.exists(os.path.expanduser('~\.cfncluster')):
-            os.makedirs(os.path.expanduser('~\.cfncluster'))
-        logfile = os.path.expanduser('~\.cfncluster\cfncluster-cli.log')
-    else:
-        if not os.path.exists(os.path.expanduser('~/.cfncluster')):
-            os.makedirs(os.path.expanduser('~/.cfncluster'))
-        logfile = os.path.expanduser('~/.cfncluster/cfncluster-cli.log')
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
-                        datefmt='%m-%d %H:%M',
-                        filename=logfile,
-                        filemode='w')
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
-    # set a format which is simpler for console use
-    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('cfncluster.cli').addHandler(console)
-
+    config_logger()
+    
+    logger = logging.getLogger(__name__)
+    logger.info("CfnCluster cli starting")
+    
     parser = argparse.ArgumentParser(description='cfncluster is a tool to launch and manage a cluster.')
     parser.add_argument("--config", "-c", dest="config_file", help='specify a alternative config file')
     parser.add_argument( "--region", "-r", dest="region", help='specify a specific region to connect to',
