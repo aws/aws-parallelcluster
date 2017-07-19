@@ -28,12 +28,17 @@ optional arguments:
                         specify a specific cluster template to use
   --extra-parameters EXTRA_PARAMETERS, -p EXTRA_PARAMETERS
                         add extra parameters to stack create
-  --tags TAGS, -g TAGS  tags to be added to the stack
+  --tags TAGS, -g TAGS  tags to be added to the stack, TAGS is a JSON formatted string encapsulated by single quotes
 
 ::
 
 	$ cfncluster create mycluster
 
+create cluster with tags:
+
+::
+
+        $ cfncluster create mycluster --tags '{ "Key1" : "Value1" , "Key2" : "Value2" }'
 
 update
 ======
