@@ -116,6 +116,8 @@ def main():
     pstop = subparsers.add_parser('stop', help='stop a cluster that has been created')
     pstop.add_argument("cluster_name", type=str, default=None,
                         help='stop a cfncluster with the provided name.')
+    pstop.add_argument("--compute-only", "-c", action='store_true', dest="compute_only", default=False,
+                        help='Stop the ComputeFleet, but leave the MasterServer running for debugging/development.')
     pstop.set_defaults(func=stop)
 
     pstatus = subparsers.add_parser('status', help='pull the current status of the cluster')

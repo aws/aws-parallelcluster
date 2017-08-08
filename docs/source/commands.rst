@@ -67,15 +67,24 @@ optional arguments:
 stop
 ====
 
-This first sets the Auto Scaling Group parameters to :code:`min/max/desired = 0/0/0` then stops the Master Server. This polls on the status of the master server until it is stopped. 
+This first sets the Auto Scaling Group parameters to :code:`min/max/desired =
+0/0/0` then stops the Master Server. This polls on the status of the master
+server until it is stopped. If desired, one can optionally use the
+:code:`--compute-only argument` to leave the Master Server intact.
 
-.. note:: A stopped cluster won't charge for EC2 usage but will still charge for EBS usage and Elastic IP addresses. Each time you bring up an instance it charges you for an hour so bringing it up and down multiple times within an hour isn't reccomended. For more info see `Stop and Start Your Instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html>`_.
+.. note:: A stopped cluster won't charge for EC2 usage but will still charge for
+   EBS usage and Elastic IP addresses. Each time you bring up an instance it
+charges you for an hour so bringing it up and down multiple times within an hour
+isn't reccomended. For more info see `Stop and Start Your Instance
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html>`_.
 
 positional arguments:
   cluster_name  stop a cfncluster with the provided name.
 
 optional arguments:
   -h, --help    show this help message and exit
+  --compute-only, -c  Stop the ComputeFleet, but leave the MasterServer
+                      running for debugging/development
 
 ::
 

@@ -214,6 +214,10 @@ def stop(args):
     asg = get_asg(stack_name=stack_name, config=config)
     set_asg_limits(asg=asg, min=0, max=0, desired=0)
 
+    # Skip the Master shutdown if requested by the user
+    if args.compute_only:
+        return
+
     # Stop master Server
     master_server_id = get_master_server_id(stack_name, config)
     ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
