@@ -277,6 +277,17 @@ CfnClusterUserPolicy
               "Resource": "*"
           },
           {
+              "Sid": "S3CfnClusterReadOnly",
+              "Action": [
+                  "s3:Get*",
+                  "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                  "arn:aws:s3:::<REGION>-cfncluster*"
+              ]
+          },
+          {
               "Sid": "IAMModify",
               "Action": [
                   "iam:PassRole"
