@@ -30,7 +30,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
     if hidden and default_value is not None:
         user_prompt = prompt + ' [*******' + default_value[-4:] + ']: '
     else:
-        user_prompt = prompt + ' [' 
+        user_prompt = prompt + ' ['
         if default_value is not None:
             user_prompt = user_prompt + default_value + ']: '
         else:
@@ -133,8 +133,8 @@ def configure(args):
     if os.path.isfile(config_file):
         config.read(config_file)
         config_read = True
-   
-    # Prompt for required values, using existing as defaults 
+
+    # Prompt for required values, using existing as defaults
     cluster_template = prompt('Cluster Template', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'default')
     aws_access_key_id = prompt('AWS Access Key ID', config.get('aws', 'aws_access_key_id') if config.has_option('aws', 'aws_access_key_id') else None, True)
     aws_secret_access_key = prompt('AWS Secret Access Key ID', config.get('aws', 'aws_secret_access_key') if config.has_option('aws', 'aws_secret_access_key') else None, True)
@@ -143,7 +143,7 @@ def configure(args):
     aws_region_name = prompt('AWS Region ID', config.get('aws', 'aws_region_name') if config.has_option('aws', 'aws_region_name') else None, options=get_regions())
     vpcname = prompt('VPC Name', config.get('cluster ' + cluster_template, 'vpc_settings') if config.has_option('cluster ' + cluster_template, 'vpc_settings') else 'public')
 
-    # Query EC2 for available keys as options 
+    # Query EC2 for available keys as options
     key_name = prompt('Key Name', config.get('cluster ' + cluster_template, 'key_name') if config.has_option('cluster ' + cluster_template, 'key_name') else None, options=list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name))
     vpc_id = prompt('VPC ID', config.get('vpc ' + vpcname, 'vpc_id') if config.has_option('vpc ' + vpcname, 'vpc_id') else None, options=list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name))
     master_subnet_id = prompt('Master Subnet ID', config.get('vpc ' + vpcname, 'master_subnet_id') if config.has_option('vpc ' + vpcname, 'master_subnet_id') else None, options=list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id))
@@ -169,10 +169,10 @@ def configure(args):
 
     # Write configuration to disk
     open(config_file,'a').close()
-    os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)    
+    os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
     with open(config_file,'w') as cf:
         config.write(cf)
-    
+
     # Verify the configuration
     cfnconfig.CfnClusterConfig(args)
 

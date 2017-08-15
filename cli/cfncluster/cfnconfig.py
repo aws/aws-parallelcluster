@@ -178,7 +178,7 @@ class CfnClusterConfig(object):
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
+                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None),
                                   additional_sg=('AdditionalSG','VPCSecurityGroup'),
                                   vpc_security_group_id=('VPCSecurityGroupId','VPCSecurityGroup')
                                   )
