@@ -63,7 +63,7 @@ def create(args):
 
 
     capabilities = ["CAPABILITY_IAM"]
-    try: 
+    try:
         cfnconn = boto.cloudformation.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
                                                         aws_secret_access_key=config.aws_secret_access_key)
     except Exception as e:
@@ -72,14 +72,14 @@ def create(args):
 
 
 
-        
+
     try:
         stack_name = 'cfncluster-' + args.cluster_name
         logger.info("Creating stack named: " + stack_name)
         stack = cfnconn.create_stack(stack_name,template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
                                      disable_rollback=args.norollback, tags=config.tags)
-        logger.info("foo")    
+        logger.info("foo")
         status = cfnconn.describe_stacks(stack)[0].stack_status
 
 
@@ -104,7 +104,7 @@ def create(args):
         logger.critical(e.message)
         sys.exit(1)
 
-        
+
 def update(args):
     print('Updating: %s' % (args.cluster_name))
     stack_name = ('cfncluster-' + args.cluster_name)
@@ -234,7 +234,7 @@ def stop(args):
     except KeyboardInterrupt:
         print('\nExiting...')
         sys.exit(0)
-    
+
     # Poll for status
     poll_master_server_state(stack_name, config)
 

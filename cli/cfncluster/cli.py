@@ -53,13 +53,13 @@ def stop(args):
 
 def config_logger():
     logging.basicConfig(format='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S',level=logging.INFO)
-    
+
 def main():
     config_logger()
-    
+
     logger = logging.getLogger(__name__)
     logger.info("CfnCluster cli starting")
-    
+
     parser = argparse.ArgumentParser(description='cfncluster is a tool to launch and manage a cluster.')
     parser.add_argument("--config", "-c", dest="config_file", help='specify a alternative config file')
     parser.add_argument( "--region", "-r", dest="region", help='specify a specific region to connect to',

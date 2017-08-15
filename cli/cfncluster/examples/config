@@ -1,6 +1,6 @@
 ## cfncluster config
 [global]
-# Default cluster config section. 
+# Default cluster config section.
 cluster_template = default
 # Check for updates
 update_check = true
