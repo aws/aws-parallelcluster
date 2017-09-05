@@ -1004,7 +1004,7 @@ Mappings:
       EBSOpt: 'True'
     g2.8xlarge:
       Arch: 64HVM
-      EBSOpt: 'True'
+      EBSOpt: 'False'
     p2.xlarge:
       Arch: 64HVM
       EBSOpt: 'True'
