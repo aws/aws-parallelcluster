@@ -845,6 +845,7 @@
         "m4.16xlarge",
         "x1.16xlarge",
         "x1.32xlarge",
+        "x1e.32xlarge",
         "f1.2xlarge",
         "f1.16xlarge"
       ]
