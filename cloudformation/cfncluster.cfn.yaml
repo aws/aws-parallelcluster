@@ -1166,6 +1166,9 @@ Mappings:
     x1.32xlarge:
       Arch: 64HVM
       EBSOpt: 'True'
+    x1e.32xlarge:
+      Arch: 64HVM
+      EBSOpt: 'True'
     f1.2xlarge:
       Arch: 64HVM
       EBSOpt: 'True'
