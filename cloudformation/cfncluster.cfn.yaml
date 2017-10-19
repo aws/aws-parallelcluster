@@ -1380,7 +1380,7 @@ Resources:
             '
           - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
           - !Ref 'ProxyServer'
-          - '"; >> /etc/apt/aot.conf" ]
+          - '"; >> /etc/apt/apt.conf" ]
 
             '
           - '--==BOUNDARY==
@@ -1897,7 +1897,7 @@ Resources:
             '
           - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
           - !Ref 'ProxyServer'
-          - '"; >> /etc/apt/aot.conf" ]
+          - '"; >> /etc/apt/apt.conf" ]
 
             '
           - '--==BOUNDARY==

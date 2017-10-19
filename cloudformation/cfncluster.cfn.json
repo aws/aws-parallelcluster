@@ -2427,7 +2427,7 @@
                 {
                   "Ref" : "ProxyServer"
                 },
-                "\"; >> /etc/apt/aot.conf\" ]\n",
+                "\"; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3136,7 +3136,7 @@
                 {
                   "Ref" : "ProxyServer"
                 },
-                "\"; >> /etc/apt/aot.conf\" ]\n",
+                "\"; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
