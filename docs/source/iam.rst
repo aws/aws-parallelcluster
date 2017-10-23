@@ -165,8 +165,12 @@ CfnClusterUserPolicy
                   "ec2:ModifyVolumeAttribute",
                   "ec2:ModifyNetworkInterfaceAttribute",
                   "ec2:DeleteNetworkInterface",
-	          "ec2:DeleteVolume",
-	          "ec2:TerminateInstances"
+                  "ec2:DeleteVolume",
+                  "ec2:TerminateInstances",
+                  "ec2:DeleteSecurityGroup",
+                  "ec2:DisassociateAddress",
+                  "ec2:RevokeSecurityGroupIngress",
+                  "ec2:ReleaseAddress"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -188,7 +192,11 @@ CfnClusterUserPolicy
                   "autoscaling:CreateLaunchConfiguration",
                   "autoscaling:PutNotificationConfiguration",
                   "autoscaling:UpdateAutoScalingGroup",
-                  "autoscaling:PutScalingPolicy"
+                  "autoscaling:PutScalingPolicy",
+                  "autoscaling:DeleteLaunchConfiguration",
+                  "autoscaling:DescribeScalingActivities",
+                  "autoscaling:DeleteAutoScalingGroup",
+                  "autoscaling:DeletePolicy"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -213,7 +221,8 @@ CfnClusterUserPolicy
           {
               "Sid": "CloudWatchModify",
               "Action": [
-                  "cloudwatch:PutMetricAlarm"
+                  "cloudwatch:PutMetricAlarm",
+                  "cloudwatch:DeleteAlarms"
               ],
               "Effect": "Allow",
               "Resource": "*"
