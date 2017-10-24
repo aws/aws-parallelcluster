@@ -1072,7 +1072,8 @@ Mappings:
 Resources:
   SQS:
     Type: AWS::SQS::Queue
-    Properties: {}
+    Properties:
+      MessageRetentionPeriod: 1209600
     Metadata:
       AWS::CloudFormation::Designer:
         id: 2f599618-92e8-49cf-92bd-551ba9775f39
