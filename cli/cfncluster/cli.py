@@ -106,18 +106,16 @@ def main():
                         help='delete a cfncluster with the provided name.')
     pdelete.set_defaults(func=delete)
 
-    pstart = subparsers.add_parser('start', help='start a cluster that has been stopped')
+    pstart = subparsers.add_parser('start', help='start the compute-fleet that has been stopped')
     pstart.add_argument("cluster_name", type=str, default=None,
-                        help='start a cfncluster with the provided name.')
+                        help='starts the compute-fleet of the provided cluster name.')
     pstart.add_argument("--reset-desired", "-rd", action='store_true', dest="reset_desired", default=False,
-                         help='Set the ASG desired capacity to initial config values. Note this could cause a race condition. If the MasterServer boots after the ASG scales it will cause an error.')
+                         help='Set the ASG desired capacity to initial config values.')
     pstart.set_defaults(func=start)
 
-    pstop = subparsers.add_parser('stop', help='stop a cluster that has been created')
+    pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for debugging/development')
     pstop.add_argument("cluster_name", type=str, default=None,
-                        help='stop a cfncluster with the provided name.')
-    pstop.add_argument("--compute-only", "-c", action='store_true', dest="compute_only", default=False,
-                        help='Stop the ComputeFleet, but leave the MasterServer running for debugging/development.')
+                        help='stops the compute-fleet of the provided cluster name.')
     pstop.set_defaults(func=stop)
 
     pstatus = subparsers.add_parser('status', help='pull the current status of the cluster')

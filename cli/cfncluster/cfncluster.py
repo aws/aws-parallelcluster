@@ -168,27 +168,11 @@ def update(args):
         sys.exit(0)
 
 def start(args):
-    # 1) Start master server
-    # 2) Set resource limits on compute fleet to min/max/desired = 0/max/0
+    # Set resource limits on compute fleet to min/max/desired = 0/max/0
     print('Starting: %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
-    master_server_id = get_master_server_id(stack_name, config)
-    ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
-                                                    aws_secret_access_key=config.aws_secret_access_key)
-    try:
-        response = ec2conn.start_instances(master_server_id)
-    except boto.exception.BotoServerError as e:
-        if e.message.endswith("does not exist"):
-            print(e.message)
-            sys.stdout.flush()
-            sys.exit(0)
-        else:
-            raise e
-    except KeyboardInterrupt:
-        print('\nExiting...')
-        sys.exit(0)
-
+    
     # Set asg limits
     max_queue_size = [param[1] for param in config.parameters if param[0] == 'MaxQueueSize']
     max_queue_size = max_queue_size[0] if len(max_queue_size) > 0 else 10
@@ -200,12 +184,8 @@ def start(args):
     asg = get_asg(stack_name=stack_name, config=config)
     set_asg_limits(asg=asg, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
 
-    # Poll for status
-    poll_master_server_state(stack_name, config)
-
 def stop(args):
-    # 1) Set resource limits on compute fleet to min/max/desired = 0/0/0
-    # 2) Stop master server
+    # Set resource limits on compute fleet to min/max/desired = 0/0/0
     print('Stopping: %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
@@ -213,30 +193,6 @@ def stop(args):
     # Set Resource limits
     asg = get_asg(stack_name=stack_name, config=config)
     set_asg_limits(asg=asg, min=0, max=0, desired=0)
-
-    # Skip the Master shutdown if requested by the user
-    if args.compute_only:
-        return
-
-    # Stop master Server
-    master_server_id = get_master_server_id(stack_name, config)
-    ec2conn = boto.ec2.connect_to_region(config.region,aws_access_key_id=config.aws_access_key_id,
-                                                    aws_secret_access_key=config.aws_secret_access_key)
-    try:
-        response = ec2conn.stop_instances(master_server_id)
-    except boto.exception.BotoServerError as e:
-        if e.message.endswith("does not exist"):
-            print(e.message)
-            sys.stdout.flush()
-            sys.exit(0)
-        else:
-            raise e
-    except KeyboardInterrupt:
-        print('\nExiting...')
-        sys.exit(0)
-
-    # Poll for status
-    poll_master_server_state(stack_name, config)
 
 def list(args):
     config = cfnconfig.CfnClusterConfig(args)

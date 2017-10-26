@@ -67,24 +67,20 @@ optional arguments:
 stop
 ====
 
-This first sets the Auto Scaling Group parameters to :code:`min/max/desired =
-0/0/0` then stops the Master Server. This polls on the status of the master
-server until it is stopped. If desired, one can optionally use the
-:code:`--compute-only argument` to leave the Master Server intact.
+Sets the Auto Scaling Group parameters to :code:`min/max/desired = 0/0/0`
 
-.. note:: A stopped cluster won't charge for EC2 usage but will still charge for
-   EBS usage and Elastic IP addresses. Each time you bring up an instance it
-charges you for an hour so bringing it up and down multiple times within an hour
-isn't reccomended. For more info see `Stop and Start Your Instance
-<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/Stop_Start.html>`_.
+.. note:: A stopped cluster will only terminate the  complete-fleet.
+Previous versions of CfnCluster stopped the master node after terminating
+the compute fleet. Due to a number of challenges with the implementation
+of that feature, the current version only terminates the compute fleet.
+The master will remain running. To terminate all EC2 resources and avoid EC2 charges,
+consider deleting the cluster.
 
 positional arguments:
-  cluster_name  stop a cfncluster with the provided name.
+  cluster_name  stops the compute-fleet of the provided cluster name.
 
 optional arguments:
   -h, --help    show this help message and exit
-  --compute-only, -c  Stop the ComputeFleet, but leave the MasterServer
-                      running for debugging/development
 
 ::
 
@@ -94,16 +90,15 @@ optional arguments:
 start
 =====
 
-Starts a cluster. This starts the Master Server and sets Auto Scaling Group parameters to :code:`min/max/desired = 0/max_queue_size/0` where `max_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_ defaults to 10. If you specify the :code:`--reset-desired` flag, the :code:`min/desired` values will be set to the `initial_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_. Since the EC2 instances in the compute fleet try and mount the nfs drive from the master server this causes a race condition such that if the master server starts after the compute nodes, the compute nodes will terminate since they can't mount the nfs drive.
+Starts a cluster. This sets Auto Scaling Group parameters to :code:`min/max/desired = 0/max_queue_size/0` where `max_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_ defaults to 10. If you specify the :code:`--reset-desired` flag, the :code:`min/desired` values will be set to the `initial_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_.
 
 positional arguments:
-  cluster_name          start a cfncluster with the provided name.
+  cluster_name          starts the compute-fleet of the provided cluster name.
 
 optional arguments:
   -h, --help            show this help message and exit
   --reset-desired, -rd  Set the ASG desired capacity to initial config values. 
-                        Note this could cause a race condition. 
-                        If the MasterServer boots after the ASG scales it will cause an error.
+
 
 ::
 
