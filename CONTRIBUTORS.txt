@@ -1,10 +1,13 @@
 List of contributors:
 
  - Dougal Ballantyne - dougalb at amazon dot com
- - Adam Boeglin - boeglina at amazon dot com
- - Chris Gorski - cgorski at amazon dot com
- - Sean Smith - sensmit at amazon dot com
  - Brian Barrett - bbarrett at amazon dot com
+ - Adam Boeglin - boeglina at amazon dot com
+ - Jordan Cherry - cherryj at amazon dot com
+ - Mohan Gandhi - mohgan at amazon dot com
+ - Chris Gorski - cgorski at amazon dot com
+ - Raghu Raja - craghun at amazon dot com
+ - Sean Smith - sensmit at amazon dot com
 
  - Josh Clausman - jclausman at semanticmachines dot com
  - Kenneth Daily - kmdaily at gmail dot com
