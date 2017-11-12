@@ -2,93 +2,93 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template
   showing an framework for deploying master + compute type clusters on AWS.  **WARNING**
   This template creates AWS resources. You will be billed for the AWS resources used
-  if you create a stack from this template. Version: ami-201609030709 cfncluster-1.3.2'
+  if you create a stack from this template. Version: ami-201609030709 cfncluster-1.4.0'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
-    - Label:
-        default: Network - Basic Settings
-      Parameters:
-      - VPCId
-      - MasterSubnetId
-    - Label:
-        default: Cluster - Basic Setting
-      Parameters:
-      - KeyName
-      - AvailabilityZone
-      - MasterInstanceType
-      - ComputeInstanceType
-      - BaseOS
-      - Scheduler
-    - Label:
-        default: EBS - Basic Settings
-      Parameters:
-      - VolumeSize
-    - Label:
-        default: Network - Advanced Settings
-      Parameters:
-      - AccessFrom
-      - ComputeSubnetId
-      - ComputeSubnetCidr
-      - UsePublicIps
-      - AdditionalSG
-      - VPCSecurityGroupId
-    - Label:
-        default: Cluster - Advanced Setting
-      Parameters:
-      - InitialQueueSize
-      - ComputeWaitConditionCount
-      - MaxQueueSize
-      - SpotPrice
-      - ClusterType
-      - ProxyServer
-      - CustomAMI
-      - MaintainInitialSize
-      - PreInstallScript
-      - PreInstallArgs
-      - PostInstallArgs
-      - PostInstallScript
-      - S3ReadResource
-      - S3ReadWriteResource
-      - Placement
-      - PlacementGroup
-      - EncryptedEphemeral
-      - EphemeralDir
-      - SharedDir
-      - CWLRegion
-      - CWLLogGroup
-      - CustomChefRunList
-      - CustomChefCookbook
-      - ExtraJson
-      - Tenancy
-      - EphemeralKMSKeyId
-      - ClusterReadyScript
-      - MasterRootVolumeSize
-      - ComputeRootVolumeSize
-      - EC2IAMRoleName
-    - Label:
-        default: EBS - Advanced Settings
-      Parameters:
-      - VolumeType
-      - EBSSnapshotId
-      - VolumeIOPS
-      - EBSEncryption
-      - EBSKMSKeyId
-      - EBSVolumeId
-    - Label:
-        default: Scaling Settings
-      Parameters:
-      - ScalingPeriod
-      - ScalingEvaluationPeriods
-      - ScalingThreshold
-      - ScalingAdjustment
-      - ScalingThreshold2
-      - ScalingAdjustment2
-      - ScalingCooldown
-    - Label:
-        default: Additonal Settings
-      Parameters:
-      - CLITemplate
+      - Label:
+          default: Network - Basic Settings
+        Parameters:
+          - VPCId
+          - MasterSubnetId
+      - Label:
+          default: Cluster - Basic Setting
+        Parameters:
+          - KeyName
+          - AvailabilityZone
+          - MasterInstanceType
+          - ComputeInstanceType
+          - BaseOS
+          - Scheduler
+      - Label:
+          default: EBS - Basic Settings
+        Parameters:
+          - VolumeSize
+      - Label:
+          default: Network - Advanced Settings
+        Parameters:
+          - AccessFrom
+          - ComputeSubnetId
+          - ComputeSubnetCidr
+          - UsePublicIps
+          - AdditionalSG
+          - VPCSecurityGroupId
+      - Label:
+          default: Cluster - Advanced Setting
+        Parameters:
+          - InitialQueueSize
+          - ComputeWaitConditionCount
+          - MaxQueueSize
+          - SpotPrice
+          - ClusterType
+          - ProxyServer
+          - CustomAMI
+          - MaintainInitialSize
+          - PreInstallScript
+          - PreInstallArgs
+          - PostInstallArgs
+          - PostInstallScript
+          - S3ReadResource
+          - S3ReadWriteResource
+          - Placement
+          - PlacementGroup
+          - EncryptedEphemeral
+          - EphemeralDir
+          - SharedDir
+          - CWLRegion
+          - CWLLogGroup
+          - CustomChefRunList
+          - CustomChefCookbook
+          - ExtraJson
+          - Tenancy
+          - EphemeralKMSKeyId
+          - ClusterReadyScript
+          - MasterRootVolumeSize
+          - ComputeRootVolumeSize
+          - EC2IAMRoleName
+      - Label:
+          default: EBS - Advanced Settings
+        Parameters:
+          - VolumeType
+          - EBSSnapshotId
+          - VolumeIOPS
+          - EBSEncryption
+          - EBSKMSKeyId
+          - EBSVolumeId
+      - Label:
+          default: Scaling Settings
+        Parameters:
+          - ScalingPeriod
+          - ScalingEvaluationPeriods
+          - ScalingThreshold
+          - ScalingAdjustment
+          - ScalingThreshold2
+          - ScalingAdjustment2
+          - ScalingCooldown
+      - Label:
+          default: Additonal Settings
+        Parameters:
+          - CLITemplate
     ParameterLabels:
       KeyName:
         default: key_name
@@ -248,7 +248,7 @@ Metadata:
       z: 1
       embeds: []
       ismemberof:
-      - 2904615e-c0ad-4325-b0c5-b9ea7c482b4e
+        - 2904615e-c0ad-4325-b0c5-b9ea7c482b4e
     619070e4-82e5-445a-93a0-4795ff69d61c:
       size:
         width: 60
@@ -259,7 +259,7 @@ Metadata:
       z: 1
       embeds: []
       isrelatedto:
-      - 2904615e-c0ad-4325-b0c5-b9ea7c482b4e
+        - 2904615e-c0ad-4325-b0c5-b9ea7c482b4e
     466554d3-0e10-4ae4-bfee-51b0aadbf923:
       source:
         id: 2904615e-c0ad-4325-b0c5-b9ea7c482b4e
@@ -284,7 +284,7 @@ Metadata:
       z: 0
       embeds: []
       references:
-      - 45360a4f-64aa-49f8-b016-78fe5ed86819
+        - 45360a4f-64aa-49f8-b016-78fe5ed86819
     bb5a532f-bb43-472a-9965-c4054cd61cc9:
       size:
         width: 150
@@ -332,7 +332,7 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
+        - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
     0c5a1e92-ffdd-4344-8ba0-65270e5fd472:
       size:
         width: 60
@@ -343,7 +343,7 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
+        - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
     2522b048-2b7c-44ed-9d35-6cc66069ca5b:
       size:
         width: 60
@@ -354,7 +354,7 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
+        - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
     d3204db6-c821-400d-bf31-6afd5739923c:
       size:
         width: 60
@@ -365,9 +365,9 @@ Metadata:
       z: 1
       embeds: []
       ismemberof:
-      - 619070e4-82e5-445a-93a0-4795ff69d61c
+        - 619070e4-82e5-445a-93a0-4795ff69d61c
       isrelatedto:
-      - 2522b048-2b7c-44ed-9d35-6cc66069ca5b
+        - 2522b048-2b7c-44ed-9d35-6cc66069ca5b
     88da1502-8179-4be3-9123-fdc5eac0b6a3:
       size:
         width: 60
@@ -378,10 +378,10 @@ Metadata:
       z: 1
       embeds: []
       isconnectedto:
-      - 45360a4f-64aa-49f8-b016-78fe5ed86819
+        - 45360a4f-64aa-49f8-b016-78fe5ed86819
       isrelatedto:
-      - 2522b048-2b7c-44ed-9d35-6cc66069ca5b
-      - ee5f3006-419e-4786-b527-e9503a662e5e
+        - 2522b048-2b7c-44ed-9d35-6cc66069ca5b
+        - ee5f3006-419e-4786-b527-e9503a662e5e
     789cb442-3b1a-4673-a07e-8acb1c59c271:
       size:
         width: 60
@@ -410,10 +410,10 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
+        - ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb
       isrelatedto:
-      - 2f599618-92e8-49cf-92bd-551ba9775f39
-      - 789cb442-3b1a-4673-a07e-8acb1c59c271
+        - 2f599618-92e8-49cf-92bd-551ba9775f39
+        - 789cb442-3b1a-4673-a07e-8acb1c59c271
     210b5501-b505-4ee1-917c-a20cae3ac837:
       size:
         width: 60
@@ -424,7 +424,7 @@ Metadata:
       z: 1
       embeds: []
       isrelatedto:
-      - 2f599618-92e8-49cf-92bd-551ba9775f39
+        - 2f599618-92e8-49cf-92bd-551ba9775f39
     3fa053e5-8ab7-4cdf-a737-4d20386e4717:
       size:
         width: 60
@@ -435,13 +435,13 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - d3204db6-c821-400d-bf31-6afd5739923c
+        - d3204db6-c821-400d-bf31-6afd5739923c
       dependson:
-      - 88da1502-8179-4be3-9123-fdc5eac0b6a3
+        - 88da1502-8179-4be3-9123-fdc5eac0b6a3
       isrelatedto:
-      - bb5a532f-bb43-472a-9965-c4054cd61cc9
-      - 210b5501-b505-4ee1-917c-a20cae3ac837
-      - ee5f3006-419e-4786-b527-e9503a662e5e
+        - bb5a532f-bb43-472a-9965-c4054cd61cc9
+        - 210b5501-b505-4ee1-917c-a20cae3ac837
+        - ee5f3006-419e-4786-b527-e9503a662e5e
     8e63b592-a50f-4b89-a40b-e991adaef77b:
       size:
         width: 60
@@ -452,7 +452,7 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - 3fa053e5-8ab7-4cdf-a737-4d20386e4717
+        - 3fa053e5-8ab7-4cdf-a737-4d20386e4717
     23ed10e0-7726-4099-8370-4116c0bc78a2:
       size:
         width: 60
@@ -463,7 +463,7 @@ Metadata:
       z: 1
       embeds: []
       isrelatedto:
-      - 8e63b592-a50f-4b89-a40b-e991adaef77b
+        - 8e63b592-a50f-4b89-a40b-e991adaef77b
     89b41ceb-a2fb-4e17-a808-9bedc37b2b2c:
       size:
         width: 60
@@ -474,7 +474,7 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - 3fa053e5-8ab7-4cdf-a737-4d20386e4717
+        - 3fa053e5-8ab7-4cdf-a737-4d20386e4717
     127f78c3-d47a-4770-8aad-3fd733c3e1b0:
       size:
         width: 60
@@ -485,7 +485,7 @@ Metadata:
       z: 1
       embeds: []
       isrelatedto:
-      - 89b41ceb-a2fb-4e17-a808-9bedc37b2b2c
+        - 89b41ceb-a2fb-4e17-a808-9bedc37b2b2c
     6a874346-80de-4412-9677-00590371a8a2:
       size:
         width: 60
@@ -496,9 +496,9 @@ Metadata:
       z: 1
       embeds: []
       isassociatedwith:
-      - 2f599618-92e8-49cf-92bd-551ba9775f39
+        - 2f599618-92e8-49cf-92bd-551ba9775f39
       isrelatedto:
-      - 210b5501-b505-4ee1-917c-a20cae3ac837
+        - 210b5501-b505-4ee1-917c-a20cae3ac837
 Parameters:
   KeyName:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instances
@@ -556,8 +556,8 @@ Parameters:
     Default: ondemand
     ConstraintDescription: 'Must be a supported cluster type: ondemand, spot'
     AllowedValues:
-    - ondemand
-    - spot
+      - ondemand
+      - spot
   ProxyServer:
     Description: hostname and port of HTTP proxy server for cfn-init, boto and yum
       i.e. proxy.example.com:8080
@@ -574,11 +574,11 @@ Parameters:
     ConstraintDescription: 'must be a supported volume type: standard, io1, gp2, st1,
       sc1'
     AllowedValues:
-    - standard
-    - gp2
-    - io1
-    - st1
-    - sc1
+      - standard
+      - gp2
+      - io1
+      - st1
+      - sc1
   MasterSubnetId:
     Description: ID of the Subnet you want to provision the Master server into
     Type: AWS::EC2::Subnet::Id
@@ -622,8 +622,8 @@ Parameters:
     Default: 'false'
     ConstraintDescription: true/false
     AllowedValues:
-    - 'true'
-    - 'false'
+      - 'true'
+      - 'false'
   UsePublicIps:
     Description: Boolean flag to use public IP's for instances. If false, the VPC
       must be correctly setup to use NAT for all traffic.
@@ -631,8 +631,8 @@ Parameters:
     Default: 'true'
     ConstraintDescription: true/false
     AllowedValues:
-    - 'true'
-    - 'false'
+      - 'true'
+      - 'false'
   VolumeIOPS:
     Description: Number of IOPS for volume type io1. Not used for other volume types.
     Type: Number
@@ -664,8 +664,8 @@ Parameters:
     Type: String
     Default: cluster
     AllowedValues:
-    - cluster
-    - compute
+      - cluster
+      - compute
   PlacementGroup:
     Description: The name of an existing placement group
     Type: String
@@ -677,8 +677,8 @@ Parameters:
     Default: 'false'
     ConstraintDescription: true/false
     AllowedValues:
-    - 'true'
-    - 'false'
+      - 'true'
+      - 'false'
   PreInstallArgs:
     Description: Preinstall script args passed to the preinstall script.
     Type: String
@@ -694,8 +694,8 @@ Parameters:
     Default: 'false'
     ConstraintDescription: true/false
     AllowedValues:
-    - 'true'
-    - 'false'
+      - 'true'
+      - 'false'
   EphemeralDir:
     Description: The path/mountpoint for the ephemeral drive
     Type: String
@@ -706,11 +706,11 @@ Parameters:
     Default: alinux
     ConstraintDescription: must be a supported base OS
     AllowedValues:
-    - centos6
-    - centos7
-    - alinux
-    - ubuntu1404
-    - ubuntu1604
+      - centos6
+      - centos7
+      - alinux
+      - ubuntu1404
+      - ubuntu1604
   ScalingThreshold2:
     Description: Threshold for triggering CloudWatch ScaleUp2 action
     Type: String
@@ -735,13 +735,13 @@ Parameters:
     Default: sge
     ConstraintDescription: must be a supported scheduler
     AllowedValues:
-    - sge
-    - openlava
-    - torque
-    - slurm
-    - custom
-    - test
-    - pbspro
+      - sge
+      - openlava
+      - torque
+      - slurm
+      - custom
+      - test
+      - pbspro
   SharedDir:
     Description: The path/mountpoint for the shared drive
     Type: String
@@ -782,8 +782,8 @@ Parameters:
     Type: String
     Default: default
     AllowedValues:
-    - default
-    - dedicated
+      - default
+      - dedicated
   EBSKMSKeyId:
     Description: KMS ARN for customer created master key, will be used for EBS encryption
     Type: String
@@ -827,67 +827,17 @@ Parameters:
     Type: String
     Default: NONE
 Conditions:
-  IsMasterInstanceEbsOpt: !Not
-    - !Or
-      - !Or
-        - !Equals
-          - cc2.8xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - cr1.8xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - g2.8xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - m3.medium
-          - !Ref MasterInstanceType
-        - !Equals
-          - m3.large
-          - !Ref MasterInstanceType
-        - !Equals
-          - c3.8xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - c3.large
-          - !Ref MasterInstanceType
-        - !Equals
-          - r3.8xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - r3.large
-          - !Ref MasterInstanceType
-        - !Equals
-          - i2.8xlarge
-          - !Ref MasterInstanceType
-      - !Or
-        - !Equals
-          - i2.large
-          - !Ref MasterInstanceType
-        - !Equals
-          - cg1.4xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.nano
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.micro
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.small
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.medium
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.large
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.xlarge
-          - !Ref MasterInstanceType
-        - !Equals
-          - t2.2xlarge
-          - !Ref MasterInstanceType
+  IsMasterInstanceEbsOpt: !Not [!Or [!Or [!Equals [cc2.8xlarge, !Ref 'MasterInstanceType'],
+        !Equals [cr1.8xlarge, !Ref 'MasterInstanceType'], !Equals [g2.8xlarge, !Ref 'MasterInstanceType'],
+        !Equals [m3.medium, !Ref 'MasterInstanceType'], !Equals [m3.large, !Ref 'MasterInstanceType'],
+        !Equals [c3.8xlarge, !Ref 'MasterInstanceType'], !Equals [c3.large, !Ref 'MasterInstanceType'],
+        !Equals [r3.8xlarge, !Ref 'MasterInstanceType'], !Equals [r3.large, !Ref 'MasterInstanceType'],
+        !Equals [i2.8xlarge, !Ref 'MasterInstanceType']], !Or [!Equals [i2.large,
+          !Ref 'MasterInstanceType'], !Equals [cg1.4xlarge, !Ref 'MasterInstanceType'],
+        !Equals [t2.nano, !Ref 'MasterInstanceType'], !Equals [t2.micro, !Ref 'MasterInstanceType'],
+        !Equals [t2.small, !Ref 'MasterInstanceType'], !Equals [t2.medium, !Ref 'MasterInstanceType'],
+        !Equals [t2.large, !Ref 'MasterInstanceType'], !Equals [t2.xlarge, !Ref 'MasterInstanceType'],
+        !Equals [t2.2xlarge, !Ref 'MasterInstanceType']]]]
   UseSpotInstances: !Equals [!Ref 'ClusterType', spot]
   CreateComputeSubnetForCompute: !And [!Equals [!Ref 'ComputeSubnetId', NONE], !Not [
       !Equals [!Ref 'ComputeSubnetCidr', NONE]]]
@@ -900,17 +850,17 @@ Conditions:
   UseCustomAMI: !Not [!Equals [!Ref 'CustomAMI', NONE]]
   MaintainInitialASGSize: !Equals [!Ref 'MaintainInitialSize', 'true']
   MasterPublicIp: !Equals [!Ref 'UsePublicIps', 'true']
-  ComputePublicIps: !And [!Equals [!Ref 'UsePublicIps', 'true'], {Condition: UseMasterSubnetForCompute}]
+  ComputePublicIps: !And [!Equals [!Ref 'UsePublicIps', 'true'], !Condition 'UseMasterSubnetForCompute']
   UseEBSPIOPS: !Equals [!Ref 'VolumeType', io1]
   UseS3ReadPolicy: !Not [!Equals [!Ref 'S3ReadResource', NONE]]
   UsePlacementGroup: !Not [!Equals [!Ref 'PlacementGroup', NONE]]
-  UseClusterPlacement: !And [!Equals [!Ref 'Placement', cluster], {Condition: UsePlacementGroup}]
+  UseClusterPlacement: !And [!Equals [!Ref 'Placement', cluster], !Condition 'UsePlacementGroup']
   UseEBSEncryption: !Equals [!Ref 'EBSEncryption', 'true']
   UseS3ReadWritePolicy: !Not [!Equals [!Ref 'S3ReadWriteResource', NONE]]
   CloudWatchLogs: !And [!Not [!Equals [!Ref 'CWLRegion', NONE]], !Not [!Equals [!Ref 'CWLLogGroup',
         NONE]]]
   AddAdditionalSG: !Not [!Equals [!Ref 'AdditionalSG', NONE]]
-  UseEBSKMSKey: !And [!Not [!Equals [!Ref 'EBSKMSKeyId', NONE]], {Condition: UseEBSEncryption}]
+  UseEBSKMSKey: !And [!Not [!Equals [!Ref 'EBSKMSKeyId', NONE]], !Condition 'UseEBSEncryption']
   UseEphemeralKMSKey: !And [!Not [!Equals [!Ref 'EphemeralKMSKeyId', NONE]], !Equals [
       !Ref 'EncryptedEphemeral', 'true']]
   UseDedicatedTenancy: !Equals [!Ref 'Tenancy', dedicated]
@@ -921,93 +871,93 @@ Conditions:
   CreateEBSVolume: !Equals [!Ref 'EBSVolumeId', NONE]
   CreateSecurityGroups: !Equals [!Ref 'VPCSecurityGroupId', NONE]
   CreateSubStack: !Not [!Equals [!Ref 'AdditionalCfnTemplate', NONE]]
-  CreatePlacementGroup: !And [!Equals [!Ref 'PlacementGroup', DYNAMIC], {Condition: UsePlacementGroup}]
+  CreatePlacementGroup: !And [!Equals [!Ref 'PlacementGroup', DYNAMIC], !Condition 'UsePlacementGroup']
 Mappings:
   AWSRegionOS2AMI:
     ap-northeast-1:
-      alinux: ami-586b653f
-      centos6: ami-10686677
-      centos7: ami-0e6b6569
-      ubuntu1404: ami-466c6221
-      ubuntu1604: ami-ce6c62a9
+      alinux: ami-07fd4861
+      centos6: ami-40fc4926
+      centos7: ami-f3ff4a95
+      ubuntu1404: ami-c6f247a0
+      ubuntu1604: ami-abf247cd
     ap-northeast-2:
-      alinux: ami-ea71ad84
-      centos6: ami-bb77abd5
-      centos7: ami-9377abfd
-      ubuntu1404: ami-2877ab46
-      ubuntu1604: ami-d072aebe
+      alinux: ami-c12f8baf
+      centos6: ami-e72f8b89
+      centos7: ami-842a8eea
+      ubuntu1404: ami-042b8f6a
+      ubuntu1604: ami-862a8ee8
     ap-south-1:
-      alinux: ami-1f720d70
-      centos6: ami-0a710e65
-      centos7: ami-546d123b
-      ubuntu1404: ami-11700f7e
-      ubuntu1604: ami-446f102b
+      alinux: ami-f3ace09c
+      centos6: ami-0b93df64
+      centos7: ami-d8ade1b7
+      ubuntu1404: ami-6292de0d
+      ubuntu1604: ami-0a93df65
     ap-southeast-1:
-      alinux: ami-1f1b987c
-      centos6: ami-9b1596f8
-      centos7: ami-da1596b9
-      ubuntu1404: ami-be1497dd
-      ubuntu1604: ami-951596f6
+      alinux: ami-945a12f7
+      centos6: ami-b15b13d2
+      centos7: ami-9c5c14ff
+      ubuntu1404: ami-3b5b1358
+      ubuntu1604: ami-ef5b138c
     ap-southeast-2:
-      alinux: ami-56b9af35
-      centos6: ami-c7b9afa4
-      centos7: ami-afa6b0cc
-      ubuntu1404: ami-37a4b254
-      ubuntu1604: ami-cca6b0af
+      alinux: ami-34bc5456
+      centos6: ami-d5bb53b7
+      centos7: ami-00bd5562
+      ubuntu1404: ami-d2bc54b0
+      ubuntu1604: ami-d5bc54b7
     ca-central-1:
-      alinux: ami-65f94601
-      centos6: ami-a6f847c2
-      centos7: ami-62f94606
-      ubuntu1404: ami-eefc438a
-      ubuntu1604: ami-a7fa45c3
+      alinux: ami-6107bf05
+      centos6: ami-b8fa41dc
+      centos7: ami-9305bdf7
+      ubuntu1404: ami-6007bf04
+      ubuntu1604: ami-a506bec1
     eu-central-1:
-      alinux: ami-7fd17510
-      centos6: ami-56d67239
-      centos7: ami-9cd571f3
-      ubuntu1404: ami-bcd773d3
-      ubuntu1604: ami-40d6722f
+      alinux: ami-fe53d591
+      centos6: ami-cd53d5a2
+      centos7: ami-685fd907
+      ubuntu1404: ami-aa51d7c5
+      ubuntu1604: ami-475fd928
     eu-west-1:
-      alinux: ami-6ddac60b
-      centos6: ami-abd5c9cd
-      centos7: ami-6dd8c40b
-      ubuntu1404: ami-83d4c8e5
-      ubuntu1604: ami-e6d5c980
+      alinux: ami-1b42ed62
+      centos6: ami-c744ebbe
+      centos7: ami-4d44eb34
+      ubuntu1404: ami-2740ef5e
+      ubuntu1604: ami-b041eec9
     eu-west-2:
-      alinux: ami-f1bbac95
-      centos6: ami-cabcabae
-      centos7: ami-9cb9aef8
-      ubuntu1404: ami-5cb9ae38
-      ubuntu1604: ami-5eb9ae3a
+      alinux: ami-0a928e6e
+      centos6: ami-15968a71
+      centos7: ami-478d9123
+      ubuntu1404: ami-4c908c28
+      ubuntu1604: ami-58978b3c
     sa-east-1:
-      alinux: ami-a990f8c5
-      centos6: ami-b491f9d8
-      centos7: ami-5092fa3c
-      ubuntu1404: ami-6d91f901
-      ubuntu1604: ami-df90f8b3
+      alinux: ami-23166c4f
+      centos6: ami-3f176d53
+      centos7: ami-85166ce9
+      ubuntu1404: ami-ea146e86
+      ubuntu1604: ami-3a176d56
     us-east-1:
-      alinux: ami-2492c832
-      centos6: ami-a293c9b4
-      centos7: ami-d29cc6c4
-      ubuntu1404: ami-a192c8b7
-      ubuntu1604: ami-8c9fc59a
+      alinux: ami-f6d46d8c
+      centos6: ami-16d66f6c
+      centos7: ami-92d76ee8
+      ubuntu1404: ami-d7d76ead
+      ubuntu1604: ami-ead46d90
     us-east-2:
-      alinux: ami-a6d3f5c3
-      centos6: ami-2cd3f549
-      centos7: ami-c3d2f4a6
-      ubuntu1404: ami-e2d3f587
-      ubuntu1604: ami-54d5f331
+      alinux: ami-698aa50c
+      centos6: ami-078aa562
+      centos7: ami-d689a6b3
+      ubuntu1404: ami-4889a62d
+      ubuntu1604: ami-0a8aa56f
     us-west-1:
-      alinux: ami-39c2e059
-      centos6: ami-65c2e005
-      centos7: ami-17fcde77
-      ubuntu1404: ami-b5c2e0d5
-      ubuntu1604: ami-0dfddf6d
+      alinux: ami-37c8f657
+      centos6: ami-2ac8f64a
+      centos7: ami-1acaf47a
+      ubuntu1404: ami-accbf5cc
+      ubuntu1604: ami-e6c8f686
     us-west-2:
-      alinux: ami-f4b0b98d
-      centos6: ami-6bb1b812
-      centos7: ami-22b2bb5b
-      ubuntu1404: ami-f5b0b98c
-      ubuntu1604: ami-c4b1b8bd
+      alinux: ami-5570a72d
+      centos6: ami-097ea971
+      centos7: ami-6372a51b
+      ubuntu1404: ami-a374a3db
+      ubuntu1604: ami-1671a66e
     us-gov-west-1:
       centos6: NOT_SUPPORTED
       centos7: NOT_SUPPORTED
@@ -1032,8 +982,8 @@ Mappings:
       RootDevice: /dev/sda1
   CfnClusterVersions:
     default:
-      cfncluster: cfncluster-1.3.2
-      cookbook: cfncluster-cookbook-1.3.2
+      cfncluster: cfncluster-1.4.0
+      cookbook: cfncluster-cookbook-1.4.0
       chef: 12.19.36
       ridley: 5.1.0
       berkshelf: 5.6.4
@@ -1083,18 +1033,18 @@ Resources:
       PolicyDocument:
         Id: MyQueuePolicy
         Statement:
-        - Sid: Allow-SendMessage-From-AS-SNS-Topic
-          Effect: Allow
-          Principal:
-            AWS: '*'
-          Action:
-          - sqs:SendMessage
-          Resource: '*'
-          Condition:
-            ArnEquals:
-              aws:SourceArn: !Ref 'SNS'
+          - Sid: Allow-SendMessage-From-AS-SNS-Topic
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - sqs:SendMessage
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                aws:SourceArn: !Ref 'SNS'
       Queues:
-      - !Ref 'SQS'
+        - !Ref 'SQS'
     Metadata:
       AWS::CloudFormation::Designer:
         id: 6a874346-80de-4412-9677-00590371a8a2
@@ -1102,8 +1052,8 @@ Resources:
     Type: AWS::SNS::Topic
     Properties:
       Subscription:
-      - Endpoint: !GetAtt [SQS, Arn]
-        Protocol: sqs
+        - Endpoint: !GetAtt 'SQS.Arn'
+          Protocol: sqs
     Metadata:
       AWS::CloudFormation::Designer:
         id: 210b5501-b505-4ee1-917c-a20cae3ac837
@@ -1111,11 +1061,11 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       AttributeDefinitions:
-      - AttributeName: instanceId
-        AttributeType: S
+        - AttributeName: instanceId
+          AttributeType: S
       KeySchema:
-      - AttributeName: instanceId
-        KeyType: HASH
+        - AttributeName: instanceId
+          KeyType: HASH
       ProvisionedThroughput:
         ReadCapacityUnits: '5'
         WriteCapacityUnits: '5'
@@ -1128,12 +1078,12 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
-          Principal:
-            Service:
-            - ec2.amazonaws.com
-          Action:
-          - sts:AssumeRole
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
       Path: /
     Condition: CreateEC2IAMRole
     Metadata:
@@ -1144,7 +1094,7 @@ Resources:
     Properties:
       Path: /
       Roles:
-      - !Ref 'RootRole'
+        - !Ref 'RootRole'
     Condition: CreateEC2IAMRole
     Metadata:
       AWS::CloudFormation::Designer:
@@ -1155,72 +1105,72 @@ Resources:
       PolicyName: cfncluster
       PolicyDocument:
         Statement:
-        - Sid: EC2
-          Action:
-          - ec2:AttachVolume
-          - ec2:DescribeInstanceAttribute
-          - ec2:DescribeInstanceStatus
-          - ec2:DescribeInstances
-          Effect: Allow
-          Resource:
-          - '*'
-        - Sid: DynamoDBList
-          Action:
-          - dynamodb:ListTables
-          Effect: Allow
-          Resource:
-          - '*'
-        - Sid: SQSQueue
-          Action:
-          - sqs:SendMessage
-          - sqs:ReceiveMessage
-          - sqs:ChangeMessageVisibility
-          - sqs:DeleteMessage
-          - sqs:GetQueueUrl
-          Effect: Allow
-          Resource:
-          - !GetAtt [SQS, Arn]
-        - Sid: Autoscaling
-          Action:
-          - autoscaling:DescribeAutoScalingGroups
-          - autoscaling:TerminateInstanceInAutoScalingGroup
-          - autoscaling:SetDesiredCapacity
-          Effect: Allow
-          Resource:
-          - '*'
-        - Sid: CloudWatch
-          Action:
-          - cloudwatch:PutMetricData
-          Effect: Allow
-          Resource:
-          - '*'
-        - Sid: DynamoDBTable
-          Action:
-          - dynamodb:PutItem
-          - dynamodb:Query
-          - dynamodb:GetItem
-          - dynamodb:DeleteItem
-          - dynamodb:DescribeTable
-          Effect: Allow
-          Resource:
-          - !Join ['', ['arn:', !FindInMap [AWSRegion2Capabilites, !Ref 'AWS::Region',
-                arn], ':dynamodb:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId',
-              ':table/', !Ref 'DynamoDBTable']]
-        - Sid: SQSList
-          Action:
-          - sqs:ListQueues
-          Effect: Allow
-          Resource:
-          - '*'
-        - Sid: CloudWatchLogs
-          Action:
-          - logs:*
-          Effect: Allow
-          Resource:
-          - !Join ['', ['arn:', !FindInMap [AWSRegion2Capabilites, !Ref 'AWS::Region',
-                arn], ':logs:*:*:*']]
+          - Sid: EC2
+            Action:
+              - ec2:AttachVolume
+              - ec2:DescribeInstanceAttribute
+              - ec2:DescribeInstanceStatus
+              - ec2:DescribeInstances
+            Effect: Allow
+            Resource:
+              - '*'
+          - Sid: DynamoDBList
+            Action:
+              - dynamodb:ListTables
+            Effect: Allow
+            Resource:
+              - '*'
+          - Sid: SQSQueue
+            Action:
+              - sqs:SendMessage
+              - sqs:ReceiveMessage
+              - sqs:ChangeMessageVisibility
+              - sqs:DeleteMessage
+              - sqs:GetQueueUrl
+            Effect: Allow
+            Resource:
+              - !GetAtt 'SQS.Arn'
+          - Sid: Autoscaling
+            Action:
+              - autoscaling:DescribeAutoScalingGroups
+              - autoscaling:TerminateInstanceInAutoScalingGroup
+              - autoscaling:SetDesiredCapacity
+            Effect: Allow
+            Resource:
+              - '*'
+          - Sid: CloudWatch
+            Action:
+              - cloudwatch:PutMetricData
+            Effect: Allow
+            Resource:
+              - '*'
+          - Sid: DynamoDBTable
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:Query
+              - dynamodb:GetItem
+              - dynamodb:DeleteItem
+              - dynamodb:DescribeTable
+            Effect: Allow
+            Resource:
+              - !Join ['', ['arn:', !FindInMap [AWSRegion2Capabilites, !Ref 'AWS::Region',
+                    arn], ':dynamodb:', !Ref 'AWS::Region', ':', !Ref 'AWS::AccountId',
+                  ':table/', !Ref 'DynamoDBTable']]
+          - Sid: SQSList
+            Action:
+              - sqs:ListQueues
+            Effect: Allow
+            Resource:
+              - '*'
+          - Sid: CloudWatchLogs
+            Action:
+              - logs:*
+            Effect: Allow
+            Resource:
+              - !Join ['', ['arn:', !FindInMap [AWSRegion2Capabilites, !Ref 'AWS::Region',
+                    arn], ':logs:*:*:*']]
       Roles:
-      - !Ref 'RootRole'
+        - !Ref 'RootRole'
     Condition: CreateEC2IAMRole
     Metadata:
       AWS::CloudFormation::Designer:
@@ -1232,15 +1182,15 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Sid: S3Read
-          Effect: Allow
-          Action:
-          - s3:Get*
-          - s3:List*
-          Resource:
-          - !Ref 'S3ReadResource'
+          - Sid: S3Read
+            Effect: Allow
+            Action:
+              - s3:Get*
+              - s3:List*
+            Resource:
+              - !Ref 'S3ReadResource'
       Roles:
-      - !Ref 'RootRole'
+        - !Ref 'RootRole'
     Condition: UseS3ReadPolicy
     Metadata:
       AWS::CloudFormation::Designer:
@@ -1252,14 +1202,14 @@ Resources:
       PolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Sid: S3ReadWrite
-          Effect: Allow
-          Action:
-          - s3:*
-          Resource:
-          - !Ref 'S3ReadWriteResource'
+          - Sid: S3ReadWrite
+            Effect: Allow
+            Action:
+              - s3:*
+            Resource:
+              - !Ref 'S3ReadWriteResource'
       Roles:
-      - !Ref 'RootRole'
+        - !Ref 'RootRole'
     Condition: UseS3ReadWritePolicy
     Metadata:
       AWS::CloudFormation::Designer:
@@ -1277,411 +1227,408 @@ Resources:
     Properties:
       InstanceType: !Ref 'MasterInstanceType'
       BlockDeviceMappings:
-      - DeviceName: /dev/xvdba
-        VirtualName: ephemeral0
-      - DeviceName: /dev/xvdbb
-        VirtualName: ephemeral1
-      - DeviceName: /dev/xvdbc
-        VirtualName: ephemeral2
-      - DeviceName: /dev/xvdbd
-        VirtualName: ephemeral3
-      - DeviceName: /dev/xvdbe
-        VirtualName: ephemeral4
-      - DeviceName: /dev/xvdbf
-        VirtualName: ephemeral5
-      - DeviceName: /dev/xvdbg
-        VirtualName: ephemeral6
-      - DeviceName: /dev/xvdbh
-        VirtualName: ephemeral7
-      - DeviceName: /dev/xvdbi
-        VirtualName: ephemeral8
-      - DeviceName: /dev/xvdbj
-        VirtualName: ephemeral9
-      - DeviceName: /dev/xvdbk
-        VirtualName: ephemeral10
-      - DeviceName: /dev/xvdbl
-        VirtualName: ephemeral11
-      - DeviceName: /dev/xvdbm
-        VirtualName: ephemeral12
-      - DeviceName: /dev/xvdbn
-        VirtualName: ephemeral13
-      - DeviceName: /dev/xvdbo
-        VirtualName: ephemeral14
-      - DeviceName: /dev/xvdbp
-        VirtualName: ephemeral15
-      - DeviceName: /dev/xvdbq
-        VirtualName: ephemeral16
-      - DeviceName: /dev/xvdbr
-        VirtualName: ephemeral17
-      - DeviceName: /dev/xvdbs
-        VirtualName: ephemeral18
-      - DeviceName: /dev/xvdbt
-        VirtualName: ephemeral19
-      - DeviceName: /dev/xvdbu
-        VirtualName: ephemeral20
-      - DeviceName: /dev/xvdbv
-        VirtualName: ephemeral21
-      - DeviceName: /dev/xvdbw
-        VirtualName: ephemeral22
-      - DeviceName: /dev/xvdbx
-        VirtualName: ephemeral23
-      - DeviceName: !FindInMap [OSFeatures, !Ref 'BaseOS', RootDevice]
-        Ebs:
-          VolumeSize: !Ref 'MasterRootVolumeSize'
-          VolumeType: gp2
+        - DeviceName: /dev/xvdba
+          VirtualName: ephemeral0
+        - DeviceName: /dev/xvdbb
+          VirtualName: ephemeral1
+        - DeviceName: /dev/xvdbc
+          VirtualName: ephemeral2
+        - DeviceName: /dev/xvdbd
+          VirtualName: ephemeral3
+        - DeviceName: /dev/xvdbe
+          VirtualName: ephemeral4
+        - DeviceName: /dev/xvdbf
+          VirtualName: ephemeral5
+        - DeviceName: /dev/xvdbg
+          VirtualName: ephemeral6
+        - DeviceName: /dev/xvdbh
+          VirtualName: ephemeral7
+        - DeviceName: /dev/xvdbi
+          VirtualName: ephemeral8
+        - DeviceName: /dev/xvdbj
+          VirtualName: ephemeral9
+        - DeviceName: /dev/xvdbk
+          VirtualName: ephemeral10
+        - DeviceName: /dev/xvdbl
+          VirtualName: ephemeral11
+        - DeviceName: /dev/xvdbm
+          VirtualName: ephemeral12
+        - DeviceName: /dev/xvdbn
+          VirtualName: ephemeral13
+        - DeviceName: /dev/xvdbo
+          VirtualName: ephemeral14
+        - DeviceName: /dev/xvdbp
+          VirtualName: ephemeral15
+        - DeviceName: /dev/xvdbq
+          VirtualName: ephemeral16
+        - DeviceName: /dev/xvdbr
+          VirtualName: ephemeral17
+        - DeviceName: /dev/xvdbs
+          VirtualName: ephemeral18
+        - DeviceName: /dev/xvdbt
+          VirtualName: ephemeral19
+        - DeviceName: /dev/xvdbu
+          VirtualName: ephemeral20
+        - DeviceName: /dev/xvdbv
+          VirtualName: ephemeral21
+        - DeviceName: /dev/xvdbw
+          VirtualName: ephemeral22
+        - DeviceName: /dev/xvdbx
+          VirtualName: ephemeral23
+        - DeviceName: !FindInMap [OSFeatures, !Ref 'BaseOS', RootDevice]
+          Ebs:
+            VolumeSize: !Ref 'MasterRootVolumeSize'
+            VolumeType: gp2
       KeyName: !Ref 'KeyName'
       Tags:
-      - Key: Application
-        Value: !Ref 'AWS::StackName'
-      - Key: Name
-        Value: Master
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Name
+          Value: Master
       NetworkInterfaces:
-      - NetworkInterfaceId: !Ref 'MasterENI'
-        DeviceIndex: '0'
+        - NetworkInterfaceId: !Ref 'MasterENI'
+          DeviceIndex: '0'
       ImageId: !If [UseCustomAMI, !Ref 'CustomAMI', !FindInMap [AWSRegionOS2AMI, !Ref 'AWS::Region',
           !Ref 'BaseOS']]
-      EbsOptimized: !If
-        - IsMasterInstanceEbsOpt
-        - true
-        - false
+      EbsOptimized: !If [IsMasterInstanceEbsOpt, true, false]
       IamInstanceProfile: !If [UseEC2IAMRole, !Ref 'EC2IAMRoleName', !Ref 'RootInstanceProfile']
       PlacementGroupName: !If [UseClusterPlacement, !If [CreatePlacementGroup, !Ref 'DynamicPlacementGroup',
           !Ref 'PlacementGroup'], !Ref 'AWS::NoValue']
       Tenancy: !Ref 'Tenancy'
       UserData: !Base64
         Fn::Join:
-        - ''
-        - - 'Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+          - ''
+          - - 'Content-Type: multipart/mixed; boundary="==BOUNDARY=="
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
-          - 'Content-Type: text/cloud-config; charset="us-ascii"
+              '
+            - 'Content-Type: text/cloud-config; charset="us-ascii"
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '#cloud-config:
+              '
+            - '#cloud-config:
 
-            '
-          - 'runcmd:
+              '
+            - 'runcmd:
 
-            '
-          - ' - [  sh, "which yum && echo '
-          - !Ref 'ProxyServer'
-          - ' >> /etc/yum.conf" ]
+              '
+            - ' - [  sh, "which yum && echo '
+            - !Ref 'ProxyServer'
+            - ' >> /etc/yum.conf" ]
 
-            '
-          - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
-          - !Ref 'ProxyServer'
-          - '"; >> /etc/apt/apt.conf" ]
+              '
+            - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
+            - !Ref 'ProxyServer'
+            - '"; >> /etc/apt/apt.conf" ]
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
-          - 'Content-Type: text/x-shellscript; charset="us-ascii"
+              '
+            - 'Content-Type: text/x-shellscript; charset="us-ascii"
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '#!/bin/bash -x
+              '
+            - '#!/bin/bash -x
 
 
-            '
-          - 'function error_exit
+              '
+            - 'function error_exit
 
-            '
-          - '{
+              '
+            - '{
 
-            '
-          - '  cfn-signal ${proxy_args} --exit-code=1 --reason="$1" --stack='
-          - !Ref 'AWS::StackName'
-          - ' --resource=MasterServer --region='
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - '  cfn-signal ${proxy_args} --exit-code=1 --reason="$1" --stack='
+            - !Ref 'AWS::StackName'
+            - ' --resource=MasterServer --region='
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '  exit 1
+              '
+            - '  exit 1
 
-            '
-          - '}
+              '
+            - '}
 
-            '
-          - 'function bootstrap_instance
+              '
+            - 'function bootstrap_instance
 
-            '
-          - '{
+              '
+            - '{
 
-            '
-          - '  which yum 2>/dev/null; yum=$?
+              '
+            - '  which yum 2>/dev/null; yum=$?
 
-            '
-          - '  which apt-get 2>/dev/null; apt=$?
+              '
+            - '  which apt-get 2>/dev/null; apt=$?
 
-            '
-          - '  if [ "$yum" == "0" ]; then
+              '
+            - '  if [ "$yum" == "0" ]; then
 
-            '
-          - '    yum -y groupinstall development && yum -y install curl wget
+              '
+            - '    yum -y groupinstall development && yum -y install curl wget
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  if [ "$apt" == "0" ]; then
+              '
+            - '  if [ "$apt" == "0" ]; then
 
-            '
-          - '    apt-cache search build-essential; apt-get clean; apt-get update;
-            apt-get -y install build-essential curl wget
+              '
+            - '    apt-cache search build-essential; apt-get clean; apt-get update;
+              apt-get -y install build-essential curl wget
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz
-            https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz;
-            easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
+              '
+            - '  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz
+              https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz;
+              easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
 
-            '
-          - '  mkdir -p /etc/chef && chown -R root:root /etc/chef
+              '
+            - '  mkdir -p /etc/chef && chown -R root:root /etc/chef
 
-            '
-          - '  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v $chef_version
+              '
+            - '  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v $chef_version
 
-            '
-          - '  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:$ridley_version
-            berkshelf:$berkshelf_version
+              '
+            - '  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:$ridley_version
+              berkshelf:$berkshelf_version
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz $cookbook_url
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz $cookbook_url
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date $cookbook_url.date
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date $cookbook_url.date
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 $cookbook_url.md5
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 $cookbook_url.md5
 
-            '
-          - '  mkdir /opt/cfncluster && echo $cfncluster_version | tee /opt/cfncluster/.bootstrapped
+              '
+            - '  mkdir /opt/cfncluster && echo $cfncluster_version | tee /opt/cfncluster/.bootstrapped
 
-            '
-          - '}
+              '
+            - '}
 
-            '
-          - proxy=
-          - !Ref 'ProxyServer'
-          - '
+              '
+            - proxy=
+            - !Ref 'ProxyServer'
+            - '
 
-            '
-          - custom_cookbook=
-          - !Ref 'CustomChefCookbook'
-          - '
+              '
+            - custom_cookbook=
+            - !Ref 'CustomChefCookbook'
+            - '
 
-            '
-          - 'if [ "$proxy" != "NONE" ]; then
+              '
+            - 'if [ "$proxy" != "NONE" ]; then
 
-            '
-          - '  proxy_args="--http-proxy=${proxy} --https-proxy=${proxy}"
+              '
+            - '  proxy_args="--http-proxy=${proxy} --https-proxy=${proxy}"
 
-            '
-          - '  proxy_host=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f1)
+              '
+            - '  proxy_host=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f1)
 
-            '
-          - '  proxy_port=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f2)
+              '
+            - '  proxy_port=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f2)
 
-            '
-          - '  export http_proxy=$proxy; export https_proxy=$http_proxy
+              '
+            - '  export http_proxy=$proxy; export https_proxy=$http_proxy
 
-            '
-          - '  export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
+              '
+            - '  export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
 
-            '
-          - '  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
+              '
+            - '  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
 
-            '
-          - '  echo -e "export http_proxy=$proxy; export https_proxy=$http_proxy
+              '
+            - '  echo -e "export http_proxy=$proxy; export https_proxy=$http_proxy
 
-            export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
+              export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
 
-            export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
+              export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
 
-            " >/tmp/proxy.sh
+              " >/tmp/proxy.sh
 
-            '
-          - '  echo -e "[Boto]
+              '
+            - '  echo -e "[Boto]
 
-            proxy = ${proxy_host}
+              proxy = ${proxy_host}
 
-            proxy_port = ${proxy_port}
+              proxy_port = ${proxy_port}
 
-            " >/etc/boto.cfg
+              " >/etc/boto.cfg
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  proxy_args=""
+              '
+            - '  proxy_args=""
 
-            '
-          - '  touch /tmp/proxy.sh
+              '
+            - '  touch /tmp/proxy.sh
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'if [ "$custom_cookbook" != "NONE" ]; then
+              '
+            - 'if [ "$custom_cookbook" != "NONE" ]; then
 
-            '
-          - '  cookbook_url=$custom_cookbook
+              '
+            - '  cookbook_url=$custom_cookbook
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  if [ "'
-          - !Ref 'AWS::Region'
-          - '" == "us-east-1" ]; then
+              '
+            - '  if [ "'
+            - !Ref 'AWS::Region'
+            - '" == "us-east-1" ]; then
 
-            '
-          - '    s3_prefix=s3
+              '
+            - '    s3_prefix=s3
 
-            '
-          - '  else
+              '
+            - '  else
 
-            '
-          - '    s3_prefix=s3-'
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - '    s3_prefix=s3-'
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-'
-          - !Ref 'AWS::Region'
-          - /cookbooks/
-          - !FindInMap [CfnClusterVersions, default, cookbook]
-          - '.tgz
+              '
+            - '  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-'
+            - !Ref 'AWS::Region'
+            - /cookbooks/
+            - !FindInMap [CfnClusterVersions, default, cookbook]
+            - '.tgz
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
+              '
+            - 'export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 
-            '
-          - export cfncluster_version=
-          - !FindInMap [CfnClusterVersions, default, cfncluster]
-          - '
+              '
+            - export cfncluster_version=
+            - !FindInMap [CfnClusterVersions, default, cfncluster]
+            - '
 
-            '
-          - export cookbook_version=
-          - !FindInMap [CfnClusterVersions, default, cookbook]
-          - '
+              '
+            - export cookbook_version=
+            - !FindInMap [CfnClusterVersions, default, cookbook]
+            - '
 
-            '
-          - export chef_version=
-          - !FindInMap [CfnClusterVersions, default, chef]
-          - '
+              '
+            - export chef_version=
+            - !FindInMap [CfnClusterVersions, default, chef]
+            - '
 
-            '
-          - export ridley_version=
-          - !FindInMap [CfnClusterVersions, default, ridley]
-          - '
+              '
+            - export ridley_version=
+            - !FindInMap [CfnClusterVersions, default, ridley]
+            - '
 
-            '
-          - export berkshelf_version=
-          - !FindInMap [CfnClusterVersions, default, berkshelf]
-          - '
+              '
+            - export berkshelf_version=
+            - !FindInMap [CfnClusterVersions, default, berkshelf]
+            - '
 
-            '
-          - 'if [ -f /opt/cfncluster/.bootstrapped ]; then
+              '
+            - 'if [ -f /opt/cfncluster/.bootstrapped ]; then
 
-            '
-          - '  installed_version=$(cat /opt/cfncluster/.bootstrapped)
+              '
+            - '  installed_version=$(cat /opt/cfncluster/.bootstrapped)
 
-            '
-          - '  if [ "$cfncluster_version" != "$installed_version" ]; then
+              '
+            - '  if [ "$cfncluster_version" != "$installed_version" ]; then
 
-            '
-          - '    bootstrap_instance
+              '
+            - '    bootstrap_instance
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  bootstrap_instance
+              '
+            - '  bootstrap_instance
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'mkdir /tmp/cookbooks
+              '
+            - 'mkdir /tmp/cookbooks
 
-            '
-          - 'cd /tmp/cookbooks
+              '
+            - 'cd /tmp/cookbooks
 
-            '
-          - 'curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z "$(cat /etc/chef/cfncluster-cookbook.tgz.date)"
-            $cookbook_url
+              '
+            - 'curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z "$(cat /etc/chef/cfncluster-cookbook.tgz.date)"
+              $cookbook_url
 
-            '
-          - 'tar -xzf /etc/chef/cfncluster-cookbook.tgz
+              '
+            - 'tar -xzf /etc/chef/cfncluster-cookbook.tgz
 
-            '
-          - 'cd /tmp
+              '
+            - 'cd /tmp
 
-            '
-          - '# Call CloudFormation
+              '
+            - '# Call CloudFormation
 
-            '
-          - 'cfn-init ${proxy_args} -s '
-          - !Ref 'AWS::StackName'
-          - ' -v -c default -r MasterServer --region '
-          - !Ref 'AWS::Region'
-          - ' || error_exit ''Failed to run cfn-init. If --norollback was specified,
-            check /var/log/cfn-init.log and /var/log/cloud-init-output.log.''
+              '
+            - 'cfn-init ${proxy_args} -s '
+            - !Ref 'AWS::StackName'
+            - ' -v -c default -r MasterServer --region '
+            - !Ref 'AWS::Region'
+            - ' || error_exit ''Failed to run cfn-init. If --norollback was specified,
+              check /var/log/cfn-init.log and /var/log/cloud-init-output.log.''
 
-            '
-          - cfn-signal ${proxy_args} --exit-code=0 --reason="MasterServer setup complete"
-            --stack=
-          - !Ref 'AWS::StackName'
-          - ' --resource=MasterServer --region='
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - cfn-signal ${proxy_args} --exit-code=0 --reason="MasterServer setup
+              complete" --stack=
+            - !Ref 'AWS::StackName'
+            - ' --resource=MasterServer --region='
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '# End of file
+              '
+            - '# End of file
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
+              '
     Metadata:
       Comment: cfncluster Master server
       AWS::CloudFormation::Init:
         configSets:
           default:
-          - deployConfigFiles
-          - getCookbooks
-          - chefPrepEnv
-          - shellRunPreInstall
-          - chefConfig
-          - shellRunPostInstall
-          - shellForkClusterReadyInstall
+            - deployConfigFiles
+            - getCookbooks
+            - chefPrepEnv
+            - shellRunPreInstall
+            - chefConfig
+            - shellRunPostInstall
+            - shellForkClusterReadyInstall
         deployConfigFiles:
           files:
             /tmp/dna.json:
@@ -1705,7 +1652,7 @@ Resources:
                   cfn_node_type: MasterServer
                   cfn_cluster_user: !FindInMap [OSFeatures, !Ref 'BaseOS', User]
                   cfn_ddb_table: !Ref 'DynamoDBTable'
-                  cfn_sqs_queue: !GetAtt [SQS, QueueName]
+                  cfn_sqs_queue: !GetAtt 'SQS.QueueName'
                 run_list: !If [UseCustomRunList, !Ref 'CustomChefRunList', !Join [
                     '', ['recipe[cfncluster::', !Ref 'Scheduler', '_config]']]]
             /etc/chef/client.rb:
@@ -1773,19 +1720,19 @@ Resources:
     Properties:
       MaxSize: !Ref 'MaxQueueSize'
       VPCZoneIdentifier:
-      - !If [UseMasterSubnetForCompute, !Ref 'MasterSubnetId', !If [CreateComputeSubnetForCompute,
-          !Ref 'ComputeSubnet', !Ref 'ComputeSubnetId']]
+        - !If [UseMasterSubnetForCompute, !Ref 'MasterSubnetId', !If [CreateComputeSubnetForCompute,
+            !Ref 'ComputeSubnet', !Ref 'ComputeSubnetId']]
       LaunchConfigurationName: !Ref 'ComputeServerLaunchConfig'
       MinSize: !If [MaintainInitialASGSize, !Ref 'InitialQueueSize', '0']
       DesiredCapacity: !Ref 'InitialQueueSize'
       NotificationConfiguration:
         TopicARN: !Ref 'SNS'
         NotificationTypes:
-        - autoscaling:EC2_INSTANCE_TERMINATE
+          - autoscaling:EC2_INSTANCE_TERMINATE
       Tags:
-      - Key: Name
-        Value: Compute
-        PropagateAtLaunch: 'true'
+        - Key: Name
+          Value: Compute
+          PropagateAtLaunch: 'true'
       PlacementGroup: !If [UsePlacementGroup, !If [CreatePlacementGroup, !Ref 'DynamicPlacementGroup',
           !Ref 'PlacementGroup'], !Ref 'AWS::NoValue']
     DependsOn: MasterServer
@@ -1800,9 +1747,9 @@ Resources:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
       SecurityGroups:
-      - !If [CreateSecurityGroups, !Ref 'ComputeSecurityGroup', !Ref 'AWS::NoValue']
-      - !If [AddAdditionalSG, !Ref 'AdditionalSG', !Ref 'AWS::NoValue']
-      - !If [UseExistingSecurityGroup, !Ref 'VPCSecurityGroupId', !Ref 'AWS::NoValue']
+        - !If [CreateSecurityGroups, !Ref 'ComputeSecurityGroup', !Ref 'AWS::NoValue']
+        - !If [AddAdditionalSG, !Ref 'AdditionalSG', !Ref 'AWS::NoValue']
+        - !If [UseExistingSecurityGroup, !Ref 'VPCSecurityGroupId', !Ref 'AWS::NoValue']
       AssociatePublicIpAddress: !If [ComputePublicIps, 'true', 'false']
       InstanceType: !Ref 'ComputeInstanceType'
       KeyName: !Ref 'KeyName'
@@ -1812,394 +1759,394 @@ Resources:
           !Ref 'BaseOS']]
       InstanceMonitoring: 'false'
       BlockDeviceMappings:
-      - DeviceName: /dev/xvdba
-        VirtualName: ephemeral0
-      - DeviceName: /dev/xvdbb
-        VirtualName: ephemeral1
-      - DeviceName: /dev/xvdbc
-        VirtualName: ephemeral2
-      - DeviceName: /dev/xvdbd
-        VirtualName: ephemeral3
-      - DeviceName: /dev/xvdbe
-        VirtualName: ephemeral4
-      - DeviceName: /dev/xvdbf
-        VirtualName: ephemeral5
-      - DeviceName: /dev/xvdbg
-        VirtualName: ephemeral6
-      - DeviceName: /dev/xvdbh
-        VirtualName: ephemeral7
-      - DeviceName: /dev/xvdbi
-        VirtualName: ephemeral8
-      - DeviceName: /dev/xvdbj
-        VirtualName: ephemeral9
-      - DeviceName: /dev/xvdbk
-        VirtualName: ephemeral10
-      - DeviceName: /dev/xvdbl
-        VirtualName: ephemeral11
-      - DeviceName: /dev/xvdbm
-        VirtualName: ephemeral12
-      - DeviceName: /dev/xvdbn
-        VirtualName: ephemeral13
-      - DeviceName: /dev/xvdbo
-        VirtualName: ephemeral14
-      - DeviceName: /dev/xvdbp
-        VirtualName: ephemeral15
-      - DeviceName: /dev/xvdbq
-        VirtualName: ephemeral16
-      - DeviceName: /dev/xvdbr
-        VirtualName: ephemeral17
-      - DeviceName: /dev/xvdbs
-        VirtualName: ephemeral18
-      - DeviceName: /dev/xvdbt
-        VirtualName: ephemeral19
-      - DeviceName: /dev/xvdbu
-        VirtualName: ephemeral20
-      - DeviceName: /dev/xvdbv
-        VirtualName: ephemeral21
-      - DeviceName: /dev/xvdbw
-        VirtualName: ephemeral22
-      - DeviceName: /dev/xvdbx
-        VirtualName: ephemeral23
-      - DeviceName: !FindInMap [OSFeatures, !Ref 'BaseOS', RootDevice]
-        Ebs:
-          VolumeSize: !Ref 'ComputeRootVolumeSize'
-          VolumeType: gp2
+        - DeviceName: /dev/xvdba
+          VirtualName: ephemeral0
+        - DeviceName: /dev/xvdbb
+          VirtualName: ephemeral1
+        - DeviceName: /dev/xvdbc
+          VirtualName: ephemeral2
+        - DeviceName: /dev/xvdbd
+          VirtualName: ephemeral3
+        - DeviceName: /dev/xvdbe
+          VirtualName: ephemeral4
+        - DeviceName: /dev/xvdbf
+          VirtualName: ephemeral5
+        - DeviceName: /dev/xvdbg
+          VirtualName: ephemeral6
+        - DeviceName: /dev/xvdbh
+          VirtualName: ephemeral7
+        - DeviceName: /dev/xvdbi
+          VirtualName: ephemeral8
+        - DeviceName: /dev/xvdbj
+          VirtualName: ephemeral9
+        - DeviceName: /dev/xvdbk
+          VirtualName: ephemeral10
+        - DeviceName: /dev/xvdbl
+          VirtualName: ephemeral11
+        - DeviceName: /dev/xvdbm
+          VirtualName: ephemeral12
+        - DeviceName: /dev/xvdbn
+          VirtualName: ephemeral13
+        - DeviceName: /dev/xvdbo
+          VirtualName: ephemeral14
+        - DeviceName: /dev/xvdbp
+          VirtualName: ephemeral15
+        - DeviceName: /dev/xvdbq
+          VirtualName: ephemeral16
+        - DeviceName: /dev/xvdbr
+          VirtualName: ephemeral17
+        - DeviceName: /dev/xvdbs
+          VirtualName: ephemeral18
+        - DeviceName: /dev/xvdbt
+          VirtualName: ephemeral19
+        - DeviceName: /dev/xvdbu
+          VirtualName: ephemeral20
+        - DeviceName: /dev/xvdbv
+          VirtualName: ephemeral21
+        - DeviceName: /dev/xvdbw
+          VirtualName: ephemeral22
+        - DeviceName: /dev/xvdbx
+          VirtualName: ephemeral23
+        - DeviceName: !FindInMap [OSFeatures, !Ref 'BaseOS', RootDevice]
+          Ebs:
+            VolumeSize: !Ref 'ComputeRootVolumeSize'
+            VolumeType: gp2
       PlacementTenancy: !If [UseDedicatedTenancy, !Ref 'Tenancy', !Ref 'AWS::NoValue']
       UserData: !Base64
         Fn::Join:
-        - ''
-        - - 'Content-Type: multipart/mixed; boundary="==BOUNDARY=="
+          - ''
+          - - 'Content-Type: multipart/mixed; boundary="==BOUNDARY=="
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
-          - 'Content-Type: text/cloud-config; charset="us-ascii"
+              '
+            - 'Content-Type: text/cloud-config; charset="us-ascii"
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '#cloud-config:
+              '
+            - '#cloud-config:
 
-            '
-          - 'runcmd:
+              '
+            - 'runcmd:
 
-            '
-          - ' - [  sh, "which yum && echo '
-          - !Ref 'ProxyServer'
-          - ' >> /etc/yum.conf" ]
+              '
+            - ' - [  sh, "which yum && echo '
+            - !Ref 'ProxyServer'
+            - ' >> /etc/yum.conf" ]
 
-            '
-          - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
-          - !Ref 'ProxyServer'
-          - '"; >> /etc/apt/apt.conf" ]
+              '
+            - ' - [ sh, "which apt-get && echo Acquire::http::Proxy "'
+            - !Ref 'ProxyServer'
+            - '"; >> /etc/apt/apt.conf" ]
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
-          - 'Content-Type: text/x-shellscript; charset="us-ascii"
+              '
+            - 'Content-Type: text/x-shellscript; charset="us-ascii"
 
-            '
-          - 'MIME-Version: 1.0
+              '
+            - 'MIME-Version: 1.0
 
 
-            '
-          - '#!/bin/bash -x
+              '
+            - '#!/bin/bash -x
 
 
-            '
-          - 'function error_exit
+              '
+            - 'function error_exit
 
-            '
-          - '{
+              '
+            - '{
 
-            '
-          - '  cfn-signal ${proxy_args} --exit-code=1 --reason="$1" --stack='
-          - !Ref 'AWS::StackName'
-          - ' --resource=ComputeFleet --region='
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - '  cfn-signal ${proxy_args} --exit-code=1 --reason="$1" --stack='
+            - !Ref 'AWS::StackName'
+            - ' --resource=ComputeFleet --region='
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '  exit 1
+              '
+            - '  exit 1
 
-            '
-          - '}
+              '
+            - '}
 
-            '
-          - 'function bootstrap_instance
+              '
+            - 'function bootstrap_instance
 
-            '
-          - '{
+              '
+            - '{
 
-            '
-          - '  which yum 2>/dev/null; yum=$?
+              '
+            - '  which yum 2>/dev/null; yum=$?
 
-            '
-          - '  which apt-get 2>/dev/null; apt=$?
+              '
+            - '  which apt-get 2>/dev/null; apt=$?
 
-            '
-          - '  if [ "$yum" == "0" ]; then
+              '
+            - '  if [ "$yum" == "0" ]; then
 
-            '
-          - '    yum -y groupinstall development && yum -y install curl wget
+              '
+            - '    yum -y groupinstall development && yum -y install curl wget
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  if [ "$apt" == "0" ]; then
+              '
+            - '  if [ "$apt" == "0" ]; then
 
-            '
-          - '    apt-cache search build-essential; apt-get clean; apt-get update;
-            apt-get -y install build-essential curl wget
+              '
+            - '    apt-cache search build-essential; apt-get clean; apt-get update;
+              apt-get -y install build-essential curl wget
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz
-            https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz;
-            easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
+              '
+            - '  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz
+              https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz;
+              easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
 
-            '
-          - '  mkdir -p /etc/chef && chown -R root:root /etc/chef
+              '
+            - '  mkdir -p /etc/chef && chown -R root:root /etc/chef
 
-            '
-          - '  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v $chef_version
+              '
+            - '  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v $chef_version
 
-            '
-          - '  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:$ridley_version
-            berkshelf:$berkshelf_version
+              '
+            - '  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:$ridley_version
+              berkshelf:$berkshelf_version
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz $cookbook_url
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz $cookbook_url
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date $cookbook_url.date
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date $cookbook_url.date
 
-            '
-          - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 $cookbook_url.md5
+              '
+            - '  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 $cookbook_url.md5
 
-            '
-          - '  mkdir /opt/cfncluster && echo $cfncluster_version | tee /opt/cfncluster/.bootstrapped
+              '
+            - '  mkdir /opt/cfncluster && echo $cfncluster_version | tee /opt/cfncluster/.bootstrapped
 
-            '
-          - '}
+              '
+            - '}
 
-            '
-          - proxy=
-          - !Ref 'ProxyServer'
-          - '
+              '
+            - proxy=
+            - !Ref 'ProxyServer'
+            - '
 
-            '
-          - custom_cookbook=
-          - !Ref 'CustomChefCookbook'
-          - '
+              '
+            - custom_cookbook=
+            - !Ref 'CustomChefCookbook'
+            - '
 
-            '
-          - 'if [ "$proxy" != "NONE" ]; then
+              '
+            - 'if [ "$proxy" != "NONE" ]; then
 
-            '
-          - '  proxy_args="--http-proxy=${proxy} --https-proxy=${proxy}"
+              '
+            - '  proxy_args="--http-proxy=${proxy} --https-proxy=${proxy}"
 
-            '
-          - '  proxy_host=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f1)
+              '
+            - '  proxy_host=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f1)
 
-            '
-          - '  proxy_port=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f2)
+              '
+            - '  proxy_port=$(echo "$proxy" | awk -F/ ''{print $3}'' | cut -d: -f2)
 
-            '
-          - '  export http_proxy=$proxy; export https_proxy=$http_proxy
+              '
+            - '  export http_proxy=$proxy; export https_proxy=$http_proxy
 
-            '
-          - '  export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
+              '
+            - '  export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
 
-            '
-          - '  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
+              '
+            - '  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
 
-            '
-          - '  echo -e "export http_proxy=$proxy; export https_proxy=$http_proxy
+              '
+            - '  echo -e "export http_proxy=$proxy; export https_proxy=$http_proxy
 
-            export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
+              export HTTP_PROXY=$proxy; export HTTPS_PROXY=$http_proxy
 
-            export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
+              export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254
 
-            " >/tmp/proxy.sh
+              " >/tmp/proxy.sh
 
-            '
-          - '  echo -e "[Boto]
+              '
+            - '  echo -e "[Boto]
 
-            proxy = ${proxy_host}
+              proxy = ${proxy_host}
 
-            proxy_port = ${proxy_port}
+              proxy_port = ${proxy_port}
 
-            " >/etc/boto.cfg
+              " >/etc/boto.cfg
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  proxy_args=""
+              '
+            - '  proxy_args=""
 
-            '
-          - '  touch /tmp/proxy.sh
+              '
+            - '  touch /tmp/proxy.sh
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'if [ "$custom_cookbook" != "NONE" ]; then
+              '
+            - 'if [ "$custom_cookbook" != "NONE" ]; then
 
-            '
-          - '  cookbook_url=$custom_cookbook
+              '
+            - '  cookbook_url=$custom_cookbook
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  if [ "'
-          - !Ref 'AWS::Region'
-          - '" == "us-east-1" ]; then
+              '
+            - '  if [ "'
+            - !Ref 'AWS::Region'
+            - '" == "us-east-1" ]; then
 
-            '
-          - '    s3_prefix=s3
+              '
+            - '    s3_prefix=s3
 
-            '
-          - '  else
+              '
+            - '  else
 
-            '
-          - '    s3_prefix=s3-'
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - '    s3_prefix=s3-'
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - '  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-'
-          - !Ref 'AWS::Region'
-          - /cookbooks/
-          - !FindInMap [CfnClusterVersions, default, cookbook]
-          - '.tgz
+              '
+            - '  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-'
+            - !Ref 'AWS::Region'
+            - /cookbooks/
+            - !FindInMap [CfnClusterVersions, default, cookbook]
+            - '.tgz
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
+              '
+            - 'export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin
 
-            '
-          - export cfncluster_version=
-          - !FindInMap [CfnClusterVersions, default, cfncluster]
-          - '
+              '
+            - export cfncluster_version=
+            - !FindInMap [CfnClusterVersions, default, cfncluster]
+            - '
 
-            '
-          - export cookbook_version=
-          - !FindInMap [CfnClusterVersions, default, cookbook]
-          - '
+              '
+            - export cookbook_version=
+            - !FindInMap [CfnClusterVersions, default, cookbook]
+            - '
 
-            '
-          - export chef_version=
-          - !FindInMap [CfnClusterVersions, default, chef]
-          - '
+              '
+            - export chef_version=
+            - !FindInMap [CfnClusterVersions, default, chef]
+            - '
 
-            '
-          - export ridley_version=
-          - !FindInMap [CfnClusterVersions, default, ridley]
-          - '
+              '
+            - export ridley_version=
+            - !FindInMap [CfnClusterVersions, default, ridley]
+            - '
 
-            '
-          - export berkshelf_version=
-          - !FindInMap [CfnClusterVersions, default, berkshelf]
-          - '
+              '
+            - export berkshelf_version=
+            - !FindInMap [CfnClusterVersions, default, berkshelf]
+            - '
 
-            '
-          - 'if [ -f /opt/cfncluster/.bootstrapped ]; then
+              '
+            - 'if [ -f /opt/cfncluster/.bootstrapped ]; then
 
-            '
-          - '  installed_version=$(cat /opt/cfncluster/.bootstrapped)
+              '
+            - '  installed_version=$(cat /opt/cfncluster/.bootstrapped)
 
-            '
-          - '  if [ "$cfncluster_version" != "$installed_version" ]; then
+              '
+            - '  if [ "$cfncluster_version" != "$installed_version" ]; then
 
-            '
-          - '    bootstrap_instance
+              '
+            - '    bootstrap_instance
 
-            '
-          - '  fi
+              '
+            - '  fi
 
-            '
-          - 'else
+              '
+            - 'else
 
-            '
-          - '  bootstrap_instance
+              '
+            - '  bootstrap_instance
 
-            '
-          - 'fi
+              '
+            - 'fi
 
-            '
-          - 'mkdir /tmp/cookbooks
+              '
+            - 'mkdir /tmp/cookbooks
 
-            '
-          - 'cd /tmp/cookbooks
+              '
+            - 'cd /tmp/cookbooks
 
-            '
-          - 'curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z "$(cat /etc/chef/cfncluster-cookbook.tgz.date)"
-            $cookbook_url
+              '
+            - 'curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z "$(cat /etc/chef/cfncluster-cookbook.tgz.date)"
+              $cookbook_url
 
-            '
-          - 'tar -xzf /etc/chef/cfncluster-cookbook.tgz
+              '
+            - 'tar -xzf /etc/chef/cfncluster-cookbook.tgz
 
-            '
-          - 'cd /tmp
+              '
+            - 'cd /tmp
 
-            '
-          - '# Call CloudFormation
+              '
+            - '# Call CloudFormation
 
-            '
-          - 'cfn-init ${proxy_args} -s '
-          - !Ref 'AWS::StackName'
-          - ' -v -c default -r ComputeServerLaunchConfig --region '
-          - !Ref 'AWS::Region'
-          - ' || error_exit ''Failed to run cfn-init. If --norollback was specified,
-            check /var/log/cfn-init.log and /var/log/cloud-init-output.log.''
+              '
+            - 'cfn-init ${proxy_args} -s '
+            - !Ref 'AWS::StackName'
+            - ' -v -c default -r ComputeServerLaunchConfig --region '
+            - !Ref 'AWS::Region'
+            - ' || error_exit ''Failed to run cfn-init. If --norollback was specified,
+              check /var/log/cfn-init.log and /var/log/cloud-init-output.log.''
 
-            '
-          - cfn-signal ${proxy_args} --exit-code=0 --reason="MasterServer setup complete"
-            --stack=
-          - !Ref 'AWS::StackName'
-          - ' --resource=ComputeFleet --region='
-          - !Ref 'AWS::Region'
-          - '
+              '
+            - cfn-signal ${proxy_args} --exit-code=0 --reason="MasterServer setup
+              complete" --stack=
+            - !Ref 'AWS::StackName'
+            - ' --resource=ComputeFleet --region='
+            - !Ref 'AWS::Region'
+            - '
 
-            '
-          - '# End of file
+              '
+            - '# End of file
 
-            '
-          - '--==BOUNDARY==
+              '
+            - '--==BOUNDARY==
 
-            '
+              '
     Metadata:
       Comment: cfncluster Compute server
       AWS::CloudFormation::Init:
         configSets:
           default:
-          - deployConfigFiles
-          - getCookbooks
-          - chefPrepEnv
-          - shellRunPreInstall
-          - chefConfig
-          - shellRunPostInstall
-          - shellForkClusterReadyInstall
-          - signalComputeReady
+            - deployConfigFiles
+            - getCookbooks
+            - chefPrepEnv
+            - shellRunPreInstall
+            - chefConfig
+            - shellRunPostInstall
+            - shellForkClusterReadyInstall
+            - signalComputeReady
         deployConfigFiles:
           files:
             /tmp/dna.json:
@@ -2220,7 +2167,7 @@ Resources:
                   cfn_shared_dir: !Ref 'SharedDir'
                   cfn_proxy: !Ref 'ProxyServer'
                   cfn_sqs_queue: !Ref 'SQS'
-                  cfn_master: !GetAtt [MasterServer, PrivateDnsName]
+                  cfn_master: !GetAtt 'MasterServer.PrivateDnsName'
                   cfn_node_type: ComputeFleet
                   cfn_cluster_user: !FindInMap [OSFeatures, !Ref 'BaseOS', User]
                 run_list: !If [UseCustomRunList, !Ref 'CustomChefRunList', !Join [
@@ -2303,12 +2250,12 @@ Resources:
       EvaluationPeriods: !Ref 'ScalingEvaluationPeriods'
       Statistic: Sum
       AlarmActions:
-      - !Ref 'ScaleUpPolicy2'
+        - !Ref 'ScaleUpPolicy2'
       Namespace: cfncluster
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
-      - Name: Stack
-        Value: !Ref 'AWS::StackName'
+        - Name: Stack
+          Value: !Ref 'AWS::StackName'
       MetricName: pending
     Metadata:
       AWS::CloudFormation::Designer:
@@ -2331,12 +2278,12 @@ Resources:
       EvaluationPeriods: !Ref 'ScalingEvaluationPeriods'
       Statistic: Average
       AlarmActions:
-      - !Ref 'ScaleUpPolicy'
+        - !Ref 'ScaleUpPolicy'
       Namespace: cfncluster
       ComparisonOperator: GreaterThanOrEqualToThreshold
       Dimensions:
-      - Name: Stack
-        Value: !Ref 'AWS::StackName'
+        - Name: Stack
+          Value: !Ref 'AWS::StackName'
       MetricName: pending
     Metadata:
       AWS::CloudFormation::Designer:
@@ -2347,8 +2294,8 @@ Resources:
       VpcId: !Ref 'VPCId'
       CidrBlock: !Ref 'ComputeSubnetCidr'
       Tags:
-      - Key: Network
-        Value: ComputeSubnet
+        - Key: Network
+          Value: ComputeSubnet
       AvailabilityZone: !Ref 'AvailabilityZone'
     Condition: CreateComputeSubnetForCompute
     Metadata:
@@ -2359,10 +2306,10 @@ Resources:
     Properties:
       VpcId: !Ref 'VPCId'
       Tags:
-      - Key: Application
-        Value: !Ref 'AWS::StackName'
-      - Key: Network
-        Value: ComputeSubnet
+        - Key: Application
+          Value: !Ref 'AWS::StackName'
+        - Key: Network
+          Value: ComputeSubnet
     Condition: CreateComputeSubnetForCompute
     Metadata:
       AWS::CloudFormation::Designer:
@@ -2392,14 +2339,14 @@ Resources:
       GroupDescription: Enable access to the Master host
       VpcId: !Ref 'VPCId'
       SecurityGroupIngress:
-      - IpProtocol: tcp
-        FromPort: '22'
-        ToPort: '22'
-        CidrIp: !Ref 'AccessFrom'
-      - IpProtocol: tcp
-        FromPort: '80'
-        ToPort: '80'
-        CidrIp: !Ref 'AccessFrom'
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref 'AccessFrom'
+        - IpProtocol: tcp
+          FromPort: '80'
+          ToPort: '80'
+          CidrIp: !Ref 'AccessFrom'
     Condition: CreateSecurityGroups
     Metadata:
       AWS::CloudFormation::Designer:
@@ -2422,10 +2369,10 @@ Resources:
       GroupDescription: Allow access to resources in subnets behind front
       VpcId: !Ref 'VPCId'
       SecurityGroupIngress:
-      - SourceSecurityGroupId: !Ref 'MasterSecurityGroup'
-        IpProtocol: '-1'
-        FromPort: '0'
-        ToPort: '65535'
+        - SourceSecurityGroupId: !Ref 'MasterSecurityGroup'
+          IpProtocol: '-1'
+          FromPort: '0'
+          ToPort: '65535'
     Condition: CreateSecurityGroups
     Metadata:
       AWS::CloudFormation::Designer:
@@ -2446,9 +2393,9 @@ Resources:
       SubnetId: !Ref 'MasterSubnetId'
       SourceDestCheck: 'false'
       GroupSet:
-      - !If [CreateSecurityGroups, !Ref 'MasterSecurityGroup', !Ref 'AWS::NoValue']
-      - !If [AddAdditionalSG, !Ref 'AdditionalSG', !Ref 'AWS::NoValue']
-      - !If [UseExistingSecurityGroup, !Ref 'VPCSecurityGroupId', !Ref 'AWS::NoValue']
+        - !If [CreateSecurityGroups, !Ref 'MasterSecurityGroup', !Ref 'AWS::NoValue']
+        - !If [AddAdditionalSG, !Ref 'AdditionalSG', !Ref 'AWS::NoValue']
+        - !If [UseExistingSecurityGroup, !Ref 'VPCSecurityGroupId', !Ref 'AWS::NoValue']
     Metadata:
       AWS::CloudFormation::Designer:
         id: 45360a4f-64aa-49f8-b016-78fe5ed86819
@@ -2474,7 +2421,7 @@ Resources:
   AssociateEIP:
     Type: AWS::EC2::EIPAssociation
     Properties:
-      AllocationId: !GetAtt [MasterEIP, AllocationId]
+      AllocationId: !GetAtt 'MasterEIP.AllocationId'
       NetworkInterfaceId: !Ref 'MasterENI'
     Condition: MasterPublicIp
     Metadata:
@@ -2491,15 +2438,15 @@ Resources:
 Outputs:
   MasterPrivateIP:
     Description: Private IP Address of the Master host
-    Value: !GetAtt [MasterServer, PrivateIp]
+    Value: !GetAtt 'MasterServer.PrivateIp'
   MasterPublicIP:
     Description: Public IP Address of the Master host
-    Value: !GetAtt [MasterServer, PublicIp]
+    Value: !GetAtt 'MasterServer.PublicIp'
     Condition: MasterPublicIp
   GangliaPrivateURL:
     Description: Private URL to access Ganglia
-    Value: !Join ['', ['http://', !GetAtt [MasterServer, PrivateIp], /ganglia/]]
+    Value: !Join ['', ['http://', !GetAtt 'MasterServer.PrivateIp', /ganglia/]]
   GangliaPublicURL:
     Description: Public URL to access Ganglia
-    Value: !Join ['', ['http://', !GetAtt [MasterServer, PublicIp], /ganglia/]]
+    Value: !Join ['', ['http://', !GetAtt 'MasterServer.PublicIp', /ganglia/]]
     Condition: MasterPublicIp
