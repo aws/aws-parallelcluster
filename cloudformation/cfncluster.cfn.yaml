@@ -875,93 +875,93 @@ Conditions:
 Mappings:
   AWSRegionOS2AMI:
     ap-northeast-1:
-      alinux: ami-07fd4861
-      centos6: ami-40fc4926
-      centos7: ami-f3ff4a95
-      ubuntu1404: ami-c6f247a0
-      ubuntu1604: ami-abf247cd
+      alinux: ami-7ca6111a
+      centos6: ami-15b80f73
+      centos7: ami-8dbc0beb
+      ubuntu1404: ami-1eb80f78
+      ubuntu1604: ami-2ca7104a
     ap-northeast-2:
-      alinux: ami-c12f8baf
-      centos6: ami-e72f8b89
-      centos7: ami-842a8eea
-      ubuntu1404: ami-042b8f6a
-      ubuntu1604: ami-862a8ee8
+      alinux: ami-72e3441c
+      centos6: ami-1be54275
+      centos7: ami-71e3441f
+      ubuntu1404: ami-43e5422d
+      ubuntu1604: ami-ece44382
     ap-south-1:
-      alinux: ami-f3ace09c
-      centos6: ami-0b93df64
-      centos7: ami-d8ade1b7
-      ubuntu1404: ami-6292de0d
-      ubuntu1604: ami-0a93df65
+      alinux: ami-5c034c33
+      centos6: ami-5a024d35
+      centos7: ami-52034c3d
+      ubuntu1404: ami-17044b78
+      ubuntu1604: ami-1b034c74
     ap-southeast-1:
-      alinux: ami-945a12f7
-      centos6: ami-b15b13d2
-      centos7: ami-9c5c14ff
-      ubuntu1404: ami-3b5b1358
-      ubuntu1604: ami-ef5b138c
+      alinux: ami-be014bdd
+      centos6: ami-2d064c4e
+      centos7: ami-ff074d9c
+      ubuntu1404: ami-40044e23
+      ubuntu1604: ami-9a064cf9
     ap-southeast-2:
-      alinux: ami-34bc5456
-      centos6: ami-d5bb53b7
-      centos7: ami-00bd5562
-      ubuntu1404: ami-d2bc54b0
-      ubuntu1604: ami-d5bc54b7
+      alinux: ami-f933db9b
+      centos6: ami-7335dd11
+      centos7: ami-1435dd76
+      ubuntu1404: ami-4f35dd2d
+      ubuntu1604: ami-fb36de99
     ca-central-1:
-      alinux: ami-6107bf05
-      centos6: ami-b8fa41dc
-      centos7: ami-9305bdf7
-      ubuntu1404: ami-6007bf04
-      ubuntu1604: ami-a506bec1
+      alinux: ami-85e45fe1
+      centos6: ami-fae45f9e
+      centos7: ami-4ad8632e
+      ubuntu1404: ami-6be65d0f
+      ubuntu1604: ami-a7d863c3
     eu-central-1:
-      alinux: ami-fe53d591
-      centos6: ami-cd53d5a2
-      centos7: ami-685fd907
-      ubuntu1404: ami-aa51d7c5
-      ubuntu1604: ami-475fd928
+      alinux: ami-b369e8dc
+      centos6: ami-f868e997
+      centos7: ami-806beaef
+      ubuntu1404: ami-326dec5d
+      ubuntu1604: ami-e86aeb87
     eu-west-1:
-      alinux: ami-1b42ed62
-      centos6: ami-c744ebbe
-      centos7: ami-4d44eb34
-      ubuntu1404: ami-2740ef5e
-      ubuntu1604: ami-b041eec9
+      alinux: ami-ad54fdd4
+      centos6: ami-f155fc88
+      centos7: ami-ee55fc97
+      ubuntu1404: ami-f955fc80
+      ubuntu1604: ami-ac52fbd5
     eu-west-2:
-      alinux: ami-0a928e6e
-      centos6: ami-15968a71
-      centos7: ami-478d9123
-      ubuntu1404: ami-4c908c28
-      ubuntu1604: ami-58978b3c
+      alinux: ami-805748e4
+      centos6: ami-00544b64
+      centos7: ami-63574807
+      ubuntu1404: ami-1d554a79
+      ubuntu1604: ami-ee524d8a
     sa-east-1:
-      alinux: ami-23166c4f
-      centos6: ami-3f176d53
-      centos7: ami-85166ce9
-      ubuntu1404: ami-ea146e86
-      ubuntu1604: ami-3a176d56
+      alinux: ami-02aad06e
+      centos6: ami-e1a9d38d
+      centos7: ami-dcabd1b0
+      ubuntu1404: ami-b6a8d2da
+      ubuntu1604: ami-18aad074
     us-east-1:
-      alinux: ami-f6d46d8c
-      centos6: ami-16d66f6c
-      centos7: ami-92d76ee8
-      ubuntu1404: ami-d7d76ead
-      ubuntu1604: ami-ead46d90
+      alinux: ami-32ca4e48
+      centos6: ami-3bcb4f41
+      centos7: ami-94c94dee
+      ubuntu1404: ami-1dd55167
+      ubuntu1604: ami-0dd45077
     us-east-2:
-      alinux: ami-698aa50c
-      centos6: ami-078aa562
-      centos7: ami-d689a6b3
-      ubuntu1404: ami-4889a62d
-      ubuntu1604: ami-0a8aa56f
+      alinux: ami-e878568d
+      centos6: ami-04785661
+      centos7: ami-07785662
+      ubuntu1404: ami-ab7658ce
+      ubuntu1604: ami-9c7b55f9
     us-west-1:
-      alinux: ami-37c8f657
-      centos6: ami-2ac8f64a
-      centos7: ami-1acaf47a
-      ubuntu1404: ami-accbf5cc
-      ubuntu1604: ami-e6c8f686
+      alinux: ami-28407948
+      centos6: ami-9b437afb
+      centos7: ami-2c437a4c
+      ubuntu1404: ami-69407909
+      ubuntu1604: ami-3b437a5b
     us-west-2:
-      alinux: ami-5570a72d
-      centos6: ami-097ea971
-      centos7: ami-6372a51b
-      ubuntu1404: ami-a374a3db
-      ubuntu1604: ami-1671a66e
+      alinux: ami-67df0e1f
+      centos6: ami-22dd0c5a
+      centos7: ami-b9d809c1
+      ubuntu1404: ami-a1da0bd9
+      ubuntu1604: ami-d6db0aae
     us-gov-west-1:
+      alinux: NOT_SUPPORTED
       centos6: NOT_SUPPORTED
       centos7: NOT_SUPPORTED
-      alinux: NOT_SUPPORTED
       ubuntu1404: NOT_SUPPORTED
       ubuntu1604: NOT_SUPPORTED
   OSFeatures:
