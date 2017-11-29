@@ -13,13 +13,6 @@ many different types of clustered applications and can easily be
 extended to support different frameworks. The CLI is stateless,
 everything is done using CloudFormation or resources within AWS.
 
-Known Issues
-============
-
-* CfnCluster 1.4.0 supports the C5 instance family.  However, the
-  CentOS 6 and CentOS 7 AMIs included with CfnCluster do not support
-  C5.
-
 Documentation
 =============
 
