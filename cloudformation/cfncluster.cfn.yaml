@@ -736,12 +736,10 @@ Parameters:
     ConstraintDescription: must be a supported scheduler
     AllowedValues:
       - sge
-      - openlava
       - torque
       - slurm
       - custom
       - test
-      - pbspro
   SharedDir:
     Description: The path/mountpoint for the shared drive
     Type: String
