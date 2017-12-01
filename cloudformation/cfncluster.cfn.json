@@ -965,12 +965,10 @@
       "ConstraintDescription" : "must be a supported scheduler",
       "AllowedValues" : [
         "sge",
-        "openlava",
         "torque",
         "slurm",
         "custom",
-        "test",
-        "pbspro"
+        "test"
       ]
     },
     "SharedDir" : {
