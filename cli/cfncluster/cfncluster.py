@@ -169,7 +169,7 @@ def update(args):
 
 def start(args):
     # Set resource limits on compute fleet to min/max/desired = 0/max/0
-    print('Starting: %s' % args.cluster_name)
+    print('Starting compute fleet : %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
     
@@ -186,7 +186,7 @@ def start(args):
 
 def stop(args):
     # Set resource limits on compute fleet to min/max/desired = 0/0/0
-    print('Stopping: %s' % args.cluster_name)
+    print('Stopping compute fleet : %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
 
