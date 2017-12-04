@@ -24,12 +24,13 @@ import logging
 
 from . import cfnconfig
 
+logger = logging.getLogger('cfncluster.cfncluster')
+
 def version(args):
     config = cfnconfig.CfnClusterConfig(args)
     print(config.version)
 
 def create(args):
-    logger = logging.getLogger('cfncluster.cfncluster.create')
     logger.info('Beginning cluster creation for cluster: %s' % (args.cluster_name))
 
     logger.debug('Building cluster config based on args')
@@ -79,7 +80,6 @@ def create(args):
         stack = cfnconn.create_stack(stack_name,template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
                                      disable_rollback=args.norollback, tags=config.tags)
-        logger.info("foo")
         status = cfnconn.describe_stacks(stack)[0].stack_status
 
 
