@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.4.1
+=====
+* bugfix:``cfncluster``: Fixed update function
+
 1.4.0
 =====
 * change:``cfncluster``: `cfncluster stop` will terminate compute
