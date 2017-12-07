@@ -144,8 +144,8 @@ CfnClusterUserPolicy
                   "ec2:DescribeVpcAttribute",
                   "ec2:DescribeAddresses",
                   "ec2:CreateTags",
-	          "ec2:DescribeNetworkInterfaces",
-	          "ec2:DescribeAvailabilityZones"
+                  "ec2:DescribeNetworkInterfaces",
+                  "ec2:DescribeAvailabilityZones"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -164,9 +164,13 @@ CfnClusterUserPolicy
                   "ec2:CreateSecurityGroup",
                   "ec2:ModifyVolumeAttribute",
                   "ec2:ModifyNetworkInterfaceAttribute",
-	          "ec2:DeleteNetworkInterface",
-	          "ec2:DeleteVolume",
-	          "ec2:TerminateInstances"
+                  "ec2:DeleteNetworkInterface",
+                  "ec2:DeleteVolume",
+                  "ec2:TerminateInstances",
+                  "ec2:DeleteSecurityGroup",
+                  "ec2:DisassociateAddress",
+                  "ec2:RevokeSecurityGroupIngress",
+                  "ec2:ReleaseAddress"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -188,7 +192,11 @@ CfnClusterUserPolicy
                   "autoscaling:CreateLaunchConfiguration",
                   "autoscaling:PutNotificationConfiguration",
                   "autoscaling:UpdateAutoScalingGroup",
-                  "autoscaling:PutScalingPolicy"
+                  "autoscaling:PutScalingPolicy",
+                  "autoscaling:DeleteLaunchConfiguration",
+                  "autoscaling:DescribeScalingActivities",
+                  "autoscaling:DeleteAutoScalingGroup",
+                  "autoscaling:DeletePolicy"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -205,7 +213,7 @@ CfnClusterUserPolicy
               "Sid": "DynamoDBModify",
               "Action": [
               "dynamodb:CreateTable",
-	      "dynamodb:DeleteTable"
+              "dynamodb:DeleteTable"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -213,7 +221,8 @@ CfnClusterUserPolicy
           {
               "Sid": "CloudWatchModify",
               "Action": [
-                  "cloudwatch:PutMetricAlarm"
+                  "cloudwatch:PutMetricAlarm",
+                  "cloudwatch:DeleteAlarms"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -231,7 +240,7 @@ CfnClusterUserPolicy
               "Action": [
                   "sqs:CreateQueue",
                   "sqs:SetQueueAttributes",
-	          "sqs:DeleteQueue"
+                  "sqs:DeleteQueue"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -240,7 +249,7 @@ CfnClusterUserPolicy
               "Sid": "SNSDescribe",
               "Action": [
               "sns:ListTopics",
-	      “sns:GetTopicAttributes"
+              "sns:GetTopicAttributes"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -250,7 +259,7 @@ CfnClusterUserPolicy
               "Action": [
                   "sns:CreateTopic",
                   "sns:Subscribe",
-	          “sns:DeleteTopic”
+                  "sns:DeleteTopic"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -275,6 +284,17 @@ CfnClusterUserPolicy
               ],
               "Effect": "Allow",
               "Resource": "*"
+          },
+          {
+              "Sid": "S3CfnClusterReadOnly",
+              "Action": [
+                  "s3:Get*",
+                  "s3:List*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                  "arn:aws:s3:::<REGION>-cfncluster*"
+              ]
           },
           {
               "Sid": "IAMModify",

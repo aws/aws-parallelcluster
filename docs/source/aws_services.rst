@@ -47,7 +47,7 @@ For more details about Amazon SQS, see http://aws.amazon.com/sqs/
 Amazon EC2
 ----------
 
-Amazon EC2 provides the compute for CfnCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be laucnhed as Spot instances. Instance store volumes found on the instances are mounted as a RAID0 volume.
+Amazon EC2 provides the compute for CfnCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be launched as Spot instances. Instance store volumes found on the instances are mounted as a striped LVM volume.
 
 For more details about Amazon EC2, see http://aws.amazon.com/ec2/
 

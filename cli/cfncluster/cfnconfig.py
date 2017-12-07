@@ -178,7 +178,7 @@ class CfnClusterConfig(object):
                                   compute_subnet_cidr=('ComputeSubnetCidr',None),
                                   compute_subnet_id=('ComputeSubnetId', 'VPCSubnet'), use_public_ips=('UsePublicIps',
                                                                                                       None),
-                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None), 
+                                  ssh_from=('AccessFrom', None), access_from=('AccessFrom', None),
                                   additional_sg=('AdditionalSG','VPCSecurityGroup'),
                                   vpc_security_group_id=('VPCSecurityGroupId','VPCSecurityGroup')
                                   )
@@ -321,8 +321,8 @@ class CfnClusterConfig(object):
         # Handle extra parameters supplied on command-line
         try:
             if self.args.extra_parameters is not None:
-                self.parameters = dict(self.parameters)
-                self.__temp_dict = dict(list(self.parameters.items()) + list(self.args.extra_parameters.items()))
+                self.__temp_dict = dict(self.parameters)
+                self.__temp_dict.append(dict(self.args.extra_parameters))
                 self.__dictlist = []
                 for key, value in self.__temp_dict.items():
                     temp = [str(key),str(value)]

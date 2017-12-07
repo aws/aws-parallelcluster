@@ -2,6 +2,17 @@
 CHANGELOG
 =========
 
+1.4.0
+=====
+* change:``cfncluster``: `cfncluster stop` will terminate compute
+  instances, but not stop the master node.
+* feature:``cfncluster``: CfnCluster no longer maintains a whitelist
+  of supported instance types, so new platforms are supported on day
+  of launch (including C5).
+* bugfix:``cfncluster-cookbook``: Support for NVMe instance store
+* updates:``ami``: Update all base AMIs to latest patch levels
+* bugfix:``cfncluster-node``: Fixed long scaling times with SLURM
+
 1.3.2
 =====
 * feature:``cfncluster``: Add support for r2.xlarge/t2.2xlarge,

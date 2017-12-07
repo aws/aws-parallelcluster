@@ -117,6 +117,9 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             ec2_conn = boto.ec2.connect_to_region(region,aws_access_key_id=aws_access_key_id,
                                                  aws_secret_access_key=aws_secret_access_key)
             test = ec2_conn.get_all_volumes(volume_ids=resource_value)
+            if test[0].attach_data.status == 'attached':
+                print('Volume %s is already attached to another instance' % resource_value)
+                sys.exit(1)
         except boto.exception.BotoServerError as e:
             print('Config sanity error: %s' % e.message)
             sys.exit(1)

@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201609030709 cfncluster-1.3.2",
+  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: ami-201609030709 cfncluster-1.4.0",
   "Metadata" : {
     "AWS::CloudFormation::Interface" : {
       "ParameterGroups" : [
@@ -709,145 +709,13 @@
       "Description" : "MasterServer EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
-      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM.",
-      "AllowedValues" : [
-        "cc2.8xlarge",
-        "c3.8xlarge",
-        "c3.4xlarge",
-        "c3.2xlarge",
-        "c3.xlarge",
-        "c3.large",
-        "c4.8xlarge",
-        "c4.4xlarge",
-        "c4.2xlarge",
-        "c4.xlarge",
-        "c4.large",
-        "r3.8xlarge",
-        "r3.4xlarge",
-        "r3.2xlarge",
-        "r3.xlarge",
-        "r3.large",
-        "r4.large",
-        "r4.xlarge",
-        "r4.2xlarge",
-        "r4.4xlarge",
-        "r4.8xlarge",
-        "r4.16xlarge",
-        "i2.8xlarge",
-        "i2.4xlarge",
-        "i2.2xlarge",
-        "i2.xlarge",
-        "i3.large",
-        "i3.xlarge",
-        "i3.2xlarge",
-        "i3.4xlarge",
-        "i3.8xlarge",
-        "i3.16xlarge",
-        "cr1.8xlarge",
-        "cg1.4xlarge",
-        "m3.medium",
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "hi1.4xlarge",
-        "g2.2xlarge",
-        "g2.8xlarge",
-        "p2.xlarge",
-        "p2.8xlarge",
-        "p2.16xlarge",
-        "t2.micro",
-        "t2.small",
-        "t2.medium",
-        "t2.large",
-        "t2.xlarge",
-        "t2.2xlarge",
-        "d2.8xlarge",
-        "d2.4xlarge",
-        "d2.2xlarge",
-        "d2.xlarge",
-        "m4.large",
-        "m4.xlarge",
-        "m4.2xlarge",
-        "m4.4xlarge",
-        "m4.10xlarge",
-        "m4.16xlarge",
-        "x1.16xlarge",
-        "x1.32xlarge",
-        "f1.2xlarge",
-        "f1.16xlarge"
-      ]
+      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM."
     },
     "ComputeInstanceType" : {
       "Description" : "ComputeFleet EC2 instance type",
       "Type" : "String",
       "Default" : "t2.micro",
-      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM.",
-      "AllowedValues" : [
-        "cc2.8xlarge",
-        "c3.8xlarge",
-        "c3.4xlarge",
-        "c3.2xlarge",
-        "c3.xlarge",
-        "c3.large",
-        "c4.8xlarge",
-        "c4.4xlarge",
-        "c4.2xlarge",
-        "c4.xlarge",
-        "c4.large",
-        "r3.8xlarge",
-        "r3.4xlarge",
-        "r3.2xlarge",
-        "r3.xlarge",
-        "r3.large",
-        "r4.large",
-        "r4.xlarge",
-        "r4.2xlarge",
-        "r4.4xlarge",
-        "r4.8xlarge",
-        "r4.16xlarge",
-        "i2.8xlarge",
-        "i2.4xlarge",
-        "i2.2xlarge",
-        "i2.xlarge",
-        "i3.large",
-        "i3.xlarge",
-        "i3.2xlarge",
-        "i3.4xlarge",
-        "i3.8xlarge",
-        "i3.16xlarge",
-        "cr1.8xlarge",
-        "cg1.4xlarge",
-        "m3.medium",
-        "m3.large",
-        "m3.xlarge",
-        "m3.2xlarge",
-        "hi1.4xlarge",
-        "g2.2xlarge",
-        "g2.8xlarge",
-        "p2.xlarge",
-        "p2.8xlarge",
-        "p2.16xlarge",
-        "t2.micro",
-        "t2.small",
-        "t2.medium",
-        "t2.large",
-        "t2.xlarge",
-        "t2.2xlarge",
-        "d2.8xlarge",
-        "d2.4xlarge",
-        "d2.2xlarge",
-        "d2.xlarge",
-        "m4.large",
-        "m4.xlarge",
-        "m4.2xlarge",
-        "m4.4xlarge",
-        "m4.10xlarge",
-        "m4.16xlarge",
-        "x1.16xlarge",
-        "x1.32xlarge",
-        "f1.2xlarge",
-        "f1.16xlarge"
-      ]
+      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM."
     },
     "InitialQueueSize" : {
       "Description" : "Initial number of EC2 instances to launch as compute nodes within the cluster. This value maps to the DesiredSize parameter for the ComputeFleet AutoScaling Group.",
@@ -1097,12 +965,10 @@
       "ConstraintDescription" : "must be a supported scheduler",
       "AllowedValues" : [
         "sge",
-        "openlava",
         "torque",
         "slurm",
         "custom",
-        "test",
-        "pbspro"
+        "test"
       ]
     },
     "SharedDir" : {
@@ -1205,6 +1071,174 @@
     }
   },
   "Conditions" : {
+    "IsMasterInstanceEbsOpt": {
+      "Fn::Not" : [
+        {
+          "Fn::Or" : [
+            {
+              "Fn::Or": [
+                {
+                  "Fn::Equals": [
+                    "cc2.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "cr1.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "g2.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "m3.medium",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "m3.large",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "c3.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "c3.large",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "r3.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "r3.large",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "i2.8xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "Fn::Or": [
+                {
+                  "Fn::Equals": [
+                    "i2.large",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "cg1.4xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.nano",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.micro",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.small",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.medium",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.large",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Equals": [
+                    "t2.2xlarge",
+                    {
+                      "Ref": "MasterInstanceType"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
     "UseSpotInstances" : {
       "Fn::Equals" : [
         {
@@ -1595,375 +1629,109 @@
     }
   },
   "Mappings" : {
-    "AWSInstanceType2Capabilites" : {
-      "cc2.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "cr1.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "g2.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "g2.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "p2.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "p2.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "p2.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m3.medium" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "m3.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "m3.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m3.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c3.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "c3.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c3.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c3.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c3.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "c4.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c4.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c4.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c4.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "c4.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r3.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "r3.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r3.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r3.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r3.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "r3.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "r4.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i2.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "i2.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i2.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i2.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i2.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "i3.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i3.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i3.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i3.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i3.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "i3.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "cg1.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.nano" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.micro" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.small" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.medium" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "t2.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "False"
-      },
-      "d2.8xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "d2.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "d2.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "d2.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "x1.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "x1.32xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "f1.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "f1.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.16xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.10xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.4xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.2xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.xlarge" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      },
-      "m4.large" : {
-        "Arch" : "64HVM",
-        "EBSOpt" : "True"
-      }
-    },
     "AWSRegionOS2AMI" : {
       "ap-northeast-1" : {
-        "alinux" : "ami-586b653f",
-        "centos6" : "ami-10686677",
-        "centos7" : "ami-0e6b6569",
-        "ubuntu1404" : "ami-466c6221",
-        "ubuntu1604" : "ami-ce6c62a9"
+        "alinux" : "ami-31dd6557",
+        "centos6" : "ami-aadd65cc",
+        "centos7" : "ami-73d96115",
+        "ubuntu1404" : "ami-12da6274",
+        "ubuntu1604" : "ami-b2da62d4"
       },
       "ap-northeast-2" : {
-        "alinux" : "ami-ea71ad84",
-        "centos6" : "ami-bb77abd5",
-        "centos7" : "ami-9377abfd",
-        "ubuntu1404" : "ami-2877ab46",
-        "ubuntu1604" : "ami-d072aebe"
+        "alinux" : "ami-dc07a0b2",
+        "centos6" : "ami-b204a3dc",
+        "centos7" : "ami-9107a0ff",
+        "ubuntu1404" : "ami-4c05a222",
+        "ubuntu1604" : "ami-0a05a264"
       },
       "ap-south-1" : {
-        "alinux" : "ami-1f720d70",
-        "centos6" : "ami-0a710e65",
-        "centos7" : "ami-546d123b",
-        "ubuntu1404" : "ami-11700f7e",
-        "ubuntu1604" : "ami-446f102b"
+        "alinux" : "ami-32b7f95d",
+        "centos6" : "ami-6fb5fb00",
+        "centos7" : "ami-33b7f95c",
+        "ubuntu1404" : "ami-16b7f979",
+        "ubuntu1604" : "ami-11b4fa7e"
       },
       "ap-southeast-1" : {
-        "alinux" : "ami-1f1b987c",
-        "centos6" : "ami-9b1596f8",
-        "centos7" : "ami-da1596b9",
-        "ubuntu1404" : "ami-be1497dd",
-        "ubuntu1604" : "ami-951596f6"
+        "alinux" : "ami-7edf8c1d",
+        "centos6" : "ami-4dde8d2e",
+        "centos7" : "ami-d8dd8ebb",
+        "ubuntu1404" : "ami-cbde8da8",
+        "ubuntu1604" : "ami-f8df8c9b"
       },
       "ap-southeast-2" : {
-        "alinux" : "ami-56b9af35",
-        "centos6" : "ami-c7b9afa4",
-        "centos7" : "ami-afa6b0cc",
-        "ubuntu1404" : "ami-37a4b254",
-        "ubuntu1604" : "ami-cca6b0af"
+        "alinux" : "ami-c3c431a1",
+        "centos6" : "ami-9eda2ffc",
+        "centos7" : "ami-79c6331b",
+        "ubuntu1404" : "ami-d3c530b1",
+        "ubuntu1604" : "ami-15c73277"
       },
       "ca-central-1" : {
-        "alinux" : "ami-65f94601",
-        "centos6" : "ami-a6f847c2",
-        "centos7" : "ami-62f94606",
-        "ubuntu1404" : "ami-eefc438a",
-        "ubuntu1604" : "ami-a7fa45c3"
+        "alinux" : "ami-8051eae4",
+        "centos6" : "ami-6855ee0c",
+        "centos7" : "ami-3656ed52",
+        "ubuntu1404" : "ami-0851ea6c",
+        "ubuntu1604" : "ami-3156ed55"
       },
       "eu-central-1" : {
-        "alinux" : "ami-7fd17510",
-        "centos6" : "ami-56d67239",
-        "centos7" : "ami-9cd571f3",
-        "ubuntu1404" : "ami-bcd773d3",
-        "ubuntu1604" : "ami-40d6722f"
+        "alinux" : "ami-5a4bc735",
+        "centos6" : "ami-4540cc2a",
+        "centos7" : "ami-d945c9b6",
+        "ubuntu1404" : "ami-bd4ac6d2",
+        "ubuntu1604" : "ami-dd4bc7b2"
       },
       "eu-west-1" : {
-        "alinux" : "ami-6ddac60b",
-        "centos6" : "ami-abd5c9cd",
-        "centos7" : "ami-6dd8c40b",
-        "ubuntu1404" : "ami-83d4c8e5",
-        "ubuntu1604" : "ami-e6d5c980"
+        "alinux" : "ami-ac00b3d5",
+        "centos6" : "ami-2e07b457",
+        "centos7" : "ami-aa00b3d3",
+        "ubuntu1404" : "ami-2e06b557",
+        "ubuntu1604" : "ami-9802b1e1"
       },
       "eu-west-2" : {
-        "alinux" : "ami-f1bbac95",
-        "centos6" : "ami-cabcabae",
-        "centos7" : "ami-9cb9aef8",
-        "ubuntu1404" : "ami-5cb9ae38",
-        "ubuntu1604" : "ami-5eb9ae3a"
+        "alinux" : "ami-044c5260",
+        "centos6" : "ami-2a4d534e",
+        "centos7" : "ami-984d53fc",
+        "ubuntu1404" : "ami-cf4d53ab",
+        "ubuntu1604" : "ami-c14f51a5"
       },
       "sa-east-1" : {
-        "alinux" : "ami-a990f8c5",
-        "centos6" : "ami-b491f9d8",
-        "centos7" : "ami-5092fa3c",
-        "ubuntu1404" : "ami-6d91f901",
-        "ubuntu1604" : "ami-df90f8b3"
+        "alinux" : "ami-aa692dc6",
+        "centos6" : "ami-3c682c50",
+        "centos7" : "ami-23682c4f",
+        "ubuntu1404" : "ami-f36a2e9f",
+        "ubuntu1604" : "ami-34692d58"
       },
       "us-east-1" : {
-        "alinux" : "ami-2492c832",
-        "centos6" : "ami-a293c9b4",
-        "centos7" : "ami-d29cc6c4",
-        "ubuntu1404" : "ami-a192c8b7",
-        "ubuntu1604" : "ami-8c9fc59a"
+        "alinux" : "ami-c652cfbc",
+        "centos6" : "ami-2d4ed357",
+        "centos7" : "ami-c24ed3b8",
+        "ubuntu1404" : "ami-3d49d447",
+        "ubuntu1604" : "ami-6353ce19"
       },
       "us-east-2" : {
-        "alinux" : "ami-a6d3f5c3",
-        "centos6" : "ami-2cd3f549",
-        "centos7" : "ami-c3d2f4a6",
-        "ubuntu1404" : "ami-e2d3f587",
-        "ubuntu1604" : "ami-54d5f331"
+        "alinux" : "ami-ed6f4688",
+        "centos6" : "ami-816d44e4",
+        "centos7" : "ami-bb6c45de",
+        "ubuntu1404" : "ami-8f6d44ea",
+        "ubuntu1604" : "ami-2d6e4748"
       },
       "us-west-1" : {
-        "alinux" : "ami-39c2e059",
-        "centos6" : "ami-65c2e005",
-        "centos7" : "ami-17fcde77",
-        "ubuntu1404" : "ami-b5c2e0d5",
-        "ubuntu1604" : "ami-0dfddf6d"
+        "alinux" : "ami-10d7ec70",
+        "centos6" : "ami-e6d4ef86",
+        "centos7" : "ami-4dd6ed2d",
+        "ubuntu1404" : "ami-bcd4efdc",
+        "ubuntu1604" : "ami-68d5ee08"
       },
       "us-west-2" : {
-        "alinux" : "ami-f4b0b98d",
-        "centos6" : "ami-6bb1b812",
-        "centos7" : "ami-22b2bb5b",
-        "ubuntu1404" : "ami-f5b0b98c",
-        "ubuntu1604" : "ami-c4b1b8bd"
+        "alinux" : "ami-4f6db337",
+        "centos6" : "ami-376db34f",
+        "centos7" : "ami-b370aecb",
+        "ubuntu1404" : "ami-726fb10a",
+        "ubuntu1604" : "ami-5e6cb226"
       },
       "us-gov-west-1" : {
+        "alinux" : "NOT_SUPPORTED",
         "centos6" : "NOT_SUPPORTED",
         "centos7" : "NOT_SUPPORTED",
-        "alinux" : "NOT_SUPPORTED",
         "ubuntu1404" : "NOT_SUPPORTED",
         "ubuntu1604" : "NOT_SUPPORTED"
       }
@@ -1992,8 +1760,8 @@
     },
     "CfnClusterVersions" : {
       "default" : {
-        "cfncluster" : "cfncluster-1.3.2",
-        "cookbook" : "cfncluster-cookbook-1.3.2",
+        "cfncluster" : "cfncluster-1.4.0",
+        "cookbook" : "cfncluster-cookbook-1.4.0",
         "chef" : "12.19.36",
         "ridley" : "5.1.0",
         "berkshelf" : "5.6.4",
@@ -2051,7 +1819,9 @@
   "Resources" : {
     "SQS" : {
       "Type" : "AWS::SQS::Queue",
-      "Properties" : {},
+      "Properties" : {
+        "MessageRetentionPeriod": 1209600
+      },
       "Metadata" : {
         "AWS::CloudFormation::Designer" : {
           "id" : "2f599618-92e8-49cf-92bd-551ba9775f39"
@@ -2597,12 +2367,10 @@
           ]
         },
         "EbsOptimized" : {
-          "Fn::FindInMap" : [
-            "AWSInstanceType2Capabilites",
-            {
-              "Ref" : "MasterInstanceType"
-            },
-            "EBSOpt"
+          "Fn::If" : [
+            "IsMasterInstanceEbsOpt",
+            true,
+            false
           ]
         },
         "IamInstanceProfile" : {
@@ -2659,7 +2427,7 @@
                 {
                   "Ref" : "ProxyServer"
                 },
-                "\"; >> /etc/apt/aot.conf\" ]\n",
+                "\"; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3368,7 +3136,7 @@
                 {
                   "Ref" : "ProxyServer"
                 },
-                "\"; >> /etc/apt/aot.conf\" ]\n",
+                "\"; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
