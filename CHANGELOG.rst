@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.4.2
+=====
+* bugfix:``cfncluster``: Fix crash when base directory for config file
+  does not exist
+
 1.4.0
 =====
 * change:``cfncluster``: `cfncluster stop` will terminate compute
