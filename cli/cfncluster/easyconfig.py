@@ -1,6 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -21,6 +21,7 @@ import boto.vpc
 import os
 import logging
 import stat
+import errno
 
 from . import cfnconfig
 
@@ -166,6 +167,14 @@ def configure(args):
             # Only update configuration if not set
             if value is not None and key is not '__name__':
                 config.set(section['__name__'], key, value)
+
+    # ensure that the directory for the config file exists (because
+    # ~/.cfncluster is likely not to exist on first usage)
+    try:
+        os.makedirs(os.path.dirname(config_file))
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise # can safely ignore EEXISTS for this purpose...
 
     # Write configuration to disk
     open(config_file,'a').close()
