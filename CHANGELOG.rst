@@ -6,6 +6,10 @@ CHANGELOG
 =====
 * bugfix:``cfncluster``: Fix crash when base directory for config file
   does not exist
+* bugfix:``cfncluster``: Removed extraneous logging message at
+  cfncluster invocation, re-enabled logging in
+  ~/.cfncluster/cfncluster-cli.log
+
 
 1.4.0
 =====
