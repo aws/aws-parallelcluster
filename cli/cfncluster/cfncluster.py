@@ -80,6 +80,7 @@ def create(args):
         stack = cfnconn.create_stack(stack_name,template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
                                      disable_rollback=args.norollback, tags=config.tags)
+        logger.debug('StackId: %s' % (stack))
         status = cfnconn.describe_stacks(stack)[0].stack_status
 
 
