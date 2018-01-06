@@ -97,6 +97,15 @@ def create(args):
             if resource_status != '':
                 logger.debug(resource_status)
 
+            if status != 'CREATE_COMPLETE':
+                logger.critical('\nCluster creation failed.  Failed events:')
+                events = cfnconn.describe_stack_events(stack)
+                for event in events:
+                    if (event.resource_status == 'CREATE_FAILED'):
+                        logger.info("  - %s %s %s" %
+                                    (event.resource_type, event.logical_resource_id,
+                                     event.resource_status_reason))
+
             outputs = cfnconn.describe_stacks(stack)[0].outputs
             for output in outputs:
                 logger.info(output)
