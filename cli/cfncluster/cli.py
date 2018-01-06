@@ -1,5 +1,5 @@
 from __future__ import absolute_import
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -16,6 +16,7 @@ import logging
 import platform
 import json
 import sys
+import errno
 
 from . import cfncluster
 from . import easyconfig
@@ -52,13 +53,31 @@ def stop(args):
     cfncluster.stop(args)
 
 def config_logger():
-    logging.basicConfig(format='%(asctime)s.%(msecs)03d - %(levelname)s - %(name)s - %(message)s',datefmt='%Y-%m-%dT%H:%M:%S',level=logging.INFO)
+    logger = logging.getLogger('cfncluster.cfncluster')
+    logger.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    ch.setFormatter(logging.Formatter('%(message)s'))
+    logger.addHandler(ch)
+
+    logfile = os.path.expanduser(os.path.join('~', '.cfncluster', 'cfncluster-cli.log'))
+    try:
+        os.makedirs(os.path.dirname(logfile))
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise # can safely ignore EEXISTS for this purpose...
+
+    fh = logging.FileHandler(logfile)
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+    logger.addHandler(fh)
 
 def main():
     config_logger()
 
-    logger = logging.getLogger(__name__)
-    logger.info("CfnCluster cli starting")
+    logger = logging.getLogger('cfncluster.cfncluster')
+    logger.debug("CfnCluster cli starting")
 
     parser = argparse.ArgumentParser(description='cfncluster is a tool to launch and manage a cluster.')
     parser.add_argument("--config", "-c", dest="config_file", help='specify a alternative config file')
@@ -138,5 +157,5 @@ def main():
     pversion.set_defaults(func=version)
 
     args = parser.parse_args()
-    logging.debug(args)
+    logger.debug(args)
     args.func(args)
