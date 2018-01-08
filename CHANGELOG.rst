@@ -10,6 +10,9 @@ CHANGELOG
   cfncluster invocation, re-enabled logging in
   ~/.cfncluster/cfncluster-cli.log
 
+1.4.1
+=====
+* bugfix:``cfncluster``: Fix abort due to undefinied logger
 
 1.4.0
 =====
