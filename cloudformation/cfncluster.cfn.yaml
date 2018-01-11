@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: 'AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template
   showing an framework for deploying master + compute type clusters on AWS.  **WARNING**
   This template creates AWS resources. You will be billed for the AWS resources used
-  if you create a stack from this template. Version: ami-201609030709 cfncluster-1.4.1'
+  if you create a stack from this template. Version: cfncluster-1.4.2'
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -873,89 +873,95 @@ Conditions:
 Mappings:
   AWSRegionOS2AMI:
     ap-northeast-1:
-      alinux: ami-31dd6557
-      centos6: ami-aadd65cc
-      centos7: ami-73d96115
-      ubuntu1404: ami-12da6274
-      ubuntu1604: ami-b2da62d4
+      alinux: ami-1366fd75
+      centos6: ami-2467fc42
+      centos7: ami-4465fe22
+      ubuntu1404: ami-b967fcdf
+      ubuntu1604: ami-3667fc50
     ap-northeast-2:
-      alinux: ami-dc07a0b2
-      centos6: ami-b204a3dc
-      centos7: ami-9107a0ff
-      ubuntu1404: ami-4c05a222
-      ubuntu1604: ami-0a05a264
+      alinux: ami-127cdc7c
+      centos6: ami-2d7ddd43
+      centos7: ami-2c7ddd42
+      ubuntu1404: ami-6e7ede00
+      ubuntu1604: ami-137cdc7d
     ap-south-1:
-      alinux: ami-32b7f95d
-      centos6: ami-6fb5fb00
-      centos7: ami-33b7f95c
-      ubuntu1404: ami-16b7f979
-      ubuntu1604: ami-11b4fa7e
+      alinux: ami-3f732450
+      centos6: ami-5270273d
+      centos7: ami-e271268d
+      ubuntu1404: ami-2374234c
+      ubuntu1604: ami-e071268f
     ap-southeast-1:
-      alinux: ami-7edf8c1d
-      centos6: ami-4dde8d2e
-      centos7: ami-d8dd8ebb
-      ubuntu1404: ami-cbde8da8
-      ubuntu1604: ami-f8df8c9b
+      alinux: ami-306b194c
+      centos6: ami-eb681a97
+      centos7: ami-1065176c
+      ubuntu1404: ami-1c6a1860
+      ubuntu1604: ami-5e681a22
     ap-southeast-2:
-      alinux: ami-c3c431a1
-      centos6: ami-9eda2ffc
-      centos7: ami-79c6331b
-      ubuntu1404: ami-d3c530b1
-      ubuntu1604: ami-15c73277
+      alinux: ami-3c6e935e
+      centos6: ami-966d90f4
+      centos7: ami-85738ee7
+      ubuntu1404: ami-6b699409
+      ubuntu1604: ami-076d9065
     ca-central-1:
-      alinux: ami-8051eae4
-      centos6: ami-6855ee0c
-      centos7: ami-3656ed52
-      ubuntu1404: ami-0851ea6c
-      ubuntu1604: ami-3156ed55
+      alinux: ami-cca421a8
+      centos6: ami-75a32611
+      centos7: ami-aca722c8
+      ubuntu1404: ami-bba124df
+      ubuntu1604: ami-b9a124dd
     eu-central-1:
-      alinux: ami-5a4bc735
-      centos6: ami-4540cc2a
-      centos7: ami-d945c9b6
-      ubuntu1404: ami-bd4ac6d2
-      ubuntu1604: ami-dd4bc7b2
+      alinux: ami-d98a17b6
+      centos6: ami-c78a17a8
+      centos7: ami-7c851813
+      ubuntu1404: ami-ff8b1690
+      ubuntu1604: ami-8b8b16e4
     eu-west-1:
-      alinux: ami-ac00b3d5
-      centos6: ami-2e07b457
-      centos7: ami-aa00b3d3
-      ubuntu1404: ami-2e06b557
-      ubuntu1604: ami-9802b1e1
+      alinux: ami-7fe77a06
+      centos6: ami-a4e578dd
+      centos7: ami-46e17c3f
+      ubuntu1404: ami-a5e578dc
+      ubuntu1604: ami-6de57814
     eu-west-2:
-      alinux: ami-044c5260
-      centos6: ami-2a4d534e
-      centos7: ami-984d53fc
-      ubuntu1404: ami-cf4d53ab
-      ubuntu1604: ami-c14f51a5
+      alinux: ami-157a6171
+      centos6: ami-fa7b609e
+      centos7: ami-f879629c
+      ubuntu1404: ami-7d7a6119
+      ubuntu1604: ami-b17a61d5
+    eu-west-3:
+      alinux: ami-7bfe4806
+      centos6: ami-38f14745
+      centos7: ami-2bfe4856
+      ubuntu1404: ami-3bf14746
+      ubuntu1604: ami-41f1473c
     sa-east-1:
-      alinux: ami-aa692dc6
-      centos6: ami-3c682c50
-      centos7: ami-23682c4f
-      ubuntu1404: ami-f36a2e9f
-      ubuntu1604: ami-34692d58
+      alinux: ami-7892d014
+      centos6: ami-4290d22e
+      centos7: ami-ae93d1c2
+      ubuntu1404: ami-e190d28d
+      ubuntu1604: ami-6393d10f
     us-east-1:
-      alinux: ami-c652cfbc
-      centos6: ami-2d4ed357
-      centos7: ami-c24ed3b8
-      ubuntu1404: ami-3d49d447
-      ubuntu1604: ami-6353ce19
+      alinux: ami-3e456044
+      centos6: ami-7e785d04
+      centos7: ami-86795cfc
+      ubuntu1404: ami-3a456040
+      ubuntu1604: ami-567e5b2c
     us-east-2:
-      alinux: ami-ed6f4688
-      centos6: ami-816d44e4
-      centos7: ami-bb6c45de
-      ubuntu1404: ami-8f6d44ea
-      ubuntu1604: ami-2d6e4748
+      alinux: ami-3a7e545f
+      centos6: ami-a27e54c7
+      centos7: ami-9d7852f8
+      ubuntu1404: ami-ef78528a
+      ubuntu1604: ami-b17852d4
     us-west-1:
-      alinux: ami-10d7ec70
-      centos6: ami-e6d4ef86
-      centos7: ami-4dd6ed2d
-      ubuntu1404: ami-bcd4efdc
-      ubuntu1604: ami-68d5ee08
+      alinux: ami-7d3f3c1d
+      centos6: ami-833d3ee3
+      centos7: ami-533e3d33
+      ubuntu1404: ami-f33f3c93
+      ubuntu1604: ami-0c3e3d6c
     us-west-2:
-      alinux: ami-4f6db337
-      centos6: ami-376db34f
-      centos7: ami-b370aecb
-      ubuntu1404: ami-726fb10a
-      ubuntu1604: ami-5e6cb226
+      alinux: ami-59db6d21
+      centos6: ami-22c5735a
+      centos7: ami-37c4724f
+      ubuntu1404: ami-31c47249
+      ubuntu1604: ami-1bc77163
     us-gov-west-1:
       alinux: NOT_SUPPORTED
       centos6: NOT_SUPPORTED
@@ -980,8 +986,8 @@ Mappings:
       RootDevice: /dev/sda1
   CfnClusterVersions:
     default:
-      cfncluster: cfncluster-1.4.1
-      cookbook: cfncluster-cookbook-1.4.0
+      cfncluster: cfncluster-1.4.2
+      cookbook: cfncluster-cookbook-1.4.1
       chef: 12.19.36
       ridley: 5.1.0
       berkshelf: 5.6.4
