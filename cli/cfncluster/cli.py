@@ -56,7 +56,7 @@ def config_logger():
     logger = logging.getLogger('cfncluster.cfncluster')
     logger.setLevel(logging.DEBUG)
 
-    ch = logging.StreamHandler()
+    ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter('%(message)s'))
     logger.addHandler(ch)
