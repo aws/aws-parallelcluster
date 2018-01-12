@@ -160,7 +160,7 @@ if __name__ == '__main__':
     config = { 'parallelism' : 3,
                'regions' : 'us-east-1,us-east-2,us-west-1,us-west-2,' +
                            'ca-central-1,eu-west-1,eu-west-2,eu-central-1,' +
-                           'ap-southeast-1,ap-southeast-2,ap-northeast-1' +
+                           'ap-southeast-1,ap-southeast-2,ap-northeast-1,' +
                            'ap-south-1,sa-east-1,eu-west-3',
                'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
                'schedulers' : 'sge,slurm,torque' }
