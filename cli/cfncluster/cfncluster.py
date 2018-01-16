@@ -1,6 +1,6 @@
 from __future__ import print_function
 from __future__ import absolute_import
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
 # License. A copy of the License is located at
@@ -28,12 +28,12 @@ logger = logging.getLogger('cfncluster.cfncluster')
 
 def version(args):
     config = cfnconfig.CfnClusterConfig(args)
-    print(config.version)
+    logger.info(config.version)
 
 def create(args):
     logger.info('Beginning cluster creation for cluster: %s' % (args.cluster_name))
+    logger.debug('Building cluster config based on args %s' % str(args))
 
-    logger.debug('Building cluster config based on args')
     # Build the config based on args
     config = cfnconfig.CfnClusterConfig(args)
 
@@ -80,10 +80,12 @@ def create(args):
         stack = cfnconn.create_stack(stack_name,template_url=config.template_url,
                                      parameters=config.parameters, capabilities=capabilities,
                                      disable_rollback=args.norollback, tags=config.tags)
+        logger.debug('StackId: %s' % (stack))
         status = cfnconn.describe_stacks(stack)[0].stack_status
 
 
         if not args.nowait:
+            resource_status = ''
             while status == 'CREATE_IN_PROGRESS':
                 status = cfnconn.describe_stacks(stack)[0].stack_status
                 events = cfnconn.describe_stack_events(stack)[0]
@@ -91,14 +93,27 @@ def create(args):
                 sys.stdout.write('\r%s' % resource_status)
                 sys.stdout.flush()
                 time.sleep(5)
+            # print the last status update in the logs
+            if resource_status != '':
+                logger.debug(resource_status)
+
+            if status != 'CREATE_COMPLETE':
+                logger.critical('\nCluster creation failed.  Failed events:')
+                events = cfnconn.describe_stack_events(stack)
+                for event in events:
+                    if (event.resource_status == 'CREATE_FAILED'):
+                        logger.info("  - %s %s %s" %
+                                    (event.resource_type, event.logical_resource_id,
+                                     event.resource_status_reason))
+
             outputs = cfnconn.describe_stacks(stack)[0].outputs
             for output in outputs:
-                print(output)
+                logger.info(output)
         else:
             status = cfnconn.describe_stacks(stack)[0].stack_status
-            print('Status: %s' % status)
+            logger.info('Status: %s' % status)
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
     except Exception as e:
         logger.critical(e.message)
@@ -106,7 +121,7 @@ def create(args):
 
 
 def update(args):
-    print('Updating: %s' % (args.cluster_name))
+    logger.info('Updating: %s' % (args.cluster_name))
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
@@ -137,7 +152,7 @@ def update(args):
                                                  aws_secret_access_key=config.aws_secret_access_key)
             availability_zone = str(vpcconn.get_all_subnets(subnet_ids=master_subnet_id)[0].availability_zone)
         except boto.exception.BotoServerError as e:
-            print(e.message)
+            logger.critical(e.message)
             sys.exit(1)
         config.parameters.append(('AvailabilityZone', availability_zone))
     except ValueError:
@@ -159,20 +174,20 @@ def update(args):
                 time.sleep(5)
         else:
             status = cfnconn.describe_stacks(stack)[0].stack_status
-            print('Status: %s' % status)
+            logger.info('Status: %s' % status)
     except boto.exception.BotoServerError as e:
-        print(e.message)
+        logger.critical(e.message)
         sys.exit(1)
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
 
 def start(args):
     # Set resource limits on compute fleet to min/max/desired = 0/max/0
-    print('Starting compute fleet : %s' % args.cluster_name)
+    logger.info('Starting compute fleet : %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
-    
+
     # Set asg limits
     max_queue_size = [param[1] for param in config.parameters if param[0] == 'MaxQueueSize']
     max_queue_size = max_queue_size[0] if len(max_queue_size) > 0 else 10
@@ -186,7 +201,7 @@ def start(args):
 
 def stop(args):
     # Set resource limits on compute fleet to min/max/desired = 0/0/0
-    print('Stopping compute fleet : %s' % args.cluster_name)
+    logger.info('Stopping compute fleet : %s' % args.cluster_name)
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
 
@@ -202,14 +217,14 @@ def list(args):
         stacks = cfnconn.describe_stacks()
         for stack in stacks:
             if stack.stack_name.startswith('cfncluster-'):
-                print('%s' % (stack.stack_name[11:]))
+                logger.info('%s' % (stack.stack_name[11:]))
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print(e.message)
+            logger.critical(e.message)
         else:
             raise e
     except KeyboardInterrupt:
-        print('Exiting...')
+        logger.info('Exiting...')
         sys.exit(0)
 
 def get_master_server_id(stack_name, config):
@@ -224,7 +239,7 @@ def get_master_server_id(stack_name, config):
             resources = cfnconn.describe_stack_resources(stack_name)
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
-                print(e.message)
+                logger.critical(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -254,20 +269,20 @@ def poll_master_server_state(stack_name, config):
             sys.stdout.write(status)
             sys.stdout.flush()
         if (state == 'terminated' or state == 'shutting-down'):
-            print("State: %s is irrecoverable. Cluster needs to be re-created.")
+            logger.info("State: %s is irrecoverable. Cluster needs to be re-created.")
             sys.exit(1)
         status = ('\rMasterServer: %s\n' % state.upper())
         sys.stdout.write(status)
         sys.stdout.flush()
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print(e.message)
+            logger.critical(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
             raise e
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
 
     return state
@@ -284,7 +299,7 @@ def get_ec2_instances(stack, config):
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
                 #sys.stdout.write('\r\n')
-                print(e.message)
+                logger.critical(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -315,13 +330,13 @@ def get_asg(stack_name, config):
         return asgconn.get_all_groups(names=[asg_id])[0]
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
-            print(e.message)
+            logger.critical(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
             raise e
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
 
 def set_asg_limits(asg, min, max, desired):
@@ -344,7 +359,7 @@ def get_asg_ids(stack, config):
         except boto.exception.BotoServerError as e:
             if e.message.endswith("does not exist"):
                 #sys.stdout.write('\r\n')
-                print(e.message)
+                logger.critical(e.message)
                 sys.stdout.flush()
                 sys.exit(0)
             else:
@@ -414,32 +429,36 @@ def status(args):
                 if state == 'running':
                     outputs = cfnconn.describe_stacks(stack)[0].outputs
                     for output in outputs:
-                        print(output)
+                        logger.info(output)
             elif ((status == 'ROLLBACK_COMPLETE') or (status == 'CREATE_FAILED') or (status == 'DELETE_FAILED') or
                       (status == 'UPDATE_ROLLBACK_COMPLETE')):
                 events = cfnconn.describe_stack_events(stack)
                 for event in events:
                     if ((event.resource_status == 'CREATE_FAILED') or (event.resource_status == 'DELETE_FAILED') or
                             (event.resource_status == 'UPDATE_FAILED')):
-                        print(event.timestamp, event.resource_status, event.resource_type, event.logical_resource_id, \
-                            event.resource_status_reason)
+                        logger.info("%s %s %s %s %s" %
+                                    (event.timestamp, event.resource_status,
+                                     event.resource_type, event.logical_resource_id,
+                                     event.resource_status_reason))
         else:
             sys.stdout.write('\n')
             sys.stdout.flush()
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
             sys.stdout.write('\r')
-            print(e.message)
+            logger.critical(e.message)
             sys.stdout.flush()
             sys.exit(0)
         else:
             raise e
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
 
 def delete(args):
-    print('Deleting: %s' % args.cluster_name)
+    saw_update = False
+
+    logger.info('Deleting: %s' % args.cluster_name)
     stack = ('cfncluster-' + args.cluster_name)
 
     config = cfnconfig.CfnClusterConfig(args)
@@ -452,6 +471,8 @@ def delete(args):
         status = cfnconn.describe_stacks(stack)[0].stack_status
         sys.stdout.write('\rStatus: %s' % status)
         sys.stdout.flush()
+        logger.debug('Status: %s' % status)
+        saw_update = True
         if not args.nowait:
             while status == 'DELETE_IN_PROGRESS':
                 time.sleep(5)
@@ -462,20 +483,24 @@ def delete(args):
                 sys.stdout.flush()
             sys.stdout.write('\rStatus: %s\n' % status)
             sys.stdout.flush()
+            logger.debug('Status: %s' % status)
         else:
             sys.stdout.write('\n')
             sys.stdout.flush()
         if status == 'DELETE_FAILED':
-            print('Cluster did not delete successfully. Run \'cluster delete %s\' again' % stack)
+            logger.info('Cluster did not delete successfully. Run \'cluster delete %s\' again' % stack)
     except boto.exception.BotoServerError as e:
         if e.message.endswith("does not exist"):
             #sys.stdout.write('\r\n')
-            print(e.message)
-            sys.stdout.flush()
+            if not saw_update:
+                logger.critical(e.message)
+                sys.stdout.flush()
+            else:
+                logger.info('Cluster deleted successfully.')
             sys.exit(0)
         else:
             raise e
     except KeyboardInterrupt:
-        print('\nExiting...')
+        logger.info('\nExiting...')
         sys.exit(0)
 

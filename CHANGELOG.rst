@@ -2,6 +2,22 @@
 CHANGELOG
 =========
 
+1.4.2
+=====
+* bugfix:``cfncluster``: Fix crash when base directory for config file
+  does not exist
+* bugfix:``cfncluster``: Removed extraneous logging message at
+  cfncluster invocation, re-enabled logging in
+  ~/.cfncluster/cfncluster-cli.log
+* bugfix: ``cfncluster-node``: Fix scaling issues with CentOS 6 clusters caused
+by incompatible dependencies.
+* updates:``ami``: Update all base AMIs to latest patch levels
+* updates:``cfncluster-cookbook``: Updated to cfncluster-cookbook-1.4.1
+
+1.4.1
+=====
+* bugfix:``cfncluster``: Fix abort due to undefinied logger
+
 1.4.0
 =====
 * change:``cfncluster``: `cfncluster stop` will terminate compute
