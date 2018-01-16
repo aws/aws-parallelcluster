@@ -9,6 +9,10 @@ CHANGELOG
 * bugfix:``cfncluster``: Removed extraneous logging message at
   cfncluster invocation, re-enabled logging in
   ~/.cfncluster/cfncluster-cli.log
+* bugfix: ``cfncluster-node``: Fix scaling issues with CentOS 6 clusters caused
+by incompatible dependencies.
+* updates:``ami``: Update all base AMIs to latest patch levels
+* updates:``cfncluster-cookbook``: Updated to cfncluster-cookbook-1.4.1
 
 1.4.1
 =====
