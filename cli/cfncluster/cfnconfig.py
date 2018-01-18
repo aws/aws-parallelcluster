@@ -150,22 +150,23 @@ class CfnClusterConfig(object):
         try:
             if args.template_url is not None:
                 self.template_url = args.template_url
-            try:
-                self.template_url = __config.get(self.__cluster_section,
-                                                 'template_url')
-                if not self.template_url:
-                    print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
-                    sys.exit(1)
-                if self.__sanity_check:
-                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+            else:
+                try:
+                    self.template_url = __config.get(self.__cluster_section,
+                                                     'template_url')
+                    if not self.template_url:
+                        print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
+                        sys.exit(1)
+                except configparser.NoOptionError:
+                    if self.region == 'us-gov-west-1':
+                        self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                                             % (self.region, self.region, self.version))
+                    else:
+                        self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
+                                             % (self.region, self.version))
+            if self.__sanity_check:
+                config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
                                              'URL', self.template_url)
-            except configparser.NoOptionError:
-                if self.region == 'us-gov-west-1':
-                    self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
-                                         % (self.region, self.region, self.version))
-                else:
-                    self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
-                                         % (self.region, self.version))
         except AttributeError:
             pass
 
