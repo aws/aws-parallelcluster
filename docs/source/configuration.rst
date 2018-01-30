@@ -317,7 +317,10 @@ Defaults to NONE in the default template. ::
 
 ec2_iam_role
 """"""""""""
-Existing EC2 IAM Role that will be attached to all instances in the cluster.
+The given name of an existing EC2 IAM Role that will be attached to all
+instances in the cluster. Note that the given name of a role and its Amazon
+Resource Name (ARN) are different, and the latter can not be used as an argument
+to ec2_iam_role.
 
 Defaults to NONE in the default template. ::
 
