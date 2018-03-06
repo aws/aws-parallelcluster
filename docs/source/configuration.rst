@@ -299,22 +299,6 @@ Note: The base_os determines the username used to log into the cluster.
 
     base_os = alinux
 
-cwl_region
-""""""""""
-CloudWatch Logs region
- 
-Defaults to NONE in the default template. ::
-
-    cwl_region = NONE
-
-cwl_log_group
-"""""""""""""
-CloudWatch Logs Log Group name
- 
-Defaults to NONE in the default template. ::
-
-    cwl_log_group = NONE
-
 ec2_iam_role
 """"""""""""
 The given name of an existing EC2 IAM Role that will be attached to all
