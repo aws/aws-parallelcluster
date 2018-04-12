@@ -769,7 +769,7 @@
       "Default" : "NONE"
     },
     "VolumeSize" : {
-      "Description" : "Size of EBS volume in GB, if creating a new one",
+      "Description" : "Size of EBS volume in GB",
       "Type" : "Number",
       "Default" : "20"
     },
@@ -3872,15 +3872,7 @@
           "Ref" : "VolumeType"
         },
         "Size" : {
-          "Fn::If" : [
-            "UseEBSSnapshot",
-            {
-              "Ref" : "AWS::NoValue"
-            },
-            {
-              "Ref" : "VolumeSize"
-            }
-          ]
+          "Ref" : "VolumeSize"
         },
         "SnapshotId" : {
           "Fn::If" : [

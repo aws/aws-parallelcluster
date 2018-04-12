@@ -564,7 +564,7 @@ Parameters:
     Type: String
     Default: NONE
   VolumeSize:
-    Description: Size of EBS volume in GB, if creating a new one
+    Description: Size of EBS volume in GB
     Type: Number
     Default: '20'
   VolumeType:
@@ -2413,7 +2413,7 @@ Resources:
     Properties:
       AvailabilityZone: !Ref 'AvailabilityZone'
       VolumeType: !Ref 'VolumeType'
-      Size: !If [UseEBSSnapshot, !Ref 'AWS::NoValue', !Ref 'VolumeSize']
+      Size: !Ref 'VolumeSize'
       SnapshotId: !If [UseEBSSnapshot, !Ref 'EBSSnapshotId', !Ref 'AWS::NoValue']
       Iops: !If [UseEBSPIOPS, !Ref 'VolumeIOPS', !Ref 'AWS::NoValue']
       Encrypted: !If [UseEBSEncryption, !Ref 'EBSEncryption', !Ref 'AWS::NoValue']
