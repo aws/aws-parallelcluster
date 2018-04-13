@@ -21,12 +21,14 @@ import errno
 from . import cfncluster
 from . import easyconfig
 
-
 def create(args):
     cfncluster.create(args)
 
 def configure(args):
     easyconfig.configure(args)
+
+def command(args, extra_args):
+    cfncluster.command(args, extra_args)
 
 def status(args):
     cfncluster.status(args)
@@ -146,7 +148,8 @@ def main():
     addarg_region(pstart)
     pstart.set_defaults(func=start)
 
-    pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for debugging/development')
+    pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for '
+                                               'debugging/development')
     pstop.add_argument("cluster_name", type=str, default=None,
                         help='stops the compute-fleet of the provided cluster name.')
     addarg_config(pstop)
@@ -180,6 +183,22 @@ def main():
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)
 
-    args = parser.parse_args()
+    pssh = subparsers.add_parser('ssh', description='run ssh command with username and ip address pre-filled. ' \
+                                                    'Arbitrary arguments are appended to the end of the ssh commmand. ' \
+                                                    'This command may be customized in the aliases section of the config file.')
+    pssh.add_argument("cluster_name", type=str, default=None,
+                        help='name of the cluster to set variables for.')
+    pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
+                         help='print command and exit.')
+    pssh.set_defaults(func=command)
+
+    args, extra_args = parser.parse_known_args()
     logger.debug(args)
-    args.func(args)
+    if args.func.__name__ == 'command':
+        args.func(args, extra_args)
+    else:
+        if extra_args != []:
+            parser.print_usage()
+            print('Invalid arguments %s...' % extra_args)
+            sys.exit(1)
+        args.func(args)

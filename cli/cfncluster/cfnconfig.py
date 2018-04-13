@@ -338,6 +338,13 @@ class CfnClusterConfig(object):
         except AttributeError:
             pass
 
+        # handle aliases
+        self.aliases = {}
+        self.__alias_section = 'aliases'
+        if __config.has_section(self.__alias_section):
+            for alias in __config.options(self.__alias_section):
+                self.aliases[alias] = __config.get(self.__alias_section, alias)
+
         # Handle extra parameters supplied on command-line
         try:
             if self.args.extra_parameters is not None:

@@ -10,12 +10,12 @@ from __future__ import absolute_import
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 from builtins import str
 import sys
 import time
 import logging
 import boto3
+import os
 from botocore.exceptions import ClientError
 
 from . import cfnconfig
@@ -277,6 +277,31 @@ def poll_master_server_state(stack_name, config):
 
     return state
 
+def get_master_server_ip(stack_name, config):
+    ec2 = boto3.client('ec2', region_name=config.region,
+                       aws_access_key_id=config.aws_access_key_id,
+                       aws_secret_access_key=config.aws_secret_access_key)
+
+    master_id = get_master_server_id(stack_name, config)
+
+    try:
+        instance = ec2.describe_instances(InstanceIds=[master_id]) \
+            .get('Reservations')[0] \
+            .get('Instances')[0]
+        ip_address = instance.get('PublicIpAddress')
+        state = instance.get('State').get('Name')
+        if state != 'running' or ip_address is None:
+            logger.info("MasterServer: %s\nCannot get ip address." % state.upper)
+            sys.exit(1)
+        return ip_address
+    except ClientError as e:
+        logger.critical(e.response.get('Error').get('Message'))
+        sys.stdout.flush()
+        sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info('\nExiting...')
+        sys.exit(0)
+
 def get_ec2_instances(stack, config):
     cfn = boto3.client('cloudformation', region_name=config.region,
                        aws_access_key_id=config.aws_access_key_id,
@@ -345,6 +370,56 @@ def instances(args):
 
     for instance in instances:
         print('%s         %s' % (instance[0],instance[1]))
+
+def get_head_user(parameters, template):
+    mappings = template.get("TemplateBody") \
+            .get("Mappings") \
+            .get("OSFeatures")
+    base_os =[i.get('ParameterValue') for i in parameters if i.get('ParameterKey') == "BaseOS"][0]
+    return mappings.get(base_os).get("User")
+
+def command(args, extra_args):
+    stack = ('cfncluster-' + args.cluster_name)
+    config = cfnconfig.CfnClusterConfig(args)
+    if args.command in config.aliases:
+        config_command = config.aliases[args.command]
+    else:
+        config_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
+
+    cfn = boto3.client('cloudformation', region_name=config.region,
+                       aws_access_key_id=config.aws_access_key_id,
+                       aws_secret_access_key=config.aws_secret_access_key)
+    try:
+        status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('StackStatus')
+        invalid_status = ['DELETE_COMPLETE', 'DELETE_IN_PROGRESS']
+        if status in invalid_status:
+            logger.info("Stack status: %s. Cannot SSH while in %s" % (status, ' or '.join(invalid_status)))
+            sys.exit(1)
+        ip = get_master_server_ip(stack, config)
+        stack_result = cfn.describe_stacks(StackName=stack).get('Stacks')[0]
+        template = cfn.get_template(StackName=stack)
+        username = get_head_user(stack_result.get('Parameters'), template)
+
+        try:
+            from shlex import quote as cmd_quote
+        except ImportError:
+            from pipes import quote as cmd_quote
+
+        # build command
+        cmd = config_command.format(CFN_USER=username, MASTER_IP=ip, ARGS=' '.join(cmd_quote(str(e)) for e in extra_args))
+
+        # run command
+        if not args.dryrun:
+            os.system(cmd)
+        else:
+            logger.info(cmd)
+    except ClientError as e:
+            logger.critical(e.response.get('Error').get('Message'))
+            sys.stdout.flush()
+            sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info('\nExiting...')
+        sys.exit(0)
 
 def status(args):
     stack = ('cfncluster-' + args.cluster_name)
@@ -439,4 +514,3 @@ def delete(args):
     except KeyboardInterrupt:
         logger.info('\nExiting...')
         sys.exit(0)
-

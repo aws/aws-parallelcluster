@@ -147,6 +147,39 @@ optional arguments:
 
     $ cfncluster delete mycluster
 
+ssh
+====
+
+Runs ssh to the master node, with username and ip filled in based on the provided cluster.
+
+For example:
+    cfncluster ssh mycluster -i ~/.ssh/id_rsa
+
+Results in an ssh command with username and ip address pre-filled.
+
+    ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa
+
+SSH command is defined in the global config file, under the aliases section and can be customized:
+
+    [aliases]
+    ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
+Variables substituted:
+    {CFN_USER}
+    {MASTER_IP}
+    {ARGS} (only if specified on the cli)
+
+positional arguments:
+  cluster_name  name of the cluster to set variables for.
+
+optional arguments:
+  -h, --help    show this help message and exit
+  --dryrun, -d  print command and exit.
+
+::
+
+    $cfncluster ssh mycluster -i ~/.ssh/id_rsa -v
+
 status
 ======
 
