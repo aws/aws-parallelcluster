@@ -44,7 +44,7 @@ Now it should be possible to run the following within a command prompt window:
 Upgrading
 ---------
 
-To upgrade an older version of CfnCluster, you can use either of the following commands, depening on how it was originally installed:
+To upgrade an older version of CfnCluster, you can use either of the following commands, depending on how it was originally installed:
 
 ::
 
@@ -73,7 +73,7 @@ This configure wizard will prompt you for everything you need to create your clu
 
         Cluster Template [mycluster]:
 
-Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privledges.  These can also be read from your environment variables or the  aws CLI config.
+Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privileges.  These can also be read from your environment variables or the  aws CLI config.
 
 ::
 

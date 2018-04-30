@@ -5,7 +5,7 @@ Setting Up an AMI Development Environment
 #########################################
 
 .. warning::
-    Building a custom AMI is not the recomended approach for customizing CfnCluster.
+    Building a custom AMI is not the recommended approach for customizing CfnCluster.
 
     Once you build your own AMI, you will no longer receive updates or bug fixes with future releases of CfnCluster.  You will need to repeat the steps used to create your custom AMI with each new CfnCluster release.
 
@@ -60,7 +60,7 @@ The next part of setting up your environment involves setting a lot of environme
 
 		export AWS_FLAVOR_ID=c3.4xlarge
 
-#.	Set the availibility zone and region:
+#.	Set the availability zone and region:
 	::
 
 		export AWS_AVAILABILITY_ZONE=us-east-1c
@@ -96,7 +96,7 @@ The next part of setting up your environment involves setting a lot of environme
 
 		export KITCHEN_LOCAL_YAML=.kitchen.cloud.yml
 
-#.	Create a 10G ebs backed volumne in the same availibity zone:
+#.	Create a 10G ebs backed volume in the same availability zone:
 
 	::
 

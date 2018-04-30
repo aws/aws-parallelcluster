@@ -52,13 +52,13 @@ aws
 ^^^
 This is the AWS credentials section (required).  These settings apply to all clusters.
 
-If not defined, boto will attempt to use a) enviornment or b) EC2 IAM role. ::
+If not defined, boto will attempt to use a) environment or b) EC2 IAM role. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
     aws_secret_access_key = #your_secret_access_key
 
-    # Defaults to us-east-1 if not defined in enviornment or below
+    # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
 
 .. _cluster_definition:
@@ -105,7 +105,7 @@ This defaults to t2.micro for default template. ::
 
 initial_queue_size
 """"""""""""""""""
-The inital number of EC2 instances to launch as compute nodes in the cluster.
+The initial number of EC2 instances to launch as compute nodes in the cluster.
 
 The default is 2 for default template. ::
 
@@ -239,7 +239,7 @@ Defaults to NONE for the default template. More information on placement groups 
 
 placement
 """""""""
-Cluster placment logic. This enables the whole cluster or only compute to use the placement group.
+Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
  
 Defaults to cluster in the default template. ::
 
