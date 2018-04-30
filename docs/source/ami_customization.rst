@@ -8,7 +8,7 @@ Building a custom CfnCluster AMI
 ################################
 
 .. warning::
-    Building a custom AMI is not the recomended approach for customizing CfnCluster.
+    Building a custom AMI is not the recommended approach for customizing CfnCluster.
 
     Once you build your own AMI, you will no longer receive updates or bug fixes with future releases of CfnCluster.  You will need to repeat the steps used to create your custom AMI with each new CfnCluster release.
 
