@@ -24,8 +24,8 @@ sanity_check = true
 # Name of an existing EC2 KeyPair to enable SSH access to the instances.
 key_name = mykey
 # Override path to cloudformation in S3
-# (defaults to https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json)
-#template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
+# (defaults to https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json)
+#template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
 # Cluster Server EC2 instance type
 # (defaults to t2.micro for default template)
 #compute_instance_type = t2.micro

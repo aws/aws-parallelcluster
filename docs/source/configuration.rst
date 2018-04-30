@@ -83,9 +83,9 @@ template_url
 """"""""""""
 Overrides the path to the cloudformation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json``. ::
+Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json``. ::
 
-    template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
+    template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
 
 compute_instance_type
 """""""""""""""""""""
