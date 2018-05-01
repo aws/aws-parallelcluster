@@ -91,17 +91,25 @@ class CfnClusterConfig(object):
             self.aws_secret_access_key=None
 
         # Determine which cluster template will be used
-        try:
-            if args.cluster_template is not None:
-                self.__cluster_template = args.cluster_template
-            else:
-                if __args_func == 'update':
-                    self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
-                                                               self.aws_secret_access_key, self.args.cluster_name)
+        if __args_func == 'start':
+            # Starting a cluster is unique in that we would want to prevent the
+            # customer from inadvertently using a different template than what
+            # the cluster was created with, so we do not support the -t
+            # parameter. We always get the template to use from CloudFormation.
+            self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
+                                        self.aws_secret_access_key, self.args.cluster_name)
+        else:
+            try:
+                if args.cluster_template is not None:
+                    self.__cluster_template = args.cluster_template
                 else:
-                    self.__cluster_template = __config.get('global', 'cluster_template')
-        except AttributeError:
-            self.__cluster_template = __config.get('global', 'cluster_template')
+                    if __args_func == 'update':
+                        self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
+                                                                   self.aws_secret_access_key, self.args.cluster_name)
+                    else:
+                        self.__cluster_template = __config.get('global', 'cluster_template')
+            except AttributeError:
+                self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
         self.parameters.append(('CLITemplate',self.__cluster_template))
 

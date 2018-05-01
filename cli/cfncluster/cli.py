@@ -128,8 +128,6 @@ def main():
     pstart = subparsers.add_parser('start', help='start the compute-fleet that has been stopped')
     pstart.add_argument("cluster_name", type=str, default=None,
                         help='starts the compute-fleet of the provided cluster name.')
-    pstart.add_argument("--reset-desired", "-rd", action='store_true', dest="reset_desired", default=False,
-                         help='Set the ASG desired capacity to initial config values.')
     pstart.set_defaults(func=start)
 
     pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for debugging/development')

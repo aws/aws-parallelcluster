@@ -90,15 +90,19 @@ optional arguments:
 start
 =====
 
-Starts a cluster. This sets Auto Scaling Group parameters to :code:`min/max/desired = 0/max_queue_size/0` where `max_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_ defaults to 10. If you specify the :code:`--reset-desired` flag, the :code:`min/desired` values will be set to the `initial_queue_size <https://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_.
+Starts a cluster. This sets the Auto Scaling Group parameters to either the
+initial configuration values (`max_queue_size
+<https://cfncluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_
+and `initial_queue_size
+<https://cfncluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_)
+from the template that was used to create the cluster or to the configuration
+values that were used to update the cluster since creation.
 
 positional arguments:
   cluster_name          starts the compute-fleet of the provided cluster name.
 
 optional arguments:
   -h, --help            show this help message and exit
-  --reset-desired, -rd  Set the ASG desired capacity to initial config values. 
-
 
 ::
 

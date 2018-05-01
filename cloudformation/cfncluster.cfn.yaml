@@ -529,7 +529,7 @@ Parameters:
     Description: ID of the Subnet you want to provision the Compute Servers into
     Type: String
     Default: NONE
-    AllowedPattern: (NONE|^subnet-[0-9a-z]{8}$)
+    AllowedPattern: (NONE|^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$)
   ScalingThreshold:
     Description: Threshold for triggering CloudWatch ScaleUp action
     Type: String
@@ -752,7 +752,7 @@ Parameters:
       to NONE
     Type: String
     Default: NONE
-    AllowedPattern: (NONE|^sg-[0-9a-z]{8}$)
+    AllowedPattern: (NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)
   CWLRegion:
     Description: CloudWatch Logs region
     Type: String
@@ -814,7 +814,7 @@ Parameters:
     Description: Existing VPC security group Id
     Type: String
     Default: NONE
-    AllowedPattern: (NONE|^sg-[0-9a-z]{8}$)
+    AllowedPattern: (NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)
   EBSVolumeId:
     Description: Existing EBS volume Id
     Type: String
