@@ -105,7 +105,7 @@ def create(args):
                         logger.info("  - %s %s %s" %
                                     (event.resource_type, event.logical_resource_id,
                                      event.resource_status_reason))
-
+            logger.info('')
             outputs = cfnconn.describe_stacks(stack)[0].outputs
             for output in outputs:
                 logger.info(output)
@@ -496,7 +496,7 @@ def delete(args):
                 logger.critical(e.message)
                 sys.stdout.flush()
             else:
-                logger.info('Cluster deleted successfully.')
+                logger.info('\nCluster deleted successfully.')
             sys.exit(0)
         else:
             raise e
