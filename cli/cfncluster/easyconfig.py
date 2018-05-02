@@ -47,7 +47,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
     if var == '':
         return default_value
     else:
-        return var
+        return var.strip()
 
 def get_regions():
     regions = boto.ec2.regions()
