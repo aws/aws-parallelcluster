@@ -187,7 +187,7 @@ master_subnet_id = subnet-
 # Period to measure ScalingThreshold
 # (defaults to 60 for default template)
 #scaling_period = 60
-# Period to measure ScalingThreshold
+# Number of periods to measure ScalingThreshold
 # (defaults to 2 for default template)
 #scaling_evaluation_periods = 2
 # Amount of time in seconds to wait before attempting further scaling actions
