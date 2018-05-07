@@ -75,7 +75,7 @@ key_name = mykey
 # Cluster placement group. This placement group must already exist.
 # (defaults to NONE for the default template)
 #placement_group = NONE
-# Cluster placment logic. This enables the whole cluster or only compute to use the placement group
+# Cluster placement logic. This enables the whole cluster or only compute to use the placement group
 # (defaults to cluster in the default template)
 #placement = cluster
 # Path/mountpoint for ephemeral drives
