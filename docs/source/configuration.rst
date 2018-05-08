@@ -379,7 +379,7 @@ VPC Configuration Settings::
 
 vpc_id
 """"""
-ID of the VPC you want to provision cluster into.::
+ID of the VPC you want to provision cluster into. ::
 
     vpc_id = vpc-xxxxxx
 
