@@ -345,7 +345,7 @@ def set_asg_limits(asg, min, max, desired):
     asg.desired_capacity = desired
     try:
         return asg.update()
-    except:
+    except boto.exception.BotoServerError as e:
         raise e
 
 def get_asg_ids(stack, config):

@@ -289,7 +289,7 @@ base_os
 """""""
 OS type used in the cluster
  
-Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404
+Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
 Note: The base_os determines the username used to log into the cluster.  
 
@@ -379,7 +379,7 @@ VPC Configuration Settings::
 
 vpc_id
 """"""
-ID of the VPC you want to provision cluster into.::
+ID of the VPC you want to provision cluster into. ::
 
     vpc_id = vpc-xxxxxx
 
