@@ -941,7 +941,7 @@
     "ScalingThreshold2" : {
       "Description" : "Threshold for triggering CloudWatch ScaleUp2 action",
       "Type" : "String",
-      "Default" : "200"
+      "Default" : "10"
     },
     "ScalingCooldown" : {
       "Description" : "Period in seconds to wait before allowing further scaling actions",
