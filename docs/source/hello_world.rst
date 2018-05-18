@@ -41,7 +41,7 @@ You'll see some messages on your screen about the cluster creating.  When it's f
         Output:"GangliaPrivateURL"="http://192.168.x.x/ganglia/"
         Output:"GangliaPublicURL"="http://54.148.x.x/ganglia/"
 
-The message "CREATE_COMPLETE" shows that the cluster created sucessfully.  It also provided us with the public and private IP addresses of our master node.  We'll need this IP to log in.
+The message "CREATE_COMPLETE" shows that the cluster created successfully.  It also provided us with the public and private IP addresses of our master node.  We'll need this IP to log in.
 
 Logging into your Master instance
 =================================
@@ -100,4 +100,4 @@ Here, we see our job script, an "e1" and "o1" file.  Since the e1 file is empty,
         $ cat hellojob.sh.o1
         Hello World from ip-192-168-1-125
 
-We can see that our job sucessfully ran on instance "ip-192-168-1-125".
+We can see that our job successfully ran on instance "ip-192-168-1-125".

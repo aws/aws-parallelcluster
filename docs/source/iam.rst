@@ -15,7 +15,7 @@ When using defaults, during cluster launch an EC2 IAM Role is created by the clu
 Using an existing EC2 IAM role
 ------------------------------
 
-When using CfnCluster with an existing EC2 IAM role, you must first define the IAM policy and role before attempting to launch the cluster. Typically the reason for using an exisiting EC2 IAM role within CfnCluster is to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 iam role and the CfnCluster IAM user. You should create both as individual policies in IAM and then attach to the approiate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
+When using CfnCluster with an existing EC2 IAM role, you must first define the IAM policy and role before attempting to launch the cluster. Typically the reason for using an exisiting EC2 IAM role within CfnCluster is to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 iam role and the CfnCluster IAM user. You should create both as individual policies in IAM and then attach to the appropriate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
 
 CfnClusterInstancePolicy
 ------------------------

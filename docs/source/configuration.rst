@@ -58,7 +58,7 @@ We highly recommend use of the environment, EC2 IAM Roles, or storing credential
     aws_access_key_id = #your_aws_access_key_id
     aws_secret_access_key = #your_secret_access_key
 
-    # Defaults to us-east-1 if not defined in enviornment or below
+    # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
 
 .. _cluster_definition:
@@ -83,9 +83,9 @@ template_url
 """"""""""""
 Overrides the path to the cloudformation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json``. ::
+Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json``. ::
 
-    template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
+    template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
 
 compute_instance_type
 """""""""""""""""""""
@@ -105,7 +105,7 @@ This defaults to t2.micro for default template. ::
 
 initial_queue_size
 """"""""""""""""""
-The inital number of EC2 instances to launch as compute nodes in the cluster.
+The initial number of EC2 instances to launch as compute nodes in the cluster.
 
 The default is 2 for default template. ::
 
@@ -239,7 +239,7 @@ Defaults to NONE for the default template. More information on placement groups 
 
 placement
 """""""""
-Cluster placment logic. This enables the whole cluster or only compute to use the placement group.
+Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
  
 Defaults to cluster in the default template. ::
 
@@ -289,7 +289,7 @@ base_os
 """""""
 OS type used in the cluster
  
-Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404
+Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
 Note: The base_os determines the username used to log into the cluster.  
 
@@ -379,7 +379,7 @@ VPC Configuration Settings::
 
 vpc_id
 """"""
-ID of the VPC you want to provision cluster into.::
+ID of the VPC you want to provision cluster into. ::
 
     vpc_id = vpc-xxxxxx
 

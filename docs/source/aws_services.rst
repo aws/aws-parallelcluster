@@ -19,28 +19,28 @@ The following Amazon Web Services (AWS) services are used in CfnCluster.
 AWS CloudFormation
 ------------------
 
-AWS CloudFormation is the core service used by CfnCluster. Each cluster is representated as a stack. All resources required by the cluster are defined within the CfnCluster CloudFormation template. CfnCluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
+AWS CloudFormation is the core service used by CfnCluster. Each cluster is represented as a stack. All resources required by the cluster are defined within the CfnCluster CloudFormation template. CfnCluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
 
 For more details about AWS CloudFormation, see http://aws.amazon.com/cloudformation/
 
 AWS Identity and Access Management (IAM)
 ----------------------------------------
 
-IAM is used within CfnCluster to provide an Amazon EC2 IAM Role for the instances. This role is a least privilged role specifically created for each cluster. CfnCluster instances are given access only to the specific API calls that are required to deploy and manage the cluster. 
+IAM is used within CfnCluster to provide an Amazon EC2 IAM Role for the instances. This role is a least privileged role specifically created for each cluster. CfnCluster instances are given access only to the specific API calls that are required to deploy and manage the cluster.
 
 For more details about AWS Identity and Access Management, see http://aws.amazon.com/iam/
 
 Amazon SNS
 ----------
 
-Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance lauches or terminates in an Autoscaling Group. Within CfnCluster, the Amazon SNS topic for the Autoscaling Group is subscribed to an Amazon SQS queue.
+Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance launches or terminates in an Autoscaling Group. Within CfnCluster, the Amazon SNS topic for the Autoscaling Group is subscribed to an Amazon SQS queue.
 
 For more details about Amazon SNS, see http://aws.amazon.com/sns/
 
 Amazon SQS
 ----------
 
-Amazon Simple Queuing Service is used to hold notifications(messages) from Auto Scaling, sent through Amazon SNS and notifications from the ComputeFleet instanes. This decouples the sending of notifications from the receiving and allows the Master to handle them through polling. The MasterServer runs Amazon SQSwatcher and polls the queue. AutoScaling and the ComputeFleet instanes post messages to the queue.
+Amazon Simple Queuing Service is used to hold notifications(messages) from Auto Scaling, sent through Amazon SNS and notifications from the ComputeFleet instances. This decouples the sending of notifications from the receiving and allows the Master to handle them through polling. The MasterServer runs Amazon SQSwatcher and polls the queue. AutoScaling and the ComputeFleet instances post messages to the queue.
 
 For more details about Amazon SQS, see http://aws.amazon.com/sqs/
 
@@ -61,7 +61,7 @@ For more details about Auto Scaling, see http://aws.amazon.com/autoscaling/
 Amazon EBS
 ----------
 
-Amazon EBS provides the persistent storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an exisiting EBS snapshot.
+Amazon EBS provides the persistent storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an existing EBS snapshot.
 
 For more details about Amazon EBS, see http://aws.amazon.com/ebs/
 
