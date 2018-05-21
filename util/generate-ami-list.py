@@ -18,51 +18,40 @@
 #
 # usage: ./generate-ami-list.py --version <cfncluster-version> --date <release-date>
 
+import argparse
 import boto.ec2
 import json
-import argparse
+from collections import OrderedDict
 
 owners = ["247102896272"]
-distros = {"alinux": "amzn", "centos6": "centos6", "centos7": "centos7", "ubuntu1404": "ubuntu-1404", "ubuntu1604": "ubuntu-1604"}
-
-amis_json_path = "amis.json"
-amis_txt_path = "amis.txt"
+distros = OrderedDict([("alinux", "amzn"), ("centos6", "centos6"), ("centos7", "centos7"), ("ubuntu1404", "ubuntu-1404"), ("ubuntu1604", "ubuntu-1604")])
 
 
-def get_ami_list(date, version):
+def get_ami_list(regions, date, version):
     amis_json = {}
 
-    # get all regions
-    regions = sorted(r.name for r in boto.ec2.regions())
     for region_name in regions:
         try:
             conn = boto.ec2.connect_to_region(region_name)
             images = conn.get_all_images(owners=owners, filters={"name": "cfncluster-" + version + "*" + date})
 
-            amis = {}
+            amis = OrderedDict()
             for image in images:
                 for key, value in distros.items():
                     if value in image.name:
                         amis[key] = image.id
 
-            ordered_amis = {}
-            for key in sorted(amis):
-                ordered_amis[key] = amis[key]
-
-            amis_json[region_name] = ordered_amis
-
+            amis_json[region_name] = amis
         except:
             pass
 
     return amis_json
 
 
-def convert_json_to_txt(amis_json):
+def convert_json_to_txt(regions, amis_json):
     amis_txt = ""
-    for key, value in sorted(distros.items()):
+    for key, value in distros.items():
         amis_txt += ("# " + key + "\n")
-
-        regions = sorted(r.name for r in boto.ec2.regions())
         for region_name in regions:
             try:
                 amis_txt += (region_name + ": " + amis_json[region_name][key] + "\n")
@@ -75,22 +64,27 @@ def convert_json_to_txt(amis_json):
 if __name__ == '__main__':
     # parse inputs
     parser = argparse.ArgumentParser(description='Get public cfncluster instances and generate a json and txt file')
-    parser.add_argument('--version', type=str, help='release version e.g. 1.4.2', required=True)
-    parser.add_argument('--date', type=str, help='release date [timestamp] e.g. 201801112350', required=True)
+    parser.add_argument('--version', type=str, help='release version (e.g. 1.4.2)', required=True)
+    parser.add_argument('--date', type=str, help='release date [timestamp] (e.g. 201801112350)', required=True)
+    parser.add_argument('--json-file', type=str, help='json output file path', required=False, default="amis.json")
+    parser.add_argument('--txt-file', type=str, help='txt output file path', required=False, default="amis.txt")
     args = parser.parse_args()
 
+    # get all regions
+    regions = sorted(r.name for r in boto.ec2.regions())
+
     # get ami list
-    amis_json = get_ami_list(date=args.date, version=args.version)
+    amis_json = get_ami_list(regions=regions, date=args.date, version=args.version)
 
     # write amis.json file
-    amis_json_file = open(amis_json_path, "w")
+    amis_json_file = open(args.json_file, "w")
     json.dump(amis_json, amis_json_file, indent=2, sort_keys=True)
     amis_json_file.close()
 
     # convert json to txt
-    amis_txt = convert_json_to_txt(amis_json)
+    amis_txt = convert_json_to_txt(regions=regions, amis_json=amis_json)
 
     # write amis.txt file
-    amis_txt_file = open(amis_txt_path, "w")
+    amis_txt_file = open(args.txt_file, "w")
     amis_txt_file.write("%s" % amis_txt)
     amis_txt_file.close()
