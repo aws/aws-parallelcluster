@@ -18,10 +18,14 @@
 #
 # usage: ./generate-ami-list.py --version <cfncluster-version> --date <release-date>
 
-import argparse
+
 import boto.ec2
+from boto.exception import EC2ResponseError
+import argparse
 import json
+import sys
 from collections import OrderedDict
+
 
 owners = ["247102896272"]
 distros = OrderedDict([("alinux", "amzn"), ("centos6", "centos6"), ("centos7", "centos7"), ("ubuntu1404", "ubuntu-1404"), ("ubuntu1604", "ubuntu-1604")])
@@ -41,8 +45,15 @@ def get_ami_list(regions, date, version):
                     if value in image.name:
                         amis[key] = image.id
 
-            amis_json[region_name] = amis
-        except:
+            if len(amis) == 0:
+                raise SystemExit
+            else:
+                amis_json[region_name] = amis
+
+        except SystemExit:
+            sys.exit("Error: there are no AMIs in the selected region (%s)" % region_name)
+        except EC2ResponseError:
+            # skip regions on which we are not authorized (cn-north-1 and us-gov-west-1)
             pass
 
     return amis_json
@@ -55,7 +66,8 @@ def convert_json_to_txt(regions, amis_json):
         for region_name in regions:
             try:
                 amis_txt += (region_name + ": " + amis_json[region_name][key] + "\n")
-            except:
+            except KeyError:
+                # skip for regions without AMIs
                 pass
 
     return amis_txt
