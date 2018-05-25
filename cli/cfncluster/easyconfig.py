@@ -16,8 +16,7 @@ standard_library.install_aliases()
 from builtins import input
 import configparser
 import sys
-import boto.ec2
-import boto.vpc
+import boto3
 import os
 import logging
 import stat
@@ -50,10 +49,11 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
         return var.strip()
 
 def get_regions():
-    regions = boto.ec2.regions()
+    ec2 = boto3.client('ec2')
+    regions = ec2.describe_regions().get('Regions')
     names = []
     for region in regions:
-        names.append(region.name)
+        names.append(region.get('RegionName'))
     return names
 
 def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
@@ -64,26 +64,17 @@ def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
     else:
         region = 'us-east-1'
 
-    conn = boto.ec2.connect_to_region(region,aws_access_key_id=aws_access_key_id,aws_secret_access_key=aws_secret_access_key)
-    return conn
-
-def vpc_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
-    if aws_region_name:
-        region = aws_region_name
-    elif os.environ.get('AWS_DEFAULT_REGION'):
-        region = os.environ.get('AWS_DEFAULT_REGION')
-    else:
-        region = 'us-east-1'
-
-    conn = boto.vpc.connect_to_region(region,aws_access_key_id=aws_access_key_id,aws_secret_access_key=aws_secret_access_key)
-    return conn
+    ec2 = boto3.client('ec2', region_name=region,
+                       aws_access_key_id=aws_access_key_id,
+                       aws_secret_access_key=aws_secret_access_key)
+    return ec2
 
 def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
     conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
-    keypairs = conn.get_all_key_pairs()
+    keypairs = conn.describe_key_pairs()
     keynames = []
-    for key in keypairs:
-        keynames.append(key.name)
+    for key in keypairs.get('KeyPairs'):
+        keynames.append(key.get('KeyName'))
 
     if not keynames:
         print('ERROR: No keys found in region ' + aws_region_name)
@@ -93,29 +84,29 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
     return keynames
 
 def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
-    conn = vpc_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
-    vpcs = conn.get_all_vpcs()
+    conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
+    vpcs = conn.describe_vpcs()
     vpcids = []
-    for vpc in vpcs:
-        vpcids.append(vpc.id)
+    for vpc in vpcs.get('Vpcs'):
+        vpcids.append(vpc.get('VpcId'))
 
     if not vpcids:
         print('ERROR: No vpcs found in region ' + aws_region_name)
-        print('Please create an EC2 vpcpair before continuing')
+        print('Please create an EC2 vpc pair before continuing')
         sys.exit(1)
 
     return vpcids
 
 def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id):
-    conn = vpc_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
-    subnets = conn.get_all_subnets(filters=[('vpcId', vpc_id)])
+    conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
+    subnets = conn.describe_subnets(Filters=[{'Name': 'vpcId', 'Values': [vpc_id]}])
     subnetids = []
-    for subnet in subnets:
-        subnetids.append(subnet.id)
+    for subnet in subnets.get('Subnets'):
+        subnetids.append(subnet.get('SubnetId'))
 
     if not subnetids:
         print('ERROR: No subnets found in region ' + aws_region_name)
-        print('Please create an EC2 subnetpair before continuing')
+        print('Please create an EC2 subnet pair before continuing')
         sys.exit(1)
 
     return subnetids
