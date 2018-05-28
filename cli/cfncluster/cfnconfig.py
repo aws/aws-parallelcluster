@@ -331,7 +331,7 @@ class CfnClusterConfig(object):
         try:
             if self.args.extra_parameters is not None:
                 self.__temp_dict = dict(self.parameters)
-                self.__temp_dict.append(dict(self.args.extra_parameters))
+                self.__temp_dict.update(dict(self.args.extra_parameters))
                 self.__dictlist = []
                 for key, value in self.__temp_dict.items():
                     temp = [str(key),str(value)]
