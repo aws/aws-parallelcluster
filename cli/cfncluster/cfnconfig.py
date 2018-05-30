@@ -223,7 +223,7 @@ class CfnClusterConfig(object):
                                       master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
                                       base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName',None),extra_json=('ExtraJson',None),
                                       custom_chef_cookbook=('CustomChefCookbook',None),custom_chef_runlist=('CustomChefRunList',None),
-                                      additional_cfn_template=('AdditionalCfnTemplate',None)
+                                      additional_cfn_template=('AdditionalCfnTemplate',None),custom_node_package=('CustomNodePackage', None)
                                       )
 
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null

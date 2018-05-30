@@ -59,6 +59,7 @@ Metadata:
           - CWLLogGroup
           - CustomChefRunList
           - CustomChefCookbook
+          - CustomNodePackage
           - ExtraJson
           - Tenancy
           - EphemeralKMSKeyId
@@ -174,6 +175,8 @@ Metadata:
         default: extra_json
       CustomChefCookbook:
         default: custom_chef_cookbook
+      CustomNodePackage:
+        default: custom_node_package
       CustomChefRunList:
         default: custom_chef_runlist
       EBSSnapshotId:
@@ -768,6 +771,11 @@ Parameters:
   CustomChefCookbook:
     Description: URL of custom cookbook that will override the default. This will
       be unpacked and then dependencies resolved with Berkshelf.
+    Type: String
+    Default: NONE
+  CustomNodePackage:
+    Description: URL of custom cfncluster node package that will override the default. This will
+      be unpacked and then installed on the node.
     Type: String
     Default: NONE
   ExtraJson:
@@ -1657,6 +1665,7 @@ Resources:
                   cfn_cluster_user: !FindInMap [OSFeatures, !Ref 'BaseOS', User]
                   cfn_ddb_table: !Ref 'DynamoDBTable'
                   cfn_sqs_queue: !GetAtt 'SQS.QueueName'
+                  custom_node_package: !Ref 'CustomNodePackage'
                 run_list: !If [UseCustomRunList, !Ref 'CustomChefRunList', !Join [
                     '', ['recipe[cfncluster::', !Ref 'Scheduler', '_config]']]]
             /etc/chef/client.rb:
@@ -2174,6 +2183,7 @@ Resources:
                   cfn_master: !GetAtt 'MasterServer.PrivateDnsName'
                   cfn_node_type: ComputeFleet
                   cfn_cluster_user: !FindInMap [OSFeatures, !Ref 'BaseOS', User]
+                  custom_node_package: !Ref 'CustomNodePackage'
                 run_list: !If [UseCustomRunList, !Ref 'CustomChefRunList', !Join [
                     '', ['recipe[cfncluster::', !Ref 'Scheduler', '_config]']]]
             /etc/chef/client.rb:
