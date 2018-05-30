@@ -75,7 +75,7 @@ key_name = mykey
 # Cluster placement group. This placement group must already exist.
 # (defaults to NONE for the default template)
 #placement_group = NONE
-# Cluster placment logic. This enables the whole cluster or only compute to use the placement group
+# Cluster placement logic. This enables the whole cluster or only compute to use the placement group
 # (defaults to cluster in the default template)
 #placement = cluster
 # Path/mountpoint for ephemeral drives
@@ -187,7 +187,7 @@ master_subnet_id = subnet-
 # Period to measure ScalingThreshold
 # (defaults to 60 for default template)
 #scaling_period = 60
-# Period to measure ScalingThreshold
+# Number of periods to measure ScalingThreshold
 # (defaults to 2 for default template)
 #scaling_evaluation_periods = 2
 # Amount of time in seconds to wait before attempting further scaling actions

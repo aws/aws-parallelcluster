@@ -136,7 +136,7 @@ def update(args):
             temp_resources.extend(resources)
             if not resources.next_token:
                 break
-            resources = cfnconn.describe_stack_resources(stack, next_token=resources.next_token)
+            resources = cfnconn.describe_stack_resources(stack_name, next_token=resources.next_token)
         resources = temp_resources
         asg = [r for r in resources if r.logical_resource_id == 'ComputeFleet'][0].physical_resource_id
 
@@ -247,7 +247,7 @@ def get_master_server_id(stack_name, config):
         temp_resources.extend(resources)
         if not resources.next_token:
             break
-        resources = cfnconn.describe_stack_resources(stack, next_token=resources.next_token)
+        resources = cfnconn.describe_stack_resources(stack_name, next_token=resources.next_token)
 
     return [r.physical_resource_id for r in resources if r.logical_resource_id == 'MasterServer'][0]
 
