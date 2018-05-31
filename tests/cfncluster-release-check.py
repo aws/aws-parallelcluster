@@ -99,12 +99,12 @@ def run_test(region, distro, scheduler):
         dump = subprocess.check_output(['cfncluster', 'status', testname], stderr=stderr_f)
         dump_array = dump.splitlines()
         for line in dump_array:
-             m = re.search('MasterPublicIP"="(.+?)"', line)
-             if m:
-                 master_ip = m.group(1)
+            m = re.search('MasterPublicIP"="(.+?)"', line)
+            if m:
+                master_ip = m.group(1)
         if master_ip == '':
-             print('!! %s: Master IP not found; aborting !!' % (testname))
-             raise Exception('Master IP not found')
+            print('!! %s: Master IP not found; aborting !!' % (testname))
+            raise Exception('Master IP not found')
         print("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
