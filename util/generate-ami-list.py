@@ -4,65 +4,99 @@
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not
 # use this file except in compliance with the License. A copy of the License
-#  is located at
+# is located at
 #
 # http://aws.amazon.com/apache2.0/
 #
 # or in the "LICENSE.txt" file accompanying this file. This file is
-#  distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-#  KIND, express or implied. See the License for the specific language
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, express or implied. See the License for the specific language
 # governing permissions and limitations under the License.
 #
 #
-# Generate a list of AMIs softed by base distro and release tag
+# Search for CfnCluster public AMIs and generate a list in json and txt format
 #
-# usage: ./generate-ami-list.py <tag1> <tag2> <tag3>
+# usage: ./generate-ami-list.py --version <cfncluster-version> --date <release-date>
 
-import re
+
+import boto.ec2
+from boto.exception import EC2ResponseError
 import argparse
-import tempfile
-import os
-import shutil
-from git import Repo
+import json
+import sys
+from collections import OrderedDict
 
-repo_url = 'https://github.com/awslabs/cfncluster.git'
 
-def build_release_ami_list(scratch_dir, tag):
-    repo_dir = os.path.join(scratch_dir, "cfncluster")
+owners = ["247102896272"]
+distros = OrderedDict([("alinux", "amzn"), ("centos6", "centos6"), ("centos7", "centos7"), ("ubuntu1404", "ubuntu-1404"), ("ubuntu1604", "ubuntu-1604")])
 
-    if os.path.isdir(repo_dir):
-        repo = Repo(repo_dir)
-    else:
-        repo = Repo.clone_from(repo_url, repo_dir)
-    repo.git.checkout(tag)
 
-    active_distro = None
-    amis = {}
+def get_ami_list(regions, date, version):
+    amis_json = {}
 
-    file = open(os.path.join(repo_dir, 'amis.txt'), 'r')
-    for line in file:
-        m = re.match('^#\s*(.*)', line)
-        if not m == None:
-            active_distro = m.groups()[0]
-            amis[active_distro] = []
-        else:
-            m = re.match('.*:\s*(ami-[a-zA-Z0-9]*)', line)
-            amis[active_distro].append(m.groups()[0])
+    for region_name in regions:
+        try:
+            conn = boto.ec2.connect_to_region(region_name)
+            images = conn.get_all_images(owners=owners, filters={"name": "cfncluster-" + version + "*" + date})
 
-    return amis
+            amis = OrderedDict()
+            for image in images:
+                for key, value in distros.items():
+                    if value in image.name:
+                        amis[key] = image.id
+
+            if len(amis) == 0:
+                raise SystemExit
+            else:
+                amis_json[region_name] = amis
+
+        except SystemExit:
+            sys.exit("Error: there are no AMIs in the selected region (%s)" % region_name)
+        except EC2ResponseError:
+            # skip regions on which we are not authorized (cn-north-1 and us-gov-west-1)
+            pass
+
+    return amis_json
+
+
+def convert_json_to_txt(regions, amis_json):
+    amis_txt = ""
+    for key, value in distros.items():
+        amis_txt += ("# " + key + "\n")
+        for region_name in regions:
+            try:
+                amis_txt += (region_name + ": " + amis_json[region_name][key] + "\n")
+            except KeyError:
+                # skip for regions without AMIs
+                pass
+
+    return amis_txt
+
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate list of AMIs for audit')
-    parser.add_argument('tags', type = str, nargs='*',
-                        help = 'List of tags for which to pull amis')
+    # parse inputs
+    parser = argparse.ArgumentParser(description='Get public cfncluster instances and generate a json and txt file')
+    parser.add_argument('--version', type=str, help='release version (e.g. 1.4.2)', required=True)
+    parser.add_argument('--date', type=str, help='release date [timestamp] (e.g. 201801112350)', required=True)
+    parser.add_argument('--json-file', type=str, help='json output file path', required=False, default="amis.json")
+    parser.add_argument('--txt-file', type=str, help='txt output file path', required=False, default="amis.txt")
     args = parser.parse_args()
 
-    scratch_dir = tempfile.mkdtemp()
+    # get all regions
+    regions = sorted(r.name for r in boto.ec2.regions())
 
-    try:
-        for tag in sorted(args.tags):
-            amis = build_release_ami_list(scratch_dir=scratch_dir, tag=tag)
-            for distro in sorted(amis):
-                print('%s %s: %s' % (tag, distro, " ".join(amis[distro])))
-    finally:
-        shutil.rmtree(scratch_dir)
+    # get ami list
+    amis_json = get_ami_list(regions=regions, date=args.date, version=args.version)
+
+    # write amis.json file
+    amis_json_file = open(args.json_file, "w")
+    json.dump(amis_json, amis_json_file, indent=2, sort_keys=True)
+    amis_json_file.close()
+
+    # convert json to txt
+    amis_txt = convert_json_to_txt(regions=regions, amis_json=amis_json)
+
+    # write amis.txt file
+    amis_txt_file = open(args.txt_file, "w")
+    amis_txt_file.write("%s" % amis_txt)
+    amis_txt_file.close()
