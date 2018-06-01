@@ -110,9 +110,11 @@ def run_test(region, distro, scheduler):
         print("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
-        subprocess.check_call(['scp', 'cluster-check.sh', '%s@%s:.' % (username, master_ip)],
+        subprocess.check_call(['scp', '-o', 'StrictHostKeyChecking=no',
+                               'cluster-check.sh', '%s@%s:.' % (username, master_ip)],
                               stdout=stdout_f, stderr=stderr_f)
-        subprocess.check_call(['ssh', '%s@%s' % (username, master_ip),
+        subprocess.check_call(['ssh', '-o', 'StrictHostKeyChecking=no',
+                               '%s@%s' % (username, master_ip),
                                '/bin/bash cluster-check.sh %s' % (scheduler)],
                               stdout=stdout_f, stderr=stderr_f)
     except Exception as e:
