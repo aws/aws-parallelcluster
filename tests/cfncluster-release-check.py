@@ -19,10 +19,12 @@
 # against limits in each region, the number of simultaneously built
 # clusters in each region is a configuration parameter.
 #
-# NOTE: To simplify this script, at least one subnet in every region
-# to be tested must have a resource tag named "CfnClusterTestSubnet"
-# (value does not matter).  That subnet will be used as the launch
-# target for the cluster.
+# NOTE:
+# - This script requires python2
+# - To simplify this script, at least one subnet in every region
+#   to be tested must have a resource tag named "CfnClusterTestSubnet"
+#   (value does not matter). That subnet will be used as the launch
+#   target for the cluster.
 
 import os
 import sys
