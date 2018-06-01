@@ -139,14 +139,13 @@ def test_runner(region, q):
     global failure
     global results_lock
 
-    retval = 0
-
     while True:
         item = q.get()
 
         # just in case we miss an exception in run_test, don't abort everything...
         try:
-            retval = run_test(region=region, distro=item['distro'], scheduler=item['scheduler'])
+            run_test(region=region, distro=item['distro'], scheduler=item['scheduler'])
+            retval = 0
         except Exception as e:
             print("Unexpected exception %s: %s" % (str(type(e)), str((e))))
             retval = 1
