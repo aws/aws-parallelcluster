@@ -75,6 +75,7 @@
             "CWLLogGroup",
             "CustomChefRunList",
             "CustomChefCookbook",
+            "CustomNodePackage",
             "ExtraJson",
             "Tenancy",
             "EphemeralKMSKeyId",
@@ -246,6 +247,9 @@
         },
         "CustomChefCookbook" : {
           "default" : "custom_chef_cookbook"
+        },
+        "CustomNodePackage" : {
+          "default" : "custom_node_package"
         },
         "CustomChefRunList" : {
           "default" : "custom_chef_runlist"
@@ -1003,6 +1007,11 @@
     },
     "CustomChefCookbook" : {
       "Description" : "URL of custom cookbook that will override the default. This will be unpacked and then dependencies resolved with Berkshelf.",
+      "Type" : "String",
+      "Default" : "NONE"
+    },
+    "CustomNodePackage" : {
+      "Description" : "URL of custom cfncluster node package that will override the default. This will be unpacked and then installed on the node.",
       "Type" : "String",
       "Default" : "NONE"
     },
@@ -2693,6 +2702,9 @@
                         "SQS",
                         "QueueName"
                       ]
+                    },
+                    "custom_node_package" : {
+                      "Ref" : "CustomNodePackage"
                     }
                   },
                   "run_list" : {
@@ -3392,6 +3404,9 @@
                         },
                         "User"
                       ]
+                    },
+                    "custom_node_package" : {
+                      "Ref" : "CustomNodePackage"
                     }
                   },
                   "run_list" : {
