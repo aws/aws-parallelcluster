@@ -15,8 +15,9 @@ CfnCluster ("cloud formation cluster") is a framework that deploys and maintains
     getting_started
     working
     configuration
-    functional    
+    functional
     tutorials
+    development
 
 Getting Started
 ---------------
