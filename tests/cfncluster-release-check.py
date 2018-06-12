@@ -92,7 +92,7 @@ def run_test(region, distro, scheduler, key_name):
     username = username_map[distro]
 
     try:
-        # buld the cluster
+        # build the cluster
         subprocess.check_call(['cfncluster', '--config', test_filename,
                                'create', testname],
                               stdout=stdout_f, stderr=stderr_f)
