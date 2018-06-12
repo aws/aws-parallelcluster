@@ -104,6 +104,7 @@ def run_test(region, distro, scheduler, key_name):
             m = re.search('MasterPublicIP"="(.+?)"', line)
             if m:
                 master_ip = m.group(1)
+                break
         if master_ip == '':
             print('!! %s: Master IP not found; aborting !!' % (testname))
             raise Exception('Master IP not found')
