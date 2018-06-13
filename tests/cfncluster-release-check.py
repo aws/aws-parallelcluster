@@ -240,3 +240,5 @@ if __name__ == '__main__':
     # print status...
     print("==> Success: %d" % (success))
     print("==> Failure: %d" % (failure))
+    if failure != 0:
+        exit(1)
