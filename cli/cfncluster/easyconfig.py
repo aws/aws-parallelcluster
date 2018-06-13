@@ -77,8 +77,8 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
         keynames.append(key.get('KeyName'))
 
     if not keynames:
-        print('ERROR: No keys found in region ' + aws_region_name)
-        print('Please create an EC2 keypair before continuing')
+        print('ERROR: No Key Pairs found in region ' + aws_region_name)
+        print('Please create an EC2 Key Pair before continuing')
         sys.exit(1)
 
     return keynames
@@ -91,8 +91,8 @@ def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
         vpcids.append(vpc.get('VpcId'))
 
     if not vpcids:
-        print('ERROR: No vpcs found in region ' + aws_region_name)
-        print('Please create an EC2 vpc pair before continuing')
+        print('ERROR: No VPCs found in region ' + aws_region_name)
+        print('Please create a VPC before continuing')
         sys.exit(1)
 
     return vpcids
@@ -105,8 +105,8 @@ def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_
         subnetids.append(subnet.get('SubnetId'))
 
     if not subnetids:
-        print('ERROR: No subnets found in region ' + aws_region_name)
-        print('Please create an EC2 subnet pair before continuing')
+        print('ERROR: No Subnets found in region ' + aws_region_name)
+        print('Please create a VPC Subnet before continuing')
         sys.exit(1)
 
     return subnetids
