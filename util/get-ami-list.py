@@ -47,8 +47,15 @@ def build_release_ami_list(scratch_dir, tag):
             active_distro = m.groups()[0]
             amis[active_distro] = []
         else:
-            m = re.match('.*:\s*(ami-[a-zA-Z0-9]*)', line)
-            amis[active_distro].append(m.groups()[0])
+            m = re.match('.*:?\s*(ami-[a-zA-Z0-9]*)', line)
+            if active_distro != None:
+                amis[active_distro].append(m.groups()[0])
+            else:
+                # In old tags, the amis.txt file doesn't contain the distro comment on top
+                # because centos6 only was supported
+                active_distro = "centos6"
+                amis[active_distro] = []
+                amis[active_distro].append(m.groups()[0])
 
     return amis
 
