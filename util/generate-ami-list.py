@@ -18,9 +18,8 @@
 #
 # usage: ./generate-ami-list.py --version <cfncluster-version> --date <release-date>
 
-
-import boto.ec2
-from boto.exception import EC2ResponseError
+import boto3
+from botocore.exceptions import ClientError
 import argparse
 import json
 import sys
@@ -36,23 +35,20 @@ def get_ami_list(regions, date, version):
 
     for region_name in regions:
         try:
-            conn = boto.ec2.connect_to_region(region_name)
-            images = conn.get_all_images(owners=owners, filters={"name": "cfncluster-" + version + "*" + date})
+            ec2 = boto3.client('ec2', region_name=region_name)
+            images = ec2.describe_images(Owners=owners, Filters=[{'Name': 'name', "Values": ["cfncluster-%s*%s" % (version, date)]}])
 
             amis = OrderedDict()
-            for image in images:
+            for image in images.get('Images'):
                 for key, value in distros.items():
-                    if value in image.name:
-                        amis[key] = image.id
+                    if value in image.get('Name'):
+                        amis[key] = image.get('ImageId')
 
             if len(amis) == 0:
-                raise SystemExit
+                print("Warning: there are no AMIs in the selected region (%s)" % region_name)
             else:
                 amis_json[region_name] = amis
-
-        except SystemExit:
-            sys.exit("Error: there are no AMIs in the selected region (%s)" % region_name)
-        except EC2ResponseError:
+        except ClientError:
             # skip regions on which we are not authorized (cn-north-1 and us-gov-west-1)
             pass
 
@@ -83,7 +79,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # get all regions
-    regions = sorted(r.name for r in boto.ec2.regions())
+    ec2 = boto3.client('ec2')
+    regions = sorted(r.get('RegionName') for r in ec2.describe_regions().get('Regions'))
 
     # get ami list
     amis_json = get_ami_list(regions=regions, date=args.date, version=args.version)

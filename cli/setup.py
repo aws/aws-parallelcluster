@@ -21,7 +21,7 @@ def read(fname):
 
 console_scripts = ['cfncluster = cfncluster.cli:main']
 version = "1.4.2"
-requires = ['boto>=2.48.0', 'awscli>=1.11.175', 'future>=0.16.0']
+requires = ['boto3>=1.7.33', 'awscli>=1.11.175', 'future>=0.16.0']
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it

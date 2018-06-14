@@ -1782,6 +1782,9 @@
       "eu-west-2" : {
         "arn" : "aws"
       },
+      "eu-west-3" : {
+        "arn" : "aws"
+      },
       "us-east-1" : {
         "arn" : "aws"
       },
@@ -1813,6 +1816,9 @@
         "arn" : "aws-us-gov"
       },
       "ap-northeast-2" : {
+        "arn" : "aws"
+      },
+      "ap-northeast-3" : {
         "arn" : "aws"
       },
       "ap-south-1" : {
@@ -1974,6 +1980,7 @@
             {
               "Sid" : "EC2",
               "Action" : [
+                "ec2:DescribeVolumes",
                 "ec2:AttachVolume",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
