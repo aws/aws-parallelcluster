@@ -25,6 +25,7 @@ import errno
 from . import cfnconfig
 
 logger = logging.getLogger('cfncluster.cfncluster')
+unsupported_regions = ['ap-northeast-3']
 
 def prompt(prompt, default_value=None, hidden=False, options=None):
     if hidden and default_value is not None:
@@ -51,10 +52,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
 def get_regions():
     ec2 = boto3.client('ec2')
     regions = ec2.describe_regions().get('Regions')
-    names = []
-    for region in regions:
-        names.append(region.get('RegionName'))
-    return names
+    return [region.get('RegionName') for region in regions if region.get('RegionName') not in unsupported_regions]
 
 def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
     if aws_region_name:
