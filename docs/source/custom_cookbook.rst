@@ -5,9 +5,9 @@ Setting Up a Custom CfnCluster Cookbook
 #######################################
 
 .. warning::
-    Using a custom CfnCluster Cookbook is not the recommended approach for customizing CfnCluster.
-
-Before reading any further, take a look at the :doc:`pre_post_install` section of the documentation to determine if the modifications you wish to make can be scripted and supported with future CfnCluster releases.
+    The following are instructions for use a custom version of the CfnCluster cookbook recipes.
+    This is an advanced method of customizing CfnCluster, with many hard to debug pitfalls.
+    The CfnCluster team highly recommends using :doc:`pre_post_install` scripts for customization, as post install hooks are generally easier to debug and more portable across releases of CfnCluster.
 
 Steps
 =====

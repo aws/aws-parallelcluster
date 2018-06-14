@@ -5,16 +5,16 @@ Setting Up an AMI Development Environment
 #########################################
 
 .. warning::
-    Building a custom AMI is not the recommended approach for customizing CfnCluster.
+    Below are instructions for building a custom AMI, potentially with custom version of the cookbook recipes to build CfnCluster AMIs.
+    This is an advanced method of customizing CfnCluster, with many hard to debug pitfalls.
+    The CfnCluster team highly recommends using :doc:`pre_post_install` scripts for customization, as post install hooks are generally easier to debug and more portable across releases of CfnCluster.
 
-    Once you build your own AMI, you will no longer receive updates or bug fixes with future releases of CfnCluster.  You will need to repeat the steps used to create your custom AMI with each new CfnCluster release.
-
-Before reading any further, take a look at the :doc:`pre_post_install` section of the documentation to determine if the modifications you wish to make can be scripted and supported with future CfnCluster releases.
+    You will need to repeat the steps used to create your custom AMI with each new CfnCluster release.
 
 Steps
 =====
 
-This guide is written assuming your OS is Ubuntu 14.04. If you don't have an Ubuntu machine you can easily get an `EC2 instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_ running Ubuntu. 
+This guide is written assuming your OS is Ubuntu 14.04. If you don't have an Ubuntu machine you can easily get an `EC2 instance <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html>`_ running Ubuntu.
 
 #.	:code:`sudo apt-get -y install build-essential git`
 #.	Go to https://downloads.chef.io/chef-dk, grab the latest version for your OS and install.
@@ -112,7 +112,7 @@ The next part of setting up your environment involves setting a lot of environme
 
 	::
 
-		export CFN_SQS_QUEUE=cfncluster-chef   			# create an SQS queue 
+		export CFN_SQS_QUEUE=cfncluster-chef   			# create an SQS queue
 
 #.	Create a dynamoDB table with hash key :code:`instanceId` type String and name it :code:`cfncluster-chef` then export the following:
 
@@ -129,7 +129,7 @@ The next part of setting up your environment involves setting a lot of environme
 #. If something isn't working you can run:
 
 	::
-		
+
 		kitchen diagnose all
 
 
@@ -147,7 +147,7 @@ Here's a script to do all of the above, just fill out and the fields and source 
 	export AWS_SECURITY_GROUP_ID=sg-XXXXXXXX
 	export AWS_IAM_PROFILE=CfnClusterEC2IAMRole  	# create role using IAM docs for CfnCluster
 	export KITCHEN_LOCAL_YAML=.kitchen.cloud.yml
-	export CFN_VOLUME=vol-XXXXXXXX  				# create 10G EBS volume in same AZ 
+	export CFN_VOLUME=vol-XXXXXXXX  				# create 10G EBS volume in same AZ
 	export AWS_STACK_NAME=cfncluster-test-kitchen
-	export CFN_SQS_QUEUE=cfncluster-chef   			# create an SQS queue 
-	export CFN_DDB_TABLE=cfncluster-chef 			# setup table as cfncluster-chef 
+	export CFN_SQS_QUEUE=cfncluster-chef   			# create an SQS queue
+	export CFN_DDB_TABLE=cfncluster-chef 			# setup table as cfncluster-chef
