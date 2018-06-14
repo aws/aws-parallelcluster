@@ -72,7 +72,7 @@ def convert_json_to_txt(regions, amis_json):
 if __name__ == '__main__':
     # parse inputs
     parser = argparse.ArgumentParser(description='Get public cfncluster instances and generate a json and txt file')
-    parser.add_argument('--version', type=str, help='release version (e.g. 1.4.2)', required=True)
+    parser.add_argument('--version', type=str, help='release version (e.g. 1.5.0)', required=True)
     parser.add_argument('--date', type=str, help='release date [timestamp] (e.g. 201801112350)', required=True)
     parser.add_argument('--json-file', type=str, help='json output file path', required=False, default="amis.json")
     parser.add_argument('--txt-file', type=str, help='txt output file path', required=False, default="amis.txt")

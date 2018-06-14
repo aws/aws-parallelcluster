@@ -92,18 +92,20 @@ def run_test(region, distro, scheduler, key_name):
     username = username_map[distro]
 
     try:
-        # buld the cluster
+        # build the cluster
         subprocess.check_call(['cfncluster', '--config', test_filename,
                                'create', testname],
                               stdout=stdout_f, stderr=stderr_f)
 
         # get the master ip, which means grepping through cfncluster status gorp
-        dump = subprocess.check_output(['cfncluster', 'status', testname], stderr=stderr_f)
+        dump = subprocess.check_output(['cfncluster', '--config', test_filename,
+                                        'status', testname], stderr=stderr_f)
         dump_array = dump.splitlines()
         for line in dump_array:
-            m = re.search('MasterPublicIP"="(.+?)"', line)
+            m = re.search('MasterPublicIP: (.+?)', line)
             if m:
                 master_ip = m.group(1)
+                break
         if master_ip == '':
             print('!! %s: Master IP not found; aborting !!' % (testname))
             raise Exception('Master IP not found')
@@ -238,3 +240,5 @@ if __name__ == '__main__':
     # print status...
     print("==> Success: %d" % (success))
     print("==> Failure: %d" % (failure))
+    if failure != 0:
+        exit(1)

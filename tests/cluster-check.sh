@@ -116,9 +116,9 @@ fi
 done=0
 while test $done = 0 ; do
     if test -f job1.done -a -f job2.done; then
-	done=1
+        done=1
     else
-	sleep 1
+        sleep 1
     fi
 done
 
