@@ -104,7 +104,7 @@ def create(args):
             logger.info('')
             outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('Outputs', [])
             for output in outputs:
-                logger.info("%s : %s" % (output.get('OutputKey'), output.get('OutputValue')))
+                logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
         else:
             status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
             logger.info('Status: %s' % status)
