@@ -57,7 +57,7 @@ success = 0
 #
 # run a single test, possibly in parallel
 #
-def run_test(region, distro, scheduler, key_name):
+def run_test(region, distro, scheduler, key_name, key_path):
     testname = '%s-%s-%s' % (region, distro, scheduler)
     test_filename = "config-%s.cfg" % (testname)
 
@@ -112,13 +112,16 @@ def run_test(region, distro, scheduler, key_name):
         print("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
-        subprocess.check_call(['scp', '-o', 'StrictHostKeyChecking=no',
-                               'cluster-check.sh', '%s@%s:.' % (username, master_ip)],
+        ssh_params = ['-o', 'StrictHostKeyChecking=no']
+        if key_path:
+            ssh_params.extend(['-i', key_path])
+
+        subprocess.check_call(['scp'] + ssh_params + ['cluster-check.sh', '%s@%s:.' % (username, master_ip)],
                               stdout=stdout_f, stderr=stderr_f)
-        subprocess.check_call(['ssh', '-o', 'StrictHostKeyChecking=no',
-                               '%s@%s' % (username, master_ip),
-                               '/bin/bash cluster-check.sh %s' % (scheduler)],
-                              stdout=stdout_f, stderr=stderr_f)
+        subprocess.check_call(
+            ['ssh'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash cluster-check.sh %s' % scheduler],
+            stdout=stdout_f, stderr=stderr_f)
+
     except Exception as e:
         sys.stdout.write("!! FAILURE: %s!!\n" % (testname))
         raise e
@@ -136,7 +139,7 @@ def run_test(region, distro, scheduler, key_name):
 # worker thread, there will be config['parallelism'] of these running
 # per region, dispatching work from the work queue
 #
-def test_runner(region, q, key_name):
+def test_runner(region, q, key_name, key_path):
     global success
     global failure
     global results_lock
@@ -146,7 +149,8 @@ def test_runner(region, q, key_name):
 
         # just in case we miss an exception in run_test, don't abort everything...
         try:
-            run_test(region=region, distro=item['distro'], scheduler=item['scheduler'], key_name=key_name)
+            run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
+                     key_name=key_name, key_path=key_path)
             retval = 0
         except Exception as e:
             print("Unexpected exception %s: %s" % (str(type(e)), str((e))))
@@ -168,7 +172,8 @@ if __name__ == '__main__':
                            'ap-southeast-1,ap-southeast-2,ap-northeast-1,' +
                            'ap-south-1,sa-east-1,eu-west-3',
                'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
-               'schedulers' : 'sge,slurm,torque' }
+               'schedulers' : 'sge,slurm,torque',
+               'key_path' : ''}
 
     parser = argparse.ArgumentParser(description = 'Test runner for CfnCluster')
     parser.add_argument('--parallelism', help = 'Number of tests per region to run in parallel',
@@ -179,7 +184,9 @@ if __name__ == '__main__':
                         type = str)
     parser.add_argument('--schedulers', help = 'Comma separated list of schedulers to test',
                         type = str)
-    parser.add_argument('--key-name', help='Key Pair to use for SSH connections',
+    parser.add_argument('--key-name', help = 'Key Pair to use for EC2 instances',
+                        type = str, required = True)
+    parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
                         type = str)
 
     for key, value in vars(parser.parse_args()).iteritems():
@@ -193,8 +200,10 @@ if __name__ == '__main__':
     print("==> Regions: %s" % (', '.join(region_list)))
     print("==> Distros: %s" % (', '.join(distro_list)))
     print("==> Schedulers: %s" % (', '.join(scheduler_list)))
-    print("==> Key Pair: %s" % (config['key_name']))
     print("==> Parallelism: %d" % (config['parallelism']))
+    print("==> Key Pair: %s" % (config['key_name']))
+    if config['key_path']:
+        print("==> Key Path: %s" % (config['key_path']))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
@@ -229,7 +238,8 @@ if __name__ == '__main__':
     # start all the workers
     for region in region_list:
         for i in range(0, config['parallelism']):
-            t = threading.Thread(target = test_runner, args=(region, work_queues[region], config['key_name']))
+            t = threading.Thread(target = test_runner,
+                                 args=(region, work_queues[region], config['key_name'], config['key_path']))
             t.daemon = True
             t.start()
 
