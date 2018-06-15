@@ -102,7 +102,7 @@ def run_test(region, distro, scheduler, key_name):
                                         'status', testname], stderr=stderr_f)
         dump_array = dump.splitlines()
         for line in dump_array:
-            m = re.search('MasterPublicIP: (.+?)', line)
+            m = re.search('MasterPublicIP: (.+)$', line)
             if m:
                 master_ip = m.group(1)
                 break
