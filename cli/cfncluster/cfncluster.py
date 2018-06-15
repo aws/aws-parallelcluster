@@ -371,7 +371,7 @@ def status(args):
                 if state == 'running':
                     outputs = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('Outputs', [])
                     for output in outputs:
-                        logger.info("%s : %s" % (output.get('OutputKey'), output.get('OutputValue')))
+                        logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
             elif status in ['ROLLBACK_COMPLETE', 'CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_ROLLBACK_COMPLETE']:
                 events = cfn.describe_stack_events(StackName=stack).get('StackEvents')
                 for event in events:
