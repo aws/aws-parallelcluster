@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-1.5.0
+1.5.1
 =====
 * change:``cfncluster``: Added "ec2:DescribeVolumes" permissions to
 CfnClusterInstancePolicy
