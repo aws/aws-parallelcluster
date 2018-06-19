@@ -114,14 +114,20 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
         stdout_f.write("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
+        # ssh_params = ['-n'] # ssh only, not for scp
         ssh_params = ['-o', 'StrictHostKeyChecking=no']
+        ssh_params += ['-o', 'BatchMode=yes']
+        # ssh_params += ['-o', 'ConnectionAttempts=30']
+        ssh_params += ['-o', 'ConnectTimeout=60']
+        ssh_params += ['-o', 'ServerAliveCountMax=5']
+        ssh_params += ['-o', 'ServerAliveInterval=30']
         if key_path:
             ssh_params.extend(['-i', key_path])
 
         subprocess.check_call(['scp'] + ssh_params + ['cluster-check.sh', '%s@%s:.' % (username, master_ip)],
                               stdout=stdout_f, stderr=stderr_f)
         subprocess.check_call(
-            ['ssh'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
+            ['ssh'] + ['-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
             stdout=stdout_f, stderr=stderr_f)
 
     except Exception as e:
