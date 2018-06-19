@@ -57,9 +57,9 @@ success = 0
 #
 # run a single test, possibly in parallel
 #
-def run_test(region, distro, scheduler, key_name, key_path):
-    testname = '%s-%s-%s' % (region, distro, scheduler)
-    test_filename = "config-%s.cfg" % (testname)
+def run_test(region, distro, scheduler, instance_type, key_name, key_path):
+    testname = '%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', '-'))
+    test_filename = "%s-config.cfg" % testname
 
     sys.stdout.write("--> %s: Starting\n" % (testname))
 
@@ -70,8 +70,8 @@ def run_test(region, distro, scheduler, key_name, key_path):
     file.write("vpc_settings = public\n")
     file.write("key_name = %s\n" % key_name)
     file.write("base_os = %s\n" % distro)
-    file.write("master_instance_type = c4.xlarge\n")
-    file.write("compute_instance_type = c4.xlarge\n")
+    file.write("master_instance_type = %s\n" % instance_type)
+    file.write("compute_instance_type = %s\n" % instance_type)
     file.write("initial_queue_size = 2\n")
     file.write("maintain_initial_size = true\n")
     file.write("scheduler = %s\n" % (scheduler))
@@ -85,8 +85,8 @@ def run_test(region, distro, scheduler, key_name, key_path):
     file.write("scaling_adjustment = 2\n")
     file.close()
 
-    stdout_f = open('stdout-%s.txt' % (testname), 'w')
-    stderr_f = open('stderr-%s.txt' % (testname), 'w')
+    stdout_f = open('%s-stdout.txt' % testname, 'w')
+    stderr_f = open('%s-stderr.txt' % testname, 'w')
 
     master_ip = ''
     username = username_map[distro]
@@ -150,7 +150,7 @@ def test_runner(region, q, key_name, key_path):
         # just in case we miss an exception in run_test, don't abort everything...
         try:
             run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
-                     key_name=key_name, key_path=key_path)
+                     instance_type=item['instance_type'], key_name=key_name, key_path=key_path)
             retval = 0
         except Exception as e:
             print("Unexpected exception %s: %s" % (str(type(e)), str((e))))
@@ -173,6 +173,7 @@ if __name__ == '__main__':
                            'ap-south-1,sa-east-1,eu-west-3',
                'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
                'schedulers' : 'sge,slurm,torque',
+               'instance_types': 'c4.xlarge',
                'key_path' : ''}
 
     parser = argparse.ArgumentParser(description = 'Test runner for CfnCluster')
@@ -184,6 +185,8 @@ if __name__ == '__main__':
                         type = str)
     parser.add_argument('--schedulers', help = 'Comma separated list of schedulers to test',
                         type = str)
+    parser.add_argument('--instance-types', type=str,
+                        help='Comma separated list of instance types to use for both Master and Compute nodes')
     parser.add_argument('--key-name', help = 'Key Pair to use for EC2 instances',
                         type = str, required = True)
     parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
@@ -196,11 +199,13 @@ if __name__ == '__main__':
     region_list = config['regions'].split(',')
     distro_list = config['distros'].split(',')
     scheduler_list = config['schedulers'].split(',')
+    instance_type_list = config['instance_types'].split(',')
 
     print("==> Regions: %s" % (', '.join(region_list)))
     print("==> Distros: %s" % (', '.join(distro_list)))
     print("==> Schedulers: %s" % (', '.join(scheduler_list)))
     print("==> Parallelism: %d" % (config['parallelism']))
+    print("==> Instance Types: %s" % (', '.join(instance_type_list)))
     print("==> Key Pair: %s" % (config['key_name']))
     if config['key_path']:
         print("==> Key Path: %s" % (config['key_path']))
@@ -232,13 +237,14 @@ if __name__ == '__main__':
         work_queues[region] = Queue.Queue()
         for distro in distro_list:
             for scheduler in scheduler_list:
-                work_item = { 'distro' : distro, 'scheduler' : scheduler }
-                work_queues[region].put(work_item)
+                for instance in instance_type_list:
+                    work_item = {'distro': distro, 'scheduler': scheduler, 'instance_type': instance}
+                    work_queues[region].put(work_item)
 
     # start all the workers
     for region in region_list:
         for i in range(0, config['parallelism']):
-            t = threading.Thread(target = test_runner,
+            t = threading.Thread(target=test_runner,
                                  args=(region, work_queues[region], config['key_name'], config['key_path']))
             t.daemon = True
             t.start()
