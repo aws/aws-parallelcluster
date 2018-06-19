@@ -119,7 +119,7 @@ def run_test(region, distro, scheduler, key_name, key_path):
         subprocess.check_call(['scp'] + ssh_params + ['cluster-check.sh', '%s@%s:.' % (username, master_ip)],
                               stdout=stdout_f, stderr=stderr_f)
         subprocess.check_call(
-            ['ssh'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash cluster-check.sh %s' % scheduler],
+            ['ssh'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
             stdout=stdout_f, stderr=stderr_f)
 
     except Exception as e:
