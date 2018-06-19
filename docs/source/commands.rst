@@ -69,7 +69,8 @@ stop
 
 Sets the Auto Scaling Group parameters to :code:`min/max/desired = 0/0/0`
 
-.. note:: A stopped cluster will only terminate the  compute-fleet.
+.. note:: A stopped cluster will only terminate the compute-fleet.
+
 Previous versions of CfnCluster stopped the master node after terminating
 the compute fleet. Due to a number of challenges with the implementation
 of that feature, the current version only terminates the compute fleet.
