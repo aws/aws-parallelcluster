@@ -221,6 +221,9 @@ def list(args):
         for stack in stacks:
             if stack.get('StackName').startswith('cfncluster-'):
                 logger.info('%s' % (stack.get('StackName')[11:]))
+    except ClientError as e:
+        logger.critical(e.response.get('Error').get('Message'))
+        sys.exit(1)
     except KeyboardInterrupt:
         logger.info('Exiting...')
         sys.exit(0)
