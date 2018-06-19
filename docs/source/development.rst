@@ -1,7 +1,7 @@
 .. _development:
 
 Development
-#########
+###########
 
 Here you can find guides for getting started with the development of CfnCluster.
 

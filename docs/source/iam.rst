@@ -144,6 +144,7 @@ CfnClusterUserPolicy
                   "ec2:DescribePlacementGroups",
                   "ec2:DescribeImages",
                   "ec2:DescribeInstances",
+                  "ec2:DescribeInstanceStatus",
                   "ec2:DescribeSnapshots",
                   "ec2:DescribeVolumes",
                   "ec2:DescribeVpcAttribute",
@@ -217,8 +218,8 @@ CfnClusterUserPolicy
           {
               "Sid": "DynamoDBModify",
               "Action": [
-              "dynamodb:CreateTable",
-              "dynamodb:DeleteTable"
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -253,8 +254,8 @@ CfnClusterUserPolicy
           {
               "Sid": "SNSDescribe",
               "Action": [
-              "sns:ListTopics",
-              "sns:GetTopicAttributes"
+                "sns:ListTopics",
+                "sns:GetTopicAttributes"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -273,6 +274,7 @@ CfnClusterUserPolicy
               "Sid": "CloudFormationDescribe",
               "Action": [
                   "cloudformation:DescribeStackEvents",
+                  "cloudformation:DescribeStackResource",
                   "cloudformation:DescribeStackResources",
                   "cloudformation:DescribeStacks",
                   "cloudformation:ListStacks"
@@ -304,10 +306,32 @@ CfnClusterUserPolicy
           {
               "Sid": "IAMModify",
               "Action": [
-                  "iam:PassRole"
+                  "iam:PassRole",
+                  "iam:CreateRole",
+                  "iam:DeleteRole"
               ],
               "Effect": "Allow",
               "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
+          },
+          {
+              "Sid": "IAMCreateInstanceProfile",
+              "Action": [
+                  "iam:CreateInstanceProfile",
+                  "iam:DeleteInstanceProfile"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:instance-profile/*"
+          },
+          {
+              "Sid": "IAMInstanceProfile",
+              "Action": [
+                  "iam:AddRoleToInstanceProfile",
+                  "iam:RemoveRoleFromInstanceProfile",
+                  "iam:PutRolePolicy",
+                  "iam:DeleteRolePolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
           }
       ]
   }
