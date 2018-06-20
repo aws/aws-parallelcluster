@@ -72,7 +72,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     file.write("base_os = %s\n" % distro)
     file.write("master_instance_type = %s\n" % instance_type)
     file.write("compute_instance_type = %s\n" % instance_type)
-    file.write("initial_queue_size = 2\n")
+    file.write("initial_queue_size = 1\n")
     file.write("maintain_initial_size = true\n")
     file.write("scheduler = %s\n" % (scheduler))
     file.write("scaling_settings = custom\n")
@@ -90,6 +90,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
 
     master_ip = ''
     username = username_map[distro]
+    exception_raised = False;
 
     try:
         # build the cluster
@@ -107,9 +108,10 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
                 master_ip = m.group(1)
                 break
         if master_ip == '':
-            print('!! %s: Master IP not found; aborting !!' % (testname))
+            stderr_f.write('!! %s: Master IP not found; aborting !!' % (testname))
+            exception_raised = True
             raise Exception('Master IP not found')
-        print("--> %s master ip: %s" % (testname, master_ip))
+        stdout_f.write("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
         ssh_params = ['-o', 'StrictHostKeyChecking=no']
@@ -123,13 +125,21 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
             stdout=stdout_f, stderr=stderr_f)
 
     except Exception as e:
-        sys.stdout.write("!! FAILURE: %s!!\n" % (testname))
+        stderr_f.write("!! FAILURE: %s!!\n" % (testname))
+        exception_raised = True
         raise e
 
     finally:
         # clean up the cluster
         subprocess.call(['cfncluster', '--config', test_filename, 'delete', testname],
                         stdout=stdout_f, stderr=stderr_f)
+        if exception_raised:
+            stdout_f.write('FAILURE: %s!!\n' % (testname))
+            open('%s.failed' %testname, 'w').close()
+        else:
+            stdout_f.write('SUCCESS:  %s!!\n' % (testname))
+            open('%s.success' %testname, 'w').close()
+
         stdout_f.close()
         stderr_f.close()
         os.remove(test_filename)
