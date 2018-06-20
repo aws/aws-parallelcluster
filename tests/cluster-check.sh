@@ -26,7 +26,7 @@
 # there's a bounded completion time
 if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
    export CHECK_CLUSTER_SUBPROCESS=1
-   timeout -s KILL 30m /bin/bash ./cluster-check.sh "$@"
+   timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
    exit $?
 fi
 
@@ -45,34 +45,34 @@ set -e
 if test "$scheduler" = "slurm" ; then
     cat > job1.sh <<EOF
 #!/bin/bash
-srun sleep 960
+srun sleep 360
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-srun sleep 960
+srun sleep 360
 touch job2.done
 EOF
 
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    sbatch -N 2 ./job1.sh
-    sbatch -N 2 ./job2.sh
+    sbatch -N 1 ./job1.sh
+    sbatch -N 1 ./job2.sh
 
 elif test "$scheduler" = "sge" ; then
     # get the slots per node count of the first real node (one with a
     # architecture type of lx-?), so that we can reserve an enitre
     # node's worth of slots at a time.
     ppn=` qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p'`
-    count=$((ppn * 2))
+    count=$((ppn))
 
     cat > job1.sh <<EOF
 #!/bin/bash
 #$ -pe mpi $count
 #$ -R y
 
-sleep 960
+sleep 360
 touch job1.done
 EOF
     cat > job2.sh <<EOF
@@ -80,7 +80,7 @@ EOF
 #$ -pe mpi $count
 #$ -R y
 
-sleep 960
+sleep 360
 touch job2.done
 EOF
 
@@ -93,20 +93,20 @@ EOF
 elif test "$scheduler" = "torque" ; then
     cat > job1.sh <<EOF
 #!/bin/bash
-sleep 1200
+sleep 360
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-sleep 1200
+sleep 360
 touch job2.done
 EOF
 
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    qsub -l nodes=2:ppn=2 ./job1.sh
-    qsub -l nodes=2:ppn=2 ./job2.sh
+    qsub -l nodes=1:ppn=1 ./job1.sh
+    qsub -l nodes=1:ppn=1 ./job2.sh
 
 else
     echo "!! Unknown scheduler $scheduler !!"

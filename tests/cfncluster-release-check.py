@@ -72,7 +72,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     file.write("base_os = %s\n" % distro)
     file.write("master_instance_type = %s\n" % instance_type)
     file.write("compute_instance_type = %s\n" % instance_type)
-    file.write("initial_queue_size = 2\n")
+    file.write("initial_queue_size = 1\n")
     file.write("maintain_initial_size = true\n")
     file.write("scheduler = %s\n" % (scheduler))
     file.write("scaling_settings = custom\n")
