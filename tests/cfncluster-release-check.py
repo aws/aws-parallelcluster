@@ -58,7 +58,7 @@ success = 0
 # run a single test, possibly in parallel
 #
 def run_test(region, distro, scheduler, instance_type, key_name, key_path):
-    testname = '%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', '-'))
+    testname = '%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''))
     test_filename = "%s-config.cfg" % testname
 
     sys.stdout.write("--> %s: Starting\n" % (testname))
@@ -82,7 +82,10 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
-    file.write("scaling_adjustment = 2\n")
+    file.write("scaling_adjustment = 1\n")
+    file.write("scaling_period = 30\n")
+    file.write("scaling_evaluation_periods = 1\n")
+    file.write("scaling_cooldown = 300\n")
     file.close()
 
     stdout_f = open('%s-stdout.txt' % testname, 'w')
@@ -112,6 +115,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
             exception_raised = True
             raise Exception('Master IP not found')
         stdout_f.write("--> %s master ip: %s" % (testname, master_ip))
+        print("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
         # ssh_params = ['-n'] # ssh only, not for scp
