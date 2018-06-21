@@ -27,3 +27,16 @@ Issues
 Please open a GitHub issue for any feedback or issues:
 https://github.com/awslabs/cfncluster.  There is also an active AWS
 HPC forum which may be helpful:https://forums.aws.amazon.com/forum.jspa?forumID=192.
+
+CfnCluster 1.5 IAM Change
+=========================
+Between CfnCluster 1.4.2 and 1.5.0 we made a change to the CfnClusterInstancePolicy that adds “ec2:DescribeVolumes” permissions. If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://cfncluster.readthedocs.io/en/latest/iam.html
+
+CfnCluster 1.2 and Earlier
+==========================
+
+For various security (on our side) and maintenance reasons, CfnCluster
+1.2 and earlier have been deprecated.  AWS-side resources necessary to
+create a cluster with CfnCluster 1.2 or earlier are no longer
+available.  Existing clusters will continue to operate, but new
+clusters can not be created.

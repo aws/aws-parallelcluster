@@ -23,15 +23,22 @@ import pkg_resources
 import json
 import urllib.request, urllib.error, urllib.parse
 from . import config_sanity
-import boto.cloudformation
+import boto3
+from botocore.exceptions import ClientError
 
 def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
-
-    cfn_conn = boto.cloudformation.connect_to_region(region,aws_access_key_id=aws_access_key_id,
-                                                 aws_secret_access_key=aws_secret_access_key)
+    cfn = boto3.client('cloudformation', region_name=region,
+                       aws_access_key_id=aws_access_key_id,
+                       aws_secret_access_key=aws_secret_access_key)
     __stack_name = ('cfncluster-' + stack)
-    __stack = cfn_conn.describe_stacks(stack_name_or_id=__stack_name)[0]
-    __cli_template = [p.value for p in __stack.parameters if p.key == 'CLITemplate'][0]
+
+    try:
+        __stack = cfn.describe_stacks(StackName=__stack_name).get('Stacks')[0]
+    except ClientError as e:
+        print(e.response.get('Error').get('Message'))
+        sys.stdout.flush()
+        sys.exit(1)
+    __cli_template = [p.get('ParameterValue') for p in __stack.get('Parameters') if p.get('ParameterKey') == 'CLITemplate'][0]
 
     return __cli_template
 
@@ -91,17 +98,25 @@ class CfnClusterConfig(object):
             self.aws_secret_access_key=None
 
         # Determine which cluster template will be used
-        try:
-            if args.cluster_template is not None:
-                self.__cluster_template = args.cluster_template
-            else:
-                if __args_func == 'update':
-                    self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
-                                                               self.aws_secret_access_key, self.args.cluster_name)
+        if __args_func == 'start':
+            # Starting a cluster is unique in that we would want to prevent the
+            # customer from inadvertently using a different template than what
+            # the cluster was created with, so we do not support the -t
+            # parameter. We always get the template to use from CloudFormation.
+            self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
+                                        self.aws_secret_access_key, self.args.cluster_name)
+        else:
+            try:
+                if args.cluster_template is not None:
+                    self.__cluster_template = args.cluster_template
                 else:
-                    self.__cluster_template = __config.get('global', 'cluster_template')
-        except AttributeError:
-            self.__cluster_template = __config.get('global', 'cluster_template')
+                    if __args_func == 'update':
+                        self.__cluster_template = getStackTemplate(self.region,self.aws_access_key_id,
+                                                                   self.aws_secret_access_key, self.args.cluster_name)
+                    else:
+                        self.__cluster_template = __config.get('global', 'cluster_template')
+            except AttributeError:
+                self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
         self.parameters.append(('CLITemplate',self.__cluster_template))
 
@@ -150,22 +165,23 @@ class CfnClusterConfig(object):
         try:
             if args.template_url is not None:
                 self.template_url = args.template_url
-            try:
-                self.template_url = __config.get(self.__cluster_section,
-                                                 'template_url')
-                if not self.template_url:
-                    print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
-                    sys.exit(1)
-                if self.__sanity_check:
-                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
-                                             'URL', self.template_url)
-            except configparser.NoOptionError:
-                if self.region == 'us-gov-west-1':
-                    self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
-                                         % (self.region, self.region, self.version))
-                else:
-                    self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
-                                         % (self.region, self.version))
+            else:
+                try:
+                    self.template_url = __config.get(self.__cluster_section,
+                                                     'template_url')
+                    if not self.template_url:
+                        print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
+                        sys.exit(1)
+                    if self.__sanity_check:
+                        config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
+                                                     'URL', self.template_url)
+                except configparser.NoOptionError:
+                    if self.region == 'us-gov-west-1':
+                        self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                                             % (self.region, self.region, self.version))
+                    else:
+                        self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
+                                             % (self.region, self.version))
         except AttributeError:
             pass
 
@@ -212,7 +228,7 @@ class CfnClusterConfig(object):
                                       cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
                                       ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
                                       master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
-                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName',None),extra_json=('ExtraJson',None),
+                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName','EC2IAMRoleName'),extra_json=('ExtraJson',None),
                                       custom_chef_cookbook=('CustomChefCookbook',None),custom_chef_runlist=('CustomChefRunList',None),
                                       additional_cfn_template=('AdditionalCfnTemplate',None)
                                       )
@@ -322,7 +338,7 @@ class CfnClusterConfig(object):
         try:
             if self.args.extra_parameters is not None:
                 self.__temp_dict = dict(self.parameters)
-                self.__temp_dict.append(dict(self.args.extra_parameters))
+                self.__temp_dict.update(dict(self.args.extra_parameters))
                 self.__dictlist = []
                 for key, value in self.__temp_dict.items():
                     temp = [str(key),str(value)]

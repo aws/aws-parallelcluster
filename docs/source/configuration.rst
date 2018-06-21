@@ -52,13 +52,13 @@ aws
 ^^^
 This is the AWS credentials section (required).  These settings apply to all clusters.
 
-If not defined, boto will attempt to use a) enviornment or b) EC2 IAM role. ::
+If not defined, boto will attempt to use a) environment or b) EC2 IAM role. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
     aws_secret_access_key = #your_secret_access_key
 
-    # Defaults to us-east-1 if not defined in enviornment or below
+    # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
 
 .. _cluster_definition:
@@ -83,9 +83,9 @@ template_url
 """"""""""""
 Overrides the path to the cloudformation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/cfncluster-<aws_region_name>/templates/cfncluster-<version>.cfn.json``. ::
+Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json``. ::
 
-    template_url = https://s3.amazonaws.com/cfncluster-us-east-1/templates/cfncluster.cfn.json
+    template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
 
 compute_instance_type
 """""""""""""""""""""
@@ -105,7 +105,7 @@ This defaults to t2.micro for default template. ::
 
 initial_queue_size
 """"""""""""""""""
-The inital number of EC2 instances to launch as compute nodes in the cluster.
+The initial number of EC2 instances to launch as compute nodes in the cluster.
 
 The default is 2 for default template. ::
 
@@ -239,7 +239,7 @@ Defaults to NONE for the default template. More information on placement groups 
 
 placement
 """""""""
-Cluster placment logic. This enables the whole cluster or only compute to use the placement group.
+Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
  
 Defaults to cluster in the default template. ::
 
@@ -289,7 +289,7 @@ base_os
 """""""
 OS type used in the cluster
  
-Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404
+Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
 Note: The base_os determines the username used to log into the cluster.  
 
@@ -299,25 +299,12 @@ Note: The base_os determines the username used to log into the cluster.
 
     base_os = alinux
 
-cwl_region
-""""""""""
-CloudWatch Logs region
- 
-Defaults to NONE in the default template. ::
-
-    cwl_region = NONE
-
-cwl_log_group
-"""""""""""""
-CloudWatch Logs Log Group name
- 
-Defaults to NONE in the default template. ::
-
-    cwl_log_group = NONE
-
 ec2_iam_role
 """"""""""""
-Existing EC2 IAM Role that will be attached to all instances in the cluster.
+The given name of an existing EC2 IAM Role that will be attached to all
+instances in the cluster. Note that the given name of a role and its Amazon
+Resource Name (ARN) are different, and the latter can not be used as an argument
+to ec2_iam_role.
 
 Defaults to NONE in the default template. ::
 
@@ -392,7 +379,7 @@ VPC Configuration Settings::
 
 vpc_id
 """"""
-ID of the VPC you want to provision cluster into.::
+ID of the VPC you want to provision cluster into. ::
 
     vpc_id = vpc-xxxxxx
 

@@ -3,6 +3,10 @@
 IAM in CfnCluster
 ========================
 
+.. warning::
+    Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
+
+
 CfnCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in CfnCluster <aws_services>` section of the documentation.
  
 CfnCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
@@ -15,7 +19,7 @@ When using defaults, during cluster launch an EC2 IAM Role is created by the clu
 Using an existing EC2 IAM role
 ------------------------------
 
-When using CfnCluster with an existing EC2 IAM role, you must first define the IAM policy and role before attempting to launch the cluster. Typically the reason for using an exisiting EC2 IAM role within CfnCluster is to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 iam role and the CfnCluster IAM user. You should create both as individual policies in IAM and then attach to the approiate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
+When using CfnCluster with an existing EC2 IAM role, you must first define the IAM policy and role before attempting to launch the cluster. Typically the reason for using an exisiting EC2 IAM role within CfnCluster is to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 iam role and the CfnCluster IAM user. You should create both as individual policies in IAM and then attach to the appropriate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
 
 CfnClusterInstancePolicy
 ------------------------
@@ -30,6 +34,7 @@ CfnClusterInstancePolicy
                   "*"
               ],
               "Action": [
+                  "ec2:DescribeVolumes",
                   "ec2:AttachVolume",
                   "ec2:DescribeInstanceAttribute",
                   "ec2:DescribeInstanceStatus",
@@ -139,6 +144,7 @@ CfnClusterUserPolicy
                   "ec2:DescribePlacementGroups",
                   "ec2:DescribeImages",
                   "ec2:DescribeInstances",
+                  "ec2:DescribeInstanceStatus",
                   "ec2:DescribeSnapshots",
                   "ec2:DescribeVolumes",
                   "ec2:DescribeVpcAttribute",
@@ -212,8 +218,8 @@ CfnClusterUserPolicy
           {
               "Sid": "DynamoDBModify",
               "Action": [
-              "dynamodb:CreateTable",
-              "dynamodb:DeleteTable"
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -248,8 +254,8 @@ CfnClusterUserPolicy
           {
               "Sid": "SNSDescribe",
               "Action": [
-              "sns:ListTopics",
-              "sns:GetTopicAttributes"
+                "sns:ListTopics",
+                "sns:GetTopicAttributes"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -268,6 +274,7 @@ CfnClusterUserPolicy
               "Sid": "CloudFormationDescribe",
               "Action": [
                   "cloudformation:DescribeStackEvents",
+                  "cloudformation:DescribeStackResource",
                   "cloudformation:DescribeStackResources",
                   "cloudformation:DescribeStacks",
                   "cloudformation:ListStacks"
@@ -299,10 +306,32 @@ CfnClusterUserPolicy
           {
               "Sid": "IAMModify",
               "Action": [
-                  "iam:PassRole"
+                  "iam:PassRole",
+                  "iam:CreateRole",
+                  "iam:DeleteRole"
               ],
               "Effect": "Allow",
               "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
+          },
+          {
+              "Sid": "IAMCreateInstanceProfile",
+              "Action": [
+                  "iam:CreateInstanceProfile",
+                  "iam:DeleteInstanceProfile"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:instance-profile/*"
+          },
+          {
+              "Sid": "IAMInstanceProfile",
+              "Action": [
+                  "iam:AddRoleToInstanceProfile",
+                  "iam:RemoveRoleFromInstanceProfile",
+                  "iam:PutRolePolicy",
+                  "iam:DeleteRolePolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
           }
       ]
   }

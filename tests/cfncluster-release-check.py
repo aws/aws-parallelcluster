@@ -19,10 +19,12 @@
 # against limits in each region, the number of simultaneously built
 # clusters in each region is a configuration parameter.
 #
-# NOTE: To simplify this script, at least one subnet in every region
-# to be tested must have a resource tag named "CfnClusterTestSubnet"
-# (value does not matter).  That subnet will be used as the launch
-# target for the cluster.
+# NOTE:
+# - This script requires python2
+# - To simplify this script, at least one subnet in every region
+#   to be tested must have a resource tag named "CfnClusterTestSubnet"
+#   (value does not matter). That subnet will be used as the launch
+#   target for the cluster.
 
 import os
 import sys
@@ -55,9 +57,9 @@ success = 0
 #
 # run a single test, possibly in parallel
 #
-def run_test(region, distro, scheduler):
-    testname = '%s-%s-%s' % (region, distro, scheduler)
-    test_filename = "config-%s.cfg" % (testname)
+def run_test(region, distro, scheduler, instance_type, key_name, key_path):
+    testname = '%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', '-'))
+    test_filename = "%s-config.cfg" % testname
 
     sys.stdout.write("--> %s: Starting\n" % (testname))
 
@@ -66,10 +68,10 @@ def run_test(region, distro, scheduler):
     file.write("aws_region_name = %s\n" % region)
     file.write("[cluster default]\n")
     file.write("vpc_settings = public\n")
-    file.write("key_name = default\n")
+    file.write("key_name = %s\n" % key_name)
     file.write("base_os = %s\n" % distro)
-    file.write("master_instance_type = c4.xlarge\n")
-    file.write("compute_instance_type = c4.xlarge\n")
+    file.write("master_instance_type = %s\n" % instance_type)
+    file.write("compute_instance_type = %s\n" % instance_type)
     file.write("initial_queue_size = 2\n")
     file.write("maintain_initial_size = true\n")
     file.write("scheduler = %s\n" % (scheduler))
@@ -83,36 +85,43 @@ def run_test(region, distro, scheduler):
     file.write("scaling_adjustment = 2\n")
     file.close()
 
-    stdout_f = open('stdout-%s.txt' % (testname), 'w')
-    stderr_f = open('stderr-%s.txt' % (testname), 'w')
+    stdout_f = open('%s-stdout.txt' % testname, 'w')
+    stderr_f = open('%s-stderr.txt' % testname, 'w')
 
     master_ip = ''
     username = username_map[distro]
 
     try:
-        # buld the cluster
+        # build the cluster
         subprocess.check_call(['cfncluster', '--config', test_filename,
                                'create', testname],
                               stdout=stdout_f, stderr=stderr_f)
 
         # get the master ip, which means grepping through cfncluster status gorp
-        dump = subprocess.check_output(['cfncluster', 'status', testname], stderr=stderr_f)
+        dump = subprocess.check_output(['cfncluster', '--config', test_filename,
+                                        'status', testname], stderr=stderr_f)
         dump_array = dump.splitlines()
         for line in dump_array:
-             m = re.search('MasterPublicIP"="(.+?)"', line)
-             if m:
-                 master_ip = m.group(1)
+            m = re.search('MasterPublicIP: (.+)$', line)
+            if m:
+                master_ip = m.group(1)
+                break
         if master_ip == '':
-             print('!! %s: Master IP not found; aborting !!' % (testname))
-             raise Exception('Master IP not found')
+            print('!! %s: Master IP not found; aborting !!' % (testname))
+            raise Exception('Master IP not found')
         print("--> %s master ip: %s" % (testname, master_ip))
 
         # run test on the cluster...
-        subprocess.check_call(['scp', 'cluster-check.sh', '%s@%s:.' % (username, master_ip)],
+        ssh_params = ['-o', 'StrictHostKeyChecking=no']
+        if key_path:
+            ssh_params.extend(['-i', key_path])
+
+        subprocess.check_call(['scp'] + ssh_params + ['cluster-check.sh', '%s@%s:.' % (username, master_ip)],
                               stdout=stdout_f, stderr=stderr_f)
-        subprocess.check_call(['ssh', '%s@%s' % (username, master_ip),
-                               '/bin/bash cluster-check.sh %s' % (scheduler)],
-                              stdout=stdout_f, stderr=stderr_f)
+        subprocess.check_call(
+            ['ssh'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
+            stdout=stdout_f, stderr=stderr_f)
+
     except Exception as e:
         sys.stdout.write("!! FAILURE: %s!!\n" % (testname))
         raise e
@@ -130,19 +139,19 @@ def run_test(region, distro, scheduler):
 # worker thread, there will be config['parallelism'] of these running
 # per region, dispatching work from the work queue
 #
-def test_runner(region, q):
+def test_runner(region, q, key_name, key_path):
     global success
     global failure
     global results_lock
-
-    retval = 0
 
     while True:
         item = q.get()
 
         # just in case we miss an exception in run_test, don't abort everything...
         try:
-            retval = run_test(region=region, distro=item['distro'], scheduler=item['scheduler'])
+            run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
+                     instance_type=item['instance_type'], key_name=key_name, key_path=key_path)
+            retval = 0
         except Exception as e:
             print("Unexpected exception %s: %s" % (str(type(e)), str((e))))
             retval = 1
@@ -163,7 +172,9 @@ if __name__ == '__main__':
                            'ap-southeast-1,ap-southeast-2,ap-northeast-1,' +
                            'ap-south-1,sa-east-1,eu-west-3',
                'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
-               'schedulers' : 'sge,slurm,torque' }
+               'schedulers' : 'sge,slurm,torque',
+               'instance_types': 'c4.xlarge',
+               'key_path' : ''}
 
     parser = argparse.ArgumentParser(description = 'Test runner for CfnCluster')
     parser.add_argument('--parallelism', help = 'Number of tests per region to run in parallel',
@@ -174,6 +185,12 @@ if __name__ == '__main__':
                         type = str)
     parser.add_argument('--schedulers', help = 'Comma separated list of schedulers to test',
                         type = str)
+    parser.add_argument('--instance-types', type=str,
+                        help='Comma separated list of instance types to use for both Master and Compute nodes')
+    parser.add_argument('--key-name', help = 'Key Pair to use for EC2 instances',
+                        type = str, required = True)
+    parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
+                        type = str)
 
     for key, value in vars(parser.parse_args()).iteritems():
         if not value == None:
@@ -182,11 +199,16 @@ if __name__ == '__main__':
     region_list = config['regions'].split(',')
     distro_list = config['distros'].split(',')
     scheduler_list = config['schedulers'].split(',')
+    instance_type_list = config['instance_types'].split(',')
 
     print("==> Regions: %s" % (', '.join(region_list)))
     print("==> Distros: %s" % (', '.join(distro_list)))
     print("==> Schedulers: %s" % (', '.join(scheduler_list)))
     print("==> Parallelism: %d" % (config['parallelism']))
+    print("==> Instance Types: %s" % (', '.join(instance_type_list)))
+    print("==> Key Pair: %s" % (config['key_name']))
+    if config['key_path']:
+        print("==> Key Path: %s" % (config['key_path']))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
@@ -215,13 +237,15 @@ if __name__ == '__main__':
         work_queues[region] = Queue.Queue()
         for distro in distro_list:
             for scheduler in scheduler_list:
-                work_item = { 'distro' : distro, 'scheduler' : scheduler }
-                work_queues[region].put(work_item)
+                for instance in instance_type_list:
+                    work_item = {'distro': distro, 'scheduler': scheduler, 'instance_type': instance}
+                    work_queues[region].put(work_item)
 
     # start all the workers
     for region in region_list:
         for i in range(0, config['parallelism']):
-            t = threading.Thread(target = test_runner, args=(region, work_queues[region]))
+            t = threading.Thread(target=test_runner,
+                                 args=(region, work_queues[region], config['key_name'], config['key_path']))
             t.daemon = True
             t.start()
 
@@ -232,3 +256,5 @@ if __name__ == '__main__':
     # print status...
     print("==> Success: %d" % (success))
     print("==> Failure: %d" % (failure))
+    if failure != 0:
+        exit(1)
