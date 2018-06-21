@@ -31,6 +31,10 @@ if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
 fi
 
 scheduler="$1"
+# job1: 8m30s
+_sleepjob1=510
+# job2: 2m
+_sleepjob2=120
 
 echo "--> scheduler: $scheduler"
 
@@ -45,12 +49,12 @@ set -e
 if test "$scheduler" = "slurm" ; then
     cat > job1.sh <<EOF
 #!/bin/bash
-srun sleep 360
+srun sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-srun sleep 360
+srun sleep ${_sleepjob2}
 touch job2.done
 EOF
 
@@ -72,7 +76,7 @@ elif test "$scheduler" = "sge" ; then
 #$ -pe mpi $count
 #$ -R y
 
-sleep 360
+sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
@@ -80,7 +84,7 @@ EOF
 #$ -pe mpi $count
 #$ -R y
 
-sleep 360
+sleep ${_sleepjob2}
 touch job2.done
 EOF
 
@@ -91,22 +95,26 @@ EOF
     qsub ./job2.sh
 
 elif test "$scheduler" = "torque" ; then
+    _chost=$(pbsnodes -l free | head -n 1 | cut -d ' ' -f1)
+    _ppn=$(pbsnodes ${_chost} | tr -d '\t ' | sed -n '/np=/{s/^np=\([0-9]\+\)/\1/;p;}')
     cat > job1.sh <<EOF
 #!/bin/bash
-sleep 360
+sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-sleep 360
+sleep ${_sleepjob2}
 touch job2.done
 EOF
 
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    qsub -l nodes=1:ppn=1 ./job1.sh
-    qsub -l nodes=1:ppn=1 ./job2.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job1.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job1.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job2.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job2.sh
 
 else
     echo "!! Unknown scheduler $scheduler !!"
