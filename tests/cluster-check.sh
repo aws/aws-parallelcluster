@@ -15,7 +15,7 @@
 #
 #
 # Script executed on clusters from cfncluster-release-check.py.  This
-# script attempts to submit two jobs which must complete in 30
+# script attempts to submit two jobs which must complete in 10
 # minutes, one of which (hopefully) requires scaling (note that
 # scaling is currently not tested on Torque, because it's too big of a
 # pain to determine how many slots per node are on a Torque compute
@@ -30,6 +30,35 @@ if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
    exit $?
 fi
 
+sge_get_slots() {
+    local -- ppn i=0
+    ppn=$(qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p')
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${ppn}" -a $i -lt 15 ]; do
+        sleep 1
+        i=$((i+1))
+        ppn=$(qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p')
+    done
+
+    echo ${ppn}
+}
+
+torque_get_slots() {
+    local -- chost ppn i=0
+
+    chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${chost}" -a $i -lt 1 ]; do
+        sleep 1
+        i=$((i+1))
+        chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
+    done
+    [ -n "${chost}" ] && ppn=$(pbsnodes ${chost} | tr -d '\t ' | sed -n '/np=/{s/^np=\([0-9]\+\)/\1/;p;}')
+
+    echo ${ppn}
+}
+
+
 scheduler="$1"
 # job1: 8m30s
 _sleepjob1=510
@@ -40,11 +69,11 @@ echo "--> scheduler: $scheduler"
 
 set -e
 
-# we submit 2 2-node jobs, each of which are a sleep for 16 minutes.
-# The whole thing has to run in 30 minutes, or the kill above will
+# we submit 2 1-node jobs, each of which are a sleep.
+# The whole thing has to run in 10 minutes, or the kill above will
 # fail the job, which means that the jobs must run at the same time.
-# The initial cluster is 2 nodes, so we'll need to scale up 2 nodes in
-# less than 10 minutes in order for the test to succeed.
+# The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
+# less than 8 minutes in order for the test to succeed.
 
 if test "$scheduler" = "slurm" ; then
     cat > job1.sh <<EOF
@@ -68,7 +97,12 @@ elif test "$scheduler" = "sge" ; then
     # get the slots per node count of the first real node (one with a
     # architecture type of lx-?), so that we can reserve an enitre
     # node's worth of slots at a time.
-    ppn=` qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p'`
+    ppn=$(sge_get_slots)
+    if [ -z "${ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in sge cluster"
+        exit 1
+    fi
+
     count=$((ppn))
 
     cat > job1.sh <<EOF
@@ -95,8 +129,12 @@ EOF
     qsub ./job2.sh
 
 elif test "$scheduler" = "torque" ; then
-    _chost=$(pbsnodes -l free | head -n 1 | cut -d ' ' -f1)
-    _ppn=$(pbsnodes ${_chost} | tr -d '\t ' | sed -n '/np=/{s/^np=\([0-9]\+\)/\1/;p;}')
+    _ppn=$(torque_get_slots)
+    if [ -z "${_ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in Torque cluster"
+        exit 1
+    fi
+
     cat > job1.sh <<EOF
 #!/bin/bash
 sleep ${_sleepjob1}
