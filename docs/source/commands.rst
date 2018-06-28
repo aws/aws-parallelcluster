@@ -7,7 +7,7 @@
 CfnCluster Commands
 ###################
 
-Most commands provided are just wrappers around CloudFormation functions. 
+Most commands provided are just wrappers around CloudFormation functions.
 
 .. note:: When a command is called and it starts polling for status of that call it is safe to :code:`Ctrl-C` out. you can always return to that status by calling :code:`cfncluster status mycluster`
 
@@ -21,6 +21,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
                         specify a URL for a custom cloudformation template
@@ -50,6 +55,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
                         specify a URL for a custom cloudformation template
@@ -82,6 +92,10 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
@@ -104,6 +118,10 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
@@ -119,6 +137,11 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
 
 ::
 
@@ -135,6 +158,11 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
 
 ::
 
@@ -143,14 +171,18 @@ optional arguments:
 list
 ====
 
-Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`cfncluster-[stack_name]`. 
+Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`cfncluster-[stack_name]`.
 
 optional arguments:
   -h, --help  show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
-    $ cfncluster list 
+    $ cfncluster list
 
 instances
 =========
@@ -162,9 +194,13 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
-    
+
     $ cfncluster instances mycluster
 
 configure
@@ -174,9 +210,11 @@ Configures the cluster. See `Configuring CfnCluster <https://cfncluster.readthed
 
 optional arguments:
   -h, --help  show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
 
 ::
-    
+
     $ cfncluster configure mycluster
 
 version
@@ -186,6 +224,8 @@ Displays CfnCluster version.
 
 optional arguments:
   -h, --help  show this help message and exit
+  --region REGION, -r REGION
+                        specify a specific region to connect
 
 ::
 

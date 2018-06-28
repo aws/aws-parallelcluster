@@ -173,4 +173,3 @@ def configure(args):
 
     # Verify the configuration
     cfnconfig.CfnClusterConfig(args)
-

@@ -52,7 +52,7 @@ class CfnClusterConfig(object):
         __args_func = self.args.func.__name__
 
         # Determine config file name based on args or default
-        if args.config_file is not None:
+        if hasattr(args, 'config_file') and args.config_file is not None:
             self.__config_file = args.config_file
         else:
             self.__config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
@@ -76,7 +76,7 @@ class CfnClusterConfig(object):
 
         # Determine the EC2 region to used used or default to us-east-1
         # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
-        if args.region:
+        if hasattr(args, 'region') and args.region:
             self.region = args.region
         else:
             if os.environ.get('AWS_DEFAULT_REGION'):
