@@ -1726,7 +1726,8 @@
             {
               "Sid": "Cloudformation",
               "Action": [
-                "cloudformation:DescribeStacks"
+                "cloudformation:DescribeStacks",
+                "cloudformation:DescribeStackResource"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -2383,7 +2384,7 @@
                 {
                   "Ref": "AWS::StackName"
                 },
-                " --resource=MasterServer --region=",
+                " --resource=MasterServerWaitCondition --region=",
                 {
                   "Ref": "AWS::Region"
                 },
@@ -2629,7 +2630,13 @@
             }
           }
         }
-      },
+      }
+    },
+    "MasterServerWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": [
+        "MasterServer"
+      ],
       "CreationPolicy": {
         "ResourceSignal": {
           "Count": "1",
@@ -2794,7 +2801,6 @@
           ]
         }
       },
-      "DependsOn": "MasterServer",
       "CreationPolicy": {
         "ResourceSignal": {
           "Timeout": "PT30M",
@@ -3217,6 +3223,21 @@
                 "  vendor_cookbook\n",
                 "fi\n",
                 "cd /tmp\n",
+                "\n",
+                "while [ \"${masterServerStatus}\" != \"CREATE_COMPLETE\" ] && [ \"${masterServerStatus}\" != \"UPDATE_COMPLETE\" ]\n",
+                "do\n",
+                "sleep 3\n",
+                "masterServerStatus=$(aws cloudformation describe-stack-resource --stack-name ",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --logical-resource-id MasterServerWaitCondition --region ",
+                {
+                  "Ref": "AWS::Region"
+                },
+                " --query StackResourceDetail.ResourceStatus --output text 2>/dev/null)\n",
+                "done\n",
+                "\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
                 {
@@ -3900,6 +3921,21 @@
                   "  vendor_cookbook\n",
                   "fi\n",
                   "cd /tmp\n",
+                  "\n",
+                  "while [ \"${masterServerStatus}\" != \"CREATE_COMPLETE\" ] && [ \"${masterServerStatus}\" != \"UPDATE_COMPLETE\" ]\n",
+                  "do\n",
+                  "sleep 3\n",
+                  "masterServerStatus=$(aws cloudformation describe-stack-resource --stack-name ",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --logical-resource-id MasterServerWaitCondition --region ",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  " --query StackResourceDetail.ResourceStatus --output text 2>/dev/null)\n",
+                  "done\n",
+                  "\n",
                   "# Call CloudFormation\n",
                   "cfn-init ${proxy_args} -s ",
                   {

@@ -355,7 +355,8 @@ class ResourceValidator(object):
                     ),
                     (
                         ["cloudformation:DescribeStacks"],
-                        "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*" % (partition, self.region, account_id),
+                        ["cloudformation:DescribeStackResource"],
+                        "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*/*" % (partition, self.region, account_id),
                     ),
                     (["s3:GetObject"], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, self.region)),
                     (["sqs:ListQueues"], "*"),
