@@ -89,9 +89,9 @@ Documentation
 -------------
 
 We've been working hard to greatly improve the `Documentation <https://docs.aws.amazon.com/parallelcluster/latest/ug/>`_, it's now published in 10 languages, one of the many benefits of being hosted on AWS Docs. Of most interest to new users is
-the `Getting Started Guide <https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html>`_. 
+the `Getting Started Guide <https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html>`_.
 
-If you have changes you would like to see in the docs, please either submit feedback using the feedback link at the bottom 
+If you have changes you would like to see in the docs, please either submit feedback using the feedback link at the bottom
 of each page or create an issue or pull request for the project at:
 https://github.com/awsdocs/aws-parallelcluster-user-guide.
 
