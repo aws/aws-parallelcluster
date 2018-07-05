@@ -48,7 +48,7 @@ torque_get_slots() {
 
     chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
     # wait 15 secs before giving up retrieving the slots per host
-    while [ -z "${chost}" -a $i -lt 1 ]; do
+    while [ -z "${chost}" -a $i -lt 15 ]; do
         sleep 1
         i=$((i+1))
         chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
