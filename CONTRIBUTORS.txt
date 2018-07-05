@@ -7,7 +7,10 @@ List of contributors:
  - Mohan Gandhi - mohgan at amazon dot com
  - Chris Gorski - cgorski at amazon dot com
  - Raghu Raja - craghun at amazon dot com
- - Sean Smith - sensmit at amazon dot com
+ - Sean Smith - seaam at amazon dot com
+ - Maurizio Melato - mmelato at amazon dot com
+ - Luca Carrogu - carrogu at amazon dot com
+ - Enrico Usai - usai at amazon dot com
 
  - Josh Clausman - jclausman at semanticmachines dot com
  - Kenneth Daily - kmdaily at gmail dot com
