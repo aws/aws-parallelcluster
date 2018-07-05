@@ -213,6 +213,10 @@ class CfnClusterConfig(object):
                 self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
             except configparser.NoOptionError:
                 pass
+            except configparser.NoSectionError:
+                print("ERROR: VPC section [%s] used in [%s] section is not defined"
+                      % (self.__vpc_section, self.__cluster_section))
+                sys.exit(1)
 
         # Dictionary list of all cluster section options
         self.__cluster_options = dict(cluster_user=('ClusterUser', None), compute_instance_type=('ComputeInstanceType',None),
