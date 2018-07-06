@@ -14,11 +14,11 @@
 # language governing permissions and limitations under the License.
 #
 #
-# It helps with the termination of multiple processes forked by a simple multi-threaded application.
+# This helper class copes with the termination of multiple processes forked by a simple multi-threaded application.
 # All processes are registered internally and if the term_handler() function is registered
 # to handle TERM or INT signals it will kill all the active processes submitted through the exec_command() function.
-# Killed processes would make the exec_command() function to raise an Exception (either AbortedProcessError,
-# KilledProcessError or CalledProcessError) that can be managed by the client application.
+# Killed processes would make the exec_command() function to raise an Exception, either AbortedProcessError or
+# KilledProcessError, that can be managed by the client application.
 #
 
 import os
@@ -55,7 +55,7 @@ def termination_caught():
 #    signal.signal(signal.SIGTERM, ph.term_handler)
 # It manages to kill all the active processes submitted through this module.
 # Killed processes would make the exec_command() function to raise a KilledProcessError
-# or an AbortedProcessError.
+# or an AbortedProcessError exception.
 #
 def term_handler(_signo, _stack_frame):
     global _procs_lock, _procs, _termination_caught
