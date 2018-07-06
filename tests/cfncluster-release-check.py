@@ -118,12 +118,12 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     _create_done = False;
     try:
         # build the cluster
-        prochelp.exec_command(['cfncluster', '--config', test_filename, 'create', testname],
+        prochelp.exec_command(['cfncluster', 'create', '--config', test_filename, testname],
                               stdout=stdout_f, stderr=stderr_f)
         _create_done = True
         # get the master ip, which means grepping through cfncluster status gorp
-        dump = prochelp.exec_command(['cfncluster', '--config', test_filename,
-                                        'status', testname], stderr=stderr_f)
+        dump = prochelp.exec_command(['cfncluster', 'status', '--config', test_filename,
+                                        testname], stderr=stderr_f)
         dump_array = dump.splitlines()
         for line in dump_array:
             m = re.search('MasterPublicIP: (.+)$', line)
@@ -184,7 +184,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
             while not _del_done and _del_iters > 0:
                 try:
                     # clean up the cluster
-                    _del_output = sub.check_output(['cfncluster', '--config', test_filename, '-nw', 'delete', testname], stderr=stderr_f)
+                    _del_output = sub.check_output(['cfncluster', 'delete', '--config', test_filename, '-nw', testname], stderr=stderr_f)
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
                     stdout_f.write(_del_output + '\n')
                 except sub.CalledProcessError as exc:
@@ -198,7 +198,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['cfncluster', '--config', test_filename, 'status', testname], stdout=stdout_f, stderr=stderr_f)
+                prochelp.exec_command(['cfncluster', 'status', '--config', test_filename, testname], stdout=stdout_f, stderr=stderr_f)
             except sub.CalledProcessError as exc:
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
                 stdout_f.write("Expected CalledProcessError exception launching 'cfncluster status': %s - Output:\n%s\n" % (str(exc), exc.output))
@@ -420,10 +420,7 @@ def _main_child():
 
 if __name__ == '__main__':
     _child = os.fork()
-    #===========================================================================
-    # sys.stdout = open(('pid-%s-stdout.txt' % os.getpid()), 'w', 0)
-    # sys.stderr = open(('pid-%s-stderr.txt' % os.getpid()), 'w', 0)
-    #===========================================================================
+
     if _child == 0:
         _main_child()
     else:
