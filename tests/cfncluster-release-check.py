@@ -41,6 +41,10 @@ import boto3
 import process_helper as prochelp
 from builtins import exit
 
+
+class ReleaseCheckException(Exception):
+    pass
+
 #
 # configuration
 #
@@ -58,7 +62,6 @@ setup = {}
 results_lock = threading.Lock()
 failure = 0
 success = 0
-aborted = 0
 
 # PID of the actual test process
 _child = 0
@@ -75,6 +78,11 @@ def _dirname():
 def _time():
     return datetime.datetime.now()
 
+# Write both on stdout and the specified file object
+def _double_writeln(fileo, message):
+    print(message)
+    fileo.write(message + '\n')
+
 #
 # run a single test, possibly in parallel
 #
@@ -82,7 +90,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     testname = '%s-%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''), _timestamp)
     test_filename = "%s-config.cfg" % testname
 
-    sys.stdout.write("--> %s: Starting\n" % (testname))
+    print("--> %s: Starting" % (testname))
 
     file = open(test_filename, "w")
     file.write("[aws]\n")
@@ -109,8 +117,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     file.write("scaling_cooldown = 300\n")
     file.close()
 
-    stdout_f = open('%s-stdout.txt' % testname, 'w', 0)
-    stderr_f = open('%s-stderr.txt' % testname, 'w', 0)
+    out_f = open('%s-out.txt' % testname, 'w', 0)
 
     master_ip = ''
     username = username_map[distro]
@@ -119,11 +126,11 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     try:
         # build the cluster
         prochelp.exec_command(['cfncluster', 'create', '--config', test_filename, testname],
-                              stdout=stdout_f, stderr=stderr_f)
+                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         _create_done = True
         # get the master ip, which means grepping through cfncluster status gorp
         dump = prochelp.exec_command(['cfncluster', 'status', '--config', test_filename,
-                                        testname], stderr=stderr_f)
+                                        testname], stderr=sub.STDOUT, universal_newlines=True)
         dump_array = dump.splitlines()
         for line in dump_array:
             m = re.search('MasterPublicIP: (.+)$', line)
@@ -131,10 +138,9 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
                 master_ip = m.group(1)
                 break
         if master_ip == '':
-            stderr_f.write('!! %s: Master IP not found; aborting !!\n' % (testname))
-            raise Exception('--> %s: Master IP not found!' % testname)
-        stdout_f.write("--> %s Master IP: %s\n" % (testname, master_ip))
-        print("--> %s Master IP: %s" % (testname, master_ip))
+            _double_writeln(out_f, '!! %s: Master IP not found; exiting !!' % (testname))
+            raise ReleaseCheckException('--> %s: Master IP not found!' % testname)
+        _double_writeln(out_f, "--> %s Master IP: %s" % (testname, master_ip))
 
         # run test on the cluster...
         ssh_params = ['-o', 'StrictHostKeyChecking=no']
@@ -147,27 +153,24 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
             ssh_params.extend(['-i', key_path])
 
         prochelp.exec_command(['scp'] + ssh_params + [os.path.join(_dirname(), 'cluster-check.sh'), '%s@%s:.' % (username, master_ip)],
-                              stdout=stdout_f, stderr=stderr_f)
+                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
-                              stdout=stdout_f, stderr=stderr_f)
+                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
 
-        stdout_f.write('SUCCESS:  %s!!\n' % (testname))
+        _double_writeln(out_f, 'SUCCESS:  %s!!' % (testname))
         open('%s.success' %testname, 'w').close()
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
-            print("--> %s: Interrupting cfncluster create!" % testname)
-        print('!! ABORTED: %s!!' % (testname))
-        stdout_f.write('ABORTED: %s!!\n' % (testname))
+            _double_writeln(out_f, "--> %s: Interrupting cfncluster create!" % testname)
+        _double_writeln(out_f, '!! ABORTED: %s!!' % (testname))
         open('%s.aborted' % testname, 'w').close()
         raise exc
     except Exception as exc:
         if not _create_done:
             _create_interrupted = True
-        print("Unexpected exception %s: %s" % (str(type(exc)), str(exc)))
-        stdout_f.write("Unexpected exception %s: %s\n" % (str(type(exc)), str(exc)))
-        sys.stdout.write("!! FAILURE: %s!!\n" % (testname))
-        stdout_f.write('FAILURE: %s!!\n' % (testname))
+        _double_writeln(out_f, "Unexpected exception %s: %s" % (str(type(exc)), str(exc)))
+        _double_writeln(out_f, "!! FAILURE: %s!!" % (testname))
         open('%s.failed' % testname, 'w').close()
         raise exc
     finally:
@@ -179,34 +182,31 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
             _del_iters = 0
         if _del_iters > 0:
             _del_done = False
-            stdout_f.write('Deleting: %s - max iterations: %s\n' % (testname, _del_iters))
-            print("--> %s: Deleting - max iterations: %s" % (testname, _del_iters))
+            _double_writeln(out_f, "--> %s: Deleting - max iterations: %s" % (testname, _del_iters))
             while not _del_done and _del_iters > 0:
                 try:
+                    time.sleep(2)
                     # clean up the cluster
-                    _del_output = sub.check_output(['cfncluster', 'delete', '--config', test_filename, '-nw', testname], stderr=stderr_f)
+                    _del_output = sub.check_output(['cfncluster', 'delete', '--config', test_filename, '-nw', testname], stderr=sub.STDOUT, universal_newlines=True)
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
-                    stdout_f.write(_del_output + '\n')
+                    out_f.write(_del_output + '\n')
                 except sub.CalledProcessError as exc:
-                    stdout_f.write("CalledProcessError exception launching 'cfncluster delete': %s - Output:\n%s\n" % (str(exc), exc.output))
+                    out_f.write("CalledProcessError exception launching 'cfncluster delete': %s - Output:\n%s\n" % (str(exc), exc.output))
                 except Exception as exc:
-                    stdout_f.write("Unexpected exception launching 'cfncluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
+                    out_f.write("Unexpected exception launching 'cfncluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
                 finally:
-                    print("--> %s: Deleting - iteration: %s - successfully submitted: %s" % (testname, (_max_del_iters - _del_iters + 1), _del_done))
-                    if not _del_done and _del_iters > 1:
-                        time.sleep(2)
+                    _double_writeln(out_f, "--> %s: Deleting - iteration: %s - successfully submitted: %s" % (testname, (_max_del_iters - _del_iters + 1), _del_done))
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['cfncluster', 'status', '--config', test_filename, testname], stdout=stdout_f, stderr=stderr_f)
-            except sub.CalledProcessError as exc:
+                prochelp.exec_command(['cfncluster', 'status', '--config', test_filename, testname], stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+            except (prochelp.ProcessHelperError, sub.CalledProcessError):
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
-                stdout_f.write("Expected CalledProcessError exception launching 'cfncluster status': %s - Output:\n%s\n" % (str(exc), exc.output))
+                pass
             except Exception as exc:
-                stdout_f.write("Unexpected exception launching 'cfncluster status' %s: %s\n" % (str(type(exc)), str(exc)))
-        stdout_f.close()
-        stderr_f.close()
-    sys.stdout.write("--> %s: Finished\n" % (testname))
+                out_f.write("Unexpected exception launching 'cfncluster status' %s: %s\n" % (str(type(exc)), str(exc)))
+        out_f.close()
+    print("--> %s: Finished" % (testname))
 
 #
 # worker thread, there will be config['parallelism'] of these running
@@ -227,7 +227,7 @@ def test_runner(region, q, key_name, key_path):
                 run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
                          instance_type=item['instance_type'], key_name=key_name, key_path=key_path)
                 retval = 0
-        except (prochelp.ProcessHelperError, sub.CalledProcessError):
+        except (ReleaseCheckException, prochelp.ProcessHelperError, sub.CalledProcessError):
             pass
         except Exception as exc:
             print("[test_runner] Unexpected exception %s: %s\n" % (str(type(exc)), str(exc)))
@@ -240,7 +240,7 @@ def test_runner(region, q, key_name, key_path):
         results_lock.release()
         q.task_done()
 
-def _term_handler(_signo, _stack_frame):
+def _term_handler_parent(_signo, _stack_frame):
     global _termination_caught
 
     if not _termination_caught:
@@ -250,10 +250,9 @@ def _term_handler(_signo, _stack_frame):
         os.kill(_child, signal.SIGTERM)
 
 def _bind_signals_parent():
-    #    signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-    signal.signal(signal.SIGINT, _term_handler)
-    signal.signal(signal.SIGTERM, _term_handler)
-    signal.signal(signal.SIGHUP, _term_handler)
+    signal.signal(signal.SIGINT, _term_handler_parent)
+    signal.signal(signal.SIGTERM, _term_handler_parent)
+    signal.signal(signal.SIGHUP, _term_handler_parent)
 
 def _main_parent():
     _bind_signals_parent()
@@ -266,7 +265,7 @@ def _main_parent():
             (pid, status) = os.wait()
             child_terminated = True
         except OSError as ose:
-            # errno.ECHILD -
+            # errno.ECHILD - No child processes
             child_terminated = ose.errno == errno.ECHILD
             if not child_terminated:
                 print("OSError exception while waiting for child process %s, errno: %s - %s" % (_child, errno.errorcode[ose.errno], str(ose)))
@@ -274,12 +273,12 @@ def _main_parent():
             print("Unexpected exception while waiting for child process %s, %s: %s" % (_child, str(type(exc)), str(exc)))
             max_num_exc -= 1
     print("Child pid: %s - Exit status: %s" % (pid, status))
-    exit(status)
+    # status is a 16-bit number, whose low byte is the signal number that killed the process, and whose high byte is the exit status
+    exit(status>>8)
 
 def _bind_signals_child():
     # This is important - otherwise SIGINT propagates downstream to threads and child processes
     signal.signal(signal.SIGINT, signal.SIG_IGN)
-    # signal.signal(signal.SIGPIPE, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, prochelp.term_handler)
     signal.signal(signal.SIGHUP, prochelp.term_handler)
 
@@ -392,11 +391,9 @@ def _main_child():
             t.start()
 
 
-    # WARN: The join() approach prevents the SIGINT signal to be caught from the main thread,
+    # Wait for all the work queues to be completed in each region
+    # WARN: The work_queues[region].join() approach prevents the SIGINT signal to be caught from the main thread,
     #       that is actually blocked in the join.
-    # wait for all the work queues to be completed in each region
-    # for region in region_list:
-    #    work_queues[region].join()
     all_finished = False
     self_killed = False
     while not all_finished:
@@ -404,13 +401,13 @@ def _main_child():
         all_finished = True
         for queue in work_queues.values():
             all_finished = all_finished and queue.unfinished_tasks == 0
-        # If parent process is SIGKILL-ed
+        # In the case parent process was SIGKILL-ed
         if not _proc_alive(parent) and not self_killed:
             print("Parent process with pid %s died - terminating..." % parent)
             _killme_gently()
             self_killed = True
 
-    print("%s - Reqions workers queues all done: %s" % (_time(), all_finished))
+    print("%s - Regions workers queues all done: %s" % (_time(), all_finished))
 
     # print status...
     print("==> Success: %d" % (success))
