@@ -2,6 +2,15 @@
 CHANGELOG
 =========
 
+1.5.2
+=====
+* feature:``cfncluster``: Added ClusterUser as a stack output. This makes it easier to get the username of the head node.
+* feature:``cfncluster``: Added `cfncluster ssh cluster_name`, this allows you to easily ssh into your clusters. It allows arbitrary command execution and extra ssh flags to be provided after the command. See https://cfncluster.readthedocs.io/en/latest/commands.html#ssh
+* change:``cfncluster``: Moved global cli flags to the command specific flags. For example `cfncluster --region us-east-1 create` now becomes `cfncluster create --region us-east-1`
+* bugfix:``cfncluster-cookbook``: Fix bug that prevented c5d/m5d instances from working
+* bugfix:``cfncluster-cookbook``: Set CPU as a consumable resource in slurm
+* bugfix:``cfncluster-node``: Fixed Slurm behavior to add CPU slots so multiple jobs can be scheduled on a single node
+
 1.5.1
 =====
 * change:``cfncluster``: Added "ec2:DescribeVolumes" permissions to
