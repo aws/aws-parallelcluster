@@ -481,6 +481,9 @@ def delete(args):
                        aws_secret_access_key=config.aws_secret_access_key)
 
     try:
+        # delete_stack does not raise an exception if stack does not exist
+        # Use describe_stacks to explicitly check if the stack exists
+        cfn.describe_stacks(StackName=stack)
         cfn.delete_stack(StackName=stack)
         saw_update = True
         status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('StackStatus')
