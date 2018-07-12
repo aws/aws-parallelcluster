@@ -11,7 +11,7 @@ python:
 install: 
   - cd cli
   - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
-    pip install -U setuptools;
+    pip install 'setuptools==39.2.0' --force-reinstall;
     pip install -U enum34;
     fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; 
