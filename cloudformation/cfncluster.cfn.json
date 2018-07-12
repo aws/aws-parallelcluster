@@ -1769,9 +1769,9 @@
       "default": {
         "cfncluster": "cfncluster-1.5.1",
         "cookbook": "cfncluster-cookbook-1.5.1",
-        "chef": "12.19.36",
-        "ridley": "5.1.0",
-        "berkshelf": "5.6.4",
+        "chef": "14.2.0",
+        "ridley": "5.1.1",
+        "berkshelf": "7.0.4",
         "ami": "dev"
       }
     },
