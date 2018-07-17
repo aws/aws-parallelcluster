@@ -1769,9 +1769,9 @@
       "default": {
         "cfncluster": "cfncluster-1.5.1",
         "cookbook": "cfncluster-cookbook-1.5.1",
-        "chef": "12.19.36",
-        "ridley": "5.1.0",
-        "berkshelf": "5.6.4",
+        "chef": "14.2.0",
+        "ridley": "5.1.1",
+        "berkshelf": "7.0.4",
         "ami": "dev"
       }
     },
@@ -2437,11 +2437,11 @@
                   "Ref": "ProxyServer"
                 },
                 " >> /etc/yum.conf\" ]\n",
-                " - [ sh, \"which apt-get && echo Acquire::http::Proxy \"",
+                " - [ sh, \"which apt-get && echo Acquire::http::Proxy ",
                 {
                   "Ref": "ProxyServer"
                 },
-                "\"; >> /etc/apt/apt.conf\" ]\n",
+                "; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -2761,7 +2761,7 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp"
@@ -3146,11 +3146,11 @@
                   "Ref": "ProxyServer"
                 },
                 " >> /etc/yum.conf\" ]\n",
-                " - [ sh, \"which apt-get && echo Acquire::http::Proxy \"",
+                " - [ sh, \"which apt-get && echo Acquire::http::Proxy ",
                 {
                   "Ref": "ProxyServer"
                 },
-                "\"; >> /etc/apt/apt.conf\" ]\n",
+                "; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3460,7 +3460,7 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp"
@@ -3975,6 +3975,18 @@
     }
   },
   "Outputs": {
+    "ClusterUser": {
+      "Description": "Username to login to Master host",
+      "Value": {
+        "Fn::FindInMap": [
+          "OSFeatures",
+          {
+            "Ref": "BaseOS"
+          },
+          "User"
+        ]
+      }
+    },
     "MasterPrivateIP": {
       "Description": "Private IP Address of the Master host",
       "Value": {
