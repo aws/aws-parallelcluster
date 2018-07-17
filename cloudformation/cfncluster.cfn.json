@@ -3975,6 +3975,18 @@
     }
   },
   "Outputs": {
+    "ClusterUser": {
+      "Description": "Username to login to Master host",
+      "Value": {
+        "Fn::FindInMap": [
+          "OSFeatures",
+          {
+            "Ref": "BaseOS"
+          },
+          "User"
+        ]
+      }
+    },
     "MasterPrivateIP": {
       "Description": "Private IP Address of the Master host",
       "Value": {
