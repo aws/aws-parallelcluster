@@ -32,7 +32,7 @@ config_file = 'cli/tests/config'
 with open('cloudformation/cfncluster.cfn.json') as f:
     cfncluster_json_data = json.load(f)
     version_on_file = cfncluster_json_data["Mappings"]["CfnClusterVersions"]["default"]["cfncluster"]
-    version_on_file = re.match(r".*(\d+\.\d+\.\d+)", version_on_file).group(1)
+    version_on_file = re.match(r".*(\d+\.\d+\.\d+.*)", version_on_file).group(1)
     json_dump = json.dumps(cfncluster_json_data)
 
 
@@ -106,7 +106,7 @@ class CFN_cluster_test(unittest.TestCase):
         args = BaseArgs()
         cfncluster.version(args)
         log = test_log_stream.getvalue()
-        version_returned = re.match(r"^INFO:\w+\.\w+:(\d+\.\d+\.\d+)$", log).group(1)
+        version_returned = re.match(r"^INFO:\w+\.\w+:(\d+\.\d+\.\d+.*)$", log).group(1)
         self.assertEqual(version_returned, version_on_file)
 
     @mock_ec2
