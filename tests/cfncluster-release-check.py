@@ -86,9 +86,13 @@ def _double_writeln(fileo, message):
 #
 # run a single test, possibly in parallel
 #
-def run_test(region, distro, scheduler, instance_type, key_name, key_path):
+def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     testname = '%s-%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''), _timestamp)
     test_filename = "%s-config.cfg" % testname
+    key_path = extra_args['key_path']
+    custom_cookbook = extra_args['custom_cookbook_url']
+    custom_node = extra_args['custom_node_url']
+    custom_template = extra_args['custom_template_url']
 
     print("--> %s: Starting" % (testname))
 
@@ -105,6 +109,12 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
     file.write("maintain_initial_size = true\n")
     file.write("scheduler = %s\n" % (scheduler))
     file.write("scaling_settings = custom\n")
+    if custom_template:
+        file.write("template_url = %s\n" % custom_template)
+    if custom_cookbook:
+        file.write("custom_chef_cookbook = %s\n" % custom_cookbook)
+    if custom_node:
+        file.write('extra_json = { "cfncluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
     file.write("[vpc public]\n")
     file.write("master_subnet_id = %s\n" % (setup[region]['subnet']))
     file.write("vpc_id = %s\n" % (setup[region]['vpc']))
@@ -212,7 +222,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, key_path):
 # worker thread, there will be config['parallelism'] of these running
 # per region, dispatching work from the work queue
 #
-def test_runner(region, q, key_name, key_path):
+def test_runner(region, q, key_name, extra_args):
     global success
     global failure
     global results_lock
@@ -225,7 +235,7 @@ def test_runner(region, q, key_name, key_path):
         try:
             if not prochelp.termination_caught():
                 run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
-                         instance_type=item['instance_type'], key_name=key_name, key_path=key_path)
+                         instance_type=item['instance_type'], key_name=key_name, extra_args=extra_args)
                 retval = 0
         except (ReleaseCheckException, prochelp.ProcessHelperError, sub.CalledProcessError):
             pass
@@ -315,7 +325,10 @@ def _main_child():
                'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
                'schedulers' : 'sge,slurm,torque',
                'instance_types': 'c4.xlarge',
-               'key_path' : ''}
+               'key_path' : '',
+               'custom_node_url' : None,
+               'custom_cookbook_url' : None,
+               'custom_template_url' : None }
 
     parser = argparse.ArgumentParser(description = 'Test runner for CfnCluster')
     parser.add_argument('--parallelism', help = 'Number of tests per region to run in parallel',
@@ -331,6 +344,12 @@ def _main_child():
     parser.add_argument('--key-name', help = 'Key Pair to use for EC2 instances',
                         type = str, required = True)
     parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
+                        type = str)
+    parser.add_argument('--custom-node-url', help = 'S3 URL to a custom cfncluster-node package',
+                        type = str)
+    parser.add_argument('--custom-cookbook-url', help = 'S3 URL to a custom cfncluster-cookbook package',
+                        type = str)
+    parser.add_argument('--custom-template-url', help = 'S3 URL to a custom cfncluster CloudFormation template',
                         type = str)
 
     for key, value in vars(parser.parse_args()).iteritems():
@@ -349,8 +368,15 @@ def _main_child():
     print("==> Parallelism: %d" % (config['parallelism']))
     print("==> Key Pair: %s" % (config['key_name']))
 
+    # Optional params
     if config['key_path']:
         print("==> Key Path: %s" % (config['key_path']))
+    if config['custom_cookbook_url']:
+        print("==> Custom cfncluster-cookbook URL: %s" % (config['custom_cookbook_url']))
+    if config['custom_node_url']:
+        print("==> Custom cfncluster-node URL: %s" % (config['custom_node_url']))
+    if config['custom_template_url']:
+        print("==> Custom cfncluster template URL: %s" % (config['custom_template_url']))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
@@ -386,7 +412,7 @@ def _main_child():
     for region in region_list:
         for i in range(0, config['parallelism']):
             t = threading.Thread(target=test_runner,
-                                 args=(region, work_queues[region], config['key_name'], config['key_path']))
+                                 args=(region, work_queues[region], config['key_name'], config))
             t.daemon = True
             t.start()
 
