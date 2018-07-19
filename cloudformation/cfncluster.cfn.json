@@ -2039,7 +2039,8 @@
               "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
-                "autoscaling:SetDesiredCapacity"
+                "autoscaling:SetDesiredCapacity",
+                "autoScaling:UpdateAutoScalingGroup"
               ],
               "Effect": "Allow",
               "Resource": [
