@@ -46,7 +46,6 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                         (['dynamodb:ListTables'], "*"),
                         (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:aws:sqs:%s:%s:cfncluster-*" % (region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoScaling:UpdateAutoScalingGroup'], "*"),
-                        (['cloudwatch:PutMetricData'], "*"),
                         (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:aws:dynamodb:%s:%s:table/cfncluster-*" % (region, accountid)),
                         (['s3:GetObject'], "arn:aws:s3:::%s-cfncluster/*" % region),
                         (['sqs:ListQueues'], "*"),
