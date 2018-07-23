@@ -2678,6 +2678,9 @@
                     "cfn_proxy": {
                       "Ref": "ProxyServer"
                     },
+                    "compute_instance_type": {
+                      "Ref": "ComputeInstanceType"
+                    },
                     "cfn_node_type": "MasterServer",
                     "cfn_cluster_user": {
                       "Fn::FindInMap": [
