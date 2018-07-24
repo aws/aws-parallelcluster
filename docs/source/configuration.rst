@@ -61,6 +61,20 @@ If not defined, boto will attempt to use a) environment or b) EC2 IAM role. ::
     # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
 
+
+aliases
+^^^^^^^
+This is the aliases section. Use this section to customize the `ssh` command.
+
+`CFN_USER` is set to the default username for the os.
+`MASTER_IP` is set to the ip address of the master instance.
+`ARGS` is set to whatever arguments the user provides after `cfncluster ssh cluster_name`. ::
+
+    [aliases]
+    # This is the aliases section, you can configure
+    # ssh alias here
+    ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
 .. _cluster_definition:
 
 cluster

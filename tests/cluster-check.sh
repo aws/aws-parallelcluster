@@ -15,7 +15,7 @@
 #
 #
 # Script executed on clusters from cfncluster-release-check.py.  This
-# script attempts to submit two jobs which must complete in 30
+# script attempts to submit two jobs which must complete in 10
 # minutes, one of which (hopefully) requires scaling (note that
 # scaling is currently not tested on Torque, because it's too big of a
 # pain to determine how many slots per node are on a Torque compute
@@ -26,53 +26,91 @@
 # there's a bounded completion time
 if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
    export CHECK_CLUSTER_SUBPROCESS=1
-   timeout -s KILL 30m /bin/bash ./cluster-check.sh "$@"
+   timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
    exit $?
 fi
 
+sge_get_slots() {
+    local -- ppn i=0
+    ppn=$(qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p')
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${ppn}" -a $i -lt 15 ]; do
+        sleep 1
+        i=$((i+1))
+        ppn=$(qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p')
+    done
+
+    echo ${ppn}
+}
+
+torque_get_slots() {
+    local -- chost ppn i=0
+
+    chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${chost}" -a $i -lt 15 ]; do
+        sleep 1
+        i=$((i+1))
+        chost=$({ pbsnodes -l free ; pbsnodes -l job-exclusive; } | head -n 1 | cut -d ' ' -f1)
+    done
+    [ -n "${chost}" ] && ppn=$(pbsnodes ${chost} | tr -d '\t ' | sed -n '/np=/{s/^np=\([0-9]\+\)/\1/;p;}')
+
+    echo ${ppn}
+}
+
+
 scheduler="$1"
+# job1: 8m30s
+_sleepjob1=510
+# job2: 2m
+_sleepjob2=120
 
 echo "--> scheduler: $scheduler"
 
 set -e
 
-# we submit 2 2-node jobs, each of which are a sleep for 16 minutes.
-# The whole thing has to run in 30 minutes, or the kill above will
+# we submit 2 1-node jobs, each of which are a sleep.
+# The whole thing has to run in 10 minutes, or the kill above will
 # fail the job, which means that the jobs must run at the same time.
-# The initial cluster is 2 nodes, so we'll need to scale up 2 nodes in
-# less than 10 minutes in order for the test to succeed.
+# The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
+# less than 8 minutes in order for the test to succeed.
 
 if test "$scheduler" = "slurm" ; then
     cat > job1.sh <<EOF
 #!/bin/bash
-srun sleep 960
+srun sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-srun sleep 960
+srun sleep ${_sleepjob2}
 touch job2.done
 EOF
 
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    sbatch -N 2 ./job1.sh
-    sbatch -N 2 ./job2.sh
+    sbatch -N 1 ./job1.sh
+    sbatch -N 1 ./job2.sh
 
 elif test "$scheduler" = "sge" ; then
     # get the slots per node count of the first real node (one with a
     # architecture type of lx-?), so that we can reserve an enitre
     # node's worth of slots at a time.
-    ppn=` qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p'`
-    count=$((ppn * 2))
+    ppn=$(sge_get_slots)
+    if [ -z "${ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in sge cluster"
+        exit 1
+    fi
+
+    count=$((ppn))
 
     cat > job1.sh <<EOF
 #!/bin/bash
 #$ -pe mpi $count
 #$ -R y
 
-sleep 960
+sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
@@ -80,7 +118,7 @@ EOF
 #$ -pe mpi $count
 #$ -R y
 
-sleep 960
+sleep ${_sleepjob2}
 touch job2.done
 EOF
 
@@ -91,22 +129,30 @@ EOF
     qsub ./job2.sh
 
 elif test "$scheduler" = "torque" ; then
+    _ppn=$(torque_get_slots)
+    if [ -z "${_ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in Torque cluster"
+        exit 1
+    fi
+
     cat > job1.sh <<EOF
 #!/bin/bash
-sleep 1200
+sleep ${_sleepjob1}
 touch job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
-sleep 1200
+sleep ${_sleepjob2}
 touch job2.done
 EOF
 
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    qsub -l nodes=2:ppn=2 ./job1.sh
-    qsub -l nodes=2:ppn=2 ./job2.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job1.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job1.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job2.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job2.sh
 
 else
     echo "!! Unknown scheduler $scheduler !!"

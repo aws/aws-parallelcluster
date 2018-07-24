@@ -52,7 +52,7 @@ class CfnClusterConfig(object):
         __args_func = self.args.func.__name__
 
         # Determine config file name based on args or default
-        if args.config_file is not None:
+        if hasattr(args, 'config_file') and args.config_file is not None:
             self.__config_file = args.config_file
         else:
             self.__config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
@@ -76,7 +76,7 @@ class CfnClusterConfig(object):
 
         # Determine the EC2 region to used used or default to us-east-1
         # Order is 1) CLI arg 2) AWS_DEFAULT_REGION env 3) Config file 4) us-east-1
-        if args.region:
+        if hasattr(args, 'region') and args.region:
             self.region = args.region
         else:
             if os.environ.get('AWS_DEFAULT_REGION'):
@@ -213,6 +213,10 @@ class CfnClusterConfig(object):
                 self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
             except configparser.NoOptionError:
                 pass
+            except configparser.NoSectionError:
+                print("ERROR: VPC section [%s] used in [%s] section is not defined"
+                      % (self.__vpc_section, self.__cluster_section))
+                sys.exit(1)
 
         # Dictionary list of all cluster section options
         self.__cluster_options = dict(cluster_user=('ClusterUser', None), compute_instance_type=('ComputeInstanceType',None),
@@ -333,6 +337,13 @@ class CfnClusterConfig(object):
                         pass
         except AttributeError:
             pass
+
+        # handle aliases
+        self.aliases = {}
+        self.__alias_section = 'aliases'
+        if __config.has_section(self.__alias_section):
+            for alias in __config.options(self.__alias_section):
+                self.aliases[alias] = __config.get(self.__alias_section, alias)
 
         # Handle extra parameters supplied on command-line
         try:

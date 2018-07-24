@@ -141,10 +141,11 @@ def configure(args):
     # Dictionary of values we want to set
     s_global = { '__name__': 'global', 'cluster_template': cluster_template, 'update_check': 'true', 'sanity_check': 'true' }
     s_aws = { '__name__': 'aws', 'aws_access_key_id': aws_access_key_id, 'aws_secret_access_key': aws_secret_access_key, 'aws_region_name': aws_region_name }
+    s_aliases = {'__name__': 'aliases', 'ssh': 'ssh {CFN_USER}@{MASTER_IP} {ARGS}'}
     s_cluster = { '__name__': 'cluster ' + cluster_template, 'key_name': key_name, 'vpc_settings': vpcname }
     s_vpc = { '__name__': 'vpc ' + vpcname, 'vpc_id': vpc_id, 'master_subnet_id': master_subnet_id }
 
-    sections = [s_aws, s_cluster, s_vpc, s_global]
+    sections = [s_aws, s_cluster, s_vpc, s_global, s_aliases]
 
     # Loop through the configuration sections we care about
     for section in sections:
@@ -173,4 +174,3 @@ def configure(args):
 
     # Verify the configuration
     cfnconfig.CfnClusterConfig(args)
-

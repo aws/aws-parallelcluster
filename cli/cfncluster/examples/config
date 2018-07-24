@@ -19,6 +19,11 @@ sanity_check = true
 # (Defaults to us-east-1 if not defined in enviornment or below)
 #aws_region_name = #region
 
+[aliases]
+# This is the aliases section, you can configure
+# ssh alias here
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
 ## cfncluster templates
 [cluster default]
 # Name of an existing EC2 KeyPair to enable SSH access to the instances.
@@ -88,11 +93,11 @@ key_name = mykey
 # (defaults to false in default template)
 #encrypted_ephemeral = false
 # MasterServer root volume size in GB. (AMI must support growroot)
-# (defaults to 10 in default template)
-#master_root_volume_size = 10
+# (defaults to 15 in default template)
+#master_root_volume_size = 15
 # ComputeFleet root volume size in GB. (AMI must support growroot)
-# (defaults to 10 in default template)
-#compute_root_volume_size = 10
+# (defaults to 15 in default template)
+#compute_root_volume_size = 15
 # OS type used in the cluster
 # (defaults to alinux in the default template)
 #base_os = alinux
