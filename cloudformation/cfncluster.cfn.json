@@ -2094,37 +2094,6 @@
               ]
             },
             {
-              "Sid": "S3ListBucket",
-              "Action": [
-                "s3:ListBucket"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
-                      },
-                      ":s3:::",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "-cfncluster"
-                    ]
-                  ]
-                }
-              ]
-            },
-            {
               "Sid": "S3GetObj",
               "Action": [
                 "s3:GetObject"
