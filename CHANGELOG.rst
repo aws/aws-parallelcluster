@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.5.3
+=====
+* Add support for GovCloud, us-gov-west-1 region
+
 1.5.2
 =====
 * feature:``cfncluster``: Added ClusterUser as a stack output. This makes it easier to get the username of the head node.
