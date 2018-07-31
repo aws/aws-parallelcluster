@@ -43,6 +43,19 @@ sge_get_slots() {
     echo ${ppn}
 }
 
+slurm_get_slots() {
+    local -- ppn i=0
+    ppn=$(scontrol show nodes -o | head -n 1 | sed -n -e 's/^.* CPUTot=\([0-9]\+\) .*$/\1/p')
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${ppn}" -a $i -lt 15 ]; do
+        sleep 1
+        i=$((i+1))
+        ppn=$(scontrol show nodes -o | head -n 1 | sed -n -e 's/^.* CPUTot=\([0-9]\+\) .*$/\1/p')
+    done
+
+    echo ${ppn}
+}
+
 torque_get_slots() {
     local -- chost ppn i=0
 
@@ -76,6 +89,12 @@ set -e
 # less than 8 minutes in order for the test to succeed.
 
 if test "$scheduler" = "slurm" ; then
+    _ppn=$(slurm_get_slots)
+    if [ -z "${_ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in Slurm cluster"
+        exit 1
+    fi
+
     cat > job1.sh <<EOF
 #!/bin/bash
 srun sleep ${_sleepjob1}
@@ -90,8 +109,8 @@ EOF
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    sbatch -N 1 ./job1.sh
-    sbatch -N 1 ./job2.sh
+    sbatch -N 1 -n ${_ppn} ./job1.sh
+    sbatch -N 1 -n ${_ppn} ./job2.sh
 
 elif test "$scheduler" = "sge" ; then
     # get the slots per node count of the first real node (one with a
