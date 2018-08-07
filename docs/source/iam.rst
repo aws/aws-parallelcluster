@@ -4,11 +4,8 @@ IAM in CfnCluster
 ========================
 
 .. warning::
-
-    Between CfnCluster 1.5.2 and 1.5.3 we made a change to the CfnClusterInstancePolicy that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket.
-    If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://cfncluster.readthedocs.io/en/latest/iam.html
-
-    Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
+    Between CfnCluster 1.4.2 and 1.5.3 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions and “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket.
+    If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
 
 CfnCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in CfnCluster <aws_services>` section of the documentation.
  
