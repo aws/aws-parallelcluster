@@ -1772,7 +1772,7 @@
     },
     "CfnClusterVersions": {
       "default": {
-        "cfncluster": "cfncluster-1.5.3rc1",
+        "cfncluster": "cfncluster-1.5.3",
         "cookbook": "cfncluster-cookbook-1.5.2",
         "chef": "14.2.0",
         "ridley": "5.1.1",
