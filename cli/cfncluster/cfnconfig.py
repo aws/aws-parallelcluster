@@ -177,7 +177,7 @@ class CfnClusterConfig(object):
                                                      'URL', self.template_url)
                 except configparser.NoOptionError:
                     if self.region == 'us-gov-west-1':
-                        self.template_url = ('https://s3-%s.amazonaws.com/cfncluster-%s/templates/cfncluster-%s.cfn.json'
+                        self.template_url = ('https://s3-%s.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
                                              % (self.region, self.region, self.version))
                     else:
                         self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'

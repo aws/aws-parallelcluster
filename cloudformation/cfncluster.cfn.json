@@ -1741,6 +1741,11 @@
         "centos7": "ami-0df85f5bc2d980e57",
         "ubuntu1404": "ami-06142a55749b7912b",
         "ubuntu1604": "ami-0702d59e57ada76b8"
+      },
+      "us-gov-west-1": {
+        "alinux": "ami-af2cbece",
+        "ubuntu1404": "ami-4aca572b",
+        "ubuntu1604": "ami-3dc8555c"
       }
     },
     "OSFeatures": {
@@ -1767,7 +1772,7 @@
     },
     "CfnClusterVersions": {
       "default": {
-        "cfncluster": "cfncluster-1.5.2",
+        "cfncluster": "cfncluster-1.5.3",
         "cookbook": "cfncluster-cookbook-1.5.2",
         "chef": "14.2.0",
         "ridley": "5.1.1",
