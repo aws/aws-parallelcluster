@@ -164,7 +164,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
 
         prochelp.exec_command(['scp'] + ssh_params + [os.path.join(_dirname(), 'cluster-check.sh'), '%s@%s:.' % (username, master_ip)],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
-        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh %s' % scheduler],
+        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh submit %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
 
         _double_writeln(out_f, 'SUCCESS:  %s!!' % (testname))
