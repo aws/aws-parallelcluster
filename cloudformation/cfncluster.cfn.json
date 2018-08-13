@@ -271,32 +271,8 @@
         "EBSVolumeId": {
           "default": "ebs_volume_id"
         },
-        "ScalingThreshold": {
-          "default": "scaling_threshold"
-        },
-        "ScalingPeriod": {
-          "default": "scaling_period"
-        },
-        "ScalingEvaluationPeriods": {
-          "default": "scaling_evaluation_periods"
-        },
-        "ScalingAdjustment": {
-          "default": "scaling_adjustment"
-        },
-        "ScalingAdjustment2": {
-          "default": "scaling_adjustment2"
-        },
-        "ScalingCooldown": {
-          "default": "scaling_cooldown"
-        },
-<<<<<<< HEAD
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
-        },
-=======
->>>>>>> Revert "Add parameters to enable scaling down based on idle time"
-        "ScalingThreshold2": {
-          "default": "scaling_threshold2"
         },
         "ComputeWaitConditionCount": {
           "default": "WAIT COUNT"
@@ -930,8 +906,8 @@
       ]
     },
     "ScaleDownIdleTime": {
-      "Description": "Period in minutes without jobs after which compute node will terminate ",	
-      "Type": "String",	
+      "Description": "Period in minutes without jobs after which compute node will terminate ",
+      "Type": "String",
       "Default": "10"
     },
     "Scheduler": {
@@ -3376,12 +3352,9 @@
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
-<<<<<<< HEAD
                     "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
                     },
-=======
->>>>>>> Revert "Add parameters to enable scaling down based on idle time"
                     "cfn_encrypted_ephemeral": {
                       "Ref": "EncryptedEphemeral"
                     },
