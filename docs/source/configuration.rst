@@ -576,10 +576,10 @@ Defaults to 300 for the default template. ::
 
     scaling_cooldown = 300
 
-scale_down_idle_time
+scaledown_idletime
 """"""""""""""""
 Amount of time in minutes without a job after which the compute node will terminate.
 
 Defaults to 10 for the default template. ::
 
-    scale_down_idle_time = 10
+    scaledown_idletime = 10

@@ -291,7 +291,7 @@
           "default": "scaling_cooldown"
         },
         "ScaleDownIdleTime": {
-          "default": "scale_down_idle_time"
+          "default": "scaledown_idletime"
         },
         "ScalingThreshold2": {
           "default": "scaling_threshold2"
@@ -3378,7 +3378,7 @@
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
-                    "cfn_scale_down_idle_time": {
+                    "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
                     },
                     "cfn_encrypted_ephemeral": {
