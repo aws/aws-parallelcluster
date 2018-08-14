@@ -22,13 +22,10 @@
 # node from the master node).
 #
 
-# in case the scheduler goes nuts, wrap ourselves in a timeout so
-# there's a bounded completion time
-if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
-   export CHECK_CLUSTER_SUBPROCESS=1
-   timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
-   exit $?
-fi
+# Usage:
+#   cluster-check.sh {submit | scaledown_check} <scheduler>
+#
+set -e
 
 sge_get_slots() {
     local -- ppn i=0
@@ -38,6 +35,19 @@ sge_get_slots() {
         sleep 1
         i=$((i+1))
         ppn=$(qhost | grep 'lx-' | head -n 1 | sed -n -e 's/[^[:space:]]*[[:space:]]\+[^[:space:]]*[[:space:]]\+\([0-9]\+\).*/\1/p')
+    done
+
+    echo ${ppn}
+}
+
+slurm_get_slots() {
+    local -- ppn i=0
+    ppn=$(scontrol show nodes -o | head -n 1 | sed -n -e 's/^.* CPUTot=\([0-9]\+\) .*$/\1/p')
+    # wait 15 secs before giving up retrieving the slots per host
+    while [ -z "${ppn}" -a $i -lt 15 ]; do
+        sleep 1
+        i=$((i+1))
+        ppn=$(scontrol show nodes -o | head -n 1 | sed -n -e 's/^.* CPUTot=\([0-9]\+\) .*$/\1/p')
     done
 
     echo ${ppn}
@@ -58,24 +68,54 @@ torque_get_slots() {
     echo ${ppn}
 }
 
+submit_launch() {
+    # in case the scheduler goes nuts, wrap ourselves in a timeout so
+    # there's a bounded completion time
+    if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
+        export CHECK_CLUSTER_SUBPROCESS=1
+        timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
+        exit $?
+    fi
 
-scheduler="$1"
-# job1: 8m30s
-_sleepjob1=510
-# job2: 2m
-_sleepjob2=120
+    scheduler="$2"
 
-echo "--> scheduler: $scheduler"
+    echo "--> scheduler: $scheduler"
 
-set -e
+    submit_init ${scheduler}
 
-# we submit 2 1-node jobs, each of which are a sleep.
-# The whole thing has to run in 10 minutes, or the kill above will
-# fail the job, which means that the jobs must run at the same time.
-# The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
-# less than 8 minutes in order for the test to succeed.
+    ${scheduler}_submit
 
-if test "$scheduler" = "slurm" ; then
+    done=0
+    while test $done = 0 ; do
+        if test -f job1.done -a -f job2.done; then
+            done=1
+        else
+            sleep 1
+        fi
+    done
+}
+
+submit_init() {
+    # we submit 2 1-node jobs, each of which are a sleep.
+    # The whole thing has to run in 10 minutes, or the kill above will
+    # fail the job, which means that the jobs must run at the same time.
+    # The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
+    # less than 8 minutes in order for the test to succeed.
+
+    # job1: 8m30s
+    export _sleepjob1=510
+    # job2: 2m
+    export _sleepjob2=120
+
+    scheduler=$1
+    export _ppn=$(${scheduler}_get_slots)
+    if [ -z "${_ppn}" ]; then
+        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in ${scheduler} cluster"
+        exit 1
+    fi
+}
+
+slurm_submit() {
     cat > job1.sh <<EOF
 #!/bin/bash
 srun sleep ${_sleepjob1}
@@ -90,20 +130,12 @@ EOF
     chmod +x job1.sh job2.sh
     rm -f job1.done job2.done
 
-    sbatch -N 1 ./job1.sh
-    sbatch -N 1 ./job2.sh
+    sbatch -N 1 -n ${_ppn} ./job1.sh
+    sbatch -N 1 -n ${_ppn} ./job2.sh
+}
 
-elif test "$scheduler" = "sge" ; then
-    # get the slots per node count of the first real node (one with a
-    # architecture type of lx-?), so that we can reserve an enitre
-    # node's worth of slots at a time.
-    ppn=$(sge_get_slots)
-    if [ -z "${ppn}" ]; then
-        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in sge cluster"
-        exit 1
-    fi
-
-    count=$((ppn))
+sge_submit() {
+    count=$((_ppn))
 
     cat > job1.sh <<EOF
 #!/bin/bash
@@ -127,14 +159,9 @@ EOF
 
     qsub ./job1.sh
     qsub ./job2.sh
+}
 
-elif test "$scheduler" = "torque" ; then
-    _ppn=$(torque_get_slots)
-    if [ -z "${_ppn}" ]; then
-        >&2 echo "The number of slots per instance couldn't be retrieved, no compute nodes available in Torque cluster"
-        exit 1
-    fi
-
+torque_submit() {
     cat > job1.sh <<EOF
 #!/bin/bash
 sleep ${_sleepjob1}
@@ -153,19 +180,54 @@ EOF
     qsub -l nodes=1:ppn=${_ppn} ./job1.sh
     echo "qsub -l nodes=1:ppn=${_ppn} ./job2.sh"
     qsub -l nodes=1:ppn=${_ppn} ./job2.sh
+}
 
-else
-    echo "!! Unknown scheduler $scheduler !!"
-    exit 1
-fi
-
-done=0
-while test $done = 0 ; do
-    if test -f job1.done -a -f job2.done; then
-        done=1
-    else
-        sleep 1
+scaledown_check_launch() {
+    # bounded completion time
+    if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
+        export CHECK_CLUSTER_SUBPROCESS=1
+        timeout -s KILL 5m /bin/bash ./cluster-check.sh "$@"
+        exit $?
     fi
-done
 
-exit 0
+    scheduler="$2"
+
+    echo "--> scheduler: $scheduler"
+
+    ${scheduler}_scaledown_check
+
+    aws_scaledown_check
+}
+
+slurm_scaledown_check() {
+    : # TODO
+}
+
+sge_scaledown_check() {
+    : # TODO
+}
+
+torque_scaledown_check() {
+    : # TODO
+}
+
+aws_scaledown_check() {
+    : # TODO
+}
+
+main() {
+    case "$1" in
+        submit)
+            submit_launch "$@"
+            ;;
+        scaledown_check)
+            scaledown_check_launch "$@"
+            ;;
+        *)
+            echo "!! Unknown command $1 !!"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

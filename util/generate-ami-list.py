@@ -25,18 +25,16 @@ import json
 import sys
 from collections import OrderedDict
 
-
-owners = ["247102896272"]
 distros = OrderedDict([("alinux", "amzn"), ("centos6", "centos6"), ("centos7", "centos7"), ("ubuntu1404", "ubuntu-1404"), ("ubuntu1604", "ubuntu-1604")])
 
 
-def get_ami_list(regions, date, version):
+def get_ami_list(regions, date, version, owner):
     amis_json = {}
 
     for region_name in regions:
         try:
             ec2 = boto3.client('ec2', region_name=region_name)
-            images = ec2.describe_images(Owners=owners, Filters=[{'Name': 'name', "Values": ["cfncluster-%s*%s" % (version, date)]}])
+            images = ec2.describe_images(Owners=[owner], Filters=[{'Name': 'name', "Values": ["cfncluster-%s*%s" % (version, date)]}])
 
             amis = OrderedDict()
             for image in images.get('Images'):
@@ -76,6 +74,9 @@ if __name__ == '__main__':
     parser.add_argument('--date', type=str, help='release date [timestamp] (e.g. 201801112350)', required=True)
     parser.add_argument('--json-file', type=str, help='json output file path', required=False, default="amis.json")
     parser.add_argument('--txt-file', type=str, help='txt output file path', required=False, default="amis.txt")
+    parser.add_argument('--account-id', type=str, help='account id that owns the amis', required=False,  default="247102896272")
+    parser.add_argument('--append', type=str, help='append new amis to current amis.txt', required=False, default=False)
+    parser.add_argument('--cloudformation-template', type=str, help='path to cloudfomation template', required=False, default='cloudformation/cfncluster.cfn.json')
     args = parser.parse_args()
 
     # get all regions
@@ -83,12 +84,21 @@ if __name__ == '__main__':
     regions = sorted(r.get('RegionName') for r in ec2.describe_regions().get('Regions'))
 
     # get ami list
-    amis_json = get_ami_list(regions=regions, date=args.date, version=args.version)
+    amis_json = get_ami_list(regions=regions, date=args.date, version=args.version, owner=args.account_id)
 
     # write amis.json file
     amis_json_file = open(args.json_file, "w")
     json.dump(amis_json, amis_json_file, indent=2, sort_keys=True)
     amis_json_file.close()
+
+    # append to amis.txt file
+    if args.append:
+        with open(args.cloudformation_template) as f:
+            data = json.load(f)
+            amis = data.get('Mappings').get('AWSRegionOS2AMI')
+            amis.update(amis_json)
+            amis_json = amis
+            regions = sorted(amis_json)
 
     # convert json to txt
     amis_txt = convert_json_to_txt(regions=regions, amis_json=amis_json)

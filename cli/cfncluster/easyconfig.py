@@ -25,7 +25,7 @@ import errno
 from . import cfnconfig
 
 logger = logging.getLogger('cfncluster.cfncluster')
-unsupported_regions = ['ap-northeast-3']
+unsupported_regions = ['ap-northeast-3', 'cn-north-1', 'cn-northwest-1']
 
 def prompt(prompt, default_value=None, hidden=False, options=None):
     if hidden and default_value is not None:

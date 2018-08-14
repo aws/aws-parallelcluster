@@ -10,7 +10,7 @@ IAM in CfnCluster
     Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
 
 CfnCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in CfnCluster <aws_services>` section of the documentation.
- 
+
 CfnCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
 
 Defaults
@@ -178,7 +178,9 @@ CfnClusterUserPolicy
                   "ec2:DeleteSecurityGroup",
                   "ec2:DisassociateAddress",
                   "ec2:RevokeSecurityGroupIngress",
-                  "ec2:ReleaseAddress"
+                  "ec2:ReleaseAddress",
+                  "ec2:CreatePlacementGroup",
+                  "ec2:DeletePlacementGroup"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -310,7 +312,9 @@ CfnClusterUserPolicy
               "Action": [
                   "iam:PassRole",
                   "iam:CreateRole",
-                  "iam:DeleteRole"
+                  "iam:DeleteRole",
+                  "iam:GetRole",
+                  "iam:SimulatePrincipalPolicy"
               ],
               "Effect": "Allow",
               "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
