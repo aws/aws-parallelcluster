@@ -927,6 +927,11 @@
         "ubuntu1604"
       ]
     },
+    "ScaleDownIdleTime": {	
+      "Description": "Period in minutes without jobs after which compute node will terminate ",	
+      "Type": "String",	
+      "Default": "10"	
+    },
     "Scheduler": {
       "Description": "Cluster scheduler",
       "Type": "String",
@@ -2000,7 +2005,8 @@
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
                 "autoscaling:SetDesiredCapacity",
-                "autoScaling:UpdateAutoScalingGroup"
+                "autoscaling:UpdateAutoScalingGroup",
+                "autoscaling:DescribeTags"
               ],
               "Effect": "Allow",
               "Resource": [

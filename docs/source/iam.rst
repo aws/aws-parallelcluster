@@ -76,7 +76,9 @@ CfnClusterInstancePolicy
               "Action": [
                   "autoscaling:DescribeAutoScalingGroups",
                   "autoscaling:TerminateInstanceInAutoScalingGroup",
-                  "autoscaling:SetDesiredCapacity"
+                  "autoscaling:SetDesiredCapacity",
+                  "autoscaling:DescribeTags",
+                  "autoScaling:UpdateAutoScalingGroup"
               ],
               "Sid": "Autoscaling",
               "Effect": "Allow"
