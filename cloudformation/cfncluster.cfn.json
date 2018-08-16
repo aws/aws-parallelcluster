@@ -271,36 +271,9 @@
         "EBSVolumeId": {
           "default": "ebs_volume_id"
         },
-<<<<<<< HEAD
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
         },
-=======
-        "ScalingThreshold": {
-          "default": "scaling_threshold"
-        },
-        "ScalingPeriod": {
-          "default": "scaling_period"
-        },
-        "ScalingEvaluationPeriods": {
-          "default": "scaling_evaluation_periods"
-        },
-        "ScalingAdjustment": {
-          "default": "scaling_adjustment"
-        },
-        "ScalingAdjustment2": {
-          "default": "scaling_adjustment2"
-        },
-        "ScalingCooldown": {
-          "default": "scaling_cooldown"
-        },
-        "ScaleDownIdleTime": {
-          "default": "scaledown_idletime"
-        },
-        "ScalingThreshold2": {
-          "default": "scaling_threshold2"
-        },
->>>>>>> Remove CloudWatch Metric Scaling
         "ComputeWaitConditionCount": {
           "default": "WAIT COUNT"
         },
