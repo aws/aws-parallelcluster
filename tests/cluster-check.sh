@@ -73,7 +73,7 @@ submit_launch() {
     # there's a bounded completion time
     if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
         export CHECK_CLUSTER_SUBPROCESS=1
-        timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
+        timeout -s KILL 6m /bin/bash ./cluster-check.sh "$@"
         exit $?
     fi
 
@@ -97,13 +97,13 @@ submit_launch() {
 
 submit_init() {
     # we submit 2 1-node jobs, each of which are a sleep.
-    # The whole thing has to run in 10 minutes, or the kill above will
-    # fail the job, which means that the jobs must run at the same time.
+    # The whole thing has to run in 6 minutes (higher of the two sleep times + buffer),
+    # or the kill in submit_launch will fail the job, which means that the jobs must run at the same time.
     # The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
-    # less than 8 minutes in order for the test to succeed.
+    # less than 4 minutes and run the 2 minute job in order for the test to succeed.
 
-    # job1: 8m30s
-    export _sleepjob1=510
+    # job1: 5m30s
+    export _sleepjob1=330
     # job2: 2m
     export _sleepjob2=120
 

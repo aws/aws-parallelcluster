@@ -119,7 +119,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("master_instance_type = %s\n" % instance_type)
     file.write("compute_instance_type = %s\n" % instance_type)
     file.write("initial_queue_size = 1\n")
-    file.write("maintain_initial_size = true\n")
+    file.write("maintain_initial_size = false\n")
     file.write("scheduler = %s\n" % (scheduler))
     file.write("scaling_settings = custom\n")
     if custom_template:
