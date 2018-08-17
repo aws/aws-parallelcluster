@@ -83,6 +83,19 @@ def _double_writeln(fileo, message):
     print(message)
     fileo.write(message + '\n')
 
+# Helper method to get the name of the autoscaling group
+def get_asg_desired_capacity(stack_name, region):
+    asg_conn = boto3.client('autoscaling', region_name=region)
+    try:
+        r = asg_conn.describe_tags(Filters=[{'Name': 'value', 'Values': [stack_name]}])
+        asg_name = r.get('Tags')[0].get('ResourceId')
+        response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+        return response["AutoScalingGroups"][0]["DesiredCapacity"]
+    except Exception as e:
+        print("get_asg_desired_capacity failed with %s exception: %s" % (type(e), e))
+        raise
+
+
 #
 # run a single test, possibly in parallel
 #
@@ -125,6 +138,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("scaling_period = 30\n")
     file.write("scaling_evaluation_periods = 1\n")
     file.write("scaling_cooldown = 300\n")
+    file.write("scaledown_idletime = 2\n")
     file.close()
 
     out_f = open('%s-out.txt' % testname, 'w', 0)
@@ -166,9 +180,18 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh submit %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
+                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
 
-        _double_writeln(out_f, 'SUCCESS:  %s!!' % (testname))
-        open('%s.success' %testname, 'w').close()
+        asg_capacity = get_asg_desired_capacity('cfncluster-' + testname, region)
+
+        if asg_capacity == 0:
+            _double_writeln(out_f, 'SUCCESS:  %s!!' % testname)
+            open('%s.success' %testname, 'w').close()
+        else:
+            _double_writeln(out_f, "Autoscaling group's desired capacity was %s. Expected: 0" % asg_capacity)
+            _double_writeln(out_f, "!! FAILURE: %s!!" % testname)
+            open('%s.failed' % testname, 'w').close()
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
