@@ -737,21 +737,6 @@
       "Default": "NONE",
       "AllowedPattern": "(NONE|^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$)"
     },
-    "ScalingThreshold": {
-      "Description": "Threshold for triggering CloudWatch ScaleUp action",
-      "Type": "String",
-      "Default": "1"
-    },
-    "ScalingEvaluationPeriods": {
-      "Description": "Number of periods consective periods required to trigger the scaling adjustment",
-      "Type": "String",
-      "Default": "2"
-    },
-    "ScalingPeriod": {
-      "Description": "Period in seconds to measure ScalingThreshold",
-      "Type": "String",
-      "Default": "60"
-    },
     "SpotPrice": {
       "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\".",
       "Type": "Number",
@@ -942,30 +927,10 @@
         "ubuntu1604"
       ]
     },
-    "ScalingThreshold2": {
-      "Description": "Threshold for triggering CloudWatch ScaleUp2 action",
-      "Type": "String",
-      "Default": "200"
-    },
-    "ScalingCooldown": {
-      "Description": "Period in seconds to wait before allowing further scaling actions",
-      "Type": "String",
-      "Default": "300"
-    },
-    "ScaleDownIdleTime": {
-      "Description": "Period in minutes without jobs after which compute node will terminate ",
-      "Type": "String",
-      "Default": "10"
-    },
-    "ScalingAdjustment": {
-      "Description": "Number of instances to add to cluster when the CloudWatch ScaleUp action is called.",
-      "Type": "String",
-      "Default": "1"
-    },
-    "ScalingAdjustment2": {
-      "Description": "Number of instances to add to cluster when the CloudWatch ScaleUp2 action is called.",
-      "Type": "String",
-      "Default": "10"
+    "ScaleDownIdleTime": {	
+      "Description": "Period in minutes without jobs after which compute node will terminate ",	
+      "Type": "String",	
+      "Default": "10"	
     },
     "Scheduler": {
       "Description": "Cluster scheduler",
@@ -2039,17 +2004,9 @@
               "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
-                "autoscaling:SetDesiredCapacity"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                "*"
-              ]
-            },
-            {
-              "Sid": "CloudWatch",
-              "Action": [
-                "cloudwatch:PutMetricData"
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:UpdateAutoScalingGroup",
+                "autoscaling:DescribeTags"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -2726,6 +2683,9 @@
                     },
                     "cfn_proxy": {
                       "Ref": "ProxyServer"
+                    },
+                    "compute_instance_type": {
+                      "Ref": "ComputeInstanceType"
                     },
                     "cfn_node_type": "MasterServer",
                     "cfn_cluster_user": {
@@ -3563,118 +3523,6 @@
         },
         "AWS::CloudFormation::Designer": {
           "id": "d3204db6-c821-400d-bf31-6afd5739923c"
-        }
-      }
-    },
-    "ScaleUpPolicy2": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "Cooldown": {
-          "Ref": "ScalingCooldown"
-        },
-        "ScalingAdjustment": {
-          "Ref": "ScalingAdjustment2"
-        },
-        "AdjustmentType": "ChangeInCapacity",
-        "AutoScalingGroupName": {
-          "Ref": "ComputeFleet"
-        }
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c"
-        }
-      }
-    },
-    "AddCapacityAlarm2": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "Threshold": {
-          "Ref": "ScalingThreshold2"
-        },
-        "Period": {
-          "Ref": "ScalingPeriod"
-        },
-        "EvaluationPeriods": {
-          "Ref": "ScalingEvaluationPeriods"
-        },
-        "Statistic": "Sum",
-        "AlarmActions": [
-          {
-            "Ref": "ScaleUpPolicy2"
-          }
-        ],
-        "Namespace": "cfncluster",
-        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-        "Dimensions": [
-          {
-            "Name": "Stack",
-            "Value": {
-              "Ref": "AWS::StackName"
-            }
-          }
-        ],
-        "MetricName": "pending"
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "127f78c3-d47a-4770-8aad-3fd733c3e1b0"
-        }
-      }
-    },
-    "ScaleUpPolicy": {
-      "Type": "AWS::AutoScaling::ScalingPolicy",
-      "Properties": {
-        "Cooldown": {
-          "Ref": "ScalingCooldown"
-        },
-        "ScalingAdjustment": {
-          "Ref": "ScalingAdjustment"
-        },
-        "AdjustmentType": "ChangeInCapacity",
-        "AutoScalingGroupName": {
-          "Ref": "ComputeFleet"
-        }
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "8e63b592-a50f-4b89-a40b-e991adaef77b"
-        }
-      }
-    },
-    "AddCapacityAlarm": {
-      "Type": "AWS::CloudWatch::Alarm",
-      "Properties": {
-        "Threshold": {
-          "Ref": "ScalingThreshold"
-        },
-        "Period": {
-          "Ref": "ScalingPeriod"
-        },
-        "EvaluationPeriods": {
-          "Ref": "ScalingEvaluationPeriods"
-        },
-        "Statistic": "Average",
-        "AlarmActions": [
-          {
-            "Ref": "ScaleUpPolicy"
-          }
-        ],
-        "Namespace": "cfncluster",
-        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-        "Dimensions": [
-          {
-            "Name": "Stack",
-            "Value": {
-              "Ref": "AWS::StackName"
-            }
-          }
-        ],
-        "MetricName": "pending"
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "23ed10e0-7726-4099-8370-4116c0bc78a2"
         }
       }
     },
