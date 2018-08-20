@@ -516,65 +516,7 @@ Settings which define how the compute nodes scale. ::
 
 
     [scaling custom]
-    scaling_period = 60
-    scaling_cooldown = 300
-
-scaling_threshold
-"""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp action.
- 
-Defaults to 1 for default template. ::
-
-    scaling_threshold = 1
-
-scaling_adjustment
-""""""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp action.
- 
-Defaults to 1 for default template. ::
-
-    scaling_adjustment = 1
-
-
-scaling_threshold2
-""""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp2 action.
- 
-Defaults to 200 for default template. ::
-
-    scaling_threshold2 = 200
-
-scaling_adjustment2
-"""""""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp2 action
- 
-Defaults to 20 for default template. ::
-
-    scaling_adjustment2 = 20
-
-scaling_period
-""""""""""""""
-Period to measure ScalingThreshold.
- 
-Defaults to 60 for default template. ::
-
-    scaling_period = 60
-
-scaling_evaluation_periods
-""""""""""""""""""""""""""
-Number of periods to measure ScalingThreshold.
- 
-Defaults to 2 for default template. ::
-
-    scaling_evaluation_periods = 2
-
-scaling_cooldown
-""""""""""""""""
-Amount of time in seconds to wait before attempting further scaling actions.
- 
-Defaults to 300 for the default template. ::
-
-    scaling_cooldown = 300
+    scaledown_idletime = 10
 
 scaledown_idletime
 """"""""""""""""

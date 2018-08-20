@@ -134,10 +134,6 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
-    file.write("scaling_adjustment = 1\n")
-    file.write("scaling_period = 30\n")
-    file.write("scaling_evaluation_periods = 1\n")
-    file.write("scaling_cooldown = 300\n")
     file.write("scaledown_idletime = 2\n")
     file.close()
 

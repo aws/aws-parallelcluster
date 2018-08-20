@@ -315,11 +315,7 @@ class CfnClusterConfig(object):
             pass
 
         # Dictionary list of all scaling options
-        self.__scaling_options = dict(scaling_threshold=('ScalingThreshold',None), scaling_period=('ScalingPeriod',None),
-                                      scaling_evaluation_periods=('ScalingEvaluationPeriods',None),
-                                      scaling_adjustment=('ScalingAdjustment',None),scaling_adjustment2=('ScalingAdjustment2',None),
-                                      scaling_cooldown=('ScalingCooldown',None),scaledown_idletime=('ScaleDownIdleTime',None),
-                                      scaling_threshold2=('ScalingThreshold2',None))
+        self.__scaling_options = dict(scaledown_idletime=('ScaleDownIdleTime',None))
 
         try:
             if self.__scaling_section:
