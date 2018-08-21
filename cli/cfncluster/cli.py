@@ -20,6 +20,7 @@ import errno
 
 from . import cfncluster
 from . import easyconfig
+from stepfunctions import deploy
 
 def create(args):
     cfncluster.create(args)
@@ -53,6 +54,9 @@ def start(args):
 
 def stop(args):
     cfncluster.stop(args)
+
+def stepfunctiondeploy(args):
+    deploy(args)
 
 def config_logger():
     logger = logging.getLogger('cfncluster.cfncluster')
@@ -191,6 +195,23 @@ def main():
     pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
                          help='print command and exit.')
     pssh.set_defaults(func=command)
+
+    default_path = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
+    stepfunctions = subparsers.add_parser('stepfunctions',
+        description='deploy a cfncluster stepfunction via cloudformation')
+    stepfunctions.add_argument('--bucket', '-b', dest='bucket_name',
+        help='Specify s3 bucket to use/create', required=True)
+    stepfunctions.add_argument('--config', '-c', dest='config_file',
+        help='Specify cfncluster config file to use', default=default_path)
+    stepfunctions.add_argument('--jobs', '-j', dest='jobs_config',
+        help='Specify jobs config file to use', required=True)
+    stepfunctions.add_argument('--stack-name', '-s', dest='stack_name',
+        help='Specify the stack name to use', default='CfnClusterStepFunction')
+    stepfunctions.add_argument('--region', '-r', dest='region',
+        help='Specify the region to deploy in', default='us-east-1')
+    stepfunctions.add_argument('--key-name', '-k', dest='key_name',
+        help='Specify the ec2 key pair', default='cfncluster-stepfunctions')
+    stepfunctions.set_defaults(func=stepfunctiondeploy)
 
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
