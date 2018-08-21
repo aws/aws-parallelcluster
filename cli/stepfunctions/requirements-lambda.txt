@@ -1,0 +1,3 @@
+cfncluster==1.5.2
+setuptools==39.2.0
+paramiko==2.4.1
