@@ -134,7 +134,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
-    file.write("scaledown_idletime = 2\n")
+    file.write("scaledown_idletime = 3\n")
     file.close()
 
     out_f = open('%s-out.txt' % testname, 'w', 0)
