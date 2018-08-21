@@ -87,7 +87,7 @@ submit_launch() {
 
     done=0
     while test $done = 0 ; do
-        if test -f job1.done -a -f job2.done; then
+        if test -f job1.done -a -f job2.done -a -f job3.done; then
             done=1
         else
             sleep 1
@@ -97,16 +97,19 @@ submit_launch() {
 }
 
 submit_init() {
-    # we submit 2 1-node jobs, each of which are a sleep.
-    # The whole thing has to run in 9 minutes (higher of the two sleep times + buffer),
+    # we submit 3 1-node jobs, each of which are a sleep.
+    # The whole thing has to run in 9 minutes (higher of the three sleep times + buffer),
     # or the kill in submit_launch will fail the job, which means that the jobs must run at the same time.
-    # The initial cluster is 1 nodes, so we'll need to scale up 1 further node and bootstrap in
-    # less than 7 minutes and run the job that needs 105 seconds in order for the test to succeed.
+    # The initial cluster is 1 nodes, so we'll need to scale up 2 further nodes simultaneously
+    # and bootstrap in less than 7 minutes and run the job that needs 105 seconds
+    # in order for the test to succeed.
 
     # job1: 7m45s
     export _sleepjob1=465
     # job2: 1m45s
     export _sleepjob2=105
+    # job3: 1m45s
+    export _sleepjob3=105
 
     scheduler=$1
     export _ppn=$(${scheduler}_get_slots)
@@ -128,11 +131,18 @@ srun sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+srun sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     sbatch -N 1 -n ${_ppn} ./job1.sh
     sbatch -N 1 -n ${_ppn} ./job2.sh
+    sbatch -N 1 -n ${_ppn} ./job3.sh
 }
 
 sge_submit() {
@@ -155,11 +165,21 @@ sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+#$ -pe mpi $count
+#$ -R y
+
+sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     qsub ./job1.sh
     qsub ./job2.sh
+    qsub ./job3.sh
 }
 
 torque_submit() {
@@ -174,13 +194,21 @@ sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     echo "qsub -l nodes=1:ppn=${_ppn} ./job1.sh"
     qsub -l nodes=1:ppn=${_ppn} ./job1.sh
     echo "qsub -l nodes=1:ppn=${_ppn} ./job2.sh"
     qsub -l nodes=1:ppn=${_ppn} ./job2.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job3.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job3.sh
 }
 
 scaledown_check_launch() {
