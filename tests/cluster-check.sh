@@ -73,7 +73,7 @@ submit_launch() {
     # there's a bounded completion time
     if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
         export CHECK_CLUSTER_SUBPROCESS=1
-        timeout -s KILL 6m /bin/bash ./cluster-check.sh "$@"
+        timeout -s KILL 9m /bin/bash ./cluster-check.sh "$@"
         exit $?
     fi
 
@@ -93,19 +93,20 @@ submit_launch() {
             sleep 1
         fi
     done
+     echo "Scaleup successful"
 }
 
 submit_init() {
     # we submit 2 1-node jobs, each of which are a sleep.
-    # The whole thing has to run in 6 minutes (higher of the two sleep times + buffer),
+    # The whole thing has to run in 9 minutes (higher of the two sleep times + buffer),
     # or the kill in submit_launch will fail the job, which means that the jobs must run at the same time.
-    # The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
-    # less than 4 minutes and run the 2 minute job in order for the test to succeed.
+    # The initial cluster is 1 nodes, so we'll need to scale up 1 further node and bootstrap in
+    # less than 7 minutes and run the job that needs 105 seconds in order for the test to succeed.
 
-    # job1: 5m30s
-    export _sleepjob1=330
-    # job2: 2m
-    export _sleepjob2=120
+    # job1: 7m45s
+    export _sleepjob1=465
+    # job2: 1m45s
+    export _sleepjob2=105
 
     scheduler=$1
     export _ppn=$(${scheduler}_get_slots)
@@ -194,41 +195,35 @@ scaledown_check_launch() {
 
     echo "--> scheduler: $scheduler"
 
-    done=0
-    while test $done = 0 ; do
+    scaledown_complete=0
+    while test $scaledown_complete = 0 ; do
         ${scheduler}_scaledown_check
-        if [[ $? == 0 ]]; then
-            done=1
-        else
-            sleep 10
-        fi
+        sleep 10
     done
+    echo "Scaledown successful"
 }
 
 has_zero_active_instances(){
     instances=$1
     if [[ ${instances} ]]; then
         echo "instances have not scaled down yet"
-        return 1
+        scaledown_complete=0
     else
         echo "instances have scaled down; exiting"
-        return 0
+        scaledown_complete=1
     fi
 }
 
 slurm_scaledown_check() {
     has_zero_active_instances $(sinfo --noheader | awk '$4 != "0"')
-    return $?
 }
 
 sge_scaledown_check() {
     has_zero_active_instances $(qhost | grep ip-)
-    return $?
 }
 
 torque_scaledown_check() {
     has_zero_active_instances $(pbsnodes | grep status)
-    return $?
 }
 
 main() {
