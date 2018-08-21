@@ -16,6 +16,7 @@ import time
 import logging
 import boto3
 import os
+import json
 from botocore.exceptions import ClientError
 
 from . import cfnconfig
@@ -103,7 +104,10 @@ def create(args):
                                      event.get('ResourceStatusReason')))
             logger.info('')
             outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('Outputs', [])
+            ganglia_enabled = is_ganglia_enabled(config.parameters)
             for output in outputs:
+                if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
+                    continue
                 logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
         else:
             status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
@@ -119,6 +123,14 @@ def create(args):
         logger.critical(e)
         sys.exit(1)
 
+def is_ganglia_enabled(parameters):
+    extra_json = dict(filter(lambda x: x[0] == 'ExtraJson', parameters))
+    try:
+        extra_json = json.loads(extra_json.get('ExtraJson')).get('cfncluster')
+        return extra_json.get('ganglia_enabled') == 'yes'
+    except:
+        pass
+    return False
 
 def update(args):
     logger.info('Updating: %s' % (args.cluster_name))
