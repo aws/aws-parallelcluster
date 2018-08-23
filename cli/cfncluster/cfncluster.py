@@ -151,7 +151,7 @@ def update(args):
         desired_capacity = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])\
             .get('AutoScalingGroups')[0]\
             .get('DesiredCapacity')
-        config.parameters.append(('InitialQueueSize', desired_capacity))
+        config.parameters.append(('InitialQueueSize', str(desired_capacity)))
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     try:
@@ -174,7 +174,7 @@ def update(args):
     try:
         logger.debug((config.template_url, config.parameters))
 
-        cfn_params = [{'ParameterKey': param[0], 'ParameterValue': str(param[1])} for param in config.parameters]
+        cfn_params = [{'ParameterKey': param[0], 'ParameterValue': param[1]} for param in config.parameters]
         cfn.update_stack(StackName=stack_name,TemplateURL=config.template_url,
                          Parameters=cfn_params, Capabilities=capabilities)
         status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
