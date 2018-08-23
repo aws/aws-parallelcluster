@@ -84,22 +84,31 @@ def _double_writeln(fileo, message):
     fileo.write(message + '\n')
 
 # Helper method to get the name of the autoscaling group
-def get_asg_desired_capacity(stack_name, region):
+def check_asg_capacity(stack_name, region, out_f):
     asg_conn = boto3.client('autoscaling', region_name=region)
-    try:
-        r = asg_conn.describe_tags(Filters=[{'Name': 'value', 'Values': [stack_name]}])
-        asg_name = r.get('Tags')[0].get('ResourceId')
-        response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-        return response["AutoScalingGroups"][0]["DesiredCapacity"]
-    except Exception as e:
-        print("get_asg_desired_capacity failed with %s exception: %s" % (type(e), e))
-        raise
+    iter = 0
+    capacity = -1
+    while iter < 24 and capacity != 0:
+        try:
+            r = asg_conn.describe_tags(Filters=[{'Name': 'value', 'Values': [stack_name]}])
+            asg_name = r.get('Tags')[0].get('ResourceId')
+            response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            capacity = response["AutoScalingGroups"][0]["DesiredCapacity"]
+            iter += 1
+            time.sleep(10)
+        except Exception as e:
+            _double_writeln(out_f, "check_asg_capacity failed with %s exception: %s" % (type(e), e))
+            raise
 
+    _double_writeln(out_f, "ASG Capacity was %s after %s second(s)" % (capacity, 10 * iter))
+    if capacity != 0:
+        raise ReleaseCheckException("Autoscaling group's desired capacity was not zero. Capacity was %s" % capacity)
 
 #
 # run a single test, possibly in parallel
 #
 def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
+    scaledown_idletime = 2
     testname = '%s-%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''), _timestamp)
     test_filename = "%s-config.cfg" % testname
     key_path = extra_args['key_path']
@@ -134,7 +143,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
-    file.write("scaledown_idletime = 3\n")
+    file.write("scaledown_idletime = %s\n" % scaledown_idletime)
     file.close()
 
     out_f = open('%s-out.txt' % testname, 'w', 0)
@@ -176,18 +185,17 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh submit %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+
+        # Sleep for scaledown_idletime to give time for the instances to scale down
+        time.sleep(60*scaledown_idletime)
+
+        check_asg_capacity('cfncluster-' + testname, region, out_f)
+
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
 
-        asg_capacity = get_asg_desired_capacity('cfncluster-' + testname, region)
-
-        if asg_capacity == 0:
-            _double_writeln(out_f, 'SUCCESS:  %s!!' % testname)
-            open('%s.success' %testname, 'w').close()
-        else:
-            _double_writeln(out_f, "Autoscaling group's desired capacity was %s. Expected: 0" % asg_capacity)
-            _double_writeln(out_f, "!! FAILURE: %s!!" % testname)
-            open('%s.failed' % testname, 'w').close()
+        _double_writeln(out_f, 'SUCCESS:  %s!!' % testname)
+        open('%s.success' % testname, 'w').close()
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
