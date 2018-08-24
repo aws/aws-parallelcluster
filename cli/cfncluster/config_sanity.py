@@ -40,7 +40,9 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                 aws_secret_access_key=aws_secret_access_key)
 
             arn = iam.get_role(RoleName=resource_value).get('Role').get('Arn')
-            accountid = boto3.client('sts').get_caller_identity().get('Account')
+            accountid = boto3.client('sts', region_name=region,
+                                        aws_access_key_id=aws_access_key_id,
+                                        aws_secret_access_key=aws_secret_access_key).get_caller_identity().get('Account')
 
             iam_policy = [(['ec2:DescribeVolumes', 'ec2:AttachVolume', 'ec2:DescribeInstanceAttribute', 'ec2:DescribeInstanceStatus', 'ec2:DescribeInstances'], "*"),
                         (['dynamodb:ListTables'], "*"),
