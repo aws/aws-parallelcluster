@@ -281,7 +281,8 @@ CfnClusterUserPolicy
                   "cloudformation:DescribeStackResource",
                   "cloudformation:DescribeStackResources",
                   "cloudformation:DescribeStacks",
-                  "cloudformation:ListStacks"
+                  "cloudformation:ListStacks",
+                  "cloudformation:GetTemplate"
               ],
               "Effect": "Allow",
               "Resource": "*"
