@@ -1,0 +1,53 @@
+                {% for job in job_list %}"Pass_Job_{{ job.name }}": {
+                    "Type": "Pass",
+                    "Result": {
+                        "name": "{{ job.name }}",
+                        "handler": "{{ job.handler }}"
+                    },
+                    "ResultPath": "$.job_info",
+                    "Next": "Schedule_Job_{{ job.name }}"
+                },
+                "Schedule_Job_{{ job.name }}": {
+                  "Type": "Task",
+                  "Resource": "${runJobArn}",
+                  "Next": "Wait_For_Job_{{ job.name }}"
+                },
+                "Wait_For_Job_{{ job.name }}": {
+                  "Type": "Wait",
+                  "Seconds": {{ job.sec }},
+                  "Next": "Poll_On_Job_{{ job.name }}"
+                },
+                "Poll_On_Job_{{ job.name }}": {
+                  "Type": "Task",
+                  "Resource": "${pollOnJobArn}",
+                  "Next": "{{ job.name }}_Poll_Choice"
+                },
+                "{{ job.name }}_Poll_Choice": {
+                  "Type": "Choice",
+                  "Choices": [
+                    {
+                      "Variable": "$.status",
+                      "StringEquals": "idle",
+                      "Next": "Wait_For_Job_{{ job.name }}"
+                    },
+                    {
+                      "Variable": "$.status",
+                      "StringEquals": "failed",
+                      "Next": "Job_Failed_{{ job.name }}"
+                    },
+                    {
+                      "Variable": "$.status",
+                      "StringEquals": "complete",
+                      "Next": "Job_Succeeded_{{ job.name }}"
+                    }
+                  ]
+                },
+                "Job_Failed_{{ job.name }}": {
+                  "Type": "Fail",
+                  "Cause": "Exit code not 0"
+                },
+                "Job_Succeeded_{{ job.name }}": {
+                  "Type": "Pass",
+                  "Next": "{{ job.end }}"
+                }{% if not loop.last %},{% endif %}
+                {% endfor -%}
