@@ -384,9 +384,10 @@ def instances(args):
         print('%s         %s' % (instance[0],instance[1]))
 
 def get_head_user(parameters, template):
-    mappings = template.get("TemplateBody") \
-            .get("Mappings") \
-            .get("OSFeatures")
+    print(parameters)
+    # mappings = template.get("TemplateBody") \
+            # .get("Mappings") \
+            # .get("OSFeatures")
     base_os =[i.get('ParameterValue') for i in parameters if i.get('ParameterKey') == "BaseOS"][0]
     return mappings.get(base_os).get("User")
 
@@ -410,6 +411,7 @@ def command(args, extra_args):
         ip = get_master_server_ip(stack, config)
         stack_result = cfn.describe_stacks(StackName=stack).get('Stacks')[0]
         template = cfn.get_template(StackName=stack)
+        print "here"
         username = get_head_user(stack_result.get('Parameters'), template)
 
         try:
