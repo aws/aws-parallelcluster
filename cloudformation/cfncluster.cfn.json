@@ -108,8 +108,7 @@
             "ScalingAdjustment",
             "ScalingThreshold2",
             "ScalingAdjustment2",
-            "ScalingCooldown",
-            "ScaleDownIdleTime"
+            "ScalingCooldown"
           ]
         },
         {
@@ -290,9 +289,12 @@
         "ScalingCooldown": {
           "default": "scaling_cooldown"
         },
+<<<<<<< HEAD
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
         },
+=======
+>>>>>>> Revert "Add parameters to enable scaling down based on idle time"
         "ScalingThreshold2": {
           "default": "scaling_threshold2"
         },
@@ -927,10 +929,10 @@
         "ubuntu1604"
       ]
     },
-    "ScaleDownIdleTime": {	
+    "ScaleDownIdleTime": {
       "Description": "Period in minutes without jobs after which compute node will terminate ",	
       "Type": "String",	
-      "Default": "10"	
+      "Default": "10"
     },
     "Scheduler": {
       "Description": "Cluster scheduler",
@@ -3374,9 +3376,12 @@
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
+<<<<<<< HEAD
                     "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
                     },
+=======
+>>>>>>> Revert "Add parameters to enable scaling down based on idle time"
                     "cfn_encrypted_ephemeral": {
                       "Ref": "EncryptedEphemeral"
                     },
