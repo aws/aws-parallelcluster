@@ -318,8 +318,7 @@ class CfnClusterConfig(object):
         self.__scaling_options = dict(scaling_threshold=('ScalingThreshold',None), scaling_period=('ScalingPeriod',None),
                                       scaling_evaluation_periods=('ScalingEvaluationPeriods',None),
                                       scaling_adjustment=('ScalingAdjustment',None),scaling_adjustment2=('ScalingAdjustment2',None),
-                                      scaling_cooldown=('ScalingCooldown',None),scale_down_idle_time=('ScaleDownIdleTime',None),
-                                      scaling_threshold2=('ScalingThreshold2',None))
+                                      scaling_cooldown=('ScalingCooldown',None),scaling_threshold2=('ScalingThreshold2',None))
 
         try:
             if self.__scaling_section:

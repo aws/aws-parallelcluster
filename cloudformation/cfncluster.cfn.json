@@ -108,8 +108,7 @@
             "ScalingAdjustment",
             "ScalingThreshold2",
             "ScalingAdjustment2",
-            "ScalingCooldown",
-            "ScaleDownIdleTime"
+            "ScalingCooldown"
           ]
         },
         {
@@ -289,9 +288,6 @@
         },
         "ScalingCooldown": {
           "default": "scaling_cooldown"
-        },
-        "ScaleDownIdleTime": {
-          "default": "scale_down_idle_time"
         },
         "ScalingThreshold2": {
           "default": "scaling_threshold2"
@@ -951,11 +947,6 @@
       "Description": "Period in seconds to wait before allowing further scaling actions",
       "Type": "String",
       "Default": "300"
-    },
-    "ScaleDownIdleTime": {
-      "Description": "Period in minutes without jobs after which compute node will terminate ",
-      "Type": "String",
-      "Default": "10"
     },
     "ScalingAdjustment": {
       "Description": "Number of instances to add to cluster when the CloudWatch ScaleUp action is called.",
@@ -3413,9 +3404,6 @@
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
-                    },
-                    "cfn_scale_down_idle_time": {
-                      "Ref": "ScaleDownIdleTime"
                     },
                     "cfn_encrypted_ephemeral": {
                       "Ref": "EncryptedEphemeral"
