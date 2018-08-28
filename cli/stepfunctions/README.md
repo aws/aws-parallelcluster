@@ -11,7 +11,8 @@ CfnCluster Step Function is a state management solution for deploying high-perfo
   * Visit the [AWS Documentation](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html) for more information
 
 ```
-$ cfncluster stepfunctions --bucket <name> --region <AWS region> --config <file> --jobs <file>
+$ pip install -r requirements.txt
+$ ./deploy.py --bucket <name> --region <AWS region> --config <file> --jobs <file>
 ```
 
 To Run Step Function:
@@ -102,7 +103,7 @@ handler = script/path/in/project.sh
 
 Optional Parameters:
 
-`wait_time`: Period between polling on the status of the job in seconds; default = 10; range 1-240 due to scheduler limitations
+`wait_time`: How long to wait between rechecking the status of the job to see if it's completed; default = 10; range 1-240 due to scheduler limitations
 
 ```
 [job donut]
@@ -113,6 +114,10 @@ wait_time = 240
 
 ## Arguments
 
+### `--config` or `-c`
+
+Specifies the CfnCluster configuration file to use. This will be utilized by the step function to deploy user defined clusters. For more information on how to configure CfnCluster visit the [CfnCluster Documentation](http://cfncluster.readthedocs.io/en/latest/getting_started.html#configuring-cfncluster).
+
 ### `--bucket` or `-b`
 
 Specifies the name of the S3 bucket to be used to store the source code that creates and terminates the CfnClusters. **Important**: if the bucket already exists, it must be in the same region as that given by the --region argument. If it does not exist, it will be made for you in the specified region.
@@ -122,10 +127,6 @@ Specifies the name of the S3 bucket to be used to store the source code that cre
 Specifies the job configuration file to use. This will be used to package your jobs for use in the Step Function.
 
 ## Optional Arguments
-
-### `--config` or `-c`
-
-Specifies the CfnCluster configuration file to use. This will be utilized by the step function to deploy user defined clusters. For more information on how to configure CfnCluster visit the [CfnCluster Documentation](http://cfncluster.readthedocs.io/en/latest/getting_started.html#configuring-cfncluster).
 
 ### `--region` or `-r`
 
@@ -146,19 +147,18 @@ Specifies the name of the EC2 key pair to use for the CfnCluster master node. **
 Prints the help menu and usage to standard output.
 
 ```
-usage: cfncluster stepfunctions [-h] --bucket BUCKET_NAME
-                                [--config CONFIG_FILE] --jobs JOBS_CONFIG
-                                [--stack-name STACK_NAME] [--region REGION]
-                                [--key-name KEY_NAME]
+usage: deploy.py [-h] --bucket BUCKET_NAME --config CONFIG_FILE --jobs
+                 JOBS_CONFIG [--stack-name STACK_NAME] [--region REGION]
+                 [--key-name KEY_NAME]
 
-deploy a cfncluster stepfunction via cloudformation
+Deploys CfnCluster Step Function
 
 optional arguments:
   -h, --help            show this help message and exit
   --bucket BUCKET_NAME, -b BUCKET_NAME
                         Specify s3 bucket to use/create
   --config CONFIG_FILE, -c CONFIG_FILE
-                        Specify cfncluster config file to use
+                        Specify config file to use
   --jobs JOBS_CONFIG, -j JOBS_CONFIG
                         Specify jobs config file to use
   --stack-name STACK_NAME, -s STACK_NAME
