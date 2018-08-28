@@ -178,36 +178,7 @@ optional arguments:
 
 ::
 
-    $ cfncluster ssh mycluster -i ~/.ssh/id_rsa -v
-
-stepfunctions
-=============
-
-Creates a step function that automatically creates a cluster, runs user specified jobs, and tears the cluster down.
-
-For example:
-    cfncluster stepfunctions -b s3bucket -j path/to/jobs.config
-
-This uses the bucket name s3bucket, or creates it if it doesn't exist, to store the lambda source code and user specified jobs. To see how jobs in the ``jobs.config`` file should be specified, see `Job Config <stepfunctions.html#jobs-config>`_.
-
-arguments:
-  -h, --help            show this help message and exit
-  --jobs JOBS_CONFIG, -j JOBS_CONFIG
-                        specify jobs config file to use (REQUIRED)
-  --bucket BUCKET_NAME, -b BUCKET_NAME
-                        specify s3 bucket to use/create (REQUIRED)
-  --config CONFIG_FILE, -c CONFIG_FILE
-                        specify an alternative config file (default: ~/.cfncluster/config)
-  --region REGION, -r REGION
-                        specify a region to deploy in (default: us-east-1)
-  --stack-name STACK_NAME, -s STACK_NAME
-                        specify the stack name to use (default: CfnClusterStepFunction)
-  --key-name KEY_NAME, -k KEY_NAME
-                        specify the ec2 key pair (default: cfncluster-stepfunctions)
-
-::
-
-    $ cfncluster stepfunctions -b s3bucket -j path/to/jobs.config
+    $cfncluster ssh mycluster -i ~/.ssh/id_rsa -v
 
 status
 ======
@@ -228,7 +199,7 @@ optional arguments:
 
 ::
 
-    $ cfncluster status mycluster
+    $cfncluster status mycluster
 
 list
 ====
