@@ -180,13 +180,6 @@ def main():
     addarg_region(pinstances)
     pinstances.set_defaults(func=instances)
 
-    pconfigure = subparsers.add_parser('configure', help='creating initial cfncluster configuration')
-    addarg_config(pconfigure)
-    pconfigure.set_defaults(func=configure)
-
-    pversion = subparsers.add_parser('version', help='display version of cfncluster')
-    pversion.set_defaults(func=version)
-
     pssh = subparsers.add_parser('ssh', help='connect to the master server using SSH',
                                  description='run ssh command with username and ip address pre-filled. ' \
                                              'Arbitrary arguments are appended to the end of the ssh commmand. ' \
@@ -196,6 +189,13 @@ def main():
     pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
                          help='print command and exit.')
     pssh.set_defaults(func=command)
+
+    pconfigure = subparsers.add_parser('configure', help='creating initial cfncluster configuration')
+    addarg_config(pconfigure)
+    pconfigure.set_defaults(func=configure)
+
+    pversion = subparsers.add_parser('version', help='display version of cfncluster')
+    pversion.set_defaults(func=version)
 
     default_path = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
     stepfunctions = subparsers.add_parser('stepfunctions',
