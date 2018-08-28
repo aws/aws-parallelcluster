@@ -27,6 +27,6 @@ script:
   - if [[ $TRAVIS_PYTHON_VERSION != 2.6 ]]; then
     pip install 'boto3==1.7.84' --force-reinstall;
     python cli/tests/cfncluster-unittest.py;
-    pip install boto3 --upgrade
+    pip install boto3 --upgrade;
     fi
   - sh tests/test.sh
