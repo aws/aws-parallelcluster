@@ -187,9 +187,10 @@ def main():
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)
 
-    pssh = subparsers.add_parser('ssh', description='run ssh command with username and ip address pre-filled. ' \
-                                                    'Arbitrary arguments are appended to the end of the ssh commmand. ' \
-                                                    'This command may be customized in the aliases section of the config file.')
+    pssh = subparsers.add_parser('ssh', help='connect to the master server using SSH',
+                                 description='run ssh command with username and ip address pre-filled. ' \
+                                             'Arbitrary arguments are appended to the end of the ssh commmand. ' \
+                                             'This command may be customized in the aliases section of the config file.')
     pssh.add_argument("cluster_name", type=str, default=None,
                         help='name of the cluster to set variables for.')
     pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
