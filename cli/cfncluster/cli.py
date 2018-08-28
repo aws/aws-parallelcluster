@@ -145,17 +145,17 @@ def main():
     addarg_nowait(pdelete)
     pdelete.set_defaults(func=delete)
 
-    pstart = subparsers.add_parser('start', help='start the compute-fleet that has been stopped')
+    pstart = subparsers.add_parser('start', help='start the compute fleet that has been stopped')
     pstart.add_argument("cluster_name", type=str, default=None,
-                        help='starts the compute-fleet of the provided cluster name.')
+                        help='starts the compute fleet of the provided cluster name.')
     addarg_config(pstart)
     addarg_region(pstart)
     pstart.set_defaults(func=start)
 
-    pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for '
+    pstop = subparsers.add_parser('stop', help='stop the compute fleet, but leave the master server running for '
                                                'debugging/development')
     pstop.add_argument("cluster_name", type=str, default=None,
-                        help='stops the compute-fleet of the provided cluster name.')
+                        help='stops the compute fleet of the provided cluster name.')
     addarg_config(pstop)
     addarg_region(pstop)
     pstop.set_defaults(func=stop)
