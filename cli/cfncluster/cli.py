@@ -141,17 +141,17 @@ def main():
     addarg_nowait(pdelete)
     pdelete.set_defaults(func=delete)
 
-    pstart = subparsers.add_parser('start', help='start the compute-fleet that has been stopped')
+    pstart = subparsers.add_parser('start', help='start the compute fleet that has been stopped')
     pstart.add_argument("cluster_name", type=str, default=None,
-                        help='starts the compute-fleet of the provided cluster name.')
+                        help='starts the compute fleet of the provided cluster name.')
     addarg_config(pstart)
     addarg_region(pstart)
     pstart.set_defaults(func=start)
 
-    pstop = subparsers.add_parser('stop', help='stop the compute-fleet, but leave the MasterServer running for '
+    pstop = subparsers.add_parser('stop', help='stop the compute fleet, but leave the master server running for '
                                                'debugging/development')
     pstop.add_argument("cluster_name", type=str, default=None,
-                        help='stops the compute-fleet of the provided cluster name.')
+                        help='stops the compute fleet of the provided cluster name.')
     addarg_config(pstop)
     addarg_region(pstop)
     pstop.set_defaults(func=stop)
@@ -176,21 +176,22 @@ def main():
     addarg_region(pinstances)
     pinstances.set_defaults(func=instances)
 
+    pssh = subparsers.add_parser('ssh', help='connect to the master server using SSH',
+                                 description='run ssh command with username and ip address pre-filled. ' \
+                                             'Arbitrary arguments are appended to the end of the ssh commmand. ' \
+                                             'This command may be customized in the aliases section of the config file.')
+    pssh.add_argument("cluster_name", type=str, default=None,
+                        help='name of the cluster to set variables for.')
+    pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
+                         help='print command and exit.')
+    pssh.set_defaults(func=command)
+
     pconfigure = subparsers.add_parser('configure', help='creating initial cfncluster configuration')
     addarg_config(pconfigure)
     pconfigure.set_defaults(func=configure)
 
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)
-
-    pssh = subparsers.add_parser('ssh', description='run ssh command with username and ip address pre-filled. ' \
-                                                    'Arbitrary arguments are appended to the end of the ssh commmand. ' \
-                                                    'This command may be customized in the aliases section of the config file.')
-    pssh.add_argument("cluster_name", type=str, default=None,
-                        help='name of the cluster to set variables for.')
-    pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
-                         help='print command and exit.')
-    pssh.set_defaults(func=command)
 
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
