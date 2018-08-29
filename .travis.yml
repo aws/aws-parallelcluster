@@ -26,6 +26,7 @@ sudo: false
 script:
   - if [[ $TRAVIS_PYTHON_VERSION != 2.6 ]]; then
     pip install 'boto3==1.7.84' --force-reinstall;
+    pip install moto
     python cli/tests/cfncluster-unittest.py;
     pip install boto3 --upgrade;
     fi
