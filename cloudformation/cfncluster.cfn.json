@@ -102,13 +102,6 @@
             "default": "Scaling Settings"
           },
           "Parameters": [
-            "ScalingPeriod",
-            "ScalingEvaluationPeriods",
-            "ScalingThreshold",
-            "ScalingAdjustment",
-            "ScalingThreshold2",
-            "ScalingAdjustment2",
-            "ScalingCooldown",
             "ScaleDownIdleTime"
           ]
         },
@@ -271,24 +264,6 @@
         },
         "EBSVolumeId": {
           "default": "ebs_volume_id"
-        },
-        "ScalingThreshold": {
-          "default": "scaling_threshold"
-        },
-        "ScalingPeriod": {
-          "default": "scaling_period"
-        },
-        "ScalingEvaluationPeriods": {
-          "default": "scaling_evaluation_periods"
-        },
-        "ScalingAdjustment": {
-          "default": "scaling_adjustment"
-        },
-        "ScalingAdjustment2": {
-          "default": "scaling_adjustment2"
-        },
-        "ScalingCooldown": {
-          "default": "scaling_cooldown"
         },
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
