@@ -73,7 +73,7 @@ submit_launch() {
     # there's a bounded completion time
     if test "$CHECK_CLUSTER_SUBPROCESS" = ""; then
         export CHECK_CLUSTER_SUBPROCESS=1
-        timeout -s KILL 10m /bin/bash ./cluster-check.sh "$@"
+        timeout -s KILL 9m /bin/bash ./cluster-check.sh "$@"
         exit $?
     fi
 
@@ -87,25 +87,29 @@ submit_launch() {
 
     done=0
     while test $done = 0 ; do
-        if test -f job1.done -a -f job2.done; then
+        if test -f job1.done -a -f job2.done -a -f job3.done; then
             done=1
         else
             sleep 1
         fi
     done
+     echo "Scaleup successful"
 }
 
 submit_init() {
-    # we submit 2 1-node jobs, each of which are a sleep.
-    # The whole thing has to run in 10 minutes, or the kill above will
-    # fail the job, which means that the jobs must run at the same time.
-    # The initial cluster is 1 nodes, so we'll need to scale up 1 further node in
-    # less than 8 minutes in order for the test to succeed.
+    # we submit 3 1-node jobs, each of which are a sleep.
+    # The whole thing has to run in 9 minutes (higher of the three sleep times + buffer),
+    # or the kill in submit_launch will fail the job, which means that the jobs must run at the same time.
+    # The initial cluster is 1 nodes, so we'll need to scale up 2 further nodes simultaneously
+    # and bootstrap in less than 7 minutes and run the job that needs 105 seconds
+    # in order for the test to succeed.
 
-    # job1: 8m30s
-    export _sleepjob1=510
-    # job2: 2m
-    export _sleepjob2=120
+    # job1: 7m45s
+    export _sleepjob1=465
+    # job2: 1m45s
+    export _sleepjob2=105
+    # job3: 1m45s
+    export _sleepjob3=105
 
     scheduler=$1
     export _ppn=$(${scheduler}_get_slots)
@@ -127,11 +131,18 @@ srun sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+srun sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     sbatch -N 1 -n ${_ppn} ./job1.sh
     sbatch -N 1 -n ${_ppn} ./job2.sh
+    sbatch -N 1 -n ${_ppn} ./job3.sh
 }
 
 sge_submit() {
@@ -154,11 +165,21 @@ sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+#$ -pe mpi $count
+#$ -R y
+
+sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     qsub ./job1.sh
     qsub ./job2.sh
+    qsub ./job3.sh
 }
 
 torque_submit() {
@@ -173,13 +194,21 @@ sleep ${_sleepjob2}
 touch job2.done
 EOF
 
-    chmod +x job1.sh job2.sh
-    rm -f job1.done job2.done
+    cat > job3.sh <<EOF
+#!/bin/bash
+sleep ${_sleepjob3}
+touch job3.done
+EOF
+
+    chmod +x job1.sh job2.sh job3.sh
+    rm -f job1.done job2.done job3.done
 
     echo "qsub -l nodes=1:ppn=${_ppn} ./job1.sh"
     qsub -l nodes=1:ppn=${_ppn} ./job1.sh
     echo "qsub -l nodes=1:ppn=${_ppn} ./job2.sh"
     qsub -l nodes=1:ppn=${_ppn} ./job2.sh
+    echo "qsub -l nodes=1:ppn=${_ppn} ./job3.sh"
+    qsub -l nodes=1:ppn=${_ppn} ./job3.sh
 }
 
 scaledown_check_launch() {
@@ -194,25 +223,35 @@ scaledown_check_launch() {
 
     echo "--> scheduler: $scheduler"
 
-    ${scheduler}_scaledown_check
+    scaledown_complete=0
+    while test $scaledown_complete = 0 ; do
+        ${scheduler}_scaledown_check
+        sleep 10
+    done
+    echo "Scaledown successful"
+}
 
-    aws_scaledown_check
+has_zero_active_instances(){
+    instances=$1
+    if [[ ${instances} ]]; then
+        echo "instances have not scaled down yet"
+        scaledown_complete=0
+    else
+        echo "instances have scaled down; exiting"
+        scaledown_complete=1
+    fi
 }
 
 slurm_scaledown_check() {
-    : # TODO
+    has_zero_active_instances $(sinfo --noheader | awk '$4 != "0"')
 }
 
 sge_scaledown_check() {
-    : # TODO
+    has_zero_active_instances $(qhost | grep ip-)
 }
 
 torque_scaledown_check() {
-    : # TODO
-}
-
-aws_scaledown_check() {
-    : # TODO
+    has_zero_active_instances $(pbsnodes | grep status)
 }
 
 main() {
