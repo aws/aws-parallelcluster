@@ -16,7 +16,10 @@ A cluster's lifecycle begins after it is created by a user.  Typically, this is 
 
 publish_pending_jobs
 --------------------
-Once a cluster is running, a cronjob owned by the root user will monitor the configured scheduler (SGE, Torque, Openlava, etc) and publish the number of pending jobs to CloudWatch.  This is the metric utilized by :ref:`Auto Scaling <auto_scaling>` to add more nodes to the cluster.
+Once a cluster is running, a cronjob owned by the root user will monitor the
+configured scheduler (SGE, Torque, Openlava, etc) and publish to CloudWatch the
+number of nodes required to schedule pending jobs. This is the metric utilized
+by :ref:`Auto Scaling <auto_scaling>` to add more nodes to the cluster.
 
 .. image:: images/publish_pending_jobs.png
     :align: center
