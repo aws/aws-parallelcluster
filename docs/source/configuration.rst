@@ -359,14 +359,6 @@ See :ref:`EBS Section <ebs_section>`. ::
 
     ebs_settings = custom
 
-scaling_settings
-""""""""""""""""
-Settings section relation to scaling
-
-See :ref:`Scaling Section <scaling_section>`. ::
-
-    scaling_settings = custom
-
 tags
 """"
 Defines tags to be used in CloudFormation.
@@ -507,6 +499,7 @@ EBS Volume Id of an existing volume that will be attached to the MasterServer.
 Defaults to NONE for default template. ::
 
     ebs_volume_id = vol-xxxxxx
+<<<<<<< HEAD
 
 .. _scaling_section:
 
@@ -525,3 +518,5 @@ Amount of time in minutes without a job after which the compute node will termin
 Defaults to 10 for the default template. ::
 
     scaledown_idletime = 10
+=======
+>>>>>>> Update Scaling Docs

@@ -3,7 +3,7 @@
 AWS Services used in CfnCluster
 ===============================
 
-The following Amazon Web Services (AWS) services are used in CfnCluster. 
+The following Amazon Web Services (AWS) services are used in CfnCluster.
 
 * AWS CloudFormation
 * AWS Identity and Access Management (IAM)
@@ -12,7 +12,6 @@ The following Amazon Web Services (AWS) services are used in CfnCluster.
 * Amazon EC2
 * Auto Scaling
 * Amazon EBS
-* Amazon Cloud Watch
 * Amazon S3
 * Amazon DynamoDB
 
@@ -54,7 +53,7 @@ For more details about Amazon EC2, see http://aws.amazon.com/ec2/
 Auto Scaling
 ------------
 
-Auto Scaling is used to manage the ComputeFleet instances. These instances are managed as an AutoScaling Group and can either be elastically driven by workload or static and driven by the config. 
+Auto Scaling is used to manage the ComputeFleet instances. These instances are managed as an AutoScaling Group and can either be elastically driven by workload or static and driven by the config.
 
 For more details about Auto Scaling, see http://aws.amazon.com/autoscaling/
 
@@ -64,13 +63,6 @@ Amazon EBS
 Amazon EBS provides the persistent storage for the shared volume. Any EBS settings can be passed through the config. EBS volumes can either be initialized empty or from an existing EBS snapshot.
 
 For more details about Amazon EBS, see http://aws.amazon.com/ebs/
-
-Amazon CloudWatch
-------------------
-
-Amazon CloudWatch provides metric collection and alarms for CfnCluster. The MasterServer publishes pending tasks (jobs) for each cluster. Two alarms are defined that based on parameters defined in the config will automatically increase the size of the ComputeFleet Auto Scaling group.
-
-For more details, see http://aws.amazon.com/cloudwatch/
 
 Amazon S3
 ---------
