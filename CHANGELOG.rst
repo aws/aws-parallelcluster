@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.6.0
+=====
+* Refactor scaling up to take into account the number of pending/requested jobs/slots and instance slots.
+* Refactor scaling down to scale down faster and take advantage of per-second billing.
+* Add `scaledown_idletime` parameter as part of scale-down refactoring
+* Lock hosts before termination to ensure removal of dead compute nodes from host list
+
 1.5.4
 =====
 * Add option to disable ganglia `extra_json = { "cfncluster" : { "ganglia_enabled" : "no" } }`
