@@ -518,7 +518,6 @@ Settings which define how the compute nodes scale. ::
     [scaling custom]
     scaledown_idletime = 10
 
-<<<<<<< HEAD
 scaledown_idletime
 """"""""""""""""
 Amount of time in minutes without a job after which the compute node will terminate.
