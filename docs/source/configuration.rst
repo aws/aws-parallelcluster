@@ -50,9 +50,9 @@ Attempts to validate that resources defined in parameters actually exist. ::
 
 aws
 ^^^
-This is the AWS credentials section (required).  These settings apply to all clusters.
+This is the AWS credentials/region section (required).  These settings apply to all clusters.
 
-If not defined, boto will attempt to use a) environment or b) EC2 IAM role. ::
+We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the CfnCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
@@ -516,62 +516,12 @@ Settings which define how the compute nodes scale. ::
 
 
     [scaling custom]
-    scaling_period = 60
-    scaling_cooldown = 300
+    scaledown_idletime = 10
 
-scaling_threshold
-"""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp action.
-
-Defaults to 1 for default template. ::
-
-    scaling_threshold = 1
-
-scaling_adjustment
-""""""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp action.
-
-Defaults to 1 for default template. ::
-
-    scaling_adjustment = 1
-
-
-scaling_threshold2
-""""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp2 action.
-
-Defaults to 200 for default template. ::
-
-    scaling_threshold2 = 200
-
-scaling_adjustment2
-"""""""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp2 action
-
-Defaults to 20 for default template. ::
-
-    scaling_adjustment2 = 20
-
-scaling_period
-""""""""""""""
-Period to measure ScalingThreshold.
-
-Defaults to 60 for default template. ::
-
-    scaling_period = 60
-
-scaling_evaluation_periods
-""""""""""""""""""""""""""
-Number of periods to measure ScalingThreshold.
-
-Defaults to 2 for default template. ::
-
-    scaling_evaluation_periods = 2
-
-scaling_cooldown
+scaledown_idletime
 """"""""""""""""
-Amount of time in seconds to wait before attempting further scaling actions.
+Amount of time in minutes without a job after which the compute node will terminate.
 
-Defaults to 300 for the default template. ::
+Defaults to 10 for the default template. ::
 
-    scaling_cooldown = 300
+    scaledown_idletime = 10
