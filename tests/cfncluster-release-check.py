@@ -83,10 +83,32 @@ def _double_writeln(fileo, message):
     print(message)
     fileo.write(message + '\n')
 
+# Helper method to get the name of the autoscaling group
+def check_asg_capacity(stack_name, region, out_f):
+    asg_conn = boto3.client('autoscaling', region_name=region)
+    iter = 0
+    capacity = -1
+    while iter < 24 and capacity != 0:
+        try:
+            r = asg_conn.describe_tags(Filters=[{'Name': 'value', 'Values': [stack_name]}])
+            asg_name = r.get('Tags')[0].get('ResourceId')
+            response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            capacity = response["AutoScalingGroups"][0]["DesiredCapacity"]
+            iter += 1
+            time.sleep(10)
+        except Exception as e:
+            _double_writeln(out_f, "check_asg_capacity failed with %s exception: %s" % (type(e), e))
+            raise
+
+    _double_writeln(out_f, "ASG Capacity was %s after %s second(s)" % (capacity, 10 * iter))
+    if capacity != 0:
+        raise ReleaseCheckException("Autoscaling group's desired capacity was not zero. Capacity was %s" % capacity)
+
 #
 # run a single test, possibly in parallel
 #
 def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
+    scaledown_idletime = 2
     testname = '%s-%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''), _timestamp)
     test_filename = "%s-config.cfg" % testname
     key_path = extra_args['key_path']
@@ -106,7 +128,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("master_instance_type = %s\n" % instance_type)
     file.write("compute_instance_type = %s\n" % instance_type)
     file.write("initial_queue_size = 1\n")
-    file.write("maintain_initial_size = true\n")
+    file.write("maintain_initial_size = false\n")
     file.write("scheduler = %s\n" % (scheduler))
     file.write("scaling_settings = custom\n")
     if custom_template:
@@ -121,10 +143,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
-    file.write("scaling_adjustment = 1\n")
-    file.write("scaling_period = 30\n")
-    file.write("scaling_evaluation_periods = 1\n")
-    file.write("scaling_cooldown = 300\n")
+    file.write("scaledown_idletime = %s\n" % scaledown_idletime)
     file.close()
 
     out_f = open('%s-out.txt' % testname, 'w', 0)
@@ -167,8 +186,16 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh submit %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
 
-        _double_writeln(out_f, 'SUCCESS:  %s!!' % (testname))
-        open('%s.success' %testname, 'w').close()
+        # Sleep for scaledown_idletime to give time for the instances to scale down
+        time.sleep(60*scaledown_idletime)
+
+        check_asg_capacity('cfncluster-' + testname, region, out_f)
+
+        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
+                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+
+        _double_writeln(out_f, 'SUCCESS:  %s!!' % testname)
+        open('%s.success' % testname, 'w').close()
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
