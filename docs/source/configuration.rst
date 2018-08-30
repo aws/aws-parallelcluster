@@ -52,7 +52,7 @@ aws
 ^^^
 This is the AWS credentials/region section (required).  These settings apply to all clusters.
 
-We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the CfnCluster config file.  Note that CfnCluster uses the original Boto library rather than Boto3.  Wile configuration is largely the same, `AWS_SECURITY_TOKEN` is used instead of `AWS_SESSION_TOKEN` for setting a temporary credential. ::
+We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the CfnCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
