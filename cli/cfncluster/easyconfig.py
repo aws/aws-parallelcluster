@@ -27,7 +27,7 @@ from . import cfnconfig
 logger = logging.getLogger('cfncluster.cfncluster')
 unsupported_regions = ['ap-northeast-3', 'cn-north-1', 'cn-northwest-1']
 
-def prompt(prompt, default_value=None, hidden=False, options=None):
+def prompt(prompt, default_value=None, hidden=False, options=None, check_validity=False):
     if hidden and default_value is not None:
         user_prompt = prompt + ' [*******' + default_value[-4:] + ']: '
     else:
@@ -42,12 +42,17 @@ def prompt(prompt, default_value=None, hidden=False, options=None):
         for o in options:
             print('    %s' % o)
 
-    var = input(user_prompt)
+    var = input(user_prompt).strip()
 
     if var == '':
         return default_value
     else:
-        return var.strip()
+        if check_validity and options is not None and var not in options:
+            print('ERROR: The value (%s) is not valid ' % var)
+            print('Please select one of the Acceptable Values listed above.')
+            sys.exit(1)
+        else:
+            return var
 
 def get_regions():
     ec2 = boto3.client('ec2')
@@ -130,13 +135,13 @@ def configure(args):
     aws_secret_access_key = prompt('AWS Secret Access Key ID', config.get('aws', 'aws_secret_access_key') if config.has_option('aws', 'aws_secret_access_key') else None, True)
 
     # Use built in boto regions as an available option
-    aws_region_name = prompt('AWS Region ID', config.get('aws', 'aws_region_name') if config.has_option('aws', 'aws_region_name') else None, options=get_regions())
+    aws_region_name = prompt('AWS Region ID', config.get('aws', 'aws_region_name') if config.has_option('aws', 'aws_region_name') else None, options=get_regions(), check_validity=True)
     vpcname = prompt('VPC Name', config.get('cluster ' + cluster_template, 'vpc_settings') if config.has_option('cluster ' + cluster_template, 'vpc_settings') else 'public')
 
     # Query EC2 for available keys as options
-    key_name = prompt('Key Name', config.get('cluster ' + cluster_template, 'key_name') if config.has_option('cluster ' + cluster_template, 'key_name') else None, options=list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name))
-    vpc_id = prompt('VPC ID', config.get('vpc ' + vpcname, 'vpc_id') if config.has_option('vpc ' + vpcname, 'vpc_id') else None, options=list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name))
-    master_subnet_id = prompt('Master Subnet ID', config.get('vpc ' + vpcname, 'master_subnet_id') if config.has_option('vpc ' + vpcname, 'master_subnet_id') else None, options=list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id))
+    key_name = prompt('Key Name', config.get('cluster ' + cluster_template, 'key_name') if config.has_option('cluster ' + cluster_template, 'key_name') else None, options=list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name), check_validity=True)
+    vpc_id = prompt('VPC ID', config.get('vpc ' + vpcname, 'vpc_id') if config.has_option('vpc ' + vpcname, 'vpc_id') else None, options=list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name), check_validity=True)
+    master_subnet_id = prompt('Master Subnet ID', config.get('vpc ' + vpcname, 'master_subnet_id') if config.has_option('vpc ' + vpcname, 'master_subnet_id') else None, options=list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id), check_validity=True)
 
     # Dictionary of values we want to set
     s_global = { '__name__': 'global', 'cluster_template': cluster_template, 'update_check': 'true', 'sanity_check': 'true' }

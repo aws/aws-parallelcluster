@@ -40,7 +40,9 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                 aws_secret_access_key=aws_secret_access_key)
 
             arn = iam.get_role(RoleName=resource_value).get('Role').get('Arn')
-            accountid = boto3.client('sts').get_caller_identity().get('Account')
+            accountid = boto3.client('sts', region_name=region,
+                                        aws_access_key_id=aws_access_key_id,
+                                        aws_secret_access_key=aws_secret_access_key).get_caller_identity().get('Account')
 
             iam_policy = [(['ec2:DescribeVolumes', 'ec2:AttachVolume', 'ec2:DescribeInstanceAttribute', 'ec2:DescribeInstanceStatus', 'ec2:DescribeInstances'], "*"),
                         (['dynamodb:ListTables'], "*"),
@@ -48,6 +50,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity'], "*"),
                         (['cloudwatch:PutMetricData'], "*"),
                         (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:aws:dynamodb:%s:%s:table/cfncluster-*" % (region, accountid)),
+                        (['s3:GetObject'], "arn:aws:s3:::%s-cfncluster/*" % region),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:aws:logs:*:*:*")]
 

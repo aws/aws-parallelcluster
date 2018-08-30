@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+1.5.4
+=====
+* Add option to disable ganglia `extra_json = { "cfncluster" : { "ganglia_enabled" : "no" } }`
+* Fix `cfncluster update` bug
+* Set SGE Accounting summary to be true, this reports a single accounting record for a mpi job
+* Upgrade cfncluster-node to Boto3
+
 1.5.3
 =====
 * Add support for GovCloud, us-gov-west-1 region
