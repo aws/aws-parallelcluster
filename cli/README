@@ -1,26 +1,27 @@
 cfncluster is an example framework for launching clusters.
 
-    usage: cfncluster [-h] [--config CONFIG_FILE] [--region REGION] [--nowait]
-                      {create,update,delete,status,list,instances,version}
+    usage: cfncluster [-h]
+                      {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
                       ...
 
-    cfncluster is the a tool to launch and manage cluster.
+    cfncluster is a tool to launch and manage a cluster.
 
     positional arguments:
-      {create,update,stop,delete,status,list,instances,sshmaster}
+      {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
         create              creates a cluster
         update              update a running cluster
         delete              delete a cluster
+        start               start the compute fleet that has been stopped
+        stop                stop the compute fleet, but leave the master server
+                            running for debugging/development
         status              pull the current status of the cluster
         list                display a list of stacks associated with cfncluster
         instances           display a list of all instances in a cluster
-        version             display the version of cfncluster cli
+        ssh                 connect to the master server using SSH
+        configure           creating initial cfncluster configuration
+        version             display version of cfncluster
 
     optional arguments:
       -h, --help            show this help message and exit
-      --config CONFIG_FILE, -c CONFIG_FILE
-                            specify a alternative config file
-      --region REGION, -r REGION
-                            specify a specific region to connect to
-      --nowait, -nw         do not wait for stack events, after executing stack
-                            command
+
+    For command specific flags run cfncluster [command] --help

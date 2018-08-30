@@ -1,23 +1,23 @@
 {
-  "AWSTemplateFormatVersion" : "2010-09-09",
-  "Description" : "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: cfncluster-1.4.2",
-  "Metadata" : {
-    "AWS::CloudFormation::Interface" : {
-      "ParameterGroups" : [
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: cfncluster-1.5.2",
+  "Metadata": {
+    "AWS::CloudFormation::Interface": {
+      "ParameterGroups": [
         {
-          "Label" : {
-            "default" : "Network - Basic Settings"
+          "Label": {
+            "default": "Network - Basic Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "VPCId",
             "MasterSubnetId"
           ]
         },
         {
-          "Label" : {
-            "default" : "Cluster - Basic Setting"
+          "Label": {
+            "default": "Cluster - Basic Setting"
           },
-          "Parameters" : [
+          "Parameters": [
             "KeyName",
             "AvailabilityZone",
             "MasterInstanceType",
@@ -27,18 +27,18 @@
           ]
         },
         {
-          "Label" : {
-            "default" : "EBS - Basic Settings"
+          "Label": {
+            "default": "EBS - Basic Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "VolumeSize"
           ]
         },
         {
-          "Label" : {
-            "default" : "Network - Advanced Settings"
+          "Label": {
+            "default": "Network - Advanced Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "AccessFrom",
             "ComputeSubnetId",
             "ComputeSubnetCidr",
@@ -48,10 +48,10 @@
           ]
         },
         {
-          "Label" : {
-            "default" : "Cluster - Advanced Setting"
+          "Label": {
+            "default": "Cluster - Advanced Setting"
           },
-          "Parameters" : [
+          "Parameters": [
             "InitialQueueSize",
             "ComputeWaitConditionCount",
             "MaxQueueSize",
@@ -85,10 +85,10 @@
           ]
         },
         {
-          "Label" : {
-            "default" : "EBS - Advanced Settings"
+          "Label": {
+            "default": "EBS - Advanced Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "VolumeType",
             "EBSSnapshotId",
             "VolumeIOPS",
@@ -98,10 +98,10 @@
           ]
         },
         {
-          "Label" : {
-            "default" : "Scaling Settings"
+          "Label": {
+            "default": "Scaling Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "ScalingPeriod",
             "ScalingEvaluationPeriods",
             "ScalingThreshold",
@@ -112,673 +112,673 @@
           ]
         },
         {
-          "Label" : {
-            "default" : "Additonal Settings"
+          "Label": {
+            "default": "Additonal Settings"
           },
-          "Parameters" : [
+          "Parameters": [
             "CLITemplate"
           ]
         }
       ],
-      "ParameterLabels" : {
-        "KeyName" : {
-          "default" : "key_name"
+      "ParameterLabels": {
+        "KeyName": {
+          "default": "key_name"
         },
-        "AccessFrom" : {
-          "default" : "access_from",
-          "AccessFrom" : {
-            "default" : "access_from"
+        "AccessFrom": {
+          "default": "access_from",
+          "AccessFrom": {
+            "default": "access_from"
           }
         },
-        "VPCId" : {
-          "default" : "vpc_id"
+        "VPCId": {
+          "default": "vpc_id"
         },
-        "MasterSubnetId" : {
-          "default" : "master_subnet_id"
+        "MasterSubnetId": {
+          "default": "master_subnet_id"
         },
-        "ComputeSubnetId" : {
-          "default" : "compute_subnet_id"
+        "ComputeSubnetId": {
+          "default": "compute_subnet_id"
         },
-        "ComputeSubnetCidr" : {
-          "default" : "compute_subnet_cidr"
+        "ComputeSubnetCidr": {
+          "default": "compute_subnet_cidr"
         },
-        "UsePublicIps" : {
-          "default" : "use_public_ips"
+        "UsePublicIps": {
+          "default": "use_public_ips"
         },
-        "AdditionalSG" : {
-          "default" : "additional_sg"
+        "AdditionalSG": {
+          "default": "additional_sg"
         },
-        "VPCSecurityGroupId" : {
-          "default" : "vpc_security_group_id"
+        "VPCSecurityGroupId": {
+          "default": "vpc_security_group_id"
         },
-        "ComputeInstanceType" : {
-          "default" : "compute_instance_type"
+        "ComputeInstanceType": {
+          "default": "compute_instance_type"
         },
-        "MasterInstanceType" : {
-          "default" : "master_instance_type"
+        "MasterInstanceType": {
+          "default": "master_instance_type"
         },
-        "InitialQueueSize" : {
-          "default" : "initial_queue_size"
+        "InitialQueueSize": {
+          "default": "initial_queue_size"
         },
-        "MaxQueueSize" : {
-          "default" : "max_queue_size"
+        "MaxQueueSize": {
+          "default": "max_queue_size"
         },
-        "MaintainInitialSize" : {
-          "default" : "maintain_initial_size"
+        "MaintainInitialSize": {
+          "default": "maintain_initial_size"
         },
-        "Scheduler" : {
-          "default" : "scheduler"
+        "Scheduler": {
+          "default": "scheduler"
         },
-        "ClusterType" : {
-          "default" : "cluster_type"
+        "ClusterType": {
+          "default": "cluster_type"
         },
-        "EphemeralDir" : {
-          "default" : "ephemeral_dir"
+        "EphemeralDir": {
+          "default": "ephemeral_dir"
         },
-        "SpotPrice" : {
-          "default" : "spot_price"
+        "SpotPrice": {
+          "default": "spot_price"
         },
-        "CustomAMI" : {
-          "default" : "custom_ami"
+        "CustomAMI": {
+          "default": "custom_ami"
         },
-        "PreInstallScript" : {
-          "default" : "pre_install"
+        "PreInstallScript": {
+          "default": "pre_install"
         },
-        "PostInstallScript" : {
-          "default" : "post_install"
+        "PostInstallScript": {
+          "default": "post_install"
         },
-        "PreInstallArgs" : {
-          "default" : "pre_install_args"
+        "PreInstallArgs": {
+          "default": "pre_install_args"
         },
-        "PostInstallArgs" : {
-          "default" : "post_install_args"
+        "PostInstallArgs": {
+          "default": "post_install_args"
         },
-        "S3ReadResource" : {
-          "default" : "s3_read_resource"
+        "S3ReadResource": {
+          "default": "s3_read_resource"
         },
-        "S3ReadWriteResource" : {
-          "default" : "s3_read_write_resource"
+        "S3ReadWriteResource": {
+          "default": "s3_read_write_resource"
         },
-        "CWLRegion" : {
-          "default" : "cwl_region"
+        "CWLRegion": {
+          "default": "cwl_region"
         },
-        "CWLLogGroup" : {
-          "default" : "cwl_log_group"
+        "CWLLogGroup": {
+          "default": "cwl_log_group"
         },
-        "ProxyServer" : {
-          "default" : "proxy_server"
+        "ProxyServer": {
+          "default": "proxy_server"
         },
-        "Placement" : {
-          "default" : "placement"
+        "Placement": {
+          "default": "placement"
         },
-        "PlacementGroup" : {
-          "default" : "placement_group"
+        "PlacementGroup": {
+          "default": "placement_group"
         },
-        "EncryptedEphemeral" : {
-          "default" : "encrypted_ephemeral"
+        "EncryptedEphemeral": {
+          "default": "encrypted_ephemeral"
         },
-        "SharedDir" : {
-          "default" : "shared_dir"
+        "SharedDir": {
+          "default": "shared_dir"
         },
-        "Tenancy" : {
-          "default" : "tenancy"
+        "Tenancy": {
+          "default": "tenancy"
         },
-        "EphemeralKMSKeyId" : {
-          "default" : "ephemeral_kms_key_id"
+        "EphemeralKMSKeyId": {
+          "default": "ephemeral_kms_key_id"
         },
-        "ClusterReadyScript" : {
-          "default" : "cluster_ready"
+        "ClusterReadyScript": {
+          "default": "cluster_ready"
         },
-        "MasterRootVolumeSize" : {
-          "default" : "master_root_volume_size"
+        "MasterRootVolumeSize": {
+          "default": "master_root_volume_size"
         },
-        "ComputeRootVolumeSize" : {
-          "default" : "compute_volume_size"
+        "ComputeRootVolumeSize": {
+          "default": "compute_volume_size"
         },
-        "BaseOS" : {
-          "default" : "base_os"
+        "BaseOS": {
+          "default": "base_os"
         },
-        "EC2IAMRoleName" : {
-          "default" : "ec2_iam_role"
+        "EC2IAMRoleName": {
+          "default": "ec2_iam_role"
         },
-        "ExtraJson" : {
-          "default" : "extra_json"
+        "ExtraJson": {
+          "default": "extra_json"
         },
-        "CustomChefCookbook" : {
-          "default" : "custom_chef_cookbook"
+        "CustomChefCookbook": {
+          "default": "custom_chef_cookbook"
         },
-        "CustomChefRunList" : {
-          "default" : "custom_chef_runlist"
+        "CustomChefRunList": {
+          "default": "custom_chef_runlist"
         },
-        "EBSSnapshotId" : {
-          "default" : "ebs_snapshot_id"
+        "EBSSnapshotId": {
+          "default": "ebs_snapshot_id"
         },
-        "VolumeType" : {
-          "default" : "volume_type"
+        "VolumeType": {
+          "default": "volume_type"
         },
-        "VolumeSize" : {
-          "default" : "volume_size"
+        "VolumeSize": {
+          "default": "volume_size"
         },
-        "EBSKMSKeyId" : {
-          "default" : "ebs_kms_key_id"
+        "EBSKMSKeyId": {
+          "default": "ebs_kms_key_id"
         },
-        "VolumeIOPS" : {
-          "default" : "volume_iops"
+        "VolumeIOPS": {
+          "default": "volume_iops"
         },
-        "EBSEncryption" : {
-          "default" : "ebs_encryption"
+        "EBSEncryption": {
+          "default": "ebs_encryption"
         },
-        "EBSVolumeId" : {
-          "default" : "ebs_volume_id"
+        "EBSVolumeId": {
+          "default": "ebs_volume_id"
         },
-        "ScalingThreshold" : {
-          "default" : "scaling_threshold"
+        "ScalingThreshold": {
+          "default": "scaling_threshold"
         },
-        "ScalingPeriod" : {
-          "default" : "scaling_period"
+        "ScalingPeriod": {
+          "default": "scaling_period"
         },
-        "ScalingEvaluationPeriods" : {
-          "default" : "scaling_evaluation_periods"
+        "ScalingEvaluationPeriods": {
+          "default": "scaling_evaluation_periods"
         },
-        "ScalingAdjustment" : {
-          "default" : "scaling_adjustment"
+        "ScalingAdjustment": {
+          "default": "scaling_adjustment"
         },
-        "ScalingAdjustment2" : {
-          "default" : "scaling_adjustment2"
+        "ScalingAdjustment2": {
+          "default": "scaling_adjustment2"
         },
-        "ScalingCooldown" : {
-          "default" : "scaling_cooldown"
+        "ScalingCooldown": {
+          "default": "scaling_cooldown"
         },
-        "ScalingThreshold2" : {
-          "default" : "scaling_threshold2"
+        "ScalingThreshold2": {
+          "default": "scaling_threshold2"
         },
-        "ComputeWaitConditionCount" : {
-          "default" : "WAIT COUNT"
+        "ComputeWaitConditionCount": {
+          "default": "WAIT COUNT"
         },
-        "AvailabilityZone" : {
-          "default" : "AVAILABILITY ZONE"
+        "AvailabilityZone": {
+          "default": "AVAILABILITY ZONE"
         },
-        "CLITemplate" : {
-          "default" : "CLI TEMPLATE"
+        "CLITemplate": {
+          "default": "CLI TEMPLATE"
         }
       }
     },
-    "AWS::CloudFormation::Designer" : {
-      "ee5f3006-419e-4786-b527-e9503a662e5e" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+    "AWS::CloudFormation::Designer": {
+      "ee5f3006-419e-4786-b527-e9503a662e5e": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -170,
-          "y" : 390
+        "position": {
+          "x": -170,
+          "y": 390
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "c8d3da13-fd27-4377-b606-0f41728c17e1" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "c8d3da13-fd27-4377-b606-0f41728c17e1": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -170,
-          "y" : 310
+        "position": {
+          "x": -170,
+          "y": 310
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "2904615e-c0ad-4325-b0c5-b9ea7c482b4e" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "2904615e-c0ad-4325-b0c5-b9ea7c482b4e": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 390
+        "position": {
+          "x": 60,
+          "y": 390
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "45360a4f-64aa-49f8-b016-78fe5ed86819" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "45360a4f-64aa-49f8-b016-78fe5ed86819": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 310
+        "position": {
+          "x": 60,
+          "y": 310
         },
-        "z" : 1,
-        "embeds" : [],
-        "ismemberof" : [
+        "z": 1,
+        "embeds": [],
+        "ismemberof": [
           "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
         ]
       },
-      "619070e4-82e5-445a-93a0-4795ff69d61c" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "619070e4-82e5-445a-93a0-4795ff69d61c": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 180,
-          "y" : 480
+        "position": {
+          "x": 180,
+          "y": 480
         },
-        "z" : 1,
-        "embeds" : [],
-        "isrelatedto" : [
+        "z": 1,
+        "embeds": [],
+        "isrelatedto": [
           "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
         ]
       },
-      "466554d3-0e10-4ae4-bfee-51b0aadbf923" : {
-        "source" : {
-          "id" : "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
+      "466554d3-0e10-4ae4-bfee-51b0aadbf923": {
+        "source": {
+          "id": "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
         },
-        "target" : {
-          "id" : "619070e4-82e5-445a-93a0-4795ff69d61c"
+        "target": {
+          "id": "619070e4-82e5-445a-93a0-4795ff69d61c"
         }
       },
-      "0824f592-a72b-4bb5-8c67-4ce6df509cdd" : {
-        "size" : {
-          "width" : 240,
-          "height" : 240
+      "0824f592-a72b-4bb5-8c67-4ce6df509cdd": {
+        "size": {
+          "width": 240,
+          "height": 240
         },
-        "position" : {
-          "x" : -430,
-          "y" : 30
+        "position": {
+          "x": -430,
+          "y": 30
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "596ddc76-44b9-4747-921c-c000c5b636c0" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "596ddc76-44b9-4747-921c-c000c5b636c0": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 150
+        "position": {
+          "x": 60,
+          "y": 150
         },
-        "z" : 0,
-        "embeds" : [],
-        "references" : [
+        "z": 0,
+        "embeds": [],
+        "references": [
           "45360a4f-64aa-49f8-b016-78fe5ed86819"
         ]
       },
-      "bb5a532f-bb43-472a-9965-c4054cd61cc9" : {
-        "size" : {
-          "width" : 150,
-          "height" : 150
+      "bb5a532f-bb43-472a-9965-c4054cd61cc9": {
+        "size": {
+          "width": 150,
+          "height": 150
         },
-        "position" : {
-          "x" : -150,
-          "y" : 70
+        "position": {
+          "x": -150,
+          "y": 70
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "9dd9772e-03a3-4983-b28e-a52ac42f0ffe" : {
-        "source" : {
-          "id" : "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
+      "9dd9772e-03a3-4983-b28e-a52ac42f0ffe": {
+        "source": {
+          "id": "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
         },
-        "target" : {
-          "id" : "bb5a532f-bb43-472a-9965-c4054cd61cc9"
+        "target": {
+          "id": "bb5a532f-bb43-472a-9965-c4054cd61cc9"
         }
       },
-      "d5bad569-ad14-487d-bcc6-5569373bc8cd" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "d5bad569-ad14-487d-bcc6-5569373bc8cd": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 180,
-          "y" : 310
+        "position": {
+          "x": 180,
+          "y": 310
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "e9ac6c41-8110-49b9-a92c-de57be8a292a" : {
-        "source" : {
-          "id" : "d5bad569-ad14-487d-bcc6-5569373bc8cd"
+      "e9ac6c41-8110-49b9-a92c-de57be8a292a": {
+        "source": {
+          "id": "d5bad569-ad14-487d-bcc6-5569373bc8cd"
         },
-        "target" : {
-          "id" : "45360a4f-64aa-49f8-b016-78fe5ed86819"
+        "target": {
+          "id": "45360a4f-64aa-49f8-b016-78fe5ed86819"
         }
       },
-      "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 270,
-          "y" : 30
+        "position": {
+          "x": 270,
+          "y": 30
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "a8fbc80f-2514-4cc9-aee8-ba7936add0a7" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "a8fbc80f-2514-4cc9-aee8-ba7936add0a7": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 170,
-          "y" : 30
+        "position": {
+          "x": 170,
+          "y": 30
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
         ]
       },
-      "0c5a1e92-ffdd-4344-8ba0-65270e5fd472" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "0c5a1e92-ffdd-4344-8ba0-65270e5fd472": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 390,
-          "y" : 30
+        "position": {
+          "x": 390,
+          "y": 30
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
         ]
       },
-      "2522b048-2b7c-44ed-9d35-6cc66069ca5b" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "2522b048-2b7c-44ed-9d35-6cc66069ca5b": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 390,
-          "y" : 130
+        "position": {
+          "x": 390,
+          "y": 130
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
         ]
       },
-      "d3204db6-c821-400d-bf31-6afd5739923c" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "d3204db6-c821-400d-bf31-6afd5739923c": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 480
+        "position": {
+          "x": 60,
+          "y": 480
         },
-        "z" : 1,
-        "embeds" : [],
-        "ismemberof" : [
+        "z": 1,
+        "embeds": [],
+        "ismemberof": [
           "619070e4-82e5-445a-93a0-4795ff69d61c"
         ],
-        "isrelatedto" : [
+        "isrelatedto": [
           "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
         ]
       },
-      "88da1502-8179-4be3-9123-fdc5eac0b6a3" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "88da1502-8179-4be3-9123-fdc5eac0b6a3": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -50,
-          "y" : 310
+        "position": {
+          "x": -50,
+          "y": 310
         },
-        "z" : 1,
-        "embeds" : [],
-        "isconnectedto" : [
+        "z": 1,
+        "embeds": [],
+        "isconnectedto": [
           "45360a4f-64aa-49f8-b016-78fe5ed86819"
         ],
-        "isrelatedto" : [
+        "isrelatedto": [
           "2522b048-2b7c-44ed-9d35-6cc66069ca5b",
           "ee5f3006-419e-4786-b527-e9503a662e5e"
         ]
       },
-      "789cb442-3b1a-4673-a07e-8acb1c59c271" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "789cb442-3b1a-4673-a07e-8acb1c59c271": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 270,
-          "y" : 380
+        "position": {
+          "x": 270,
+          "y": 380
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "2f599618-92e8-49cf-92bd-551ba9775f39" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "2f599618-92e8-49cf-92bd-551ba9775f39": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 450,
-          "y" : 380
+        "position": {
+          "x": 450,
+          "y": 380
         },
-        "z" : 1,
-        "embeds" : []
+        "z": 1,
+        "embeds": []
       },
-      "7b0e0a3f-3a02-4e70-9e79-7647b98fd579" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "7b0e0a3f-3a02-4e70-9e79-7647b98fd579": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 270,
-          "y" : 130
+        "position": {
+          "x": 270,
+          "y": 130
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
         ],
-        "isrelatedto" : [
+        "isrelatedto": [
           "2f599618-92e8-49cf-92bd-551ba9775f39",
           "789cb442-3b1a-4673-a07e-8acb1c59c271"
         ]
       },
-      "210b5501-b505-4ee1-917c-a20cae3ac837" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "210b5501-b505-4ee1-917c-a20cae3ac837": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 360,
-          "y" : 380
+        "position": {
+          "x": 360,
+          "y": 380
         },
-        "z" : 1,
-        "embeds" : [],
-        "isrelatedto" : [
+        "z": 1,
+        "embeds": [],
+        "isrelatedto": [
           "2f599618-92e8-49cf-92bd-551ba9775f39"
         ]
       },
-      "3fa053e5-8ab7-4cdf-a737-4d20386e4717" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "3fa053e5-8ab7-4cdf-a737-4d20386e4717": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -50,
-          "y" : 480
+        "position": {
+          "x": -50,
+          "y": 480
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "d3204db6-c821-400d-bf31-6afd5739923c"
         ],
-        "dependson" : [
+        "dependson": [
           "88da1502-8179-4be3-9123-fdc5eac0b6a3"
         ],
-        "isrelatedto" : [
+        "isrelatedto": [
           "bb5a532f-bb43-472a-9965-c4054cd61cc9",
           "210b5501-b505-4ee1-917c-a20cae3ac837",
           "ee5f3006-419e-4786-b527-e9503a662e5e"
         ]
       },
-      "8e63b592-a50f-4b89-a40b-e991adaef77b" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "8e63b592-a50f-4b89-a40b-e991adaef77b": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -50,
-          "y" : 600
+        "position": {
+          "x": -50,
+          "y": 600
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
         ]
       },
-      "23ed10e0-7726-4099-8370-4116c0bc78a2" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "23ed10e0-7726-4099-8370-4116c0bc78a2": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : -50,
-          "y" : 680
+        "position": {
+          "x": -50,
+          "y": 680
         },
-        "z" : 1,
-        "embeds" : [],
-        "isrelatedto" : [
+        "z": 1,
+        "embeds": [],
+        "isrelatedto": [
           "8e63b592-a50f-4b89-a40b-e991adaef77b"
         ]
       },
-      "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 600
+        "position": {
+          "x": 60,
+          "y": 600
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
         ]
       },
-      "127f78c3-d47a-4770-8aad-3fd733c3e1b0" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "127f78c3-d47a-4770-8aad-3fd733c3e1b0": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 60,
-          "y" : 680
+        "position": {
+          "x": 60,
+          "y": 680
         },
-        "z" : 1,
-        "embeds" : [],
-        "isrelatedto" : [
+        "z": 1,
+        "embeds": [],
+        "isrelatedto": [
           "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c"
         ]
       },
-      "6a874346-80de-4412-9677-00590371a8a2" : {
-        "size" : {
-          "width" : 60,
-          "height" : 60
+      "6a874346-80de-4412-9677-00590371a8a2": {
+        "size": {
+          "width": 60,
+          "height": 60
         },
-        "position" : {
-          "x" : 450,
-          "y" : 470
+        "position": {
+          "x": 450,
+          "y": 470
         },
-        "z" : 1,
-        "embeds" : [],
-        "isassociatedwith" : [
+        "z": 1,
+        "embeds": [],
+        "isassociatedwith": [
           "2f599618-92e8-49cf-92bd-551ba9775f39"
         ],
-        "isrelatedto" : [
+        "isrelatedto": [
           "210b5501-b505-4ee1-917c-a20cae3ac837"
         ]
       }
     }
   },
-  "Parameters" : {
-    "KeyName" : {
-      "Description" : "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
-      "Type" : "AWS::EC2::KeyPair::KeyName"
+  "Parameters": {
+    "KeyName": {
+      "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
+      "Type": "AWS::EC2::KeyPair::KeyName"
     },
-    "MasterInstanceType" : {
-      "Description" : "MasterServer EC2 instance type",
-      "Type" : "String",
-      "Default" : "t2.micro",
-      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM."
+    "MasterInstanceType": {
+      "Description": "MasterServer EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
-    "ComputeInstanceType" : {
-      "Description" : "ComputeFleet EC2 instance type",
-      "Type" : "String",
-      "Default" : "t2.micro",
-      "ConstraintDescription" : "Must be a valid EC2 instance type, with support for HVM."
+    "ComputeInstanceType": {
+      "Description": "ComputeFleet EC2 instance type",
+      "Type": "String",
+      "Default": "t2.micro",
+      "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
-    "InitialQueueSize" : {
-      "Description" : "Initial number of EC2 instances to launch as compute nodes within the cluster. This value maps to the DesiredSize parameter for the ComputeFleet AutoScaling Group.",
-      "Type" : "Number",
-      "Default" : "2"
+    "InitialQueueSize": {
+      "Description": "Initial number of EC2 instances to launch as compute nodes within the cluster. This value maps to the DesiredSize parameter for the ComputeFleet AutoScaling Group.",
+      "Type": "Number",
+      "Default": "2"
     },
-    "MaxQueueSize" : {
-      "Description" : "Maximum number of EC2 instances that can be launched in the cluster. This value maps to the MaxSize parameter for the ComputeFleet AutoScaling Group.",
-      "Type" : "Number",
-      "Default" : "10"
+    "MaxQueueSize": {
+      "Description": "Maximum number of EC2 instances that can be launched in the cluster. This value maps to the MaxSize parameter for the ComputeFleet AutoScaling Group.",
+      "Type": "Number",
+      "Default": "10"
     },
-    "ComputeSubnetId" : {
-      "Description" : "ID of the Subnet you want to provision the Compute Servers into",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$)"
+    "ComputeSubnetId": {
+      "Description": "ID of the Subnet you want to provision the Compute Servers into",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$)"
     },
-    "ScalingThreshold" : {
-      "Description" : "Threshold for triggering CloudWatch ScaleUp action",
-      "Type" : "String",
-      "Default" : "1"
+    "ScalingThreshold": {
+      "Description": "Threshold for triggering CloudWatch ScaleUp action",
+      "Type": "String",
+      "Default": "1"
     },
-    "ScalingEvaluationPeriods" : {
-      "Description" : "Number of periods consective periods required to trigger the scaling adjustment",
-      "Type" : "String",
-      "Default" : "2"
+    "ScalingEvaluationPeriods": {
+      "Description": "Number of periods consective periods required to trigger the scaling adjustment",
+      "Type": "String",
+      "Default": "2"
     },
-    "ScalingPeriod" : {
-      "Description" : "Period in seconds to measure ScalingThreshold",
-      "Type" : "String",
-      "Default" : "60"
+    "ScalingPeriod": {
+      "Description": "Period in seconds to measure ScalingThreshold",
+      "Type": "String",
+      "Default": "60"
     },
-    "SpotPrice" : {
-      "Description" : "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\".",
-      "Type" : "Number",
-      "Default" : "0.00"
+    "SpotPrice": {
+      "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\".",
+      "Type": "Number",
+      "Default": "0.00"
     },
-    "ClusterType" : {
-      "Description" : "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
-      "Type" : "String",
-      "Default" : "ondemand",
-      "ConstraintDescription" : "Must be a supported cluster type: ondemand, spot",
-      "AllowedValues" : [
+    "ClusterType": {
+      "Description": "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
+      "Type": "String",
+      "Default": "ondemand",
+      "ConstraintDescription": "Must be a supported cluster type: ondemand, spot",
+      "AllowedValues": [
         "ondemand",
         "spot"
       ]
     },
-    "ProxyServer" : {
-      "Description" : "hostname and port of HTTP proxy server for cfn-init, boto and yum i.e. proxy.example.com:8080",
-      "Type" : "String",
-      "Default" : "NONE"
+    "ProxyServer": {
+      "Description": "hostname and port of HTTP proxy server for cfn-init, boto and yum i.e. proxy.example.com:8080",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "VolumeSize" : {
-      "Description" : "Size of EBS volume in GB, if creating a new one",
-      "Type" : "Number",
-      "Default" : "20"
+    "VolumeSize": {
+      "Description": "Size of EBS volume in GB, if creating a new one",
+      "Type": "Number",
+      "Default": "20"
     },
-    "VolumeType" : {
-      "Description" : "Type of volume to create either new or from snapshot",
-      "Type" : "String",
-      "Default" : "gp2",
-      "ConstraintDescription" : "must be a supported volume type: standard, io1, gp2, st1, sc1",
-      "AllowedValues" : [
+    "VolumeType": {
+      "Description": "Type of volume to create either new or from snapshot",
+      "Type": "String",
+      "Default": "gp2",
+      "ConstraintDescription": "must be a supported volume type: standard, io1, gp2, st1, sc1",
+      "AllowedValues": [
         "standard",
         "gp2",
         "io1",
@@ -786,151 +786,151 @@
         "sc1"
       ]
     },
-    "MasterSubnetId" : {
-      "Description" : "ID of the Subnet you want to provision the Master server into",
-      "Type" : "AWS::EC2::Subnet::Id"
+    "MasterSubnetId": {
+      "Description": "ID of the Subnet you want to provision the Master server into",
+      "Type": "AWS::EC2::Subnet::Id"
     },
-    "AvailabilityZone" : {
-      "Description" : "Availability Zone the cluster will launch into. THIS IS REQUIRED",
-      "Type" : "AWS::EC2::AvailabilityZone::Name"
+    "AvailabilityZone": {
+      "Description": "Availability Zone the cluster will launch into. THIS IS REQUIRED",
+      "Type": "AWS::EC2::AvailabilityZone::Name"
     },
-    "EBSSnapshotId" : {
-      "Description" : "Id of EBS snapshot if using snapshot as source for volume",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$)"
+    "EBSSnapshotId": {
+      "Description": "Id of EBS snapshot if using snapshot as source for volume",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$)"
     },
-    "CustomAMI" : {
-      "Description" : "ID of a Custom AMI, to use instead of published AMI's",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$)"
+    "CustomAMI": {
+      "Description": "ID of a Custom AMI, to use instead of published AMI's",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$)"
     },
-    "VPCId" : {
-      "Description" : "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
-      "Type" : "AWS::EC2::VPC::Id"
+    "VPCId": {
+      "Description": "ID of the VPC you want to provision cluster into. Only used with UseVPCBase=false",
+      "Type": "AWS::EC2::VPC::Id"
     },
-    "AccessFrom" : {
-      "Description" : "Lockdown SSH/HTTP access (default can be accessed from anywhere)",
-      "Type" : "String",
-      "MinLength" : "9",
-      "MaxLength" : "18",
-      "Default" : "0.0.0.0/0",
-      "AllowedPattern" : "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
-      "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x."
+    "AccessFrom": {
+      "Description": "Lockdown SSH/HTTP access (default can be accessed from anywhere)",
+      "Type": "String",
+      "MinLength": "9",
+      "MaxLength": "18",
+      "Default": "0.0.0.0/0",
+      "AllowedPattern": "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})",
+      "ConstraintDescription": "must be a valid CIDR range of the form x.x.x.x/x."
     },
-    "ComputeSubnetCidr" : {
-      "Description" : "CIDR(s) for new backend subnet(s) i.e. 10.0.100.0/24. This is a comma-delimited list and can support multiple CIDR ranges for a multi-AZ cluster. The order and length of this list MUST match the AvailabilityZones parameter.",
-      "Type" : "String",
-      "ConstraintDescription" : "must be a valid CIDR range of the form x.x.x.x/x.",
-      "AllowedPattern" : "(NONE|(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2}))",
-      "Default" : "NONE"
+    "ComputeSubnetCidr": {
+      "Description": "CIDR(s) for new backend subnet(s) i.e. 10.0.100.0/24. This is a comma-delimited list and can support multiple CIDR ranges for a multi-AZ cluster. The order and length of this list MUST match the AvailabilityZones parameter.",
+      "Type": "String",
+      "ConstraintDescription": "must be a valid CIDR range of the form x.x.x.x/x.",
+      "AllowedPattern": "(NONE|(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2}))",
+      "Default": "NONE"
     },
-    "MaintainInitialSize" : {
-      "Description" : "Boolean flag to set autoscaling group to maintain initial size and scale back",
-      "Type" : "String",
-      "Default" : "false",
-      "ConstraintDescription" : "true/false",
-      "AllowedValues" : [
+    "MaintainInitialSize": {
+      "Description": "Boolean flag to set autoscaling group to maintain initial size and scale back",
+      "Type": "String",
+      "Default": "false",
+      "ConstraintDescription": "true/false",
+      "AllowedValues": [
         "true",
         "false"
       ]
     },
-    "UsePublicIps" : {
-      "Description" : "Boolean flag to use public IP's for instances. If false, the VPC must be correctly setup to use NAT for all traffic.",
-      "Type" : "String",
-      "Default" : "true",
-      "ConstraintDescription" : "true/false",
-      "AllowedValues" : [
+    "UsePublicIps": {
+      "Description": "Boolean flag to use public IP's for instances. If false, the VPC must be correctly setup to use NAT for all traffic.",
+      "Type": "String",
+      "Default": "true",
+      "ConstraintDescription": "true/false",
+      "AllowedValues": [
         "true",
         "false"
       ]
     },
-    "VolumeIOPS" : {
-      "Description" : "Number of IOPS for volume type io1. Not used for other volume types.",
-      "Type" : "Number",
-      "Default" : "100"
+    "VolumeIOPS": {
+      "Description": "Number of IOPS for volume type io1. Not used for other volume types.",
+      "Type": "Number",
+      "Default": "100"
     },
-    "PreInstallScript" : {
-      "Description" : "Preinstall script URL. This is run before any host configuration.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "PreInstallScript": {
+      "Description": "Preinstall script URL. This is run before any host configuration.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "PostInstallScript" : {
-      "Description" : "Postinstall script URL. This is run before any host configuration.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "PostInstallScript": {
+      "Description": "Postinstall script URL. This is run before any host configuration.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "ComputeWaitConditionCount" : {
-      "Description" : "Specific number of instances to wait for while creating the cluster",
-      "Type" : "Number",
-      "Default" : "2"
+    "ComputeWaitConditionCount": {
+      "Description": "Specific number of instances to wait for while creating the cluster",
+      "Type": "Number",
+      "Default": "2"
     },
-    "S3ReadResource" : {
-      "Description" : "S3 resource with read access from cfncluster nodes",
-      "Type" : "String",
-      "Default" : "NONE"
+    "S3ReadResource": {
+      "Description": "S3 resource with read access from cfncluster nodes",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "S3ReadWriteResource" : {
-      "Description" : "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "S3ReadWriteResource": {
+      "Description": "Addtional policy document to be added to EC2 IAM role created and assigned to all nodes.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "Placement" : {
-      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
-      "Type" : "String",
-      "Default" : "cluster",
-      "AllowedValues" : [
+    "Placement": {
+      "Description": "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type": "String",
+      "Default": "cluster",
+      "AllowedValues": [
         "cluster",
         "compute"
       ]
     },
-    "PlacementGroup" : {
-      "Description" : "The name of an existing placement group",
-      "Type" : "String",
-      "Default" : "NONE"
+    "PlacementGroup": {
+      "Description": "The name of an existing placement group",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "EncryptedEphemeral" : {
-      "Description" : "Boolean flag to encrypt local ephemeral drives. The keys are in-memory and non-recoverable.",
-      "Type" : "String",
-      "Default" : "false",
-      "ConstraintDescription" : "true/false",
-      "AllowedValues" : [
+    "EncryptedEphemeral": {
+      "Description": "Boolean flag to encrypt local ephemeral drives. The keys are in-memory and non-recoverable.",
+      "Type": "String",
+      "Default": "false",
+      "ConstraintDescription": "true/false",
+      "AllowedValues": [
         "true",
         "false"
       ]
     },
-    "PreInstallArgs" : {
-      "Description" : "Preinstall script args passed to the preinstall script.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "PreInstallArgs": {
+      "Description": "Preinstall script args passed to the preinstall script.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "PostInstallArgs" : {
-      "Description" : "Postinstall script args passed to the postinstall script.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "PostInstallArgs": {
+      "Description": "Postinstall script args passed to the postinstall script.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "EBSEncryption" : {
-      "Description" : "Boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
-      "Type" : "String",
-      "Default" : "false",
-      "ConstraintDescription" : "true/false",
-      "AllowedValues" : [
+    "EBSEncryption": {
+      "Description": "Boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
+      "Type": "String",
+      "Default": "false",
+      "ConstraintDescription": "true/false",
+      "AllowedValues": [
         "true",
         "false"
       ]
     },
-    "EphemeralDir" : {
-      "Description" : "The path/mountpoint for the ephemeral drive",
-      "Type" : "String",
-      "Default" : "/scratch"
+    "EphemeralDir": {
+      "Description": "The path/mountpoint for the ephemeral drive",
+      "Type": "String",
+      "Default": "/scratch"
     },
-    "BaseOS" : {
-      "Description" : "Base OS type for cluster AMI",
-      "Type" : "String",
-      "Default" : "alinux",
-      "ConstraintDescription" : "must be a supported base OS",
-      "AllowedValues" : [
+    "BaseOS": {
+      "Description": "Base OS type for cluster AMI",
+      "Type": "String",
+      "Default": "alinux",
+      "ConstraintDescription": "must be a supported base OS",
+      "AllowedValues": [
         "centos6",
         "centos7",
         "alinux",
@@ -938,32 +938,32 @@
         "ubuntu1604"
       ]
     },
-    "ScalingThreshold2" : {
-      "Description" : "Threshold for triggering CloudWatch ScaleUp2 action",
-      "Type" : "String",
-      "Default" : "200"
+    "ScalingThreshold2": {
+      "Description": "Threshold for triggering CloudWatch ScaleUp2 action",
+      "Type": "String",
+      "Default": "200"
     },
-    "ScalingCooldown" : {
-      "Description" : "Period in seconds to wait before allowing further scaling actions",
-      "Type" : "String",
-      "Default" : "300"
+    "ScalingCooldown": {
+      "Description": "Period in seconds to wait before allowing further scaling actions",
+      "Type": "String",
+      "Default": "300"
     },
-    "ScalingAdjustment" : {
-      "Description" : "Number of instances to add to cluster when the CloudWatch ScaleUp action is called.",
-      "Type" : "String",
-      "Default" : "1"
+    "ScalingAdjustment": {
+      "Description": "Number of instances to add to cluster when the CloudWatch ScaleUp action is called.",
+      "Type": "String",
+      "Default": "1"
     },
-    "ScalingAdjustment2" : {
-      "Description" : "Number of instances to add to cluster when the CloudWatch ScaleUp2 action is called.",
-      "Type" : "String",
-      "Default" : "10"
+    "ScalingAdjustment2": {
+      "Description": "Number of instances to add to cluster when the CloudWatch ScaleUp2 action is called.",
+      "Type": "String",
+      "Default": "10"
     },
-    "Scheduler" : {
-      "Description" : "Cluster scheduler",
-      "Type" : "String",
-      "Default" : "sge",
-      "ConstraintDescription" : "must be a supported scheduler",
-      "AllowedValues" : [
+    "Scheduler": {
+      "Description": "Cluster scheduler",
+      "Type": "String",
+      "Default": "sge",
+      "ConstraintDescription": "must be a supported scheduler",
+      "AllowedValues": [
         "sge",
         "torque",
         "slurm",
@@ -971,110 +971,110 @@
         "test"
       ]
     },
-    "SharedDir" : {
-      "Description" : "The path/mountpoint for the shared drive",
-      "Type" : "String",
-      "Default" : "/shared"
+    "SharedDir": {
+      "Description": "The path/mountpoint for the shared drive",
+      "Type": "String",
+      "Default": "/shared"
     },
-    "CLITemplate" : {
-      "Type" : "String",
-      "Default" : "default"
+    "CLITemplate": {
+      "Type": "String",
+      "Default": "default"
     },
-    "AdditionalSG" : {
-      "Description" : "Additional VPC secuirty group to be added to instances. Defaults to NONE",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
+    "AdditionalSG": {
+      "Description": "Additional VPC secuirty group to be added to instances. Defaults to NONE",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
     },
-    "CWLRegion" : {
-      "Description" : "CloudWatch Logs region",
-      "Type" : "String",
-      "Default" : "NONE"
+    "CWLRegion": {
+      "Description": "CloudWatch Logs region",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "CWLLogGroup" : {
-      "Description" : "CloudWatch Logs LogGroup",
-      "Type" : "String",
-      "Default" : "NONE"
+    "CWLLogGroup": {
+      "Description": "CloudWatch Logs LogGroup",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "CustomChefRunList" : {
-      "Description" : "Custom run list, which will override the default",
-      "Type" : "String",
-      "Default" : "NONE"
+    "CustomChefRunList": {
+      "Description": "Custom run list, which will override the default",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "CustomChefCookbook" : {
-      "Description" : "URL of custom cookbook that will override the default. This will be unpacked and then dependencies resolved with Berkshelf.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "CustomChefCookbook": {
+      "Description": "URL of custom cookbook that will override the default. This will be unpacked and then dependencies resolved with Berkshelf.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "ExtraJson" : {
-      "Description" : "Extra json to be added to Chef dna.json",
-      "Type" : "String",
-      "Default" : "{}"
+    "ExtraJson": {
+      "Description": "Extra json to be added to Chef dna.json",
+      "Type": "String",
+      "Default": "{}"
     },
-    "Tenancy" : {
-      "Description" : "Type of placement requird in cfncluster, it can either be cluster or compute.",
-      "Type" : "String",
-      "Default" : "default",
-      "AllowedValues" : [
+    "Tenancy": {
+      "Description": "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Type": "String",
+      "Default": "default",
+      "AllowedValues": [
         "default",
         "dedicated"
       ]
     },
-    "EBSKMSKeyId" : {
-      "Description" : "KMS ARN for customer created master key, will be used for EBS encryption",
-      "Type" : "String",
-      "Default" : "NONE"
+    "EBSKMSKeyId": {
+      "Description": "KMS ARN for customer created master key, will be used for EBS encryption",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "EphemeralKMSKeyId" : {
-      "Description" : "KMS ARN for customer created master key, will be used for ephemeral encryption",
-      "Type" : "String",
-      "Default" : "NONE"
+    "EphemeralKMSKeyId": {
+      "Description": "KMS ARN for customer created master key, will be used for ephemeral encryption",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "ClusterReadyScript" : {
-      "Description" : "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
-      "Type" : "String",
-      "Default" : "NONE"
+    "ClusterReadyScript": {
+      "Description": "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "MasterRootVolumeSize" : {
-      "Description" : "Size of MasterServer EBS root volume in GB",
-      "Type" : "Number",
-      "Default" : "15",
-      "MinValue" : "15"
+    "MasterRootVolumeSize": {
+      "Description": "Size of MasterServer EBS root volume in GB",
+      "Type": "Number",
+      "Default": "15",
+      "MinValue": "15"
     },
-    "ComputeRootVolumeSize" : {
-      "Description" : "Size of ComputeFleet EBS root volume in GB",
-      "Type" : "Number",
-      "Default" : "15",
-      "MinValue" : "15"
+    "ComputeRootVolumeSize": {
+      "Description": "Size of ComputeFleet EBS root volume in GB",
+      "Type": "Number",
+      "Default": "15",
+      "MinValue": "15"
     },
-    "EC2IAMRoleName" : {
-      "Description" : "Existing EC2 IAM role name",
-      "Type" : "String",
-      "Default" : "NONE"
+    "EC2IAMRoleName": {
+      "Description": "Existing EC2 IAM role name",
+      "Type": "String",
+      "Default": "NONE"
     },
-    "VPCSecurityGroupId" : {
-      "Description" : "Existing VPC security group Id",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
+    "VPCSecurityGroupId": {
+      "Description": "Existing VPC security group Id",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
     },
-    "EBSVolumeId" : {
-      "Description" : "Existing EBS volume Id",
-      "Type" : "String",
-      "Default" : "NONE",
-      "AllowedPattern" : "(NONE|^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$)"
+    "EBSVolumeId": {
+      "Description": "Existing EBS volume Id",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$)"
     },
-    "AdditionalCfnTemplate" : {
-      "Description" : "A second CloudFormation template to launch with the cluster",
-      "Type" : "String",
-      "Default" : "NONE"
+    "AdditionalCfnTemplate": {
+      "Description": "A second CloudFormation template to launch with the cluster",
+      "Type": "String",
+      "Default": "NONE"
     }
   },
-  "Conditions" : {
+  "Conditions": {
     "IsMasterInstanceEbsOpt": {
-      "Fn::Not" : [
+      "Fn::Not": [
         {
-          "Fn::Or" : [
+          "Fn::Or": [
             {
               "Fn::Or": [
                 {
@@ -1239,30 +1239,30 @@
         }
       ]
     },
-    "UseSpotInstances" : {
-      "Fn::Equals" : [
+    "UseSpotInstances": {
+      "Fn::Equals": [
         {
-          "Ref" : "ClusterType"
+          "Ref": "ClusterType"
         },
         "spot"
       ]
     },
-    "CreateComputeSubnetForCompute" : {
-      "Fn::And" : [
+    "CreateComputeSubnetForCompute": {
+      "Fn::And": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "ComputeSubnetId"
+              "Ref": "ComputeSubnetId"
             },
             "NONE"
           ]
         },
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "ComputeSubnetCidr"
+                  "Ref": "ComputeSubnetCidr"
                 },
                 "NONE"
               ]
@@ -1271,22 +1271,22 @@
         }
       ]
     },
-    "UseComputeSubnetForCompute" : {
-      "Fn::And" : [
+    "UseComputeSubnetForCompute": {
+      "Fn::And": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "ComputeSubnetCidr"
+              "Ref": "ComputeSubnetCidr"
             },
             "NONE"
           ]
         },
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "ComputeSubnetId"
+                  "Ref": "ComputeSubnetId"
                 },
                 "NONE"
               ]
@@ -1295,168 +1295,168 @@
         }
       ]
     },
-    "UseMasterSubnetForCompute" : {
-      "Fn::And" : [
+    "UseMasterSubnetForCompute": {
+      "Fn::And": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "ComputeSubnetId"
+              "Ref": "ComputeSubnetId"
             },
             "NONE"
           ]
         },
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "ComputeSubnetCidr"
+              "Ref": "ComputeSubnetCidr"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseEBSSnapshot" : {
-      "Fn::Not" : [
+    "UseEBSSnapshot": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "EBSSnapshotId"
+              "Ref": "EBSSnapshotId"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseCustomRunList" : {
-      "Fn::Not" : [
+    "UseCustomRunList": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "CustomChefRunList"
+              "Ref": "CustomChefRunList"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseCustomAMI" : {
-      "Fn::Not" : [
+    "UseCustomAMI": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "CustomAMI"
+              "Ref": "CustomAMI"
             },
             "NONE"
           ]
         }
       ]
     },
-    "MaintainInitialASGSize" : {
-      "Fn::Equals" : [
+    "MaintainInitialASGSize": {
+      "Fn::Equals": [
         {
-          "Ref" : "MaintainInitialSize"
-        },
-        "true"
-      ]
-    },
-    "MasterPublicIp" : {
-      "Fn::Equals" : [
-        {
-          "Ref" : "UsePublicIps"
+          "Ref": "MaintainInitialSize"
         },
         "true"
       ]
     },
-    "ComputePublicIps" : {
-      "Fn::And" : [
+    "MasterPublicIp": {
+      "Fn::Equals": [
         {
-          "Fn::Equals" : [
+          "Ref": "UsePublicIps"
+        },
+        "true"
+      ]
+    },
+    "ComputePublicIps": {
+      "Fn::And": [
+        {
+          "Fn::Equals": [
             {
-              "Ref" : "UsePublicIps"
+              "Ref": "UsePublicIps"
             },
             "true"
           ]
         },
         {
-          "Condition" : "UseMasterSubnetForCompute"
+          "Condition": "UseMasterSubnetForCompute"
         }
       ]
     },
-    "UseEBSPIOPS" : {
-      "Fn::Equals" : [
+    "UseEBSPIOPS": {
+      "Fn::Equals": [
         {
-          "Ref" : "VolumeType"
+          "Ref": "VolumeType"
         },
         "io1"
       ]
     },
-    "UseS3ReadPolicy" : {
-      "Fn::Not" : [
+    "UseS3ReadPolicy": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "S3ReadResource"
+              "Ref": "S3ReadResource"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UsePlacementGroup" : {
-      "Fn::Not" : [
+    "UsePlacementGroup": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "PlacementGroup"
+              "Ref": "PlacementGroup"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseClusterPlacement" : {
-      "Fn::And" : [
+    "UseClusterPlacement": {
+      "Fn::And": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "Placement"
+              "Ref": "Placement"
             },
             "cluster"
           ]
         },
         {
-          "Condition" : "UsePlacementGroup"
+          "Condition": "UsePlacementGroup"
         }
       ]
     },
-    "UseEBSEncryption" : {
-      "Fn::Equals" : [
+    "UseEBSEncryption": {
+      "Fn::Equals": [
         {
-          "Ref" : "EBSEncryption"
+          "Ref": "EBSEncryption"
         },
         "true"
       ]
     },
-    "UseS3ReadWritePolicy" : {
-      "Fn::Not" : [
+    "UseS3ReadWritePolicy": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "S3ReadWriteResource"
+              "Ref": "S3ReadWriteResource"
             },
             "NONE"
           ]
         }
       ]
     },
-    "CloudWatchLogs" : {
-      "Fn::And" : [
+    "CloudWatchLogs": {
+      "Fn::And": [
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "CWLRegion"
+                  "Ref": "CWLRegion"
                 },
                 "NONE"
               ]
@@ -1464,11 +1464,11 @@
           ]
         },
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "CWLLogGroup"
+                  "Ref": "CWLLogGroup"
                 },
                 "NONE"
               ]
@@ -1477,26 +1477,26 @@
         }
       ]
     },
-    "AddAdditionalSG" : {
-      "Fn::Not" : [
+    "AddAdditionalSG": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "AdditionalSG"
+              "Ref": "AdditionalSG"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseEBSKMSKey" : {
-      "Fn::And" : [
+    "UseEBSKMSKey": {
+      "Fn::And": [
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "EBSKMSKeyId"
+                  "Ref": "EBSKMSKeyId"
                 },
                 "NONE"
               ]
@@ -1504,18 +1504,18 @@
           ]
         },
         {
-          "Condition" : "UseEBSEncryption"
+          "Condition": "UseEBSEncryption"
         }
       ]
     },
-    "UseEphemeralKMSKey" : {
-      "Fn::And" : [
+    "UseEphemeralKMSKey": {
+      "Fn::And": [
         {
-          "Fn::Not" : [
+          "Fn::Not": [
             {
-              "Fn::Equals" : [
+              "Fn::Equals": [
                 {
-                  "Ref" : "EphemeralKMSKeyId"
+                  "Ref": "EphemeralKMSKeyId"
                 },
                 "NONE"
               ]
@@ -1523,490 +1523,502 @@
           ]
         },
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "EncryptedEphemeral"
+              "Ref": "EncryptedEphemeral"
             },
             "true"
           ]
         }
       ]
     },
-    "UseDedicatedTenancy" : {
-      "Fn::Equals" : [
+    "UseDedicatedTenancy": {
+      "Fn::Equals": [
         {
-          "Ref" : "Tenancy"
+          "Ref": "Tenancy"
         },
         "dedicated"
       ]
     },
-    "UseEC2IAMRole" : {
-      "Fn::Not" : [
+    "UseEC2IAMRole": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "EC2IAMRoleName"
+              "Ref": "EC2IAMRoleName"
             },
             "NONE"
           ]
         }
       ]
     },
-    "CreateEC2IAMRole" : {
-      "Fn::Equals" : [
+    "CreateEC2IAMRole": {
+      "Fn::Equals": [
         {
-          "Ref" : "EC2IAMRoleName"
+          "Ref": "EC2IAMRoleName"
         },
         "NONE"
       ]
     },
-    "UseExistingSecurityGroup" : {
-      "Fn::Not" : [
+    "UseExistingSecurityGroup": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "VPCSecurityGroupId"
+              "Ref": "VPCSecurityGroupId"
             },
             "NONE"
           ]
         }
       ]
     },
-    "UseExistingEBSVolume" : {
-      "Fn::Not" : [
+    "UseExistingEBSVolume": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "EBSVolumeId"
+              "Ref": "EBSVolumeId"
             },
             "NONE"
           ]
         }
       ]
     },
-    "CreateEBSVolume" : {
-      "Fn::Equals" : [
+    "CreateEBSVolume": {
+      "Fn::Equals": [
         {
-          "Ref" : "EBSVolumeId"
+          "Ref": "EBSVolumeId"
         },
         "NONE"
       ]
     },
-    "CreateSecurityGroups" : {
-      "Fn::Equals" : [
+    "CreateSecurityGroups": {
+      "Fn::Equals": [
         {
-          "Ref" : "VPCSecurityGroupId"
+          "Ref": "VPCSecurityGroupId"
         },
         "NONE"
       ]
     },
-    "CreateSubStack" : {
-      "Fn::Not" : [
+    "CreateSubStack": {
+      "Fn::Not": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "AdditionalCfnTemplate"
+              "Ref": "AdditionalCfnTemplate"
             },
             "NONE"
           ]
         }
       ]
     },
-    "CreatePlacementGroup" : {
-      "Fn::And" : [
+    "CreatePlacementGroup": {
+      "Fn::And": [
         {
-          "Fn::Equals" : [
+          "Fn::Equals": [
             {
-              "Ref" : "PlacementGroup"
+              "Ref": "PlacementGroup"
             },
             "DYNAMIC"
           ]
         },
         {
-          "Condition" : "UsePlacementGroup"
+          "Condition": "UsePlacementGroup"
         }
       ]
     }
   },
-  "Mappings" : {
-    "AWSRegionOS2AMI" : {
-      "ap-northeast-1" : {
-        "alinux" : "ami-1366fd75",
-        "centos6" : "ami-2467fc42",
-        "centos7" : "ami-4465fe22",
-        "ubuntu1404" : "ami-b967fcdf",
-        "ubuntu1604" : "ami-3667fc50"
+  "Mappings": {
+    "AWSRegionOS2AMI": {
+      "ap-northeast-1": {
+        "alinux": "ami-00047986f877e6760",
+        "centos6": "ami-00c9ad360d255b462",
+        "centos7": "ami-09dc3b175ed2905f8",
+        "ubuntu1404": "ami-09dc9e9da730c0248",
+        "ubuntu1604": "ami-0b0bf645cde38fe52"
       },
-      "ap-northeast-2" : {
-        "alinux" : "ami-127cdc7c",
-        "centos6" : "ami-2d7ddd43",
-        "centos7" : "ami-2c7ddd42",
-        "ubuntu1404" : "ami-6e7ede00",
-        "ubuntu1604" : "ami-137cdc7d"
+      "ap-northeast-2": {
+        "alinux": "ami-0ca5afbc9d0b20f3d",
+        "centos6": "ami-08e84ffe9aead7873",
+        "centos7": "ami-03f494fed9f0f9c98",
+        "ubuntu1404": "ami-06346bcc8b825a458",
+        "ubuntu1604": "ami-0b2c6c9e988689d7c"
       },
-      "ap-south-1" : {
-        "alinux" : "ami-3f732450",
-        "centos6" : "ami-5270273d",
-        "centos7" : "ami-e271268d",
-        "ubuntu1404" : "ami-2374234c",
-        "ubuntu1604" : "ami-e071268f"
+      "ap-northeast-3": {
+        "alinux": "ami-0b3af1c2fe35b1ae4",
+        "centos6": "ami-056531169587ffc23",
+        "centos7": "ami-04094dd3b4013b75f",
+        "ubuntu1404": "ami-0ae6e02016436404a",
+        "ubuntu1604": "ami-0dae0e941e3bce10b"
       },
-      "ap-southeast-1" : {
-        "alinux" : "ami-306b194c",
-        "centos6" : "ami-eb681a97",
-        "centos7" : "ami-1065176c",
-        "ubuntu1404" : "ami-1c6a1860",
-        "ubuntu1604" : "ami-5e681a22"
+      "ap-south-1": {
+        "alinux": "ami-0250a8315b099785d",
+        "centos6": "ami-03a57d339b58b2f23",
+        "centos7": "ami-0c20297a2c00b0528",
+        "ubuntu1404": "ami-0e4294a5b9d5de425",
+        "ubuntu1604": "ami-011d655005fe854e9"
       },
-      "ap-southeast-2" : {
-        "alinux" : "ami-3c6e935e",
-        "centos6" : "ami-966d90f4",
-        "centos7" : "ami-85738ee7",
-        "ubuntu1404" : "ami-6b699409",
-        "ubuntu1604" : "ami-076d9065"
+      "ap-southeast-1": {
+        "alinux": "ami-038312aa862774599",
+        "centos6": "ami-00063e5635939c9d1",
+        "centos7": "ami-0f610508513f2012f",
+        "ubuntu1404": "ami-01e6359021e3bac23",
+        "ubuntu1604": "ami-03428422e2cb20c9f"
       },
-      "ca-central-1" : {
-        "alinux" : "ami-cca421a8",
-        "centos6" : "ami-75a32611",
-        "centos7" : "ami-aca722c8",
-        "ubuntu1404" : "ami-bba124df",
-        "ubuntu1604" : "ami-b9a124dd"
+      "ap-southeast-2": {
+        "alinux": "ami-0dce078cd2c343a5c",
+        "centos6": "ami-015e730525001bf53",
+        "centos7": "ami-09d0b89439c0c1b65",
+        "ubuntu1404": "ami-0cfebd51a3470f1d4",
+        "ubuntu1604": "ami-0bbef9e2b1170757f"
       },
-      "eu-central-1" : {
-        "alinux" : "ami-d98a17b6",
-        "centos6" : "ami-c78a17a8",
-        "centos7" : "ami-7c851813",
-        "ubuntu1404" : "ami-ff8b1690",
-        "ubuntu1604" : "ami-8b8b16e4"
+      "ca-central-1": {
+        "alinux": "ami-04e27bd54e171fbad",
+        "centos6": "ami-0fea713db092ac77f",
+        "centos7": "ami-0362a3ef26ab5dfce",
+        "ubuntu1404": "ami-0097472502a04776d",
+        "ubuntu1604": "ami-0916119fde83c29b7"
       },
-      "eu-west-1" : {
-        "alinux" : "ami-7fe77a06",
-        "centos6" : "ami-a4e578dd",
-        "centos7" : "ami-46e17c3f",
-        "ubuntu1404" : "ami-a5e578dc",
-        "ubuntu1604" : "ami-6de57814"
+      "eu-central-1": {
+        "alinux": "ami-075bf1c36cf6b855f",
+        "centos6": "ami-0f6b91d011f44aaf6",
+        "centos7": "ami-03d5519f5f4e7619f",
+        "ubuntu1404": "ami-0a82ac2872821deef",
+        "ubuntu1604": "ami-003273c4072efbe43"
       },
-      "eu-west-2" : {
-        "alinux" : "ami-157a6171",
-        "centos6" : "ami-fa7b609e",
-        "centos7" : "ami-f879629c",
-        "ubuntu1404" : "ami-7d7a6119",
-        "ubuntu1604" : "ami-b17a61d5"
+      "eu-west-1": {
+        "alinux": "ami-08d507a759b9ee0e4",
+        "centos6": "ami-029accac823a2a844",
+        "centos7": "ami-0575304add4986551",
+        "ubuntu1404": "ami-0d6c90f092266b787",
+        "ubuntu1604": "ami-009af0d819973e1d6"
       },
-      "eu-west-3" : {
-        "alinux" : "ami-7bfe4806",
-        "centos6" : "ami-38f14745",
-        "centos7" : "ami-2bfe4856",
-        "ubuntu1404" : "ami-3bf14746",
-        "ubuntu1604" : "ami-41f1473c"
+      "eu-west-2": {
+        "alinux": "ami-03ddfb1462e2c92fd",
+        "centos6": "ami-032b6b895dab544c6",
+        "centos7": "ami-08263362b21b98916",
+        "ubuntu1404": "ami-0f23dffc4db122b53",
+        "ubuntu1604": "ami-029f01bbfec52a10e"
       },
-      "sa-east-1" : {
-        "alinux" : "ami-7892d014",
-        "centos6" : "ami-4290d22e",
-        "centos7" : "ami-ae93d1c2",
-        "ubuntu1404" : "ami-e190d28d",
-        "ubuntu1604" : "ami-6393d10f"
+      "eu-west-3": {
+        "alinux": "ami-0e72015cf2b21159f",
+        "centos6": "ami-039be4bd46c878e2c",
+        "centos7": "ami-0befb803ea7ce1b83",
+        "ubuntu1404": "ami-02b6ca8fd14f58265",
+        "ubuntu1604": "ami-0ae405adcb3d1477c"
       },
-      "us-east-1" : {
-        "alinux" : "ami-3e456044",
-        "centos6" : "ami-7e785d04",
-        "centos7" : "ami-86795cfc",
-        "ubuntu1404" : "ami-3a456040",
-        "ubuntu1604" : "ami-567e5b2c"
+      "sa-east-1": {
+        "alinux": "ami-02bd755bfe8704cef",
+        "centos6": "ami-0e507bdec09b8a091",
+        "centos7": "ami-0860c11596f954bbc",
+        "ubuntu1404": "ami-04e943b561cd32659",
+        "ubuntu1604": "ami-0b0057ecd5c465d09"
       },
-      "us-east-2" : {
-        "alinux" : "ami-3a7e545f",
-        "centos6" : "ami-a27e54c7",
-        "centos7" : "ami-9d7852f8",
-        "ubuntu1404" : "ami-ef78528a",
-        "ubuntu1604" : "ami-b17852d4"
+      "us-east-1": {
+        "alinux": "ami-07f61c3e18538c70c",
+        "centos6": "ami-091bbc83b27f92634",
+        "centos7": "ami-06c93be112f880acd",
+        "ubuntu1404": "ami-0920fa86d5a85a07a",
+        "ubuntu1604": "ami-0dfb1662fcc845c55"
       },
-      "us-west-1" : {
-        "alinux" : "ami-7d3f3c1d",
-        "centos6" : "ami-833d3ee3",
-        "centos7" : "ami-533e3d33",
-        "ubuntu1404" : "ami-f33f3c93",
-        "ubuntu1604" : "ami-0c3e3d6c"
+      "us-east-2": {
+        "alinux": "ami-096b7925b1f9c8cbb",
+        "centos6": "ami-0fa89e68b0222f50b",
+        "centos7": "ami-0493261a1b2adfd27",
+        "ubuntu1404": "ami-0d63a602f26709e70",
+        "ubuntu1604": "ami-01bd1361428c384c3"
       },
-      "us-west-2" : {
-        "alinux" : "ami-59db6d21",
-        "centos6" : "ami-22c5735a",
-        "centos7" : "ami-37c4724f",
-        "ubuntu1404" : "ami-31c47249",
-        "ubuntu1604" : "ami-1bc77163"
+      "us-west-1": {
+        "alinux": "ami-04794da830cb9dc86",
+        "centos6": "ami-06f3909be633646b9",
+        "centos7": "ami-0af95249ebb8de7a5",
+        "ubuntu1404": "ami-06fe4f837d8715dbb",
+        "ubuntu1604": "ami-0e144dd24634766a2"
       },
-      "us-gov-west-1" : {
-        "alinux" : "NOT_SUPPORTED",
-        "centos6" : "NOT_SUPPORTED",
-        "centos7" : "NOT_SUPPORTED",
-        "ubuntu1404" : "NOT_SUPPORTED",
-        "ubuntu1604" : "NOT_SUPPORTED"
+      "us-west-2": {
+        "alinux": "ami-03f86a2920360dfbe",
+        "centos6": "ami-087d4f29315fd19d2",
+        "centos7": "ami-0a259cf8220fabdcb",
+        "ubuntu1404": "ami-01170828a21d86a72",
+        "ubuntu1604": "ami-02087bf0ff99cc127"
+      },
+      "us-gov-west-1": {
+        "alinux": "ami-cfd34dae",
+        "ubuntu1404": "ami-c2d34da3",
+	"ubuntu1604": "ami-0fd6486e"
       }
     },
-    "OSFeatures" : {
-      "centos6" : {
-        "User" : "centos",
-        "RootDevice" : "/dev/sda1"
+    "OSFeatures": {
+      "centos6": {
+        "User": "centos",
+        "RootDevice": "/dev/sda1"
       },
-      "centos7" : {
-        "User" : "centos",
-        "RootDevice" : "/dev/sda1"
+      "centos7": {
+        "User": "centos",
+        "RootDevice": "/dev/sda1"
       },
-      "alinux" : {
-        "User" : "ec2-user",
-        "RootDevice" : "/dev/xvda"
+      "alinux": {
+        "User": "ec2-user",
+        "RootDevice": "/dev/xvda"
       },
-      "ubuntu1404" : {
-        "User" : "ubuntu",
-        "RootDevice" : "/dev/sda1"
+      "ubuntu1404": {
+        "User": "ubuntu",
+        "RootDevice": "/dev/sda1"
       },
-      "ubuntu1604" : {
-        "User" : "ubuntu",
-        "RootDevice" : "/dev/sda1"
+      "ubuntu1604": {
+        "User": "ubuntu",
+        "RootDevice": "/dev/sda1"
       }
     },
-    "CfnClusterVersions" : {
-      "default" : {
-        "cfncluster" : "cfncluster-1.4.2",
-        "cookbook" : "cfncluster-cookbook-1.4.1",
-        "chef" : "12.19.36",
-        "ridley" : "5.1.0",
-        "berkshelf" : "5.6.4",
-        "ami" : "dev"
+    "CfnClusterVersions": {
+      "default": {
+        "cfncluster": "cfncluster-1.5.4",
+        "cookbook": "cfncluster-cookbook-1.5.4",
+        "chef": "14.2.0",
+        "ridley": "5.1.1",
+        "berkshelf": "7.0.4",
+        "ami": "dev"
       }
     },
-    "AWSRegion2Capabilites" : {
-      "eu-west-1" : {
-        "arn" : "aws"
+    "AWSRegion2Capabilites": {
+      "eu-west-1": {
+        "arn": "aws"
       },
-      "eu-west-2" : {
-        "arn" : "aws"
+      "eu-west-2": {
+        "arn": "aws"
       },
-      "us-east-1" : {
-        "arn" : "aws"
+      "eu-west-3": {
+        "arn": "aws"
       },
-      "us-east-2" : {
-        "arn" : "aws"
+      "us-east-1": {
+        "arn": "aws"
       },
-      "ap-northeast-1" : {
-        "arn" : "aws"
+      "us-east-2": {
+        "arn": "aws"
       },
-      "us-west-2" : {
-        "arn" : "aws"
+      "ap-northeast-1": {
+        "arn": "aws"
       },
-      "sa-east-1" : {
-        "arn" : "aws"
+      "us-west-2": {
+        "arn": "aws"
       },
-      "us-west-1" : {
-        "arn" : "aws"
+      "sa-east-1": {
+        "arn": "aws"
       },
-      "ap-southeast-1" : {
-        "arn" : "aws"
+      "us-west-1": {
+        "arn": "aws"
       },
-      "ap-southeast-2" : {
-        "arn" : "aws"
+      "ap-southeast-1": {
+        "arn": "aws"
       },
-      "eu-central-1" : {
-        "arn" : "aws"
+      "ap-southeast-2": {
+        "arn": "aws"
       },
-      "us-gov-west-1" : {
-        "arn" : "aws-us-gov"
+      "eu-central-1": {
+        "arn": "aws"
       },
-      "ap-northeast-2" : {
-        "arn" : "aws"
+      "us-gov-west-1": {
+        "arn": "aws-us-gov"
       },
-      "ap-south-1" : {
-        "arn" : "aws"
+      "ap-northeast-2": {
+        "arn": "aws"
       },
-      "ca-central-1" : {
-        "arn" : "aws"
+      "ap-northeast-3": {
+        "arn": "aws"
+      },
+      "ap-south-1": {
+        "arn": "aws"
+      },
+      "ca-central-1": {
+        "arn": "aws"
       }
     }
   },
-  "Resources" : {
-    "SQS" : {
-      "Type" : "AWS::SQS::Queue",
-      "Properties" : {
+  "Resources": {
+    "SQS": {
+      "Type": "AWS::SQS::Queue",
+      "Properties": {
         "MessageRetentionPeriod": 1209600
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "2f599618-92e8-49cf-92bd-551ba9775f39"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "2f599618-92e8-49cf-92bd-551ba9775f39"
         }
       }
     },
-    "SQSPolicy" : {
-      "Type" : "AWS::SQS::QueuePolicy",
-      "Properties" : {
-        "PolicyDocument" : {
-          "Id" : "MyQueuePolicy",
-          "Statement" : [
+    "SQSPolicy": {
+      "Type": "AWS::SQS::QueuePolicy",
+      "Properties": {
+        "PolicyDocument": {
+          "Id": "MyQueuePolicy",
+          "Statement": [
             {
-              "Sid" : "Allow-SendMessage-From-AS-SNS-Topic",
-              "Effect" : "Allow",
-              "Principal" : {
-                "AWS" : "*"
+              "Sid": "Allow-SendMessage-From-AS-SNS-Topic",
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": "*"
               },
-              "Action" : [
+              "Action": [
                 "sqs:SendMessage"
               ],
-              "Resource" : "*",
-              "Condition" : {
-                "ArnEquals" : {
-                  "aws:SourceArn" : {
-                    "Ref" : "SNS"
+              "Resource": "*",
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": {
+                    "Ref": "SNS"
                   }
                 }
               }
             }
           ]
         },
-        "Queues" : [
+        "Queues": [
           {
-            "Ref" : "SQS"
+            "Ref": "SQS"
           }
         ]
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "6a874346-80de-4412-9677-00590371a8a2"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "6a874346-80de-4412-9677-00590371a8a2"
         }
       }
     },
-    "SNS" : {
-      "Type" : "AWS::SNS::Topic",
-      "Properties" : {
-        "Subscription" : [
+    "SNS": {
+      "Type": "AWS::SNS::Topic",
+      "Properties": {
+        "Subscription": [
           {
-            "Endpoint" : {
-              "Fn::GetAtt" : [
+            "Endpoint": {
+              "Fn::GetAtt": [
                 "SQS",
                 "Arn"
               ]
             },
-            "Protocol" : "sqs"
+            "Protocol": "sqs"
           }
         ]
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "210b5501-b505-4ee1-917c-a20cae3ac837"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "210b5501-b505-4ee1-917c-a20cae3ac837"
         }
       }
     },
-    "DynamoDBTable" : {
-      "Type" : "AWS::DynamoDB::Table",
-      "Properties" : {
-        "AttributeDefinitions" : [
+    "DynamoDBTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
           {
-            "AttributeName" : "instanceId",
-            "AttributeType" : "S"
+            "AttributeName": "instanceId",
+            "AttributeType": "S"
           }
         ],
-        "KeySchema" : [
+        "KeySchema": [
           {
-            "AttributeName" : "instanceId",
-            "KeyType" : "HASH"
+            "AttributeName": "instanceId",
+            "KeyType": "HASH"
           }
         ],
-        "ProvisionedThroughput" : {
-          "ReadCapacityUnits" : "5",
-          "WriteCapacityUnits" : "5"
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
         }
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "789cb442-3b1a-4673-a07e-8acb1c59c271"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "789cb442-3b1a-4673-a07e-8acb1c59c271"
         }
       }
     },
-    "RootRole" : {
-      "Type" : "AWS::IAM::Role",
-      "Properties" : {
-        "AssumeRolePolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "RootRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Effect" : "Allow",
-              "Principal" : {
-                "Service" : [
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
                   "ec2.amazonaws.com"
                 ]
               },
-              "Action" : [
+              "Action": [
                 "sts:AssumeRole"
               ]
             }
           ]
         },
-        "Path" : "/"
+        "Path": "/"
       },
-      "Condition" : "CreateEC2IAMRole",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
+      "Condition": "CreateEC2IAMRole",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
         }
       }
     },
-    "RootInstanceProfile" : {
-      "Type" : "AWS::IAM::InstanceProfile",
-      "Properties" : {
-        "Path" : "/",
-        "Roles" : [
+    "RootInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
           {
-            "Ref" : "RootRole"
+            "Ref": "RootRole"
           }
         ]
       },
-      "Condition" : "CreateEC2IAMRole",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
+      "Condition": "CreateEC2IAMRole",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
         }
       }
     },
-    "CfnClusterPolicies" : {
-      "Type" : "AWS::IAM::Policy",
-      "Properties" : {
-        "PolicyName" : "cfncluster",
-        "PolicyDocument" : {
-          "Statement" : [
+    "CfnClusterPolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "cfncluster",
+        "PolicyDocument": {
+          "Statement": [
             {
-              "Sid" : "EC2",
-              "Action" : [
+              "Sid": "EC2",
+              "Action": [
+                "ec2:DescribeVolumes",
                 "ec2:AttachVolume",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
                 "ec2:DescribeInstances"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 "*"
               ]
             },
             {
-              "Sid" : "DynamoDBList",
-              "Action" : [
+              "Sid": "DynamoDBList",
+              "Action": [
                 "dynamodb:ListTables"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 "*"
               ]
             },
             {
-              "Sid" : "SQSQueue",
-              "Action" : [
+              "Sid": "SQSQueue",
+              "Action": [
                 "sqs:SendMessage",
                 "sqs:ReceiveMessage",
                 "sqs:ChangeMessageVisibility",
                 "sqs:DeleteMessage",
                 "sqs:GetQueueUrl"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 {
-                  "Fn::GetAtt" : [
+                  "Fn::GetAtt": [
                     "SQS",
                     "Arn"
                   ]
@@ -2014,63 +2026,63 @@
               ]
             },
             {
-              "Sid" : "Autoscaling",
-              "Action" : [
+              "Sid": "Autoscaling",
+              "Action": [
                 "autoscaling:DescribeAutoScalingGroups",
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
                 "autoscaling:SetDesiredCapacity"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 "*"
               ]
             },
             {
-              "Sid" : "CloudWatch",
-              "Action" : [
+              "Sid": "CloudWatch",
+              "Action": [
                 "cloudwatch:PutMetricData"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 "*"
               ]
             },
             {
-              "Sid" : "DynamoDBTable",
-              "Action" : [
+              "Sid": "DynamoDBTable",
+              "Action": [
                 "dynamodb:PutItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
                 "dynamodb:DeleteItem",
                 "dynamodb:DescribeTable"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 {
-                  "Fn::Join" : [
+                  "Fn::Join": [
                     "",
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap" : [
+                        "Fn::FindInMap": [
                           "AWSRegion2Capabilites",
                           {
-                            "Ref" : "AWS::Region"
+                            "Ref": "AWS::Region"
                           },
                           "arn"
                         ]
                       },
                       ":dynamodb:",
                       {
-                        "Ref" : "AWS::Region"
+                        "Ref": "AWS::Region"
                       },
                       ":",
                       {
-                        "Ref" : "AWS::AccountId"
+                        "Ref": "AWS::AccountId"
                       },
                       ":table/",
                       {
-                        "Ref" : "DynamoDBTable"
+                        "Ref": "DynamoDBTable"
                       }
                     ]
                   ]
@@ -2078,32 +2090,63 @@
               ]
             },
             {
-              "Sid" : "SQSList",
-              "Action" : [
-                "sqs:ListQueues"
+              "Sid": "S3GetObj",
+              "Action": [
+                "s3:GetObject"
               ],
-              "Effect" : "Allow",
-              "Resource" : [
-                "*"
-              ]
-            },
-            {
-              "Sid" : "CloudWatchLogs",
-              "Action" : [
-                "logs:*"
-              ],
-              "Effect" : "Allow",
-              "Resource" : [
+              "Effect": "Allow",
+              "Resource": [
                 {
-                  "Fn::Join" : [
+                  "Fn::Join": [
                     "",
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap" : [
+                        "Fn::FindInMap": [
                           "AWSRegion2Capabilites",
                           {
-                            "Ref" : "AWS::Region"
+                            "Ref": "AWS::Region"
+                          },
+                          "arn"
+                        ]
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-cfncluster/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
+              "Sid": "SQSList",
+              "Action": [
+                "sqs:ListQueues"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ]
+            },
+            {
+              "Sid": "CloudWatchLogs",
+              "Action": [
+                "logs:*"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::FindInMap": [
+                          "AWSRegion2Capabilites",
+                          {
+                            "Ref": "AWS::Region"
                           },
                           "arn"
                         ]
@@ -2116,306 +2159,306 @@
             }
           ]
         },
-        "Roles" : [
+        "Roles": [
           {
-            "Ref" : "RootRole"
+            "Ref": "RootRole"
           }
         ]
       },
-      "Condition" : "CreateEC2IAMRole",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "7b0e0a3f-3a02-4e70-9e79-7647b98fd579"
+      "Condition": "CreateEC2IAMRole",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "7b0e0a3f-3a02-4e70-9e79-7647b98fd579"
         }
       }
     },
-    "S3ReadRolePolicies" : {
-      "Type" : "AWS::IAM::Policy",
-      "Properties" : {
-        "PolicyName" : "S3Read",
-        "PolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "S3ReadRolePolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "S3Read",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Sid" : "S3Read",
-              "Effect" : "Allow",
-              "Action" : [
+              "Sid": "S3Read",
+              "Effect": "Allow",
+              "Action": [
                 "s3:Get*",
                 "s3:List*"
               ],
-              "Resource" : [
+              "Resource": [
                 {
-                  "Ref" : "S3ReadResource"
+                  "Ref": "S3ReadResource"
                 }
               ]
             }
           ]
         },
-        "Roles" : [
+        "Roles": [
           {
-            "Ref" : "RootRole"
+            "Ref": "RootRole"
           }
         ]
       },
-      "Condition" : "UseS3ReadPolicy",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "0c5a1e92-ffdd-4344-8ba0-65270e5fd472"
+      "Condition": "UseS3ReadPolicy",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "0c5a1e92-ffdd-4344-8ba0-65270e5fd472"
         }
       }
     },
-    "S3ReadWriteRolePolicies" : {
-      "Type" : "AWS::IAM::Policy",
-      "Properties" : {
-        "PolicyName" : "S3ReadWrite",
-        "PolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "S3ReadWriteRolePolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "S3ReadWrite",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Sid" : "S3ReadWrite",
-              "Effect" : "Allow",
-              "Action" : [
+              "Sid": "S3ReadWrite",
+              "Effect": "Allow",
+              "Action": [
                 "s3:*"
               ],
-              "Resource" : [
+              "Resource": [
                 {
-                  "Ref" : "S3ReadWriteResource"
+                  "Ref": "S3ReadWriteResource"
                 }
               ]
             }
           ]
         },
-        "Roles" : [
+        "Roles": [
           {
-            "Ref" : "RootRole"
+            "Ref": "RootRole"
           }
         ]
       },
-      "Condition" : "UseS3ReadWritePolicy",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "a8fbc80f-2514-4cc9-aee8-ba7936add0a7"
+      "Condition": "UseS3ReadWritePolicy",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "a8fbc80f-2514-4cc9-aee8-ba7936add0a7"
         }
       }
     },
-    "MasterEIP" : {
-      "Type" : "AWS::EC2::EIP",
-      "Properties" : {
-        "Domain" : "vpc"
+    "MasterEIP": {
+      "Type": "AWS::EC2::EIP",
+      "Properties": {
+        "Domain": "vpc"
       },
-      "Condition" : "MasterPublicIp",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "d5bad569-ad14-487d-bcc6-5569373bc8cd"
+      "Condition": "MasterPublicIp",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "d5bad569-ad14-487d-bcc6-5569373bc8cd"
         }
       }
     },
-    "MasterServer" : {
-      "Type" : "AWS::EC2::Instance",
-      "Properties" : {
-        "InstanceType" : {
-          "Ref" : "MasterInstanceType"
+    "MasterServer": {
+      "Type": "AWS::EC2::Instance",
+      "Properties": {
+        "InstanceType": {
+          "Ref": "MasterInstanceType"
         },
-        "BlockDeviceMappings" : [
+        "BlockDeviceMappings": [
           {
-            "DeviceName" : "/dev/xvdba",
-            "VirtualName" : "ephemeral0"
+            "DeviceName": "/dev/xvdba",
+            "VirtualName": "ephemeral0"
           },
           {
-            "DeviceName" : "/dev/xvdbb",
-            "VirtualName" : "ephemeral1"
+            "DeviceName": "/dev/xvdbb",
+            "VirtualName": "ephemeral1"
           },
           {
-            "DeviceName" : "/dev/xvdbc",
-            "VirtualName" : "ephemeral2"
+            "DeviceName": "/dev/xvdbc",
+            "VirtualName": "ephemeral2"
           },
           {
-            "DeviceName" : "/dev/xvdbd",
-            "VirtualName" : "ephemeral3"
+            "DeviceName": "/dev/xvdbd",
+            "VirtualName": "ephemeral3"
           },
           {
-            "DeviceName" : "/dev/xvdbe",
-            "VirtualName" : "ephemeral4"
+            "DeviceName": "/dev/xvdbe",
+            "VirtualName": "ephemeral4"
           },
           {
-            "DeviceName" : "/dev/xvdbf",
-            "VirtualName" : "ephemeral5"
+            "DeviceName": "/dev/xvdbf",
+            "VirtualName": "ephemeral5"
           },
           {
-            "DeviceName" : "/dev/xvdbg",
-            "VirtualName" : "ephemeral6"
+            "DeviceName": "/dev/xvdbg",
+            "VirtualName": "ephemeral6"
           },
           {
-            "DeviceName" : "/dev/xvdbh",
-            "VirtualName" : "ephemeral7"
+            "DeviceName": "/dev/xvdbh",
+            "VirtualName": "ephemeral7"
           },
           {
-            "DeviceName" : "/dev/xvdbi",
-            "VirtualName" : "ephemeral8"
+            "DeviceName": "/dev/xvdbi",
+            "VirtualName": "ephemeral8"
           },
           {
-            "DeviceName" : "/dev/xvdbj",
-            "VirtualName" : "ephemeral9"
+            "DeviceName": "/dev/xvdbj",
+            "VirtualName": "ephemeral9"
           },
           {
-            "DeviceName" : "/dev/xvdbk",
-            "VirtualName" : "ephemeral10"
+            "DeviceName": "/dev/xvdbk",
+            "VirtualName": "ephemeral10"
           },
           {
-            "DeviceName" : "/dev/xvdbl",
-            "VirtualName" : "ephemeral11"
+            "DeviceName": "/dev/xvdbl",
+            "VirtualName": "ephemeral11"
           },
           {
-            "DeviceName" : "/dev/xvdbm",
-            "VirtualName" : "ephemeral12"
+            "DeviceName": "/dev/xvdbm",
+            "VirtualName": "ephemeral12"
           },
           {
-            "DeviceName" : "/dev/xvdbn",
-            "VirtualName" : "ephemeral13"
+            "DeviceName": "/dev/xvdbn",
+            "VirtualName": "ephemeral13"
           },
           {
-            "DeviceName" : "/dev/xvdbo",
-            "VirtualName" : "ephemeral14"
+            "DeviceName": "/dev/xvdbo",
+            "VirtualName": "ephemeral14"
           },
           {
-            "DeviceName" : "/dev/xvdbp",
-            "VirtualName" : "ephemeral15"
+            "DeviceName": "/dev/xvdbp",
+            "VirtualName": "ephemeral15"
           },
           {
-            "DeviceName" : "/dev/xvdbq",
-            "VirtualName" : "ephemeral16"
+            "DeviceName": "/dev/xvdbq",
+            "VirtualName": "ephemeral16"
           },
           {
-            "DeviceName" : "/dev/xvdbr",
-            "VirtualName" : "ephemeral17"
+            "DeviceName": "/dev/xvdbr",
+            "VirtualName": "ephemeral17"
           },
           {
-            "DeviceName" : "/dev/xvdbs",
-            "VirtualName" : "ephemeral18"
+            "DeviceName": "/dev/xvdbs",
+            "VirtualName": "ephemeral18"
           },
           {
-            "DeviceName" : "/dev/xvdbt",
-            "VirtualName" : "ephemeral19"
+            "DeviceName": "/dev/xvdbt",
+            "VirtualName": "ephemeral19"
           },
           {
-            "DeviceName" : "/dev/xvdbu",
-            "VirtualName" : "ephemeral20"
+            "DeviceName": "/dev/xvdbu",
+            "VirtualName": "ephemeral20"
           },
           {
-            "DeviceName" : "/dev/xvdbv",
-            "VirtualName" : "ephemeral21"
+            "DeviceName": "/dev/xvdbv",
+            "VirtualName": "ephemeral21"
           },
           {
-            "DeviceName" : "/dev/xvdbw",
-            "VirtualName" : "ephemeral22"
+            "DeviceName": "/dev/xvdbw",
+            "VirtualName": "ephemeral22"
           },
           {
-            "DeviceName" : "/dev/xvdbx",
-            "VirtualName" : "ephemeral23"
+            "DeviceName": "/dev/xvdbx",
+            "VirtualName": "ephemeral23"
           },
           {
-            "DeviceName" : {
-              "Fn::FindInMap" : [
+            "DeviceName": {
+              "Fn::FindInMap": [
                 "OSFeatures",
                 {
-                  "Ref" : "BaseOS"
+                  "Ref": "BaseOS"
                 },
                 "RootDevice"
               ]
             },
-            "Ebs" : {
-              "VolumeSize" : {
-                "Ref" : "MasterRootVolumeSize"
+            "Ebs": {
+              "VolumeSize": {
+                "Ref": "MasterRootVolumeSize"
               },
-              "VolumeType" : "gp2"
+              "VolumeType": "gp2"
             }
           }
         ],
-        "KeyName" : {
-          "Ref" : "KeyName"
+        "KeyName": {
+          "Ref": "KeyName"
         },
-        "Tags" : [
+        "Tags": [
           {
-            "Key" : "Application",
-            "Value" : {
-              "Ref" : "AWS::StackName"
+            "Key": "Application",
+            "Value": {
+              "Ref": "AWS::StackName"
             }
           },
           {
-            "Key" : "Name",
-            "Value" : "Master"
+            "Key": "Name",
+            "Value": "Master"
           }
         ],
-        "NetworkInterfaces" : [
+        "NetworkInterfaces": [
           {
-            "NetworkInterfaceId" : {
-              "Ref" : "MasterENI"
+            "NetworkInterfaceId": {
+              "Ref": "MasterENI"
             },
-            "DeviceIndex" : "0"
+            "DeviceIndex": "0"
           }
         ],
-        "ImageId" : {
-          "Fn::If" : [
+        "ImageId": {
+          "Fn::If": [
             "UseCustomAMI",
             {
-              "Ref" : "CustomAMI"
+              "Ref": "CustomAMI"
             },
             {
-              "Fn::FindInMap" : [
+              "Fn::FindInMap": [
                 "AWSRegionOS2AMI",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 {
-                  "Ref" : "BaseOS"
+                  "Ref": "BaseOS"
                 }
               ]
             }
           ]
         },
-        "EbsOptimized" : {
-          "Fn::If" : [
+        "EbsOptimized": {
+          "Fn::If": [
             "IsMasterInstanceEbsOpt",
             true,
             false
           ]
         },
-        "IamInstanceProfile" : {
-          "Fn::If" : [
+        "IamInstanceProfile": {
+          "Fn::If": [
             "UseEC2IAMRole",
             {
-              "Ref" : "EC2IAMRoleName"
+              "Ref": "EC2IAMRoleName"
             },
             {
-              "Ref" : "RootInstanceProfile"
+              "Ref": "RootInstanceProfile"
             }
           ]
         },
-        "PlacementGroupName" : {
-          "Fn::If" : [
+        "PlacementGroupName": {
+          "Fn::If": [
             "UseClusterPlacement",
             {
-              "Fn::If" : [
+              "Fn::If": [
                 "CreatePlacementGroup",
                 {
-                  "Ref" : "DynamicPlacementGroup"
+                  "Ref": "DynamicPlacementGroup"
                 },
                 {
-                  "Ref" : "PlacementGroup"
+                  "Ref": "PlacementGroup"
                 }
               ]
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "Tenancy" : {
-          "Ref" : "Tenancy"
+        "Tenancy": {
+          "Ref": "Tenancy"
         },
-        "UserData" : {
-          "Fn::Base64" : {
-            "Fn::Join" : [
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
               "",
               [
                 "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
@@ -2427,14 +2470,14 @@
                 "runcmd:\n",
                 " - [  sh, \"which yum && echo ",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
                 " >> /etc/yum.conf\" ]\n",
-                " - [ sh, \"which apt-get && echo Acquire::http::Proxy \"",
+                " - [ sh, \"which apt-get && echo Acquire::http::Proxy ",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
-                "\"; >> /etc/apt/apt.conf\" ]\n",
+                "; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -2443,11 +2486,11 @@
                 "{\n",
                 "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " --resource=MasterServer --region=",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "  exit 1\n",
@@ -2473,12 +2516,12 @@
                 "}\n",
                 "proxy=",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
                 "\n",
                 "custom_cookbook=",
                 {
-                  "Ref" : "CustomChefCookbook"
+                  "Ref": "CustomChefCookbook"
                 },
                 "\n",
                 "if [ \"$proxy\" != \"NONE\" ]; then\n",
@@ -2499,24 +2542,24 @@
                 "else\n",
                 "  if [ \"",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\" == \"us-east-1\" ]; then\n",
                 "    s3_prefix=s3\n",
                 "  else\n",
                 "    s3_prefix=s3-",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "  fi\n",
                 "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "/cookbooks/",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cookbook"
@@ -2527,7 +2570,7 @@
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
                 "export cfncluster_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cfncluster"
@@ -2536,7 +2579,7 @@
                 "\n",
                 "export cookbook_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cookbook"
@@ -2545,7 +2588,7 @@
                 "\n",
                 "export chef_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "chef"
@@ -2554,7 +2597,7 @@
                 "\n",
                 "export ridley_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "ridley"
@@ -2563,7 +2606,7 @@
                 "\n",
                 "export berkshelf_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "berkshelf"
@@ -2586,20 +2629,20 @@
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " -v -c default -r MasterServer --region ",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
                 "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " --resource=MasterServer --region=",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "# End of file\n",
@@ -2609,11 +2652,11 @@
           }
         }
       },
-      "Metadata" : {
-        "Comment" : "cfncluster Master server",
-        "AWS::CloudFormation::Init" : {
-          "configSets" : {
-            "default" : [
+      "Metadata": {
+        "Comment": "cfncluster Master server",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "default": [
               "deployConfigFiles",
               "getCookbooks",
               "chefPrepEnv",
@@ -2623,91 +2666,91 @@
               "shellForkClusterReadyInstall"
             ]
           },
-          "deployConfigFiles" : {
-            "files" : {
-              "/tmp/dna.json" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "cfncluster" : {
-                    "stack_name" : {
-                      "Ref" : "AWS::StackName"
+          "deployConfigFiles": {
+            "files": {
+              "/tmp/dna.json": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "cfncluster": {
+                    "stack_name": {
+                      "Ref": "AWS::StackName"
                     },
-                    "cfn_preinstall" : {
-                      "Ref" : "PreInstallScript"
+                    "cfn_preinstall": {
+                      "Ref": "PreInstallScript"
                     },
-                    "cfn_preinstall_args" : {
-                      "Ref" : "PreInstallArgs"
+                    "cfn_preinstall_args": {
+                      "Ref": "PreInstallArgs"
                     },
-                    "cfn_postinstall" : {
-                      "Ref" : "PostInstallScript"
+                    "cfn_postinstall": {
+                      "Ref": "PostInstallScript"
                     },
-                    "cfn_postinstall_args" : {
-                      "Ref" : "PostInstallArgs"
+                    "cfn_postinstall_args": {
+                      "Ref": "PostInstallArgs"
                     },
-                    "cfn_region" : {
-                      "Ref" : "AWS::Region"
+                    "cfn_region": {
+                      "Ref": "AWS::Region"
                     },
-                    "cfn_volume" : {
-                      "Fn::If" : [
+                    "cfn_volume": {
+                      "Fn::If": [
                         "UseExistingEBSVolume",
                         {
-                          "Ref" : "EBSVolumeId"
+                          "Ref": "EBSVolumeId"
                         },
                         {
-                          "Ref" : "SharedVolume"
+                          "Ref": "SharedVolume"
                         }
                       ]
                     },
-                    "cfn_scheduler" : {
-                      "Ref" : "Scheduler"
+                    "cfn_scheduler": {
+                      "Ref": "Scheduler"
                     },
-                    "cfn_encrypted_ephemeral" : {
-                      "Ref" : "EncryptedEphemeral"
+                    "cfn_encrypted_ephemeral": {
+                      "Ref": "EncryptedEphemeral"
                     },
-                    "cfn_ephemeral_dir" : {
-                      "Ref" : "EphemeralDir"
+                    "cfn_ephemeral_dir": {
+                      "Ref": "EphemeralDir"
                     },
-                    "cfn_shared_dir" : {
-                      "Ref" : "SharedDir"
+                    "cfn_shared_dir": {
+                      "Ref": "SharedDir"
                     },
-                    "cfn_proxy" : {
-                      "Ref" : "ProxyServer"
+                    "cfn_proxy": {
+                      "Ref": "ProxyServer"
                     },
-                    "cfn_node_type" : "MasterServer",
-                    "cfn_cluster_user" : {
-                      "Fn::FindInMap" : [
+                    "cfn_node_type": "MasterServer",
+                    "cfn_cluster_user": {
+                      "Fn::FindInMap": [
                         "OSFeatures",
                         {
-                          "Ref" : "BaseOS"
+                          "Ref": "BaseOS"
                         },
                         "User"
                       ]
                     },
-                    "cfn_ddb_table" : {
-                      "Ref" : "DynamoDBTable"
+                    "cfn_ddb_table": {
+                      "Ref": "DynamoDBTable"
                     },
-                    "cfn_sqs_queue" : {
-                      "Fn::GetAtt" : [
+                    "cfn_sqs_queue": {
+                      "Fn::GetAtt": [
                         "SQS",
                         "QueueName"
                       ]
                     }
                   },
-                  "run_list" : {
-                    "Fn::If" : [
+                  "run_list": {
+                    "Fn::If": [
                       "UseCustomRunList",
                       {
-                        "Ref" : "CustomChefRunList"
+                        "Ref": "CustomChefRunList"
                       },
                       {
-                        "Fn::Join" : [
+                        "Fn::Join": [
                           "",
                           [
                             "recipe[cfncluster::",
                             {
-                              "Ref" : "Scheduler"
+                              "Ref": "Scheduler"
                             },
                             "_config]"
                           ]
@@ -2717,12 +2760,12 @@
                   }
                 }
               },
-              "/etc/chef/client.rb" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "Fn::Join" : [
+              "/etc/chef/client.rb": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "Fn::Join": [
                     "",
                     [
                       "cookbook_path ['/etc/chef/cookbooks']"
@@ -2730,401 +2773,401 @@
                   ]
                 }
               },
-              "/tmp/extra.json" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "Ref" : "ExtraJson"
+              "/tmp/extra.json": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "Ref": "ExtraJson"
                 }
               }
             },
-            "commands" : {
-              "mkdir" : {
-                "command" : "mkdir -p /etc/chef/ohai/hints"
+            "commands": {
+              "mkdir": {
+                "command": "mkdir -p /etc/chef/ohai/hints"
               },
-              "touch" : {
-                "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              "touch": {
+                "command": "touch /etc/chef/ohai/hints/ec2.json"
               },
-              "jq" : {
-                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
+              "jq": {
+                "command": "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
               }
             }
           },
-          "getCookbooks" : {
-            "commands" : {
-              "berk" : {
-                "command" : ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
-                "cwd" : "/tmp/cookbooks",
-                "env" : {
-                  "HOME" : "/tmp"
+          "getCookbooks": {
+            "commands": {
+              "berk": {
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "cwd": "/tmp/cookbooks",
+                "env": {
+                  "HOME": "/tmp"
                 }
               }
             }
           },
-          "chefPrepEnv" : {
-            "commands" : {
-              "chef" : {
-                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
-                "cwd" : "/etc/chef"
+          "chefPrepEnv": {
+            "commands": {
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "cwd": "/etc/chef"
               }
             }
           },
-          "shellRunPreInstall" : {
-            "commands" : {
-              "runpreinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+          "shellRunPreInstall": {
+            "commands": {
+              "runpreinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -preinstall"
               }
             }
           },
-          "chefConfig" : {
-            "commands" : {
-              "chef" : {
-                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
-                "cwd" : "/etc/chef"
+          "chefConfig": {
+            "commands": {
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
+                "cwd": "/etc/chef"
               }
             }
           },
-          "shellRunPostInstall" : {
-            "commands" : {
-              "runpostinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+          "shellRunPostInstall": {
+            "commands": {
+              "runpostinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -postinstall"
               }
             }
           },
-          "shellForkClusterReadyInstall" : {
-            "commands" : {
-              "clusterreadyinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+          "shellForkClusterReadyInstall": {
+            "commands": {
+              "clusterreadyinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           }
         },
-        "AWS::CloudFormation::Designer" : {
-          "id" : "88da1502-8179-4be3-9123-fdc5eac0b6a3"
+        "AWS::CloudFormation::Designer": {
+          "id": "88da1502-8179-4be3-9123-fdc5eac0b6a3"
         }
       },
-      "CreationPolicy" : {
-        "ResourceSignal" : {
-          "Count" : "1",
-          "Timeout" : "PT30M"
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Count": "1",
+          "Timeout": "PT30M"
         }
       }
     },
-    "ComputeFleet" : {
-      "Type" : "AWS::AutoScaling::AutoScalingGroup",
-      "Properties" : {
-        "MaxSize" : {
-          "Ref" : "MaxQueueSize"
+    "ComputeFleet": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "MaxSize": {
+          "Ref": "MaxQueueSize"
         },
-        "VPCZoneIdentifier" : [
+        "VPCZoneIdentifier": [
           {
-            "Fn::If" : [
+            "Fn::If": [
               "UseMasterSubnetForCompute",
               {
-                "Ref" : "MasterSubnetId"
+                "Ref": "MasterSubnetId"
               },
               {
-                "Fn::If" : [
+                "Fn::If": [
                   "CreateComputeSubnetForCompute",
                   {
-                    "Ref" : "ComputeSubnet"
+                    "Ref": "ComputeSubnet"
                   },
                   {
-                    "Ref" : "ComputeSubnetId"
+                    "Ref": "ComputeSubnetId"
                   }
                 ]
               }
             ]
           }
         ],
-        "LaunchConfigurationName" : {
-          "Ref" : "ComputeServerLaunchConfig"
+        "LaunchConfigurationName": {
+          "Ref": "ComputeServerLaunchConfig"
         },
-        "MinSize" : {
-          "Fn::If" : [
+        "MinSize": {
+          "Fn::If": [
             "MaintainInitialASGSize",
             {
-              "Ref" : "InitialQueueSize"
+              "Ref": "InitialQueueSize"
             },
             "0"
           ]
         },
-        "DesiredCapacity" : {
-          "Ref" : "InitialQueueSize"
+        "DesiredCapacity": {
+          "Ref": "InitialQueueSize"
         },
-        "NotificationConfiguration" : {
-          "TopicARN" : {
-            "Ref" : "SNS"
+        "NotificationConfiguration": {
+          "TopicARN": {
+            "Ref": "SNS"
           },
-          "NotificationTypes" : [
+          "NotificationTypes": [
             "autoscaling:EC2_INSTANCE_TERMINATE"
           ]
         },
-        "Tags" : [
+        "Tags": [
           {
-            "Key" : "Name",
-            "Value" : "Compute",
-            "PropagateAtLaunch" : "true"
+            "Key": "Name",
+            "Value": "Compute",
+            "PropagateAtLaunch": "true"
           }
         ],
-        "PlacementGroup" : {
-          "Fn::If" : [
+        "PlacementGroup": {
+          "Fn::If": [
             "UsePlacementGroup",
             {
-              "Fn::If" : [
+              "Fn::If": [
                 "CreatePlacementGroup",
                 {
-                  "Ref" : "DynamicPlacementGroup"
+                  "Ref": "DynamicPlacementGroup"
                 },
                 {
-                  "Ref" : "PlacementGroup"
+                  "Ref": "PlacementGroup"
                 }
               ]
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         }
       },
-      "DependsOn" : "MasterServer",
-      "CreationPolicy" : {
-        "ResourceSignal" : {
-          "Timeout" : "PT30M",
-          "Count" : {
-            "Ref" : "ComputeWaitConditionCount"
+      "DependsOn": "MasterServer",
+      "CreationPolicy": {
+        "ResourceSignal": {
+          "Timeout": "PT30M",
+          "Count": {
+            "Ref": "ComputeWaitConditionCount"
           }
         }
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
         }
       }
     },
-    "ComputeServerLaunchConfig" : {
-      "Type" : "AWS::AutoScaling::LaunchConfiguration",
-      "Properties" : {
-        "SecurityGroups" : [
+    "ComputeServerLaunchConfig": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "SecurityGroups": [
           {
-            "Fn::If" : [
+            "Fn::If": [
               "CreateSecurityGroups",
               {
-                "Ref" : "ComputeSecurityGroup"
+                "Ref": "ComputeSecurityGroup"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           },
           {
-            "Fn::If" : [
+            "Fn::If": [
               "AddAdditionalSG",
               {
-                "Ref" : "AdditionalSG"
+                "Ref": "AdditionalSG"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           },
           {
-            "Fn::If" : [
+            "Fn::If": [
               "UseExistingSecurityGroup",
               {
-                "Ref" : "VPCSecurityGroupId"
+                "Ref": "VPCSecurityGroupId"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           }
         ],
-        "AssociatePublicIpAddress" : {
-          "Fn::If" : [
+        "AssociatePublicIpAddress": {
+          "Fn::If": [
             "ComputePublicIps",
             "true",
             "false"
           ]
         },
-        "InstanceType" : {
-          "Ref" : "ComputeInstanceType"
+        "InstanceType": {
+          "Ref": "ComputeInstanceType"
         },
-        "KeyName" : {
-          "Ref" : "KeyName"
+        "KeyName": {
+          "Ref": "KeyName"
         },
-        "IamInstanceProfile" : {
-          "Fn::If" : [
+        "IamInstanceProfile": {
+          "Fn::If": [
             "UseEC2IAMRole",
             {
-              "Ref" : "EC2IAMRoleName"
+              "Ref": "EC2IAMRoleName"
             },
             {
-              "Ref" : "RootInstanceProfile"
+              "Ref": "RootInstanceProfile"
             }
           ]
         },
-        "SpotPrice" : {
-          "Fn::If" : [
+        "SpotPrice": {
+          "Fn::If": [
             "UseSpotInstances",
             {
-              "Ref" : "SpotPrice"
+              "Ref": "SpotPrice"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "ImageId" : {
-          "Fn::If" : [
+        "ImageId": {
+          "Fn::If": [
             "UseCustomAMI",
             {
-              "Ref" : "CustomAMI"
+              "Ref": "CustomAMI"
             },
             {
-              "Fn::FindInMap" : [
+              "Fn::FindInMap": [
                 "AWSRegionOS2AMI",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 {
-                  "Ref" : "BaseOS"
+                  "Ref": "BaseOS"
                 }
               ]
             }
           ]
         },
-        "InstanceMonitoring" : "false",
-        "BlockDeviceMappings" : [
+        "InstanceMonitoring": "false",
+        "BlockDeviceMappings": [
           {
-            "DeviceName" : "/dev/xvdba",
-            "VirtualName" : "ephemeral0"
+            "DeviceName": "/dev/xvdba",
+            "VirtualName": "ephemeral0"
           },
           {
-            "DeviceName" : "/dev/xvdbb",
-            "VirtualName" : "ephemeral1"
+            "DeviceName": "/dev/xvdbb",
+            "VirtualName": "ephemeral1"
           },
           {
-            "DeviceName" : "/dev/xvdbc",
-            "VirtualName" : "ephemeral2"
+            "DeviceName": "/dev/xvdbc",
+            "VirtualName": "ephemeral2"
           },
           {
-            "DeviceName" : "/dev/xvdbd",
-            "VirtualName" : "ephemeral3"
+            "DeviceName": "/dev/xvdbd",
+            "VirtualName": "ephemeral3"
           },
           {
-            "DeviceName" : "/dev/xvdbe",
-            "VirtualName" : "ephemeral4"
+            "DeviceName": "/dev/xvdbe",
+            "VirtualName": "ephemeral4"
           },
           {
-            "DeviceName" : "/dev/xvdbf",
-            "VirtualName" : "ephemeral5"
+            "DeviceName": "/dev/xvdbf",
+            "VirtualName": "ephemeral5"
           },
           {
-            "DeviceName" : "/dev/xvdbg",
-            "VirtualName" : "ephemeral6"
+            "DeviceName": "/dev/xvdbg",
+            "VirtualName": "ephemeral6"
           },
           {
-            "DeviceName" : "/dev/xvdbh",
-            "VirtualName" : "ephemeral7"
+            "DeviceName": "/dev/xvdbh",
+            "VirtualName": "ephemeral7"
           },
           {
-            "DeviceName" : "/dev/xvdbi",
-            "VirtualName" : "ephemeral8"
+            "DeviceName": "/dev/xvdbi",
+            "VirtualName": "ephemeral8"
           },
           {
-            "DeviceName" : "/dev/xvdbj",
-            "VirtualName" : "ephemeral9"
+            "DeviceName": "/dev/xvdbj",
+            "VirtualName": "ephemeral9"
           },
           {
-            "DeviceName" : "/dev/xvdbk",
-            "VirtualName" : "ephemeral10"
+            "DeviceName": "/dev/xvdbk",
+            "VirtualName": "ephemeral10"
           },
           {
-            "DeviceName" : "/dev/xvdbl",
-            "VirtualName" : "ephemeral11"
+            "DeviceName": "/dev/xvdbl",
+            "VirtualName": "ephemeral11"
           },
           {
-            "DeviceName" : "/dev/xvdbm",
-            "VirtualName" : "ephemeral12"
+            "DeviceName": "/dev/xvdbm",
+            "VirtualName": "ephemeral12"
           },
           {
-            "DeviceName" : "/dev/xvdbn",
-            "VirtualName" : "ephemeral13"
+            "DeviceName": "/dev/xvdbn",
+            "VirtualName": "ephemeral13"
           },
           {
-            "DeviceName" : "/dev/xvdbo",
-            "VirtualName" : "ephemeral14"
+            "DeviceName": "/dev/xvdbo",
+            "VirtualName": "ephemeral14"
           },
           {
-            "DeviceName" : "/dev/xvdbp",
-            "VirtualName" : "ephemeral15"
+            "DeviceName": "/dev/xvdbp",
+            "VirtualName": "ephemeral15"
           },
           {
-            "DeviceName" : "/dev/xvdbq",
-            "VirtualName" : "ephemeral16"
+            "DeviceName": "/dev/xvdbq",
+            "VirtualName": "ephemeral16"
           },
           {
-            "DeviceName" : "/dev/xvdbr",
-            "VirtualName" : "ephemeral17"
+            "DeviceName": "/dev/xvdbr",
+            "VirtualName": "ephemeral17"
           },
           {
-            "DeviceName" : "/dev/xvdbs",
-            "VirtualName" : "ephemeral18"
+            "DeviceName": "/dev/xvdbs",
+            "VirtualName": "ephemeral18"
           },
           {
-            "DeviceName" : "/dev/xvdbt",
-            "VirtualName" : "ephemeral19"
+            "DeviceName": "/dev/xvdbt",
+            "VirtualName": "ephemeral19"
           },
           {
-            "DeviceName" : "/dev/xvdbu",
-            "VirtualName" : "ephemeral20"
+            "DeviceName": "/dev/xvdbu",
+            "VirtualName": "ephemeral20"
           },
           {
-            "DeviceName" : "/dev/xvdbv",
-            "VirtualName" : "ephemeral21"
+            "DeviceName": "/dev/xvdbv",
+            "VirtualName": "ephemeral21"
           },
           {
-            "DeviceName" : "/dev/xvdbw",
-            "VirtualName" : "ephemeral22"
+            "DeviceName": "/dev/xvdbw",
+            "VirtualName": "ephemeral22"
           },
           {
-            "DeviceName" : "/dev/xvdbx",
-            "VirtualName" : "ephemeral23"
+            "DeviceName": "/dev/xvdbx",
+            "VirtualName": "ephemeral23"
           },
           {
-            "DeviceName" : {
-              "Fn::FindInMap" : [
+            "DeviceName": {
+              "Fn::FindInMap": [
                 "OSFeatures",
                 {
-                  "Ref" : "BaseOS"
+                  "Ref": "BaseOS"
                 },
                 "RootDevice"
               ]
             },
-            "Ebs" : {
-              "VolumeSize" : {
-                "Ref" : "ComputeRootVolumeSize"
+            "Ebs": {
+              "VolumeSize": {
+                "Ref": "ComputeRootVolumeSize"
               },
-              "VolumeType" : "gp2"
+              "VolumeType": "gp2"
             }
           }
         ],
-        "PlacementTenancy" : {
-          "Fn::If" : [
+        "PlacementTenancy": {
+          "Fn::If": [
             "UseDedicatedTenancy",
             {
-              "Ref" : "Tenancy"
+              "Ref": "Tenancy"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "UserData" : {
-          "Fn::Base64" : {
-            "Fn::Join" : [
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
               "",
               [
                 "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
@@ -3136,14 +3179,14 @@
                 "runcmd:\n",
                 " - [  sh, \"which yum && echo ",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
                 " >> /etc/yum.conf\" ]\n",
-                " - [ sh, \"which apt-get && echo Acquire::http::Proxy \"",
+                " - [ sh, \"which apt-get && echo Acquire::http::Proxy ",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
-                "\"; >> /etc/apt/apt.conf\" ]\n",
+                "; >> /etc/apt/apt.conf\" ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3152,11 +3195,11 @@
                 "{\n",
                 "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " --resource=ComputeFleet --region=",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "  exit 1\n",
@@ -3182,12 +3225,12 @@
                 "}\n",
                 "proxy=",
                 {
-                  "Ref" : "ProxyServer"
+                  "Ref": "ProxyServer"
                 },
                 "\n",
                 "custom_cookbook=",
                 {
-                  "Ref" : "CustomChefCookbook"
+                  "Ref": "CustomChefCookbook"
                 },
                 "\n",
                 "if [ \"$proxy\" != \"NONE\" ]; then\n",
@@ -3208,24 +3251,24 @@
                 "else\n",
                 "  if [ \"",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\" == \"us-east-1\" ]; then\n",
                 "    s3_prefix=s3\n",
                 "  else\n",
                 "    s3_prefix=s3-",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "  fi\n",
                 "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "/cookbooks/",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cookbook"
@@ -3236,7 +3279,7 @@
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
                 "export cfncluster_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cfncluster"
@@ -3245,7 +3288,7 @@
                 "\n",
                 "export cookbook_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "cookbook"
@@ -3254,7 +3297,7 @@
                 "\n",
                 "export chef_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "chef"
@@ -3263,7 +3306,7 @@
                 "\n",
                 "export ridley_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "ridley"
@@ -3272,7 +3315,7 @@
                 "\n",
                 "export berkshelf_version=",
                 {
-                  "Fn::FindInMap" : [
+                  "Fn::FindInMap": [
                     "CfnClusterVersions",
                     "default",
                     "berkshelf"
@@ -3295,20 +3338,20 @@
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " -v -c default -r ComputeServerLaunchConfig --region ",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
                 "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                 {
-                  "Ref" : "AWS::StackName"
+                  "Ref": "AWS::StackName"
                 },
                 " --resource=ComputeFleet --region=",
                 {
-                  "Ref" : "AWS::Region"
+                  "Ref": "AWS::Region"
                 },
                 "\n",
                 "# End of file\n",
@@ -3318,11 +3361,11 @@
           }
         }
       },
-      "Metadata" : {
-        "Comment" : "cfncluster Compute server",
-        "AWS::CloudFormation::Init" : {
-          "configSets" : {
-            "default" : [
+      "Metadata": {
+        "Comment": "cfncluster Compute server",
+        "AWS::CloudFormation::Init": {
+          "configSets": {
+            "default": [
               "deployConfigFiles",
               "getCookbooks",
               "chefPrepEnv",
@@ -3333,80 +3376,80 @@
               "signalComputeReady"
             ]
           },
-          "deployConfigFiles" : {
-            "files" : {
-              "/tmp/dna.json" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "cfncluster" : {
-                    "stack_name" : {
-                      "Ref" : "AWS::StackName"
+          "deployConfigFiles": {
+            "files": {
+              "/tmp/dna.json": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "cfncluster": {
+                    "stack_name": {
+                      "Ref": "AWS::StackName"
                     },
-                    "cfn_preinstall" : {
-                      "Ref" : "PreInstallScript"
+                    "cfn_preinstall": {
+                      "Ref": "PreInstallScript"
                     },
-                    "cfn_preinstall_args" : {
-                      "Ref" : "PreInstallArgs"
+                    "cfn_preinstall_args": {
+                      "Ref": "PreInstallArgs"
                     },
-                    "cfn_postinstall" : {
-                      "Ref" : "PostInstallScript"
+                    "cfn_postinstall": {
+                      "Ref": "PostInstallScript"
                     },
-                    "cfn_postinstall_args" : {
-                      "Ref" : "PostInstallArgs"
+                    "cfn_postinstall_args": {
+                      "Ref": "PostInstallArgs"
                     },
-                    "cfn_region" : {
-                      "Ref" : "AWS::Region"
+                    "cfn_region": {
+                      "Ref": "AWS::Region"
                     },
-                    "cfn_scheduler" : {
-                      "Ref" : "Scheduler"
+                    "cfn_scheduler": {
+                      "Ref": "Scheduler"
                     },
-                    "cfn_encrypted_ephemeral" : {
-                      "Ref" : "EncryptedEphemeral"
+                    "cfn_encrypted_ephemeral": {
+                      "Ref": "EncryptedEphemeral"
                     },
-                    "cfn_ephemeral_dir" : {
-                      "Ref" : "EphemeralDir"
+                    "cfn_ephemeral_dir": {
+                      "Ref": "EphemeralDir"
                     },
-                    "cfn_shared_dir" : {
-                      "Ref" : "SharedDir"
+                    "cfn_shared_dir": {
+                      "Ref": "SharedDir"
                     },
-                    "cfn_proxy" : {
-                      "Ref" : "ProxyServer"
+                    "cfn_proxy": {
+                      "Ref": "ProxyServer"
                     },
-                    "cfn_sqs_queue" : {
-                      "Ref" : "SQS"
+                    "cfn_sqs_queue": {
+                      "Ref": "SQS"
                     },
-                    "cfn_master" : {
-                      "Fn::GetAtt" : [
+                    "cfn_master": {
+                      "Fn::GetAtt": [
                         "MasterServer",
                         "PrivateDnsName"
                       ]
                     },
-                    "cfn_node_type" : "ComputeFleet",
-                    "cfn_cluster_user" : {
-                      "Fn::FindInMap" : [
+                    "cfn_node_type": "ComputeFleet",
+                    "cfn_cluster_user": {
+                      "Fn::FindInMap": [
                         "OSFeatures",
                         {
-                          "Ref" : "BaseOS"
+                          "Ref": "BaseOS"
                         },
                         "User"
                       ]
                     }
                   },
-                  "run_list" : {
-                    "Fn::If" : [
+                  "run_list": {
+                    "Fn::If": [
                       "UseCustomRunList",
                       {
-                        "Ref" : "CustomChefRunList"
+                        "Ref": "CustomChefRunList"
                       },
                       {
-                        "Fn::Join" : [
+                        "Fn::Join": [
                           "",
                           [
                             "recipe[cfncluster::",
                             {
-                              "Ref" : "Scheduler"
+                              "Ref": "Scheduler"
                             },
                             "_config]"
                           ]
@@ -3416,12 +3459,12 @@
                   }
                 }
               },
-              "/etc/chef/client.rb" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "Fn::Join" : [
+              "/etc/chef/client.rb": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "Fn::Join": [
                     "",
                     [
                       "cookbook_path ['/etc/chef/cookbooks']"
@@ -3429,573 +3472,585 @@
                   ]
                 }
               },
-              "/tmp/extra.json" : {
-                "mode" : "000644",
-                "owner" : "root",
-                "group" : "root",
-                "content" : {
-                  "Ref" : "ExtraJson"
+              "/tmp/extra.json": {
+                "mode": "000644",
+                "owner": "root",
+                "group": "root",
+                "content": {
+                  "Ref": "ExtraJson"
                 }
               }
             },
-            "commands" : {
-              "mkdir" : {
-                "command" : "mkdir -p /etc/chef/ohai/hints"
+            "commands": {
+              "mkdir": {
+                "command": "mkdir -p /etc/chef/ohai/hints"
               },
-              "touch" : {
-                "command" : "touch /etc/chef/ohai/hints/ec2.json"
+              "touch": {
+                "command": "touch /etc/chef/ohai/hints/ec2.json"
               },
-              "jq" : {
-                "command" : "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
+              "jq": {
+                "command": "/usr/local/bin/jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
               }
             }
           },
-          "getCookbooks" : {
-            "commands" : {
-              "berk" : {
-                "command" : ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
-                "cwd" : "/tmp/cookbooks",
-                "env" : {
-                  "HOME" : "/tmp"
+          "getCookbooks": {
+            "commands": {
+              "berk": {
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "cwd": "/tmp/cookbooks",
+                "env": {
+                  "HOME": "/tmp"
                 }
               }
             }
           },
-          "chefPrepEnv" : {
-            "commands" : {
-              "chef" : {
-                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
-                "cwd" : "/etc/chef"
+          "chefPrepEnv": {
+            "commands": {
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "cwd": "/etc/chef"
               }
             }
           },
-          "shellRunPreInstall" : {
-            "commands" : {
-              "runpreinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+          "shellRunPreInstall": {
+            "commands": {
+              "runpreinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -preinstall"
               }
             }
           },
-          "chefConfig" : {
-            "commands" : {
-              "chef" : {
-                "command" : "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
-                "cwd" : "/etc/chef"
+          "chefConfig": {
+            "commands": {
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json",
+                "cwd": "/etc/chef"
               }
             }
           },
-          "shellRunPostInstall" : {
-            "commands" : {
-              "runpostinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+          "shellRunPostInstall": {
+            "commands": {
+              "runpostinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -postinstall"
               }
             }
           },
-          "shellForkClusterReadyInstall" : {
-            "commands" : {
-              "clusterreadyinstall" : {
-                "command" : "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+          "shellForkClusterReadyInstall": {
+            "commands": {
+              "clusterreadyinstall": {
+                "command": "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           },
-          "signalComputeReady" : {
-            "commands" : {
-              "compute_ready" : {
-                "command" : "/opt/cfncluster/scripts/compute_ready"
+          "signalComputeReady": {
+            "commands": {
+              "compute_ready": {
+                "command": "/opt/cfncluster/scripts/compute_ready"
               }
             }
           }
         },
-        "AWS::CloudFormation::Designer" : {
-          "id" : "d3204db6-c821-400d-bf31-6afd5739923c"
+        "AWS::CloudFormation::Designer": {
+          "id": "d3204db6-c821-400d-bf31-6afd5739923c"
         }
       }
     },
-    "ScaleUpPolicy2" : {
-      "Type" : "AWS::AutoScaling::ScalingPolicy",
-      "Properties" : {
-        "Cooldown" : {
-          "Ref" : "ScalingCooldown"
+    "ScaleUpPolicy2": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "Cooldown": {
+          "Ref": "ScalingCooldown"
         },
-        "ScalingAdjustment" : {
-          "Ref" : "ScalingAdjustment2"
+        "ScalingAdjustment": {
+          "Ref": "ScalingAdjustment2"
         },
-        "AdjustmentType" : "ChangeInCapacity",
-        "AutoScalingGroupName" : {
-          "Ref" : "ComputeFleet"
+        "AdjustmentType": "ChangeInCapacity",
+        "AutoScalingGroupName": {
+          "Ref": "ComputeFleet"
         }
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c"
         }
       }
     },
-    "AddCapacityAlarm2" : {
-      "Type" : "AWS::CloudWatch::Alarm",
-      "Properties" : {
-        "Threshold" : {
-          "Ref" : "ScalingThreshold2"
+    "AddCapacityAlarm2": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "Threshold": {
+          "Ref": "ScalingThreshold2"
         },
-        "Period" : {
-          "Ref" : "ScalingPeriod"
+        "Period": {
+          "Ref": "ScalingPeriod"
         },
-        "EvaluationPeriods" : {
-          "Ref" : "ScalingEvaluationPeriods"
+        "EvaluationPeriods": {
+          "Ref": "ScalingEvaluationPeriods"
         },
-        "Statistic" : "Sum",
-        "AlarmActions" : [
+        "Statistic": "Sum",
+        "AlarmActions": [
           {
-            "Ref" : "ScaleUpPolicy2"
+            "Ref": "ScaleUpPolicy2"
           }
         ],
-        "Namespace" : "cfncluster",
-        "ComparisonOperator" : "GreaterThanOrEqualToThreshold",
-        "Dimensions" : [
+        "Namespace": "cfncluster",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "Dimensions": [
           {
-            "Name" : "Stack",
-            "Value" : {
-              "Ref" : "AWS::StackName"
-            }
-          }
-        ],
-        "MetricName" : "pending"
-      },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "127f78c3-d47a-4770-8aad-3fd733c3e1b0"
-        }
-      }
-    },
-    "ScaleUpPolicy" : {
-      "Type" : "AWS::AutoScaling::ScalingPolicy",
-      "Properties" : {
-        "Cooldown" : {
-          "Ref" : "ScalingCooldown"
-        },
-        "ScalingAdjustment" : {
-          "Ref" : "ScalingAdjustment"
-        },
-        "AdjustmentType" : "ChangeInCapacity",
-        "AutoScalingGroupName" : {
-          "Ref" : "ComputeFleet"
-        }
-      },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "8e63b592-a50f-4b89-a40b-e991adaef77b"
-        }
-      }
-    },
-    "AddCapacityAlarm" : {
-      "Type" : "AWS::CloudWatch::Alarm",
-      "Properties" : {
-        "Threshold" : {
-          "Ref" : "ScalingThreshold"
-        },
-        "Period" : {
-          "Ref" : "ScalingPeriod"
-        },
-        "EvaluationPeriods" : {
-          "Ref" : "ScalingEvaluationPeriods"
-        },
-        "Statistic" : "Average",
-        "AlarmActions" : [
-          {
-            "Ref" : "ScaleUpPolicy"
-          }
-        ],
-        "Namespace" : "cfncluster",
-        "ComparisonOperator" : "GreaterThanOrEqualToThreshold",
-        "Dimensions" : [
-          {
-            "Name" : "Stack",
-            "Value" : {
-              "Ref" : "AWS::StackName"
+            "Name": "Stack",
+            "Value": {
+              "Ref": "AWS::StackName"
             }
           }
         ],
-        "MetricName" : "pending"
+        "MetricName": "pending"
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "23ed10e0-7726-4099-8370-4116c0bc78a2"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "127f78c3-d47a-4770-8aad-3fd733c3e1b0"
         }
       }
     },
-    "ComputeSubnet" : {
-      "Type" : "AWS::EC2::Subnet",
-      "Properties" : {
-        "VpcId" : {
-          "Ref" : "VPCId"
+    "ScaleUpPolicy": {
+      "Type": "AWS::AutoScaling::ScalingPolicy",
+      "Properties": {
+        "Cooldown": {
+          "Ref": "ScalingCooldown"
         },
-        "CidrBlock" : {
-          "Ref" : "ComputeSubnetCidr"
+        "ScalingAdjustment": {
+          "Ref": "ScalingAdjustment"
         },
-        "Tags" : [
+        "AdjustmentType": "ChangeInCapacity",
+        "AutoScalingGroupName": {
+          "Ref": "ComputeFleet"
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "8e63b592-a50f-4b89-a40b-e991adaef77b"
+        }
+      }
+    },
+    "AddCapacityAlarm": {
+      "Type": "AWS::CloudWatch::Alarm",
+      "Properties": {
+        "Threshold": {
+          "Ref": "ScalingThreshold"
+        },
+        "Period": {
+          "Ref": "ScalingPeriod"
+        },
+        "EvaluationPeriods": {
+          "Ref": "ScalingEvaluationPeriods"
+        },
+        "Statistic": "Average",
+        "AlarmActions": [
           {
-            "Key" : "Network",
-            "Value" : "ComputeSubnet"
+            "Ref": "ScaleUpPolicy"
           }
         ],
-        "AvailabilityZone" : {
-          "Ref" : "AvailabilityZone"
-        }
+        "Namespace": "cfncluster",
+        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+        "Dimensions": [
+          {
+            "Name": "Stack",
+            "Value": {
+              "Ref": "AWS::StackName"
+            }
+          }
+        ],
+        "MetricName": "pending"
       },
-      "Condition" : "CreateComputeSubnetForCompute",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "bb5a532f-bb43-472a-9965-c4054cd61cc9"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "23ed10e0-7726-4099-8370-4116c0bc78a2"
         }
       }
     },
-    "ComputeRouteTable" : {
-      "Type" : "AWS::EC2::RouteTable",
-      "Properties" : {
-        "VpcId" : {
-          "Ref" : "VPCId"
+    "ComputeSubnet": {
+      "Type": "AWS::EC2::Subnet",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPCId"
         },
-        "Tags" : [
+        "CidrBlock": {
+          "Ref": "ComputeSubnetCidr"
+        },
+        "Tags": [
           {
-            "Key" : "Application",
-            "Value" : {
-              "Ref" : "AWS::StackName"
+            "Key": "Network",
+            "Value": "ComputeSubnet"
+          }
+        ],
+        "AvailabilityZone": {
+          "Ref": "AvailabilityZone"
+        }
+      },
+      "Condition": "CreateComputeSubnetForCompute",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "bb5a532f-bb43-472a-9965-c4054cd61cc9"
+        }
+      }
+    },
+    "ComputeRouteTable": {
+      "Type": "AWS::EC2::RouteTable",
+      "Properties": {
+        "VpcId": {
+          "Ref": "VPCId"
+        },
+        "Tags": [
+          {
+            "Key": "Application",
+            "Value": {
+              "Ref": "AWS::StackName"
             }
           },
           {
-            "Key" : "Network",
-            "Value" : "ComputeSubnet"
+            "Key": "Network",
+            "Value": "ComputeSubnet"
           }
         ]
       },
-      "Condition" : "CreateComputeSubnetForCompute",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
+      "Condition": "CreateComputeSubnetForCompute",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
         }
       }
     },
-    "ComputeRoute" : {
-      "Type" : "AWS::EC2::Route",
-      "Properties" : {
-        "RouteTableId" : {
-          "Ref" : "ComputeRouteTable"
+    "ComputeRoute": {
+      "Type": "AWS::EC2::Route",
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "ComputeRouteTable"
         },
-        "DestinationCidrBlock" : "0.0.0.0/0",
-        "NetworkInterfaceId" : {
-          "Ref" : "MasterENI"
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "NetworkInterfaceId": {
+          "Ref": "MasterENI"
         }
       },
-      "Condition" : "CreateComputeSubnetForCompute",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "596ddc76-44b9-4747-921c-c000c5b636c0"
+      "Condition": "CreateComputeSubnetForCompute",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "596ddc76-44b9-4747-921c-c000c5b636c0"
         }
       }
     },
-    "ComputeSubnetRouteTableAssociation" : {
-      "Type" : "AWS::EC2::SubnetRouteTableAssociation",
-      "Properties" : {
-        "SubnetId" : {
-          "Ref" : "ComputeSubnet"
+    "ComputeSubnetRouteTableAssociation": {
+      "Type": "AWS::EC2::SubnetRouteTableAssociation",
+      "Properties": {
+        "SubnetId": {
+          "Ref": "ComputeSubnet"
         },
-        "RouteTableId" : {
-          "Ref" : "ComputeRouteTable"
+        "RouteTableId": {
+          "Ref": "ComputeRouteTable"
         }
       },
-      "Condition" : "CreateComputeSubnetForCompute",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "9dd9772e-03a3-4983-b28e-a52ac42f0ffe"
+      "Condition": "CreateComputeSubnetForCompute",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "9dd9772e-03a3-4983-b28e-a52ac42f0ffe"
         }
       }
     },
-    "MasterSecurityGroup" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Enable access to the Master host",
-        "VpcId" : {
-          "Ref" : "VPCId"
+    "MasterSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Enable access to the Master host",
+        "VpcId": {
+          "Ref": "VPCId"
         },
-        "SecurityGroupIngress" : [
+        "SecurityGroupIngress": [
           {
-            "IpProtocol" : "tcp",
-            "FromPort" : "22",
-            "ToPort" : "22",
-            "CidrIp" : {
-              "Ref" : "AccessFrom"
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": {
+              "Ref": "AccessFrom"
             }
           },
           {
-            "IpProtocol" : "tcp",
-            "FromPort" : "80",
-            "ToPort" : "80",
-            "CidrIp" : {
-              "Ref" : "AccessFrom"
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": {
+              "Ref": "AccessFrom"
             }
           }
         ]
       },
-      "Condition" : "CreateSecurityGroups",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
+      "Condition": "CreateSecurityGroups",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
         }
       }
     },
-    "MasterSecurityGroupIngress" : {
-      "Type" : "AWS::EC2::SecurityGroupIngress",
-      "Properties" : {
-        "IpProtocol" : "-1",
-        "FromPort" : "0",
-        "ToPort" : "65535",
-        "SourceSecurityGroupId" : {
-          "Ref" : "ComputeSecurityGroup"
+    "MasterSecurityGroupIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": "0",
+        "ToPort": "65535",
+        "SourceSecurityGroupId": {
+          "Ref": "ComputeSecurityGroup"
         },
-        "GroupId" : {
-          "Ref" : "MasterSecurityGroup"
+        "GroupId": {
+          "Ref": "MasterSecurityGroup"
         }
       },
-      "Condition" : "CreateSecurityGroups",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "466554d3-0e10-4ae4-bfee-51b0aadbf923"
+      "Condition": "CreateSecurityGroups",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "466554d3-0e10-4ae4-bfee-51b0aadbf923"
         }
       }
     },
-    "ComputeSecurityGroup" : {
-      "Type" : "AWS::EC2::SecurityGroup",
-      "Properties" : {
-        "GroupDescription" : "Allow access to resources in subnets behind front",
-        "VpcId" : {
-          "Ref" : "VPCId"
+    "ComputeSecurityGroup": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allow access to resources in subnets behind front",
+        "VpcId": {
+          "Ref": "VPCId"
         },
-        "SecurityGroupIngress" : [
+        "SecurityGroupIngress": [
           {
-            "SourceSecurityGroupId" : {
-              "Ref" : "MasterSecurityGroup"
+            "SourceSecurityGroupId": {
+              "Ref": "MasterSecurityGroup"
             },
-            "IpProtocol" : "-1",
-            "FromPort" : "0",
-            "ToPort" : "65535"
+            "IpProtocol": "-1",
+            "FromPort": "0",
+            "ToPort": "65535"
           }
         ]
       },
-      "Condition" : "CreateSecurityGroups",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "619070e4-82e5-445a-93a0-4795ff69d61c"
+      "Condition": "CreateSecurityGroups",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "619070e4-82e5-445a-93a0-4795ff69d61c"
         }
       }
     },
-    "ComputeSecurityGroupIngress" : {
-      "Type" : "AWS::EC2::SecurityGroupIngress",
-      "Properties" : {
-        "IpProtocol" : "-1",
-        "FromPort" : "0",
-        "ToPort" : "65535",
-        "SourceSecurityGroupId" : {
-          "Ref" : "ComputeSecurityGroup"
+    "ComputeSecurityGroupIngress": {
+      "Type": "AWS::EC2::SecurityGroupIngress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": "0",
+        "ToPort": "65535",
+        "SourceSecurityGroupId": {
+          "Ref": "ComputeSecurityGroup"
         },
-        "GroupId" : {
-          "Ref" : "ComputeSecurityGroup"
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
         }
       },
-      "Condition" : "CreateSecurityGroups"
+      "Condition": "CreateSecurityGroups"
     },
-    "MasterENI" : {
-      "Type" : "AWS::EC2::NetworkInterface",
-      "Properties" : {
-        "Description" : "cfncluster Master Server",
-        "SubnetId" : {
-          "Ref" : "MasterSubnetId"
+    "MasterENI": {
+      "Type": "AWS::EC2::NetworkInterface",
+      "Properties": {
+        "Description": "cfncluster Master Server",
+        "SubnetId": {
+          "Ref": "MasterSubnetId"
         },
-        "SourceDestCheck" : "false",
-        "GroupSet" : [
+        "SourceDestCheck": "false",
+        "GroupSet": [
           {
-            "Fn::If" : [
+            "Fn::If": [
               "CreateSecurityGroups",
               {
-                "Ref" : "MasterSecurityGroup"
+                "Ref": "MasterSecurityGroup"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           },
           {
-            "Fn::If" : [
+            "Fn::If": [
               "AddAdditionalSG",
               {
-                "Ref" : "AdditionalSG"
+                "Ref": "AdditionalSG"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           },
           {
-            "Fn::If" : [
+            "Fn::If": [
               "UseExistingSecurityGroup",
               {
-                "Ref" : "VPCSecurityGroupId"
+                "Ref": "VPCSecurityGroupId"
               },
               {
-                "Ref" : "AWS::NoValue"
+                "Ref": "AWS::NoValue"
               }
             ]
           }
         ]
       },
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "45360a4f-64aa-49f8-b016-78fe5ed86819"
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "45360a4f-64aa-49f8-b016-78fe5ed86819"
         }
       }
     },
-    "AdditionalCfnStack" : {
-      "Type" : "AWS::CloudFormation::Stack",
-      "Properties" : {
-        "TemplateURL" : {
-          "Ref" : "AdditionalCfnTemplate"
+    "AdditionalCfnStack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "TemplateURL": {
+          "Ref": "AdditionalCfnTemplate"
         }
       },
-      "Condition" : "CreateSubStack"
+      "Condition": "CreateSubStack"
     },
-    "SharedVolume" : {
-      "Type" : "AWS::EC2::Volume",
-      "Properties" : {
-        "AvailabilityZone" : {
-          "Ref" : "AvailabilityZone"
+    "SharedVolume": {
+      "Type": "AWS::EC2::Volume",
+      "Properties": {
+        "AvailabilityZone": {
+          "Ref": "AvailabilityZone"
         },
-        "VolumeType" : {
-          "Ref" : "VolumeType"
+        "VolumeType": {
+          "Ref": "VolumeType"
         },
-        "Size" : {
-          "Fn::If" : [
+        "Size": {
+          "Fn::If": [
             "UseEBSSnapshot",
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             },
             {
-              "Ref" : "VolumeSize"
+              "Ref": "VolumeSize"
             }
           ]
         },
-        "SnapshotId" : {
-          "Fn::If" : [
+        "SnapshotId": {
+          "Fn::If": [
             "UseEBSSnapshot",
             {
-              "Ref" : "EBSSnapshotId"
+              "Ref": "EBSSnapshotId"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "Iops" : {
-          "Fn::If" : [
+        "Iops": {
+          "Fn::If": [
             "UseEBSPIOPS",
             {
-              "Ref" : "VolumeIOPS"
+              "Ref": "VolumeIOPS"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "Encrypted" : {
-          "Fn::If" : [
+        "Encrypted": {
+          "Fn::If": [
             "UseEBSEncryption",
             {
-              "Ref" : "EBSEncryption"
+              "Ref": "EBSEncryption"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         },
-        "KmsKeyId" : {
-          "Fn::If" : [
+        "KmsKeyId": {
+          "Fn::If": [
             "UseEBSKMSKey",
             {
-              "Ref" : "EBSKMSKeyId"
+              "Ref": "EBSKMSKeyId"
             },
             {
-              "Ref" : "AWS::NoValue"
+              "Ref": "AWS::NoValue"
             }
           ]
         }
       },
-      "Condition" : "CreateEBSVolume",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "c8d3da13-fd27-4377-b606-0f41728c17e1"
+      "Condition": "CreateEBSVolume",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "c8d3da13-fd27-4377-b606-0f41728c17e1"
         }
       }
     },
-    "AssociateEIP" : {
-      "Type" : "AWS::EC2::EIPAssociation",
-      "Properties" : {
-        "AllocationId" : {
-          "Fn::GetAtt" : [
+    "AssociateEIP": {
+      "Type": "AWS::EC2::EIPAssociation",
+      "Properties": {
+        "AllocationId": {
+          "Fn::GetAtt": [
             "MasterEIP",
             "AllocationId"
           ]
         },
-        "NetworkInterfaceId" : {
-          "Ref" : "MasterENI"
+        "NetworkInterfaceId": {
+          "Ref": "MasterENI"
         }
       },
-      "Condition" : "MasterPublicIp",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "e9ac6c41-8110-49b9-a92c-de57be8a292a"
+      "Condition": "MasterPublicIp",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "e9ac6c41-8110-49b9-a92c-de57be8a292a"
         }
       }
     },
-    "DynamicPlacementGroup" : {
-      "Type" : "AWS::EC2::PlacementGroup",
-      "Properties" : {
-        "Strategy" : "cluster"
+    "DynamicPlacementGroup": {
+      "Type": "AWS::EC2::PlacementGroup",
+      "Properties": {
+        "Strategy": "cluster"
       },
-      "Condition" : "CreatePlacementGroup",
-      "Metadata" : {
-        "AWS::CloudFormation::Designer" : {
-          "id" : "ee5f3006-419e-4786-b527-e9503a662e5e"
+      "Condition": "CreatePlacementGroup",
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "ee5f3006-419e-4786-b527-e9503a662e5e"
         }
       }
     }
   },
-  "Outputs" : {
-    "MasterPrivateIP" : {
-      "Description" : "Private IP Address of the Master host",
-      "Value" : {
-        "Fn::GetAtt" : [
+  "Outputs": {
+    "ClusterUser": {
+      "Description": "Username to login to Master host",
+      "Value": {
+        "Fn::FindInMap": [
+          "OSFeatures",
+          {
+            "Ref": "BaseOS"
+          },
+          "User"
+        ]
+      }
+    },
+    "MasterPrivateIP": {
+      "Description": "Private IP Address of the Master host",
+      "Value": {
+        "Fn::GetAtt": [
           "MasterServer",
           "PrivateIp"
         ]
       }
     },
-    "MasterPublicIP" : {
-      "Description" : "Public IP Address of the Master host",
-      "Value" : {
-        "Fn::GetAtt" : [
+    "MasterPublicIP": {
+      "Description": "Public IP Address of the Master host",
+      "Value": {
+        "Fn::GetAtt": [
           "MasterServer",
           "PublicIp"
         ]
       },
-      "Condition" : "MasterPublicIp"
+      "Condition": "MasterPublicIp"
     },
-    "GangliaPrivateURL" : {
-      "Description" : "Private URL to access Ganglia",
-      "Value" : {
-        "Fn::Join" : [
+    "GangliaPrivateURL": {
+      "Description": "Private URL to access Ganglia",
+      "Value": {
+        "Fn::Join": [
           "",
           [
             "http://",
             {
-              "Fn::GetAtt" : [
+              "Fn::GetAtt": [
                 "MasterServer",
                 "PrivateIp"
               ]
@@ -4005,15 +4060,15 @@
         ]
       }
     },
-    "GangliaPublicURL" : {
-      "Description" : "Public URL to access Ganglia",
-      "Value" : {
-        "Fn::Join" : [
+    "GangliaPublicURL": {
+      "Description": "Public URL to access Ganglia",
+      "Value": {
+        "Fn::Join": [
           "",
           [
             "http://",
             {
-              "Fn::GetAtt" : [
+              "Fn::GetAtt": [
                 "MasterServer",
                 "PublicIp"
               ]
@@ -4022,7 +4077,7 @@
           ]
         ]
       },
-      "Condition" : "MasterPublicIp"
+      "Condition": "MasterPublicIp"
     }
   }
 }

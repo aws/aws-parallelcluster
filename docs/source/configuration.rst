@@ -61,6 +61,20 @@ We highly recommend use of the environment, EC2 IAM Roles, or storing credential
     # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
 
+
+aliases
+^^^^^^^
+This is the aliases section. Use this section to customize the `ssh` command.
+
+`CFN_USER` is set to the default username for the os.
+`MASTER_IP` is set to the ip address of the master instance.
+`ARGS` is set to whatever arguments the user provides after `cfncluster ssh cluster_name`. ::
+
+    [aliases]
+    # This is the aliases section, you can configure
+    # ssh alias here
+    ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
 .. _cluster_definition:
 
 cluster
@@ -198,7 +212,7 @@ Defaults to NONE for the default template. ::
 pre_install_args
 """"""""""""""""
 Quoted list of arguments to be passed to preinstall script
- 
+
 Defaults to NONE for the default template. ::
 
     pre_install_args = NONE
@@ -206,7 +220,7 @@ Defaults to NONE for the default template. ::
 post_install
 """"""""""""
 URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
- 
+
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
 Defaults to NONE for the default template. ::
@@ -216,7 +230,7 @@ Defaults to NONE for the default template. ::
 post_install_args
 """""""""""""""""
 Arguments to be passed to postinstall script
- 
+
 Defaults to NONE for the default template. ::
 
     post_install_args = NONE
@@ -224,15 +238,15 @@ Defaults to NONE for the default template. ::
 proxy_server
 """"""""""""
 HTTP(S) proxy server, typically http://x.x.x.x:8080
- 
+
 Defaults to NONE for the default template. ::
 
     proxy_server = NONE
 
 placement_group
 """""""""""""""
-Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted. 
- 
+Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
+
 Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
@@ -240,7 +254,7 @@ Defaults to NONE for the default template. More information on placement groups 
 placement
 """""""""
 Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
- 
+
 Defaults to cluster in the default template. ::
 
     placement = cluster
@@ -248,7 +262,7 @@ Defaults to cluster in the default template. ::
 ephemeral_dir
 """""""""""""
 If instance store volumes exist, this is the path/mountpoint they will be mounted on.
- 
+
 Defaults to /scratch in the default template. ::
 
     ephemeral_dir = /scratch
@@ -256,15 +270,15 @@ Defaults to /scratch in the default template. ::
 shared_dir
 """"""""""
 Path/mountpoint for shared EBS volume
- 
+
 Defaults to /shared in the default template. See :ref:`EBS Section <ebs_section>` for details on working with EBS volumes::
 
     shared_dir = /shared
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, CfnCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes. 
- 
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, CfnCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
+
 Defaults to false in default template. ::
 
     encrypted_ephemeral = false
@@ -288,10 +302,10 @@ Defaults to 15 in default template. ::
 base_os
 """""""
 OS type used in the cluster
- 
+
 Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
-Note: The base_os determines the username used to log into the cluster.  
+Note: The base_os determines the username used to log into the cluster.
 
 * Centos 6 & 7: ``centos``
 * Ubuntu: ``ubuntu``
@@ -394,7 +408,7 @@ ssh_from
 CIDR formatted IP range in which to allow SSH access from.
 
 This is only used when cfncluster creates the security group.
- 
+
 Defaults to 0.0.0.0/0 in the default template. ::
 
     ssh_from = 0.0.0.0/0
@@ -402,7 +416,7 @@ Defaults to 0.0.0.0/0 in the default template. ::
 additional_sg
 """""""""""""
 Additional VPC security group Id for all instances.
- 
+
 Defaults to NONE in the default template. ::
 
     additional_sg = sg-xxxxxx
@@ -451,7 +465,7 @@ EBS Volume configuration settings for the volume mounted on the master node and 
 ebs_snapshot_id
 """""""""""""""
 Id of EBS snapshot if using snapshot as source for volume.
- 
+
 Defaults to NONE for default template. ::
 
     ebs_snapshot_id = snap-xxxxx
@@ -467,7 +481,7 @@ Defaults to gp2 for default template. ::
 volume_size
 """""""""""
 Size of volume to be created (if not using a snapshot).
- 
+
 Defaults to 20GB for default template. ::
 
     volume_size = 20
@@ -508,7 +522,7 @@ Settings which define how the compute nodes scale. ::
 scaling_threshold
 """""""""""""""""
 Threshold for triggering CloudWatch ScaleUp action.
- 
+
 Defaults to 1 for default template. ::
 
     scaling_threshold = 1
@@ -516,7 +530,7 @@ Defaults to 1 for default template. ::
 scaling_adjustment
 """"""""""""""""""
 Number of instances to add when called CloudWatch ScaleUp action.
- 
+
 Defaults to 1 for default template. ::
 
     scaling_adjustment = 1
@@ -525,7 +539,7 @@ Defaults to 1 for default template. ::
 scaling_threshold2
 """"""""""""""""""
 Threshold for triggering CloudWatch ScaleUp2 action.
- 
+
 Defaults to 200 for default template. ::
 
     scaling_threshold2 = 200
@@ -533,7 +547,7 @@ Defaults to 200 for default template. ::
 scaling_adjustment2
 """""""""""""""""""
 Number of instances to add when called CloudWatch ScaleUp2 action
- 
+
 Defaults to 20 for default template. ::
 
     scaling_adjustment2 = 20
@@ -541,7 +555,7 @@ Defaults to 20 for default template. ::
 scaling_period
 """"""""""""""
 Period to measure ScalingThreshold.
- 
+
 Defaults to 60 for default template. ::
 
     scaling_period = 60
@@ -549,7 +563,7 @@ Defaults to 60 for default template. ::
 scaling_evaluation_periods
 """"""""""""""""""""""""""
 Number of periods to measure ScalingThreshold.
- 
+
 Defaults to 2 for default template. ::
 
     scaling_evaluation_periods = 2
@@ -557,7 +571,7 @@ Defaults to 2 for default template. ::
 scaling_cooldown
 """"""""""""""""
 Amount of time in seconds to wait before attempting further scaling actions.
- 
+
 Defaults to 300 for the default template. ::
 
     scaling_cooldown = 300

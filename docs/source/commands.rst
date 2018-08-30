@@ -7,7 +7,7 @@
 CfnCluster Commands
 ###################
 
-Most commands provided are just wrappers around CloudFormation functions. 
+Most commands provided are just wrappers around CloudFormation functions.
 
 .. note:: When a command is called and it starts polling for status of that call it is safe to :code:`Ctrl-C` out. you can always return to that status by calling :code:`cfncluster status mycluster`
 
@@ -21,6 +21,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
                         specify a URL for a custom cloudformation template
@@ -50,6 +55,11 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
                         specify a URL for a custom cloudformation template
@@ -69,7 +79,8 @@ stop
 
 Sets the Auto Scaling Group parameters to :code:`min/max/desired = 0/0/0`
 
-.. note:: A stopped cluster will only terminate the  compute-fleet.
+.. note:: A stopped cluster will only terminate the compute-fleet.
+
 Previous versions of CfnCluster stopped the master node after terminating
 the compute fleet. Due to a number of challenges with the implementation
 of that feature, the current version only terminates the compute fleet.
@@ -81,6 +92,10 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
@@ -103,6 +118,10 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
@@ -118,10 +137,48 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
 
 ::
 
     $ cfncluster delete mycluster
+
+ssh
+====
+
+Runs ssh to the master node, with username and ip filled in based on the provided cluster.
+
+For example:
+    cfncluster ssh mycluster -i ~/.ssh/id_rsa
+
+Results in an ssh command with username and ip address pre-filled.
+
+    ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa
+
+SSH command is defined in the global config file, under the aliases section and can be customized:
+
+    [aliases]
+    ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
+Variables substituted:
+    {CFN_USER}
+    {MASTER_IP}
+    {ARGS} (only if specified on the cli)
+
+positional arguments:
+  cluster_name  name of the cluster to set variables for.
+
+optional arguments:
+  -h, --help    show this help message and exit
+  --dryrun, -d  print command and exit.
+
+::
+
+    $cfncluster ssh mycluster -i ~/.ssh/id_rsa -v
 
 status
 ======
@@ -134,6 +191,11 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
+  --nowait, -nw         do not wait for stack events, after executing stack command
 
 ::
 
@@ -142,14 +204,18 @@ optional arguments:
 list
 ====
 
-Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`cfncluster-[stack_name]`. 
+Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`cfncluster-[stack_name]`.
 
 optional arguments:
   -h, --help  show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
 
-    $ cfncluster list 
+    $ cfncluster list
 
 instances
 =========
@@ -161,9 +227,13 @@ positional arguments:
 
 optional arguments:
   -h, --help    show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect to
 
 ::
-    
+
     $ cfncluster instances mycluster
 
 configure
@@ -173,9 +243,11 @@ Configures the cluster. See `Configuring CfnCluster <https://cfncluster.readthed
 
 optional arguments:
   -h, --help  show this help message and exit
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
 
 ::
-    
+
     $ cfncluster configure mycluster
 
 version
@@ -185,6 +257,8 @@ Displays CfnCluster version.
 
 optional arguments:
   -h, --help  show this help message and exit
+  --region REGION, -r REGION
+                        specify a specific region to connect
 
 ::
 

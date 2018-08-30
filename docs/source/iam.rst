@@ -3,8 +3,14 @@
 IAM in CfnCluster
 ========================
 
+.. warning::
+    Between CfnCluster 1.5.3 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket.
+    If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
+
+    Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
+
 CfnCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in CfnCluster <aws_services>` section of the documentation.
- 
+
 CfnCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
 
 Defaults
@@ -30,6 +36,7 @@ CfnClusterInstancePolicy
                   "*"
               ],
               "Action": [
+                  "ec2:DescribeVolumes",
                   "ec2:AttachVolume",
                   "ec2:DescribeInstanceAttribute",
                   "ec2:DescribeInstanceStatus",
@@ -139,6 +146,7 @@ CfnClusterUserPolicy
                   "ec2:DescribePlacementGroups",
                   "ec2:DescribeImages",
                   "ec2:DescribeInstances",
+                  "ec2:DescribeInstanceStatus",
                   "ec2:DescribeSnapshots",
                   "ec2:DescribeVolumes",
                   "ec2:DescribeVpcAttribute",
@@ -170,7 +178,9 @@ CfnClusterUserPolicy
                   "ec2:DeleteSecurityGroup",
                   "ec2:DisassociateAddress",
                   "ec2:RevokeSecurityGroupIngress",
-                  "ec2:ReleaseAddress"
+                  "ec2:ReleaseAddress",
+                  "ec2:CreatePlacementGroup",
+                  "ec2:DeletePlacementGroup"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -212,8 +222,8 @@ CfnClusterUserPolicy
           {
               "Sid": "DynamoDBModify",
               "Action": [
-              "dynamodb:CreateTable",
-              "dynamodb:DeleteTable"
+                "dynamodb:CreateTable",
+                "dynamodb:DeleteTable"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -248,8 +258,8 @@ CfnClusterUserPolicy
           {
               "Sid": "SNSDescribe",
               "Action": [
-              "sns:ListTopics",
-              "sns:GetTopicAttributes"
+                "sns:ListTopics",
+                "sns:GetTopicAttributes"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -268,9 +278,11 @@ CfnClusterUserPolicy
               "Sid": "CloudFormationDescribe",
               "Action": [
                   "cloudformation:DescribeStackEvents",
+                  "cloudformation:DescribeStackResource",
                   "cloudformation:DescribeStackResources",
                   "cloudformation:DescribeStacks",
-                  "cloudformation:ListStacks"
+                  "cloudformation:ListStacks",
+                  "cloudformation:GetTemplate"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -299,10 +311,66 @@ CfnClusterUserPolicy
           {
               "Sid": "IAMModify",
               "Action": [
-                  "iam:PassRole"
+                  "iam:PassRole",
+                  "iam:CreateRole",
+                  "iam:DeleteRole",
+                  "iam:GetRole",
+                  "iam:SimulatePrincipalPolicy"
               ],
               "Effect": "Allow",
               "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
-          }
+          },
+          {
+              "Sid": "IAMCreateInstanceProfile",
+              "Action": [
+                  "iam:CreateInstanceProfile",
+                  "iam:DeleteInstanceProfile"
+              ],
+              "Effect": "Allow",
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:instance-profile/*"
+          },
+          {
+              "Sid": "IAMInstanceProfile",
+              "Action": [
+                  "iam:AddRoleToInstanceProfile",
+                  "iam:RemoveRoleFromInstanceProfile",
+                  "iam:PutRolePolicy",
+                  "iam:DeleteRolePolicy"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+          },
+          {
+              "Sid": "S3GetObj",
+              "Action": [
+                "s3:GetObject"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Fn::FindInMap": [
+                          "AWSRegion2Capabilites",
+                          {
+                            "Ref": "AWS::Region"
+                          },
+                          "arn"
+                        ]
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "-cfncluster/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+
       ]
   }

@@ -10,6 +10,10 @@ python:
 
 install: 
   - cd cli
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
+    pip install 'setuptools==39.2.0' --force-reinstall;
+    pip install -U enum34;
+    fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; 
     then pip install -r requirements26.txt; 
     else pip install -r requirements.txt;
@@ -19,4 +23,11 @@ install:
 
 sudo: false
 
-script: sh tests/test.sh
+script:
+  - if [[ $TRAVIS_PYTHON_VERSION != 2.6 ]]; then
+    pip install 'boto3==1.7.84' --force-reinstall;
+    pip install moto
+    python cli/tests/cfncluster-unittest.py;
+    pip install boto3 --upgrade;
+    fi
+  - sh tests/test.sh
