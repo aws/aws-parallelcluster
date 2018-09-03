@@ -127,10 +127,10 @@ def is_ganglia_enabled(parameters):
     extra_json = dict(filter(lambda x: x[0] == 'ExtraJson', parameters))
     try:
         extra_json = json.loads(extra_json.get('ExtraJson')).get('cfncluster')
-        return extra_json.get('ganglia_enabled') == 'yes'
+        return not extra_json.get('ganglia_enabled') == 'no'
     except:
         pass
-    return False
+    return True
 
 def update(args):
     logger.info('Updating: %s' % (args.cluster_name))
@@ -460,7 +460,10 @@ def status(args):
                 state = poll_master_server_state(stack, config)
                 if state == 'running':
                     outputs = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('Outputs', [])
+                    ganglia_enabled = is_ganglia_enabled(config.parameters)
                     for output in outputs:
+                        if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
+                            continue
                         logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
             elif status in ['ROLLBACK_COMPLETE', 'CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_ROLLBACK_COMPLETE']:
                 events = cfn.describe_stack_events(StackName=stack).get('StackEvents')
