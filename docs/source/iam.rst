@@ -85,16 +85,6 @@ CfnClusterInstancePolicy
           },
           {
               "Resource": [
-                  "*"
-              ],
-              "Action": [
-                  "cloudwatch:PutMetricData"
-              ],
-              "Sid": "CloudWatch",
-              "Effect": "Allow"
-          },
-          {
-              "Resource": [
                   "arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/cfncluster-*"
               ],
               "Action": [
@@ -226,15 +216,6 @@ CfnClusterUserPolicy
               "Action": [
                 "dynamodb:CreateTable",
                 "dynamodb:DeleteTable"
-              ],
-              "Effect": "Allow",
-              "Resource": "*"
-          },
-          {
-              "Sid": "CloudWatchModify",
-              "Action": [
-                  "cloudwatch:PutMetricAlarm",
-                  "cloudwatch:DeleteAlarms"
               ],
               "Effect": "Allow",
               "Resource": "*"
