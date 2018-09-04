@@ -1,9 +1,14 @@
-CfnCluster
-==========
+==============================
+CfnCluster - HPC for the Cloud
+==============================
 
-.. image:: https://travis-ci.org/awslabs/cfncluster.png?branch=develop
-   :target: https://travis-ci.org/awslabs/cfncluster
+|Build Status| |Version|
+
+.. |Build Status| image:: https://travis-ci.org/awslabs/cfncluster.png?branch=develop
+   :target: https://travis-ci.org/awslabs/cfncluster/
    :alt: Build Status
+.. |Version| image:: https://badge.fury.io/py/cfncluster.png
+    :target: https://badge.fury.io/py/cfncluster
 
 CfnCluster ("cloud formation cluster") is a framework that deploys and
 maintains high performance computing clusters on Amazon Web Services
@@ -11,10 +16,80 @@ maintains high performance computing clusters on Amazon Web Services
 of concepts (POCs) and production deployments. CfnCluster supports
 many different types of clustered applications and can easily be
 extended to support different frameworks. The CLI is stateless,
-everything is done using CloudFormation or resources within AWS.
+everything is done using CloudFormation or resources within AWS.\
+
+Quick Start
+-----------
+First, install the library:
+
+.. code-block:: sh
+
+    $ pip install cfncluster
+
+Next, configure your aws credentials and default region:
+
+.. code-block:: sh
+
+    $ aws configure
+    AWS Access Key ID [None]: YOUR_KEY
+    AWS Secret Access Key [None]: YOUR_SECRET
+    Default region name [us-east-1]:
+    Default output format [None]:
+
+Then, run cfncluster configure:
+
+.. code-block:: ini
+
+  $ cfncluster configure
+  Cluster Template [default]:
+  AWS Access Key ID []:
+  AWS Secret Access Key ID []:
+  Acceptable Values for AWS Region ID:
+      ap-south-1
+      ...
+      us-west-2
+  AWS Region ID [us-east-1]:
+  VPC Name [myvpc]:
+  Acceptable Values for Key Name:
+    keypair1
+    keypair-test
+    production-key
+  Key Name []:
+  Acceptable Values for VPC ID:
+    vpc-1kd24879
+    vpc-blk4982d
+  VPC ID []:
+  Acceptable Values for Master Subnet ID:
+    subnet-9k284a6f
+    subnet-1k01g357
+    subnet-b921nv04
+  Master Subnet ID []:
+
+Now you can create your first cluster;
+
+.. code-block:: sh
+
+  $ cfncluster create myfirstcluster
+
+
+After the cluster finishes creating, log in:
+
+.. code-block:: sh
+
+  $ cfncluster ssh myfirstcluster
+
+You can view the running compute hosts:
+
+.. code-block:: sh
+
+  $ qhost
+
+For more information on any of these steps see the `Getting Started Guide`_.
+
+.. _`Getting Started Guide`: https://cfncluster.readthedocs.io/en/latest/getting_started.html
 
 Documentation
-=============
+-------------
 
 Documentation is part of the project and is published to -
 https://cfncluster.readthedocs.io/. Of most interest to new users is
@@ -22,11 +97,14 @@ the Getting Started Guide -
 https://cfncluster.readthedocs.io/en/latest/getting_started.html.
 
 Issues
-======
+------
 
 Please open a GitHub issue for any feedback or issues:
 https://github.com/awslabs/cfncluster.  There is also an active AWS
 HPC forum which may be helpful:https://forums.aws.amazon.com/forum.jspa?forumID=192.
+
+Changes
+-------
 
 CfnCluster 1.6 IAM Change
 =========================
