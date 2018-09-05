@@ -14,7 +14,7 @@ All of these configurations can operate with or without public IP addressing. It
 Below are some architecture diagrams for some of those scenarios:
 
 CfnCluster in a single public subnet
-------
+------------------------------------
 
 .. figure:: images/networking_single_subnet.jpg
    :alt: CfnCluster single subnet
@@ -30,7 +30,7 @@ The configuration for this architecture requires the following settings:
   master_subnet_id = subnet-a1b2c3d4
 
 CfnCluster using two subnets (new private)
-------
+------------------------------------------
 
 .. figure:: images/networking_two_subnets.jpg
    :alt: CfnCluster two subnets
@@ -47,7 +47,7 @@ The configuration for this architecture requires the following settings:
   compute_subnet_cidr = 10.0.1.0/24
 
 CfnCluster in a private subnet connected using Direct Connect
-------
+-------------------------------------------------------------
 
 .. figure:: images/networking_private_dx.jpg
    :alt: CfnCluster private with DX
