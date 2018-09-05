@@ -12,7 +12,7 @@ A cluster's lifecycle begins after it is created by a user.  Typically, this is 
 
 .. image:: images/workflow.png
     :align: center
-    :width: 35%
+    :width: 65%
 
 jobwatcher
 ----------
@@ -20,7 +20,7 @@ Once a cluster is running, a process owned by the root user will monitor the con
 
 .. image:: images/jobwatcher.png
     :align: center
-    :width: 15%
+    :width: 20%
 
 sqswatcher
 -----------
@@ -28,7 +28,7 @@ The sqswatcher process monitors for SQS messages emitted by Auto Scaling which n
 
 .. image:: images/sqswatcher.png
     :align: center
-    :width: 35%
+    :width: 45%
 
 nodewatcher
 -----------
@@ -36,4 +36,4 @@ The nodewatcher process runs on each node in the compute fleet.  After the user 
 
 .. image:: images/nodewatcher.png
     :align: center
-    :width: 20%
+    :width: 35%
