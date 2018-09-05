@@ -519,7 +519,7 @@ Settings which define how the compute nodes scale. ::
     scaledown_idletime = 10
 
 scaledown_idletime
-""""""""""""""""
+""""""""""""""""""
 Amount of time in minutes without a job after which the compute node will terminate.
 
 Defaults to 10 for the default template. ::
