@@ -1690,6 +1690,11 @@
         "centos7": "ami-0b14b0d1bb6f88c80",
         "ubuntu1404": "ami-024fc8e599dade0d9",
         "ubuntu1604": "ami-0dfe4db7fe5fd7279"
+      },
+      "us-gov-west-1": {
+        "alinux": "ami-5062fb31",
+        "ubuntu1404": "ami-1a65fc7b",
+        "ubuntu1604": "ami-6365fc02"
       }
     },
     "OSFeatures": {
