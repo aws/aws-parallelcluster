@@ -1692,9 +1692,9 @@
         "ubuntu1604": "ami-0dfe4db7fe5fd7279"
       },
       "us-gov-west-1": {
-        "alinux": "ami-5062fb31",
-        "ubuntu1404": "ami-1a65fc7b",
-        "ubuntu1604": "ami-6365fc02"
+        "alinux": "ami-69009908",
+        "ubuntu1404": "ami-01009960",
+        "ubuntu1604": "ami-c40e97a5"
       }
     },
     "OSFeatures": {
