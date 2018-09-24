@@ -99,6 +99,16 @@ CfnClusterInstancePolicy
           },
           {
               "Resource": [
+                  "arn:aws:s3:::<REGION>-cfncluster/*"
+              ],
+              "Action": [
+                  "s3:GetObject"
+              ],
+              "Sid": "S3GetObj",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
                   "*"
               ],
               "Action": [
@@ -322,38 +332,6 @@ CfnClusterUserPolicy
               ],
               "Effect": "Allow",
               "Resource": "*"
-          },
-          {
-              "Sid": "S3GetObj",
-              "Action": [
-                "s3:GetObject"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
-                      },
-                      ":s3:::",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "-cfncluster/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-
+          }
       ]
   }
