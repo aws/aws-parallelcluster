@@ -1677,6 +1677,11 @@
         "ubuntu1404": "ami-035a7aa06162b1faa",
         "ubuntu1604": "ami-03a08f02b6193b9a6"
       },
+      "us-gov-west-1": {
+        "alinux": "ami-69009908",
+        "ubuntu1404": "ami-01009960",
+        "ubuntu1604": "ami-c40e97a5"
+      },
       "us-west-1": {
         "alinux": "ami-0bfa13075d27a6978",
         "centos6": "ami-09504713997f28685",
@@ -1690,11 +1695,6 @@
         "centos7": "ami-07c45a2de36de7033",
         "ubuntu1404": "ami-0c4467fc5217f7d85",
         "ubuntu1604": "ami-01e20e07651baa7b1"
-      },
-      "us-gov-west-1": {
-        "alinux": "ami-69009908",
-        "ubuntu1404": "ami-01009960",
-        "ubuntu1604": "ami-c40e97a5"
       }
     },
     "OSFeatures": {
