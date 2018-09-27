@@ -289,31 +289,6 @@ def poll_master_server_state(stack_name, config):
 
     return state
 
-def get_master_server_ip(stack_name, config):
-    ec2 = boto3.client('ec2', region_name=config.region,
-                       aws_access_key_id=config.aws_access_key_id,
-                       aws_secret_access_key=config.aws_secret_access_key)
-
-    master_id = get_master_server_id(stack_name, config)
-
-    try:
-        instance = ec2.describe_instances(InstanceIds=[master_id]) \
-            .get('Reservations')[0] \
-            .get('Instances')[0]
-        ip_address = instance.get('PublicIpAddress')
-        state = instance.get('State').get('Name')
-        if state != 'running' or ip_address is None:
-            logger.info("MasterServer: %s\nCannot get ip address." % state.upper)
-            sys.exit(1)
-        return ip_address
-    except ClientError as e:
-        logger.critical(e.response.get('Error').get('Message'))
-        sys.stdout.flush()
-        sys.exit(1)
-    except KeyboardInterrupt:
-        logger.info('\nExiting...')
-        sys.exit(0)
-
 def get_ec2_instances(stack, config):
     cfn = boto3.client('cloudformation', region_name=config.region,
                        aws_access_key_id=config.aws_access_key_id,
@@ -383,14 +358,6 @@ def instances(args):
     for instance in instances:
         print('%s         %s' % (instance[0],instance[1]))
 
-def get_head_user(parameters, template):
-    print(parameters)
-    # mappings = template.get("TemplateBody") \
-            # .get("Mappings") \
-            # .get("OSFeatures")
-    base_os =[i.get('ParameterValue') for i in parameters if i.get('ParameterKey') == "BaseOS"][0]
-    return mappings.get(base_os).get("User")
-
 def command(args, extra_args):
     stack = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
@@ -403,16 +370,15 @@ def command(args, extra_args):
                        aws_access_key_id=config.aws_access_key_id,
                        aws_secret_access_key=config.aws_secret_access_key)
     try:
-        status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('StackStatus')
-        invalid_status = ['DELETE_COMPLETE', 'DELETE_IN_PROGRESS']
-        if status in invalid_status:
-            logger.info("Stack status: %s. Cannot SSH while in %s" % (status, ' or '.join(invalid_status)))
+        stack_result = cfn.describe_stacks(StackName=stack).get("Stacks")[0]
+        status = stack_result.get('StackStatus')
+        valid_status = ['CREATE_COMPLETE', 'UPDATE_COMPLETE']
+        if status not in valid_status:
+            logger.info("Stack status: %s. Stack needs to be in %s" % (status, ' or '.join(valid_status)))
             sys.exit(1)
-        ip = get_master_server_ip(stack, config)
-        stack_result = cfn.describe_stacks(StackName=stack).get('Stacks')[0]
-        template = cfn.get_template(StackName=stack)
-        print "here"
-        username = get_head_user(stack_result.get('Parameters'), template)
+        outputs = stack_result.get('Outputs')
+        username = [o.get('OutputValue') for o in outputs if o.get('OutputKey') == 'ClusterUser'][0]
+        ip = [o.get('OutputValue') for o in outputs if o.get('OutputKey') == 'MasterPublicIP'][0]
 
         try:
             from shlex import quote as cmd_quote
