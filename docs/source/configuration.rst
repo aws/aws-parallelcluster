@@ -423,7 +423,9 @@ Defaults to NONE in the default template. ::
 
 compute_subnet_id
 """""""""""""""""
-ID of an existing subnet you want to provision the compute nodes into. ::
+ID of an existing subnet you want to provision the compute nodes into.
+
+If it is private, you need to setup NAT for web access. ::
 
     compute_subnet_id = subnet-xxxxxx
 
@@ -435,9 +437,13 @@ If you wish for cfncluster to create a compute subnet, this is the CIDR that. ::
 
 use_public_ips
 """"""""""""""
-Define whether or not to assign public IP addresses to EC2 instances.
+Define whether or not to assign public IP addresses to Compute EC2 instances.
 
-Set to false if operating in a private VPC.
+If true, an Elastic Ip will be associated to the Master instance.
+If false, the Master instance will have a Public IP or not according to the value
+of the "Auto-assign Public IP" subnet configuration parameter.
+
+See `networking configuration <https://cfncluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
 
 Defaults to true. ::
 
