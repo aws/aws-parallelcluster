@@ -38,9 +38,11 @@ import sys
 import threading
 import time
 from builtins import exit
+from collections import namedtuple
 
 import boto3
 import process_helper as prochelp
+from hamcrest import *
 
 
 class ReleaseCheckException(Exception):
@@ -50,6 +52,23 @@ class ReleaseCheckException(Exception):
 #
 # configuration
 #
+ClusterConfig = namedtuple(
+    "ClusterConfig",
+    [
+        "config_file",
+        "stack_name",
+        "region",
+        "distro",
+        "instance_type",
+        "scheduler",
+        "username",
+        "key_path",
+        "key_name",
+        "master_node",
+        "scaledown_idletime",
+    ],
+)
+
 username_map = {
     "alinux": "ec2-user",
     "centos6": "centos",
@@ -57,6 +76,25 @@ username_map = {
     "ubuntu1404": "ubuntu",
     "ubuntu1604": "ubuntu",
 }
+
+# commands used to retrieve the number of compute nodes in each scheduler
+get_compute_nodes_command_map = {
+    "sge": '/bin/bash --login -c "qhost | grep -o ip- | wc -l"',
+    "slurm": '/bin/bash --login -c "sinfo --Node --noheader | grep compute | wc -l"',
+    "torque": '/bin/bash --login -c "echo $(( $(/opt/torque/bin/pbsnodes -l all | wc -l) - 1))"',
+}
+
+# default ssh options
+ssh_config_options = [
+    "-o {0}".format(option)
+    for option in [
+        "StrictHostKeyChecking=no",
+        "BatchMode=yes",
+        "ConnectTimeout=60",
+        "ServerAliveCountMax=5",
+        "ServerAliveInterval=30",
+    ]
+]
 
 #
 # global variables (sigh)
@@ -90,78 +128,346 @@ def _double_writeln(fileo, message):
     fileo.write(message + "\n")
 
 
-# Helper method to get the name of the autoscaling group
-def check_asg_capacity(stack_name, region, out_f):
-    asg_conn = boto3.client("autoscaling", region_name=region)
-    iter = 0
-    capacity = -1
-    while iter < 24 and capacity != 0:
-        try:
-            r = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [stack_name]}])
-            asg_name = r.get("Tags")[0].get("ResourceId")
-            response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-            capacity = response["AutoScalingGroups"][0]["DesiredCapacity"]
-            iter += 1
-            time.sleep(10)
-        except Exception as e:
-            _double_writeln(out_f, "check_asg_capacity failed with %s exception: %s" % (type(e), e))
-            raise
+def _get_attached_compute_nodes(cluster_config):
+    """
+    Returns the number of compute nodes attached to the scheduler.
+    Args:
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
 
-    _double_writeln(out_f, "ASG Capacity was %s after %s second(s)" % (capacity, 10 * iter))
-    if capacity != 0:
-        raise ReleaseCheckException("Autoscaling group's desired capacity was not zero. Capacity was %s" % capacity)
+    Returns:
+        number_of_nodes: number of available compute nodes.
+    """
+    output = _exec_ssh_command(
+        command=get_compute_nodes_command_map[cluster_config.scheduler],
+        username=cluster_config.username,
+        host=cluster_config.master_node,
+        key_path=cluster_config.key_path,
+    )
+    # get last line of the output containing the number of compute nodes
+    return int(output.split()[-1])
+
+
+def _get_desired_asg_capacity(cluster_config):
+    """
+    Retrieves the desired capacity of the autoscaling group for a specific cluster.
+    Args:
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
+
+    Returns:
+        asg_capacity: the desired capacity of the autoscaling group.
+    """
+    asg_conn = boto3.client("autoscaling", region_name=cluster_config.region)
+    r = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [cluster_config.stack_name]}])
+    asg_name = r.get("Tags")[0].get("ResourceId")
+    response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+    return response["AutoScalingGroups"][0]["DesiredCapacity"]
+
+
+def _exec_ssh_command(command, host, username, key_path, stdout=sub.PIPE, stderr=sub.STDOUT):
+    """
+    Executes an ssh command on a remote host.
+    Args:
+        command: command to execute.
+        host: host where the command is executed.
+        username: username used to ssh into the host.
+        key_path: key used to ssh into the host.
+        stdout: stdout redirection. Defaults to sub.PIPE.
+        stderr: stderr redirection. Defaults to sub.STDOUT.
+
+    Returns:
+        the stdout for the executed command.
+    """
+    ssh_params = list(ssh_config_options)
+    if key_path:
+        ssh_params.extend(["-i", key_path])
+
+    return prochelp.exec_command(
+        ["ssh", "-n"] + ssh_params + ["%s@%s" % (username, host), command],
+        stdout=stdout,
+        stderr=stderr,
+        universal_newlines=True,
+    )
+
+
+def _watch_compute_nodes_allocation(duration, frequency, cluster_config):
+    """
+    Periodically watches the number of compute nodes in the cluster.
+    The function returns after duration or when the compute nodes scaled down to 0.
+    Args:
+        duration: duration in seconds of the periodical check.
+        frequency: polling interval in seconds.
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
+
+    Returns:
+        (asg_capacity_time_series, compute_nodes_time_series, timestamps): three lists describing
+        the variation over time in the number of compute nodes and the timestamp when these fluctuations occurred.
+        asg_capacity_time_series describes the variation in the desired asg capacity. compute_nodes_time_series
+        describes the variation in the number of compute nodes seen by the scheduler. timestamps describes the
+        time since epoch when the variations occurred.
+    """
+    asg_capacity_time_series = []
+    compute_nodes_time_series = []
+    timestamps = []
+
+    timeout = time.time() + duration
+    while time.time() < timeout:
+        compute_nodes = _get_attached_compute_nodes(cluster_config)
+        asg_capacity = _get_desired_asg_capacity(cluster_config)
+        timestamp = time.time()
+
+        # add values only if there is a transition.
+        if (
+            len(asg_capacity_time_series) == 0
+            or asg_capacity_time_series[-1] != asg_capacity
+            or compute_nodes_time_series[-1] != compute_nodes
+        ):
+            asg_capacity_time_series.append(asg_capacity)
+            compute_nodes_time_series.append(compute_nodes)
+            timestamps.append(timestamp)
+
+        # break loop before timeout only when compute nodes are scaled down to 0.
+        if asg_capacity_time_series[-1] == 0 and compute_nodes_time_series[-1] == 0:
+            if max(asg_capacity_time_series) > 0 and max(compute_nodes_time_series) > 0:
+                break
+        time.sleep(frequency)
+
+    return asg_capacity_time_series, compute_nodes_time_series, timestamps
+
+
+def _execute_test_jobs_on_cluster(cluster_config, log_file):
+    """
+    Executes test jobs defined in cluster-check.sh on a given cluster.
+    Args:
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
+        log_file: file where to write logs.
+    """
+    ssh_params = list(ssh_config_options)
+    if cluster_config.key_path:
+        ssh_params.extend(["-i", cluster_config.key_path])
+
+    prochelp.exec_command(
+        ["scp"]
+        + ssh_params
+        + [
+            os.path.join(_dirname(), "cluster-check.sh"),
+            "%s@%s:." % (cluster_config.username, cluster_config.master_node),
+        ],
+        stdout=log_file,
+        stderr=sub.STDOUT,
+        universal_newlines=True,
+    )
+    _exec_ssh_command(
+        command="/bin/bash --login cluster-check.sh submit %s" % cluster_config.scheduler,
+        username=cluster_config.username,
+        host=cluster_config.master_node,
+        key_path=cluster_config.key_path,
+        stdout=log_file,
+    )
+
+
+def _get_master_ip(cluster_config_file, cluster_name, log_file):
+    """
+    Retrieves the ip of the master node for a given cluster.
+    Args:
+        cluster_config_file: file containing the config of the cluster.
+        cluster_name: name of the cluster.
+        log_file: file where to write logs.
+
+    Returns:
+        master_ip: the ip of the master node.
+    """
+    master_ip = ""
+    # get the master ip, which means grepping through pcluster status output
+    dump = prochelp.exec_command(
+        ["pcluster", "status", "--config", cluster_config_file, cluster_name],
+        stderr=sub.STDOUT,
+        universal_newlines=True,
+    )
+    dump_array = dump.splitlines()
+    for line in dump_array:
+        m = re.search("MasterPublicIP: (.+)$", line)
+        if m:
+            master_ip = m.group(1)
+            break
+
+    # Check master ip was correctly retrieved
+    if master_ip == "":
+        _double_writeln(
+            log_file, "!! %s: Master IP not found. This usually occurs when cluster creation failed." % cluster_name
+        )
+        raise ReleaseCheckException("--> %s: Master IP not found!" % cluster_name)
+    _double_writeln(log_file, "--> %s Master IP: %s" % (cluster_name, master_ip))
+
+    return master_ip
+
+
+def _write_pcluster_config(cluster_config, extra_args):
+    """
+    Creates a file containing the config needed by pcluster to spin up the cluster.
+    Args:
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
+        extra_args: extra arguments passed to the test function.
+    """
+    custom_cookbook = extra_args["custom_cookbook_url"]
+    custom_node = extra_args["custom_node_url"]
+    custom_template = extra_args["custom_template_url"]
+
+    with open(cluster_config.config_file, "w") as file:
+        file.write("[aws]\n")
+        file.write("aws_region_name = %s\n" % cluster_config.region)
+        file.write("[cluster default]\n")
+        file.write("vpc_settings = public\n")
+        file.write("key_name = %s\n" % cluster_config.key_name)
+        file.write("base_os = %s\n" % cluster_config.distro)
+        file.write("master_instance_type = %s\n" % cluster_config.instance_type)
+        file.write("compute_instance_type = %s\n" % cluster_config.instance_type)
+        file.write("initial_queue_size = 1\n")
+        file.write("maintain_initial_size = false\n")
+        file.write("scheduler = %s\n" % cluster_config.scheduler)
+        file.write("scaling_settings = custom\n")
+        if custom_template:
+            file.write("template_url = %s\n" % custom_template)
+        if custom_cookbook:
+            file.write("custom_chef_cookbook = %s\n" % custom_cookbook)
+        if custom_node:
+            file.write('extra_json = { "cluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
+        file.write("[vpc public]\n")
+        file.write("master_subnet_id = %s\n" % (setup[cluster_config.region]["subnet"]))
+        file.write("vpc_id = %s\n" % (setup[cluster_config.region]["vpc"]))
+        file.write("[global]\n")
+        file.write("cluster_template = default\n")
+        file.write("[scaling custom]\n")
+        file.write("scaledown_idletime = %s\n" % cluster_config.scaledown_idletime)
+
+
+def _assert_scaling_works(
+    asg_capacity_time_series, compute_nodes_time_series, expected_asg_capacity, expected_compute_nodes
+):
+    """
+    Verifies that cluster scaling-up and scaling-down features work correctly.
+    Args:
+        asg_capacity_time_series: list describing the fluctuations over time in the asg capacity
+        compute_nodes_time_series: list describing the fluctuations over time in the compute nodes
+        expected_asg_capacity: pair containing the expected asg capacity (min_asg_capacity, max_asg_capacity)
+        expected_compute_nodes: pair containing the expected compute nodes (min_compute_nodes, max_compute_nodes)
+    """
+    assert_that(asg_capacity_time_series, is_not(empty()), "asg_capacity_time_series cannot be empty")
+    assert_that(compute_nodes_time_series, is_not(empty()), "compute_nodes_time_series cannot be empty")
+
+    expected_asg_capacity_min, expected_asg_capacity_max = expected_asg_capacity
+    expected_compute_nodes_min, expected_compute_nodes_max = expected_compute_nodes
+    actual_asg_capacity_max = max(asg_capacity_time_series)
+    actual_asg_capacity_min = min(asg_capacity_time_series[asg_capacity_time_series.index(actual_asg_capacity_max) :])
+    actual_compute_nodes_max = max(compute_nodes_time_series)
+    actual_compute_nodes_min = min(
+        compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :]
+    )
+    assert_that(
+        actual_asg_capacity_min,
+        is_(equal_to(expected_asg_capacity_min)),
+        "actual asg min capacity does not match the expected one",
+    )
+    assert_that(
+        actual_asg_capacity_max,
+        is_(equal_to(expected_asg_capacity_max)),
+        "actual asg max capacity does not match the expected one",
+    )
+    assert_that(
+        actual_compute_nodes_min,
+        is_(equal_to(expected_compute_nodes_min)),
+        "actual number of min compute nodes does not match the expected one",
+    )
+    assert_that(
+        actual_compute_nodes_max,
+        is_(equal_to(expected_compute_nodes_max)),
+        "actual number of max compute nodes does not match the expected one",
+    )
+
+
+def _assert_test_jobs_completed(cluster_config, max_jobs_exec_time, log_file):
+    """
+    Verifies that test jobs started by cluster-check.sh script were successfully executed
+    and in a timely manner.
+    In order to do this the function checks that some files (jobN.done), which denote the fact
+    that a job has been correctly executed, are present in the shared cluster file-system.
+    Additionally, the function uses the timestamp contained in those files, that indicates
+    the end time of each job, to verify that all jobs were executed within the max expected time.
+    Args:
+        cluster_config: named tuple of type ClusterConfig containing the configuration of the cluster.
+        max_jobs_exec_time: max execution time given to the jobs to complete
+        log_file: file where to write logs.
+
+    """
+    try:
+        _exec_ssh_command(
+            command="test -f job1.done -a -f job2.done -a -f job3.done",
+            username=cluster_config.username,
+            host=cluster_config.master_node,
+            key_path=cluster_config.key_path,
+            stdout=log_file,
+        )
+        output = _exec_ssh_command(
+            command="cat jobs_start_time",
+            username=cluster_config.username,
+            host=cluster_config.master_node,
+            key_path=cluster_config.key_path,
+        )
+        jobs_start_time = int(output.split()[-1])
+        output = _exec_ssh_command(
+            command="cat job1.done job2.done job3.done | sort -n | tail -1",
+            username=cluster_config.username,
+            host=cluster_config.master_node,
+            key_path=cluster_config.key_path,
+        )
+        jobs_completion_time = int(output.split()[-1])
+        jobs_execution_time = jobs_completion_time - jobs_start_time
+        _double_writeln(log_file, "jobs execution time in seconds: %d" % jobs_execution_time)
+        assert_that(
+            jobs_execution_time,
+            is_(less_than(max_jobs_exec_time)),
+            "jobs did not complete the execution in the expected time",
+        )
+    except sub.CalledProcessError:
+        raise AssertionError("Test jobs did not complete in time")
 
 
 #
 # run a single test, possibly in parallel
 #
-def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
-    scaledown_idletime = 2
-    testname = "%s-%s-%s-%s-%s" % (region, distro, scheduler, instance_type.replace(".", ""), _timestamp)
-    test_filename = "%s-config.cfg" % testname
-    key_path = extra_args["key_path"]
-    custom_cookbook = extra_args["custom_cookbook_url"]
-    custom_node = extra_args["custom_node_url"]
-    custom_template = extra_args["custom_template_url"]
-
-    print("--> %s: Starting" % (testname))
-
-    file = open(test_filename, "w")
-    file.write("[aws]\n")
-    file.write("aws_region_name = %s\n" % region)
-    file.write("[cluster default]\n")
-    file.write("vpc_settings = public\n")
-    file.write("key_name = %s\n" % key_name)
-    file.write("base_os = %s\n" % distro)
-    file.write("master_instance_type = %s\n" % instance_type)
-    file.write("compute_instance_type = %s\n" % instance_type)
-    file.write("initial_queue_size = 1\n")
-    file.write("maintain_initial_size = false\n")
-    file.write("scheduler = %s\n" % (scheduler))
-    file.write("scaling_settings = custom\n")
-    if custom_template:
-        file.write("template_url = %s\n" % custom_template)
-    if custom_cookbook:
-        file.write("custom_chef_cookbook = %s\n" % custom_cookbook)
-    if custom_node:
-        file.write('extra_json = { "cluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
-    file.write("[vpc public]\n")
-    file.write("master_subnet_id = %s\n" % (setup[region]["subnet"]))
-    file.write("vpc_id = %s\n" % (setup[region]["vpc"]))
-    file.write("[global]\n")
-    file.write("cluster_template = default\n")
-    file.write("[scaling custom]\n")
-    file.write("scaledown_idletime = %s\n" % scaledown_idletime)
-    file.close()
-
-    out_f = open("%s-out.txt" % testname, "w", 0)
-
-    master_ip = ""
-    username = username_map[distro]
+def run_test(
+    region, distro, scheduler, instance_type, key_name, expected_asg_capacity, expected_compute_nodes, extra_args
+):
     _create_interrupted = False
     _create_done = False
+    testname = "%s-%s-%s-%s-%s" % (region, distro, scheduler, instance_type.replace(".", ""), _timestamp)
+    test_filename = "%s-config.cfg" % testname
+    out_f = open("%s-out.txt" % testname, "w", 0)
+    # Test jobs should take at most 9 minutes to be executed.
+    # These guarantees that the jobs are executed in parallel.
+    max_jobs_exec_time = 9 * 60
+
     try:
+        _double_writeln(out_f, "--> %s: Starting" % testname)
+
+        cluster_config = ClusterConfig(
+            config_file=test_filename,
+            stack_name="parallelcluster-" + testname,
+            region=region,
+            distro=distro,
+            instance_type=instance_type,
+            scheduler=scheduler,
+            username=username_map[distro],
+            key_path=extra_args["key_path"],
+            key_name=key_name,
+            master_node="",
+            scaledown_idletime=2,
+        )
+
+        _write_pcluster_config(cluster_config=cluster_config, extra_args=extra_args)
+        _double_writeln(out_f, "--> %s: Created pcluster config file %s" % (testname, test_filename))
+
         # build the cluster
+        _double_writeln(out_f, "--> %s: Creating the cluster" % testname)
         prochelp.exec_command(
             ["pcluster", "create", "--config", test_filename, testname],
             stdout=out_f,
@@ -169,59 +475,49 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
             universal_newlines=True,
         )
         _create_done = True
-        # get the master ip, which means grepping through pcluster status gorp
-        dump = prochelp.exec_command(
-            ["pcluster", "status", "--config", test_filename, testname], stderr=sub.STDOUT, universal_newlines=True
-        )
-        dump_array = dump.splitlines()
-        for line in dump_array:
-            m = re.search("MasterPublicIP: (.+)$", line)
-            if m:
-                master_ip = m.group(1)
-                break
-        if master_ip == "":
-            _double_writeln(out_f, "!! %s: Master IP not found; exiting !!" % (testname))
-            raise ReleaseCheckException("--> %s: Master IP not found!" % testname)
-        _double_writeln(out_f, "--> %s Master IP: %s" % (testname, master_ip))
+        _double_writeln(out_f, "--> %s: Cluster created successfully" % testname)
 
-        # run test on the cluster...
-        ssh_params = ["-o", "StrictHostKeyChecking=no"]
-        ssh_params += ["-o", "BatchMode=yes"]
-        # ssh_params += ['-o', 'ConnectionAttempts=30']
-        ssh_params += ["-o", "ConnectTimeout=60"]
-        ssh_params += ["-o", "ServerAliveCountMax=5"]
-        ssh_params += ["-o", "ServerAliveInterval=30"]
-        if key_path:
-            ssh_params.extend(["-i", key_path])
-
-        prochelp.exec_command(
-            ["scp"] + ssh_params + [os.path.join(_dirname(), "cluster-check.sh"), "%s@%s:." % (username, master_ip)],
-            stdout=out_f,
-            stderr=sub.STDOUT,
-            universal_newlines=True,
-        )
-        prochelp.exec_command(
-            ["ssh", "-n"]
-            + ssh_params
-            + ["%s@%s" % (username, master_ip), "/bin/bash --login cluster-check.sh submit %s" % scheduler],
-            stdout=out_f,
-            stderr=sub.STDOUT,
-            universal_newlines=True,
+        cluster_config = cluster_config._replace(
+            master_node=_get_master_ip(cluster_config_file=test_filename, cluster_name=testname, log_file=out_f)
         )
 
-        # Sleep for scaledown_idletime to give time for the instances to scale down
-        time.sleep(60 * scaledown_idletime)
+        _double_writeln(out_f, "--> %s: Executing test jobs on cluster." % testname)
+        _execute_test_jobs_on_cluster(cluster_config=cluster_config, log_file=out_f)
+        _double_writeln(out_f, "--> %s: Test jobs successfully started" % testname)
 
-        check_asg_capacity("parallelcluster-" + testname, region, out_f)
-
-        prochelp.exec_command(
-            ["ssh", "-n"]
-            + ssh_params
-            + ["%s@%s" % (username, master_ip), "/bin/bash --login cluster-check.sh scaledown_check %s" % scheduler],
-            stdout=out_f,
-            stderr=sub.STDOUT,
-            universal_newlines=True,
+        _double_writeln(out_f, "--> %s: Monitoring asg capacity and compute nodes" % testname)
+        additional_watching_time = 5 * 60
+        asg_capacity_time_series, compute_nodes_time_series, timestamps = _watch_compute_nodes_allocation(
+            duration=max_jobs_exec_time + cluster_config.scaledown_idletime * 60 + additional_watching_time,
+            frequency=20,
+            cluster_config=cluster_config,
         )
+        _double_writeln(
+            out_f,
+            "--> %s: Monitoring completed: %s, %s, %s"
+            % (
+                testname,
+                "asg_capacity_time_series [" + " ".join(map(str, asg_capacity_time_series)) + "]",
+                "compute_nodes_time_series [" + " ".join(map(str, compute_nodes_time_series)) + "]",
+                "timestamps [" + " ".join(map(str, timestamps)) + "]",
+            ),
+        )
+
+        _double_writeln(out_f, "--> %s: Verifying test jobs completed successfully" % testname)
+        # jobs need to complete in 9 mins in order to verify parallelism
+        _assert_test_jobs_completed(
+            cluster_config=cluster_config, max_jobs_exec_time=max_jobs_exec_time, log_file=out_f
+        )
+        _double_writeln(out_f, "--> %s: Test jobs completed successfully" % testname)
+
+        _double_writeln(out_f, "--> %s: Verifying auto-scaling worked correctly" % testname)
+        _assert_scaling_works(
+            asg_capacity_time_series=asg_capacity_time_series,
+            compute_nodes_time_series=compute_nodes_time_series,
+            expected_asg_capacity=expected_asg_capacity,
+            expected_compute_nodes=expected_compute_nodes,
+        )
+        _double_writeln(out_f, "--> %s: Autoscaling worked as expected" % testname)
 
         _double_writeln(out_f, "SUCCESS:  %s!!" % testname)
         open("%s.success" % testname, "w").close()
@@ -232,11 +528,16 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
         _double_writeln(out_f, "!! ABORTED: %s!!" % (testname))
         open("%s.aborted" % testname, "w").close()
         raise exc
+    except AssertionError as err:
+        _double_writeln(out_f, "--> %s: Test assertion failed: %s" % (testname, err.message))
+        _double_writeln(out_f, "!! FAILURE: %s!!" % testname)
+        open("%s.failed" % testname, "w").close()
+        raise err
     except Exception as exc:
         if not _create_done:
             _create_interrupted = True
-        _double_writeln(out_f, "Unexpected exception %s: %s" % (str(type(exc)), str(exc)))
-        _double_writeln(out_f, "!! FAILURE: %s!!" % (testname))
+        _double_writeln(out_f, "--> %s: Unexpected exception %s: %s" % (testname, str(type(exc)), str(exc)))
+        _double_writeln(out_f, "!! FAILURE: %s!!" % testname)
         open("%s.failed" % testname, "w").close()
         raise exc
     finally:
@@ -289,8 +590,8 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                 pass
             except Exception as exc:
                 out_f.write("Unexpected exception launching 'pcluster status' %s: %s\n" % (str(type(exc)), str(exc)))
+        _double_writeln(out_f, "--> %s: Finished" % testname)
         out_f.close()
-    print("--> %s: Finished" % (testname))
 
 
 #
@@ -315,6 +616,8 @@ def test_runner(region, q, key_name, extra_args):
                     scheduler=item["scheduler"],
                     instance_type=item["instance_type"],
                     key_name=key_name,
+                    expected_asg_capacity=item["expected_asg_capacity"],
+                    expected_compute_nodes=item["expected_compute_nodes"],
                     extra_args=extra_args,
                 )
                 retval = 0
@@ -423,10 +726,14 @@ def _main_child():
         "custom_node_url": None,
         "custom_cookbook_url": None,
         "custom_template_url": None,
+        "expected_asg_capacity_min": 0,
+        "expected_asg_capacity_max": 3,
+        "expected_compute_nodes_min": 0,
+        "expected_compute_nodes_max": 3,
     }
 
     parser = argparse.ArgumentParser(description="Test runner for AWS ParallelCluster")
-    parser.add_argument("--parallelism", help="Number of tests per region to run in parallel", type=int, default=3)
+    parser.add_argument("--parallelism", help="Number of tests per region to run in parallel", type=int)
     parser.add_argument("--regions", help="Comma separated list of regions to test", type=str)
     parser.add_argument("--distros", help="Comma separated list of distributions to test", type=str)
     parser.add_argument("--schedulers", help="Comma separated list of schedulers to test", type=str)
@@ -442,17 +749,31 @@ def _main_child():
         "--custom-cookbook-url", help="S3 URL to a custom aws-parallelcluster-cookbook package", type=str
     )
     parser.add_argument(
-        "--custom-template-url", help="S3 URL to a custom AWS ParallelCluster CloudFormation template", type=str
+        "--custom-template-url", help="S3 URL to a custom aws-parallelcluster CloudFormation template", type=str
+    )
+    parser.add_argument(
+        "--expected-asg-capacity-min", help="Expected number of nodes in the asg after scale-down", type=int
+    )
+    parser.add_argument(
+        "--expected-asg-capacity-max", help="Expected number of nodes in the asg after scale-up", type=int
+    )
+    parser.add_argument(
+        "--expected-compute-nodes-min", help="Expected number of nodes in the scheduler after scale-down", type=int
+    )
+    parser.add_argument(
+        "--expected-compute-nodes-max", help="Expected number of nodes in the scheduler after scale-up", type=int
     )
 
     for key, value in vars(parser.parse_args()).iteritems():
-        if not value == None:
+        if value is not None:
             config[key] = value
 
     region_list = config["regions"].split(",")
     distro_list = config["distros"].split(",")
     scheduler_list = config["schedulers"].split(",")
     instance_type_list = config["instance_types"].split(",")
+    expected_asg_capacity = (config["expected_asg_capacity_min"], config["expected_asg_capacity_max"])
+    expected_compute_nodes = (config["expected_compute_nodes_min"], config["expected_compute_nodes_max"])
 
     print("==> Regions: %s" % (", ".join(region_list)))
     print("==> Instance Types: %s" % (", ".join(instance_type_list)))
@@ -460,6 +781,8 @@ def _main_child():
     print("==> Schedulers: %s" % (", ".join(scheduler_list)))
     print("==> Parallelism: %d" % (config["parallelism"]))
     print("==> Key Pair: %s" % (config["key_name"]))
+    print("==> Expected asg capacity: min=%d, max=%d " % expected_asg_capacity)
+    print("==> Expected compute nodes: min=%d, max=%d " % expected_compute_nodes)
 
     # Optional params
     if config["key_path"]:
@@ -469,7 +792,7 @@ def _main_child():
     if config["custom_node_url"]:
         print("==> Custom aws-parallelcluster-node URL: %s" % (config["custom_node_url"]))
     if config["custom_template_url"]:
-        print("==> Custom AWS ParallelCluster template URL: %s" % (config["custom_template_url"]))
+        print("==> Custom aws-parallelcluster template URL: %s" % (config["custom_template_url"]))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
@@ -497,7 +820,13 @@ def _main_child():
         for distro in distro_list:
             for scheduler in scheduler_list:
                 for instance in instance_type_list:
-                    work_item = {"distro": distro, "scheduler": scheduler, "instance_type": instance}
+                    work_item = {
+                        "distro": distro,
+                        "scheduler": scheduler,
+                        "instance_type": instance,
+                        "expected_asg_capacity": expected_asg_capacity,
+                        "expected_compute_nodes": expected_compute_nodes,
+                    }
                     work_queues[region].put(work_item)
 
     # start all the workers
