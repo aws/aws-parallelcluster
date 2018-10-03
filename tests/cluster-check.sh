@@ -83,17 +83,10 @@ submit_launch() {
 
     submit_init ${scheduler}
 
-    ${scheduler}_submit
+    echo "$(date +%s)" > jobs_start_time
 
-    done=0
-    while test $done = 0 ; do
-        if test -f job1.done -a -f job2.done -a -f job3.done; then
-            done=1
-        else
-            sleep 1
-        fi
-    done
-     echo "Scaleup successful"
+    ${scheduler}_submit
+    echo "Jobs submitted successfully"
 }
 
 submit_init() {
@@ -123,18 +116,18 @@ slurm_submit() {
     cat > job1.sh <<EOF
 #!/bin/bash
 srun sleep ${_sleepjob1}
-touch job1.done
+echo "\$(date +%s)" > job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
 srun sleep ${_sleepjob2}
-touch job2.done
+echo "\$(date +%s)" > job2.done
 EOF
 
     cat > job3.sh <<EOF
 #!/bin/bash
 srun sleep ${_sleepjob3}
-touch job3.done
+echo "\$(date +%s)" > job3.done
 EOF
 
     chmod +x job1.sh job2.sh job3.sh
@@ -154,7 +147,7 @@ sge_submit() {
 #$ -R y
 
 sleep ${_sleepjob1}
-touch job1.done
+echo "\$(date +%s)" > job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
@@ -162,7 +155,7 @@ EOF
 #$ -R y
 
 sleep ${_sleepjob2}
-touch job2.done
+echo "\$(date +%s)" > job2.done
 EOF
 
     cat > job3.sh <<EOF
@@ -171,7 +164,7 @@ EOF
 #$ -R y
 
 sleep ${_sleepjob3}
-touch job3.done
+echo "\$(date +%s)" > job3.done
 EOF
 
     chmod +x job1.sh job2.sh job3.sh
@@ -186,18 +179,18 @@ torque_submit() {
     cat > job1.sh <<EOF
 #!/bin/bash
 sleep ${_sleepjob1}
-touch job1.done
+echo "\$(date +%s)" > job1.done
 EOF
     cat > job2.sh <<EOF
 #!/bin/bash
 sleep ${_sleepjob2}
-touch job2.done
+echo "\$(date +%s)" > job2.done
 EOF
 
     cat > job3.sh <<EOF
 #!/bin/bash
 sleep ${_sleepjob3}
-touch job3.done
+echo "\$(date +%s)" > job3.done
 EOF
 
     chmod +x job1.sh job2.sh job3.sh
