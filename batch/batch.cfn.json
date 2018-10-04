@@ -1,0 +1,197 @@
+{
+  "Parameters": {
+    "MinvCpu": {
+      "Description" : "Min vCPU's for ComputeEnvironment",
+      "Type": "Number"
+    },
+    "DesiredvCpu": {
+      "Description" : "Desired vCPU's for ComputeEnvironment",
+      "Type": "Number"
+    },
+    "MaxvCpu": {
+      "Description" : "Max vCPU's for ComputeEnvironment",
+      "Type": "Number"
+    },
+    "InstanceTypes": {
+      "Description" : "Comma delimited string of Instance Types",
+      "Type": "CommaDelimitedList"
+    },
+    "Subnet": {
+      "Description" : "Subnet for ComputeEnvironment",
+      "Type": "String"
+    },
+    "SecurityGroups": {
+      "Description" : "List Security Groups for ComputeEnvironment",
+      "Type": "CommaDelimitedList"
+    },
+    "OS": {
+      "Description" : "Operating System for container",
+      "Type": "String"
+    },
+    "ClusterName": {
+      "Description": "Name of the cluster",
+      "Type": "String"
+    },
+    "ClusterType": {
+      "Description": "spot or ondemand",
+      "Type": "String"
+    },
+    "KeyName": {
+      "Description": "EC2 Keypair",
+      "Type": "AWS::EC2::KeyPair::KeyName"
+   },
+   "SpotBidPercentage" : {
+     "Description": "Percentage of ondemand price to set as the maximum spot bid.",
+     "Type": "Number",
+     "Default": "100"
+   },
+   "ContainerImage" : {
+     "Description": "Docker container image.",
+     "Type": "String",
+     "Default": "137112412989.dkr.ecr.us-west-2.amazonaws.com/amazonlinux:latest"
+   }
+  },
+  "Conditions": {
+    "UseSpot" : {
+      "Fn::Equals" : [ { "Ref" : "ClusterType" }, "spot" ]
+    }
+  },
+  "Resources": {
+    "IamInstanceProfile" : {
+      "Type" : "AWS::IAM::InstanceProfile",
+      "Properties" : {
+        "Roles" : [{ "Ref" : "EcsInstanceRole" }]
+      }
+    },
+    "EcsInstanceRole" : {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument" : {
+          "Version" : "2008-10-17",
+          "Statement" : [
+            {
+              "Sid" : "",
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : "ec2.amazonaws.com"
+              },
+              "Action" : "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns" : [
+          "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+        ]
+      }
+    },
+    "BatchServiceRole" : {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument" : {
+          "Version" : "2012-10-17",
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : "batch.amazonaws.com"
+              },
+              "Action" : "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns" : [
+          "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
+        ]
+      }
+    },
+    "SpotIamFleetRole": {
+      "Type" : "AWS::IAM::Role",
+      "Properties" : {
+        "AssumeRolePolicyDocument" : {
+          "Version" : "2012-10-17",
+          "Statement" : [
+            {
+              "Effect" : "Allow",
+              "Principal" : {
+                "Service" : "spotfleet.amazonaws.com"
+              },
+              "Action" : "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns" : [
+          "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+        ]
+      },
+      "Condition": "UseSpot"
+    },
+    "ComputeEnvironment": {
+      "Type" : "AWS::Batch::ComputeEnvironment",
+      "Properties" : {
+        "Type" : "MANAGED",
+        "ServiceRole" : { "Ref" : "BatchServiceRole" },
+        "ComputeEnvironmentName" : { "Ref": "ClusterName" },
+        "ComputeResources" : {
+          "Type" : { "Fn::If" : [ "UseSpot", "SPOT", "EC2" ]},
+          "MinvCpus" : { "Ref": "MinvCpu"},
+          "DesiredvCpus" : { "Ref": "DesiredvCpu"},
+          "MaxvCpus" : { "Ref": "MaxvCpu"},
+          "InstanceTypes" : { "Ref": "InstanceTypes" },
+          "Subnets" : [{ "Ref" : "Subnet" }],
+          "Ec2KeyPair" : { "Ref" : "KeyName" },
+          "SecurityGroupIds" : { "Ref" : "SecurityGroups" },
+          "InstanceRole" : { "Ref" : "IamInstanceProfile" },
+          "BidPercentage" : { "Ref" : "SpotBidPercentage" },
+          "SpotIamFleetRole": {
+            "Fn::If": [
+              "UseSpot",
+              { "Ref": "SpotIamFleetRole" },
+              { "Ref": "AWS::NoValue" }
+            ]
+          }
+        },
+        "State" : "ENABLED"
+      }
+    },
+    "JobQueue" : {
+      "Type" : "AWS::Batch::JobQueue",
+      "Properties" : {
+        "JobQueueName" : { "Ref": "ClusterName" },
+        "Priority" : 1,
+        "ComputeEnvironmentOrder" : [
+          {
+            "Order" : 1,
+            "ComputeEnvironment" : { "Ref" : "ComputeEnvironment" }
+          }
+        ]
+      }
+    },
+    "JobDefinitionSerial" : {
+      "Type" : "AWS::Batch::JobDefinition",
+      "Properties" : {
+        "JobDefinitionName" : { "Ref": "ClusterName" },
+        "Type" : "container",
+        "ContainerProperties" : {
+          "Image" : { "Ref" : "ContainerImage" },
+          "Vcpus" : 2,
+          "Memory" : 2000,
+          "Command" : [ "echo", "Hello world" ]
+        },
+        "RetryStrategy" : {
+          "Attempts" : 1
+        }
+      }
+    }
+  },
+  "Outputs" : {
+    "ComputeEnvironmentArn" : {
+      "Value" : { "Ref" : "ComputeEnvironment" }
+    },
+    "JobQueueArn" : {
+      "Value" : { "Ref" : "JobQueue" }
+    },
+    "JobDefinitionArn": {
+      "Value" : { "Ref" : "JobDefinitionSerial" }
+    }
+  }
+}

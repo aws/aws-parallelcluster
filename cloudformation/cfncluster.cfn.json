@@ -702,7 +702,7 @@
       "AllowedPattern": "(NONE|^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$)"
     },
     "SpotPrice": {
-      "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\".",
+      "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\". When awsbatch is the scheduler, this is spot bid percentage.",
       "Type": "Number",
       "Default": "0.00"
     },
@@ -906,6 +906,7 @@
         "torque",
         "slurm",
         "custom",
+        "awsbatch",
         "test"
       ]
     },
@@ -920,7 +921,7 @@
       "Default": "default"
     },
     "AdditionalSG": {
-      "Description": "Additional VPC secuirty group to be added to instances. Defaults to NONE",
+      "Description": "Additional VPC security group to be added to instances. Defaults to NONE",
       "Type": "String",
       "Default": "NONE",
       "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
@@ -997,6 +998,21 @@
       "Description": "A second CloudFormation template to launch with the cluster",
       "Type": "String",
       "Default": "NONE"
+    },
+    "MinvCpu": {
+      "Description" : "Min vCPU's for ComputeEnvironment",
+      "Type": "Number",
+      "Default": 0
+    },
+    "DesiredvCpu": {
+      "Description" : "Desired vCPU's for ComputeEnvironment",
+      "Type": "Number",
+      "Default": 0
+    },
+    "MaxvCpu": {
+      "Description" : "Max vCPU's for ComputeEnvironment",
+      "Type": "Number",
+      "Default": 128
     }
   },
   "Conditions": {
@@ -1559,9 +1575,46 @@
       ]
     },
     "CreateLaunchTemplate": {
+      "Fn::And": [
+        {
+          "Fn::Not": [
+            {
+              "Condition": "GovCloudRegion"
+            }
+          ]
+        },
+        {
+          "Condition": "CreateComputeFleet"
+        }
+      ]
+    },
+    "CreateComputeFleet": {
       "Fn::Not": [
         {
-          "Condition": "GovCloudRegion"
+          "Fn::Equals": [
+            {
+              "Ref": "Scheduler"
+            },
+            "awsbatch"
+          ]
+        }
+      ]
+    },
+    "CreateAWSBatchStack": {
+      "Fn::Equals": [
+        {
+          "Ref": "Scheduler"
+        },
+        "awsbatch"
+      ]
+    },
+    "GovCloudRegion": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            { "Ref": "AWS::Partition" },
+            "aws"
+          ]
         }
       ]
     }
@@ -1947,7 +2000,11 @@
                       {
                         "Ref": "AWS::AccountId"
                       },
-                      ":stack/cfncluster-*"
+                      ":stack/",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "/*"
                     ]
                   ]
                 }
@@ -2846,6 +2903,7 @@
           }
         }
       },
+      "Condition": "CreateComputeFleet",
       "Metadata": {
         "AWS::CloudFormation::Designer": {
           "id": "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
@@ -2854,6 +2912,7 @@
     },
     "ComputeServerLaunchConfig": {
       "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Condition": "CreateComputeFleet",
       "Properties": {
         "SecurityGroups": [
           {
@@ -3478,6 +3537,7 @@
     },
     "ComputeServerLaunchTemplate": {
       "Type": "AWS::EC2::LaunchTemplate",
+      "Condition": "CreateComputeFleet",
       "Properties": {
         "LaunchTemplateData": {
           "NetworkInterfaces": [
@@ -4368,6 +4428,134 @@
         }
       },
       "Condition": "CreateSubStack"
+    },
+    "AWSBatchStack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "MinvCpu": { "Ref": "MinvCpu" },
+          "DesiredvCpu": { "Ref": "DesiredvCpu" },
+          "MaxvCpu": { "Ref": "MaxvCpu" },
+          "InstanceTypes": { "Ref": "ComputeInstanceType" },
+          "Subnet": {
+            "Fn::If": [
+              "UseMasterSubnetForCompute",
+              {
+                "Ref": "MasterSubnetId"
+              },
+              {
+                "Fn::If": [
+                  "CreateComputeSubnetForCompute",
+                  {
+                    "Ref": "ComputeSubnet"
+                  },
+                  {
+                    "Ref": "ComputeSubnetId"
+                  }
+                ]
+              }
+            ]
+          },
+          "SecurityGroups": { "Fn::Join": [
+            ",",
+            [
+              { "Fn::If": [
+                  "CreateSecurityGroups",
+                  {
+                    "Ref": "ComputeSecurityGroup"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              },
+              {
+                "Fn::If": [
+                  "AddAdditionalSG",
+                  {
+                    "Ref": "AdditionalSG"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              },
+              {
+                "Fn::If": [
+                  "UseExistingSecurityGroup",
+                  {
+                    "Ref": "VPCSecurityGroupId"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              }
+            ]
+          ]},
+          "OS": { "Ref": "BaseOS" },
+          "ClusterName": { "Ref": "AWS::StackName" },
+          "ClusterType": { "Ref": "ClusterType" },
+          "KeyName": { "Ref": "KeyName" },
+          "SpotBidPercentage": { "Fn::If": [
+            "UseSpotPrice",
+            { "Ref": "SpotPrice" },
+            { "Ref": "AWS::NoValue" }
+          ]}
+        },
+        "TemplateURL": {
+          "Fn::If": [
+            "GovCloudRegion",
+            { "Fn::Join": [
+              "",
+              [
+                "https://s3-",
+                { "Ref": "AWS::Region" },
+                ".amazonaws.com/",
+                { "Ref": "AWS::Region" },
+                "-cfncluster/templates/batch-",
+                { "Fn::Select" : [
+                  "1",
+                  { "Fn::Split": [
+                    "-",
+                    {
+                      "Fn::FindInMap": [
+                        "CfnClusterVersions",
+                        "default",
+                        "cfncluster"
+                      ]
+                    }
+                  ]}
+                ]},
+                ".cfn.json"
+              ]
+            ]},
+            { "Fn::Join": [
+              "",
+              [
+                "https://s3.amazonaws.com/",
+                { "Ref": "AWS::Region" },
+                "-cfncluster/templates/batch-",
+                { "Fn::Select" : [
+                  "1",
+                  { "Fn::Split": [
+                    "-",
+                    {
+                      "Fn::FindInMap": [
+                        "CfnClusterVersions",
+                        "default",
+                        "cfncluster"
+                      ]
+                    }
+                  ]}
+                ]},
+                ".cfn.json"
+              ]
+            ]}
+          ]
+        }
+      },
+      "Condition": "CreateAWSBatchStack"
     },
     "SharedVolume": {
       "Type": "AWS::EC2::Volume",
