@@ -46,7 +46,8 @@ class CfnClusterConfig(object):
 
     def __init__(self, args):
         self.args = args
-        self.parameters = []
+        self.cluster_options = self.__init_cluster_options()
+        self.parameters = {}
         self.version = pkg_resources.get_distribution("cfncluster").version
         self.__DEFAULT_CONFIG = False
         __args_func = self.args.func.__name__
@@ -118,7 +119,7 @@ class CfnClusterConfig(object):
             except AttributeError:
                 self.__cluster_template = __config.get('global', 'cluster_template')
         self.__cluster_section = ('cluster %s' % self.__cluster_template)
-        self.parameters.append(('CLITemplate',self.__cluster_template))
+        self.parameters['CLITemplate'] = self.__cluster_template
 
         # Check if package updates should be checked
         try:
@@ -158,7 +159,7 @@ class CfnClusterConfig(object):
         except configparser.NoOptionError:
             print("ERROR: Missing key_name option in [%s] section." % self.__cluster_section)
             sys.exit(1)
-        self.parameters.append(('KeyName', self.key_name))
+        self.parameters['KeyName'] = self.key_name
 
         # Determine the CloudFormation URL to be used
         # Order is 1) CLI arg 2) Config file 3) default for version + region
@@ -209,8 +210,8 @@ class CfnClusterConfig(object):
                     sys.exit(1)
                 if self.__sanity_check and self.__vpc_options.get(key)[1] is not None:
                     config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
-                                                self.__vpc_options.get(key)[1],__temp__)
-                self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
+                                                 self.__vpc_options.get(key)[1],__temp__)
+                self.parameters[self.__vpc_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
             except configparser.NoSectionError:
@@ -218,36 +219,18 @@ class CfnClusterConfig(object):
                       % (self.__vpc_section, self.__cluster_section))
                 sys.exit(1)
 
-        # Dictionary list of all cluster section options
-        self.__cluster_options = dict(cluster_user=('ClusterUser', None), compute_instance_type=('ComputeInstanceType',None),
-                                      master_instance_type=('MasterInstanceType', None), initial_queue_size=('InitialQueueSize',None),
-                                      max_queue_size=('MaxQueueSize',None), maintain_initial_size=('MaintainInitialSize',None),
-                                      scheduler=('Scheduler',None), cluster_type=('ClusterType',None), ephemeral_dir=('EphemeralDir',None),
-                                      spot_price=('SpotPrice',None), custom_ami=('CustomAMI','EC2Ami'), pre_install=('PreInstallScript','URL'),
-                                      post_install=('PostInstallScript','URL'), proxy_server=('ProxyServer',None),
-                                      placement=('Placement',None), placement_group=('PlacementGroup','EC2PlacementGroup'),
-                                      encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
-                                      post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
-                                      s3_read_write_resource=('S3ReadWriteResource',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
-                                      ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
-                                      master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
-                                      base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName','EC2IAMRoleName'),extra_json=('ExtraJson',None),
-                                      custom_chef_cookbook=('CustomChefCookbook',None),custom_chef_runlist=('CustomChefRunList',None),
-                                      additional_cfn_template=('AdditionalCfnTemplate',None)
-                                      )
-
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
-        for key in self.__cluster_options:
+        for key in self.cluster_options:
             try:
                 __temp__ = __config.get(self.__cluster_section, key)
                 if not __temp__:
                     print("ERROR: %s defined but not set in [%s] section"
                                                     % (key, self.__cluster_section))
                     sys.exit(1)
-                if self.__sanity_check and self.__cluster_options.get(key)[1] is not None:
+                if self.__sanity_check and self.cluster_options.get(key)[1] is not None:
                     config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
-                                                self.__cluster_options.get(key)[1],__temp__)
-                self.parameters.append((self.__cluster_options.get(key)[0],__temp__))
+                                                 self.cluster_options.get(key)[1],__temp__)
+                self.parameters[self.cluster_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
 
@@ -296,7 +279,7 @@ class CfnClusterConfig(object):
                         if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
                             config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__ebs_options.get(key)[1],__temp__)
-                        self.parameters.append((self.__ebs_options.get(key)[0],__temp__))
+                        self.parameters[self.__ebs_options.get(key)[0]] = __temp__
                     except configparser.NoOptionError:
                         pass
         except AttributeError:
@@ -327,12 +310,23 @@ class CfnClusterConfig(object):
                             sys.exit(1)
                         if self.__sanity_check and self.__scaling_options.get(key)[1] is not None:
                             config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
-                                                self.__scaling_options.get(key)[1],__temp__)
-                        self.parameters.append((self.__scaling_options.get(key)[0],__temp__))
+                                                         self.__scaling_options.get(key)[1], __temp__)
+                        self.parameters[self.__scaling_options.get(key)[0]] = __temp__
                     except configparser.NoOptionError:
                         pass
         except AttributeError:
             pass
+
+        # pass arbitrary parameters through
+        # TODO remove when batch releases CloudFormation support
+        params = ['aws_batch_sg', 'zeta_endpoint', 'docker_image', 'job_role_arn', 'service_role', 'instance_role', 'security_group']
+        self.__batch_section = 'batch mnp'
+        self.batch_parameters = {}
+        for key in params:
+            try:
+                self.batch_parameters[key] = __config.get(self.__batch_section, key)
+            except:
+                pass
 
         # handle aliases
         self.aliases = {}
@@ -344,12 +338,45 @@ class CfnClusterConfig(object):
         # Handle extra parameters supplied on command-line
         try:
             if self.args.extra_parameters is not None:
-                self.__temp_dict = dict(self.parameters)
-                self.__temp_dict.update(dict(self.args.extra_parameters))
-                self.__dictlist = []
-                for key, value in self.__temp_dict.items():
-                    temp = [str(key),str(value)]
-                    self.__dictlist.append(temp)
-                self.parameters = self.__dictlist
+                self.parameters.update(dict(self.args.extra_parameters))
         except AttributeError:
             pass
+
+    @staticmethod
+    def __init_cluster_options():
+        return dict(
+            cluster_user=('ClusterUser', None),
+            compute_instance_type=('ComputeInstanceType', None),
+            master_instance_type=('MasterInstanceType', None),
+            initial_queue_size=('InitialQueueSize', None),
+            max_queue_size=('MaxQueueSize', None),
+            maintain_initial_size=('MaintainInitialSize', None),
+            scheduler=('Scheduler', None),
+            cluster_type=('ClusterType', None),
+            ephemeral_dir=('EphemeralDir', None),
+            spot_price=('SpotPrice', None),
+            custom_ami=('CustomAMI', 'EC2Ami'),
+            pre_install=('PreInstallScript', 'URL'),
+            post_install=('PostInstallScript', 'URL'),
+            proxy_server=('ProxyServer', None),
+            placement=('Placement', None),
+            placement_group=('PlacementGroup', 'EC2PlacementGroup'),
+            encrypted_ephemeral=('EncryptedEphemeral', None),
+            pre_install_args=('PreInstallArgs', None),
+            post_install_args=('PostInstallArgs', None),
+            s3_read_resource=('S3ReadResource', None),
+            s3_read_write_resource=('S3ReadWriteResource', None),
+            shared_dir=('SharedDir', None),
+            tenancy=('Tenancy', None),
+            ephemeral_kms_key_id=('EphemeralKMSKeyId', None),
+            cluster_ready=('ClusterReadyScript', 'URL'),
+            master_root_volume_size=('MasterRootVolumeSize', None),
+            compute_root_volume_size=('ComputeRootVolumeSize', None),
+            base_os=('BaseOS', None),
+            ec2_iam_role=('EC2IAMRoleName', 'EC2IAMRoleName'),
+            extra_json=('ExtraJson', None),
+            custom_chef_cookbook=('CustomChefCookbook', None),
+            custom_chef_runlist=('CustomChefRunList', None),
+            additional_cfn_template=('AdditionalCfnTemplate', None),
+            custom_awsbatch_template_url=('CustomAWSBatchTemplateURL', None),
+        )

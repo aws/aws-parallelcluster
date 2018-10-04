@@ -101,7 +101,7 @@ key_name = mykey
 # OS type used in the cluster
 # (defaults to alinux in the default template)
 #base_os = alinux
-# CloudWatch Logs region
+# Existing EC2 IAM role to be assosiated with the EC2 instances
 # (defaults to NONE in the default template)
 #ec2_iam_role = NONE
 # Extra Json to be merged with the dna.json used by Chef

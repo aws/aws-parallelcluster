@@ -167,7 +167,11 @@ If cluster_type is set to spot, you can optionally set the maximum spot price fo
 
 See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
-    spot_price = 0.00
+    spot_price = 1.50
+
+Note: if you're using awsbatch as your scheduler, this optional parameter becomes on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price.
+
+    spot_price = 85
 
 .. _custom_ami_section:
 
