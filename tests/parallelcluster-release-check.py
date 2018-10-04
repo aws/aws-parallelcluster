@@ -460,7 +460,7 @@ def run_test(
             key_path=extra_args["key_path"],
             key_name=key_name,
             master_node="",
-            scaledown_idletime=2,
+            scaledown_idletime=4,
         )
 
         _write_pcluster_config(cluster_config=cluster_config, extra_args=extra_args)
