@@ -4,7 +4,7 @@ IAM in CfnCluster
 ========================
 
 .. warning::
-    Between CfnCluster 1.5.3 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket.
+    Between CfnCluster 1.5.3 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket and cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_NAME>:<STACK_NAME>
     If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
 
     Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
