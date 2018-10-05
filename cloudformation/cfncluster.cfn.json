@@ -1740,59 +1740,6 @@
         "berkshelf": "7.0.4",
         "ami": "dev"
       }
-    },
-    "AWSRegion2Capabilites": {
-      "eu-west-1": {
-        "arn": "aws"
-      },
-      "eu-west-2": {
-        "arn": "aws"
-      },
-      "eu-west-3": {
-        "arn": "aws"
-      },
-      "us-east-1": {
-        "arn": "aws"
-      },
-      "us-east-2": {
-        "arn": "aws"
-      },
-      "ap-northeast-1": {
-        "arn": "aws"
-      },
-      "us-west-2": {
-        "arn": "aws"
-      },
-      "sa-east-1": {
-        "arn": "aws"
-      },
-      "us-west-1": {
-        "arn": "aws"
-      },
-      "ap-southeast-1": {
-        "arn": "aws"
-      },
-      "ap-southeast-2": {
-        "arn": "aws"
-      },
-      "eu-central-1": {
-        "arn": "aws"
-      },
-      "us-gov-west-1": {
-        "arn": "aws-us-gov"
-      },
-      "ap-northeast-2": {
-        "arn": "aws"
-      },
-      "ap-northeast-3": {
-        "arn": "aws"
-      },
-      "ap-south-1": {
-        "arn": "aws"
-      },
-      "ca-central-1": {
-        "arn": "aws"
-      }
     }
   },
   "Resources": {
@@ -2011,7 +1958,11 @@
                   "Fn::Join": [
                     "",
                     [
-                      "arn:aws:cloudformation:",
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":cloudformation:",
                       {
                         "Ref": "AWS::Region"
                       },
@@ -2046,13 +1997,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":dynamodb:",
                       {
@@ -2084,13 +2029,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":s3:::",
                       {
@@ -2125,13 +2064,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":logs:*:*:*"
                     ]
