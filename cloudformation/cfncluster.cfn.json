@@ -1592,121 +1592,121 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-0d111a9e2cc41708f",
-        "centos6": "ami-09b435c6b7699e0e4",
-        "centos7": "ami-0aa3d0ccd5ed2a95c",
-        "ubuntu1404": "ami-0eba7c27cb59a237b",
-        "ubuntu1604": "ami-0270071615c322b74"
+        "alinux": "ami-09b2196cc49cc4d87",
+        "centos6": "ami-01a014d8086e17bd7",
+        "centos7": "ami-087df3103f8099ac1",
+        "ubuntu1404": "ami-05f8a7d3bb43f4a76",
+        "ubuntu1604": "ami-0c9ed39906b0e0b1d"
       },
       "ap-northeast-2": {
-        "alinux": "ami-06185eef3b1c08627",
-        "centos6": "ami-025ca1fa28a035048",
-        "centos7": "ami-09d851e0ace561ecc",
-        "ubuntu1404": "ami-0b280886c5268c82c",
-        "ubuntu1604": "ami-0ab8987221fb3560e"
+        "alinux": "ami-0b7af8eb1a7fe8643",
+        "centos6": "ami-04639145561161d99",
+        "centos7": "ami-031deb53a6ebb253d",
+        "ubuntu1404": "ami-0dce3b53475a8d516",
+        "ubuntu1604": "ami-051318b19cddee300"
       },
       "ap-northeast-3": {
-        "alinux": "ami-08d9b827573a70706",
-        "centos6": "ami-011d672fe71dcedbf",
-        "centos7": "ami-03eb567a5a8831e5a",
-        "ubuntu1404": "ami-08c60c70dd5721d9a",
-        "ubuntu1604": "ami-0564b8d6c791ee545"
+        "alinux": "ami-0bbdebb4a85f9af3a",
+        "centos6": "ami-015bb694ff19eeeeb",
+        "centos7": "ami-0c33e6328a28c6c83",
+        "ubuntu1404": "ami-0034c5ab16e9b08bf",
+        "ubuntu1604": "ami-0d39d76b1e9422cb8"
       },
       "ap-south-1": {
-        "alinux": "ami-0d441d984f96118fd",
-        "centos6": "ami-0d07f1d788e79c3d0",
-        "centos7": "ami-0c1047421394bcfde",
-        "ubuntu1404": "ami-002e1514fe9de7717",
-        "ubuntu1604": "ami-003fbe61119d3c395"
+        "alinux": "ami-09cacb23abc99a93c",
+        "centos6": "ami-0829a92071e001c0b",
+        "centos7": "ami-09b446829cd433b33",
+        "ubuntu1404": "ami-0c72ae15adce33add",
+        "ubuntu1604": "ami-08054ad76abc0136b"
       },
       "ap-southeast-1": {
-        "alinux": "ami-06610f443913f350c",
-        "centos6": "ami-046f84d4273a0914f",
-        "centos7": "ami-04c3ddca4fea3f161",
-        "ubuntu1404": "ami-03d901320ea72a386",
-        "ubuntu1604": "ami-0086422cb2d22cdbe"
+        "alinux": "ami-0eeef3428d37c4225",
+        "centos6": "ami-0a118d30b3d6261c2",
+        "centos7": "ami-040c22e2be509358a",
+        "ubuntu1404": "ami-0d3bace0654b82b81",
+        "ubuntu1604": "ami-01a4404166c9c3d74"
       },
       "ap-southeast-2": {
-        "alinux": "ami-03abe8841903bc6de",
-        "centos6": "ami-07fd47c6447dc1e26",
-        "centos7": "ami-04a04f31fb8e02627",
-        "ubuntu1404": "ami-0926a3c94c58591f8",
-        "ubuntu1604": "ami-0eaa45f32e98b00ea"
+        "alinux": "ami-01b96994d24583c2e",
+        "centos6": "ami-0956e6cce8b9c4bc5",
+        "centos7": "ami-08ba8d63c703e2b95",
+        "ubuntu1404": "ami-0580fbaa8917e34d3",
+        "ubuntu1604": "ami-034da688c9b148294"
       },
       "ca-central-1": {
-        "alinux": "ami-035ccf997b6ada1e5",
-        "centos6": "ami-095d41ba921b255ea",
-        "centos7": "ami-0a393b36b310f1409",
-        "ubuntu1404": "ami-0aa476c73dc4eb261",
-        "ubuntu1604": "ami-0944638729ecc591e"
+        "alinux": "ami-02a862a9b110142e3",
+        "centos6": "ami-02d20a9cf33c66d63",
+        "centos7": "ami-0226680e1ca9842db",
+        "ubuntu1404": "ami-0c017f90c89ba26c0",
+        "ubuntu1604": "ami-082f8a99b6001fdf0"
       },
       "eu-central-1": {
-        "alinux": "ami-052b446957d6dde33",
-        "centos6": "ami-0eae3ca872f3c46c9",
-        "centos7": "ami-03a66f9cf752897c8",
-        "ubuntu1404": "ami-034f952b6e8ed8d3c",
-        "ubuntu1604": "ami-096c5966872657ecd"
+        "alinux": "ami-0bf1180c33878c639",
+        "centos6": "ami-0060a72b3edce3a2b",
+        "centos7": "ami-0c6c5e6443b84c367",
+        "ubuntu1404": "ami-0951d59cba801e2ee",
+        "ubuntu1604": "ami-06761cc6f99f5e06e"
       },
       "eu-west-1": {
-        "alinux": "ami-0e0d7168ae4c3d79b",
-        "centos6": "ami-0b206759c94100c62",
-        "centos7": "ami-0c0a54bf2f46c50c8",
-        "ubuntu1404": "ami-01328b992e18f658b",
-        "ubuntu1604": "ami-0807e48d1efb2b592"
+        "alinux": "ami-05b563f5c901c44a5",
+        "centos6": "ami-0ab9dda27d035ebf4",
+        "centos7": "ami-0f1b8ccbc2bdffd52",
+        "ubuntu1404": "ami-09f89d2fd5c8e5ced",
+        "ubuntu1604": "ami-0a667f5b231b76799"
       },
       "eu-west-2": {
-        "alinux": "ami-076e033346b601289",
-        "centos6": "ami-063e38d6a40c96694",
-        "centos7": "ami-0d34b4490d2f2afe5",
-        "ubuntu1404": "ami-0b08f8c61db625a6b",
-        "ubuntu1604": "ami-03d4e45c67474c0c1"
+        "alinux": "ami-0798d70bab4682e77",
+        "centos6": "ami-0a831e98ae6aa1f74",
+        "centos7": "ami-0a7e5125d8d49ea0a",
+        "ubuntu1404": "ami-0e56e4df4b7ed339f",
+        "ubuntu1604": "ami-040b4a4643773e624"
       },
       "eu-west-3": {
-        "alinux": "ami-046b3b62c2f47b6dd",
-        "centos6": "ami-0f2556ba4e82eee8a",
-        "centos7": "ami-06d1ee3dd331b701e",
-        "ubuntu1404": "ami-0c33858ae592cd30e",
-        "ubuntu1604": "ami-0ca1eea4a5dc78718"
+        "alinux": "ami-02013d634b95d6867",
+        "centos6": "ami-09e6cd7353a18d5a3",
+        "centos7": "ami-046126fe141dcf08b",
+        "ubuntu1404": "ami-0f5f8350e89d54586",
+        "ubuntu1604": "ami-0044c90b904554e33"
       },
       "sa-east-1": {
-        "alinux": "ami-0fc319ee1b17cb133",
-        "centos6": "ami-085ddd10c24b9ad02",
-        "centos7": "ami-05c6b6de73c9a8b74",
-        "ubuntu1404": "ami-023e938f210af929e",
-        "ubuntu1604": "ami-00c61c5eca332e0b8"
+        "alinux": "ami-0b10eed9bba4bc01a",
+        "centos6": "ami-06c939ff3b9cbd79b",
+        "centos7": "ami-0755d4aa6ca15a5f8",
+        "ubuntu1404": "ami-03b2064cec36e287e",
+        "ubuntu1604": "ami-0ad1b22b6a88e472a"
       },
       "us-east-1": {
-        "alinux": "ami-0d08839fb598a678d",
-        "centos6": "ami-07ecc9bd36de77fe0",
-        "centos7": "ami-0aaac75139dac3549",
-        "ubuntu1404": "ami-0cb3b6ceaf926000a",
-        "ubuntu1604": "ami-0e330c03d6a0f7416"
+        "alinux": "ami-0e98cc49c548d97c4",
+        "centos6": "ami-0376a5267e22cb8de",
+        "centos7": "ami-0f4f9c270a69954b2",
+        "ubuntu1404": "ami-0136556060ebd873c",
+        "ubuntu1604": "ami-0ea3d3b4703c3715e"
       },
       "us-east-2": {
-        "alinux": "ami-0c1e220a7d435626d",
-        "centos6": "ami-0f83786f018e50aef",
-        "centos7": "ami-0b8dd95a61cb55947",
-        "ubuntu1404": "ami-035a7aa06162b1faa",
-        "ubuntu1604": "ami-03a08f02b6193b9a6"
+        "alinux": "ami-0631aece7a6bb049b",
+        "centos6": "ami-04e82461a7cb8b5ad",
+        "centos7": "ami-0197c3485aa47ae6c",
+        "ubuntu1404": "ami-03036787fa98f97c3",
+        "ubuntu1604": "ami-080ae4886261cf83e"
       },
       "us-gov-west-1": {
-        "alinux": "ami-69009908",
-        "ubuntu1404": "ami-01009960",
-        "ubuntu1604": "ami-c40e97a5"
+        "alinux": "ami-b0cf54d1",
+        "ubuntu1404": "ami-b5c358d4",
+        "ubuntu1604": "ami-c1cc57a0"
       },
       "us-west-1": {
-        "alinux": "ami-0bfa13075d27a6978",
-        "centos6": "ami-09504713997f28685",
-        "centos7": "ami-0fbf2663d87a6e1d1",
-        "ubuntu1404": "ami-0028dd13009080829",
-        "ubuntu1604": "ami-0538de8d59ee87ceb"
+        "alinux": "ami-07e208209bdc732f9",
+        "centos6": "ami-07a1dc6b40b5f5b56",
+        "centos7": "ami-090d6260cb05bf312",
+        "ubuntu1404": "ami-05ffeb88c2f0f2558",
+        "ubuntu1604": "ami-036ccc554c94da18c"
       },
       "us-west-2": {
-        "alinux": "ami-0a31d27ac6add37d4",
-        "centos6": "ami-0c8f89011237ac39c",
-        "centos7": "ami-07c45a2de36de7033",
-        "ubuntu1404": "ami-0c4467fc5217f7d85",
-        "ubuntu1604": "ami-01e20e07651baa7b1"
+        "alinux": "ami-0841d0af6c8be91f7",
+        "centos6": "ami-0d4b55af2214d39b4",
+        "centos7": "ami-06d4968a149d798c6",
+        "ubuntu1404": "ami-0b3d649f845d02a8f",
+        "ubuntu1604": "ami-08fc187803f5d2f15"
       }
     },
     "OSFeatures": {
@@ -1739,59 +1739,6 @@
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
         "ami": "dev"
-      }
-    },
-    "AWSRegion2Capabilites": {
-      "eu-west-1": {
-        "arn": "aws"
-      },
-      "eu-west-2": {
-        "arn": "aws"
-      },
-      "eu-west-3": {
-        "arn": "aws"
-      },
-      "us-east-1": {
-        "arn": "aws"
-      },
-      "us-east-2": {
-        "arn": "aws"
-      },
-      "ap-northeast-1": {
-        "arn": "aws"
-      },
-      "us-west-2": {
-        "arn": "aws"
-      },
-      "sa-east-1": {
-        "arn": "aws"
-      },
-      "us-west-1": {
-        "arn": "aws"
-      },
-      "ap-southeast-1": {
-        "arn": "aws"
-      },
-      "ap-southeast-2": {
-        "arn": "aws"
-      },
-      "eu-central-1": {
-        "arn": "aws"
-      },
-      "us-gov-west-1": {
-        "arn": "aws-us-gov"
-      },
-      "ap-northeast-2": {
-        "arn": "aws"
-      },
-      "ap-northeast-3": {
-        "arn": "aws"
-      },
-      "ap-south-1": {
-        "arn": "aws"
-      },
-      "ca-central-1": {
-        "arn": "aws"
       }
     }
   },
@@ -2001,6 +1948,39 @@
               ]
             },
             {
+              "Sid": "Cloudformation",
+              "Action": [
+                "cloudformation:DescribeStacks"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":cloudformation:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":stack/",
+                      {
+                        "Ref": "AWS::StackName"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              ]
+            },
+            {
               "Sid": "DynamoDBTable",
               "Action": [
                 "dynamodb:PutItem",
@@ -2017,13 +1997,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":dynamodb:",
                       {
@@ -2055,13 +2029,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":s3:::",
                       {
@@ -2096,13 +2064,7 @@
                     [
                       "arn:",
                       {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
+                        "Ref": "AWS::Partition"
                       },
                       ":logs:*:*:*"
                     ]
@@ -2682,6 +2644,9 @@
                     },
                     "cfn_proxy": {
                       "Ref": "ProxyServer"
+                    },
+                    "cfn_max_queue_size": {
+                      "Ref": "MaxQueueSize"
                     },
                     "compute_instance_type": {
                       "Ref": "ComputeInstanceType"

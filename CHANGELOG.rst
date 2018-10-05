@@ -8,6 +8,7 @@ CHANGELOG
 * Refactor scaling down to scale down faster and take advantage of per-second billing.
 * Add `scaledown_idletime` parameter as part of scale-down refactoring
 * Lock hosts before termination to ensure removal of dead compute nodes from host list
+* Fix HTTP proxy support
 
 1.5.4
 =====
