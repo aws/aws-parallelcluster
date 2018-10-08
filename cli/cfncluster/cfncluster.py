@@ -231,7 +231,7 @@ def list(args):
     try:
         stacks = cfn.describe_stacks().get('Stacks')
         for stack in stacks:
-            if stack.get('StackName').startswith('cfncluster-'):
+            if stack.get('ParentId') is None and stack.get('StackName').startswith('cfncluster-'):
                 logger.info('%s' % (stack.get('StackName')[11:]))
     except ClientError as e:
         logger.critical(e.response.get('Error').get('Message'))
