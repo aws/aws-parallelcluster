@@ -2334,8 +2334,8 @@
         "EbsOptimized": {
           "Fn::If": [
             "IsMasterInstanceEbsOpt",
-            true,
-            false
+            "true",
+            "false"
           ]
         },
         "IamInstanceProfile": {
@@ -2814,8 +2814,16 @@
             ]
           }
         ],
-        "LaunchConfigurationName": {
-          "Ref": "ComputeServerLaunchConfig"
+        "LaunchTemplate": {
+            "LaunchTemplateId" : {
+              "Ref": "ComputeServerLaunchTemplate"
+            },
+            "Version": {
+              "Fn::GetAtt": [
+                "ComputeServerLaunchTemplate",
+                "LatestVersionNumber"
+              ]
+            }
         },
         "MinSize": {
           "Fn::If": [
@@ -2879,226 +2887,245 @@
         }
       }
     },
-    "ComputeServerLaunchConfig": {
-      "Type": "AWS::AutoScaling::LaunchConfiguration",
+    "ComputeServerLaunchTemplate": {
+      "Type": "AWS::EC2::LaunchTemplate",
       "Properties": {
-        "SecurityGroups": [
-          {
-            "Fn::If": [
-              "CreateSecurityGroups",
+        "LaunchTemplateData": {
+          "NetworkInterfaces": [{
+            "DeviceIndex": 0,
+            "Groups": [
               {
-                "Ref": "ComputeSecurityGroup"
+                "Fn::If": [
+                  "CreateSecurityGroups",
+                  {
+                    "Ref": "ComputeSecurityGroup"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
               },
               {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          },
-          {
-            "Fn::If": [
-              "AddAdditionalSG",
-              {
-                "Ref": "AdditionalSG"
+                "Fn::If": [
+                  "AddAdditionalSG",
+                  {
+                    "Ref": "AdditionalSG"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
               },
               {
-                "Ref": "AWS::NoValue"
+                "Fn::If": [
+                  "UseExistingSecurityGroup",
+                  {
+                    "Ref": "VPCSecurityGroupId"
+                  },
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
               }
-            ]
-          },
-          {
-            "Fn::If": [
-              "UseExistingSecurityGroup",
-              {
-                "Ref": "VPCSecurityGroupId"
-              },
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          }
-        ],
-        "AssociatePublicIpAddress": {
-          "Fn::If": [
-            "ComputePublicIps",
-            "true",
-            "false"
-          ]
-        },
-        "InstanceType": {
-          "Ref": "ComputeInstanceType"
-        },
-        "KeyName": {
-          "Ref": "KeyName"
-        },
-        "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
+            ],
+            "AssociatePublicIpAddress" : {
+              "Fn::If": [
+                "ComputePublicIps",
+                true,
+                false
+              ],
             }
-          ]
-        },
-        "SpotPrice": {
-          "Fn::If": [
-            "UseSpotInstances",
-            {
-              "Ref": "SpotPrice"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "ImageId": {
-          "Fn::If": [
-            "UseCustomAMI",
-            {
-              "Ref": "CustomAMI"
-            },
-            {
-              "Fn::FindInMap": [
-                "AWSRegionOS2AMI",
-                {
-                  "Ref": "AWS::Region"
-                },
-                {
-                  "Ref": "BaseOS"
+          }],
+          "InstanceType": {
+            "Ref": "ComputeInstanceType"
+          },
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "IamInstanceProfile": {
+            "Fn::If": [
+              "UseEC2IAMRole",
+              {
+                "Name": {
+                  "Ref": "EC2IAMRoleName"
                 }
-              ]
-            }
-          ]
-        },
-        "InstanceMonitoring": "false",
-        "BlockDeviceMappings": [
-          {
-            "DeviceName": "/dev/xvdba",
-            "VirtualName": "ephemeral0"
-          },
-          {
-            "DeviceName": "/dev/xvdbb",
-            "VirtualName": "ephemeral1"
-          },
-          {
-            "DeviceName": "/dev/xvdbc",
-            "VirtualName": "ephemeral2"
-          },
-          {
-            "DeviceName": "/dev/xvdbd",
-            "VirtualName": "ephemeral3"
-          },
-          {
-            "DeviceName": "/dev/xvdbe",
-            "VirtualName": "ephemeral4"
-          },
-          {
-            "DeviceName": "/dev/xvdbf",
-            "VirtualName": "ephemeral5"
-          },
-          {
-            "DeviceName": "/dev/xvdbg",
-            "VirtualName": "ephemeral6"
-          },
-          {
-            "DeviceName": "/dev/xvdbh",
-            "VirtualName": "ephemeral7"
-          },
-          {
-            "DeviceName": "/dev/xvdbi",
-            "VirtualName": "ephemeral8"
-          },
-          {
-            "DeviceName": "/dev/xvdbj",
-            "VirtualName": "ephemeral9"
-          },
-          {
-            "DeviceName": "/dev/xvdbk",
-            "VirtualName": "ephemeral10"
-          },
-          {
-            "DeviceName": "/dev/xvdbl",
-            "VirtualName": "ephemeral11"
-          },
-          {
-            "DeviceName": "/dev/xvdbm",
-            "VirtualName": "ephemeral12"
-          },
-          {
-            "DeviceName": "/dev/xvdbn",
-            "VirtualName": "ephemeral13"
-          },
-          {
-            "DeviceName": "/dev/xvdbo",
-            "VirtualName": "ephemeral14"
-          },
-          {
-            "DeviceName": "/dev/xvdbp",
-            "VirtualName": "ephemeral15"
-          },
-          {
-            "DeviceName": "/dev/xvdbq",
-            "VirtualName": "ephemeral16"
-          },
-          {
-            "DeviceName": "/dev/xvdbr",
-            "VirtualName": "ephemeral17"
-          },
-          {
-            "DeviceName": "/dev/xvdbs",
-            "VirtualName": "ephemeral18"
-          },
-          {
-            "DeviceName": "/dev/xvdbt",
-            "VirtualName": "ephemeral19"
-          },
-          {
-            "DeviceName": "/dev/xvdbu",
-            "VirtualName": "ephemeral20"
-          },
-          {
-            "DeviceName": "/dev/xvdbv",
-            "VirtualName": "ephemeral21"
-          },
-          {
-            "DeviceName": "/dev/xvdbw",
-            "VirtualName": "ephemeral22"
-          },
-          {
-            "DeviceName": "/dev/xvdbx",
-            "VirtualName": "ephemeral23"
-          },
-          {
-            "DeviceName": {
-              "Fn::FindInMap": [
-                "OSFeatures",
-                {
-                  "Ref": "BaseOS"
-                },
-                "RootDevice"
-              ]
-            },
-            "Ebs": {
-              "VolumeSize": {
-                "Ref": "ComputeRootVolumeSize"
               },
-              "VolumeType": "gp2"
-            }
-          }
-        ],
-        "PlacementTenancy": {
-          "Fn::If": [
-            "UseDedicatedTenancy",
+              {
+                "Name": {
+                  "Ref": "RootInstanceProfile"
+                }
+              }
+            ]
+          },
+          "InstanceMarketOptions": {
+            "Fn::If": [
+              "UseSpotInstances",
+              {
+                "SpotOptions" : {
+                    "SpotInstanceType" : "one-time",
+                    "InstanceInterruptionBehavior" : "terminate",
+                    "MaxPrice" : {
+                      "Ref": "SpotPrice"
+                    }
+                },
+                "MarketType" : "spot"
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "ImageId": {
+            "Fn::If": [
+              "UseCustomAMI",
+              {
+                "Ref": "CustomAMI"
+              },
+              {
+                "Fn::FindInMap": [
+                  "AWSRegionOS2AMI",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  {
+                    "Ref": "BaseOS"
+                  }
+                ]
+              }
+            ]
+          },
+          "Monitoring": {
+            "Enabled" : "false"
+          },
+          "BlockDeviceMappings": [
             {
-              "Ref": "Tenancy"
+              "DeviceName": "/dev/xvdba",
+              "VirtualName": "ephemeral0"
             },
             {
-              "Ref": "AWS::NoValue"
+              "DeviceName": "/dev/xvdbb",
+              "VirtualName": "ephemeral1"
+            },
+            {
+              "DeviceName": "/dev/xvdbc",
+              "VirtualName": "ephemeral2"
+            },
+            {
+              "DeviceName": "/dev/xvdbd",
+              "VirtualName": "ephemeral3"
+            },
+            {
+              "DeviceName": "/dev/xvdbe",
+              "VirtualName": "ephemeral4"
+            },
+            {
+              "DeviceName": "/dev/xvdbf",
+              "VirtualName": "ephemeral5"
+            },
+            {
+              "DeviceName": "/dev/xvdbg",
+              "VirtualName": "ephemeral6"
+            },
+            {
+              "DeviceName": "/dev/xvdbh",
+              "VirtualName": "ephemeral7"
+            },
+            {
+              "DeviceName": "/dev/xvdbi",
+              "VirtualName": "ephemeral8"
+            },
+            {
+              "DeviceName": "/dev/xvdbj",
+              "VirtualName": "ephemeral9"
+            },
+            {
+              "DeviceName": "/dev/xvdbk",
+              "VirtualName": "ephemeral10"
+            },
+            {
+              "DeviceName": "/dev/xvdbl",
+              "VirtualName": "ephemeral11"
+            },
+            {
+              "DeviceName": "/dev/xvdbm",
+              "VirtualName": "ephemeral12"
+            },
+            {
+              "DeviceName": "/dev/xvdbn",
+              "VirtualName": "ephemeral13"
+            },
+            {
+              "DeviceName": "/dev/xvdbo",
+              "VirtualName": "ephemeral14"
+            },
+            {
+              "DeviceName": "/dev/xvdbp",
+              "VirtualName": "ephemeral15"
+            },
+            {
+              "DeviceName": "/dev/xvdbq",
+              "VirtualName": "ephemeral16"
+            },
+            {
+              "DeviceName": "/dev/xvdbr",
+              "VirtualName": "ephemeral17"
+            },
+            {
+              "DeviceName": "/dev/xvdbs",
+              "VirtualName": "ephemeral18"
+            },
+            {
+              "DeviceName": "/dev/xvdbt",
+              "VirtualName": "ephemeral19"
+            },
+            {
+              "DeviceName": "/dev/xvdbu",
+              "VirtualName": "ephemeral20"
+            },
+            {
+              "DeviceName": "/dev/xvdbv",
+              "VirtualName": "ephemeral21"
+            },
+            {
+              "DeviceName": "/dev/xvdbw",
+              "VirtualName": "ephemeral22"
+            },
+            {
+              "DeviceName": "/dev/xvdbx",
+              "VirtualName": "ephemeral23"
+            },
+            {
+              "DeviceName": {
+                "Fn::FindInMap": [
+                  "OSFeatures",
+                  {
+                    "Ref": "BaseOS"
+                  },
+                  "RootDevice"
+                ]
+              },
+              "Ebs": {
+                "VolumeSize": {
+                  "Ref": "ComputeRootVolumeSize"
+                },
+                "VolumeType": "gp2"
+              }
             }
-          ]
-        },
-        "UserData": {
+          ],
+          "Placement": {
+            "Fn::If": [
+              "UseDedicatedTenancy",
+              {
+                "Tenancy": {
+                  "Ref": "Tenancy"
+                }
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
               "",
@@ -3285,7 +3312,7 @@
                 {
                   "Ref": "AWS::StackName"
                 },
-                " -v -c default -r ComputeServerLaunchConfig --region ",
+                " -v -c default -r ComputeServerLaunchTemplate --region ",
                 {
                   "Ref": "AWS::Region"
                 },
@@ -3304,6 +3331,7 @@
               ]
             ]
           }
+        }
         }
       },
       "Metadata": {
