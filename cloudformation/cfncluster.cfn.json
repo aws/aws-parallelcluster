@@ -1196,6 +1196,18 @@
         "spot"
       ]
     },
+    "UseSpotPrice": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "SpotPrice"
+            },
+            "0.00"
+          ]
+        }
+      ]
+    },
     "CreateComputeSubnetForCompute": {
       "Fn::And": [
         {
@@ -2965,8 +2977,11 @@
                     "SpotInstanceType" : "one-time",
                     "InstanceInterruptionBehavior" : "terminate",
                     "MaxPrice" : {
-                      "Ref": "SpotPrice"
-                    }
+                      "Fn::If": [
+                      "UseSpotPrice",
+                      { "Ref": "SpotPrice" },
+                      { "Ref": "AWS::NoValue" }
+                    ]}
                 },
                 "MarketType" : "spot"
               },

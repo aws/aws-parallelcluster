@@ -163,7 +163,9 @@ Defaults to ondemand for the default template. ::
 
 spot_price
 """""""""""
-If cluster_type is set to spot, the maximum spot price for the ComputeFleet. See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+
+See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
     spot_price = 0.00
 
