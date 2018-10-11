@@ -94,7 +94,8 @@
             "VolumeIOPS",
             "EBSEncryption",
             "EBSKMSKeyId",
-            "EBSVolumeId"
+            "EBSVolumeId",
+            "NumberOfEBSVol"
           ]
         },
         {
@@ -733,22 +734,16 @@
       "Default": "NONE"
     },
     "VolumeSize": {
-      "Description": "Size of EBS volume in GB, if creating a new one",
-      "Type": "Number",
-      "Default": "20"
+      "Description": "Comma delimited list of size of EBS volume in GB, if creating a new one",
+      "Type": "String",
+      "Default": "20, 20, 20, 20, 20"
     },
     "VolumeType": {
-      "Description": "Type of volume to create either new or from snapshot",
+      "Description": "Comma delimited list of type of volume to create either new or from snapshot",
       "Type": "String",
-      "Default": "gp2",
+      "Default": "gp2, gp2, gp2, gp2, gp2",
       "ConstraintDescription": "must be a supported volume type: standard, io1, gp2, st1, sc1",
-      "AllowedValues": [
-        "standard",
-        "gp2",
-        "io1",
-        "st1",
-        "sc1"
-      ]
+      "AllowedPattern": "^(NONE|standard|io1|gp2|st1|sc1)((,|, )(NONE|standard|io1|gp2|st1|sc1)){4}$"
     },
     "MasterSubnetId": {
       "Description": "ID of the Subnet you want to provision the Master server into",
@@ -759,10 +754,10 @@
       "Type": "AWS::EC2::AvailabilityZone::Name"
     },
     "EBSSnapshotId": {
-      "Description": "Id of EBS snapshot if using snapshot as source for volume",
+      "Description": "Comma delimited list of Id of EBS snapshot if using snapshot as source for volume",
       "Type": "String",
-      "Default": "NONE",
-      "AllowedPattern": "(NONE|^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$)"
+      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "AllowedPattern" : "^(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})((,|, )(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})){4}$"
     },
     "CustomAMI": {
       "Description": "ID of a Custom AMI, to use instead of published AMI's",
@@ -811,9 +806,9 @@
       ]
     },
     "VolumeIOPS": {
-      "Description": "Number of IOPS for volume type io1. Not used for other volume types.",
-      "Type": "Number",
-      "Default": "100"
+      "Description": "Comma delimited list of number of IOPS for volume type io1. Not used for other volume types.",
+      "Type": "String",
+      "Default": "100, 100, 100, 100, 100"
     },
     "PreInstallScript": {
       "Description": "Preinstall script URL. This is run before any host configuration.",
@@ -875,14 +870,11 @@
       "Default": "NONE"
     },
     "EBSEncryption": {
-      "Description": "Boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
+      "Description": "Comma delimited list of boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
       "Type": "String",
-      "Default": "false",
+      "Default": "false, false, false, false, false",
       "ConstraintDescription": "true/false",
-      "AllowedValues": [
-        "true",
-        "false"
-      ]
+      "AllowedPattern": "^(NONE|true|false)((,|, )(NONE|true|false)){4}$"
     },
     "EphemeralDir": {
       "Description": "The path/mountpoint for the ephemeral drive",
@@ -970,9 +962,9 @@
       ]
     },
     "EBSKMSKeyId": {
-      "Description": "KMS ARN for customer created master key, will be used for EBS encryption",
+      "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
       "Type": "String",
-      "Default": "NONE"
+      "Default": "NONE, NONE, NONE, NONE, NONE"
     },
     "EphemeralKMSKeyId": {
       "Description": "KMS ARN for customer created master key, will be used for ephemeral encryption",
@@ -1008,15 +1000,20 @@
       "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
     },
     "EBSVolumeId": {
-      "Description": "Existing EBS volume Id",
+      "Description": "Comma delimited list of existing EBS volume Id",
       "Type": "String",
-      "Default": "NONE",
-      "AllowedPattern": "(NONE|^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$)"
+      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "AllowedPattern": "^(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})((,|, )(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})){4}$"
     },
     "AdditionalCfnTemplate": {
       "Description": "A second CloudFormation template to launch with the cluster",
       "Type": "String",
       "Default": "NONE"
+    },
+    "NumberOfEBSVol": {
+      "Description": "Number of EBS Volumes the user requested, up to 5",
+      "Type": "Number",
+      "Default": "1"
     }
   },
   "Conditions": {
@@ -1276,18 +1273,6 @@
         }
       ]
     },
-    "UseEBSSnapshot": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "EBSSnapshotId"
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
     "UseCustomRunList": {
       "Fn::Not": [
         {
@@ -1355,14 +1340,6 @@
         }
       ]
     },
-    "UseEBSPIOPS": {
-      "Fn::Equals": [
-        {
-          "Ref": "VolumeType"
-        },
-        "io1"
-      ]
-    },
     "UseS3ReadPolicy": {
       "Fn::Not": [
         {
@@ -1400,14 +1377,6 @@
         {
           "Condition": "UsePlacementGroup"
         }
-      ]
-    },
-    "UseEBSEncryption": {
-      "Fn::Equals": [
-        {
-          "Ref": "EBSEncryption"
-        },
-        "true"
       ]
     },
     "UseS3ReadWritePolicy": {
@@ -1459,25 +1428,6 @@
             },
             "NONE"
           ]
-        }
-      ]
-    },
-    "UseEBSKMSKey": {
-      "Fn::And": [
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "EBSKMSKeyId"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        },
-        {
-          "Condition": "UseEBSEncryption"
         }
       ]
     },
@@ -1545,26 +1495,6 @@
         }
       ]
     },
-    "UseExistingEBSVolume": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "EBSVolumeId"
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
-    "CreateEBSVolume": {
-      "Fn::Equals": [
-        {
-          "Ref": "EBSVolumeId"
-        },
-        "NONE"
-      ]
-    },
     "CreateSecurityGroups": {
       "Fn::Equals": [
         {
@@ -1598,6 +1528,14 @@
         {
           "Condition": "UsePlacementGroup"
         }
+      ]
+    },
+    "GovCloudRegion": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::Partition"
+        },
+        "aws-us-gov"
       ]
     }
   },
@@ -2632,14 +2570,9 @@
                       "Ref": "AWS::Region"
                     },
                     "cfn_volume": {
-                      "Fn::If": [
-                        "UseExistingEBSVolume",
-                        {
-                          "Ref": "EBSVolumeId"
-                        },
-                        {
-                          "Ref": "SharedVolume"
-                        }
+                      "Fn::GetAtt":[
+                        "EBSCfnStack",
+                        "Outputs.Volumeids"
                       ]
                     },
                     "cfn_scheduler": {
@@ -2943,9 +2876,9 @@
             "AssociatePublicIpAddress" : {
               "Fn::If": [
                 "ComputePublicIps",
-                true,
-                false
-              ],
+                "true",
+                "false"
+              ]
             }
           }],
           "InstanceType": {
@@ -2974,10 +2907,10 @@
               "UseSpotInstances",
               {
                 "SpotOptions" : {
-                    "SpotInstanceType" : "one-time",
-                    "InstanceInterruptionBehavior" : "terminate",
-                    "MaxPrice" : {
-                      "Fn::If": [
+                  "SpotInstanceType" : "one-time",
+                  "InstanceInterruptionBehavior" : "terminate",
+                  "MaxPrice" : {
+                    "Fn::If": [
                       "UseSpotPrice",
                       { "Ref": "SpotPrice" },
                       { "Ref": "AWS::NoValue" }
@@ -3343,10 +3276,10 @@
                 "\n",
                 "# End of file\n",
                 "--==BOUNDARY==\n"
+                ]
               ]
-            ]
+            }
           }
-        }
         }
       },
       "Metadata": {
@@ -3784,78 +3717,6 @@
       },
       "Condition": "CreateSubStack"
     },
-    "SharedVolume": {
-      "Type": "AWS::EC2::Volume",
-      "Properties": {
-        "AvailabilityZone": {
-          "Ref": "AvailabilityZone"
-        },
-        "VolumeType": {
-          "Ref": "VolumeType"
-        },
-        "Size": {
-          "Fn::If": [
-            "UseEBSSnapshot",
-            {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Ref": "VolumeSize"
-            }
-          ]
-        },
-        "SnapshotId": {
-          "Fn::If": [
-            "UseEBSSnapshot",
-            {
-              "Ref": "EBSSnapshotId"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "Iops": {
-          "Fn::If": [
-            "UseEBSPIOPS",
-            {
-              "Ref": "VolumeIOPS"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "Encrypted": {
-          "Fn::If": [
-            "UseEBSEncryption",
-            {
-              "Ref": "EBSEncryption"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "KmsKeyId": {
-          "Fn::If": [
-            "UseEBSKMSKey",
-            {
-              "Ref": "EBSKMSKeyId"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        }
-      },
-      "Condition": "CreateEBSVolume",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "c8d3da13-fd27-4377-b606-0f41728c17e1"
-        }
-      }
-    },
     "AssociateEIP": {
       "Type": "AWS::EC2::EIPAssociation",
       "Properties": {
@@ -3885,6 +3746,97 @@
       "Metadata": {
         "AWS::CloudFormation::Designer": {
           "id": "ee5f3006-419e-4786-b527-e9503a662e5e"
+        }
+      }
+    },
+    "EBSCfnStack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters":{
+          "AvailabilityZone": {
+            "Ref":"AvailabilityZone"
+          },
+          "VolumeSize": {
+            "Ref" : "VolumeSize"
+          },
+          "VolumeType": {
+            "Ref" : "VolumeType"
+          },
+          "VolumeIOPS": {
+            "Ref" : "VolumeIOPS"
+          },
+          "EBSEncryption":{
+            "Ref" : "EBSEncryption"
+          },
+          "EBSKMSKeyId": {
+            "Ref" : "EBSKMSKeyId"
+          },
+          "EBSVolumeId": {
+            "Ref" : "EBSVolumeId"
+          },
+          "EBSSnapshotId": {
+            "Ref" : "EBSSnapshotId"
+          },
+          "NumberOfEBSVol": {
+            "Ref" : "NumberOfEBSVol"
+          }
+        },
+
+        "TemplateURL":{
+          "Fn::If": [
+            "GovCloudRegion",
+            { "Fn::Join": [
+              "",
+              [
+                "https://s3-",
+                { "Ref": "AWS::Region" },
+                ".amazonaws.com/",
+                { "Ref": "AWS::Region" },
+                "-cfncluster/templates/ebs_vol_substack-",
+                { "Fn::Select" : [
+                  "1",
+                  { "Fn::Split": [
+                    "-",
+                    {
+                      "Fn::FindInMap": [
+                        "CfnClusterVersions",
+                        "default",
+                        "cfncluster"
+                      ]
+                    }
+                  ]}
+                ]},
+                ".cfn.json"
+              ]
+            ]},
+            { "Fn::Join": [
+              "",
+              [
+                "https://s3.amazonaws.com/",
+                { "Ref": "AWS::Region" },
+                "-cfncluster/templates/ebs_vol_substack-",
+                { "Fn::Select" : [
+                  "1",
+                  { "Fn::Split": [
+                    "-",
+                    {
+                      "Fn::FindInMap": [
+                        "CfnClusterVersions",
+                        "default",
+                        "cfncluster"
+                      ]
+                    }
+                  ]}
+                ]},
+                ".cfn.json"
+              ]
+            ]}
+          ]
+        }
+      },
+      "Metadata": {
+        "AWS::CloudFormation::Designer": {
+          "id": "73e68f93-f470-4ec8-9fcc-fca1bc20b673"
         }
       }
     }

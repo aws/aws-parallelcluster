@@ -271,11 +271,11 @@ Defaults to /scratch in the default template. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume
+Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under each EBS section instead
 
-Defaults to /shared in the default template. See :ref:`EBS Section <ebs_section>` for details on working with EBS volumes::
+Defaults to /shared in the default template. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
 
-    shared_dir = /shared
+    shared_dir = myshared
 
 encrypted_ephemeral
 """""""""""""""""""
@@ -355,11 +355,11 @@ See :ref:`VPC Section <vpc_section>`. ::
 
 ebs_settings
 """"""""""""
-Settings section relating to EBS volume mounted on the master.
+Settings section relating to EBS volume mounted on the master. When using multiple EBS volumes, enter multiple settings as a comma separated list. Up to 5 EBS volumes are supported.
 
 See :ref:`EBS Section <ebs_section>`. ::
 
-  ebs_settings = custom
+  ebs_settings = custom1, custom2, ...
 
 scaling_settings
 """"""""""""""""
@@ -463,12 +463,26 @@ Defaults to NONE in the default template. ::
 
 ebs
 ^^^
-EBS Volume configuration settings for the volume mounted on the master node and shared via NFS to compute nodes. ::
+EBS Volume configuration settings for the volumes mounted on the master node and shared via NFS to compute nodes. ::
 
-    [ebs custom]
+    [ebs custom1]
+    shared_dir = vol1
     ebs_snapshot_id = snap-xxxxx
     volume_type = io1
     volume_iops = 200
+    ...
+
+    [ebs custom2]
+    shared_dir = vol2
+    ...
+
+    ...
+
+shared_dir
+""""""""""
+Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes. When using 1 ebs volume, this option will overwrite the shared_dir specified under the cluster section. The example below mounts to /vol1 ::
+
+    shared_dir = vol1
 
 ebs_snapshot_id
 """""""""""""""
