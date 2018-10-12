@@ -191,7 +191,6 @@ CfnClusterUserPolicy
               "Sid": "AutoScalingDescribe",
               "Action": [
                   "autoscaling:DescribeAutoScalingGroups",
-                  "autoscaling:DescribeLaunchConfigurations",
                   "autoscaling:DescribeAutoScalingInstances"
               ],
               "Effect": "Allow",
@@ -201,11 +200,14 @@ CfnClusterUserPolicy
               "Sid": "AutoScalingModify",
               "Action": [
                   "autoscaling:CreateAutoScalingGroup",
-                  "autoscaling:CreateLaunchConfiguration",
+                  "ec2:CreateLaunchTemplate",
+                  "ec2:ModifyLaunchTemplate",
+                  "ec2:DeleteLaunchTemplate",
+                  "ec2:DescribeLaunchTemplates",
+                  "ec2:DescribeLaunchTemplateVersions",
                   "autoscaling:PutNotificationConfiguration",
                   "autoscaling:UpdateAutoScalingGroup",
                   "autoscaling:PutScalingPolicy",
-                  "autoscaling:DeleteLaunchConfiguration",
                   "autoscaling:DescribeScalingActivities",
                   "autoscaling:DeleteAutoScalingGroup",
                   "autoscaling:DeletePolicy"
