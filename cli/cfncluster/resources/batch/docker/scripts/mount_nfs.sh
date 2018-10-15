@@ -14,6 +14,7 @@
 # language governing permissions and limitations under the License.
 
 # Usage: mount_filesystem.sh master_ip shared_dir
+set -e
 
 error_exit_usage() {
     echo "Error executing script: $1"
@@ -52,15 +53,19 @@ check_arguments_valid(){
 # mount nfs
 mount_nfs() {
 
+    error_message=$(rpcbind 2>&1)
+    if [[ $? -ne 0 ]]; then
+        error_exit "Failed to run rpcbind with error_message: ${error_message}"
+    fi
+
     mkdir -p ${shared_dir}
-    error_message=$(mount -t nfs -o hard,intr,noatime,vers=3,_netdev ${master_ip}:${shared_dir} ${shared_dir} )
+    error_message=$(mount -t nfs -o hard,intr,noatime,vers=3,_netdev ${master_ip}:${shared_dir} ${shared_dir} 2>&1)
     if [[ $? -ne 0 ]]; then
         error_exit "Failed to mount nfs volume with error_message: ${error_message}"
     fi
 
     #Check that the filesystem is mounted as appropriate
-
-    mount_line=$(mount | grep ${master_ip}:${shared_dir})
+    mount_line=$(mount | grep "${master_ip}:${shared_dir}")
     if [[ -z "${mount_line}" ]]; then
         error_exit "mount succeeded but nfs volume was not mounted as expected"
     fi
