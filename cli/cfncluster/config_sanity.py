@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 import sys
 from botocore.exceptions import ClientError
 
-def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_type,resource_value):
+def check_resource(region, cluster_name, aws_access_key_id, aws_secret_access_key, resource_type,resource_value):
 
     # Loop over all supported resource checks
     # EC2 KeyPair
@@ -49,6 +49,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                         (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:aws:sqs:%s:%s:cfncluster-*" % (region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoscaling:DescribeTags', 'autoScaling:UpdateAutoScalingGroup'], "*"),
                         (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:aws:dynamodb:%s:%s:table/cfncluster-*" % (region, accountid)),
+                        (['cloudformation:DescribeStacks'], "arn:aws:cloudformation:%s:%s:stack/cfncluster-%s/*" % (region, accountid, cluster_name)),
                         (['s3:GetObject'], "arn:aws:s3:::%s-cfncluster/*" % region),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:aws:logs:*:*:*")]
