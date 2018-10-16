@@ -1013,6 +1013,11 @@
       "Description" : "Max vCPU's for ComputeEnvironment",
       "Type": "Number",
       "Default": 128
+    },
+    "CustomAWSBatchTemplateURL": {
+      "Description" : "URL of custom batch template that will override the default one.",
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {
@@ -1614,6 +1619,18 @@
           "Fn::Equals": [
             { "Ref": "AWS::Partition" },
             "aws"
+          ]
+        }
+      ]
+    },
+    "UseCustomAWSBatchTemplateURL": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "CustomAWSBatchTemplateURL"
+            },
+            "NONE"
           ]
         }
       ]
@@ -4505,53 +4522,33 @@
         },
         "TemplateURL": {
           "Fn::If": [
-            "GovCloudRegion",
-            { "Fn::Join": [
-              "",
-              [
-                "https://s3-",
-                { "Ref": "AWS::Region" },
-                ".amazonaws.com/",
-                { "Ref": "AWS::Region" },
-                "-cfncluster/templates/batch-",
-                { "Fn::Select" : [
-                  "1",
-                  { "Fn::Split": [
-                    "-",
-                    {
-                      "Fn::FindInMap": [
-                        "CfnClusterVersions",
-                        "default",
-                        "cfncluster"
-                      ]
-                    }
-                  ]}
-                ]},
-                ".cfn.json"
+            "UseCustomAWSBatchTemplateURL",
+            { "Ref": "CustomAWSBatchTemplateURL" },
+            {
+              "Fn::Sub": [
+                "https://${s3_domain}/${AWS::Region}-cfncluster/templates/batch-${version}.cfn.json",
+                {
+                  "s3_domain": {
+                    "Fn::If": [
+                      "GovCloudRegion",
+                      { "Fn::Sub": "s3-${AWS::Region}.amazonaws.com" },
+                      "s3.amazonaws.com"
+                    ]
+                  },
+                  "version": {
+                    "Fn::Select": [
+                      "1",
+                      {
+                        "Fn::Split": [
+                          "-",
+                          { "Fn::FindInMap": [ "CfnClusterVersions", "default", "cfncluster" ] }
+                        ]
+                      }
+                    ]
+                  }
+                }
               ]
-            ]},
-            { "Fn::Join": [
-              "",
-              [
-                "https://s3.amazonaws.com/",
-                { "Ref": "AWS::Region" },
-                "-cfncluster/templates/batch-",
-                { "Fn::Select" : [
-                  "1",
-                  { "Fn::Split": [
-                    "-",
-                    {
-                      "Fn::FindInMap": [
-                        "CfnClusterVersions",
-                        "default",
-                        "cfncluster"
-                      ]
-                    }
-                  ]}
-                ]},
-                ".cfn.json"
-              ]
-            ]}
+            }
           ]
         }
       },
