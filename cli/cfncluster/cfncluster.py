@@ -29,7 +29,9 @@ import datetime
 from botocore.exceptions import ClientError
 
 from . import cfnconfig
+
 from . import utils
+from . import mnp_batch
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
@@ -61,6 +63,9 @@ def version(args):
     config = cfnconfig.CfnClusterConfig(args)
     logger.info(config.version)
 
+def get_config_parameter(config, param, default):
+    return config.get(param) if config.get(param) else default
+
 def create(args):
     logger.info('Beginning cluster creation for cluster: %s' % (args.cluster_name))
     logger.debug('Building cluster config based on args %s' % str(args))
@@ -90,7 +95,12 @@ def create(args):
             logger.critical(e.response.get('Error').get('Message'))
             sys.stdout.flush()
             sys.exit(1)
-        config.parameters.append(('AvailabilityZone', availability_zone))
+        config.parameters['AvailabilityZone'] = availability_zone
+
+    scheduler = get_config_parameter(config=config, param='Scheduler', default='sge')
+    if scheduler == 'awsbatch':
+        mnp = mnp_batch.create_job_definition(config, args)
+    logger.info("AWS Batch MNP Job Definition = %s" % mnp)
 
     capabilities = ["CAPABILITY_IAM"]
     batch_temporary_bucket = None
@@ -108,7 +118,7 @@ def create(args):
 
         logger.info("Creating stack named: " + stack_name)
 
-        cfn_params = [{'ParameterKey': param[0], 'ParameterValue': param[1]} for param in config.parameters]
+        cfn_params = [{'ParameterKey': key, 'ParameterValue': value} for key, value in config.parameters.items()]
         tags = [{'Key': t, 'Value': config.tags[t]} for t in config.tags]
 
         stack = cfn.create_stack(StackName=stack_name,
@@ -195,12 +205,11 @@ def update(args):
         desired_capacity = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])\
             .get('AutoScalingGroups')[0]\
             .get('DesiredCapacity')
-        config.parameters.append(('InitialQueueSize', str(desired_capacity)))
+        config.parameters['InitialQueueSize'] = str(desired_capacity)
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     try:
-        i = [p[0] for p in config.parameters].index('MasterSubnetId')
-        master_subnet_id = config.parameters[i][1]
+        master_subnet_id = config.parameters.get('MasterSubnetId')
         try:
             ec2 = boto3.client('ec2', region_name=config.region,
                                aws_access_key_id=config.aws_access_key_id,
@@ -211,14 +220,14 @@ def update(args):
         except ClientError as e:
             logger.critical(e.response.get('Error').get('Message'))
             sys.exit(1)
-        config.parameters.append(('AvailabilityZone', availability_zone))
+        config.parameters['AvailabilityZone'] = availability_zone
     except ValueError:
         pass
 
     try:
         logger.debug((config.template_url, config.parameters))
 
-        cfn_params = [{'ParameterKey': param[0], 'ParameterValue': param[1]} for param in config.parameters]
+        cfn_params = [{'ParameterKey': key, 'ParameterValue': value} for key, value in config.parameters.items()]
         cfn.update_stack(StackName=stack_name,TemplateURL=config.template_url,
                          Parameters=cfn_params, Capabilities=capabilities)
         status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
@@ -247,12 +256,9 @@ def start(args):
     config = cfnconfig.CfnClusterConfig(args)
 
     # Set asg limits
-    max_queue_size = [param[1] for param in config.parameters if param[0] == 'MaxQueueSize']
-    max_queue_size = int(max_queue_size[0] if len(max_queue_size) > 0 else 10)
-    desired_queue_size = [param[1] for param in config.parameters if param[0] == 'InitialQueueSize']
-    desired_queue_size = int(desired_queue_size[0] if len(desired_queue_size) > 0 else 2)
-    min_queue_size = [desired_queue_size for param in config.parameters if param[0] == 'MaintainInitialSize' and param[1] == "true"]
-    min_queue_size = int(min_queue_size[0] if len(min_queue_size) > 0 else 0)
+    max_queue_size = config.parameters.get('MaxQueueSize') if config.parameters.get('MaxQueueSize') and config.get('MaxQueueSize') > 0 else 10
+    desired_queue_size = config.get('InitialQueueSize') if config.get('InitialQueueSize') and config.get('InitialQueueSize') > 0 else 2
+    min_queue_size = desired_queue_size if config.parameters('MaintainInitialSize') == "true" and desired_queue_size > 0 else 0
 
     asg_name = get_asg_name(stack_name=stack_name, config=config)
     set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
