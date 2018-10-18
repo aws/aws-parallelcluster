@@ -2945,7 +2945,7 @@
                 "ComputePublicIps",
                 true,
                 false
-              ],
+              ]
             }
           }],
           "InstanceType": {
