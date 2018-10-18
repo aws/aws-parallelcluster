@@ -1604,102 +1604,102 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-09b2196cc49cc4d87",
-        "centos6": "ami-01a014d8086e17bd7",
-        "centos7": "ami-087df3103f8099ac1",
-        "ubuntu1404": "ami-05f8a7d3bb43f4a76",
-        "ubuntu1604": "ami-0c9ed39906b0e0b1d"
+        "alinux": "ami-0775ab7ad13c0e74f",
+        "centos6": "ami-0f676dc2bebea5b1a",
+        "centos7": "ami-0b13eb5fa94691483",
+        "ubuntu1404": "ami-05b67b05deba61e8c",
+        "ubuntu1604": "ami-0232ea8f3f82712a2"
       },
       "ap-northeast-2": {
-        "alinux": "ami-0b7af8eb1a7fe8643",
-        "centos6": "ami-04639145561161d99",
-        "centos7": "ami-031deb53a6ebb253d",
-        "ubuntu1404": "ami-0dce3b53475a8d516",
-        "ubuntu1604": "ami-051318b19cddee300"
+        "alinux": "ami-09fdf91b4a93730f0",
+        "centos6": "ami-0adf39100d009ad31",
+        "centos7": "ami-015bf65572df2d94d",
+        "ubuntu1404": "ami-06aa825c33309fdfd",
+        "ubuntu1604": "ami-08d64fa4a89f85427"
       },
       "ap-northeast-3": {
-        "alinux": "ami-0bbdebb4a85f9af3a",
-        "centos6": "ami-015bb694ff19eeeeb",
-        "centos7": "ami-0c33e6328a28c6c83",
-        "ubuntu1404": "ami-0034c5ab16e9b08bf",
-        "ubuntu1604": "ami-0d39d76b1e9422cb8"
+        "alinux": "ami-03a0e4ad407dd7f55",
+        "centos6": "ami-0da12c87d2aee0ef5",
+        "centos7": "ami-0479721fa287d3cf7",
+        "ubuntu1404": "ami-0c03a23da1606fa3a",
+        "ubuntu1604": "ami-0cfdcf1603db9a672"
       },
       "ap-south-1": {
-        "alinux": "ami-09cacb23abc99a93c",
-        "centos6": "ami-0829a92071e001c0b",
-        "centos7": "ami-09b446829cd433b33",
-        "ubuntu1404": "ami-0c72ae15adce33add",
-        "ubuntu1604": "ami-08054ad76abc0136b"
+        "alinux": "ami-008d194619d177765",
+        "centos6": "ami-05a8a28e5c8b74642",
+        "centos7": "ami-087bda89547e089dc",
+        "ubuntu1404": "ami-096a418446cd1eeb1",
+        "ubuntu1604": "ami-009f971485befe66a"
       },
       "ap-southeast-1": {
-        "alinux": "ami-0eeef3428d37c4225",
-        "centos6": "ami-0a118d30b3d6261c2",
-        "centos7": "ami-040c22e2be509358a",
-        "ubuntu1404": "ami-0d3bace0654b82b81",
-        "ubuntu1604": "ami-01a4404166c9c3d74"
+        "alinux": "ami-08eef0c7d23753d49",
+        "centos6": "ami-02ce4e46ca873697e",
+        "centos7": "ami-0d339c926f9d35ba3",
+        "ubuntu1404": "ami-0d413135984f7bd97",
+        "ubuntu1604": "ami-02ab2d97bea65a826"
       },
       "ap-southeast-2": {
-        "alinux": "ami-01b96994d24583c2e",
-        "centos6": "ami-0956e6cce8b9c4bc5",
-        "centos7": "ami-08ba8d63c703e2b95",
-        "ubuntu1404": "ami-0580fbaa8917e34d3",
-        "ubuntu1604": "ami-034da688c9b148294"
+        "alinux": "ami-08d6ef8690d843ceb",
+        "centos6": "ami-013201a7fda637e83",
+        "centos7": "ami-0ac15e60210a10310",
+        "ubuntu1404": "ami-079737fc9c635c09a",
+        "ubuntu1604": "ami-0fc63c095a0c31f0a"
       },
       "ca-central-1": {
-        "alinux": "ami-02a862a9b110142e3",
-        "centos6": "ami-02d20a9cf33c66d63",
-        "centos7": "ami-0226680e1ca9842db",
-        "ubuntu1404": "ami-0c017f90c89ba26c0",
-        "ubuntu1604": "ami-082f8a99b6001fdf0"
+        "alinux": "ami-00f519fdeb5feb438",
+        "centos6": "ami-0ee6c95ad927b2da4",
+        "centos7": "ami-068d6a6fc5e7987f3",
+        "ubuntu1404": "ami-00cec9c492f236616",
+        "ubuntu1604": "ami-0705c0b15666e7d60"
       },
       "eu-central-1": {
-        "alinux": "ami-0bf1180c33878c639",
-        "centos6": "ami-0060a72b3edce3a2b",
-        "centos7": "ami-0c6c5e6443b84c367",
-        "ubuntu1404": "ami-0951d59cba801e2ee",
-        "ubuntu1604": "ami-06761cc6f99f5e06e"
+        "alinux": "ami-07fa07aba1f6fc571",
+        "centos6": "ami-0de3eb16b173ea6b3",
+        "centos7": "ami-0f73d5d5bb22f7609",
+        "ubuntu1404": "ami-0d6242ced07309e7b",
+        "ubuntu1604": "ami-08ab664e40e331729"
       },
       "eu-west-1": {
-        "alinux": "ami-05b563f5c901c44a5",
-        "centos6": "ami-0ab9dda27d035ebf4",
-        "centos7": "ami-0f1b8ccbc2bdffd52",
-        "ubuntu1404": "ami-09f89d2fd5c8e5ced",
-        "ubuntu1604": "ami-0a667f5b231b76799"
+        "alinux": "ami-09cbb5230da5b6cc2",
+        "centos6": "ami-0c8eca7deb52169cc",
+        "centos7": "ami-05479870b31fa535e",
+        "ubuntu1404": "ami-06581a7f68c539440",
+        "ubuntu1604": "ami-096183a7e31fc4e35"
       },
       "eu-west-2": {
-        "alinux": "ami-0798d70bab4682e77",
-        "centos6": "ami-0a831e98ae6aa1f74",
-        "centos7": "ami-0a7e5125d8d49ea0a",
-        "ubuntu1404": "ami-0e56e4df4b7ed339f",
-        "ubuntu1604": "ami-040b4a4643773e624"
+        "alinux": "ami-006cd2956238a6dd7",
+        "centos6": "ami-013d7f40fc791f845",
+        "centos7": "ami-08c5c6f990f8253e1",
+        "ubuntu1404": "ami-00621b5f273783bce",
+        "ubuntu1604": "ami-0a4fbb1dd660013b5"
       },
       "eu-west-3": {
-        "alinux": "ami-02013d634b95d6867",
-        "centos6": "ami-09e6cd7353a18d5a3",
-        "centos7": "ami-046126fe141dcf08b",
-        "ubuntu1404": "ami-0f5f8350e89d54586",
-        "ubuntu1604": "ami-0044c90b904554e33"
+        "alinux": "ami-0fce6e16d9970d71b",
+        "centos6": "ami-0cac2d11252d18c27",
+        "centos7": "ami-0d6c4b2dde29e341f",
+        "ubuntu1404": "ami-07da72e5a66a93c71",
+        "ubuntu1604": "ami-0fcf3de0f1913a190"
       },
       "sa-east-1": {
-        "alinux": "ami-0b10eed9bba4bc01a",
-        "centos6": "ami-06c939ff3b9cbd79b",
-        "centos7": "ami-0755d4aa6ca15a5f8",
-        "ubuntu1404": "ami-03b2064cec36e287e",
-        "ubuntu1604": "ami-0ad1b22b6a88e472a"
+        "alinux": "ami-0165d34de1afd1618",
+        "centos6": "ami-074dbf929dc0c8de0",
+        "centos7": "ami-00cfa447d16329380",
+        "ubuntu1404": "ami-0f4a298763a012d8e",
+        "ubuntu1604": "ami-06fa4a172ebe11a10"
       },
       "us-east-1": {
-        "alinux": "ami-0e98cc49c548d97c4",
-        "centos6": "ami-0376a5267e22cb8de",
-        "centos7": "ami-0f4f9c270a69954b2",
-        "ubuntu1404": "ami-0136556060ebd873c",
-        "ubuntu1604": "ami-0ea3d3b4703c3715e"
+        "alinux": "ami-0fd8b1245d1435bf3",
+        "centos6": "ami-044fd430f1fd3b163",
+        "centos7": "ami-0fb2dca992af734f2",
+        "ubuntu1404": "ami-07df96c1d8e62161d",
+        "ubuntu1604": "ami-0b9750a5856891754"
       },
       "us-east-2": {
-        "alinux": "ami-0631aece7a6bb049b",
-        "centos6": "ami-04e82461a7cb8b5ad",
-        "centos7": "ami-0197c3485aa47ae6c",
-        "ubuntu1404": "ami-03036787fa98f97c3",
-        "ubuntu1604": "ami-080ae4886261cf83e"
+        "alinux": "ami-0cb3d04ae4b4ca8db",
+        "centos6": "ami-03c508534d6f54859",
+        "centos7": "ami-03421fa006b964767",
+        "ubuntu1404": "ami-0f7c7f69478093925",
+        "ubuntu1604": "ami-0a2c6075e91d8bbc3"
       },
       "us-gov-west-1": {
         "alinux": "ami-b0cf54d1",
@@ -1707,18 +1707,18 @@
         "ubuntu1604": "ami-c1cc57a0"
       },
       "us-west-1": {
-        "alinux": "ami-07e208209bdc732f9",
-        "centos6": "ami-07a1dc6b40b5f5b56",
-        "centos7": "ami-090d6260cb05bf312",
-        "ubuntu1404": "ami-05ffeb88c2f0f2558",
-        "ubuntu1604": "ami-036ccc554c94da18c"
+        "alinux": "ami-02f24f766b5b7502f",
+        "centos6": "ami-05ee27a886e16ba39",
+        "centos7": "ami-012c5239be2beb7f1",
+        "ubuntu1404": "ami-077e3b1efa9443476",
+        "ubuntu1604": "ami-00b0c33ebc9576bf8"
       },
       "us-west-2": {
-        "alinux": "ami-0841d0af6c8be91f7",
-        "centos6": "ami-0d4b55af2214d39b4",
-        "centos7": "ami-06d4968a149d798c6",
-        "ubuntu1404": "ami-0b3d649f845d02a8f",
-        "ubuntu1604": "ami-08fc187803f5d2f15"
+        "alinux": "ami-01e7f12fc989e7004",
+        "centos6": "ami-08675896633a1d9fb",
+        "centos7": "ami-0053bef6747ca58bf",
+        "ubuntu1404": "ami-0581577b81f865ae9",
+        "ubuntu1604": "ami-00e5e4cc71cf05d6e"
       }
     },
     "OSFeatures": {
@@ -2827,15 +2827,15 @@
           }
         ],
         "LaunchTemplate": {
-            "LaunchTemplateId" : {
-              "Ref": "ComputeServerLaunchTemplate"
-            },
-            "Version": {
-              "Fn::GetAtt": [
-                "ComputeServerLaunchTemplate",
-                "LatestVersionNumber"
-              ]
-            }
+          "LaunchTemplateId": {
+            "Ref": "ComputeServerLaunchTemplate"
+          },
+          "Version": {
+            "Fn::GetAtt": [
+              "ComputeServerLaunchTemplate",
+              "LatestVersionNumber"
+            ]
+          }
         },
         "MinSize": {
           "Fn::If": [
@@ -2903,51 +2903,53 @@
       "Type": "AWS::EC2::LaunchTemplate",
       "Properties": {
         "LaunchTemplateData": {
-          "NetworkInterfaces": [{
-            "DeviceIndex": 0,
-            "Groups": [
-              {
+          "NetworkInterfaces": [
+            {
+              "DeviceIndex": 0,
+              "Groups": [
+                {
+                  "Fn::If": [
+                    "CreateSecurityGroups",
+                    {
+                      "Ref": "ComputeSecurityGroup"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "AddAdditionalSG",
+                    {
+                      "Ref": "AdditionalSG"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "UseExistingSecurityGroup",
+                    {
+                      "Ref": "VPCSecurityGroupId"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ],
+              "AssociatePublicIpAddress": {
                 "Fn::If": [
-                  "CreateSecurityGroups",
-                  {
-                    "Ref": "ComputeSecurityGroup"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
-                ]
-              },
-              {
-                "Fn::If": [
-                  "AddAdditionalSG",
-                  {
-                    "Ref": "AdditionalSG"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
-                ]
-              },
-              {
-                "Fn::If": [
-                  "UseExistingSecurityGroup",
-                  {
-                    "Ref": "VPCSecurityGroupId"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
+                  "ComputePublicIps",
+                  true,
+                  false
                 ]
               }
-            ],
-            "AssociatePublicIpAddress" : {
-              "Fn::If": [
-                "ComputePublicIps",
-                true,
-                false
-              ]
             }
-          }],
+          ],
           "InstanceType": {
             "Ref": "ComputeInstanceType"
           },
@@ -2973,17 +2975,22 @@
             "Fn::If": [
               "UseSpotInstances",
               {
-                "SpotOptions" : {
-                    "SpotInstanceType" : "one-time",
-                    "InstanceInterruptionBehavior" : "terminate",
-                    "MaxPrice" : {
-                      "Fn::If": [
+                "SpotOptions": {
+                  "SpotInstanceType": "one-time",
+                  "InstanceInterruptionBehavior": "terminate",
+                  "MaxPrice": {
+                    "Fn::If": [
                       "UseSpotPrice",
-                      { "Ref": "SpotPrice" },
-                      { "Ref": "AWS::NoValue" }
-                    ]}
+                      {
+                        "Ref": "SpotPrice"
+                      },
+                      {
+                        "Ref": "AWS::NoValue"
+                      }
+                    ]
+                  }
                 },
-                "MarketType" : "spot"
+                "MarketType": "spot"
               },
               {
                 "Ref": "AWS::NoValue"
@@ -3010,7 +3017,7 @@
             ]
           },
           "Monitoring": {
-            "Enabled" : "false"
+            "Enabled": "false"
           },
           "BlockDeviceMappings": [
             {
@@ -3141,212 +3148,212 @@
             ]
           },
           "UserData": {
-          "Fn::Base64": {
-            "Fn::Join": [
-              "",
-              [
-                "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
-                "MIME-Version: 1.0\n\n",
-                "--==BOUNDARY==\n",
-                "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
-                "MIME-Version: 1.0\n\n",
-                "#cloud-config:\n",
-                "runcmd:\n",
-                " - [ sh, -c, 'which yum && echo \"proxy=",
-                {
-                  "Fn::If": [
-                    "UseProxy",
-                    {
-                      "Ref": "ProxyServer"
-                    },
-                    "_none_"
-                  ]
-                },
-                "\" >> /etc/yum.conf' ]\n",
-                " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
-                {
-                  "Fn::If": [
-                    "UseProxy",
-                    {
-                      "Ref": "ProxyServer"
-                    },
-                    "false"
-                  ]
-                },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
-                "--==BOUNDARY==\n",
-                "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
-                "MIME-Version: 1.0\n\n",
-                "#!/bin/bash -x\n\n",
-                "function error_exit\n",
-                "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " --resource=ComputeFleet --region=",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "  exit 1\n",
-                "}\n",
-                "function bootstrap_instance\n",
-                "{\n",
-                "  which yum 2>/dev/null; yum=$?\n",
-                "  which apt-get 2>/dev/null; apt=$?\n",
-                "  if [ \"${yum}\" == \"0\" ]; then\n",
-                "    yum -y groupinstall development && yum -y install curl wget\n",
-                "  fi\n",
-                "  if [ \"${apt}\" == \"0\" ]; then\n",
-                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget\n",
-                "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
-                "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
-                "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
-                "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  mkdir /opt/cfncluster && echo ${cfncluster_version} | tee /opt/cfncluster/.bootstrapped\n",
-                "}\n",
-                "proxy=",
-                {
-                  "Ref": "ProxyServer"
-                },
-                "\n",
-                "custom_cookbook=",
-                {
-                  "Ref": "CustomChefCookbook"
-                },
-                "\n",
-                "if [ \"${proxy}\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
-                "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
-                "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
-                "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
-                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                "else\n",
-                "  proxy_args=\"\"\n",
-                "  touch /tmp/proxy.sh\n",
-                "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  if [ \"",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\" == \"us-east-1\" ]; then\n",
-                "    s3_prefix=s3\n",
-                "  else\n",
-                "    s3_prefix=s3-",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "/cookbooks/",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "cookbook"
-                  ]
-                },
-                ".tgz\n",
-                "fi\n",
-                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export cfncluster_version=",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "cfncluster"
-                  ]
-                },
-                "\n",
-                "export cookbook_version=",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "cookbook"
-                  ]
-                },
-                "\n",
-                "export chef_version=",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "chef"
-                  ]
-                },
-                "\n",
-                "export ridley_version=",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "ridley"
-                  ]
-                },
-                "\n",
-                "export berkshelf_version=",
-                {
-                  "Fn::FindInMap": [
-                    "CfnClusterVersions",
-                    "default",
-                    "berkshelf"
-                  ]
-                },
-                "\n",
-                "if [ -f /opt/cfncluster/.bootstrapped ]; then\n",
-                "  installed_version=$(cat /opt/cfncluster/.bootstrapped)\n",
-                "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
-                "    bootstrap_instance\n",
-                "  fi\n",
-                "else\n",
-                "  bootstrap_instance\n",
-                "fi\n",
-                "mkdir /tmp/cookbooks\n",
-                "cd /tmp/cookbooks\n",
-                "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z \"$(cat /etc/chef/cfncluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
-                "cd /tmp\n",
-                "# Call CloudFormation\n",
-                "cfn-init ${proxy_args} -s ",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " -v -c default -r ComputeServerLaunchTemplate --region ",
-                {
-                  "Ref": "AWS::Region"
-                },
-                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " --resource=ComputeFleet --region=",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "# End of file\n",
-                "--==BOUNDARY==\n"
+            "Fn::Base64": {
+              "Fn::Join": [
+                "",
+                [
+                  "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "--==BOUNDARY==\n",
+                  "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "#cloud-config:\n",
+                  "runcmd:\n",
+                  " - [ sh, -c, 'which yum && echo \"proxy=",
+                  {
+                    "Fn::If": [
+                      "UseProxy",
+                      {
+                        "Ref": "ProxyServer"
+                      },
+                      "_none_"
+                    ]
+                  },
+                  "\" >> /etc/yum.conf' ]\n",
+                  " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
+                  {
+                    "Fn::If": [
+                      "UseProxy",
+                      {
+                        "Ref": "ProxyServer"
+                      },
+                      "false"
+                    ]
+                  },
+                  "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                  "--==BOUNDARY==\n",
+                  "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "#!/bin/bash -x\n\n",
+                  "function error_exit\n",
+                  "{\n",
+                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --resource=ComputeFleet --region=",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "  exit 1\n",
+                  "}\n",
+                  "function bootstrap_instance\n",
+                  "{\n",
+                  "  which yum 2>/dev/null; yum=$?\n",
+                  "  which apt-get 2>/dev/null; apt=$?\n",
+                  "  if [ \"${yum}\" == \"0\" ]; then\n",
+                  "    yum -y groupinstall development && yum -y install curl wget\n",
+                  "  fi\n",
+                  "  if [ \"${apt}\" == \"0\" ]; then\n",
+                  "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget\n",
+                  "  fi\n",
+                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                  "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
+                  "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
+                  "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
+                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz ${cookbook_url}\n",
+                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  mkdir /opt/cfncluster && echo ${cfncluster_version} | tee /opt/cfncluster/.bootstrapped\n",
+                  "}\n",
+                  "proxy=",
+                  {
+                    "Ref": "ProxyServer"
+                  },
+                  "\n",
+                  "custom_cookbook=",
+                  {
+                    "Ref": "CustomChefCookbook"
+                  },
+                  "\n",
+                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
+                  "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                  "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
+                  "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
+                  "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
+                  "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
+                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                  "else\n",
+                  "  proxy_args=\"\"\n",
+                  "  touch /tmp/proxy.sh\n",
+                  "fi\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  cookbook_url=${custom_cookbook}\n",
+                  "else\n",
+                  "  if [ \"",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\" == \"us-east-1\" ]; then\n",
+                  "    s3_prefix=s3\n",
+                  "  else\n",
+                  "    s3_prefix=s3-",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "  fi\n",
+                  "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "/cookbooks/",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "cookbook"
+                    ]
+                  },
+                  ".tgz\n",
+                  "fi\n",
+                  "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                  "export cfncluster_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "cfncluster"
+                    ]
+                  },
+                  "\n",
+                  "export cookbook_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "cookbook"
+                    ]
+                  },
+                  "\n",
+                  "export chef_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "chef"
+                    ]
+                  },
+                  "\n",
+                  "export ridley_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "ridley"
+                    ]
+                  },
+                  "\n",
+                  "export berkshelf_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "berkshelf"
+                    ]
+                  },
+                  "\n",
+                  "if [ -f /opt/cfncluster/.bootstrapped ]; then\n",
+                  "  installed_version=$(cat /opt/cfncluster/.bootstrapped)\n",
+                  "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
+                  "    bootstrap_instance\n",
+                  "  fi\n",
+                  "else\n",
+                  "  bootstrap_instance\n",
+                  "fi\n",
+                  "mkdir /tmp/cookbooks\n",
+                  "cd /tmp/cookbooks\n",
+                  "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z \"$(cat /etc/chef/cfncluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
+                  "cd /tmp\n",
+                  "# Call CloudFormation\n",
+                  "cfn-init ${proxy_args} -s ",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " -v -c default -r ComputeServerLaunchTemplate --region ",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
+                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --resource=ComputeFleet --region=",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "# End of file\n",
+                  "--==BOUNDARY==\n"
+                ]
               ]
-            ]
+            }
           }
-        }
         }
       },
       "Metadata": {
