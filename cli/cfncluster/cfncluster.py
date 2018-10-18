@@ -19,6 +19,9 @@ import logging
 import boto3
 import os
 import json
+import random
+import pkg_resources
+import string
 import tarfile
 import shlex
 import subprocess as sub
@@ -26,6 +29,7 @@ import datetime
 from botocore.exceptions import ClientError
 
 from . import cfnconfig
+from . import utils
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
@@ -33,6 +37,25 @@ else:
     from urllib import urlretrieve
 
 logger = logging.getLogger('cfncluster.cfncluster')
+
+
+def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_dir):
+    random_string = \
+        ''.join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+    s3_bucket_name = '-'.join([stack_name.lower(), random_string])
+
+    try:
+        utils.create_s3_bucket(bucket_name=s3_bucket_name, aws_client_config=aws_client_config)
+        utils.upload_resources_artifacts(bucket_name=s3_bucket_name,
+                                         root=resources_dir,
+                                         aws_client_config=aws_client_config)
+    except boto3.client('s3').exceptions.BucketAlreadyExists:
+        logger.error('Bucket %s already exists. Please retry cluster creation.' % s3_bucket_name)
+        raise
+    except Exception:
+        utils.delete_s3_bucket(bucket_name=s3_bucket_name, aws_client_config=aws_client_config)
+        raise
+    return s3_bucket_name
 
 def version(args):
     config = cfnconfig.CfnClusterConfig(args)
@@ -44,40 +67,45 @@ def create(args):
 
     # Build the config based on args
     config = cfnconfig.CfnClusterConfig(args)
+    config_parameters_dict = dict(config.parameters)
+    aws_client_config = dict(
+        region_name=config.region,
+        aws_access_key_id=config.aws_access_key_id,
+        aws_secret_access_key=config.aws_secret_access_key
+    )
 
     # Set the ComputeWaitConditionCount parameter to match InitialQueueSize
-    try:
-        i = [p[0] for p in config.parameters].index('InitialQueueSize')
-        initial_queue_size = config.parameters[i][1]
-        config.parameters.append(('ComputeWaitConditionCount', initial_queue_size))
-    except ValueError:
-        pass
+    if 'InitialQueueSize' in config_parameters_dict:
+        config.parameters.append(('ComputeWaitConditionCount', config_parameters_dict['InitialQueueSize']))
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
-    try:
-        i = [p[0] for p in config.parameters].index('MasterSubnetId')
-        master_subnet_id = config.parameters[i][1]
+    if 'MasterSubnetId' in config_parameters_dict:
+        master_subnet_id = config_parameters_dict['MasterSubnetId']
         try:
-            ec2 = boto3.client('ec2', region_name=config.region,
-                                 aws_access_key_id=config.aws_access_key_id,
-                                 aws_secret_access_key=config.aws_secret_access_key)
-            availability_zone = ec2.describe_subnets(SubnetIds=[master_subnet_id])\
-                .get('Subnets')[0]\
+            ec2 = utils.boto3_client('ec2', aws_client_config)
+            availability_zone = ec2.describe_subnets(SubnetIds=[master_subnet_id]) \
+                .get('Subnets')[0] \
                 .get('AvailabilityZone')
         except ClientError as e:
             logger.critical(e.response.get('Error').get('Message'))
             sys.stdout.flush()
             sys.exit(1)
         config.parameters.append(('AvailabilityZone', availability_zone))
-    except ValueError:
-        pass
 
     capabilities = ["CAPABILITY_IAM"]
+    batch_temporary_bucket = None
     try:
-        cfn = boto3.client('cloudformation', region_name=config.region,
-                           aws_access_key_id=config.aws_access_key_id,
-                           aws_secret_access_key=config.aws_secret_access_key)
+        cfn = utils.boto3_client('cloudformation', aws_client_config)
         stack_name = 'cfncluster-' + args.cluster_name
+
+        # If scheduler is awsbatch create bucket with resources
+        if 'Scheduler' in config_parameters_dict and config_parameters_dict['Scheduler'] == 'awsbatch':
+            batch_resources = pkg_resources.resource_filename(__name__, 'resources/batch')
+            batch_temporary_bucket = create_bucket_with_batch_resources(stack_name=stack_name,
+                                                                        aws_client_config=aws_client_config,
+                                                                        resources_dir=batch_resources)
+            config.parameters.append(('ResourcesS3Bucket', batch_temporary_bucket))
+
         logger.info("Creating stack named: " + stack_name)
 
         cfn_params = [{'ParameterKey': param[0], 'ParameterValue': param[1]} for param in config.parameters]
@@ -126,12 +154,16 @@ def create(args):
     except ClientError as e:
         logger.critical(e.response.get('Error').get('Message'))
         sys.stdout.flush()
+        if batch_temporary_bucket:
+            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
     except KeyboardInterrupt:
         logger.info('\nExiting...')
         sys.exit(0)
     except Exception as e:
         logger.critical(e)
+        if batch_temporary_bucket:
+            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
 
 def is_ganglia_enabled(parameters):

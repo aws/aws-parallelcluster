@@ -39,17 +39,16 @@
     "KeyName": {
       "Description": "EC2 Keypair",
       "Type": "AWS::EC2::KeyPair::KeyName"
-   },
-   "SpotBidPercentage" : {
-     "Description": "Percentage of ondemand price to set as the maximum spot bid.",
-     "Type": "Number",
-     "Default": "100"
-   },
-   "ContainerImage" : {
-     "Description": "Docker container image.",
-     "Type": "String",
-     "Default": "137112412989.dkr.ecr.us-west-2.amazonaws.com/amazonlinux:latest"
-   }
+    },
+    "SpotBidPercentage": {
+      "Description": "Percentage of ondemand price to set as the maximum spot bid.",
+      "Type": "Number",
+      "Default": "100"
+    },
+    "ResourcesS3Bucket": {
+      "Description": "S3 Bucket where resources needed by this stack are located.",
+      "Type": "String"
+    }
   },
   "Conditions": {
     "UseSpot" : {
@@ -172,7 +171,7 @@
         "JobDefinitionName" : { "Ref": "ClusterName" },
         "Type" : "container",
         "ContainerProperties" : {
-          "Image" : { "Ref" : "ContainerImage" },
+          "Image" : { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}" },
           "Vcpus" : 2,
           "Memory" : 2000,
           "Command" : [ "echo", "Hello world" ]
@@ -180,6 +179,331 @@
         "RetryStrategy" : {
           "Attempts" : 1
         }
+      }
+    },
+    "DockerImagesRepo": {
+      "Type": "AWS::ECR::Repository"
+    },
+    "CodeBuildDockerImageBuilderProject": {
+      "Type": "AWS::CodeBuild::Project",
+      "Properties": {
+        "Artifacts": {
+          "Type": "NO_ARTIFACTS"
+        },
+        "Environment": {
+          "ComputeType": "BUILD_GENERAL1_SMALL",
+          "EnvironmentVariables": [
+            {
+              "Name": "AWS_REGION",
+              "Value": { "Ref": "AWS::Region" }
+            },
+            {
+              "Name": "AWS_ACCOUNT_ID",
+              "Value": { "Ref": "AWS::AccountId" }
+            },
+            {
+              "Name": "IMAGE_REPO_NAME",
+              "Value": { "Ref": "DockerImagesRepo" }
+            },
+            {
+              "Name": "IMAGE",
+              "Value": { "Ref": "OS" }
+            }
+          ],
+          "Image": "aws/codebuild/docker:17.09.0",
+          "Type": "LINUX_CONTAINER"
+        },
+        "Name": { "Fn::Sub": "${ClusterName}-build-docker-images-project" },
+        "ServiceRole": { "Ref": "CodeBuildRole" },
+        "Source": {
+          "Location": { "Fn::Sub": "${ResourcesS3Bucket}/docker/artifacts.zip" },
+          "Type": "S3"
+        }
+      }
+    },
+    "CodeBuildLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/codebuild/${CodeBuildDockerImageBuilderProject}"
+        },
+        "RetentionInDays": 1
+      }
+    },
+    "CodeBuildPolicy": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:CompleteLayerUpload",
+                "ecr:InitiateLayerUpload",
+                "ecr:PutImage",
+                "ecr:UploadLayerPart"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::GetAtt": ["DockerImagesRepo", "Arn"]
+              },
+              "Sid": "ECRRepoPolicy"
+            },
+            {
+              "Action": ["ecr:GetAuthorizationToken"],
+              "Effect": "Allow",
+              "Resource": "*",
+              "Sid": "ECRPolicy"
+            },
+            {
+              "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+              "Effect": "Allow",
+              "Resource": "arn:aws:logs:*:*:*",
+              "Sid": "CloudWatchLogsPolicy"
+            },
+            {
+              "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+              "Effect": "Allow",
+              "Resource": { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*" },
+              "Sid": "S3GetObjectPolicy"
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "PolicyName": "CodeBuildPolicy",
+        "Roles": [
+          { "Ref": "CodeBuildRole" }
+        ]
+      }
+    },
+    "CodeBuildRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["codebuild.amazonaws.com"]
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ManageDockerImagesCustomResource": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "DependsOn": [
+        "CodeBuildDockerImageBuilderProject",
+        "DockerImagesRepo",
+        "CodeBuildNotificationRule"
+      ],
+      "Properties": {
+        "CodeBuildProject": { "Ref": "CodeBuildDockerImageBuilderProject" },
+        "EcrRepository": { "Ref": "DockerImagesRepo" },
+        "ServiceToken": {
+          "Fn::GetAtt": ["ManageDockerImagesFunction", "Arn"]
+        }
+      }
+    },
+    "ManageDockerImagesFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": { "Ref": "ResourcesS3Bucket" },
+          "S3Key": "custom_resources_code/artifacts.zip"
+        },
+        "Handler": "manage_docker_images.handler",
+        "MemorySize": 128,
+        "Role": { "Fn::GetAtt": ["ManageDockerImagesFunctionExecutionRole", "Arn"] },
+        "Runtime": "python3.6",
+        "Timeout": 60
+      },
+      "DependsOn": "ManageDockerImagesFunctionExecutionRole"
+    },
+    "ManageDockerImagesFunctionExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["lambda.amazonaws.com"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*",
+                  "Sid": "CloudWatchLogsPolicy"
+                },
+                {
+                  "Action": ["ecr:BatchDeleteImage", "ecr:ListImages"],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::GetAtt": ["DockerImagesRepo", "Arn"]
+                  },
+                  "Sid": "ECRPolicy"
+                },
+                {
+                  "Action": [
+                    "codebuild:BatchGetBuilds",
+                    "codebuild:StartBuild"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Fn::GetAtt": ["CodeBuildDockerImageBuilderProject", "Arn"]
+                  },
+                  "Sid": "CodeBuildPolicy"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "LambdaPolicy"
+          }
+        ]
+      }
+    },
+    "ManageDockerImagesFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${ManageDockerImagesFunction}"
+        },
+        "RetentionInDays": 1
+      }
+    },
+    "DockerBuildWaitHandle" : {
+      "Type" : "AWS::CloudFormation::WaitConditionHandle",
+      "Properties" : {
+      }
+    },
+    "DockerBuildWaitCondition" : {
+      "Type" : "AWS::CloudFormation::WaitCondition",
+      "DependsOn" : "ManageDockerImagesCustomResource",
+      "Properties" : {
+        "Handle" : { "Ref" : "DockerBuildWaitHandle" },
+        "Timeout" : "1200"
+      }
+    },
+    "SendBuildNotificationFunctionExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["lambda.amazonaws.com"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*",
+                  "Sid": "CloudWatchLogsPolicy"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "LambdaPolicy"
+          }
+        ]
+      }
+    },
+    "SendBuildNotificationFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
+          "S3Key": "custom_resources_code/artifacts.zip"
+        },
+        "Environment": {
+          "Variables": {
+            "NOTIFICATION_URL": {
+              "Ref": "DockerBuildWaitHandle"
+            }
+          }
+        },
+        "Handler": "send_build_notification.handler",
+        "MemorySize": 128,
+        "Role": { "Fn::GetAtt": ["SendBuildNotificationFunctionExecutionRole", "Arn"] },
+        "Runtime": "python3.6",
+        "Timeout": 60
+      },
+      "DependsOn": "SendBuildNotificationFunctionExecutionRole"
+    },
+    "SendBuildNotificationFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${SendBuildNotificationFunction}"
+        },
+        "RetentionInDays": 1
+      }
+    },
+    "SendBuildNotificationFunctionInvokePermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": { "Fn::GetAtt": ["SendBuildNotificationFunction", "Arn"] },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": { "Fn::GetAtt": ["CodeBuildNotificationRule", "Arn"] }
+      }
+    },
+    "CodeBuildNotificationRule": {
+      "Type": "AWS::Events::Rule",
+      "Properties": {
+        "EventPattern": {
+          "detail": {
+            "build-status": [
+              "FAILED",
+              "STOPPED",
+              "SUCCEEDED"
+            ],
+            "project-name": [ { "Ref": "CodeBuildDockerImageBuilderProject" } ]
+          },
+          "detail-type": [
+            "CodeBuild Build State Change"
+          ],
+          "source": [
+            "aws.codebuild"
+          ]
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": [
+                "SendBuildNotificationFunction",
+                "Arn"
+              ]
+            },
+            "Id": "SendBuildNotificationFunction"
+          }
+        ]
       }
     }
   },
@@ -192,6 +516,18 @@
     },
     "JobDefinitionArn": {
       "Value" : { "Ref" : "JobDefinitionSerial" }
+    },
+    "ECRRepoName": {
+      "Description": "Name of the ECR repository where docker images used by AWS Batch are located.",
+      "Value": { "Ref": "DockerImagesRepo" }
+    },
+    "CodeBuildDockerImageBuilderProject": {
+      "Description": "CodeBuild project used to bake docker images.",
+      "Value": { "Ref": "CodeBuildDockerImageBuilderProject" }
+    },
+    "ResourcesS3Bucket": {
+      "Description": "S3 user bucket where resources are stored",
+      "Value": { "Ref": "ResourcesS3Bucket" }
     }
   }
 }

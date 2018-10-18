@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing an framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: cfncluster-1.5.2",
+  "Description": "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing a framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: cfncluster-1.5.2",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -1018,6 +1018,11 @@
       "Description" : "URL of custom batch template that will override the default one.",
       "Type": "String",
       "Default": "NONE"
+    },
+    "ResourcesS3Bucket": {
+      "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {
@@ -1629,6 +1634,18 @@
           "Fn::Equals": [
             {
               "Ref": "CustomAWSBatchTemplateURL"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "HasResourcesS3Bucket": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ResourcesS3Bucket"
             },
             "NONE"
           ]
@@ -4457,6 +4474,7 @@
     },
     "AWSBatchStack": {
       "Type": "AWS::CloudFormation::Stack",
+      "DependsOn": [ "CleanupResourcesCustomResource" ],
       "Properties": {
         "Parameters": {
           "MinvCpu": { "Ref": "MinvCpu" },
@@ -4527,7 +4545,8 @@
             "UseSpotPrice",
             { "Ref": "SpotPrice" },
             { "Ref": "AWS::NoValue" }
-          ]}
+          ]},
+          "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" }
         },
         "TemplateURL": {
           "Fn::If": [
@@ -4662,6 +4681,93 @@
           "id": "ee5f3006-419e-4786-b527-e9503a662e5e"
         }
       }
+    },
+    "CleanupResourcesFunctionExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["lambda.amazonaws.com"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*",
+                  "Sid": "CloudWatchLogsPolicy"
+                },
+                {
+                  "Action": [
+                    "s3:DeleteBucket",
+                    "s3:DeleteObject",
+                    "s3:ListBucket"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}" },
+                    { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*" }
+                  ],
+                  "Sid": "S3BucketPolicy"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "LambdaPolicy"
+          }
+        ]
+      },
+      "Condition": "HasResourcesS3Bucket"
+    },
+    "CleanupResourcesCustomResource": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" },
+        "ServiceToken": {
+          "Fn::GetAtt": ["CleanupResourcesFunction", "Arn"]
+        }
+      },
+      "DependsOn": [ "CleanupResourcesFunction", "CleanupResourcesFunctionLogGroup" ],
+      "Condition": "HasResourcesS3Bucket"
+    },
+    "CleanupResourcesFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": { "Ref": "ResourcesS3Bucket" },
+          "S3Key": "custom_resources_code/artifacts.zip"
+        },
+        "Handler": "cleanup_resources.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": ["CleanupResourcesFunctionExecutionRole", "Arn"]
+        },
+        "Runtime": "python3.6",
+        "Timeout": 60
+      },
+      "Condition": "HasResourcesS3Bucket",
+      "DependsOn": "CleanupResourcesFunctionExecutionRole"
+    },
+    "CleanupResourcesFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${CleanupResourcesFunction}"
+        },
+        "RetentionInDays": 1
+      },
+      "Condition": "HasResourcesS3Bucket"
     }
   },
   "Outputs": {
@@ -4732,6 +4838,38 @@
         ]
       },
       "Condition": "MasterPublicIp"
+    },
+    "ResourcesS3Bucket": {
+      "Description": "S3 user bucket where cfncluster resources are stored",
+      "Value": { "Ref": "ResourcesS3Bucket" },
+      "Condition": "HasResourcesS3Bucket"
+    },
+    "BatchComputeEnvironment" : {
+      "Value" : {
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.ComputeEnvironmentArn"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
+    },
+    "BatchJobQueue" : {
+      "Value" : {
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.JobQueueArn"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
+    },
+    "BatchJobDefinition": {
+      "Value" : {
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.JobDefinitionArn"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
     }
   }
 }
