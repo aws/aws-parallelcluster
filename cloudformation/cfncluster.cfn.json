@@ -1889,6 +1889,15 @@
     "RootRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
+        "ManagedPolicyArns" : [
+          {
+            "Fn::If": [
+              "CreateAWSBatchStack",
+              "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+              { "Ref": "AWS::NoValue" }
+            ]
+          }
+        ],
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
