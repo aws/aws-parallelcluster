@@ -63,16 +63,12 @@ def version(args):
     config = cfnconfig.CfnClusterConfig(args)
     logger.info(config.version)
 
-def get_config_parameter(config, param, default):
-    return config.get(param) if config.get(param) else default
-
 def create(args):
     logger.info('Beginning cluster creation for cluster: %s' % (args.cluster_name))
     logger.debug('Building cluster config based on args %s' % str(args))
 
     # Build the config based on args
     config = cfnconfig.CfnClusterConfig(args)
-    config_parameters_dict = dict(config.parameters)
     aws_client_config = dict(
         region_name=config.region,
         aws_access_key_id=config.aws_access_key_id,
@@ -80,12 +76,12 @@ def create(args):
     )
 
     # Set the ComputeWaitConditionCount parameter to match InitialQueueSize
-    if 'InitialQueueSize' in config_parameters_dict:
-        config.parameters.append(('ComputeWaitConditionCount', config_parameters_dict['InitialQueueSize']))
+    if 'InitialQueueSize' in config.parameters:
+        config.parameters['ComputeWaitConditionCount'] = config.parameters['InitialQueueSize']
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
-    if 'MasterSubnetId' in config_parameters_dict:
-        master_subnet_id = config_parameters_dict['MasterSubnetId']
+    if 'MasterSubnetId' in config.parameters:
+        master_subnet_id = config.parameters['MasterSubnetId']
         try:
             ec2 = utils.boto3_client('ec2', aws_client_config)
             availability_zone = ec2.describe_subnets(SubnetIds=[master_subnet_id]) \
@@ -97,10 +93,12 @@ def create(args):
             sys.exit(1)
         config.parameters['AvailabilityZone'] = availability_zone
 
-    scheduler = get_config_parameter(config=config, param='Scheduler', default='sge')
+    scheduler = config.parameters.get('Scheduler') if config.parameters.get('Scheduler') else 'sge'
     if scheduler == 'awsbatch':
-        mnp = mnp_batch.create_job_definition(config, args)
-    logger.info("AWS Batch MNP Job Definition = %s" % mnp)
+        # TODO Remove after batch launches CloudFormation Support
+        batch_resources = mnp_batch.main(config, args)
+        config.parameters.update(batch_resources)
+        logger.info("AWS Batch Resources = %s" % batch_resources)
 
     capabilities = ["CAPABILITY_IAM"]
     batch_temporary_bucket = None
@@ -109,12 +107,12 @@ def create(args):
         stack_name = 'cfncluster-' + args.cluster_name
 
         # If scheduler is awsbatch create bucket with resources
-        if 'Scheduler' in config_parameters_dict and config_parameters_dict['Scheduler'] == 'awsbatch':
+        if 'Scheduler' in config.parameters and config.parameters['Scheduler'] == 'awsbatch':
             batch_resources = pkg_resources.resource_filename(__name__, 'resources/batch')
             batch_temporary_bucket = create_bucket_with_batch_resources(stack_name=stack_name,
                                                                         aws_client_config=aws_client_config,
                                                                         resources_dir=batch_resources)
-            config.parameters.append(('ResourcesS3Bucket', batch_temporary_bucket))
+            config.parameters['ResourcesS3Bucket'] = batch_temporary_bucket
 
         logger.info("Creating stack named: " + stack_name)
 
@@ -153,7 +151,7 @@ def create(args):
                                      event.get('ResourceStatusReason')))
             logger.info('')
             outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('Outputs', [])
-            ganglia_enabled = is_ganglia_enabled(cfn_params)
+            ganglia_enabled = is_ganglia_enabled(config.parameters)
             for output in outputs:
                 if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
                     continue
@@ -178,9 +176,8 @@ def create(args):
 
 def is_ganglia_enabled(parameters):
     try:
-        extra_json = filter(lambda x: x.get('ParameterKey') == 'ExtraJson', parameters)[0] \
-            .get('ParameterValue')
-        extra_json = json.loads(extra_json).get('cfncluster')
+        extra_json = dict(parameters.get('ExtraJson'))
+        extra_json = json.loads(extra_json.get('ExtraJson')).get('cfncluster')
         return not extra_json.get('ganglia_enabled') == 'no'
     except:
         pass
@@ -208,8 +205,8 @@ def update(args):
         config.parameters['InitialQueueSize'] = str(desired_capacity)
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
-    try:
-        master_subnet_id = config.parameters.get('MasterSubnetId')
+    if 'MasterSubnetId' in config.parameters:
+        master_subnet_id = config.parameters['MasterSubnetId']
         try:
             ec2 = boto3.client('ec2', region_name=config.region,
                                aws_access_key_id=config.aws_access_key_id,
@@ -221,8 +218,6 @@ def update(args):
             logger.critical(e.response.get('Error').get('Message'))
             sys.exit(1)
         config.parameters['AvailabilityZone'] = availability_zone
-    except ValueError:
-        pass
 
     try:
         logger.debug((config.template_url, config.parameters))
@@ -256,9 +251,9 @@ def start(args):
     config = cfnconfig.CfnClusterConfig(args)
 
     # Set asg limits
-    max_queue_size = config.parameters.get('MaxQueueSize') if config.parameters.get('MaxQueueSize') and config.get('MaxQueueSize') > 0 else 10
-    desired_queue_size = config.get('InitialQueueSize') if config.get('InitialQueueSize') and config.get('InitialQueueSize') > 0 else 2
-    min_queue_size = desired_queue_size if config.parameters('MaintainInitialSize') == "true" and desired_queue_size > 0 else 0
+    max_queue_size = config.parameters.get('MaxQueueSize') if config.parameters.get('MaxQueueSize') and config.parameters.get('MaxQueueSize') > 0 else 10
+    desired_queue_size = config.parameters.get('InitialQueueSize') if config.parameters.get('InitialQueueSize') and config.parameters.get('InitialQueueSize') > 0 else 2
+    min_queue_size = desired_queue_size if config.parameters.get('MaintainInitialSize') == "true" and desired_queue_size > 0 else 0
 
     asg_name = get_asg_name(stack_name=stack_name, config=config)
     set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
