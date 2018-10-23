@@ -144,7 +144,7 @@ main() {
 
     shared_dir_temp="${shared_dir}/${AWS_BATCH_JOB_ID}-${AWS_BATCH_JOB_ATTEMPT}"
 
-    mkdir -p shared_dir_temp
+    mkdir -p "${shared_dir_temp}"
 
     # If it is the head inspect the shared directory for the hostfile list
     if [[ "${AWS_BATCH_JOB_NODE_INDEX}" -eq  "${AWS_BATCH_JOB_MAIN_NODE_INDEX}" ]]; then
