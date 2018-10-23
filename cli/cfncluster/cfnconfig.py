@@ -228,8 +228,8 @@ class CfnClusterConfig(object):
                                                     % (key, self.__cluster_section))
                     sys.exit(1)
                 if self.__sanity_check and self.cluster_options.get(key)[1] is not None:
-                    config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
-                                                 self.cluster_options.get(key)[1],__temp__)
+                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                                                self.cluster_options.get(key)[1],__temp__)
                 self.parameters[self.cluster_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
