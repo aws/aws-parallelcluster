@@ -71,8 +71,6 @@
             "EncryptedEphemeral",
             "EphemeralDir",
             "SharedDir",
-            "CWLRegion",
-            "CWLLogGroup",
             "CustomChefRunList",
             "CustomChefCookbook",
             "ExtraJson",
@@ -193,12 +191,6 @@
         "S3ReadWriteResource": {
           "default": "s3_read_write_resource"
         },
-        "CWLRegion": {
-          "default": "cwl_region"
-        },
-        "CWLLogGroup": {
-          "default": "cwl_log_group"
-        },
         "ProxyServer": {
           "default": "proxy_server"
         },
@@ -267,9 +259,6 @@
         },
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
-        },
-        "ScalingThreshold2": {
-          "default": "scaling_threshold2"
         },
         "ComputeWaitConditionCount": {
           "default": "WAIT COUNT"
@@ -926,6 +915,7 @@
       "Default": "/shared"
     },
     "CLITemplate": {
+      "Description": "cluster_template section used in the config.",
       "Type": "String",
       "Default": "default"
     },
@@ -934,16 +924,6 @@
       "Type": "String",
       "Default": "NONE",
       "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
-    },
-    "CWLRegion": {
-      "Description": "CloudWatch Logs region",
-      "Type": "String",
-      "Default": "NONE"
-    },
-    "CWLLogGroup": {
-      "Description": "CloudWatch Logs LogGroup",
-      "Type": "String",
-      "Default": "NONE"
     },
     "CustomChefRunList": {
       "Description": "Custom run list, which will override the default",
@@ -1418,34 +1398,6 @@
               "Ref": "S3ReadWriteResource"
             },
             "NONE"
-          ]
-        }
-      ]
-    },
-    "CloudWatchLogs": {
-      "Fn::And": [
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "CWLRegion"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        },
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "CWLLogGroup"
-                },
-                "NONE"
-              ]
-            }
           ]
         }
       ]
@@ -2074,27 +2026,6 @@
               "Effect": "Allow",
               "Resource": [
                 "*"
-              ]
-            },
-            {
-              "Sid": "CloudWatchLogs",
-              "Action": [
-                "logs:*"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":logs:*:*:*"
-                    ]
-                  ]
-                }
               ]
             }
           ]

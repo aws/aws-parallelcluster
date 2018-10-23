@@ -103,12 +103,6 @@ key_name = mykey
 #base_os = alinux
 # CloudWatch Logs region
 # (defaults to NONE in the default template)
-#cwl_region = NONE
-# CloudWatch Logs Log Group name
-# (defaults to NONE in the default template)
-#cwl_log_group = NONE
-# Existing EC2 IAM role to be assosiated with the EC2 instances
-# (defaults to NONE in the default template)
 #ec2_iam_role = NONE
 # Extra Json to be merged with the dna.json used by Chef
 # (defaults to {} in the default template)
