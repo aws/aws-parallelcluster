@@ -116,16 +116,6 @@ CfnClusterInstancePolicy
               ],
               "Sid": "SQSList",
               "Effect": "Allow"
-          },
-          {
-              "Resource": [
-                  "arn:aws:logs:*:*:*"
-              ],
-              "Action": [
-                  "logs:*"
-              ],
-              "Sid": "CloudWatchLogs",
-              "Effect": "Allow"
           }
       ]
   }
