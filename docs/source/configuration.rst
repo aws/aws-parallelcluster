@@ -320,7 +320,7 @@ Note: The base_os determines the username used to log into the cluster.
 
 ec2_iam_role
 """"""""""""
-The given name of an existing EC2 IAM Role (Instance Profile) that will be attached to all
+The given name of an existing EC2 IAM Role that will be attached to all
 instances in the cluster. Note that the given name of a role and its Amazon
 Resource Name (ARN) are different, and the latter can not be used as an argument
 to ec2_iam_role.
