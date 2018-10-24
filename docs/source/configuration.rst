@@ -103,7 +103,8 @@ Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cf
 
 compute_instance_type
 """""""""""""""""""""
-The EC2 instance type used for the cluster compute nodes.
+The EC2 instance type used for the cluster compute nodes. Note that when using a placement group
+only certain instance types can participate in a placement group.
 
 Defaults to t2.micro for default template. ::
 
@@ -111,7 +112,8 @@ Defaults to t2.micro for default template. ::
 
 master_instance_type
 """"""""""""""""""""
-The EC2 instance type use for the master node.
+The EC2 instance type use for the master node. Note that when using a placement group of 'cluster'
+only certain instance types can participate in a placement group.
 
 This defaults to t2.micro for default template. ::
 
@@ -247,7 +249,8 @@ Defaults to NONE for the default template. ::
 
 placement_group
 """""""""""""""
-Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
+Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted. Note that when
+using a placement group only certain EC2 instance types are allowed to be used for the master and compute nodes.
 
 Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
@@ -317,7 +320,7 @@ Note: The base_os determines the username used to log into the cluster.
 
 ec2_iam_role
 """"""""""""
-The given name of an existing EC2 IAM Role that will be attached to all
+The given name of an existing EC2 IAM Role (Instance Profile) that will be attached to all
 instances in the cluster. Note that the given name of a role and its Amazon
 Resource Name (ARN) are different, and the latter can not be used as an argument
 to ec2_iam_role.
