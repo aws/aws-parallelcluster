@@ -1976,6 +1976,18 @@
         }
       }
     },
+    "NewInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Path": "/",
+        "Roles": [
+          {
+            "Ref": "EC2IAMRoleName"
+          }
+        ]
+      },
+      "Condition": "UseEC2IAMRole"
+    },    
     "CfnClusterPolicies": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
@@ -2427,7 +2439,7 @@
           "Fn::If": [
             "UseEC2IAMRole",
             {
-              "Ref": "EC2IAMRoleName"
+              "Ref": "NewInstanceProfile"
             },
             {
               "Ref": "RootInstanceProfile"
@@ -3001,7 +3013,7 @@
           "Fn::If": [
             "UseEC2IAMRole",
             {
-              "Ref": "EC2IAMRoleName"
+              "Ref": "NewInstanceProfile"
             },
             {
               "Ref": "RootInstanceProfile"
