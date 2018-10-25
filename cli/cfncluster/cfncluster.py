@@ -104,7 +104,7 @@ def create(args):
                                      event.get('ResourceStatusReason')))
             logger.info('')
             outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('Outputs', [])
-            ganglia_enabled = is_ganglia_enabled(config.parameters)
+            ganglia_enabled = is_ganglia_enabled(cfn_params)
             for output in outputs:
                 if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
                     continue
@@ -124,9 +124,10 @@ def create(args):
         sys.exit(1)
 
 def is_ganglia_enabled(parameters):
-    extra_json = dict(filter(lambda x: x[0] == 'ExtraJson', parameters))
     try:
-        extra_json = json.loads(extra_json.get('ExtraJson')).get('cfncluster')
+        extra_json = filter(lambda x: x.get('ParameterKey') == 'ExtraJson', parameters)[0] \
+            .get('ParameterValue')
+        extra_json = json.loads(extra_json).get('cfncluster')
         return not extra_json.get('ganglia_enabled') == 'no'
     except:
         pass
@@ -402,7 +403,7 @@ def command(args, extra_args):
         sys.exit(0)
 
 def status(args):
-    stack = ('cfncluster-' + args.cluster_name)
+    stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
 
     cfn = boto3.client('cloudformation', region_name=config.region,
@@ -410,31 +411,33 @@ def status(args):
                        aws_secret_access_key=config.aws_secret_access_key)
 
     try:
-        status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('StackStatus')
+        status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
         sys.stdout.write('\rStatus: %s' % status)
         sys.stdout.flush()
         if not args.nowait:
             while status not in ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE',
                                  'ROLLBACK_COMPLETE', 'CREATE_FAILED', 'DELETE_FAILED']:
                 time.sleep(5)
-                status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('StackStatus')
-                events = cfn.describe_stack_events(StackName=stack).get('StackEvents')[0]
+                status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
+                events = cfn.describe_stack_events(StackName=stack_name).get('StackEvents')[0]
                 resource_status = ('Status: %s - %s' % (events.get('LogicalResourceId'), events.get('ResourceStatus'))).ljust(80)
                 sys.stdout.write('\r%s' % resource_status)
                 sys.stdout.flush()
             sys.stdout.write('\rStatus: %s\n' % status)
             sys.stdout.flush()
             if status in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
-                state = poll_master_server_state(stack, config)
+                state = poll_master_server_state(stack_name, config)
                 if state == 'running':
-                    outputs = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get('Outputs', [])
-                    ganglia_enabled = is_ganglia_enabled(config.parameters)
+                    stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+                    outputs = stack.get('Outputs', [])
+                    parameters = stack.get('Parameters')
+                    ganglia_enabled = is_ganglia_enabled(parameters)
                     for output in outputs:
                         if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
                             continue
                         logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
             elif status in ['ROLLBACK_COMPLETE', 'CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_ROLLBACK_COMPLETE']:
-                events = cfn.describe_stack_events(StackName=stack).get('StackEvents')
+                events = cfn.describe_stack_events(StackName=stack_name).get('StackEvents')
                 for event in events:
                     if event.get('ResourceStatus') in ['CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_FAILED']:
                         logger.info("%s %s %s %s %s" %
