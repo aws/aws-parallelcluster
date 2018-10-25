@@ -20,6 +20,11 @@ from urllib.parse import urlparse
 import sys
 from botocore.exceptions import ClientError
 
+def get_partition(region):
+    if region == 'us-gov-west-1':
+        return 'aws-us-gov'
+    return 'aws'
+
 def check_resource(region, cluster_name, aws_access_key_id, aws_secret_access_key, resource_type,resource_value):
 
     # Loop over all supported resource checks
