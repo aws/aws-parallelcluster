@@ -54,6 +54,9 @@ def start(args):
 def stop(args):
     cfncluster.stop(args)
 
+def create_ami(args):
+    cfncluster.create_ami(args)
+
 def config_logger():
     logger = logging.getLogger('cfncluster.cfncluster')
     logger.setLevel(logging.DEBUG)
@@ -76,7 +79,7 @@ def config_logger():
     logger.addHandler(fh)
 
 def addarg_config(subparser):
-    subparser.add_argument("--config", "-c", dest="config_file", help='specify a alternative config file')
+    subparser.add_argument("--config", "-c", dest="config_file", help='specify an alternative config file')
 
 def addarg_region(subparser):
     subparser.add_argument( "--region", "-r", dest="region", help='specify a specific region to connect to', default=None)
@@ -192,6 +195,20 @@ def main():
 
     pversion = subparsers.add_parser('version', help='display version of cfncluster')
     pversion.set_defaults(func=version)
+
+    pami = subparsers.add_parser('createami', help='(Linux/OSX) create a custom AMI to use with cfncluster')
+    pami.add_argument("--ami-id", "-ai", type=str, dest="base_ami_id", default=None, required=True,
+                      help="specify the base AMI to use for building the cfncluster AMI")
+    pami.add_argument("--os", "-os", type=str, dest="base_ami_os", default=None, required=True,
+                      help="specify the OS of the base AMI. Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7")
+    pami.add_argument("--ami-name-prefix", "-ap", type=str, dest="custom_ami_name_prefix", default='custom-ami-',
+                      help="specify the prefix name of the resulting cfncluster AMI")
+    pami.add_argument("--custom-cookbook", "-cc", type=str, dest="custom_ami_cookbook", default=None,
+                      help="specify the cookbook to use to build the cfncluster AMI")
+    addarg_config(pami)
+    addarg_region(pami)
+    pami.set_defaults(template_url=None)
+    pami.set_defaults(func=create_ami)
 
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
