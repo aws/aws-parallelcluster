@@ -11,15 +11,26 @@ from __future__ import absolute_import
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from builtins import str
+from tempfile import mkdtemp,mkstemp
+from shutil import rmtree
 import sys
 import time
 import logging
 import boto3
 import os
 import json
+import tarfile
+import shlex
+import subprocess as sub
+import datetime
 from botocore.exceptions import ClientError
 
 from . import cfnconfig
+
+if sys.version_info[0] >= 3:
+    from urllib.request import urlretrieve
+else:
+    from urllib import urlretrieve
 
 logger = logging.getLogger('cfncluster.cfncluster')
 
@@ -503,3 +514,190 @@ def delete(args):
     except KeyboardInterrupt:
         logger.info('\nExiting...')
         sys.exit(0)
+
+
+def get_cookbook_url(config, tmpdir):
+    if config.args.custom_ami_cookbook is not None:
+        return config.args.custom_ami_cookbook
+    else:
+        cookbook_version = get_cookbook_version(config, tmpdir)
+        if config.region == 'us-gov-west-1':
+            return ('https://s3-%s.amazonaws.com/%s-cfncluster/templates/%s.tgz'
+                         % (config.region, config.region, cookbook_version))
+        else:
+            return ('https://s3.amazonaws.com/%s-cfncluster/cookbooks/%s.tgz'
+                         % (config.region, cookbook_version))
+
+
+def get_cookbook_version(config, tmpdir):
+    tmp_template_file = os.path.join(tmpdir, 'cfncluster-template.json')
+    try:
+        logger.info('Template: %s' % config.template_url)
+        urlretrieve(url=config.template_url, filename=tmp_template_file)
+
+        with open(tmp_template_file) as cfn_file:
+            cfn_data = json.load(cfn_file)
+
+        return cfn_data.get('Mappings').get('CfnClusterVersions').get('default').get('cookbook')
+
+    except IOError as e:
+        logger.error('Unable to download template at URL %s' % config.template_url)
+        logger.critical('Error: ' + str(e))
+        sys.exit(1)
+    except (ValueError, AttributeError) as e:
+        logger.error('Unable to parse template at URL %s' % config.template_url)
+        logger.critical('Error: ' + str(e))
+        sys.exit(1)
+
+
+def get_cookbook_dir(config, tmpdir):
+    cookbook_url = ''
+    try:
+        tmp_cookbook_archive = os.path.join(tmpdir, 'cfncluster-cookbook.tgz')
+
+        cookbook_url = get_cookbook_url(config, tmpdir)
+        logger.info('Cookbook: %s' % cookbook_url)
+
+        urlretrieve(url=cookbook_url, filename=tmp_cookbook_archive)
+        tar = tarfile.open(tmp_cookbook_archive)
+        cookbook_archive_root = tar.firstmember.path
+        tar.extractall(path=tmpdir)
+        tar.close()
+
+        return os.path.join(tmpdir, cookbook_archive_root)
+    except (IOError, tarfile.ReadError) as e:
+        logger.error('Unable to download cookbook at URL %s' % cookbook_url)
+        logger.critical('Error: ' + str(e))
+        sys.exit(1)
+
+
+def dispose_packer_instance(results, config):
+    time.sleep(2)
+    try:
+        ec2_client = boto3.client('ec2', region_name=config.region,
+                                  aws_access_key_id=config.aws_access_key_id,
+                                  aws_secret_access_key=config.aws_secret_access_key)
+
+        """ :type : pyboto3.ec2 """
+        instance = ec2_client.describe_instance_status(InstanceIds=[results['PACKER_INSTANCE_ID']],
+                                                       IncludeAllInstances=True).get('InstanceStatuses')[0]
+        instance_state = instance.get('InstanceState').get('Name')
+        if instance_state in ['running', 'pending', 'stopping', 'stopped']:
+            logger.info('Terminating Instance %s created by Packer' % results['PACKER_INSTANCE_ID'])
+            ec2_client.terminate_instances(InstanceIds=[results['PACKER_INSTANCE_ID']])
+
+    except ClientError as e:
+        logger.critical(e.response.get('Error').get('Message'))
+        sys.exit(1)
+
+
+def run_packer(packer_command, packer_env, config):
+    erase_line = '\x1b[2K'
+    _command = shlex.split(packer_command)
+    results = {}
+    fd_log, path_log = mkstemp(prefix='packer.log.' + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + '.'), text=True)
+    logger.info('Packer log: %s' % path_log)
+    try:
+        DEV_NULL = open(os.devnull, "rb")
+        packer_env.update(os.environ.copy())
+        process = sub.Popen(_command, env=packer_env, stdout=sub.PIPE, stderr=sub.STDOUT, stdin=DEV_NULL, universal_newlines=True)
+
+        with open(path_log, "w") as packer_log:
+            while process.poll() is None:
+                output_line = process.stdout.readline().strip()
+                packer_log.write('\n%s' % output_line)
+                packer_log.flush()
+                sys.stdout.write(erase_line)
+                sys.stdout.write('\rPacker status: %s' % output_line[:90] + (output_line[90:] and '..'))
+                sys.stdout.flush()
+
+                if output_line.find('packer build') > 0:
+                    results['PACKER_COMMAND'] = output_line
+                if output_line.find('Instance ID:') > 0:
+                    results['PACKER_INSTANCE_ID'] = output_line.rsplit(':', 1)[1].strip(' \n\t')
+                    sys.stdout.write(erase_line)
+                    sys.stdout.write('\rPacker Instance ID: %s\n' % results['PACKER_INSTANCE_ID'])
+                    sys.stdout.flush()
+                if output_line.find('AMI:') > 0:
+                    results['PACKER_CREATED_AMI'] = output_line.rsplit(':', 1)[1].strip(' \n\t')
+                if output_line.find('Prevalidating AMI Name:') > 0:
+                    results['PACKER_CREATED_AMI_NAME'] = output_line.rsplit(':', 1)[1].strip(' \n\t')
+        sys.stdout.write('\texit code %s\n' % process.returncode)
+        sys.stdout.flush()
+        return results
+    except sub.CalledProcessError:
+        sys.stdout.flush()
+        logger.error("Failed to run %s\n" % _command)
+        sys.exit(1)
+    except (IOError, OSError):
+        sys.stdout.flush()
+        logger.error("Failed to run %s\nCommand not found" % packer_command)
+        sys.exit(1)
+    except KeyboardInterrupt:
+        sys.stdout.flush()
+        logger.info('\nExiting...')
+        sys.exit(0)
+    finally:
+        DEV_NULL.close()
+        if results.get('PACKER_INSTANCE_ID'):
+            dispose_packer_instance(results, config)
+
+
+def print_create_ami_results(results):
+    if results.get('PACKER_CREATED_AMI'):
+        logger.info('\nCustom AMI %s created with name %s' % (results['PACKER_CREATED_AMI'], results['PACKER_CREATED_AMI_NAME']))
+        print('\nTo use it, add the following variable to the CfnCluster config file, under the [cluster ...] section')
+        print('custom_ami = %s' % results['PACKER_CREATED_AMI'])
+    else:
+        logger.info('\nNo custom AMI created')
+
+
+def create_ami(args):
+    logger.info('Building CfnCluster AMI. This could take a while...')
+    logger.debug('Building AMI based on args %s' % str(args))
+    results = {}
+
+    instance_type = 't2.large'
+    try:
+        config = cfnconfig.CfnClusterConfig(args)
+
+        vpc_id = config.parameters[[p[0] for p in config.parameters].index('VPCId')][1]
+        master_subnet_id = config.parameters[[p[0] for p in config.parameters].index('MasterSubnetId')][1]
+
+        packer_env = {'CUSTOM_AMI_ID': args.base_ami_id,
+                      'AWS_FLAVOR_ID': instance_type,
+                      'AMI_NAME_PREFIX': args.custom_ami_name_prefix,
+                      'AWS_VPC_ID': vpc_id,
+                      'AWS_SUBNET_ID': master_subnet_id}
+
+        if config.aws_access_key_id:
+            packer_env['AWS_ACCESS_KEY_ID'] = config.aws_access_key_id
+        if config.aws_secret_access_key:
+            packer_env['AWS_SECRET_ACCESS_KEY'] = config.aws_secret_access_key
+
+        if config.region == 'us-gov-west-1':
+            partition = 'govcloud'
+        else:
+            partition = 'commercial'
+
+        logger.info('Base AMI ID: %s' % args.base_ami_id)
+        logger.info('Base AMI OS: %s' % args.base_ami_os)
+        logger.info('Instance Type: %s' % instance_type)
+        logger.info('Region: %s' % config.region)
+        logger.info('VPC ID: %s' % vpc_id)
+        logger.info('Subnet ID: %s' % master_subnet_id)
+
+        tmp_dir = mkdtemp()
+        cookbook_dir = get_cookbook_dir(config, tmp_dir)
+
+        packer_command = cookbook_dir + '/amis/build_ami.sh --os ' + args.base_ami_os + ' --partition ' + \
+            partition + ' --region ' + config.region + ' --custom'
+
+        results = run_packer(packer_command, packer_env, config)
+    except KeyboardInterrupt:
+        logger.info('\nExiting...')
+        sys.exit(0)
+    finally:
+        print_create_ami_results(results)
+        if 'tmp_dir' in locals() and tmp_dir:
+            rmtree(tmp_dir)
