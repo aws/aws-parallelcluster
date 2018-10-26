@@ -4546,7 +4546,10 @@
             { "Ref": "SpotPrice" },
             { "Ref": "AWS::NoValue" }
           ]},
-          "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" }
+          "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" },
+          "SharedDir": {
+            "Ref": "SharedDir"
+          }
         },
         "TemplateURL": {
           "Fn::If": [

@@ -48,6 +48,10 @@
     "ResourcesS3Bucket": {
       "Description": "S3 Bucket where resources needed by this stack are located.",
       "Type": "String"
+    },
+    "SharedDir": {
+      "Description": "The path/mountpoint for the shared drive",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -174,10 +178,13 @@
           "Image" : { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}" },
           "Vcpus" : 2,
           "Memory" : 2000,
-          "Command" : [ "echo", "Hello world" ]
-        },
-        "RetryStrategy" : {
-          "Attempts" : 1
+          "Privileged": true,
+          "Environment": [
+            {
+              "Name" : "SHARED_DIR",
+              "Value" : { "Ref": "SharedDir" }
+            }
+          ]
         }
       }
     },
