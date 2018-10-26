@@ -163,7 +163,9 @@ Defaults to ondemand for the default template. ::
 
 spot_price
 """""""""""
-If cluster_type is set to spot, the maximum spot price for the ComputeFleet. See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+
+See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
     spot_price = 0.00
 
@@ -357,7 +359,7 @@ Settings section relating to EBS volume mounted on the master.
 
 See :ref:`EBS Section <ebs_section>`. ::
 
-    ebs_settings = custom
+  ebs_settings = custom
 
 scaling_settings
 """"""""""""""""
@@ -423,7 +425,9 @@ Defaults to NONE in the default template. ::
 
 compute_subnet_id
 """""""""""""""""
-ID of an existing subnet you want to provision the compute nodes into. ::
+ID of an existing subnet you want to provision the compute nodes into.
+
+If it is private, you need to setup NAT for web access. ::
 
     compute_subnet_id = subnet-xxxxxx
 
@@ -435,9 +439,13 @@ If you wish for cfncluster to create a compute subnet, this is the CIDR that. ::
 
 use_public_ips
 """"""""""""""
-Define whether or not to assign public IP addresses to EC2 instances.
+Define whether or not to assign public IP addresses to Compute EC2 instances.
 
-Set to false if operating in a private VPC.
+If true, an Elastic Ip will be associated to the Master instance.
+If false, the Master instance will have a Public IP or not according to the value
+of the "Auto-assign Public IP" subnet configuration parameter.
+
+See `networking configuration <https://cfncluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
 
 Defaults to true. ::
 
@@ -516,62 +524,12 @@ Settings which define how the compute nodes scale. ::
 
 
     [scaling custom]
-    scaling_period = 60
-    scaling_cooldown = 300
+    scaledown_idletime = 10
 
-scaling_threshold
-"""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp action.
-
-Defaults to 1 for default template. ::
-
-    scaling_threshold = 1
-
-scaling_adjustment
+scaledown_idletime
 """"""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp action.
+Amount of time in minutes without a job after which the compute node will terminate.
 
-Defaults to 1 for default template. ::
+Defaults to 10 for the default template. ::
 
-    scaling_adjustment = 1
-
-
-scaling_threshold2
-""""""""""""""""""
-Threshold for triggering CloudWatch ScaleUp2 action.
-
-Defaults to 200 for default template. ::
-
-    scaling_threshold2 = 200
-
-scaling_adjustment2
-"""""""""""""""""""
-Number of instances to add when called CloudWatch ScaleUp2 action
-
-Defaults to 20 for default template. ::
-
-    scaling_adjustment2 = 20
-
-scaling_period
-""""""""""""""
-Period to measure ScalingThreshold.
-
-Defaults to 60 for default template. ::
-
-    scaling_period = 60
-
-scaling_evaluation_periods
-""""""""""""""""""""""""""
-Number of periods to measure ScalingThreshold.
-
-Defaults to 2 for default template. ::
-
-    scaling_evaluation_periods = 2
-
-scaling_cooldown
-""""""""""""""""
-Amount of time in seconds to wait before attempting further scaling actions.
-
-Defaults to 300 for the default template. ::
-
-    scaling_cooldown = 300
+    scaledown_idletime = 10

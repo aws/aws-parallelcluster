@@ -36,18 +36,19 @@ You'll see some messages on your screen about the cluster creating.  When it's f
 
         Starting: hello-world
         Status: cfncluster-hello-world - CREATE_COMPLETE
-        Output:"MasterPrivateIP"="192.168.x.x"
-        Output:"MasterPublicIP"="54.148.x.x"
-        Output:"GangliaPrivateURL"="http://192.168.x.x/ganglia/"
-        Output:"GangliaPublicURL"="http://54.148.x.x/ganglia/"
+        MasterPublicIP = 54.148.x.x
+        ClusterUser: ec2-user
+        MasterPrivateIP = 192.168.x.x
+        GangliaPrivateURL = http://192.168.x.x/ganglia/
+        GangliaPublicURL = http://54.148.x.x/ganglia/
 
 The message "CREATE_COMPLETE" shows that the cluster created successfully.  It also provided us with the public and private IP addresses of our master node.  We'll need this IP to log in.
 
 Logging into your Master instance
 =================================
-You'll use your OpenSSH pem file and the ec2-user to log into your master instance. ::
+You'll use your OpenSSH pem file to log into your master instance. ::
 
-        ssh -i /path/to/keyfile.pem ec2-user@54.148.x.x
+        cfncluster ssh hello-world -i /path/to/keyfile.pem
 
 Once logged in, run the command "qhost" to ensure that your compute nodes are setup and configured. ::
 
@@ -60,8 +61,8 @@ Once logged in, run the command "qhost" to ensure that your compute nodes are se
 
 As you can see, we have two compute nodes in our cluster, both with 2 threads available to them.
 
-Running your first job
-======================
+Running your first job using SGE
+================================
 Now we'll create a simple job which sleeps for a little while and then outputs it's own hostname.
 
 Create a file called "hellojob.sh" with the following contents. ::

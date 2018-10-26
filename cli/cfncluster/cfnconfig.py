@@ -153,7 +153,7 @@ class CfnClusterConfig(object):
                 print("ERROR: key_name set in [%s] section but not defined." % self.__cluster_section)
                 sys.exit(1)
             if self.__sanity_check:
-                config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                              'EC2KeyPair', self.key_name)
         except configparser.NoOptionError:
             print("ERROR: Missing key_name option in [%s] section." % self.__cluster_section)
@@ -173,7 +173,7 @@ class CfnClusterConfig(object):
                         print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
                         sys.exit(1)
                     if self.__sanity_check:
-                        config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
+                        config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                                      'URL', self.template_url)
                 except configparser.NoOptionError:
                     if self.region == 'us-gov-west-1':
@@ -208,7 +208,7 @@ class CfnClusterConfig(object):
                                                     % (key, self.__vpc_section))
                     sys.exit(1)
                 if self.__sanity_check and self.__vpc_options.get(key)[1] is not None:
-                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                    config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__vpc_options.get(key)[1],__temp__)
                 self.parameters.append((self.__vpc_options.get(key)[0],__temp__))
             except configparser.NoOptionError:
@@ -228,8 +228,7 @@ class CfnClusterConfig(object):
                                       placement=('Placement',None), placement_group=('PlacementGroup','EC2PlacementGroup'),
                                       encrypted_ephemeral=('EncryptedEphemeral',None),pre_install_args=('PreInstallArgs',None),
                                       post_install_args=('PostInstallArgs',None), s3_read_resource=('S3ReadResource',None),
-                                      s3_read_write_resource=('S3ReadWriteResource',None),cwl_region=('CWLRegion',None),
-                                      cwl_log_group=('CWLLogGroup',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
+                                      s3_read_write_resource=('S3ReadWriteResource',None),shared_dir=('SharedDir',None),tenancy=('Tenancy',None),
                                       ephemeral_kms_key_id=('EphemeralKMSKeyId',None), cluster_ready=('ClusterReadyScript','URL'),
                                       master_root_volume_size=('MasterRootVolumeSize',None),compute_root_volume_size=('ComputeRootVolumeSize',None),
                                       base_os=('BaseOS',None),ec2_iam_role=('EC2IAMRoleName','EC2IAMRoleName'),extra_json=('ExtraJson',None),
@@ -246,7 +245,7 @@ class CfnClusterConfig(object):
                                                     % (key, self.__cluster_section))
                     sys.exit(1)
                 if self.__sanity_check and self.__cluster_options.get(key)[1] is not None:
-                    config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                    config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__cluster_options.get(key)[1],__temp__)
                 self.parameters.append((self.__cluster_options.get(key)[0],__temp__))
             except configparser.NoOptionError:
@@ -295,7 +294,7 @@ class CfnClusterConfig(object):
                                                     % (key, self.__ebs_section))
                             sys.exit(1)
                         if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
-                            config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                            config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__ebs_options.get(key)[1],__temp__)
                         self.parameters.append((self.__ebs_options.get(key)[0],__temp__))
                     except configparser.NoOptionError:
@@ -315,10 +314,7 @@ class CfnClusterConfig(object):
             pass
 
         # Dictionary list of all scaling options
-        self.__scaling_options = dict(scaling_threshold=('ScalingThreshold',None), scaling_period=('ScalingPeriod',None),
-                                      scaling_evaluation_periods=('ScalingEvaluationPeriods',None),
-                                      scaling_adjustment=('ScalingAdjustment',None),scaling_adjustment2=('ScalingAdjustment2',None),
-                                      scaling_cooldown=('ScalingCooldown',None),scaling_threshold2=('ScalingThreshold2',None))
+        self.__scaling_options = dict(scaledown_idletime=('ScaleDownIdleTime',None))
 
         try:
             if self.__scaling_section:
@@ -330,7 +326,7 @@ class CfnClusterConfig(object):
                                                     % (key, self.__scaling_section))
                             sys.exit(1)
                         if self.__sanity_check and self.__scaling_options.get(key)[1] is not None:
-                            config_sanity.check_resource(self.region,self.aws_access_key_id, self.aws_secret_access_key,
+                            config_sanity.check_resource(self.region, self.args.cluster_name, self.aws_access_key_id, self.aws_secret_access_key,
                                                 self.__scaling_options.get(key)[1],__temp__)
                         self.parameters.append((self.__scaling_options.get(key)[0],__temp__))
                     except configparser.NoOptionError:

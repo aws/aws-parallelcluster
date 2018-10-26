@@ -4,7 +4,7 @@ IAM in CfnCluster
 ========================
 
 .. warning::
-    Between CfnCluster 1.5.3 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket.
+    Between CfnCluster 1.5.3 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket and cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_NAME>:<STACK_NAME>
     If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
 
     Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
@@ -76,19 +76,11 @@ CfnClusterInstancePolicy
               "Action": [
                   "autoscaling:DescribeAutoScalingGroups",
                   "autoscaling:TerminateInstanceInAutoScalingGroup",
-                  "autoscaling:SetDesiredCapacity"
+                  "autoscaling:SetDesiredCapacity",
+                  "autoscaling:DescribeTags",
+                  "autoScaling:UpdateAutoScalingGroup"
               ],
               "Sid": "Autoscaling",
-              "Effect": "Allow"
-          },
-          {
-              "Resource": [
-                  "*"
-              ],
-              "Action": [
-                  "cloudwatch:PutMetricData"
-              ],
-              "Sid": "CloudWatch",
               "Effect": "Allow"
           },
           {
@@ -107,22 +99,22 @@ CfnClusterInstancePolicy
           },
           {
               "Resource": [
+                  "arn:aws:s3:::<REGION>-cfncluster/*"
+              ],
+              "Action": [
+                  "s3:GetObject"
+              ],
+              "Sid": "S3GetObj",
+              "Effect": "Allow"
+          },
+          {
+              "Resource": [
                   "*"
               ],
               "Action": [
                   "sqs:ListQueues"
               ],
               "Sid": "SQSList",
-              "Effect": "Allow"
-          },
-          {
-              "Resource": [
-                  "arn:aws:logs:*:*:*"
-              ],
-              "Action": [
-                  "logs:*"
-              ],
-              "Sid": "CloudWatchLogs",
               "Effect": "Allow"
           }
       ]
@@ -200,6 +192,11 @@ CfnClusterUserPolicy
               "Action": [
                   "autoscaling:CreateAutoScalingGroup",
                   "autoscaling:CreateLaunchConfiguration",
+                  "ec2:CreateLaunchTemplate",
+                  "ec2:ModifyLaunchTemplate",
+                  "ec2:DeleteLaunchTemplate",
+                  "ec2:DescribeLaunchTemplates",
+                  "ec2:DescribeLaunchTemplateVersions",
                   "autoscaling:PutNotificationConfiguration",
                   "autoscaling:UpdateAutoScalingGroup",
                   "autoscaling:PutScalingPolicy",
@@ -224,15 +221,6 @@ CfnClusterUserPolicy
               "Action": [
                 "dynamodb:CreateTable",
                 "dynamodb:DeleteTable"
-              ],
-              "Effect": "Allow",
-              "Resource": "*"
-          },
-          {
-              "Sid": "CloudWatchModify",
-              "Action": [
-                  "cloudwatch:PutMetricAlarm",
-                  "cloudwatch:DeleteAlarms"
               ],
               "Effect": "Allow",
               "Resource": "*"
@@ -339,38 +327,6 @@ CfnClusterUserPolicy
               ],
               "Effect": "Allow",
               "Resource": "*"
-          },
-          {
-              "Sid": "S3GetObj",
-              "Action": [
-                "s3:GetObject"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Fn::FindInMap": [
-                          "AWSRegion2Capabilites",
-                          {
-                            "Ref": "AWS::Region"
-                          },
-                          "arn"
-                        ]
-                      },
-                      ":s3:::",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "-cfncluster/*"
-                    ]
-                  ]
-                }
-              ]
-            },
-
+          }
       ]
   }
