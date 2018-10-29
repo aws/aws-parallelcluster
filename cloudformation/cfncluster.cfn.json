@@ -1947,11 +1947,7 @@
                       {
                         "Ref": "AWS::AccountId"
                       },
-                      ":stack/",
-                      {
-                        "Ref": "AWS::StackName"
-                      },
-                      "/*"
+                      ":stack/cfncluster-*"
                     ]
                   ]
                 }
