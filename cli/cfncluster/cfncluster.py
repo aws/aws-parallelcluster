@@ -175,12 +175,13 @@ def create(args):
         sys.exit(1)
 
 def is_ganglia_enabled(parameters):
-    try:
-        extra_json = dict(parameters.get('ExtraJson'))
-        extra_json = json.loads(extra_json.get('ExtraJson')).get('cfncluster')
-        return not extra_json.get('ganglia_enabled') == 'no'
-    except:
-        pass
+    if 'ExtraJson' in parameters:
+        try:
+            extra_json = json.loads(parameters['ExtraJson'])
+            if 'cfncluster' in extra_json:
+                return not extra_json['cfncluster'].get('ganglia_enabled') == 'no'
+        except ValueError:
+            logger.warn('Invalid value for extra_json option in config')
     return True
 
 def update(args):
