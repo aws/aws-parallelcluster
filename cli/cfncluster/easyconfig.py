@@ -177,5 +177,8 @@ def configure(args):
     with open(config_file,'w') as cf:
         config.write(cf)
 
+    # Set cluster name to none, since it is needed by config sanity
+    args.cluster_name = None
+
     # Verify the configuration
     cfnconfig.CfnClusterConfig(args)

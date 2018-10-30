@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+1.6.1
+=====
+* Fix a bug in `cfncluster configure` introduced in 1.6.0
+
 1.6.0
 =====
 * Refactor scaling up to take into account the number of pending/requested jobs/slots and instance slots.
