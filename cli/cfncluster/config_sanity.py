@@ -25,7 +25,8 @@ def get_partition(region):
         return 'aws-us-gov'
     return 'aws'
 
-def check_resource(region, cluster_name, aws_access_key_id, aws_secret_access_key, resource_type,resource_value):
+
+def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_type, resource_value):
 
     # Loop over all supported resource checks
     # EC2 KeyPair
@@ -56,7 +57,7 @@ def check_resource(region, cluster_name, aws_access_key_id, aws_secret_access_ke
                         (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:cfncluster-*" % (partition, region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoscaling:DescribeTags', 'autoScaling:UpdateAutoScalingGroup'], "*"),
                         (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/cfncluster-*" % (partition, region, accountid)),
-                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/cfncluster-%s/*" % (partition, region, accountid, cluster_name)),
+                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/cfncluster-*" % (partition, region, accountid)),
                         (['s3:GetObject'], "arn:%s:s3:::%s-cfncluster/*" % (partition, region)),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:%s:logs:*:*:*" % partition)]
