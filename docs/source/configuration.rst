@@ -105,9 +105,9 @@ compute_instance_type
 """""""""""""""""""""
 The EC2 instance type used for the cluster compute nodes.
 
-Defaults to t2.micro for default template. ::
+Defaults to c4.large for default template. ::
 
-    compute_instance_type = t2.micro
+    compute_instance_type = c4.large
 
 master_instance_type
 """"""""""""""""""""
@@ -119,7 +119,7 @@ This defaults to t2.micro for default template. ::
 
 initial_queue_size
 """"""""""""""""""
-The initial number of EC2 instances to launch as compute nodes in the cluster.
+The initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
 
 The default is 2 for default template. ::
 
@@ -127,7 +127,7 @@ The default is 2 for default template. ::
 
 max_queue_size
 """"""""""""""
-The maximum number of EC2 instances that can be launched in the cluster.
+The maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
 
 This defaults to 10 for the default template. ::
 
@@ -135,7 +135,7 @@ This defaults to 10 for the default template. ::
 
 maintain_initial_size
 """""""""""""""""""""
-Boolean flag to set autoscaling group to maintain initial size.
+Boolean flag to set autoscaling group to maintain initial size for schedulers other than awsbatch.
 
 If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
 
@@ -144,6 +144,30 @@ Setting to false allows the Auto Scaling group to scale down to 0 members, so re
 Defaults to false for the default template. ::
 
     maintain_initial_size = false
+
+min_vcpus
+"""""""""
+If scheduler is awsbatch, the compute environment won't have fewer than min_vcpus.
+
+Defaults to 0.
+
+    min_vcpus = 0
+
+desired_vcpus
+"""""""""
+If scheduler is awsbatch, the compute environment will initially have desired_vcpus
+
+Defaults to 4.
+
+    desired_vcpus = 4
+
+max_vcpus
+"""""""""
+If scheduler is awsbatch, the compute environment will at most have max_vcpus.
+
+Defaults to 20.
+
+    desired_vcpus = 20
 
 scheduler
 """""""""
@@ -163,13 +187,15 @@ Defaults to ondemand for the default template. ::
 
 spot_price
 """""""""""
-If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on schedulers other than awsbatch. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
 
 See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
     spot_price = 1.50
 
-Note: if you're using awsbatch as your scheduler, this optional parameter becomes on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price.
+spot_bid_percentage
+"""""""""""
+If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price.
 
     spot_price = 85
 

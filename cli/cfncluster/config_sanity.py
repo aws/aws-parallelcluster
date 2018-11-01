@@ -18,6 +18,7 @@ import boto3
 import urllib.request, urllib.error, urllib.parse
 from urllib.parse import urlparse
 import sys
+import json
 from botocore.exceptions import ClientError
 
 def get_partition(region):
@@ -176,3 +177,56 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                 sys.exit(1)
             print('Config sanity error: %s' % e.response.get('Error').get('Message'))
             sys.exit(1)
+    # Batch Parameters
+    elif resource_type == 'AWSBatch_Parameters':
+        # Check region
+        if region in ['us-gov-west-1', 'eu-west-3', 'ap-northeast-3']:
+            print ("ERROR: %s region is not supported with awsbatch" % region)
+            sys.exit(1)
+
+        # Check compute instance types
+        if 'ComputeInstanceType' in resource_value:
+            try:
+                s3 = boto3.resource('s3', region_name=region)
+                bucket_name = '%s-cfncluster' % region
+                file_name = 'instances/batch_instances.json'
+                try:
+                    file_contents = s3.Object(bucket_name, file_name).get()['Body'].read().decode('utf-8')
+                    supported_instances = json.loads(file_contents)
+                    for instance in resource_value['ComputeInstanceType'].split(','):
+                        if not instance.strip() in supported_instances:
+                            print ("Instance type %s not supported by batch in this region" % instance)
+                            sys.exit(1)
+                except ClientError as e:
+                    print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                    sys.exit(1)
+            except ClientError as e:
+                print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                sys.exit(1)
+
+        # Check spot bid percentage
+        if 'SpotPrice' in resource_value:
+            if resource_value['SpotPrice'] > 100 or resource_value['SpotPrice'] < 0:
+                print("ERROR: Spot bid percentage needs to be between 0 and 100")
+                sys.exit(1)
+
+        # Check sanity on desired, min and max vcpus
+        if 'DesiredSize' in resource_value and 'MinSize' in resource_value:
+            if resource_value['DesiredSize'] < resource_value['MinSize']:
+                print ('ERROR: Desired vcpus must be greater than or equal to min vcpus')
+                sys.exit(1)
+
+        if 'DesiredSize' in resource_value and 'MaxSize' in resource_value:
+            if resource_value['DesiredSize'] > resource_value['MinSize']:
+                print('ERROR: Desired vcpus must be fewer than or equal to max vcpus')
+                sys.exit(1)
+
+        if 'MaxSize' in resource_value and 'MinSize' in resource_value:
+            if resource_value['MaxSize'] < resource_value['MinSize']:
+                print ('ERROR: Max vcpus must be greater than or equal to min vcpus')
+                sys.exit(1)
+
+        # Check custom batch url
+        if 'CustomAWSBatchTemplateURL' in resource_value:
+            check_resource(region, aws_access_key_id, aws_secret_access_key,
+                           'URL', resource_value['CustomAWSBatchTemplateURL'])

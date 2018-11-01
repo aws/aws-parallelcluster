@@ -1,14 +1,14 @@
 {
   "Parameters": {
-    "MinvCpu": {
+    "MinvCpus": {
       "Description" : "Min vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
-    "DesiredvCpu": {
+    "DesiredvCpus": {
       "Description" : "Desired vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
-    "MaxvCpu": {
+    "MaxvCpus": {
       "Description" : "Max vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
@@ -136,9 +136,9 @@
         "ComputeEnvironmentName" : { "Ref": "ClusterName" },
         "ComputeResources" : {
           "Type" : { "Fn::If" : [ "UseSpot", "SPOT", "EC2" ]},
-          "MinvCpus" : { "Ref": "MinvCpu"},
-          "DesiredvCpus" : { "Ref": "DesiredvCpu"},
-          "MaxvCpus" : { "Ref": "MaxvCpu"},
+          "MinvCpus" : { "Ref": "MinvCpus"},
+          "DesiredvCpus" : { "Ref": "DesiredvCpus"},
+          "MaxvCpus" : { "Ref": "MaxvCpus"},
           "InstanceTypes" : { "Ref": "InstanceTypes" },
           "Subnets" : [{ "Ref" : "Subnet" }],
           "Ec2KeyPair" : { "Ref" : "KeyName" },

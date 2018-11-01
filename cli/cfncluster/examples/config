@@ -37,15 +37,23 @@ key_name = mykey
 # Master Server EC2 instance type
 # (defaults to t2.micro for default template
 #master_instance_type = t2.micro
-# Inital number of EC2 instances to launch as compute nodes in the cluster.
+# Inital number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
 # (defaults to 2 for default template)
 #initial_queue_size = 2
-# Maximum number of EC2 instances that can be launched in the cluster.
+# Maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
 # (defaults to 10 for the default template)
 #max_queue_size = 10
-# Boolean flag to set autoscaling group to maintain initial size and scale back
+# Boolean flag to set autoscaling group to maintain initial size and scale back for schedulers other than awsbatch.
 # (defaults to false for the default template)
 #maintain_initial_size = false
+# Minimum number of vcpus that will be running when scheduler is awsbatch.
+# defaults to 0
+#min_vcpus = 0
+# Initial number of vcpus to launch when scheduler is awsbatch.
+# defaults to 4
+#desired_vcpus = 4
+# Maximum number of vcpus that can be launched when scheduler is awsbatch.
+#max_vcpus = 20
 # Cluster scheduler
 # (defaults to sge for the default template)
 #scheduler = sge
@@ -54,6 +62,8 @@ key_name = mykey
 #cluster_type = ondemand
 # Spot price for the ComputeFleet
 #spot_price = 0.00
+# Spot bid percentage when the scheduler is set to awsbatch. Should be between 0 and 100
+#spot_bid_percentage = 85
 # ID of a Custom AMI, to use instead of published AMI's
 #custom_ami = NONE
 # Specify S3 resource which cfncluster nodes will be granted read-only access

@@ -53,52 +53,8 @@ def poll_on_jq_status(batch, name):
             .get('jobQueues')[0] \
             .get('status')
 
-def create_job_definition(config, args):
-    name = "%s-mnp" % args.cluster_name
-    batch = create_client(config)
-
-    # Check if Job Definition exists
-    try:
-        jd = batch.describe_job_definitions(jobDefinitionName=name) \
-            .get('jobDefinitions')[0]
-        return jd.get("jobDefinitionArn")
-    except IndexError:
-        pass
-
-    try:
-        max_nodes = int(config.parameters.get('MaxQueueSize')) if config.parameters.get('MaxQueueSize') else 10
-    except ValueError:
-        logger.error("Unable to convert max_queue_size = %s to a int." % config.parameters.get('MaxQueueSize'))
-        sys.exit(1)
-
-    response = batch.register_job_definition(
-        jobDefinitionName=name,
-        type='multinode',
-        nodeProperties = {
-            "numNodes": max_nodes,
-            "mainNode": 0,
-            "nodeRangeProperties": [
-                {
-                    "targetNodes": "0:%d" % (max_nodes - 1),
-                    "container": {
-                        "image": config.batch_parameters.get('docker_image'),
-                        'jobRoleArn': config.batch_parameters.get('job_role_arn'),
-                        "memory": 123,
-                        "mountPoints": [],
-                        "ulimits": [],
-                        'privileged': True,
-                        'user': 'root',
-                        "vcpus": 1
-                    }
-                }
-            ]
-        }
-    )
-
-    return response.get("jobDefinitionArn")
-
 def create_compute_environment(config, args):
-    name = "%s-mnp" % args.cluster_name
+    name = "cfncluster-%s-mnp" % args.cluster_name
     batch = create_client(config)
 
     # Check if Compute Environment exists
@@ -121,9 +77,9 @@ def create_compute_environment(config, args):
         state = 'ENABLED',
         computeResources={
             'type': 'EC2',
-            'minvCpus': 0,
-            'desiredvCpus': 0,
-            'maxvCpus': max_nodes * 72,  # 72 is the biggest instance type
+            'minvCpus': int(config.parameters.get('MinvCpus')),
+            'desiredvCpus': int(config.parameters.get('DesiredvCpus')),
+            'maxvCpus': int(config.parameters.get('MaxvCpus')),
             'instanceTypes': config.parameters.get('ComputeInstanceType').split(', '),
             'subnets': [config.parameters.get('MasterSubnetId')],
             'securityGroupIds': [config.batch_parameters.get('security_group')],
@@ -138,7 +94,7 @@ def create_compute_environment(config, args):
     return response.get("computeEnvironmentArn")
 
 def create_job_queue(config, args, compute_environment_arn):
-    name = "%s-mnp" % args.cluster_name
+    name = "cfncluster-%s-mnp" % args.cluster_name
     batch = create_client(config)
 
     # Check if Job Queue exists
