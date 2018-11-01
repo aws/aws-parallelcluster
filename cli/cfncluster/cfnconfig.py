@@ -47,6 +47,8 @@ class CfnClusterConfig(object):
     def __init__(self, args):
         self.args = args
         self.cluster_options = self.__init_cluster_options()
+        self.size_parameters = self.__init_size_parameters()
+        self.batch_size_parameters = self.__init_batch_size_parameters()
         self.parameters = {}
         self.version = pkg_resources.get_distribution("cfncluster").version
         self.__DEFAULT_CONFIG = False
@@ -219,6 +221,31 @@ class CfnClusterConfig(object):
                       % (self.__vpc_section, self.__cluster_section))
                 sys.exit(1)
 
+        if __config.has_option(self.__cluster_section, 'scheduler'):
+            self.__scheduler = __config.get(self.__cluster_section, 'scheduler')
+        else:
+            self.__scheduler = 'sge'
+
+        # Validate region for batch
+        if self.__scheduler == "awsbatch":
+            self.__run_batch_validation(__config)
+        else:
+            for key in self.size_parameters:
+                try:
+                    __temp__ = __config.get(self.__cluster_section, key)
+                    if not __temp__:
+                        print("ERROR: %s defined but not set in [%s] section"
+                                                        % (key, self.__cluster_section))
+                        sys.exit(1)
+                    if key == 'initial_queue_size':
+                        self.parameters['MinSize'] = __temp__
+                    elif key == 'maintain_initial_size':
+                        self.parameters['DesiredSize'] = self.parameters.get('MinSize') if __temp__ == 'true' else "0"
+                    elif key == 'max_queue_size':
+                        self.parameters['MaxSize'] = __temp__
+                except configparser.NoOptionError:
+                    pass
+
         # Loop over all the cluster options and add define to parameters, raise Exception if defined but null
         for key in self.cluster_options:
             try:
@@ -239,7 +266,7 @@ class CfnClusterConfig(object):
         self.tags = {}
         try:
             tags = __config.get(self.__cluster_section, 'tags')
-            self.tags = json.loads(tags);
+            self.tags = json.loads(tags)
         except configparser.NoOptionError:
             pass
         try:
@@ -343,14 +370,27 @@ class CfnClusterConfig(object):
             pass
 
     @staticmethod
+    def __init_size_parameters():
+        return dict(
+            initial_queue_size=('InitialQueueSize', None),
+            max_queue_size=('MaxQueueSize', None),
+            maintain_initial_size=('MaintainInitialSize', None),
+        )
+
+    @staticmethod
+    def __init_batch_size_parameters():
+        return dict(
+            min_vcpus=('MinVCpus', None),
+            desired_vcpus=('DesiredVCpus', None),
+            max_vcpus=('MaxVCpus', None)
+        )
+
+    @staticmethod
     def __init_cluster_options():
         return dict(
             cluster_user=('ClusterUser', None),
             compute_instance_type=('ComputeInstanceType', None),
             master_instance_type=('MasterInstanceType', None),
-            initial_queue_size=('InitialQueueSize', None),
-            max_queue_size=('MaxQueueSize', None),
-            maintain_initial_size=('MaintainInitialSize', None),
             scheduler=('Scheduler', None),
             cluster_type=('ClusterType', None),
             ephemeral_dir=('EphemeralDir', None),
@@ -378,5 +418,58 @@ class CfnClusterConfig(object):
             custom_chef_cookbook=('CustomChefCookbook', None),
             custom_chef_runlist=('CustomChefRunList', None),
             additional_cfn_template=('AdditionalCfnTemplate', None),
-            custom_awsbatch_template_url=('CustomAWSBatchTemplateURL', None),
+            custom_awsbatch_template_url=('CustomAWSBatchTemplateURL', None)
         )
+
+    def __check_option_absent_awsbatch(self, config, option):
+        if config.has_option(self.__cluster_section, option):
+            print("ERROR: option %s cannot be used with awsbatch" % option)
+            sys.exit(1)
+
+    def __run_batch_validation(self, config):
+        self.__check_option_absent_awsbatch(config, 'initial_queue_size')
+        self.__check_option_absent_awsbatch(config, 'maintain_queue_size')
+        self.__check_option_absent_awsbatch(config, 'max_queue_size')
+        self.__check_option_absent_awsbatch(config, 'spot_price')
+
+        if config.has_option(self.__cluster_section, 'compute_instance_type'):
+            compute_instance_type = config.get(self.__cluster_section, 'compute_instance_type')
+            self.parameters['ComputeInstanceType'] = compute_instance_type
+
+        if config.has_option(self.__cluster_section, 'spot_bid_percentage'):
+            spot_bid_percentage = config.get(self.__cluster_section, 'spot_bid_percentage')
+            # use spot price to indicate spot bid percentage in case of awsbatch
+            self.parameters['SpotPrice'] = spot_bid_percentage
+
+        if config.has_option(self.__cluster_section, 'custom_awsbatch_template_url'):
+            awsbatch_custom_url = config.get(self.__cluster_section, 'custom_awsbatch_template_url')
+            if not awsbatch_custom_url:
+                print("ERROR: custom_awsbatch_template_url set in [%s] section but not defined." % self.__cluster_section)
+                sys.exit(1)
+            self.parameters['CustomAWSBatchTemplateURL'] = awsbatch_custom_url
+
+        # Set batch default size parameters
+        self.parameters['MinSize'] = 0
+        self.parameters['DesiredSize'] = 4
+        self.parameters['MaxSize'] = 20
+
+        # Override those parameters from config if they are available
+        for key in self.batch_size_parameters:
+            try:
+                __temp__ = config.get(self.__cluster_section, key)
+                if not __temp__:
+                    print("ERROR: %s defined but not set in [%s] section"
+                          % (key, self.__cluster_section))
+                    sys.exit(1)
+                if key == 'MinVCpus':
+                    self.parameters['MinSize'] = __temp__
+                elif key == 'DesiredVCpus':
+                    self.parameters['DesiredSize'] = __temp__
+                elif key == 'MaxVCpus':
+                    self.parameters['MaxSize'] = __temp__
+            except configparser.NoOptionError:
+                pass
+
+        if self.__sanity_check:
+            config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
+                                         'AWSBatch_Parameters', self.parameters)

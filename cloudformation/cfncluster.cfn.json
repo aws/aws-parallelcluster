@@ -52,14 +52,14 @@
             "default": "Cluster - Advanced Setting"
           },
           "Parameters": [
-            "InitialQueueSize",
+            "MinSize",
+            "DesiredSize",
+            "MaxSize",
             "ComputeWaitConditionCount",
-            "MaxQueueSize",
             "SpotPrice",
             "ClusterType",
             "ProxyServer",
             "CustomAMI",
-            "MaintainInitialSize",
             "PreInstallScript",
             "PreInstallArgs",
             "PostInstallArgs",
@@ -149,14 +149,14 @@
         "MasterInstanceType": {
           "default": "master_instance_type"
         },
-        "InitialQueueSize": {
+        "MinSize": {
           "default": "initial_queue_size"
         },
-        "MaxQueueSize": {
-          "default": "max_queue_size"
+        "DesiredSize": {
+          "default": "desired_size"
         },
-        "MaintainInitialSize": {
-          "default": "maintain_initial_size"
+        "MaxSize": {
+          "default": "max_queue_size"
         },
         "Scheduler": {
           "default": "scheduler"
@@ -682,16 +682,21 @@
     "ComputeInstanceType": {
       "Description": "ComputeFleet EC2 instance type",
       "Type": "String",
-      "Default": "t2.micro",
+      "Default": "c4.large",
       "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
-    "InitialQueueSize": {
-      "Description": "Initial number of EC2 instances to launch as compute nodes within the cluster. This value maps to the DesiredSize parameter for the ComputeFleet AutoScaling Group.",
+    "MinSize": {
+      "Description": "Initial number of compute EC2 instances / vCpus to launch within the cluster.",
+      "Type": "Number",
+      "Default": "0"
+    },
+    "DesiredSize": {
+      "Description": "Desired number of compute EC2 instances / vCpus to launch within the cluster.",
       "Type": "Number",
       "Default": "2"
     },
-    "MaxQueueSize": {
-      "Description": "Maximum number of EC2 instances that can be launched in the cluster. This value maps to the MaxSize parameter for the ComputeFleet AutoScaling Group.",
+    "MaxSize": {
+      "Description": "Maximum number of compute EC2 instances / vCpus to launch within the cluster.",
       "Type": "Number",
       "Default": "10"
     },
@@ -778,16 +783,6 @@
       "ConstraintDescription": "must be a valid CIDR range of the form x.x.x.x/x.",
       "AllowedPattern": "(NONE|(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2}))",
       "Default": "NONE"
-    },
-    "MaintainInitialSize": {
-      "Description": "Boolean flag to set autoscaling group to maintain initial size and scale back",
-      "Type": "String",
-      "Default": "false",
-      "ConstraintDescription": "true/false",
-      "AllowedValues": [
-        "true",
-        "false"
-      ]
     },
     "UsePublicIps": {
       "Description": "Boolean flag to use public IP's for instances. If false, the VPC must be correctly setup to use NAT for all traffic.",
@@ -998,21 +993,6 @@
       "Description": "A second CloudFormation template to launch with the cluster",
       "Type": "String",
       "Default": "NONE"
-    },
-    "MinvCpu": {
-      "Description" : "Min vCPU's for ComputeEnvironment",
-      "Type": "Number",
-      "Default": 0
-    },
-    "DesiredvCpu": {
-      "Description" : "Desired vCPU's for ComputeEnvironment",
-      "Type": "Number",
-      "Default": 0
-    },
-    "MaxvCpu": {
-      "Description" : "Max vCPU's for ComputeEnvironment",
-      "Type": "Number",
-      "Default": 128
     },
     "CustomAWSBatchTemplateURL": {
       "Description" : "URL of custom batch template that will override the default one.",
@@ -1338,14 +1318,6 @@
             "NONE"
           ]
         }
-      ]
-    },
-    "MaintainInitialASGSize": {
-      "Fn::Equals": [
-        {
-          "Ref": "MaintainInitialSize"
-        },
-        "true"
       ]
     },
     "MasterPublicIp": {
@@ -2708,7 +2680,7 @@
                       "Ref": "ProxyServer"
                     },
                     "cfn_max_queue_size": {
-                      "Ref": "MaxQueueSize"
+                      "Ref": "MaxSize"
                     },
                     "compute_instance_type": {
                       "Ref": "ComputeInstanceType"
@@ -2853,7 +2825,7 @@
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
         "MaxSize": {
-          "Ref": "MaxQueueSize"
+          "Ref": "MaxSize"
         },
         "VPCZoneIdentifier": [
           {
@@ -2901,16 +2873,10 @@
           ]
         },
         "MinSize": {
-          "Fn::If": [
-            "MaintainInitialASGSize",
-            {
-              "Ref": "InitialQueueSize"
-            },
-            "0"
-          ]
+          "Ref": "MinSize"
         },
         "DesiredCapacity": {
-          "Ref": "InitialQueueSize"
+          "Ref": "DesiredSize"
         },
         "NotificationConfiguration": {
           "TopicARN": {
@@ -4487,9 +4453,9 @@
       "DependsOn": [ "CleanupResourcesCustomResource" ],
       "Properties": {
         "Parameters": {
-          "MinvCpu": { "Ref": "MinvCpu" },
-          "DesiredvCpu": { "Ref": "DesiredvCpu" },
-          "MaxvCpu": { "Ref": "MaxvCpu" },
+          "MinvCpus": { "Ref": "MinSize" },
+          "DesiredvCpus": { "Ref": "DesiredSize" },
+          "MaxvCpus": { "Ref": "MaxSize" },
           "InstanceTypes": { "Ref": "ComputeInstanceType" },
           "Subnet": {
             "Fn::If": [
