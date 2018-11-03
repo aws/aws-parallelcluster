@@ -121,8 +121,8 @@ key_name = mykey
 #additional_cfn_template = NONE
 # Settings section relating to VPC to be used
 vpc_settings = public
-# Settings section relating to EBS volume
-#ebs_settings = custom
+# Settings section relating to EBS volumes. Enter multiple sections as a comma separated list. Up to 5 EBS volumes are supported
+#ebs_settings = custom1, custom2, ...
 # Settings section relation to scaling
 #scaling_settings = custom
 
@@ -159,8 +159,10 @@ master_subnet_id = subnet-
 # CIDR for new backend subnet i.e. 10.0.100.0/24
 #compute_subnet_id = subnet-
 
-## EBS Settings
-#[ebs custom]
+## First EBS Settings
+#[ebs custom1]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol1
+#shared_dir = vol1
 # Id of EBS snapshot if using snapshot as source for volume
 # (defaults to NONE for default template)
 #ebs_snapshot_id = snap-
@@ -178,6 +180,17 @@ master_subnet_id = subnet-
 # Existing EBS volume to be attached to the MasterServer
 # (defaults to NONE in the default template)
 #ebs_volume_id = NONE
+
+## Second EBS Settings
+#[ebs custom2]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol2
+#shared_dir = vol2
+# ... More EBS options if needed
+
+## More EBS settings if needed. Supports up to 5 volumes in total
+#[ebs ...]
+#shared_dir = ...
+# ... More EBS options if needed
 
 ## Scaling settings
 #[scaling custom]
