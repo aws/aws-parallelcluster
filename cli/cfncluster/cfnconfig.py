@@ -44,6 +44,116 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
 
 class CfnClusterConfig(object):
 
+    def __ebs_determine_shared_dir(self, __config):
+        # Handle the shared_dir under EBS setting sections
+        __temp_dir_list = []
+        try:
+            if self.__ebs_section:
+                for section in self.__ebs_section:
+                    try:
+                        __temp_shared_dir = __config.get(section, 'shared_dir')
+                        if not __temp_shared_dir:
+                            print("ERROR: shared_dir defined but not set in [%s] section"
+                                  % section)
+                            sys.exit(1)
+                        __temp_dir_list.append(__temp_shared_dir)
+
+                    except configparser.NoOptionError:
+                        pass
+                    except configparser.NoSectionError:
+                        print("ERROR: [%s] section defined in ebs_settings does not exist" % section)
+                        sys.exit(1)
+        except AttributeError:
+            pass
+
+        # For backwards compatibility, user can still use shared_dir under [cluster] section for 1 volume,
+        # but the shared_dir under [ebs] section will overwrite shared_dir under [cluster],
+        # and user MUST specify a shared_dir under each [ebs] section when using > 1 volumes.
+        try:
+            if len(__temp_dir_list) == len(self.__ebs_section):
+                self.parameters['SharedDir'] = ",".join(__temp_dir_list)
+            # For backwards compatibility with just 1 volume explicitly specified through ebs_settings
+            elif len(self.__ebs_section) == 1:
+                try:
+                    __temp_shared_dir = __config.get(self.__cluster_section, 'shared_dir')
+                    if not __temp_shared_dir:
+                        print("ERROR: shared_dir defined but not set")
+                        sys.exit(1)
+                    self.parameters['SharedDir'] = str(__temp_shared_dir)
+                except configparser.NoOptionError:
+                    pass
+            else:
+                print("ERROR: not enough shared directories provided.\n"
+                      "When using multiple EBS Volumes, please specify a shared_dir under each [ebs] section")
+                sys.exit(1)
+        except AttributeError:
+            try:
+                __temp_shared_dir = __config.get(self.__cluster_section, 'shared_dir')
+                if not __temp_shared_dir:
+                    print("ERROR: shared_dir defined but not set")
+                    sys.exit(1)
+                self.parameters['SharedDir'] = str(__temp_shared_dir)
+            except configparser.NoOptionError:
+                pass
+
+
+    def __load_ebs_options(self, __config):
+
+        try:
+            self.__ebs_settings = __config.get(self.__cluster_section, 'ebs_settings')
+
+            if not self.__ebs_settings:
+                print("ERROR: ebs_settings defined by not set in [%s] section"
+                      % self.__cluster_section)
+                sys.exit(1)
+            # Modify list
+            self.__ebs_section = str(self.__ebs_settings).split(',')
+            if (len(self.__ebs_section) > self.__MAX_EBS_VOLUMES):
+                print("ERROR: number of EBS volumes requested is greater than the MAX.\n"
+                      "Max number of EBS volumes supported is currently %s" % self.__MAX_EBS_VOLUMES)
+                sys.exit(1)
+            self.parameters["NumberOfEBSVol"] = str(len(self.__ebs_section))
+            for i, item in enumerate(self.__ebs_section):
+                item = ('ebs %s' % item.strip())
+                self.__ebs_section[i] = item
+        except configparser.NoOptionError:
+            pass
+
+        self.__ebs_determine_shared_dir(__config)
+
+        # Dictionary list of all EBS options
+        self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId', 'EC2Snapshot'), volume_type=('VolumeType', None),
+                                  volume_size=('VolumeSize', None), ebs_kms_key_id=('EBSKMSKeyId', None),
+                                  volume_iops=('VolumeIOPS', None), encrypted=('EBSEncryption', None),
+                                  ebs_volume_id=('EBSVolumeId', 'EC2Volume'))
+        # EBS options processing
+        try:
+            if self.__ebs_section:
+                for key in self.__ebs_options:
+                    __temp_parameter_list = []
+                    for section in self.__ebs_section:
+                        try:
+                            __temp__ = __config.get(section, key)
+                            if not __temp__:
+                                print("ERROR: %s defined but not set in [%s] section"
+                                      % (key, section))
+                                sys.exit(1)
+                            if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
+                                config_sanity.check_resource(self.region, self.aws_access_key_id,
+                                                             self.aws_secret_access_key,
+                                                             self.__ebs_options.get(key)[1], __temp__)
+                            __temp_parameter_list.append(__temp__)
+                        except configparser.NoOptionError:
+                            __temp_parameter_list.append("NONE")
+                            pass
+                    # Fill the rest of the parameter with NONE
+                    while len(__temp_parameter_list) < self.__MAX_EBS_VOLUMES:
+                        __temp_parameter_list.append("NONE")
+                    self.parameters[self.__ebs_options.get(key)[0]] = ",".join(str(x) for x in __temp_parameter_list)
+
+        except AttributeError:
+            pass
+
     def __init__(self, args):
         self.args = args
         self.cluster_options = self.__init_cluster_options()
@@ -52,6 +162,7 @@ class CfnClusterConfig(object):
         self.parameters = {}
         self.version = pkg_resources.get_distribution("cfncluster").version
         self.__DEFAULT_CONFIG = False
+        self.__MAX_EBS_VOLUMES = 5
         __args_func = self.args.func.__name__
 
         # Determine config file name based on args or default
@@ -293,41 +404,8 @@ class CfnClusterConfig(object):
         except AttributeError:
             pass
 
-        # Determine if EBS settings are defined and set section
-        try:
-            self.__ebs_settings = __config.get(self.__cluster_section, 'ebs_settings')
-            if not self.__ebs_settings:
-                print("ERROR: ebs_settings defined by not set in [%s] section"
-                                                % self.__cluster_section)
-                sys.exit(1)
-            self.__ebs_section = ('ebs %s' % self.__ebs_settings)
-        except configparser.NoOptionError:
-            pass
-
-        # Dictionary list of all EBS options
-        self.__ebs_options = dict(ebs_snapshot_id=('EBSSnapshotId','EC2Snapshot'), volume_type=('VolumeType',None),
-                                  volume_size=('VolumeSize',None), ebs_kms_key_id=('EBSKMSKeyId', None),
-                                  volume_iops=('VolumeIOPS',None), encrypted=('EBSEncryption',None),
-                                  ebs_volume_id=('EBSVolumeId','EC2Volume')
-                                  )
-
-        try:
-            if self.__ebs_section:
-                for key in self.__ebs_options:
-                    try:
-                        __temp__ = __config.get(self.__ebs_section, key)
-                        if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section"
-                                                    % (key, self.__ebs_section))
-                            sys.exit(1)
-                        if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
-                            config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
-                                                self.__ebs_options.get(key)[1],__temp__)
-                        self.parameters[self.__ebs_options.get(key)[0]] = __temp__
-                    except configparser.NoOptionError:
-                        pass
-        except AttributeError:
-            pass
+        # Initialize EBS related options
+        self.__load_ebs_options(__config)
 
         # Determine if scaling settings are defined and set section
         try:
@@ -412,7 +490,6 @@ class CfnClusterConfig(object):
             post_install_args=('PostInstallArgs', None),
             s3_read_resource=('S3ReadResource', None),
             s3_read_write_resource=('S3ReadWriteResource', None),
-            shared_dir=('SharedDir', None),
             tenancy=('Tenancy', None),
             ephemeral_kms_key_id=('EphemeralKMSKeyId', None),
             cluster_ready=('ClusterReadyScript', 'URL'),
