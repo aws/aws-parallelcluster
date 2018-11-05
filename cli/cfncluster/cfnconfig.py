@@ -361,17 +361,6 @@ class CfnClusterConfig(object):
         except AttributeError:
             pass
 
-        # pass arbitrary parameters through
-        # TODO remove when batch releases CloudFormation support
-        params = ['aws_batch_sg', 'zeta_endpoint', 'docker_image', 'job_role_arn', 'service_role', 'instance_role', 'security_group']
-        self.__batch_section = 'batch mnp'
-        self.batch_parameters = {}
-        for key in params:
-            try:
-                self.batch_parameters[key] = __config.get(self.__batch_section, key)
-            except:
-                pass
-
         # handle aliases
         self.aliases = {}
         self.__alias_section = 'aliases'
