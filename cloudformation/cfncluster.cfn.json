@@ -4852,19 +4852,28 @@
     },
     "MNPComputeEnvironmentArn" : {
       "Value" : {
-        "Fn::Sub": "${AWSBatchMNPBase}:compute-environment/${AWSBatchMNPName}"
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.MNPComputeEnvironmentArn"
+        ]
       },
       "Condition": "CreateAWSBatchStack"
     },
     "MNPJobQueueArn" : {
       "Value" : {
-        "Fn::Sub": "${AWSBatchMNPBase}:job-queue/${AWSBatchMNPName}"
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.MNPJobQueueArn"
+        ]
       },
       "Condition": "CreateAWSBatchStack"
     },
     "MNPJobDefinitionArn" : {
       "Value" : {
-        "Fn::Sub": "${AWSBatchMNPBase}:job-definition/${AWSBatchMNPName}"
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.MNPJobDefinitionArn"
+        ]
       },
       "Condition": "CreateAWSBatchStack"
     }

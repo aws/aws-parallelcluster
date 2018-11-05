@@ -117,7 +117,7 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
     # handle init failures
     if init_failed:
         send(event, context, "FAILED", responseData, physicalResourceId,
-             init_failed, logger=logger)
+             logger=logger, reason=init_failed)
         raise Exception
 
     # Setup timer to catch timeouts

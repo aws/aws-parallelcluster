@@ -31,7 +31,6 @@ from botocore.exceptions import ClientError
 from . import cfnconfig
 
 from . import utils
-from . import mnp_batch
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve

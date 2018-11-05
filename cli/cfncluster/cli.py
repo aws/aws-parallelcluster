@@ -13,7 +13,6 @@ from __future__ import absolute_import
 import os
 import argparse
 import logging
-import platform
 import json
 import sys
 import errno
