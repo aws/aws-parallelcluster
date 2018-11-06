@@ -93,13 +93,6 @@ def create(args):
             sys.exit(1)
         config.parameters['AvailabilityZone'] = availability_zone
 
-    scheduler = config.parameters.get('Scheduler') if config.parameters.get('Scheduler') else 'sge'
-    if scheduler == 'awsbatch':
-        # TODO Remove after batch launches CloudFormation Support
-        batch_resources = mnp_batch.main(config, args)
-        config.parameters.update(batch_resources)
-        logger.info("AWS Batch Resources = %s" % batch_resources)
-
     capabilities = ["CAPABILITY_IAM"]
     batch_temporary_bucket = None
     try:
