@@ -261,6 +261,23 @@ class CfnClusterConfig(object):
             except configparser.NoOptionError:
                 pass
 
+
+        # Validate region for batch
+        self.__scheduler = self.parameters.get('Scheduler')
+
+        # Turn off Ganglia if Batch
+        if self.__scheduler == "awsbatch":
+            extra_json = self.parameters.get('ExtraJson')
+            if extra_json:
+                extra_json = json.loads(extra_json)
+                if 'cfncluster' in extra_json:
+                    extra_json.get('cfncluster').update({ 'ganglia_enabled': 'no' })
+                else:
+                    extra_json['cfncluster'] = { 'ganglia_enabled': 'no' }
+            else:
+                extra_json = { 'cfncluster': { 'ganglia_enabled': 'no' }}
+            self.parameters['ExtraJson'] = json.dumps(extra_json)
+
         # Merge tags from config with tags from command line args
         # Command line args take precedent and overwite tags supplied in the config
         self.tags = {}
