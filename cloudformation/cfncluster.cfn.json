@@ -2097,6 +2097,18 @@
               ]
             },
             {
+              "Sid": "S3PutObj",
+              "Action": [
+                "s3:PutObject"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                }
+              ]
+            },
+            {
               "Sid": "SQSList",
               "Action": [
                 "sqs:ListQueues"
@@ -4823,7 +4835,7 @@
       "Value": { "Ref": "ResourcesS3Bucket" },
       "Condition": "HasResourcesS3Bucket"
     },
-    "BatchComputeEnvironment" : {
+    "BatchComputeEnvironmentArn" : {
       "Value" : {
         "Fn::GetAtt" : [
           "AWSBatchStack",
@@ -4832,7 +4844,7 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
-    "BatchJobQueue" : {
+    "BatchJobQueueArn" : {
       "Value" : {
         "Fn::GetAtt" : [
           "AWSBatchStack",
@@ -4841,7 +4853,16 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
-    "BatchJobDefinition": {
+    "BatchJobDefinitionArn": {
+      "Value" : {
+        "Fn::GetAtt" : [
+          "AWSBatchStack",
+          "Outputs.JobDefinitionArn"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
+    },
+    "BatchJobDefinitionMnpArn": {
       "Value" : {
         "Fn::GetAtt" : [
           "AWSBatchStack",
