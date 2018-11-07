@@ -38,7 +38,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_key_pairs(KeyNames=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     if resource_type == 'EC2IAMRoleName':
         try:
@@ -72,7 +72,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                         print("See https://cfncluster.readthedocs.io/en/latest/iam.html")
                         sys.exit(1)
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # VPC Id
     elif resource_type == 'VPC':
@@ -83,7 +83,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_vpcs(VpcIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
         # Check for DNS support in the VPC
         if not ec2.describe_vpc_attribute(VpcId=resource_value, Attribute='enableDnsSupport')\
@@ -102,7 +102,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_subnets(SubnetIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # VPC Security Group
     elif resource_type == 'VPCSecurityGroup':
@@ -112,7 +112,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_security_groups(GroupIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 AMI Id
     elif resource_type == 'EC2Ami':
@@ -122,7 +122,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_images(ImageIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 Placement Group
     elif resource_type == 'EC2PlacementGroup':
@@ -135,7 +135,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                    aws_secret_access_key=aws_secret_access_key)
                 test = ec2.describe_placement_groups(GroupNames=[resource_value])
             except ClientError as e:
-                print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
                 sys.exit(1)
     # URL
     elif resource_type == 'URL':
@@ -159,7 +159,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_snapshots(SnapshotIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 EBS Volume Id
     elif resource_type == 'EC2Volume':
@@ -175,7 +175,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             if e.response.get('Error').get('Message').endswith('parameter volumes is invalid. Expected: \'vol-...\'.'):
                 print('Config sanity error: volume %s does not exist.' % resource_value)
                 sys.exit(1)
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # Batch Parameters
     elif resource_type == 'AWSBatch_Parameters':
@@ -198,10 +198,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                             print ("Instance type %s not supported by batch in this region" % instance)
                             sys.exit(1)
                 except ClientError as e:
-                    print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                    print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
                     sys.exit(1)
             except ClientError as e:
-                print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
                 sys.exit(1)
 
         # Check spot bid percentage
