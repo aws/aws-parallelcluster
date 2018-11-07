@@ -222,12 +222,12 @@ class CfnClusterConfig(object):
                 sys.exit(1)
 
         if __config.has_option(self.__cluster_section, 'scheduler'):
-            self.__scheduler = __config.get(self.__cluster_section, 'scheduler')
+            self.parameters['Scheduler'] = __config.get(self.__cluster_section, 'scheduler')
         else:
-            self.__scheduler = 'sge'
+            self.parameters['Scheduler'] = 'sge'
 
         # Validate region for batch
-        if self.__scheduler == "awsbatch":
+        if self.parameters['Scheduler'] == "awsbatch":
             self.__run_batch_validation(__config)
         else:
             for key in self.size_parameters:
@@ -263,10 +263,10 @@ class CfnClusterConfig(object):
 
 
         # Validate region for batch
-        self.__scheduler = self.parameters.get('Scheduler')
+        self.parameters['Scheduler'] = self.parameters.get('Scheduler')
 
         # Turn off Ganglia if Batch
-        if self.__scheduler == "awsbatch":
+        if self.parameters['Scheduler'] == "awsbatch":
             extra_json = self.parameters.get('ExtraJson')
             if extra_json:
                 extra_json = json.loads(extra_json)
@@ -455,9 +455,9 @@ class CfnClusterConfig(object):
             self.parameters['CustomAWSBatchTemplateURL'] = awsbatch_custom_url
 
         # Set batch default size parameters
-        self.parameters['MinSize'] = 0
-        self.parameters['DesiredSize'] = 4
-        self.parameters['MaxSize'] = 20
+        self.parameters['MinSize'] = '0'
+        self.parameters['DesiredSize'] = '4'
+        self.parameters['MaxSize'] = '20'
 
         # Override those parameters from config if they are available
         for key in self.batch_size_parameters:

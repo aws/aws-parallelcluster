@@ -206,23 +206,23 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
 
         # Check spot bid percentage
         if 'SpotPrice' in resource_value:
-            if resource_value['SpotPrice'] > 100 or resource_value['SpotPrice'] < 0:
+            if int(resource_value['SpotPrice']) > 100 or int(resource_value['SpotPrice']) < 0:
                 print("ERROR: Spot bid percentage needs to be between 0 and 100")
                 sys.exit(1)
 
         # Check sanity on desired, min and max vcpus
         if 'DesiredSize' in resource_value and 'MinSize' in resource_value:
-            if resource_value['DesiredSize'] < resource_value['MinSize']:
+            if int(resource_value['DesiredSize']) < int(resource_value['MinSize']):
                 print ('ERROR: Desired vcpus must be greater than or equal to min vcpus')
                 sys.exit(1)
 
         if 'DesiredSize' in resource_value and 'MaxSize' in resource_value:
-            if resource_value['DesiredSize'] > resource_value['MinSize']:
+            if int(resource_value['DesiredSize']) > int(resource_value['MaxSize']):
                 print('ERROR: Desired vcpus must be fewer than or equal to max vcpus')
                 sys.exit(1)
 
         if 'MaxSize' in resource_value and 'MinSize' in resource_value:
-            if resource_value['MaxSize'] < resource_value['MinSize']:
+            if int(resource_value['MaxSize']) < int(resource_value['MinSize']):
                 print ('ERROR: Max vcpus must be greater than or equal to min vcpus')
                 sys.exit(1)
 
