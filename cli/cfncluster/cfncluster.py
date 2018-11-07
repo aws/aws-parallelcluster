@@ -99,7 +99,7 @@ def create(args):
         stack_name = 'cfncluster-' + args.cluster_name
 
         # If scheduler is awsbatch create bucket with resources
-        if 'Scheduler' in config.parameters and config.parameters['Scheduler'] == 'awsbatch':
+        if config.parameters['Scheduler'] == 'awsbatch':
             batch_resources = pkg_resources.resource_filename(__name__, 'resources/batch')
             batch_temporary_bucket = create_bucket_with_batch_resources(stack_name=stack_name,
                                                                         aws_client_config=aws_client_config,
@@ -187,16 +187,26 @@ def update(args):
                        aws_access_key_id=config.aws_access_key_id,
                        aws_secret_access_key=config.aws_secret_access_key)
 
-    asg = boto3.client('autoscaling', region_name=config.region,
-                       aws_access_key_id=config.aws_access_key_id,
-                       aws_secret_access_key=config.aws_secret_access_key)
+    if config.parameters.get('Scheduler') != "awsbatch":
+        asg = boto3.client('autoscaling', region_name=config.region,
+                           aws_access_key_id=config.aws_access_key_id,
+                           aws_secret_access_key=config.aws_secret_access_key)
 
-    if not args.reset_desired:
-        asg_name = get_asg_name(stack_name, config)
-        desired_capacity = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])\
-            .get('AutoScalingGroups')[0]\
-            .get('DesiredCapacity')
-        config.parameters['InitialQueueSize'] = str(desired_capacity)
+        if not args.reset_desired:
+            asg_name = get_asg_name(stack_name, config)
+            desired_capacity = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])\
+                .get('AutoScalingGroups')[0]\
+                .get('DesiredCapacity')
+            config.parameters['InitialQueueSize'] = str(desired_capacity)
+    else:
+        if args.reset_desired:
+            logger.info("reset_desired flag does not work with awsbatch scheduler")
+        params = cfn.describe_stacks(StackName=stack_name).get('Stacks')[0].get('Parameters')
+
+        for parameter in params:
+            if parameter.get('ParameterKey') == 'ResourcesS3Bucket':
+                config.parameters['ResourcesS3Bucket'] = parameter.get('ParameterValue')
+
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     if 'MasterSubnetId' in config.parameters:
@@ -217,6 +227,7 @@ def update(args):
         logger.debug((config.template_url, config.parameters))
 
         cfn_params = [{'ParameterKey': key, 'ParameterValue': value} for key, value in config.parameters.items()]
+        logger.info("Calling update_stack")
         cfn.update_stack(StackName=stack_name,TemplateURL=config.template_url,
                          Parameters=cfn_params, Capabilities=capabilities)
         status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
@@ -239,28 +250,42 @@ def update(args):
         sys.exit(0)
 
 def start(args):
-    # Set resource limits on compute fleet to min/max/desired = 0/max/0
-    logger.info('Starting compute fleet : %s' % args.cluster_name)
+    # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/max/0
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
 
-    # Set asg limits
-    max_queue_size = config.parameters.get('MaxQueueSize') if config.parameters.get('MaxQueueSize') and config.parameters.get('MaxQueueSize') > 0 else 10
-    desired_queue_size = config.parameters.get('InitialQueueSize') if config.parameters.get('InitialQueueSize') and config.parameters.get('InitialQueueSize') > 0 else 2
-    min_queue_size = desired_queue_size if config.parameters.get('MaintainInitialSize') == "true" and desired_queue_size > 0 else 0
+    if config.parameters.get('Scheduler') == "awsbatch":
+        logger.info('Enabling AWS Batch compute environment : %s' % args.cluster_name)
+        max_vcpus = config.parameters.get('MaxSize') if config.parameters.get('MaxSize') and int(config.parameters.get('MaxSize')) >= 0 else 20
+        desired_vcpus = config.parameters.get('DesiredSize') if config.parameters.get('DesiredSize') and int(config.parameters.get('DesiredSize')) >= 0 else 4
+        min_vcpus = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize')) > 0 else 0
+        start_batch_ce(ce_name=stack_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus)
+    else:
+        logger.info('Starting compute fleet : %s' % args.cluster_name)
 
-    asg_name = get_asg_name(stack_name=stack_name, config=config)
-    set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
+        # Set asg limits
+        max_queue_size = config.parameters.get('MaxSize') if config.parameters.get('MaxSize') and int(config.parameters.get('MaxSize')) >= 0 else 10
+        desired_queue_size = config.parameters.get('DesiredSize') if config.parameters.get('DesiredSize') and int(config.parameters.get('DesiredSize')) >= 0 else 2
+        min_queue_size = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize') > 0) else 0
+
+        asg_name = get_asg_name(stack_name=stack_name, config=config)
+        set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
+
 
 def stop(args):
-    # Set resource limits on compute fleet to min/max/desired = 0/0/0
-    logger.info('Stopping compute fleet : %s' % args.cluster_name)
+    # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/0/0
     stack_name = ('cfncluster-' + args.cluster_name)
     config = cfnconfig.CfnClusterConfig(args)
 
-    # Set Resource limits
-    asg_name = get_asg_name(stack_name=stack_name, config=config)
-    set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
+    if config.parameters.get('Scheduler') == "awsbatch":
+        logger.info('Disabling AWS Batch compute environment : %s' % args.cluster_name)
+        stop_batch_ce(ce_name=stack_name, config=config)
+    else:
+        logger.info('Stopping compute fleet : %s' % args.cluster_name)
+        # Set Resource limits
+        asg_name = get_asg_name(stack_name=stack_name, config=config)
+        set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
+
 
 def list(args):
     config = cfnconfig.CfnClusterConfig(args)
@@ -368,8 +393,8 @@ def set_asg_limits(asg_name, config, min, max, desired):
                  aws_access_key_id=config.aws_access_key_id,
                  aws_secret_access_key=config.aws_secret_access_key)
 
-    asg.update_auto_scaling_group(AutoScalingGroupName=asg_name, MinSize=min, MaxSize=max,
-                                  DesiredCapacity=desired)
+    asg.update_auto_scaling_group(AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max),
+                                  DesiredCapacity=int(desired))
 
 def get_asg_instances(stack, config):
     asg = boto3.client('autoscaling', region_name=config.region,
@@ -386,16 +411,50 @@ def get_asg_instances(stack, config):
 
     return temp_instances
 
+
+def start_batch_ce(ce_name, config, min_vcpus, desired_vcpus, max_vcpus):
+    batch = boto3.client('batch', region_name=config.region,
+                       aws_access_key_id=config.aws_access_key_id,
+                       aws_secret_access_key=config.aws_secret_access_key)
+    try:
+        batch.update_compute_environment(
+            computeEnvironment=ce_name,
+            state='ENABLED',
+            computeResources={'minvCpus': int(min_vcpus), 'maxvCpus': int(max_vcpus), 'desiredvCpus': int(desired_vcpus)}
+        )
+    except ClientError as e:
+        logger.critical(e.response.get('Error').get('Message'))
+        sys.exit(1)
+
+
+def stop_batch_ce(ce_name, config):
+    batch = boto3.client('batch', region_name=config.region,
+                       aws_access_key_id=config.aws_access_key_id,
+                       aws_secret_access_key=config.aws_secret_access_key)
+
+    batch.update_compute_environment(
+        computeEnvironment=ce_name,
+        state='DISABLED'
+    )
+
+
 def instances(args):
     stack = ('cfncluster-' + args.cluster_name)
 
     config = cfnconfig.CfnClusterConfig(args)
     instances = []
     instances.extend(get_ec2_instances(stack, config))
-    instances.extend(get_asg_instances(stack, config))
+
+    if config.parameters.get('Scheduler') != "awsbatch":
+        instances.extend(get_asg_instances(stack, config))
 
     for instance in instances:
         print('%s         %s' % (instance[0],instance[1]))
+
+    if config.parameters.get('Scheduler') == "awsbatch":
+        logger.info("Run 'awsbhosts --cluster %s' to list the compute instances" % args.cluster_name)
+
+
 
 def command(args, extra_args):
     stack = ('cfncluster-' + args.cluster_name)
