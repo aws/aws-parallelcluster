@@ -2454,11 +2454,11 @@
                 },
                 "\n",
                 "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
+                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
                 {
                   "Ref": "AWS::Region"
                 },
-                "/cookbooks/",
+                "-cfncluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "CfnClusterVersions",
@@ -3193,11 +3193,11 @@
                 },
                 "\n",
                 "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
+                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
                 {
                   "Ref": "AWS::Region"
                 },
-                "/cookbooks/",
+                "-cfncluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "CfnClusterVersions",
@@ -3845,11 +3845,11 @@
                   },
                   "\n",
                   "  fi\n",
-                  "  cookbook_url=https://${s3_prefix}.amazonaws.com/cfncluster-resources-",
+                  "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
                   {
                     "Ref": "AWS::Region"
                   },
-                  "/cookbooks/",
+                  "-cfncluster/cookbooks/",
                   {
                     "Fn::FindInMap": [
                       "CfnClusterVersions",
