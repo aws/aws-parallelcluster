@@ -1,10 +1,10 @@
-cfncluster is an example framework for launching clusters.
+pcluster is an example framework for launching clusters.
 
-    usage: cfncluster [-h]
+    usage: pcluster [-h]
                       {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
                       ...
 
-    cfncluster is a tool to launch and manage a cluster.
+    pcluster is a tool to launch and manage a cluster.
 
     positional arguments:
       {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
@@ -15,13 +15,13 @@ cfncluster is an example framework for launching clusters.
         stop                stop the compute fleet, but leave the master server
                             running for debugging/development
         status              pull the current status of the cluster
-        list                display a list of stacks associated with cfncluster
+        list                display a list of stacks associated with AWS ParallelCluster
         instances           display a list of all instances in a cluster
         ssh                 connect to the master server using SSH
-        configure           creating initial cfncluster configuration
-        version             display version of cfncluster
+        configure           creating initial pcluster configuration
+        version             display version of aws-parallelcluster
 
     optional arguments:
       -h, --help            show this help message and exit
 
-    For command specific flags run cfncluster [command] --help
+    For command specific flags run pcluster [command] --help

@@ -166,10 +166,10 @@ def run_test(distro, clustername, mastersubnet):
         wfile.close()
 
         print("Creating cluster...")
-        prochelp.exec_command(['cfncluster', 'create', 'autoTest-%s' % testname,'--config','./config-%s' % distro,'--cluster-template', '%s' % clustername],
+        prochelp.exec_command(['pcluster', 'create', 'autoTest-%s' % testname,'--config','./config-%s' % distro,'--cluster-template', '%s' % clustername],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         _create_done = True
-        dump = prochelp.exec_command(['cfncluster', 'status', 'autoTest-%s' % testname],
+        dump = prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname],
                                      stderr=sub.STDOUT, universal_newlines=True)
         dump_array = dump.splitlines()
         for line in dump_array:
@@ -213,7 +213,7 @@ def run_test(distro, clustername, mastersubnet):
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
-            _double_writeln(out_f, "--> %s: Interrupting cfncluster create!" % testname)
+            _double_writeln(out_f, "--> %s: Interrupting AWS ParallelCluster create!" % testname)
         _double_writeln(out_f, '!! ABORTED: %s!!' % (testname))
         open('%s.aborted' % testname, 'w').close()
         raise exc
@@ -240,28 +240,28 @@ def run_test(distro, clustername, mastersubnet):
                 try:
                     time.sleep(2)
                     # clean up the cluster
-                    _del_output = sub.check_output(['cfncluster', 'delete', 'autoTest-%s' % testname],
+                    _del_output = sub.check_output(['pcluster', 'delete', 'autoTest-%s' % testname],
                                                    stderr=sub.STDOUT, universal_newlines=True)
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
                     out_f.write(_del_output + '\n')
                 except sub.CalledProcessError as exc:
-                    out_f.write("CalledProcessError exception launching 'cfncluster delete': %s - Output:\n%s\n" % (
+                    out_f.write("CalledProcessError exception launching 'pcluster delete': %s - Output:\n%s\n" % (
                         str(exc), exc.output))
                 except Exception as exc:
-                    out_f.write("Unexpected exception launching 'cfncluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
+                    out_f.write("Unexpected exception launching 'pcluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
                 finally:
                     _double_writeln(out_f, "--> %s: Deleting - iteration: %s - successfully submitted: %s" % (
                         testname, (_max_del_iters - _del_iters + 1), _del_done))
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['cfncluster', 'status', 'autoTest-%s' % testname], stdout=out_f,
+                prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname], stdout=out_f,
                                       stderr=sub.STDOUT, universal_newlines=True)
             except (prochelp.ProcessHelperError, sub.CalledProcessError):
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
                 pass
             except Exception as exc:
-                out_f.write("Unexpected exception launching 'cfncluster status' %s: %s\n" % (str(type(exc)), str(exc)))
+                out_f.write("Unexpected exception launching 'pcluster status' %s: %s\n" % (str(type(exc)), str(exc)))
         prochelp.exec_command(['aws', 'ec2', 'delete-snapshot', '--snapshot-id', '%s' % _snap_id])
         time.sleep(5)
         prochelp.exec_command(['aws', 'ec2', 'delete-volume', '--volume-id', '%s' % _volume_id])

@@ -12,8 +12,8 @@ key_name = id_rsa
 vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/aws-parallelcluster.cfn.json
+custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/aws-parallelcluster-cookbook-1.6.0.tgz
 
 [cluster custom1Vol]
 base_os = centos6
@@ -23,8 +23,8 @@ maintain_initial_size = true
 shared_dir = myshared
 ebs_settings = vol1
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/aws-parallelcluster.cfn.json
+custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/aws-parallelcluster-cookbook-1.6.0.tgz
 
 [cluster custom3Vol]
 base_os = centos6
@@ -34,8 +34,8 @@ maintain_initial_size = true
 shared_dir = myshared
 ebs_settings = vol1, vol2, vol3_v
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/aws-parallelcluster.cfn.json
+custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/aws-parallelcluster-cookbook-1.6.0.tgz
 
 [cluster custom5Vol]
 base_os = alinux
@@ -45,8 +45,8 @@ maintain_initial_size = true
 shared_dir = myshared
 ebs_settings = vol1, vol2, vol3, vol4, vol5
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/aws-parallelcluster.cfn.json
+custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/aws-parallelcluster-cookbook-1.6.0.tgz
 
 [cluster custom6Vol]
 base_os = centos6
@@ -56,8 +56,8 @@ maintain_initial_size = true
 shared_dir = myshared
 ebs_settings = vol1, vol2, vol3, vol4, vol5, vol6
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url = https://s3.us-east-2.amazonaws.com/shuningc-internal/aws-parallelcluster.cfn.json
+custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-internal/cookbooks/aws-parallelcluster-cookbook-1.6.0.tgz
 
 [vpc public]
 vpc_id = vpc-f9cff091

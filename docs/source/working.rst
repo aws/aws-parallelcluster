@@ -1,7 +1,7 @@
 .. _working:
 
-Working with CfnCluster
-#######################
+Working with AWS ParallelCluster
+################################
 
 .. toctree::
 

@@ -1,4 +1,4 @@
-## cfncluster config
+## AWS ParallelCluster config
 [global]
 # Default cluster config section.
 cluster_template = default
@@ -24,13 +24,13 @@ sanity_check = true
 # ssh alias here
 ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
 
-## cfncluster templates
+## AWS ParallelCluster templates
 [cluster default]
 # Name of an existing EC2 KeyPair to enable SSH access to the instances.
 key_name = mykey
 # Override path to cloudformation in S3
-# (defaults to https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json)
-#template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
+# (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
+#template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
 # Cluster Server EC2 instance type
 # (defaults to t2.micro for default template)
 #compute_instance_type = t2.micro
@@ -66,10 +66,10 @@ key_name = mykey
 #spot_bid_percentage = 85
 # ID of a Custom AMI, to use instead of published AMI's
 #custom_ami = NONE
-# Specify S3 resource which cfncluster nodes will be granted read-only access
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-only access
 # (defaults to NONE for the default template)
 #s3_read_resource = NONE
-# Specify S3 resource which cfncluster nodes will be granted read-write access
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-write access
 # (defaults to NONE for the default template)
 #s3_read_write_resource = NONE
 # URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
@@ -133,7 +133,7 @@ vpc_id = vpc-
 # ID of the Subnet you want to provision the Master server into
 master_subnet_id = subnet-
 # SSH from CIDR
-# This is only used when cfncluster creates the security group
+# This is only used when AWS ParallelCluster creates the security group
 # (defaults to 0.0.0.0/0 in the default template)
 #ssh_from = 0.0.0.0/0
 # Additional VPC security group Id for all instances

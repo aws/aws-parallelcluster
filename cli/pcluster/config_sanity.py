@@ -55,11 +55,11 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
 
             iam_policy = [(['ec2:DescribeVolumes', 'ec2:AttachVolume', 'ec2:DescribeInstanceAttribute', 'ec2:DescribeInstanceStatus', 'ec2:DescribeInstances'], "*"),
                         (['dynamodb:ListTables'], "*"),
-                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:cfncluster-*" % (partition, region, accountid)),
+                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:aws-parallelcluster-*" % (partition, region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoscaling:DescribeTags', 'autoScaling:UpdateAutoScalingGroup'], "*"),
-                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/cfncluster-*" % (partition, region, accountid)),
-                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/cfncluster-*" % (partition, region, accountid)),
-                        (['s3:GetObject'], "arn:%s:s3:::%s-cfncluster/*" % (partition, region)),
+                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/aws-parallelcluster-*" % (partition, region, accountid)),
+                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/aws-parallelcluster-*" % (partition, region, accountid)),
+                        (['s3:GetObject'], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, region)),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:%s:logs:*:*:*" % partition)]
 
@@ -69,7 +69,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                     if decision.get("EvalDecision") != "allowed":
                         print("IAM role error on user provided role %s: action %s is %s" %
                               (resource_value, decision.get("EvalActionName"), decision.get("EvalDecision")))
-                        print("See https://cfncluster.readthedocs.io/en/latest/iam.html")
+                        print("See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html")
                         sys.exit(1)
         except ClientError as e:
             print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
@@ -188,7 +188,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
         if 'ComputeInstanceType' in resource_value:
             try:
                 s3 = boto3.resource('s3', region_name=region)
-                bucket_name = '%s-cfncluster' % region
+                bucket_name = '%s-aws-parallelcluster' % region
                 file_name = 'instances/batch_instances.json'
                 try:
                     file_contents = s3.Object(bucket_name, file_name).get()['Body'].read().decode('utf-8')

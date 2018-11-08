@@ -31,7 +31,7 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
     cfn = boto3.client('cloudformation', region_name=region,
                        aws_access_key_id=aws_access_key_id,
                        aws_secret_access_key=aws_secret_access_key)
-    __stack_name = ('cfncluster-' + stack)
+    __stack_name = ('aws-parallelcluster-' + stack)
 
     try:
         __stack = cfn.describe_stacks(StackName=__stack_name).get('Stacks')[0]
@@ -43,7 +43,7 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
 
     return __cli_template
 
-class CfnClusterConfig(object):
+class ParallelClusterConfig(object):
 
     def __ebs_determine_shared_dir(self, __config):
         # Handle the shared_dir under EBS setting sections
@@ -161,7 +161,7 @@ class CfnClusterConfig(object):
         self.size_parameters = self.__init_size_parameters()
         self.batch_size_parameters = self.__init_batch_size_parameters()
         self.parameters = {}
-        self.version = pkg_resources.get_distribution("cfncluster").version
+        self.version = pkg_resources.get_distribution("aws-parallelcluster").version
         self.__DEFAULT_CONFIG = False
         self.__MAX_EBS_VOLUMES = 5
         __args_func = self.args.func.__name__
@@ -170,7 +170,7 @@ class CfnClusterConfig(object):
         if hasattr(args, 'config_file') and args.config_file is not None:
             self.__config_file = args.config_file
         else:
-            self.__config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
+            self.__config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'config'))
             self.__DEFAULT_CONFIG = True
         if os.path.isfile(self.__config_file):
             pass
@@ -243,9 +243,9 @@ class CfnClusterConfig(object):
 
         if self.__update_check == True:
             try:
-                __latest = json.loads(urllib.request.urlopen("http://pypi.python.org/pypi/cfncluster/json").read())['info']['version']
+                __latest = json.loads(urllib.request.urlopen("http://pypi.python.org/pypi/aws-parallelcluster/json").read())['info']['version']
                 if self.version < __latest:
-                    print('warning: There is a newer version %s of cfncluster available.' % __latest)
+                    print('warning: There is a newer version %s of AWS ParallelCluster available.' % __latest)
             except Exception:
                 pass
 
@@ -292,10 +292,10 @@ class CfnClusterConfig(object):
                                                      'URL', self.template_url)
                 except configparser.NoOptionError:
                     if self.region == 'us-gov-west-1':
-                        self.template_url = ('https://s3-%s.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
+                        self.template_url = ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
                                              % (self.region, self.region, self.version))
                     else:
-                        self.template_url = ('https://s3.amazonaws.com/%s-cfncluster/templates/cfncluster-%s.cfn.json'
+                        self.template_url = ('https://s3.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
                                              % (self.region, self.version))
         except AttributeError:
             pass

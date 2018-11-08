@@ -3,24 +3,24 @@
 .. toctree::
    :maxdepth: 2
 
-####################################
-Running your first job on cfncluster
-####################################
+#############################################
+Running your first job on AWS ParallelCluster
+#############################################
 
-This tutorial will walk you through running your first "Hello World" job on cfncluster.
+This tutorial will walk you through running your first "Hello World" job on aws-parallelcluster.
 
-If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install cfncluster and configure your CLI.
+If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install AWS ParallelCluster and configure your CLI.
 
 Verifying your installation
 ===========================
 
-First, we'll verify that cfncluster is correctly installed and configured. ::
+First, we'll verify that AWS ParallelCluster is correctly installed and configured. ::
 
-        $ cfncluster version
+        $ pcluster version
 
-This should return the running version of cfncluster.  If it gives you a message about configuration, you will need to run the following to configure cfncluster. ::
+This should return the running version of AWS ParallelCluster.  If it gives you a message about configuration, you will need to run the following to configure AWS ParallelCluster. ::
 
-        $ cfncluster configure
+        $ pcluster configure
 
 
 Creating your First Cluster
@@ -30,12 +30,12 @@ Now it's time to create our first cluster.  Because our workload isn't performan
 
 We're going to call our cluster "hello-world". ::
 
-        $ cfncluster create hello-world
+        $ pcluster create hello-world
 
 You'll see some messages on your screen about the cluster creating.  When it's finished, it will provide the following output::
 
         Starting: hello-world
-        Status: cfncluster-hello-world - CREATE_COMPLETE
+        Status: aws-parallelcluster-hello-world - CREATE_COMPLETE
         MasterPublicIP = 54.148.x.x
         ClusterUser: ec2-user
         MasterPrivateIP = 192.168.x.x
@@ -48,7 +48,7 @@ Logging into your Master instance
 =================================
 You'll use your OpenSSH pem file to log into your master instance. ::
 
-        cfncluster ssh hello-world -i /path/to/keyfile.pem
+        pcluster ssh hello-world -i /path/to/keyfile.pem
 
 Once logged in, run the command "qhost" to ensure that your compute nodes are setup and configured. ::
 

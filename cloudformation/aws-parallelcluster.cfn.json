@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS CloudFormation Sample Template cfncluster.cfn.json: Sample template showing a framework for deploying master + compute type clusters on AWS.  **WARNING** This template creates AWS resources. You will be billed for the AWS resources used if you create a stack from this template. Version: cfncluster-1.5.2",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-1.6.1",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -806,7 +806,7 @@
       "Default": "2"
     },
     "S3ReadResource": {
-      "Description": "S3 resource with read access from cfncluster nodes",
+      "Description": "S3 resource with read access from AWS ParallelCluster nodes",
       "Type": "String",
       "Default": "NONE"
     },
@@ -816,7 +816,7 @@
       "Default": "NONE"
     },
     "Placement": {
-      "Description": "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Description": "Type of placement requird in AWS ParallelCluster, it can either be cluster or compute.",
       "Type": "String",
       "Default": "cluster",
       "AllowedValues": [
@@ -925,7 +925,7 @@
       "Default": "{}"
     },
     "Tenancy": {
-      "Description": "Type of placement requird in cfncluster, it can either be cluster or compute.",
+      "Description": "Type of placement requird in AWS ParallelCluster, it can either be cluster or compute.",
       "Type": "String",
       "Default": "default",
       "AllowedValues": [
@@ -1695,10 +1695,10 @@
         "RootDevice": "/dev/sda1"
       }
     },
-    "CfnClusterVersions": {
+    "PackagesVersions": {
       "default": {
         "cfncluster": "1.6.1",
-        "cookbook": "cfncluster-cookbook-1.6.0",
+        "cookbook": "aws-parallelcluster-cookbook-1.6.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
@@ -1857,10 +1857,10 @@
         }
       }
     },
-    "CfnClusterPolicies": {
+    "ParallelClusterPolicies": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "cfncluster",
+        "PolicyName": "aws-parallelcluster",
         "PolicyDocument": {
           "Statement": [
             {
@@ -2008,7 +2008,7 @@
                       {
                         "Ref": "AWS::Region"
                       },
-                      "-cfncluster/*"
+                      "-aws-parallelcluster/*"
                     ]
                   ]
                 }
@@ -2400,10 +2400,10 @@
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  mkdir /opt/cfncluster && echo ${cfncluster_version} | tee /opt/cfncluster/.bootstrapped\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
                 {
@@ -2448,10 +2448,10 @@
                 {
                   "Ref": "AWS::Region"
                 },
-                "-cfncluster/cookbooks/",
+                "-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cookbook"
                   ]
@@ -2459,10 +2459,10 @@
                 ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export cfncluster_version=cfncluster-",
+                "export cfncluster_version=aws-parallelcluster-",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cfncluster"
                   ]
@@ -2471,7 +2471,7 @@
                 "export cookbook_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cookbook"
                   ]
@@ -2480,7 +2480,7 @@
                 "export chef_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "chef"
                   ]
@@ -2489,7 +2489,7 @@
                 "export ridley_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "ridley"
                   ]
@@ -2498,14 +2498,14 @@
                 "export berkshelf_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "berkshelf"
                   ]
                 },
                 "\n",
-                "if [ -f /opt/cfncluster/.bootstrapped ]; then\n",
-                "  installed_version=$(cat /opt/cfncluster/.bootstrapped)\n",
+                "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
+                "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
                 "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
                 "    bootstrap_instance\n",
                 "  fi\n",
@@ -2514,8 +2514,8 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z \"$(cat /etc/chef/cfncluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
+                "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -2544,7 +2544,7 @@
         }
       },
       "Metadata": {
-        "Comment": "cfncluster Master server",
+        "Comment": "AWS ParallelCluster Master server",
         "AWS::CloudFormation::Init": {
           "configSets": {
             "default": [
@@ -2640,7 +2640,7 @@
                         "Fn::Join": [
                           "",
                           [
-                            "recipe[cfncluster::",
+                            "recipe[aws-parallelcluster::",
                             {
                               "Ref": "Scheduler"
                             },
@@ -2700,7 +2700,7 @@
           "chefPrepEnv": {
             "commands": {
               "chef": {
-                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::_prep_env",
                 "cwd": "/etc/chef"
               }
             }
@@ -2708,7 +2708,7 @@
           "shellRunPreInstall": {
             "commands": {
               "runpreinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -preinstall"
               }
             }
           },
@@ -2723,14 +2723,14 @@
           "shellRunPostInstall": {
             "commands": {
               "runpostinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
               }
             }
           },
           "shellForkClusterReadyInstall": {
             "commands": {
               "clusterreadyinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           }
@@ -3139,10 +3139,10 @@
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  mkdir /opt/cfncluster && echo ${cfncluster_version} | tee /opt/cfncluster/.bootstrapped\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
                 {
@@ -3187,10 +3187,10 @@
                 {
                   "Ref": "AWS::Region"
                 },
-                "-cfncluster/cookbooks/",
+                "-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cookbook"
                   ]
@@ -3198,10 +3198,10 @@
                 ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export cfncluster_version=cfncluster-",
+                "export cfncluster_version=aws-parallelcluster-",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cfncluster"
                   ]
@@ -3210,7 +3210,7 @@
                 "export cookbook_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "cookbook"
                   ]
@@ -3219,7 +3219,7 @@
                 "export chef_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "chef"
                   ]
@@ -3228,7 +3228,7 @@
                 "export ridley_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "ridley"
                   ]
@@ -3237,14 +3237,14 @@
                 "export berkshelf_version=",
                 {
                   "Fn::FindInMap": [
-                    "CfnClusterVersions",
+                    "PackagesVersions",
                     "default",
                     "berkshelf"
                   ]
                 },
                 "\n",
-                "if [ -f /opt/cfncluster/.bootstrapped ]; then\n",
-                "  installed_version=$(cat /opt/cfncluster/.bootstrapped)\n",
+                "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
+                "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
                 "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
                 "    bootstrap_instance\n",
                 "  fi\n",
@@ -3253,8 +3253,8 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z \"$(cat /etc/chef/cfncluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
+                "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -3283,7 +3283,7 @@
         }
       },
       "Metadata": {
-        "Comment": "cfncluster Compute server",
+        "Comment": "AWS ParallelCluster Compute server",
         "AWS::CloudFormation::Init": {
           "configSets": {
             "default": [
@@ -3371,7 +3371,7 @@
                         "Fn::Join": [
                           "",
                           [
-                            "recipe[cfncluster::",
+                            "recipe[aws-parallelcluster::",
                             {
                               "Ref": "Scheduler"
                             },
@@ -3431,7 +3431,7 @@
           "chefPrepEnv": {
             "commands": {
               "chef": {
-                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::_prep_env",
                 "cwd": "/etc/chef"
               }
             }
@@ -3439,7 +3439,7 @@
           "shellRunPreInstall": {
             "commands": {
               "runpreinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -preinstall"
               }
             }
           },
@@ -3454,21 +3454,21 @@
           "shellRunPostInstall": {
             "commands": {
               "runpostinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
               }
             }
           },
           "shellForkClusterReadyInstall": {
             "commands": {
               "clusterreadyinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           },
           "signalComputeReady": {
             "commands": {
               "compute_ready": {
-                "command": "/opt/cfncluster/scripts/compute_ready"
+                "command": "/opt/parallelcluster/scripts/compute_ready"
               }
             }
           }
@@ -3791,10 +3791,10 @@
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                   "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz ${cookbook_url}\n",
-                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                  "  curl -s -L -o /etc/chef/cfncluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                  "  mkdir /opt/cfncluster && echo ${cfncluster_version} | tee /opt/cfncluster/.bootstrapped\n",
+                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
                   "proxy=",
                   {
@@ -3839,10 +3839,10 @@
                   {
                     "Ref": "AWS::Region"
                   },
-                  "-cfncluster/cookbooks/",
+                  "-aws-parallelcluster/cookbooks/",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "cookbook"
                     ]
@@ -3850,10 +3850,10 @@
                   ".tgz\n",
                   "fi\n",
                   "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                  "export cfncluster_version=cfncluster-",
+                  "export cfncluster_version=aws-parallelcluster-",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "cfncluster"
                     ]
@@ -3862,7 +3862,7 @@
                   "export cookbook_version=",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "cookbook"
                     ]
@@ -3871,7 +3871,7 @@
                   "export chef_version=",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "chef"
                     ]
@@ -3880,7 +3880,7 @@
                   "export ridley_version=",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "ridley"
                     ]
@@ -3889,14 +3889,14 @@
                   "export berkshelf_version=",
                   {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "berkshelf"
                     ]
                   },
                   "\n",
-                  "if [ -f /opt/cfncluster/.bootstrapped ]; then\n",
-                  "  installed_version=$(cat /opt/cfncluster/.bootstrapped)\n",
+                  "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
+                  "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
                   "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
                   "    bootstrap_instance\n",
                   "  fi\n",
@@ -3905,8 +3905,8 @@
                   "fi\n",
                   "mkdir /tmp/cookbooks\n",
                   "cd /tmp/cookbooks\n",
-                  "curl -v -L -o /etc/chef/cfncluster-cookbook.tgz -z \"$(cat /etc/chef/cfncluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                  "tar -xzf /etc/chef/cfncluster-cookbook.tgz\n",
+                  "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "cd /tmp\n",
                   "# Call CloudFormation\n",
                   "cfn-init ${proxy_args} -s ",
@@ -3937,7 +3937,7 @@
       },
       "Condition": "CreateLaunchTemplate",
       "Metadata": {
-        "Comment": "cfncluster Compute server",
+        "Comment": "AWS ParallelCluster Compute server",
         "AWS::CloudFormation::Init": {
           "configSets": {
             "default": [
@@ -4025,7 +4025,7 @@
                         "Fn::Join": [
                           "",
                           [
-                            "recipe[cfncluster::",
+                            "recipe[aws-parallelcluster::",
                             {
                               "Ref": "Scheduler"
                             },
@@ -4085,7 +4085,7 @@
           "chefPrepEnv": {
             "commands": {
               "chef": {
-                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist cfncluster::_prep_env",
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::_prep_env",
                 "cwd": "/etc/chef"
               }
             }
@@ -4093,7 +4093,7 @@
           "shellRunPreInstall": {
             "commands": {
               "runpreinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -preinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -preinstall"
               }
             }
           },
@@ -4108,21 +4108,21 @@
           "shellRunPostInstall": {
             "commands": {
               "runpostinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -postinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
               }
             }
           },
           "shellForkClusterReadyInstall": {
             "commands": {
               "clusterreadyinstall": {
-                "command": "/opt/cfncluster/scripts/fetch_and_run -clusterreadyinstall"
+                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           },
           "signalComputeReady": {
             "commands": {
               "compute_ready": {
-                "command": "/opt/cfncluster/scripts/compute_ready"
+                "command": "/opt/parallelcluster/scripts/compute_ready"
               }
             }
           }
@@ -4315,7 +4315,7 @@
     "MasterENI": {
       "Type": "AWS::EC2::NetworkInterface",
       "Properties": {
-        "Description": "cfncluster Master Server",
+        "Description": "AWS ParallelCluster Master Server",
         "SubnetId": {
           "Ref": "MasterSubnetId"
         },
@@ -4456,7 +4456,7 @@
             { "Ref": "CustomAWSBatchTemplateURL" },
             {
               "Fn::Sub": [
-                "https://${s3_domain}/${AWS::Region}-cfncluster/templates/batch-${version}.cfn.json",
+                "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-${version}.cfn.json",
                 {
                   "s3_domain": {
                     "Fn::If": [
@@ -4467,7 +4467,7 @@
                   },
                   "version": {
                     "Fn::FindInMap": [
-                      "CfnClusterVersions",
+                      "PackagesVersions",
                       "default",
                       "cfncluster"
                     ]
@@ -4633,7 +4633,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-cfncluster/templates/ebs_vol_substack-${version}.cfn.json",
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/ebs_vol_substack-${version}.cfn.json",
             {
               "s3_domain": {
                 "Fn::If": [
@@ -4646,7 +4646,7 @@
               },
               "version": {
                 "Fn::FindInMap": [
-                  "CfnClusterVersions",
+                  "PackagesVersions",
                   "default",
                   "cfncluster"
                 ]
@@ -4727,7 +4727,7 @@
       "Condition": "MasterPublicIp"
     },
     "ResourcesS3Bucket": {
-      "Description": "S3 user bucket where cfncluster resources are stored",
+      "Description": "S3 user bucket where AWS ParallelCluster resources are stored",
       "Value": { "Ref": "ResourcesS3Bucket" },
       "Condition": "HasResourcesS3Bucket"
     },

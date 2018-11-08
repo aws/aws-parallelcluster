@@ -14,9 +14,9 @@
 # governing permissions and limitations under the License.
 #
 #
-# Search for CfnCluster public AMIs and generate a list in json and txt format
+# Search for AWS ParallelCluster public AMIs and generate a list in json and txt format
 #
-# usage: ./batch-instance-whitelist.py --regions <'all' or comma seperated list> --bucket <bucket_name, defaults to [region-cfncluster]>
+# usage: ./batch-instance-whitelist.py --regions <'all' or comma seperated list> --bucket <bucket_name, defaults to [region-aws-parallelcluster]>
 
 import boto3
 from botocore.exceptions import ClientError
@@ -66,7 +66,7 @@ def upload_to_s3(args, region, instances):
 
     s3_client = boto3.resource('s3', region_name=region)
 
-    bucket = args.bucket if args.bucket else '%s-cfncluster' % region
+    bucket = args.bucket if args.bucket else '%s-aws-parallelcluster' % region
     key = 'instances/batch_instances.json'
 
     if args.dryrun:
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     # parse inputs
     parser = argparse.ArgumentParser(description='Generate a whitelist of batch instance types.')
     parser.add_argument('--regions', type=str, help='Valid Regions, can include "all", or comma seperated list of regions', required=True)
-    parser.add_argument('--bucket', type=str, help='Bucket to upload too, defaults to [region]-cfncluster', required=False)
+    parser.add_argument('--bucket', type=str, help='Bucket to upload too, defaults to [region]-aws-parallelcluster', required=False)
     parser.add_argument('--dryrun', type=bool, help="Doesn't push anything to S3, just outputs", required=False)
     args = parser.parse_args()
 

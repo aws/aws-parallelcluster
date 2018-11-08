@@ -3,7 +3,7 @@
 Network Configurations
 ======================
 
-CfnCluster leverages Amazon Virtual Private Cloud (VPC) for networking. This provides a very flexible and configurable networking platform to deploy clusters within. CfnCluster support the following high-level configurations:
+AWS ParallelCluster leverages Amazon Virtual Private Cloud (VPC) for networking. This provides a very flexible and configurable networking platform to deploy clusters within. AWS ParallelCluster support the following high-level configurations:
 
 * Single subnet for both master and compute instances
 * Two subnets, master in one public subnet and compute instances in a private subnet (new or already existing)
@@ -14,11 +14,11 @@ The combinations of these configurations result in many different deployment sce
 
 Below are some architecture diagrams for some of those scenarios:
 
-CfnCluster in a single public subnet
-------------------------------------
+AWS ParallelCluster in a single public subnet
+---------------------------------------------
 
 .. figure:: images/networking_single_subnet.jpg
-   :alt: CfnCluster single subnet
+   :alt: AWS ParallelCluster single subnet
 
 The configuration for this architecture requires the following settings:
 
@@ -28,11 +28,11 @@ The configuration for this architecture requires the following settings:
   vpc_id = vpc-xxxxxx
   master_subnet_id = subnet-<public>
 
-CfnCluster using two subnets
-----------------------------
+AWS ParallelCluster using two subnets
+-------------------------------------
 
 .. figure:: images/networking_two_subnets.jpg
-   :alt: CfnCluster two subnets
+   :alt: AWS ParallelCluster two subnets
 
 The configuration to create a new private subnet for compute instances requires the following settings:
 
@@ -57,11 +57,11 @@ The configuration to use an existing private network requires the following sett
 Both these configuration require to have a `NAT Gateway <https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
 or an internal PROXY to enable web access for compute instances.
 
-CfnCluster in a single private subnet connected using Direct Connect
---------------------------------------------------------------------
+AWS ParallelCluster in a single private subnet connected using Direct Connect
+-----------------------------------------------------------------------------
 
 .. figure:: images/networking_private_dx.jpg
-   :alt: CfnCluster private with DX
+   :alt: AWS ParallelCluster private with DX
 
 The configuration for this architecture requires the following settings:
 

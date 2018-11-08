@@ -37,7 +37,7 @@ if sys.version_info[0] >= 3:
 else:
     from urllib import urlretrieve
 
-logger = logging.getLogger('cfncluster.cfncluster')
+logger = logging.getLogger('pcluster.pcluster')
 
 
 def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_dir):
@@ -59,7 +59,7 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
     return s3_bucket_name
 
 def version(args):
-    config = cfnconfig.CfnClusterConfig(args)
+    config = cfnconfig.ParallelClusterConfig(args)
     logger.info(config.version)
 
 def create(args):
@@ -67,7 +67,7 @@ def create(args):
     logger.debug('Building cluster config based on args %s' % str(args))
 
     # Build the config based on args
-    config = cfnconfig.CfnClusterConfig(args)
+    config = cfnconfig.ParallelClusterConfig(args)
     aws_client_config = dict(
         region_name=config.region,
         aws_access_key_id=config.aws_access_key_id,
@@ -96,7 +96,7 @@ def create(args):
     batch_temporary_bucket = None
     try:
         cfn = utils.boto3_client('cloudformation', aws_client_config)
-        stack_name = 'cfncluster-' + args.cluster_name
+        stack_name = 'aws-parallelcluster-' + args.cluster_name
 
         # If scheduler is awsbatch create bucket with resources
         if config.parameters['Scheduler'] == 'awsbatch':
@@ -179,8 +179,8 @@ def is_ganglia_enabled(parameters):
 
 def update(args):
     logger.info('Updating: %s' % (args.cluster_name))
-    stack_name = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
+    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    config = cfnconfig.ParallelClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
 
     cfn = boto3.client('cloudformation', region_name=config.region,
@@ -251,8 +251,8 @@ def update(args):
 
 def start(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/max/0
-    stack_name = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
+    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get('Scheduler') == "awsbatch":
         logger.info('Enabling AWS Batch compute environment : %s' % args.cluster_name)
@@ -274,8 +274,8 @@ def start(args):
 
 def stop(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/0/0
-    stack_name = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
+    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get('Scheduler') == "awsbatch":
         logger.info('Disabling AWS Batch compute environment : %s' % args.cluster_name)
@@ -288,14 +288,14 @@ def stop(args):
 
 
 def list(args):
-    config = cfnconfig.CfnClusterConfig(args)
+    config = cfnconfig.ParallelClusterConfig(args)
     cfn = boto3.client('cloudformation', region_name=config.region,
                        aws_access_key_id=config.aws_access_key_id,
                        aws_secret_access_key=config.aws_secret_access_key)
     try:
         stacks = cfn.describe_stacks().get('Stacks')
         for stack in stacks:
-            if stack.get('ParentId') is None and stack.get('StackName').startswith('cfncluster-'):
+            if stack.get('ParentId') is None and stack.get('StackName').startswith('aws-parallelcluster-'):
                 logger.info('%s' % (stack.get('StackName')[11:]))
     except ClientError as e:
         logger.critical(e.response.get('Error').get('Message'))
@@ -439,9 +439,9 @@ def stop_batch_ce(ce_name, config):
 
 
 def instances(args):
-    stack = ('cfncluster-' + args.cluster_name)
+    stack = ('aws-parallelcluster-' + args.cluster_name)
 
-    config = cfnconfig.CfnClusterConfig(args)
+    config = cfnconfig.ParallelClusterConfig(args)
     instances = []
     instances.extend(get_ec2_instances(stack, config))
 
@@ -457,8 +457,8 @@ def instances(args):
 
 
 def command(args, extra_args):
-    stack = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
+    stack = ('aws-parallelcluster-' + args.cluster_name)
+    config = cfnconfig.ParallelClusterConfig(args)
     if args.command in config.aliases:
         config_command = config.aliases[args.command]
     else:
@@ -500,8 +500,8 @@ def command(args, extra_args):
         sys.exit(0)
 
 def status(args):
-    stack_name = ('cfncluster-' + args.cluster_name)
-    config = cfnconfig.CfnClusterConfig(args)
+    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    config = cfnconfig.ParallelClusterConfig(args)
 
     cfn = boto3.client('cloudformation', region_name=config.region,
                        aws_access_key_id=config.aws_access_key_id,
@@ -555,9 +555,9 @@ def status(args):
 def delete(args):
     saw_update = False
     logger.info('Deleting: %s' % args.cluster_name)
-    stack = ('cfncluster-' + args.cluster_name)
+    stack = ('aws-parallelcluster-' + args.cluster_name)
 
-    config = cfnconfig.CfnClusterConfig(args)
+    config = cfnconfig.ParallelClusterConfig(args)
 
     cfn = boto3.client('cloudformation', region_name=config.region,
                        aws_access_key_id=config.aws_access_key_id,
@@ -588,7 +588,7 @@ def delete(args):
             sys.stdout.write('\n')
             sys.stdout.flush()
         if status == 'DELETE_FAILED':
-            logger.info('Cluster did not delete successfully. Run \'cfncluster delete %s\' again' % stack)
+            logger.info('Cluster did not delete successfully. Run \'pcluster delete %s\' again' % stack)
     except ClientError as e:
         if e.response.get('Error').get('Message').endswith("does not exist"):
             if saw_update:
@@ -608,15 +608,15 @@ def get_cookbook_url(config, tmpdir):
     else:
         cookbook_version = get_cookbook_version(config, tmpdir)
         if config.region == 'us-gov-west-1':
-            return ('https://s3-%s.amazonaws.com/%s-cfncluster/templates/%s.tgz'
+            return ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/templates/%s.tgz'
                          % (config.region, config.region, cookbook_version))
         else:
-            return ('https://s3.amazonaws.com/%s-cfncluster/cookbooks/%s.tgz'
+            return ('https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
                          % (config.region, cookbook_version))
 
 
 def get_cookbook_version(config, tmpdir):
-    tmp_template_file = os.path.join(tmpdir, 'cfncluster-template.json')
+    tmp_template_file = os.path.join(tmpdir, 'aws-parallelcluster-template.json')
     try:
         logger.info('Template: %s' % config.template_url)
         urlretrieve(url=config.template_url, filename=tmp_template_file)
@@ -624,7 +624,7 @@ def get_cookbook_version(config, tmpdir):
         with open(tmp_template_file) as cfn_file:
             cfn_data = json.load(cfn_file)
 
-        return cfn_data.get('Mappings').get('CfnClusterVersions').get('default').get('cookbook')
+        return cfn_data.get('Mappings').get('PackagesVersions').get('default').get('cookbook')
 
     except IOError as e:
         logger.error('Unable to download template at URL %s' % config.template_url)
@@ -639,7 +639,7 @@ def get_cookbook_version(config, tmpdir):
 def get_cookbook_dir(config, tmpdir):
     cookbook_url = ''
     try:
-        tmp_cookbook_archive = os.path.join(tmpdir, 'cfncluster-cookbook.tgz')
+        tmp_cookbook_archive = os.path.join(tmpdir, 'aws-parallelcluster-cookbook.tgz')
 
         cookbook_url = get_cookbook_url(config, tmpdir)
         logger.info('Cookbook: %s' % cookbook_url)
@@ -732,20 +732,20 @@ def run_packer(packer_command, packer_env, config):
 def print_create_ami_results(results):
     if results.get('PACKER_CREATED_AMI'):
         logger.info('\nCustom AMI %s created with name %s' % (results['PACKER_CREATED_AMI'], results['PACKER_CREATED_AMI_NAME']))
-        print('\nTo use it, add the following variable to the CfnCluster config file, under the [cluster ...] section')
+        print('\nTo use it, add the following variable to the AWS ParallelCluster config file, under the [cluster ...] section')
         print('custom_ami = %s' % results['PACKER_CREATED_AMI'])
     else:
         logger.info('\nNo custom AMI created')
 
 
 def create_ami(args):
-    logger.info('Building CfnCluster AMI. This could take a while...')
+    logger.info('Building AWS ParallelCluster AMI. This could take a while...')
     logger.debug('Building AMI based on args %s' % str(args))
     results = {}
 
     instance_type = 't2.large'
     try:
-        config = cfnconfig.CfnClusterConfig(args)
+        config = cfnconfig.ParallelClusterConfig(args)
 
         vpc_id = config.parameters[[p[0] for p in config.parameters].index('VPCId')][1]
         master_subnet_id = config.parameters[[p[0] for p in config.parameters].index('MasterSubnetId')][1]
