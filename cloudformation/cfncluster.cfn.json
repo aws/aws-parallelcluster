@@ -1562,7 +1562,9 @@
     },
     "GovCloudRegion": {
       "Fn::Equals": [
-        { "Ref": "AWS::Partition" },
+        {
+          "Ref": "AWS::Partition"
+        },
         "aws-us-gov"
       ]
     },
@@ -1574,6 +1576,16 @@
               "Condition": "GovCloudRegion"
             }
           ]
+        },
+        {
+          "Condition": "CreateComputeFleet"
+        }
+      ]
+    },
+    "CreateLaunchConfig": {
+      "Fn::And": [
+        {
+          "Condition": "GovCloudRegion"
         },
         {
           "Condition": "CreateComputeFleet"
@@ -1598,16 +1610,6 @@
           "Ref": "Scheduler"
         },
         "awsbatch"
-      ]
-    },
-    "GovCloudRegion": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            { "Ref": "AWS::Partition" },
-            "aws"
-          ]
-        }
       ]
     },
     "UseCustomAWSBatchTemplateURL": {
@@ -2943,7 +2945,7 @@
     },
     "ComputeServerLaunchConfig": {
       "Type": "AWS::AutoScaling::LaunchConfiguration",
-      "Condition": "CreateComputeFleet",
+      "Condition": "CreateLaunchConfig",
       "Properties": {
         "SecurityGroups": [
           {
@@ -3369,7 +3371,6 @@
           }
         }
       },
-      "Condition": "GovCloudRegion",
       "Metadata": {
         "Comment": "cfncluster Compute server",
         "AWS::CloudFormation::Init": {
@@ -3568,7 +3569,6 @@
     },
     "ComputeServerLaunchTemplate": {
       "Type": "AWS::EC2::LaunchTemplate",
-      "Condition": "CreateComputeFleet",
       "Properties": {
         "LaunchTemplateData": {
           "NetworkInterfaces": [
