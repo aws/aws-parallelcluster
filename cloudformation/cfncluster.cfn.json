@@ -4464,23 +4464,29 @@
           }
         },
         "TemplateURL": {
-          "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-cfncluster/templates/batch-${version}.cfn.json",
+          "Fn::If": [
+            "UseCustomAWSBatchTemplateURL",
+            { "Ref": "CustomAWSBatchTemplateURL" },
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
-                  { "Fn::Sub": "s3-${AWS::Region}.amazonaws.com" },
-                  "s3.amazonaws.com"
-                ]
-              },
-              "version": {
-                "Fn::FindInMap": [
-                  "CfnClusterVersions",
-                  "default",
-                  "cfncluster"
-                ]
-              }
+              "Fn::Sub": [
+                "https://${s3_domain}/${AWS::Region}-cfncluster/templates/batch-${version}.cfn.json",
+                {
+                  "s3_domain": {
+                    "Fn::If": [
+                      "GovCloudRegion",
+                      { "Fn::Sub": "s3-${AWS::Region}.amazonaws.com" },
+                      "s3.amazonaws.com"
+                    ]
+                  },
+                  "version": {
+                    "Fn::FindInMap": [
+                      "CfnClusterVersions",
+                      "default",
+                      "cfncluster"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         }
@@ -4609,67 +4615,57 @@
     "EBSCfnStack": {
       "Type": "AWS::CloudFormation::Stack",
       "Properties": {
-        "Parameters":{
+        "Parameters": {
           "AvailabilityZone": {
-            "Ref":"AvailabilityZone"
+            "Ref": "AvailabilityZone"
           },
           "VolumeSize": {
-            "Ref" : "VolumeSize"
+            "Ref": "VolumeSize"
           },
           "VolumeType": {
-            "Ref" : "VolumeType"
+            "Ref": "VolumeType"
           },
           "VolumeIOPS": {
-            "Ref" : "VolumeIOPS"
+            "Ref": "VolumeIOPS"
           },
-          "EBSEncryption":{
-            "Ref" : "EBSEncryption"
+          "EBSEncryption": {
+            "Ref": "EBSEncryption"
           },
           "EBSKMSKeyId": {
-            "Ref" : "EBSKMSKeyId"
+            "Ref": "EBSKMSKeyId"
           },
           "EBSVolumeId": {
-            "Ref" : "EBSVolumeId"
+            "Ref": "EBSVolumeId"
           },
           "EBSSnapshotId": {
-            "Ref" : "EBSSnapshotId"
+            "Ref": "EBSSnapshotId"
           },
           "NumberOfEBSVol": {
-            "Ref" : "NumberOfEBSVol"
+            "Ref": "NumberOfEBSVol"
           }
         },
-
-        "TemplateURL":{
-          "Fn::If": [
-            "UseCustomAWSBatchTemplateURL",
-            { "Ref": "CustomAWSBatchTemplateURL" },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${s3_domain}/${AWS::Region}-cfncluster/templates/ebs_vol_substack-${version}.cfn.json",
             {
-              "Fn::Sub": [
-                "https://${s3_domain}/${AWS::Region}-cfncluster/templates/ebs_vol_substack-${version}.cfn.json",
-                {
-                  "s3_domain": {
-                    "Fn::If": [
-                      "GovCloudRegion",
-                      { "Fn::Sub": "s3-${AWS::Region}.amazonaws.com" },
-                      "s3.amazonaws.com"
-                    ]
+              "s3_domain": {
+                "Fn::If": [
+                  "GovCloudRegion",
+                  {
+                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
                   },
-                  "version": {
-                    "Fn::FindInMap": [
-                      "CfnClusterVersions",
-                      "default",
-                      "cfncluster"
-                    ]
-                  }
-                }
-              ]
+                  "s3.amazonaws.com"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "CfnClusterVersions",
+                  "default",
+                  "cfncluster"
+                ]
+              }
             }
           ]
-        }
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "73e68f93-f470-4ec8-9fcc-fca1bc20b673"
         }
       }
     }
