@@ -142,8 +142,10 @@ def create(args):
                                     (event.get('ResourceType'), event.get('LogicalResourceId'),
                                      event.get('ResourceStatusReason')))
             logger.info('')
-            outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('Outputs', [])
-            ganglia_enabled = is_ganglia_enabled(config.parameters)
+            result_stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+            outputs = result_stack.get('Outputs', [])
+            parameters = result_stack.get('Parameters')
+            ganglia_enabled = is_ganglia_enabled(parameters)
             for output in outputs:
                 if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
                     continue
@@ -167,13 +169,12 @@ def create(args):
         sys.exit(1)
 
 def is_ganglia_enabled(parameters):
-    if 'ExtraJson' in parameters:
-        try:
-            extra_json = json.loads(parameters['ExtraJson'])
-            if 'cfncluster' in extra_json:
-                return not extra_json['cfncluster'].get('ganglia_enabled') == 'no'
-        except ValueError:
-            logger.warn('Invalid value for extra_json option in config')
+    try:
+        extra_json = filter(lambda x: x.get('ParameterKey') == 'ExtraJson', parameters)[0].get('ParameterValue')
+        extra_json = json.loads(extra_json).get('cfncluster')
+        return not extra_json.get('ganglia_enabled') == 'no'
+    except:
+        pass
     return True
 
 def update(args):
