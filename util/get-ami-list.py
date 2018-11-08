@@ -25,11 +25,11 @@ import os
 import shutil
 from git import Repo
 
-repo_url = 'https://github.com/awslabs/cfncluster.git'
+repo_url = 'https://github.com/aws/aws-parallelcluster.git'
 
 
 def build_release_ami_list(scratch_dir, tag):
-    repo_dir = os.path.join(scratch_dir, "cfncluster")
+    repo_dir = os.path.join(scratch_dir, "aws-parallelcluster")
 
     if os.path.isdir(repo_dir):
         repo = Repo(repo_dir)

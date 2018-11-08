@@ -22,7 +22,7 @@
 # NOTE:
 # - This script requires python2
 # - To simplify this script, at least one subnet in every region
-#   to be tested must have a resource tag named "CfnClusterTestSubnet"
+#   to be tested must have a resource tag named "ParallelClusterTestSubnet"
 #   (value does not matter). That subnet will be used as the launch
 #   target for the cluster.
 
@@ -154,11 +154,11 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     _create_done = False;
     try:
         # build the cluster
-        prochelp.exec_command(['cfncluster', 'create', '--config', test_filename, testname],
+        prochelp.exec_command(['pcluster', 'create', '--config', test_filename, testname],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         _create_done = True
-        # get the master ip, which means grepping through cfncluster status gorp
-        dump = prochelp.exec_command(['cfncluster', 'status', '--config', test_filename,
+        # get the master ip, which means grepping through pcluster status gorp
+        dump = prochelp.exec_command(['pcluster', 'status', '--config', test_filename,
                                         testname], stderr=sub.STDOUT, universal_newlines=True)
         dump_array = dump.splitlines()
         for line in dump_array:
@@ -189,7 +189,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
         # Sleep for scaledown_idletime to give time for the instances to scale down
         time.sleep(60*scaledown_idletime)
 
-        check_asg_capacity('cfncluster-' + testname, region, out_f)
+        check_asg_capacity('aws-parallelcluster-' + testname, region, out_f)
 
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
@@ -199,7 +199,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
-            _double_writeln(out_f, "--> %s: Interrupting cfncluster create!" % testname)
+            _double_writeln(out_f, "--> %s: Interrupting pcluster create!" % testname)
         _double_writeln(out_f, '!! ABORTED: %s!!' % (testname))
         open('%s.aborted' % testname, 'w').close()
         raise exc
@@ -224,24 +224,24 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                 try:
                     time.sleep(2)
                     # clean up the cluster
-                    _del_output = sub.check_output(['cfncluster', 'delete', '--config', test_filename, '-nw', testname], stderr=sub.STDOUT, universal_newlines=True)
+                    _del_output = sub.check_output(['pcluster', 'delete', '--config', test_filename, '-nw', testname], stderr=sub.STDOUT, universal_newlines=True)
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
                     out_f.write(_del_output + '\n')
                 except sub.CalledProcessError as exc:
-                    out_f.write("CalledProcessError exception launching 'cfncluster delete': %s - Output:\n%s\n" % (str(exc), exc.output))
+                    out_f.write("CalledProcessError exception launching 'pcluster delete': %s - Output:\n%s\n" % (str(exc), exc.output))
                 except Exception as exc:
-                    out_f.write("Unexpected exception launching 'cfncluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
+                    out_f.write("Unexpected exception launching 'pcluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
                 finally:
                     _double_writeln(out_f, "--> %s: Deleting - iteration: %s - successfully submitted: %s" % (testname, (_max_del_iters - _del_iters + 1), _del_done))
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['cfncluster', 'status', '--config', test_filename, testname], stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+                prochelp.exec_command(['pcluster', 'status', '--config', test_filename, testname], stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
             except (prochelp.ProcessHelperError, sub.CalledProcessError):
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
                 pass
             except Exception as exc:
-                out_f.write("Unexpected exception launching 'cfncluster status' %s: %s\n" % (str(type(exc)), str(exc)))
+                out_f.write("Unexpected exception launching 'pcluster status' %s: %s\n" % (str(type(exc)), str(exc)))
         out_f.close()
     print("--> %s: Finished" % (testname))
 
@@ -357,7 +357,7 @@ def _main_child():
                'custom_cookbook_url' : None,
                'custom_template_url' : None }
 
-    parser = argparse.ArgumentParser(description = 'Test runner for CfnCluster')
+    parser = argparse.ArgumentParser(description = 'Test runner for AWS ParallelCluster')
     parser.add_argument('--parallelism', help = 'Number of tests per region to run in parallel',
                         type = int, default = 3)
     parser.add_argument('--regions', help = 'Comma separated list of regions to test',
@@ -372,11 +372,11 @@ def _main_child():
                         type = str, required = True)
     parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
                         type = str)
-    parser.add_argument('--custom-node-url', help = 'S3 URL to a custom cfncluster-node package',
+    parser.add_argument('--custom-node-url', help = 'S3 URL to a custom aws-parallelcluster-node package',
                         type = str)
-    parser.add_argument('--custom-cookbook-url', help = 'S3 URL to a custom cfncluster-cookbook package',
+    parser.add_argument('--custom-cookbook-url', help = 'S3 URL to a custom aws-parallelcluster-cookbook package',
                         type = str)
-    parser.add_argument('--custom-template-url', help = 'S3 URL to a custom cfncluster CloudFormation template',
+    parser.add_argument('--custom-template-url', help = 'S3 URL to a custom AWS ParallelCluster CloudFormation template',
                         type = str)
 
     for key, value in vars(parser.parse_args()).iteritems():
@@ -399,20 +399,20 @@ def _main_child():
     if config['key_path']:
         print("==> Key Path: %s" % (config['key_path']))
     if config['custom_cookbook_url']:
-        print("==> Custom cfncluster-cookbook URL: %s" % (config['custom_cookbook_url']))
+        print("==> Custom aws-parallelcluster-cookbook URL: %s" % (config['custom_cookbook_url']))
     if config['custom_node_url']:
-        print("==> Custom cfncluster-node URL: %s" % (config['custom_node_url']))
+        print("==> Custom aws-parallelcluster-node URL: %s" % (config['custom_node_url']))
     if config['custom_template_url']:
-        print("==> Custom cfncluster template URL: %s" % (config['custom_template_url']))
+        print("==> Custom AWS ParallelCluster template URL: %s" % (config['custom_template_url']))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
         client = boto3.client('ec2', region_name=region)
         response = client.describe_tags(Filters=[{'Name': 'key',
-                                                  'Values': [ 'CfnClusterTestSubnet' ]}],
+                                                  'Values': [ 'ParallelClusterTestSubnet' ]}],
                                         MaxResults=16)
         if len(response['Tags']) == 0:
-            print('Could not find subnet in %s with CfnClusterTestSubnet tag.  Aborting.' %
+            print('Could not find subnet in %s with ParallelClusterTestSubnet tag.  Aborting.' %
                   (region))
             exit(1)
         subnetid = response['Tags'][0]['ResourceId']

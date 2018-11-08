@@ -2,9 +2,9 @@ Configuration
 =============
 .. toctree::
 
-cfncluster uses the file ``~/.cfncluster/config`` by default for all configuration parameters.
+pcluster uses the file ``~/.parallelcluster/config`` by default for all configuration parameters.
 
-You can see an example configuration file ``site-packages/cfncluster/examples/config``
+You can see an example configuration file ``site-packages/aws-parallelcluster/examples/config``
 
 Layout
 ------
@@ -24,7 +24,7 @@ Configuration Options
 
 global
 ^^^^^^
-Global configuration options related to cfncluster. ::
+Global configuration options related to pcluster. ::
 
     [global]
 
@@ -38,7 +38,7 @@ See the :ref:`Cluster Definition <cluster_definition>`. ::
 
 update_check
 """"""""""""
-Whether or not to check for updates to cfncluster. ::
+Whether or not to check for updates to pcluster. ::
 
     update_check = true
 
@@ -52,7 +52,7 @@ aws
 ^^^
 This is the AWS credentials/region section (required).  These settings apply to all clusters.
 
-We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the CfnCluster config file. ::
+We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the AWS ParallelCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
@@ -68,7 +68,7 @@ This is the aliases section. Use this section to customize the `ssh` command.
 
 `CFN_USER` is set to the default username for the os.
 `MASTER_IP` is set to the ip address of the master instance.
-`ARGS` is set to whatever arguments the user provides after `cfncluster ssh cluster_name`. ::
+`ARGS` is set to whatever arguments the user provides after `pcluster ssh cluster_name`. ::
 
     [aliases]
     # This is the aliases section, you can configure
@@ -97,9 +97,9 @@ template_url
 """"""""""""
 Overrides the path to the cloudformation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json``. ::
+Defaults to ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
 
-    template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
+    template_url = https://s3.amazonaws.com/us-east-1-aws-parallelcluster/templates/aws-parallelcluster.cfn.json
 
 compute_instance_type
 """""""""""""""""""""
@@ -203,13 +203,13 @@ If you're using awsbatch as your scheduler, this optional parameter is the on-de
 
 custom_ami
 """"""""""
-ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/awslabs/cfncluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
 s3_read_resource
 """"""""""""""""
-Specify S3 resource for which cfncluster nodes will be granted read-only access
+Specify S3 resource for which AWS ParallelCluster nodes will be granted read-only access
 
 For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
 
@@ -221,7 +221,7 @@ Defaults to NONE for the default template. ::
 
 s3_read_write_resource
 """"""""""""""""""""""
-Specify S3 resource for which cfncluster nodes will be granted read-write access
+Specify S3 resource for which AWS ParallelCluster nodes will be granted read-write access
 
 For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the Development folder of the my_corporate_bucket bucket.
 
@@ -309,7 +309,7 @@ Defaults to /shared in the default template. The example below mounts to /myshar
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, CfnCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
 
 Defaults to false in default template. ::
 
@@ -439,7 +439,7 @@ ssh_from
 """"""""
 CIDR formatted IP range in which to allow SSH access from.
 
-This is only used when cfncluster creates the security group.
+This is only used when AWS ParallelCluster creates the security group.
 
 Defaults to 0.0.0.0/0 in the default template. ::
 
@@ -463,7 +463,7 @@ If it is private, you need to setup NAT for web access. ::
 
 compute_subnet_cidr
 """""""""""""""""""
-If you wish for cfncluster to create a compute subnet, this is the CIDR that. ::
+If you wish for AWS ParallelCluster to create a compute subnet, this is the CIDR that. ::
 
     compute_subnet_cidr = 10.0.100.0/24
 
@@ -475,7 +475,7 @@ If true, an Elastic Ip will be associated to the Master instance.
 If false, the Master instance will have a Public IP or not according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
 
-See `networking configuration <https://cfncluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
+See `networking configuration <https://aws-parallelcluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
 
 Defaults to true. ::
 

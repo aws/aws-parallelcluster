@@ -105,25 +105,25 @@ class Boto3ClientFactory(object):
 
 class AWSBatchCliConfig(object):
     """
-    CfnCluster AWS Batch CLI configuration object
+    AWS ParallelCluster AWS Batch CLI configuration object
     """
     def __init__(self, log, cluster):
         """
         The command will search for the [cluster cluster-name] section in the /etc/awsbatch-cli.cfg
-        configuration file, if there, or ask to the cfncluster status
+        configuration file, if there, or ask to the pcluster status
         :param log: log
         :param cluster: cluster name
         """
-        # Check if credentials and region have been provided in cfncluster config
+        # Check if credentials and region have been provided in parallelcluster config
         self.aws_access_key_id = None
         self.aws_secret_access_key = None
         self.region = None
-        cfncluster_config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
-        if os.path.isfile(cfncluster_config_file):
-            self.__init_from_cfncluster_config(cfncluster_config_file, log)
+        parallelcluster_config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'config'))
+        if os.path.isfile(parallelcluster_config_file):
+            self.__init_from_parallelcluster_config(parallelcluster_config_file, log)
 
         # search for awsbatch-cli config
-        cli_config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'awsbatch-cli.cfg'))
+        cli_config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'awsbatch-cli.cfg'))
         if os.path.isfile(cli_config_file):
             self.__init_from_config(cli_config_file, cluster, log)
         elif cluster:
@@ -152,27 +152,27 @@ class AWSBatchCliConfig(object):
             fail("Error getting cluster information from AWS CloudFormation."
                  "Missing attribute (%s) from the output CloudFormation stack." % e)
 
-    def __init_from_cfncluster_config(self, cfncluster_config_file, log):
+    def __init_from_parallelcluster_config(self, parallelcluster_config_file, log):
         """
-        init credentials object attributes from cfncluster configuration file
-        :param cfncluster_config_file: cfncluster config
+        init credentials object attributes from aws-parallelcluster configuration file
+        :param parallelcluster_config_file: aws-parallelcluster config
         :param log: log
         """
-        with open(cfncluster_config_file) as config_file:
-            cfncluster_config = ConfigParser()
-            cfncluster_config.read_file(config_file)
-            log.info("Looking for AWS credentials and region in the CfnCluster configuration file %s" %
-                     cfncluster_config_file)
+        with open(parallelcluster_config_file) as config_file:
+            parallelcluster_config = ConfigParser()
+            parallelcluster_config.read_file(config_file)
+            log.info("Looking for AWS credentials and region in the AWS ParallelCluster configuration file %s" %
+                     parallelcluster_config_file)
             try:
-                self.aws_access_key_id = cfncluster_config.get('aws', 'aws_access_key_id')
+                self.aws_access_key_id = parallelcluster_config.get('aws', 'aws_access_key_id')
             except (NoOptionError, NoSectionError):
                 pass
             try:
-                self.aws_secret_access_key = cfncluster_config.get('aws', 'aws_secret_access_key')
+                self.aws_secret_access_key = parallelcluster_config.get('aws', 'aws_secret_access_key')
             except (NoOptionError, NoSectionError):
                 pass
             try:
-                self.region = cfncluster_config.get('aws', 'aws_region_name')
+                self.region = parallelcluster_config.get('aws', 'aws_region_name')
             except (NoOptionError, NoSectionError):
                 pass
 
@@ -203,9 +203,9 @@ class AWSBatchCliConfig(object):
                 pass
 
             try:
-                self.stack_name = 'cfncluster-' + cluster_name
+                self.stack_name = 'aws-parallelcluster-' + cluster_name
                 log.info("Stack name is (%s)" % self.stack_name)
-                # if region is set for the current stack, override the region from the CfnCluster config file
+                # if region is set for the current stack, override the region from the AWS ParallelCluster config file
                 # or the region from the [main] section
                 self.region = config.get(cluster_section, 'region')
                 self.s3_bucket = config.get(cluster_section, 's3_bucket')
@@ -232,7 +232,7 @@ class AWSBatchCliConfig(object):
         :param log: log
         """
         try:
-            self.stack_name = 'cfncluster-' + cluster
+            self.stack_name = 'aws-parallelcluster-' + cluster
             log.info("Describing stack (%s)" % self.stack_name)
             # get required values from the output of the describe-stack command
             # don't use proxy because we are in the client and use default region
@@ -279,12 +279,12 @@ class AWSBatchCliConfig(object):
 
 def config_logger(log_level):
     """
-    Define a logger for cfncluster-awsbatch-cli
+    Define a logger for aws-parallelcluster-awsbatch-cli
     :param log_level logging level
     :return: the logger
     """
     try:
-        logfile = os.path.expanduser(os.path.join('~', '.cfncluster', 'awsbatch-cli.log'))
+        logfile = os.path.expanduser(os.path.join('~', '.parallelcluster', 'awsbatch-cli.log'))
         formatter = logging.Formatter('%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s')
 
         logfile_handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=1)

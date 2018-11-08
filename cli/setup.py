@@ -32,17 +32,17 @@ if sys.version_info[0] == 2:
     requires.append('configparser>=3.5.0')
 
 setup(
-    name="cfncluster",
+    name="aws-parallelcluster",
     version=version,
     author="Amazon Web Services",
     description="A tool to launch and manage HPC clusters as CloudFormation stacks.",
-    url="https://github.com/awslabs/cfncluster",
+    url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),
     install_requires=requires,
     entry_points={
         'console_scripts': [
-            'cfncluster = cfncluster.cli:main',
+            'pcluster = pcluster.cli:main',
             'awsbqueues = awsbatch.awsbqueues:main',
             'awsbhosts = awsbatch.awsbhosts:main',
             'awsbjobs = awsbatch.awsbjobs:main',

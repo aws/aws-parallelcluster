@@ -28,7 +28,7 @@ CHANGELOG
 1.5.2
 =====
 * feature:``cfncluster``: Added ClusterUser as a stack output. This makes it easier to get the username of the head node.
-* feature:``cfncluster``: Added `cfncluster ssh cluster_name`, this allows you to easily ssh into your clusters. It allows arbitrary command execution and extra ssh flags to be provided after the command. See https://cfncluster.readthedocs.io/en/latest/commands.html#ssh
+* feature:``cfncluster``: Added `cfncluster ssh cluster_name`, this allows you to easily ssh into your clusters. It allows arbitrary command execution and extra ssh flags to be provided after the command. See https://aws-parallelcluster.readthedocs.io/en/latest/commands.html#ssh
 * change:``cfncluster``: Moved global cli flags to the command specific flags. For example `cfncluster --region us-east-1 create` now becomes `cfncluster create --region us-east-1`
 * bugfix:``cfncluster-cookbook``: Fix bug that prevented c5d/m5d instances from working
 * bugfix:``cfncluster-cookbook``: Set CPU as a consumable resource in slurm
@@ -135,7 +135,7 @@ by incompatible dependencies.
 =====
 Offiical release of the CfnCluster 1.x CLI, templates and AMIs. Available in all regions except BJS, with
 support for Amazon Linux, CentOS 6 & 7 and Ubuntu 14.04 LTS. All AMIs are built via packer from the CfnCluster
-Cookbook project (https://github.com/awslabs/cfncluster-cookbook).
+Cookbook project (https://github.com/aws/aws-parallelcluster-cookbook).
 
 1.0.0-beta
 ==========

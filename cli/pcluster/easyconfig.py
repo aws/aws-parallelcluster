@@ -24,7 +24,7 @@ import errno
 
 from . import cfnconfig
 
-logger = logging.getLogger('cfncluster.cfncluster')
+logger = logging.getLogger('pcluster.pcluster')
 unsupported_regions = ['ap-northeast-3', 'cn-north-1', 'cn-northwest-1']
 
 def prompt(prompt, default_value=None, hidden=False, options=None, check_validity=False):
@@ -120,7 +120,7 @@ def configure(args):
     if args.config_file is not None:
         config_file = args.config_file
     else:
-        config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
+        config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'config'))
 
     config = configparser.ConfigParser()
 
@@ -164,7 +164,7 @@ def configure(args):
                 config.set(section['__name__'], key, value)
 
     # ensure that the directory for the config file exists (because
-    # ~/.cfncluster is likely not to exist on first usage)
+    # ~/.parallelcluster is likely not to exist on first usage)
     try:
         os.makedirs(os.path.dirname(config_file))
     except OSError as e:
@@ -178,4 +178,4 @@ def configure(args):
         config.write(cf)
 
     # Verify the configuration
-    cfnconfig.CfnClusterConfig(args)
+    cfnconfig.ParallelClusterConfig(args)

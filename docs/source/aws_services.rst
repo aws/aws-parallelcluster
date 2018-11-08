@@ -1,9 +1,9 @@
 .. _aws_services:
 
-AWS Services used in CfnCluster
-===============================
+AWS Services used in AWS ParallelCluster
+========================================
 
-The following Amazon Web Services (AWS) services are used in CfnCluster.
+The following Amazon Web Services (AWS) services are used in AWS ParallelCluster.
 
 * AWS CloudFormation
 * AWS Identity and Access Management (IAM)
@@ -18,21 +18,21 @@ The following Amazon Web Services (AWS) services are used in CfnCluster.
 AWS CloudFormation
 ------------------
 
-AWS CloudFormation is the core service used by CfnCluster. Each cluster is represented as a stack. All resources required by the cluster are defined within the CfnCluster CloudFormation template. CfnCluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
+AWS CloudFormation is the core service used by AWS ParallelCluster. Each cluster is represented as a stack. All resources required by the cluster are defined within the AWS ParallelCluster CloudFormation template. AWS ParallelCluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
 
 For more details about AWS CloudFormation, see http://aws.amazon.com/cloudformation/
 
 AWS Identity and Access Management (IAM)
 ----------------------------------------
 
-IAM is used within CfnCluster to provide an Amazon EC2 IAM Role for the instances. This role is a least privileged role specifically created for each cluster. CfnCluster instances are given access only to the specific API calls that are required to deploy and manage the cluster.
+IAM is used within AWS ParallelCluster to provide an Amazon EC2 IAM Role for the instances. This role is a least privileged role specifically created for each cluster. AWS ParallelCluster instances are given access only to the specific API calls that are required to deploy and manage the cluster.
 
 For more details about AWS Identity and Access Management, see http://aws.amazon.com/iam/
 
 Amazon SNS
 ----------
 
-Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance launches or terminates in an Autoscaling Group. Within CfnCluster, the Amazon SNS topic for the Autoscaling Group is subscribed to an Amazon SQS queue.
+Amazon Simple Notification Service is used to receive notifications from Auto Scaling. These events are called life cycle events, and are generated when an instance launches or terminates in an Autoscaling Group. Within AWS ParallelCluster, the Amazon SNS topic for the Autoscaling Group is subscribed to an Amazon SQS queue.
 
 For more details about Amazon SNS, see http://aws.amazon.com/sns/
 
@@ -46,7 +46,7 @@ For more details about Amazon SQS, see http://aws.amazon.com/sqs/
 Amazon EC2
 ----------
 
-Amazon EC2 provides the compute for CfnCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be launched as Spot instances. Instance store volumes found on the instances are mounted as a striped LVM volume.
+Amazon EC2 provides the compute for AWS ParallelCluster. The MasterServer and ComputeFleet are EC2 instances. Any instance type that support HVM can be selected. The MasterServer and ComputeFleet can be different instance types and the ComputeFleet can also be launched as Spot instances. Instance store volumes found on the instances are mounted as a striped LVM volume.
 
 For more details about Amazon EC2, see http://aws.amazon.com/ec2/
 
@@ -67,7 +67,7 @@ For more details about Amazon EBS, see http://aws.amazon.com/ebs/
 Amazon S3
 ---------
 
-Amazon S3 is used to store the CfnCluster templates. Each region has a bucket with all templates. CfnCluster can be configured to allow allow CLI/SDK tools to use S3.
+Amazon S3 is used to store the AWS ParallelCluster templates. Each region has a bucket with all templates. AWS ParallelCluster can be configured to allow allow CLI/SDK tools to use S3.
 
 For more details, see http://aws.amazon.com/s3/
 

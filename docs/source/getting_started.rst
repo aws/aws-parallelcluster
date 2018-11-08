@@ -3,26 +3,22 @@
 .. toctree::
    :maxdepth: 2
 
-###############################
-Getting started with CfnCluster
-###############################
+########################################
+Getting started with AWS ParallelCluster
+########################################
 
-CfnCluster ("cloud formation cluster") is a framework that deploys and maintains high performance computing clusters on Amazon Web Services (AWS). Developed by AWS, CfnCluster facilitates both quick start proof of concepts (POCs) and production deployments. CfnCluster supports many different types of clustered applications and can easily be extended to support different frameworks. Download CfnCluster today to see how CfnCluster's command line interface leverages AWS CloudFormation templates and other AWS cloud services.
+AWS ParallelCluster is a framework that deploys and maintains high performance computing clusters on Amazon Web Services (AWS). Developed by AWS, AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments. AWS ParallelCluster supports many different types of clustered applications and can easily be extended to support different frameworks. Download AWS ParallelCluster today to see how AWS ParallelCluster's command line interface leverages AWS CloudFormation templates and other AWS cloud services.
 
-Installing CfnCluster
-=====================
+Installing AWS ParallelCluster
+==============================
 
-The current working version is CfnCluster-|version|. The CLI is written in Python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
+The current working version is aws-parallelcluster-|version|. The CLI is written in Python and uses BOTO for AWS actions. You can install the CLI with the following commands, depending on your OS.
 
 Linux/OSX
 ---------
 ::
 
-	$ sudo pip install cfncluster
-
-or::
-
-	$ sudo easy_install cfncluster
+   $ sudo pip install aws-parallelcluster
 
 Windows
 -------
@@ -30,42 +26,36 @@ Windows support is experimental!!
 
 Install the following packages:
 
-* Python2.7 - https://www.python.org/download/
-* setuptools - https://pypi.python.org/pypi/setuptools#windows-7-or-graphical-install
+* Python3.6 - https://www.python.org/download/
+* pip - https://pip.pypa.io/en/stable/installing/
 
-Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example: ``C:\Python27;C:\Python27\Scripts``
+Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts directory in the PATH, for example: ``C:\Python36-32;C:\Python36-32\Scripts``
 
 Now it should be possible to run the following within a command prompt window:
 
 ::
 
-	C:\> easy_install CfnCluster
+   C:\> pip install aws-parallelcluster
 
 Upgrading
 ---------
 
-To upgrade an older version of CfnCluster, you can use either of the following commands, depending on how it was originally installed:
+To upgrade an older version of AWS ParallelCluster, you can use either of the following commands, depending on how it was originally installed:
 
 ::
 
-  $ sudo pip install --upgrade cfncluster
-
-or
-
-::
-
-	$ sudo easy_install -U cfncluster
+  $ sudo pip install --upgrade aws-parallelcluster
 
 **Remember when upgrading to check that the exiting config is compatible with the latest version installed.**
 
-Configuring CfnCluster
-======================
+Configuring AWS ParallelCluster
+===============================
 
 Once installed you will need to setup some initial config. The easiest way to do this is below:
 
 ::
 
-	$ cfncluster configure
+    $ pcluster configure
 
 This configure wizard will prompt you for everything you need to create your cluster.  You will first be prompted for your cluster template name, which is the logical name of the template you will create a cluster from.
 
@@ -140,6 +130,6 @@ Once all of those settings contain valid values, you can launch the cluster by r
 
 ::
 
-	$ cfncluster create mycluster
+	$ pcluster create mycluster
 
 Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings. For more details on connecting to EC2 instances, check the `EC2 User Guide <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client>`_.
