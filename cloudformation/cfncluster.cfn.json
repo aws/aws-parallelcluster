@@ -688,17 +688,14 @@
     "MinSize": {
       "Description": "Initial number of compute EC2 instances / vCpus to launch within the cluster.",
       "Type": "Number",
-      "Default": "0"
     },
     "DesiredSize": {
       "Description": "Desired number of compute EC2 instances / vCpus to launch within the cluster.",
       "Type": "Number",
-      "Default": "2"
     },
     "MaxSize": {
       "Description": "Maximum number of compute EC2 instances / vCpus to launch within the cluster.",
       "Type": "Number",
-      "Default": "10"
     },
     "ComputeSubnetId": {
       "Description": "ID of the Subnet you want to provision the Compute Servers into",
