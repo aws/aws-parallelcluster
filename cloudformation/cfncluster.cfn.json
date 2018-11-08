@@ -987,16 +987,6 @@
       "Type": "String",
       "Default": "NONE"
     },
-    "AWSBatchMNPBase": {
-      "Description" : "Base ARN for mnp resources",
-      "Type": "String",
-      "Default": "NONE"
-    },
-    "AWSBatchMNPName": {
-      "Description" : "Name of the AWS Batch Resources",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "ResourcesS3Bucket": {
       "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
       "Type": "String",
@@ -4764,42 +4754,6 @@
         "Fn::GetAtt" : [
           "AWSBatchStack",
           "Outputs.JobDefinitionArn"
-        ]
-      },
-      "Condition": "CreateAWSBatchStack"
-    },
-    "BatchJobDefinitionMnpArn": {
-      "Value" : {
-        "Fn::GetAtt" : [
-          "AWSBatchStack",
-          "Outputs.JobDefinitionArn"
-        ]
-      },
-      "Condition": "CreateAWSBatchStack"
-    },
-    "MNPComputeEnvironmentArn" : {
-      "Value" : {
-        "Fn::GetAtt" : [
-          "AWSBatchStack",
-          "Outputs.MNPComputeEnvironmentArn"
-        ]
-      },
-      "Condition": "CreateAWSBatchStack"
-    },
-    "MNPJobQueueArn" : {
-      "Value" : {
-        "Fn::GetAtt" : [
-          "AWSBatchStack",
-          "Outputs.MNPJobQueueArn"
-        ]
-      },
-      "Condition": "CreateAWSBatchStack"
-    },
-    "MNPJobDefinitionArn" : {
-      "Value" : {
-        "Fn::GetAtt" : [
-          "AWSBatchStack",
-          "Outputs.MNPJobDefinitionArn"
         ]
       },
       "Condition": "CreateAWSBatchStack"

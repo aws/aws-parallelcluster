@@ -85,32 +85,22 @@ class Boto3ClientFactory(object):
     """
     Boto3 configuration object
     """
-    def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy='NONE', endpoint_url=None):
+    def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy='NONE'):
         self.region = region
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.proxy_config = Config()
-        self.endpoint_url = endpoint_url
         if not proxy == 'NONE':
             self.proxy_config = Config(proxies={'https': proxy})
 
     def get_client(self, service):
         try:
-            if service == 'batch' and self.endpoint_url is not None:
-                # FIXME remove this ack used for testing
-                boto3_service = 'batch-zeta'
-                boto3_endpoint_url = self.endpoint_url
-            else:
-                boto3_service = service
-                boto3_endpoint_url = None
-
-            return boto3.client(boto3_service, region_name=self.region,
-                                endpoint_url=boto3_endpoint_url,
+            return boto3.client(service, region_name=self.region,
                                 aws_access_key_id=self.aws_access_key_id,
                                 aws_secret_access_key=self.aws_secret_access_key,
                                 config=self.proxy_config)
         except ClientError as e:
-            fail("AWS %s service failed with exception: %s" % (boto3_service, e))
+            fail("AWS %s service failed with exception: %s" % (service, e))
 
 
 class AWSBatchCliConfig(object):
@@ -128,7 +118,6 @@ class AWSBatchCliConfig(object):
         self.aws_access_key_id = None
         self.aws_secret_access_key = None
         self.region = None
-        self.endpoint_url = None
         cfncluster_config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
         if os.path.isfile(cfncluster_config_file):
             self.__init_from_cfncluster_config(cfncluster_config_file, log)
@@ -157,7 +146,6 @@ class AWSBatchCliConfig(object):
             log.debug("compute_environment = %s", self.compute_environment)
             log.debug("job_queue = %s", self.job_queue)
             log.debug("job_definition = %s", self.job_definition)
-            # FIXME restore log.debug("job_definition_mnp = %s", self.job_definition_mnp)
             log.debug("master_ip = %s", self.master_ip)
             log.info(self)
         except AttributeError as e:
@@ -213,10 +201,6 @@ class AWSBatchCliConfig(object):
                 self.region = config.get('main', 'region')
             except NoOptionError:
                 pass
-            try:
-                self.endpoint_url = config.get('main', 'endpoint_url')
-            except NoOptionError:
-                pass
 
             try:
                 self.stack_name = 'cfncluster-' + cluster_name
@@ -228,7 +212,6 @@ class AWSBatchCliConfig(object):
                 self.compute_environment = config.get(cluster_section, 'compute_environment')
                 self.job_queue = config.get(cluster_section, 'job_queue')
                 self.job_definition = config.get(cluster_section, 'job_definition')
-                self.job_definition_mnp = config.get(cluster_section, 'job_definition_mnp')
                 self.master_ip = config.get(cluster_section, 'master_ip')
 
                 # get proxy
@@ -272,16 +255,10 @@ class AWSBatchCliConfig(object):
                         self.s3_bucket = output_value
                     elif output_key == 'BatchComputeEnvironmentArn':
                         self.compute_environment = output_value
-                    elif output_key == 'MNPComputeEnvironmentArn':  # FIXME remove
-                        self.compute_environment_mnp = output_value
                     elif output_key == 'BatchJobQueueArn':
                         self.job_queue = output_value
-                    elif output_key == 'MNPJobQueueArn':  # FIXME remove
-                        self.job_queue_mnp = output_value
                     elif output_key == 'BatchJobDefinitionArn':
                         self.job_definition = output_value
-                    elif output_key == 'MNPJobDefinitionArn':  # FIXME remove
-                        self.job_definition_mnp = output_value
                     elif output_key == 'MasterPrivateIP':
                         self.master_ip = output_value
 

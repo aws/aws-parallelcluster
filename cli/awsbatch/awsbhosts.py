@@ -228,17 +228,11 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log, args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy, endpoint_url=config.endpoint_url,
+        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
                                            aws_access_key_id=config.aws_access_key_id,
                                            aws_secret_access_key=config.aws_secret_access_key)
 
-        # FIXME remove
-        if config.endpoint_url:
-            compute_environment = config.compute_environment_mnp
-        else:
-            compute_environment = config.compute_environment
-
-        AWSBhostsCommand(log, boto3_factory).run(compute_environments=[compute_environment],
+        AWSBhostsCommand(log, boto3_factory).run(compute_environments=[config.compute_environment],
                                                  instance_ids=args.instance_ids, show_details=args.details)
 
     except KeyboardInterrupt:
