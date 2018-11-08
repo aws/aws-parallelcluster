@@ -299,7 +299,7 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy, endpoint_url=config.endpoint_url,
+        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
                                            aws_access_key_id=config.aws_access_key_id,
                                            aws_secret_access_key=config.aws_secret_access_key)
 
@@ -308,14 +308,9 @@ def main():
         else:
             job_status = ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING', 'SUCCEEDED', 'FAILED']
 
-        # FIXME remove
-        if config.endpoint_url:
-            job_queue = config.job_queue_mnp
-        else:
-            job_queue = config.job_queue
-
         AWSBjobsCommand(log, boto3_factory).run(job_status=job_status, expand_arrays=args.expand_arrays,
-                                                job_ids=args.job_ids, job_queue=job_queue, show_details=args.details)
+                                                job_ids=args.job_ids, job_queue=config.job_queue,
+                                                show_details=args.details)
 
     except KeyboardInterrupt:
         print("Exiting...")

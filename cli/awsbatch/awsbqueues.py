@@ -126,7 +126,7 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy, endpoint_url=config.endpoint_url,
+        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
                                            aws_access_key_id=config.aws_access_key_id,
                                            aws_secret_access_key=config.aws_secret_access_key)
 
@@ -134,12 +134,7 @@ def main():
             job_queues = args.job_queues
             show_details = True
         else:
-            # FIXME remove
-            if config.endpoint_url:
-                job_queue = config.job_queue_mnp
-            else:
-                job_queue = config.job_queue
-            job_queues = [job_queue]
+            job_queues = [config.job_queue]
             show_details = args.details
         AWSBqueuesCommand(log, boto3_factory).run(job_queues=job_queues, show_details=show_details)
 

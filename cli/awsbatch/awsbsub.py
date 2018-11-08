@@ -62,9 +62,6 @@ def _get_parser():
     parser.add_argument('-t', '--timeout', help='The time duration in seconds (measured from the job attempt\'s '
                                                 'startedAt timestamp) after which AWS Batch terminates your jobs '
                                                 'if they have not finished. It must be at least 60 seconds', type=int)
-    # MNP parameter
-    parser.add_argument('-n', '--nodes', help='The number of nodes to reserve for the job. '
-                                              'It enables Multi Node Parallel submission', type=int)
     # array parameters
     parser.add_argument('-a', '--array-size', help='The size of the array. It can be between 2 and 10,000. '
                                                    'If you specify array properties for a job, '
@@ -370,7 +367,7 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy, endpoint_url=config.endpoint_url,
+        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
                                            aws_access_key_id=config.aws_access_key_id,
                                            aws_secret_access_key=config.aws_secret_access_key)
 
@@ -392,20 +389,10 @@ def main():
         # parse and validate depends_on parameter
         depends_on = _get_depends_on(args)
 
-        # select submission (standard vs MNP)
-        if args.nodes or config.endpoint_url:  # FIXME remove config.endpoint from if
-            job_definition = config.job_definition_mnp
-        else:
-            job_definition = config.job_definition
-
-        # FIXME remove
-        if config.endpoint_url:
-            job_queue = config.job_queue_mnp
-        else:
-            job_queue = config.job_queue
+        job_definition = config.job_definition
 
         AWSBsubCommand(log, boto3_factory).run(job_definition=job_definition, job_name=job_name,
-                                               job_queue=job_queue, command=command, nodes=args.nodes,
+                                               job_queue=config.job_queue, command=command,
                                                vcpus=args.vcpus, memory=args.memory,
                                                array_size=args.array_size, dependencies=depends_on,
                                                retry_attempts=args.retry_attempts, timeout=args.timeout,
