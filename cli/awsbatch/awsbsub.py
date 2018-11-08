@@ -275,9 +275,11 @@ class AWSBsubCommand(object):
                 # Standard submission
                 submission_args.update({'jobDefinition': job_definition})
                 submission_args.update({'containerOverrides': container_overrides})
+                submission_args.update({'arrayProperties': array_properties})
                 if timeout:
                     submission_args.update({'timeout': {'attemptDurationSeconds': timeout}})
 
+            self.log.debug("Job submission args: %s" % submission_args)
             response = self.batch_client.submit_job(**submission_args)
             print("Job %s (%s) has been submitted." % (response['jobId'], response['jobName']))
         except Exception as e:
