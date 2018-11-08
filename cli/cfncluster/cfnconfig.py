@@ -25,6 +25,7 @@ import urllib.request, urllib.error, urllib.parse
 from . import config_sanity
 import boto3
 from botocore.exceptions import ClientError
+from collections import OrderedDict
 
 def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
     cfn = boto3.client('cloudformation', region_name=region,
@@ -341,6 +342,10 @@ class CfnClusterConfig(object):
         if self.parameters['Scheduler'] == "awsbatch":
             self.__run_batch_validation(__config)
         else:
+            # Set defaults outside the cloudformation template
+            self.parameters['MinSize'] = '0'
+            self.parameters['DesiredSize'] = '2'
+            self.parameters['MaxSize'] = '10'
             for key in self.size_parameters:
                 try:
                     __temp__ = __config.get(self.__cluster_section, key)
@@ -349,9 +354,9 @@ class CfnClusterConfig(object):
                                                         % (key, self.__cluster_section))
                         sys.exit(1)
                     if key == 'initial_queue_size':
-                        self.parameters['MinSize'] = __temp__
+                        self.parameters['DesiredSize'] = __temp__
                     elif key == 'maintain_initial_size':
-                        self.parameters['DesiredSize'] = self.parameters.get('MinSize') if __temp__ == 'true' else "0"
+                        self.parameters['MinSize'] = self.parameters.get('DesiredSize') if __temp__ == 'true' else "0"
                     elif key == 'max_queue_size':
                         self.parameters['MaxSize'] = __temp__
                 except configparser.NoOptionError:
@@ -455,10 +460,10 @@ class CfnClusterConfig(object):
 
     @staticmethod
     def __init_size_parameters():
-        return dict(
+        return OrderedDict(
             initial_queue_size=('InitialQueueSize', None),
-            max_queue_size=('MaxQueueSize', None),
             maintain_initial_size=('MaintainInitialSize', None),
+            max_queue_size=('MaxQueueSize', None)
         )
 
     @staticmethod
