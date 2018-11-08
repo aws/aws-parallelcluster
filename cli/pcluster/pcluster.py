@@ -74,9 +74,9 @@ def create(args):
         aws_secret_access_key=config.aws_secret_access_key
     )
 
-    # Set the ComputeWaitConditionCount parameter to match InitialQueueSize
-    if 'InitialQueueSize' in config.parameters:
-        config.parameters['ComputeWaitConditionCount'] = config.parameters['InitialQueueSize']
+    # Set the ComputeWaitConditionCount parameter to match DesiredSize
+    if 'DesiredSize' in config.parameters:
+        config.parameters['ComputeWaitConditionCount'] = config.parameters['DesiredSize']
 
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     if 'MasterSubnetId' in config.parameters:
@@ -197,7 +197,7 @@ def update(args):
             desired_capacity = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])\
                 .get('AutoScalingGroups')[0]\
                 .get('DesiredCapacity')
-            config.parameters['InitialQueueSize'] = str(desired_capacity)
+            config.parameters['DesiredSize'] = str(desired_capacity)
     else:
         if args.reset_desired:
             logger.info("reset_desired flag does not work with awsbatch scheduler")
@@ -296,7 +296,7 @@ def list(args):
         stacks = cfn.describe_stacks().get('Stacks')
         for stack in stacks:
             if stack.get('ParentId') is None and stack.get('StackName').startswith('aws-parallelcluster-'):
-                logger.info('%s' % (stack.get('StackName')[11:]))
+                logger.info('%s' % (stack.get('StackName')[len('aws-parallelcluster-'):]))
     except ClientError as e:
         logger.critical(e.response.get('Error').get('Message'))
         sys.exit(1)
