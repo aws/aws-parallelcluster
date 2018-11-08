@@ -11,7 +11,7 @@ from __future__ import absolute_import
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from builtins import str
-from tempfile import mkdtemp,mkstemp
+from tempfile import mkdtemp, mkstemp
 from shutil import rmtree
 import sys
 import time
