@@ -4234,14 +4234,6 @@
             "CidrIp": {
               "Ref": "AccessFrom"
             }
-          },
-          {
-            "IpProtocol": "tcp",
-            "FromPort": "80",
-            "ToPort": "80",
-            "CidrIp": {
-              "Ref": "AccessFrom"
-            }
           }
         ]
       },
@@ -4690,7 +4682,7 @@
       "Condition": "MasterPublicIp"
     },
     "GangliaPrivateURL": {
-      "Description": "Private URL to access Ganglia",
+      "Description": "Private URL to access Ganglia (disabled by default)",
       "Value": {
         "Fn::Join": [
           "",
@@ -4708,7 +4700,7 @@
       }
     },
     "GangliaPublicURL": {
-      "Description": "Public URL to access Ganglia",
+      "Description": "Public URL to access Ganglia (disabled by default)",
       "Value": {
         "Fn::Join": [
           "",
