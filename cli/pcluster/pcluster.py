@@ -96,7 +96,7 @@ def create(args):
     batch_temporary_bucket = None
     try:
         cfn = utils.boto3_client('cloudformation', aws_client_config)
-        stack_name = 'aws-parallelcluster-' + args.cluster_name
+        stack_name = 'parallelcluster-' + args.cluster_name
 
         # If scheduler is awsbatch create bucket with resources
         if config.parameters['Scheduler'] == 'awsbatch':
@@ -179,7 +179,7 @@ def is_ganglia_enabled(parameters):
 
 def update(args):
     logger.info('Updating: %s' % (args.cluster_name))
-    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    stack_name = ('parallelcluster-' + args.cluster_name)
     config = cfnconfig.ParallelClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
 
@@ -251,7 +251,7 @@ def update(args):
 
 def start(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/max/0
-    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    stack_name = ('parallelcluster-' + args.cluster_name)
     config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get('Scheduler') == "awsbatch":
@@ -274,7 +274,7 @@ def start(args):
 
 def stop(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/0/0
-    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    stack_name = ('parallelcluster-' + args.cluster_name)
     config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get('Scheduler') == "awsbatch":
@@ -295,8 +295,8 @@ def list(args):
     try:
         stacks = cfn.describe_stacks().get('Stacks')
         for stack in stacks:
-            if stack.get('ParentId') is None and stack.get('StackName').startswith('aws-parallelcluster-'):
-                logger.info('%s' % (stack.get('StackName')[len('aws-parallelcluster-'):]))
+            if stack.get('ParentId') is None and stack.get('StackName').startswith('parallelcluster-'):
+                logger.info('%s' % (stack.get('StackName')[len('parallelcluster-'):]))
     except ClientError as e:
         logger.critical(e.response.get('Error').get('Message'))
         sys.exit(1)
@@ -439,7 +439,7 @@ def stop_batch_ce(ce_name, config):
 
 
 def instances(args):
-    stack = ('aws-parallelcluster-' + args.cluster_name)
+    stack = ('parallelcluster-' + args.cluster_name)
 
     config = cfnconfig.ParallelClusterConfig(args)
     instances = []
@@ -457,7 +457,7 @@ def instances(args):
 
 
 def command(args, extra_args):
-    stack = ('aws-parallelcluster-' + args.cluster_name)
+    stack = ('parallelcluster-' + args.cluster_name)
     config = cfnconfig.ParallelClusterConfig(args)
     if args.command in config.aliases:
         config_command = config.aliases[args.command]
@@ -500,7 +500,7 @@ def command(args, extra_args):
         sys.exit(0)
 
 def status(args):
-    stack_name = ('aws-parallelcluster-' + args.cluster_name)
+    stack_name = ('parallelcluster-' + args.cluster_name)
     config = cfnconfig.ParallelClusterConfig(args)
 
     cfn = boto3.client('cloudformation', region_name=config.region,
@@ -555,7 +555,7 @@ def status(args):
 def delete(args):
     saw_update = False
     logger.info('Deleting: %s' % args.cluster_name)
-    stack = ('aws-parallelcluster-' + args.cluster_name)
+    stack = ('parallelcluster-' + args.cluster_name)
 
     config = cfnconfig.ParallelClusterConfig(args)
 

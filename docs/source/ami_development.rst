@@ -106,19 +106,19 @@ The next part of setting up your environment involves setting a lot of environme
 
 	::
 
-		export AWS_STACK_NAME=aws-parallelcluster-test-kitchen
+		export AWS_STACK_NAME=parallelcluster-test-kitchen
 
 #.	Create an sqs queue:
 
 	::
 
-		export CFN_SQS_QUEUE=aws-parallelcluster-chef   			# create an SQS queue
+		export CFN_SQS_QUEUE=parallelcluster-chef   			# create an SQS queue
 
-#.	Create a dynamoDB table with hash key :code:`instanceId` type String and name it :code:`aws-parallelcluster-chef` then export the following:
+#.	Create a dynamoDB table with hash key :code:`instanceId` type String and name it :code:`parallelcluster-chef` then export the following:
 
 	::
 
-		export CFN_DDB_TABLE=aws-parallelcluster-chef  # setup table as aws-parallelcluster-chef
+		export CFN_DDB_TABLE=parallelcluster-chef  # setup table as parallelcluster-chef
 
 #.	You should now be able to run the following:
 
@@ -148,6 +148,6 @@ Here's a script to do all of the above, just fill out and the fields and source 
 	export AWS_IAM_PROFILE=ParallelClusterEC2IAMRole  	# create role using IAM docs for AWS ParallelCluster
 	export KITCHEN_LOCAL_YAML=.kitchen.cloud.yml
 	export CFN_VOLUME=vol-XXXXXXXX  				# create 10G EBS volume in same AZ
-	export AWS_STACK_NAME=aws-parallelcluster-test-kitchen
-	export CFN_SQS_QUEUE=aws-parallelcluster-chef   			# create an SQS queue
-	export CFN_DDB_TABLE=aws-parallelcluster-chef 			# setup table as aws-parallelcluster-chef
+	export AWS_STACK_NAME=parallelcluster-test-kitchen
+	export CFN_SQS_QUEUE=parallelcluster-chef   			# create an SQS queue
+	export CFN_DDB_TABLE=parallelcluster-chef 			# setup table as parallelcluster-chef

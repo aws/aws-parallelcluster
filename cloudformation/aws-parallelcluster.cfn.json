@@ -1860,7 +1860,7 @@
     "ParallelClusterPolicies": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
-        "PolicyName": "aws-parallelcluster",
+        "PolicyName": "parallelcluster",
         "PolicyDocument": {
           "Statement": [
             {

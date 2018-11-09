@@ -35,7 +35,7 @@ We're going to call our cluster "hello-world". ::
 You'll see some messages on your screen about the cluster creating.  When it's finished, it will provide the following output::
 
         Starting: hello-world
-        Status: aws-parallelcluster-hello-world - CREATE_COMPLETE
+        Status: parallelcluster-hello-world - CREATE_COMPLETE
         MasterPublicIP = 54.148.x.x
         ClusterUser: ec2-user
         MasterPrivateIP = 192.168.x.x

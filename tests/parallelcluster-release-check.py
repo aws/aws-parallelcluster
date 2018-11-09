@@ -189,7 +189,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
         # Sleep for scaledown_idletime to give time for the instances to scale down
         time.sleep(60*scaledown_idletime)
 
-        check_asg_capacity('aws-parallelcluster-' + testname, region, out_f)
+        check_asg_capacity('parallelcluster-' + testname, region, out_f)
 
         prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)

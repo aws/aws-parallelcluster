@@ -4,7 +4,7 @@ IAM in AWS ParallelCluster
 ==========================
 
 .. warning::
-    Between CfnCluster 1.5.4 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-aws-parallelcluster bucket and cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/aws-parallelcluster-*
+    Between CfnCluster 1.5.4 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket and cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*
     If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
 
     Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
@@ -57,7 +57,7 @@ ParallelClusterInstancePolicy
           },
           {
               "Resource": [
-                  "arn:aws:sqs:<REGION>:<AWS ACCOUNT ID>:aws-parallelcluster-*"
+                  "arn:aws:sqs:<REGION>:<AWS ACCOUNT ID>:parallelcluster-*"
               ],
               "Action": [
                   "sqs:SendMessage",
@@ -85,7 +85,7 @@ ParallelClusterInstancePolicy
           },
           {
               "Resource": [
-                  "arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/aws-parallelcluster-*"
+                  "arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/parallelcluster-*"
               ],
               "Action": [
                   "dynamodb:PutItem",
@@ -109,7 +109,7 @@ ParallelClusterInstancePolicy
           },
           {
               "Resource": [
-                  "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/aws-parallelcluster-*"
+                  "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/parallelcluster-*"
               ],
               "Action": [
                   "cloudformation:DescribeStacks"

@@ -31,7 +31,7 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
     cfn = boto3.client('cloudformation', region_name=region,
                        aws_access_key_id=aws_access_key_id,
                        aws_secret_access_key=aws_secret_access_key)
-    __stack_name = ('aws-parallelcluster-' + stack)
+    __stack_name = ('parallelcluster-' + stack)
 
     try:
         __stack = cfn.describe_stacks(StackName=__stack_name).get('Stacks')[0]

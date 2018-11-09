@@ -55,10 +55,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
 
             iam_policy = [(['ec2:DescribeVolumes', 'ec2:AttachVolume', 'ec2:DescribeInstanceAttribute', 'ec2:DescribeInstanceStatus', 'ec2:DescribeInstances'], "*"),
                         (['dynamodb:ListTables'], "*"),
-                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:aws-parallelcluster-*" % (partition, region, accountid)),
+                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:parallelcluster-*" % (partition, region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoscaling:DescribeTags', 'autoScaling:UpdateAutoScalingGroup'], "*"),
-                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/aws-parallelcluster-*" % (partition, region, accountid)),
-                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/aws-parallelcluster-*" % (partition, region, accountid)),
+                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/parallelcluster-*" % (partition, region, accountid)),
+                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*" % (partition, region, accountid)),
                         (['s3:GetObject'], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, region)),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:%s:logs:*:*:*" % partition)]

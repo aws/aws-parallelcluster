@@ -203,7 +203,7 @@ class AWSBatchCliConfig(object):
                 pass
 
             try:
-                self.stack_name = 'aws-parallelcluster-' + cluster_name
+                self.stack_name = 'parallelcluster-' + cluster_name
                 log.info("Stack name is (%s)" % self.stack_name)
                 # if region is set for the current stack, override the region from the AWS ParallelCluster config file
                 # or the region from the [main] section
@@ -232,7 +232,7 @@ class AWSBatchCliConfig(object):
         :param log: log
         """
         try:
-            self.stack_name = 'aws-parallelcluster-' + cluster
+            self.stack_name = 'parallelcluster-' + cluster
             log.info("Describing stack (%s)" % self.stack_name)
             # get required values from the output of the describe-stack command
             # don't use proxy because we are in the client and use default region
