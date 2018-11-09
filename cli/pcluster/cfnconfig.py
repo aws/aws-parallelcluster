@@ -377,20 +377,6 @@ class ParallelClusterConfig(object):
             except configparser.NoOptionError:
                 pass
 
-
-        # Turn off Ganglia by default
-        extra_json = self.parameters.get('ExtraJson')
-        if extra_json:
-            extra_json = json.loads(extra_json)
-            if 'cfncluster' in extra_json:
-                if not extra_json.get('cfncluster').get('ganglia_enabled'):
-                    extra_json.get('cfncluster').update({ 'ganglia_enabled': 'no' })
-            else:
-                extra_json['cfncluster'] = { 'ganglia_enabled': 'no' }
-        else:
-            extra_json = { 'cfncluster': { 'ganglia_enabled': 'no' }}
-        self.parameters['ExtraJson'] = json.dumps(extra_json)
-
         # Merge tags from config with tags from command line args
         # Command line args take precedent and overwite tags supplied in the config
         self.tags = {}
