@@ -18,7 +18,7 @@ def upload_to_s3(args, region):
     else:
         buckets = ['%s-aws-parallelcluster' % region]
     key_path = 'templates/'
-    template_paths = '../cloudformation/'
+    template_paths = 'cloudformation/'
 
     for t in args.templates:
         template_name = '%s%s.cfn.json' % (template_paths, t)
