@@ -69,7 +69,7 @@ def upload_to_s3(args, region, instances):
     bucket = args.bucket if args.bucket else '%s-aws-parallelcluster' % region
     key = 'instances/batch_instances.json'
 
-    if args.dryrun:
+    if args.dryrun == 'true':
         print(instances)
         print("Skipping upload to s3://%s/%s" % (args.bucket, key))
         return
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Generate a whitelist of batch instance types.')
     parser.add_argument('--regions', type=str, help='Valid Regions, can include "all", or comma seperated list of regions', required=True)
     parser.add_argument('--bucket', type=str, help='Bucket to upload too, defaults to [region]-aws-parallelcluster', required=False)
-    parser.add_argument('--dryrun', type=bool, help="Doesn't push anything to S3, just outputs", required=False)
+    parser.add_argument('--dryrun', type=str, help="Doesn't push anything to S3, just outputs", required=True)
     args = parser.parse_args()
 
     if args.regions == 'all':
