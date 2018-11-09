@@ -377,6 +377,15 @@ class ParallelClusterConfig(object):
             except configparser.NoOptionError:
                 pass
 
+        # check for extra_json = { "cluster" : ... } configuration parameters and map to "cfncluster"
+        extra_json = self.parameters.get('ExtraJson')
+        if extra_json:
+            extra_json = json.loads(extra_json)
+            if 'cluster' in extra_json:
+                # support parallelcluster syntax by replacing the key
+                extra_json['cfncluster'] = extra_json.pop('cluster')
+                self.parameters['ExtraJson'] = json.dumps(extra_json)
+
         # Merge tags from config with tags from command line args
         # Command line args take precedent and overwite tags supplied in the config
         self.tags = {}

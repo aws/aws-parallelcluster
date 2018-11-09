@@ -34,5 +34,5 @@ Steps
 
 #.  Add the following variable to the AWS ParallelCluster config file, under the `[cluster ...]` section" ::
 
-        extra_json = { "cfncluster" : { "custom_node_package" : "https://s3.<the bucket region>.amazonaws.com/${_bucket}/node/aws-parallelcluster-node-${_version}.tgz" } }
+        extra_json = { "cluster" : { "custom_node_package" : "https://s3.<the bucket region>.amazonaws.com/${_bucket}/node/aws-parallelcluster-node-${_version}.tgz" } }
 
