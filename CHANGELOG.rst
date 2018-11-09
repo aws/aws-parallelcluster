@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+2.0.0
+=====
+* Rename CfnCluster to AWS ParallelCluster
+* Support multiple EBS Volumes
+* Add AWS Batch as a supported scheduler
+* Support Custom AMI's
+
 1.6.1
 =====
 * Fix a bug in `cfncluster configure` introduced in 1.6.0

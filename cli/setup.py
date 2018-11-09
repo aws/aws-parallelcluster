@@ -20,7 +20,7 @@ def readme():
         return f.read()
 
 
-version = "1.6.1"
+version = "2.0.0rc1"
 requires = ['boto3>=1.7.33', 'awscli>=1.11.175', 'future>=0.16.0', 'tabulate>=0.8.2']
 
 if sys.version_info[:2] == (2, 6):
@@ -35,7 +35,7 @@ setup(
     name="aws-parallelcluster",
     version=version,
     author="Amazon Web Services",
-    description="A tool to launch and manage HPC clusters as CloudFormation stacks.",
+    description="A tool to launch and manage HPC clusters on AWS",
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),
