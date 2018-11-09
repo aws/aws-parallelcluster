@@ -136,7 +136,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     if custom_cookbook:
         file.write("custom_chef_cookbook = %s\n" % custom_cookbook)
     if custom_node:
-        file.write('extra_json = { "cfncluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
+        file.write('extra_json = { "cluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
     file.write("[vpc public]\n")
     file.write("master_subnet_id = %s\n" % (setup[region]['subnet']))
     file.write("vpc_id = %s\n" % (setup[region]['vpc']))
