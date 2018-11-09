@@ -747,7 +747,7 @@
       "Description": "Comma delimited list of Id of EBS snapshot if using snapshot as source for volume",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE",
-      "AllowedPattern" : "^(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})((,|, )(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})){4}$"
+      "AllowedPattern": "^(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})((,|, )(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})){4}$"
     },
     "CustomAMI": {
       "Description": "ID of a Custom AMI, to use instead of published AMI's",
@@ -983,7 +983,7 @@
       "Default": "NONE"
     },
     "CustomAWSBatchTemplateURL": {
-      "Description" : "URL of custom batch template that will override the default one.",
+      "Description": "URL of custom batch template that will override the default one.",
       "Type": "String",
       "Default": "NONE"
     },
@@ -1556,102 +1556,102 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-0775ab7ad13c0e74f",
-        "centos6": "ami-0f676dc2bebea5b1a",
-        "centos7": "ami-0b13eb5fa94691483",
-        "ubuntu1404": "ami-05b67b05deba61e8c",
-        "ubuntu1604": "ami-0232ea8f3f82712a2"
+        "alinux": "ami-0fd58a53ff94187f3",
+        "centos6": "ami-02cb755db30c97a4f",
+        "centos7": "ami-0138b68ea18091c7f",
+        "ubuntu1404": "ami-082f7ef61ac77b7dc",
+        "ubuntu1604": "ami-0c4af82fc71406768"
       },
       "ap-northeast-2": {
-        "alinux": "ami-09fdf91b4a93730f0",
-        "centos6": "ami-0adf39100d009ad31",
-        "centos7": "ami-015bf65572df2d94d",
-        "ubuntu1404": "ami-06aa825c33309fdfd",
-        "ubuntu1604": "ami-08d64fa4a89f85427"
+        "alinux": "ami-099cc7eb6af9e20f7",
+        "centos6": "ami-00bee984f8b78876c",
+        "centos7": "ami-02e5ea6e7a6028933",
+        "ubuntu1404": "ami-033d26c5429779cb9",
+        "ubuntu1604": "ami-0b62143f0771cd8cd"
       },
       "ap-northeast-3": {
-        "alinux": "ami-03a0e4ad407dd7f55",
-        "centos6": "ami-0da12c87d2aee0ef5",
-        "centos7": "ami-0479721fa287d3cf7",
-        "ubuntu1404": "ami-0c03a23da1606fa3a",
-        "ubuntu1604": "ami-0cfdcf1603db9a672"
+        "alinux": "ami-082e5f7062c897d62",
+        "centos6": "ami-05093a58db0931f35",
+        "centos7": "ami-09d5c5647e0e4a965",
+        "ubuntu1404": "ami-068da5f005b9753c4",
+        "ubuntu1604": "ami-054658d4fb1574611"
       },
       "ap-south-1": {
-        "alinux": "ami-008d194619d177765",
-        "centos6": "ami-05a8a28e5c8b74642",
-        "centos7": "ami-087bda89547e089dc",
-        "ubuntu1404": "ami-096a418446cd1eeb1",
-        "ubuntu1604": "ami-009f971485befe66a"
+        "alinux": "ami-00f3ecf98861b2ab3",
+        "centos6": "ami-03390cab5183cd3b8",
+        "centos7": "ami-047efa08a0e67a311",
+        "ubuntu1404": "ami-0cbcfe7b85f523cfe",
+        "ubuntu1604": "ami-086b6a7d8d4ddb97a"
       },
       "ap-southeast-1": {
-        "alinux": "ami-08eef0c7d23753d49",
-        "centos6": "ami-02ce4e46ca873697e",
-        "centos7": "ami-0d339c926f9d35ba3",
-        "ubuntu1404": "ami-0d413135984f7bd97",
-        "ubuntu1604": "ami-02ab2d97bea65a826"
+        "alinux": "ami-0639c9bf78c544adc",
+        "centos6": "ami-0cb1211af7d24ee96",
+        "centos7": "ami-044f6b65ca57f16dd",
+        "ubuntu1404": "ami-04afd31999de83e1a",
+        "ubuntu1604": "ami-0a87c7caf19db6e44"
       },
       "ap-southeast-2": {
-        "alinux": "ami-08d6ef8690d843ceb",
-        "centos6": "ami-013201a7fda637e83",
-        "centos7": "ami-0ac15e60210a10310",
-        "ubuntu1404": "ami-079737fc9c635c09a",
-        "ubuntu1604": "ami-0fc63c095a0c31f0a"
+        "alinux": "ami-0cea392f7020256fc",
+        "centos6": "ami-015accf43c436cc63",
+        "centos7": "ami-0555f9865da9377bd",
+        "ubuntu1404": "ami-0acb512cf470ff168",
+        "ubuntu1604": "ami-0b990212d960df608"
       },
       "ca-central-1": {
-        "alinux": "ami-00f519fdeb5feb438",
-        "centos6": "ami-0ee6c95ad927b2da4",
-        "centos7": "ami-068d6a6fc5e7987f3",
-        "ubuntu1404": "ami-00cec9c492f236616",
-        "ubuntu1604": "ami-0705c0b15666e7d60"
+        "alinux": "ami-07aef5822bac83ca8",
+        "centos6": "ami-0ae5440c4c11d3498",
+        "centos7": "ami-08fdcce55fec44f4e",
+        "ubuntu1404": "ami-01cbeb9486149319a",
+        "ubuntu1604": "ami-03f03194700ca1221"
       },
       "eu-central-1": {
-        "alinux": "ami-07fa07aba1f6fc571",
-        "centos6": "ami-0de3eb16b173ea6b3",
-        "centos7": "ami-0f73d5d5bb22f7609",
-        "ubuntu1404": "ami-0d6242ced07309e7b",
-        "ubuntu1604": "ami-08ab664e40e331729"
+        "alinux": "ami-03ed3f85ecfa4a0a5",
+        "centos6": "ami-0ea776a03a4f5cf43",
+        "centos7": "ami-0e96f7c5832d46bb0",
+        "ubuntu1404": "ami-023f23f02ca9cac6a",
+        "ubuntu1604": "ami-07d4e0b3fb8497dd4"
       },
       "eu-west-1": {
-        "alinux": "ami-09cbb5230da5b6cc2",
-        "centos6": "ami-0c8eca7deb52169cc",
-        "centos7": "ami-05479870b31fa535e",
-        "ubuntu1404": "ami-06581a7f68c539440",
-        "ubuntu1604": "ami-096183a7e31fc4e35"
+        "alinux": "ami-02558a10f7d2f1010",
+        "centos6": "ami-0d32a852f7e9d857a",
+        "centos7": "ami-0f456d0f7ce883ad2",
+        "ubuntu1404": "ami-02e8781d55af61394",
+        "ubuntu1604": "ami-03bc3f21d575fc062"
       },
       "eu-west-2": {
-        "alinux": "ami-006cd2956238a6dd7",
-        "centos6": "ami-013d7f40fc791f845",
-        "centos7": "ami-08c5c6f990f8253e1",
-        "ubuntu1404": "ami-00621b5f273783bce",
-        "ubuntu1604": "ami-0a4fbb1dd660013b5"
+        "alinux": "ami-04d836ced161172f1",
+        "centos6": "ami-056bdafa311ffc9ff",
+        "centos7": "ami-0b899dcd3bcd8cc20",
+        "ubuntu1404": "ami-0cef61fd3eb8cfb72",
+        "ubuntu1604": "ami-0068aa4d9d693d709"
       },
       "eu-west-3": {
-        "alinux": "ami-0fce6e16d9970d71b",
-        "centos6": "ami-0cac2d11252d18c27",
-        "centos7": "ami-0d6c4b2dde29e341f",
-        "ubuntu1404": "ami-07da72e5a66a93c71",
-        "ubuntu1604": "ami-0fcf3de0f1913a190"
+        "alinux": "ami-050aee97f16d9a1ed",
+        "centos6": "ami-0f6d5723e93045952",
+        "centos7": "ami-008e61ccfe5b86013",
+        "ubuntu1404": "ami-0561d5a289b8d152b",
+        "ubuntu1604": "ami-0b9f3574ca535a8d7"
       },
       "sa-east-1": {
-        "alinux": "ami-0165d34de1afd1618",
-        "centos6": "ami-074dbf929dc0c8de0",
-        "centos7": "ami-00cfa447d16329380",
-        "ubuntu1404": "ami-0f4a298763a012d8e",
-        "ubuntu1604": "ami-06fa4a172ebe11a10"
+        "alinux": "ami-0bd8f3cce36ed50ef",
+        "centos6": "ami-0cee52a43d8de1ca7",
+        "centos7": "ami-05abd83095118099c",
+        "ubuntu1404": "ami-0cc91646da109f778",
+        "ubuntu1604": "ami-0ea620d86b1b7ed9c"
       },
       "us-east-1": {
-        "alinux": "ami-0fd8b1245d1435bf3",
-        "centos6": "ami-044fd430f1fd3b163",
-        "centos7": "ami-0fb2dca992af734f2",
-        "ubuntu1404": "ami-07df96c1d8e62161d",
-        "ubuntu1604": "ami-0b9750a5856891754"
+        "alinux": "ami-0f264f6676403f2eb",
+        "centos6": "ami-07cb75427766a84af",
+        "centos7": "ami-0576f221622ce2af1",
+        "ubuntu1404": "ami-0f763bcf08c46f69b",
+        "ubuntu1604": "ami-0a8766849b76bcc79"
       },
       "us-east-2": {
-        "alinux": "ami-0cb3d04ae4b4ca8db",
-        "centos6": "ami-03c508534d6f54859",
-        "centos7": "ami-03421fa006b964767",
-        "ubuntu1404": "ami-0f7c7f69478093925",
-        "ubuntu1604": "ami-0a2c6075e91d8bbc3"
+        "alinux": "ami-027e70e639d14f864",
+        "centos6": "ami-015062622ebbb24d6",
+        "centos7": "ami-0852ee93139617b81",
+        "ubuntu1404": "ami-060da9ca5bb43b75c",
+        "ubuntu1604": "ami-00a0aa55085f53a0c"
       },
       "us-gov-west-1": {
         "alinux": "ami-e0fd6781",
@@ -1659,18 +1659,18 @@
         "ubuntu1604": "ami-3bf3695a"
       },
       "us-west-1": {
-        "alinux": "ami-02f24f766b5b7502f",
-        "centos6": "ami-05ee27a886e16ba39",
-        "centos7": "ami-012c5239be2beb7f1",
-        "ubuntu1404": "ami-077e3b1efa9443476",
-        "ubuntu1604": "ami-00b0c33ebc9576bf8"
+        "alinux": "ami-0b66bf1b2c2399d96",
+        "centos6": "ami-0b69d6dec8e24a52b",
+        "centos7": "ami-0b1117a6604521a0d",
+        "ubuntu1404": "ami-027b34ebfb6548d40",
+        "ubuntu1604": "ami-069d398c9d739ac27"
       },
       "us-west-2": {
-        "alinux": "ami-01e7f12fc989e7004",
-        "centos6": "ami-08675896633a1d9fb",
-        "centos7": "ami-0053bef6747ca58bf",
-        "ubuntu1404": "ami-0581577b81f865ae9",
-        "ubuntu1604": "ami-00e5e4cc71cf05d6e"
+        "alinux": "ami-0a969db5ebc25642c",
+        "centos6": "ami-095742840c41a5c17",
+        "centos7": "ami-005352ab88768d092",
+        "ubuntu1404": "ami-0347ed3d05fcc5b06",
+        "ubuntu1604": "ami-0c17a9113d7b28cc0"
       }
     },
     "OSFeatures": {
@@ -1806,12 +1806,14 @@
     "RootRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
-        "ManagedPolicyArns" : [
+        "ManagedPolicyArns": [
           {
             "Fn::If": [
               "CreateAWSBatchStack",
               "arn:aws:iam::aws:policy/AWSBatchFullAccess",
-              { "Ref": "AWS::NoValue" }
+              {
+                "Ref": "AWS::NoValue"
+              }
             ]
           }
         ],
@@ -2584,7 +2586,7 @@
                       "Ref": "AWS::Region"
                     },
                     "cfn_volume": {
-                      "Fn::GetAtt":[
+                      "Fn::GetAtt": [
                         "EBSCfnStack",
                         "Outputs.Volumeids"
                       ]
@@ -2776,8 +2778,12 @@
         "LaunchConfigurationName": {
           "Fn::If": [
             "GovCloudRegion",
-            { "Ref": "ComputeServerLaunchConfig" },
-            { "Ref": "AWS::NoValue" }
+            {
+              "Ref": "ComputeServerLaunchConfig"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
           ]
         },
         "LaunchTemplate": {
@@ -2794,7 +2800,9 @@
                 ]
               }
             },
-            { "Ref": "AWS::NoValue" }
+            {
+              "Ref": "AWS::NoValue"
+            }
           ]
         },
         "MinSize": {
@@ -4365,13 +4373,23 @@
     },
     "AWSBatchStack": {
       "Type": "AWS::CloudFormation::Stack",
-      "DependsOn": [ "CleanupResourcesCustomResource" ],
+      "DependsOn": [
+        "CleanupResourcesCustomResource"
+      ],
       "Properties": {
         "Parameters": {
-          "MinvCpus": { "Ref": "MinSize" },
-          "DesiredvCpus": { "Ref": "DesiredSize" },
-          "MaxvCpus": { "Ref": "MaxSize" },
-          "InstanceTypes": { "Ref": "ComputeInstanceType" },
+          "MinvCpus": {
+            "Ref": "MinSize"
+          },
+          "DesiredvCpus": {
+            "Ref": "DesiredSize"
+          },
+          "MaxvCpus": {
+            "Ref": "MaxSize"
+          },
+          "InstanceTypes": {
+            "Ref": "ComputeInstanceType"
+          },
           "Subnet": {
             "Fn::If": [
               "UseMasterSubnetForCompute",
@@ -4391,53 +4409,72 @@
               }
             ]
           },
-          "SecurityGroups": { "Fn::Join": [
-            ",",
-            [
-              { "Fn::If": [
-                  "CreateSecurityGroups",
-                  {
-                    "Ref": "ComputeSecurityGroup"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
-                ]
+          "SecurityGroups": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::If": [
+                    "CreateSecurityGroups",
+                    {
+                      "Ref": "ComputeSecurityGroup"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "AddAdditionalSG",
+                    {
+                      "Ref": "AdditionalSG"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "UseExistingSecurityGroup",
+                    {
+                      "Ref": "VPCSecurityGroupId"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "OS": {
+            "Ref": "BaseOS"
+          },
+          "ClusterName": {
+            "Ref": "AWS::StackName"
+          },
+          "ClusterType": {
+            "Ref": "ClusterType"
+          },
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "SpotBidPercentage": {
+            "Fn::If": [
+              "UseSpotPrice",
+              {
+                "Ref": "SpotPrice"
               },
               {
-                "Fn::If": [
-                  "AddAdditionalSG",
-                  {
-                    "Ref": "AdditionalSG"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
-                ]
-              },
-              {
-                "Fn::If": [
-                  "UseExistingSecurityGroup",
-                  {
-                    "Ref": "VPCSecurityGroupId"
-                  },
-                  {
-                    "Ref": "AWS::NoValue"
-                  }
-                ]
+                "Ref": "AWS::NoValue"
               }
             ]
-          ]},
-          "OS": { "Ref": "BaseOS" },
-          "ClusterName": { "Ref": "AWS::StackName" },
-          "ClusterType": { "Ref": "ClusterType" },
-          "KeyName": { "Ref": "KeyName" },
-          "SpotBidPercentage": { "Fn::If": [
-            "UseSpotPrice",
-            { "Ref": "SpotPrice" },
-            { "Ref": "AWS::NoValue" }
-          ]},
-          "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" },
+          },
+          "ResourcesS3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
           "SharedDir": {
             "Ref": "SharedDir"
           }
@@ -4445,7 +4482,9 @@
         "TemplateURL": {
           "Fn::If": [
             "UseCustomAWSBatchTemplateURL",
-            { "Ref": "CustomAWSBatchTemplateURL" },
+            {
+              "Ref": "CustomAWSBatchTemplateURL"
+            },
             {
               "Fn::Sub": [
                 "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
@@ -4453,7 +4492,9 @@
                   "s3_domain": {
                     "Fn::If": [
                       "GovCloudRegion",
-                      { "Fn::Sub": "s3-${AWS::Region}.amazonaws.com" },
+                      {
+                        "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                      },
                       "s3.amazonaws.com"
                     ]
                   },
@@ -4510,10 +4551,14 @@
         "AssumeRolePolicyDocument": {
           "Statement": [
             {
-              "Action": ["sts:AssumeRole"],
+              "Action": [
+                "sts:AssumeRole"
+              ],
               "Effect": "Allow",
               "Principal": {
-                "Service": ["lambda.amazonaws.com"]
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
               }
             }
           ],
@@ -4525,7 +4570,10 @@
             "PolicyDocument": {
               "Statement": [
                 {
-                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
                   "Effect": "Allow",
                   "Resource": "arn:aws:logs:*:*:*",
                   "Sid": "CloudWatchLogsPolicy"
@@ -4538,8 +4586,12 @@
                   ],
                   "Effect": "Allow",
                   "Resource": [
-                    { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}" },
-                    { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*" }
+                    {
+                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                    }
                   ],
                   "Sid": "S3BucketPolicy"
                 }
@@ -4555,25 +4607,38 @@
     "CleanupResourcesCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
       "Properties": {
-        "ResourcesS3Bucket": { "Ref": "ResourcesS3Bucket" },
+        "ResourcesS3Bucket": {
+          "Ref": "ResourcesS3Bucket"
+        },
         "ServiceToken": {
-          "Fn::GetAtt": ["CleanupResourcesFunction", "Arn"]
+          "Fn::GetAtt": [
+            "CleanupResourcesFunction",
+            "Arn"
+          ]
         }
       },
-      "DependsOn": [ "CleanupResourcesFunction", "CleanupResourcesFunctionLogGroup" ],
+      "DependsOn": [
+        "CleanupResourcesFunction",
+        "CleanupResourcesFunctionLogGroup"
+      ],
       "Condition": "HasResourcesS3Bucket"
     },
     "CleanupResourcesFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
-          "S3Bucket": { "Ref": "ResourcesS3Bucket" },
+          "S3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
           "S3Key": "custom_resources_code/artifacts.zip"
         },
         "Handler": "cleanup_resources.handler",
         "MemorySize": 128,
         "Role": {
-          "Fn::GetAtt": ["CleanupResourcesFunctionExecutionRole", "Arn"]
+          "Fn::GetAtt": [
+            "CleanupResourcesFunctionExecutionRole",
+            "Arn"
+          ]
         },
         "Runtime": "python3.6",
         "Timeout": 60
@@ -4720,21 +4785,23 @@
     },
     "ResourcesS3Bucket": {
       "Description": "S3 user bucket where AWS ParallelCluster resources are stored",
-      "Value": { "Ref": "ResourcesS3Bucket" },
+      "Value": {
+        "Ref": "ResourcesS3Bucket"
+      },
       "Condition": "HasResourcesS3Bucket"
     },
-    "BatchComputeEnvironmentArn" : {
-      "Value" : {
-        "Fn::GetAtt" : [
+    "BatchComputeEnvironmentArn": {
+      "Value": {
+        "Fn::GetAtt": [
           "AWSBatchStack",
           "Outputs.ComputeEnvironmentArn"
         ]
       },
       "Condition": "CreateAWSBatchStack"
     },
-    "BatchJobQueueArn" : {
-      "Value" : {
-        "Fn::GetAtt" : [
+    "BatchJobQueueArn": {
+      "Value": {
+        "Fn::GetAtt": [
           "AWSBatchStack",
           "Outputs.JobQueueArn"
         ]
@@ -4742,8 +4809,8 @@
       "Condition": "CreateAWSBatchStack"
     },
     "BatchJobDefinitionArn": {
-      "Value" : {
-        "Fn::GetAtt" : [
+      "Value": {
+        "Fn::GetAtt": [
           "AWSBatchStack",
           "Outputs.JobDefinitionArn"
         ]
