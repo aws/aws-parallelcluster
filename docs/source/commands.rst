@@ -14,7 +14,7 @@ Most commands provided are just wrappers around CloudFormation functions.
 create
 ======
 
-Creates a CloudFormation stack with the name :code:`aws-parallelcluster-[stack_name]`. To read more about CloudFormation see `AWS CloudFormation <https://aws-parallelcluster.readthedocs.io/en/latest/aws_services.html#aws-cloudformation>`_.
+Creates a CloudFormation stack with the name :code:`parallelcluster-[stack_name]`. To read more about CloudFormation see `AWS CloudFormation <https://aws-parallelcluster.readthedocs.io/en/latest/aws_services.html#aws-cloudformation>`_.
 
 positional arguments:
   cluster_name          create a cluster with the provided name.
@@ -204,7 +204,7 @@ optional arguments:
 list
 ====
 
-Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`aws-parallelcluster-[stack_name]`.
+Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`parallelcluster-[stack_name]`.
 
 optional arguments:
   -h, --help  show this help message and exit
