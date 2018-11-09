@@ -20,18 +20,15 @@ def upload_to_s3(args, region):
     key_path = 'templates/'
     template_paths = '../cloudformation/'
 
-    if args.dryrun:
-        for t in args.templates:
-            template_name = '%s%s.cfn.json' % (template_paths, t)
-            for bucket in buckets:
-                key = key_path + '%s-%s.cfn.json' % (t, args.version)
-                print("Skipping upload %s to s3://%s/%s" % (template_name, bucket, key))
-            return
     for t in args.templates:
         template_name = '%s%s.cfn.json' % (template_paths, t)
         key = key_path + '%s-%s.cfn.json' % (t, args.version)
         data = open(template_name, 'rb')
         for bucket in buckets:
+            if args.dryrun:
+                key = key_path + '%s-%s.cfn.json' % (t, args.version)
+                print("Skipping upload %s to s3://%s/%s" % (template_name, bucket, key))
+                continue
             if not args.override:
                 try:
                     s3 = boto3.client('s3', region_name=region)
