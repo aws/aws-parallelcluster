@@ -14,7 +14,7 @@ def upload_to_s3(args, region):
     s3_client = boto3.resource('s3', region_name=region)
 
     if args.bucket:
-        buckets = args.bucket
+        buckets = args.bucket.split(',')
     else:
         buckets = ['%s-aws-parallelcluster' % region]
     key_path = 'templates/'
@@ -84,7 +84,7 @@ if __name__ == '__main__':
         args.regions = get_all_aws_regions()
     else:
         args.regions = args.regions.split(',')
-    args.bucket = args.bucket.split(',')
+
     args.templates = args.templates.split(',')
 
     main(args)
