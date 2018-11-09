@@ -4448,7 +4448,7 @@
             { "Ref": "CustomAWSBatchTemplateURL" },
             {
               "Fn::Sub": [
-                "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-${version}.cfn.json",
+                "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
                 {
                   "s3_domain": {
                     "Fn::If": [
@@ -4625,7 +4625,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/ebs_vol_substack-${version}.cfn.json",
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
             {
               "s3_domain": {
                 "Fn::If": [
