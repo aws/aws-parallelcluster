@@ -332,7 +332,6 @@ def main(args):
 
     for region in args.regions:
         print("Starting work for region %s" % region)
-        continue
         failure = 0
         success = 0
         client = boto3.client('ec2', region_name=region)
