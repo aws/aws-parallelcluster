@@ -2,6 +2,7 @@ import datetime
 import sys
 import os
 import signal
+import boto3
 import sys
 import subprocess as sub
 import threading
@@ -11,6 +12,8 @@ import Queue
 import process_helper as prochelp
 import argparse
 from builtins import exit
+
+UNSUPPORTED_REGIONS =set(['ap-northeast-3', 'eu-west-3'])
 
 class ReleaseCheckException(Exception):
     pass
@@ -315,92 +318,141 @@ def test_runner(q, extra_args):
         results_lock.release()
         q.task_done()
 
+def get_all_aws_regions():
+    ec2 = boto3.client('ec2')
+    return set(sorted(r.get('RegionName') for r in ec2.describe_regions().get('Regions'))) - UNSUPPORTED_REGIONS
+
+
+
 def main(args):
-    key_name = args.keyname
-    parent = os.getppid()
-    numParallel = args.numparallel if args.numparallel else 1
-    extra_args = {'templateURL': args.templateURL,
-                  'cookbookURL': args.cookbookURL,
-                  'vpc': args.vpcid,
-                  'master_subnet': args.mastersubnet}
-    success_cluster_list = ['custom5Vol', 'custom3Vol', 'default', 'custom1Vol']
-    failure_cluster_list = ['custom6Vol']
-    distro_list = ['alinux', 'centos6', 'centos7', 'ubuntu1404', 'ubuntu1604']
-    success_work_queues = {}
-    failure_work_queues = {}
-    for distro in distro_list:
-        if key_name:
-            prepare_testfiles(distro, key_name, extra_args)
-        else:
-            prepare_testfiles(distro, 'id_rsa', extra_args)
-        success_work_queues[distro] = Queue.Queue()
-        failure_work_queues[distro] = Queue.Queue()
-        for clustername in success_cluster_list:
-            work_item = {'distro': distro, 'clustername': clustername}
-            success_work_queues[distro].put(work_item)
-        for clustername in failure_cluster_list:
-            work_item = {'distro': distro, 'clustername': clustername}
-            failure_work_queues[distro].put(work_item)
+    global failure
+    global success
+    total_success = 0
+    total_failure = 0;
 
-    for distro in distro_list:
-        for i in range(numParallel):
-            t = threading.Thread(target=test_runner, args=(success_work_queues[distro], extra_args))
-            t.daemon = True
-            t.start()
+    for region in args.regions:
+        print("Starting work for region %s" % region)
+        continue
+        failure = 0
+        success = 0
+        client = boto3.client('ec2', region_name=region)
+        response = client.describe_tags(Filters=[{'Name': 'key',
+                                                  'Values': [ 'ParallelClusterTestSubnet' ]}],
+                                        MaxResults=16)
+        if not args.mastersubnet:
+            if len(response['Tags']) == 0:
+                print('Could not find subnet in %s with ParallelClusterTestSubnet tag.  Aborting.' %
+                      (region))
+                exit(1)
+            subnetid = response['Tags'][0]['ResourceId']
 
-    all_finished = False
-    self_killed = False
-    while not all_finished:
-        time.sleep(1)
-        all_finished = True
-        for queue in success_work_queues.values():
-            all_finished = all_finished and queue.unfinished_tasks == 0
-        # In the case parent process was SIGKILL-ed
-        if not _proc_alive(parent) and not self_killed:
-            print("Parent process with pid %s died - terminating..." % parent)
-            _killme_gently()
-            self_killed = True
+            response = client.describe_subnets(SubnetIds = [ subnetid ])
+            if len(response) == 0 :
+                print('Could not find subnet info for %s' % (subnetid))
+                exit(1)
+            vpcid = response['Subnets'][0]['VpcId']
 
-    print("%s - Regions workers queues all done: %s" % (_time(), all_finished))
-    if (success != 20 or failure != 0):
-        print("ERROR: expected 20 success 0 failure, got %s success %s failure" % (success, failure))
-        exit(1)
+            setup[region] = { 'vpc' : vpcid, 'subnet' : subnetid }
 
-    for distro in distro_list:
-        for i in range(numParallel):
-            t = threading.Thread(target=test_runner, args=(failure_work_queues[distro],))
-            t.daemon = True
-            t.start()
+        key_name = args.keyname
+        parent = os.getppid()
+        numParallel = args.numparallel if args.numparallel else 1
+        extra_args = {'templateURL': args.templateURL,
+                      'cookbookURL': args.cookbookURL,
+                      'vpc': args.vpcid if args.vpcid else setup[region]['vpc'],
+                      'master_subnet': args.mastersubnet if args.mastersubnet else setup[region]['subnet']}
+        success_cluster_list = ['custom5Vol', 'custom3Vol', 'default', 'custom1Vol']
+        failure_cluster_list = ['custom6Vol']
+        distro_list = ['alinux', 'centos6', 'centos7', 'ubuntu1404', 'ubuntu1604']
+        success_work_queues = {}
+        failure_work_queues = {}
+        for distro in distro_list:
+            if key_name:
+                prepare_testfiles(distro, key_name, extra_args)
+            else:
+                prepare_testfiles(distro, 'id_rsa', extra_args)
+            success_work_queues[distro] = Queue.Queue()
+            failure_work_queues[distro] = Queue.Queue()
+            for clustername in success_cluster_list:
+                work_item = {'distro': distro, 'clustername': clustername}
+                success_work_queues[distro].put(work_item)
+            for clustername in failure_cluster_list:
+                work_item = {'distro': distro, 'clustername': clustername}
+                failure_work_queues[distro].put(work_item)
 
-    all_finished = False
-    self_killed = False
-    while not all_finished:
-        time.sleep(1)
-        all_finished = True
-        for queue in failure_work_queues.values():
-            all_finished = all_finished and queue.unfinished_tasks == 0
-        # In the case parent process was SIGKILL-ed
-        if not _proc_alive(parent) and not self_killed:
-            print("Parent process with pid %s died - terminating..." % parent)
-            _killme_gently()
-            self_killed = True
+        for distro in distro_list:
+            for i in range(numParallel):
+                t = threading.Thread(target=test_runner, args=(success_work_queues[distro], extra_args))
+                t.daemon = True
+                t.start()
 
-    print("%s - Regions workers queues all done: %s" % (_time(), all_finished))
-    if (failure != 5):
-        print("ERROR: expected 5 failure, %s failure" % (failure))
-        exit(1)
+        all_finished = False
+        self_killed = False
+        while not all_finished:
+            time.sleep(1)
+            all_finished = True
+            for queue in success_work_queues.values():
+                all_finished = all_finished and queue.unfinished_tasks == 0
+            # In the case parent process was SIGKILL-ed
+            if not _proc_alive(parent) and not self_killed:
+                print("Parent process with pid %s died - terminating..." % parent)
+                _killme_gently()
+                self_killed = True
 
-    for distro in distro_list:
-        clean_up_testfiles(distro)
-    # print status...
+        print("%s - Distributions workers queues all done: %s" % (_time(), all_finished))
+        if (success != 20 or failure != 0):
+            print("ERROR: expected 20 success 0 failure, got %s success %s failure" % (success, failure))
+            exit(1)
 
-    print("Test finished")
+        for distro in distro_list:
+            for i in range(numParallel):
+                t = threading.Thread(target=test_runner, args=(failure_work_queues[distro],))
+                t.daemon = True
+                t.start()
+
+        all_finished = False
+        self_killed = False
+        while not all_finished:
+            time.sleep(1)
+            all_finished = True
+            for queue in failure_work_queues.values():
+                all_finished = all_finished and queue.unfinished_tasks == 0
+            # In the case parent process was SIGKILL-ed
+            if not _proc_alive(parent) and not self_killed:
+                print("Parent process with pid %s died - terminating..." % parent)
+                _killme_gently()
+                self_killed = True
+
+        print("%s - Distributions workers queues all done: %s" % (_time(), all_finished))
+        if (failure != 5):
+            print("ERROR: expected 5 failure, %s failure" % (failure))
+            exit(1)
+
+        for distro in distro_list:
+            clean_up_testfiles(distro)
+        # print status...
+
+        print("Region %s test finished" % region)
+
+        total_success += success
+        total_failure += failure
+
+    print("Expected %s success and %s failure, got %s success and %s failure"
+          % (20*len(args.regions), 5*len(args.regions), total_success, total_failure))
+    if total_success == 20*len(args.regions) and total_failure == 5*len(args.regions):
+        print("Test finished")
+    else:
+        print("FAILURE!")
+
+
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Take in test related parameters')
     parser.add_argument('--keyname', type=str,
                         help='Keyname, default is id_rsa', required=False)
+    parser.add_argument('--regions', type=str,
+                        help='Comma separated list of regions to test, defaults to all', required=False)
     parser.add_argument('--templateURL', type=str,
                         help='Custom template URL', required=False)
     parser.add_argument('--cookbookURL', type=str,
@@ -413,5 +465,9 @@ if __name__ == '__main__':
                         help='number of threads to run in parallel per distribution, '
                              'total number of threads will be 5*numparallel', required=False)
     args = parser.parse_args()
+    if not args.regions:
+        args.regions = get_all_aws_regions()
+    else:
+        args.regions = args.regions.split(',')
 
     main(args)
