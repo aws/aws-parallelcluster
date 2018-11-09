@@ -1,14 +1,13 @@
 import boto3
 from botocore.exceptions import ClientError
 import argparse
-import json
 import pkg_resources
 
-UNSUPPORTED_REGIONS =set(['ap-northeast-3', 'eu-west-3'])
 
 def get_all_aws_regions():
     ec2 = boto3.client('ec2')
-    return set(sorted(r.get('RegionName') for r in ec2.describe_regions().get('Regions'))) - UNSUPPORTED_REGIONS
+    return set(sorted(r.get('RegionName') for r in ec2.describe_regions().get('Regions')))
+
 
 def upload_to_s3(args, region):
     s3_client = boto3.resource('s3', region_name=region)
@@ -45,8 +44,11 @@ def upload_to_s3(args, region):
             except ClientError as e:
                 if args.createifnobucket and e.response['Error']['Code'] == 'NoSuchBucket':
                     print('No bucket, creating now: ')
-                    s3_client.create_bucket(Bucket=bucket,
-                                                  CreateBucketConfiguration={'LocationConstraint': region})
+                    if region == 'us-east-1':
+                        s3_client.create_bucket(Bucket=bucket)
+                    else:
+                        s3_client.create_bucket(Bucket=bucket,
+                                                CreateBucketConfiguration={'LocationConstraint': region})
                     s3_client.BucketVersioning(bucket).enable()
                     print("Created %s bucket. Bucket versioning is enabled, "
                           "please enable bucket logging manually." % bucket)
@@ -55,8 +57,12 @@ def upload_to_s3(args, region):
                     print(res)
                 else:
                     print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
-                    raise e
+                    if e.response['Error']['Code'] == 'NoSuchBucket':
+                        print("Bucket is not present.")
+                    else:
+                        raise e
                 pass
+
 
 def main(args):
     # For all regions
@@ -71,9 +77,10 @@ if __name__ == '__main__':
     parser.add_argument('--templates', type=str,
                         help='Template filenames, leave out \'.cfn.json\', comma separated list', required=True)
     parser.add_argument('--bucket', type=str, help='Buckets to upload to, defaults to [region]-aws-parallelcluster, comma separated list', required=False)
-    parser.add_argument('--dryrun', type=bool, help="Doesn't push anything to S3, just outputs", required=False)
-    parser.add_argument('--override', type=bool, help="If override is false, the file will not be pushed if it already exists in the bucket", required=False)
-    parser.add_argument('--createifnobucket', type=bool, help="Create S3 bucket if it does not exist", required=False)
+    parser.add_argument('--dryrun', action='store_true', help="Doesn't push anything to S3, just outputs", default=False, required=False)
+    parser.add_argument('--override', action='store_true', help="If override is false, the file will not be pushed if it already exists in the bucket", default=False, required=False)
+    parser.add_argument('--createifnobucket', action='store_true', help="Create S3 bucket if it does not exist", default=False, required=False)
+    parser.add_argument('--unsupportedregions', type=str, help="Unsupported regions, comma separated", default="", required=False)
     args = parser.parse_args()
     args.version = pkg_resources.get_distribution("aws-parallelcluster").version
 
@@ -81,6 +88,7 @@ if __name__ == '__main__':
         args.regions = get_all_aws_regions()
     else:
         args.regions = args.regions.split(',')
+    args.regions = set(args.regions) - set(args.unsupportedregions.split(','))
 
     args.templates = args.templates.split(',')
 
