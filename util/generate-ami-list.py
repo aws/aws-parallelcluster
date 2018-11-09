@@ -33,7 +33,7 @@ def get_ami_list(regions, date, version, owner):
     for region_name in regions:
         try:
             ec2 = boto3.client('ec2', region_name=region_name)
-            images = ec2.describe_images(Owners=[owner], Filters=[{'Name': 'name', "Values": ["parallelcluster-%s*%s" % (version, date)]}])
+            images = ec2.describe_images(Owners=[owner], Filters=[{'Name': 'name', "Values": ["aws-parallelcluster-%s*%s" % (version, date)]}])
 
             amis = {}
             for image in images.get('Images'):
@@ -111,4 +111,3 @@ if __name__ == '__main__':
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
 
     update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
-
