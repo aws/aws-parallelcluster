@@ -271,9 +271,7 @@ class AWSBatchCliConfig(object):
             else:
                 fail("The cluster is in the (%s) status." % stack_status)
 
-        except ClientError as e:
-            fail("Could not contact AWS CloudFormation service. Failed with exception: %s" % e)
-        except ParamValidationError as e:
+        except (ClientError, ParamValidationError) as e:
             fail("Error getting cluster information from AWS CloudFormation. Failed with exception: %s" % e)
 
 
@@ -285,18 +283,6 @@ def config_logger(log_level):
     """
     try:
         logfile = os.path.expanduser(os.path.join('~', '.parallelcluster', 'awsbatch-cli.log'))
-        formatter = logging.Formatter('%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s')
-
-        logfile_handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=1)
-        logfile_handler.setFormatter(formatter)
-
-        logger = logging.getLogger('awsbatch-cli')
-        logger.addHandler(logfile_handler)
-        logger.setLevel(log_level.upper())
-    except (TypeError, ValueError) as e:
-        fail("Error setting log level. Failed with exception: %s" % e)
-
-    try:
         logdir = os.path.dirname(logfile)
         os.makedirs(logdir)
     except OSError as e:
@@ -304,5 +290,17 @@ def config_logger(log_level):
             pass
         else:
             fail("Cannot create log file (%s). Failed with exception: %s" % (logfile, e))
+
+    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s')
+
+    logfile_handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=1)
+    logfile_handler.setFormatter(formatter)
+
+    logger = logging.getLogger('awsbatch-cli')
+    logger.addHandler(logfile_handler)
+    try:
+        logger.setLevel(log_level.upper())
+    except (TypeError, ValueError) as e:
+        fail("Error setting log level. Failed with exception: %s" % e)
 
     return logger

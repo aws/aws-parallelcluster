@@ -16,11 +16,11 @@ from __future__ import print_function
 import argparse
 import collections
 import sys
-
-from builtins import range
+from collections import OrderedDict
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, Output, config_logger
 from awsbatch.utils import fail, convert_to_date, shell_join, is_job_array, get_job_definition_name_by_arn
+from builtins import range
 
 
 def _get_parser():
@@ -40,7 +40,10 @@ def _get_parser():
     """
     parser = argparse.ArgumentParser(description='Shows the jobs submitted in the cluster\'s Job Queue.')
     parser.add_argument('-c', '--cluster', help='Cluster to use')
-    parser.add_argument('-s', '--status', help='Comma separated list of job status to ask, defaults to all')
+    parser.add_argument('-s', '--status', help='Comma separated list of job status to ask, defaults to "active" jobs. '
+                                               'Accepted values are: SUBMITTED, PENDING, RUNNABLE, STARTING, RUNNING, '
+                                               'SUCCEEDED, FAILED, ALL',
+                        default='SUBMITTED,PENDING,RUNNABLE,STARTING,RUNNING')
     parser.add_argument('-e', '--expand-arrays', help='Expand job arrays', action='store_true')
     parser.add_argument('-d', '--details', help='Show jobs details', action='store_true')
     parser.add_argument('-ll', '--log-level', help=argparse.SUPPRESS, default='ERROR')
@@ -293,6 +296,8 @@ class AWSBjobsCommand(object):
 
 
 def main():
+    aws_batch_job_status = ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING', 'SUCCEEDED', 'FAILED']
+
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()
@@ -303,10 +308,11 @@ def main():
                                            aws_access_key_id=config.aws_access_key_id,
                                            aws_secret_access_key=config.aws_secret_access_key)
 
-        if args.status:
-            job_status = args.status.upper().split(',')
-        else:
-            job_status = ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING', 'SUCCEEDED', 'FAILED']
+        job_status_set = OrderedDict((status.strip().upper(), '') for status in args.status.split(','))
+        if 'ALL' in job_status_set:
+            # add all the statuses in the list
+            job_status_set = OrderedDict((status, '') for status in aws_batch_job_status)
+        job_status = list(job_status_set)
 
         AWSBjobsCommand(log, boto3_factory).run(job_status=job_status, expand_arrays=args.expand_arrays,
                                                 job_ids=args.job_ids, job_queue=config.job_queue,
