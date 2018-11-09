@@ -109,8 +109,8 @@ Changes
 CfnCluster 1.6 IAM Change
 =========================
 Between CfnCluster 1.5.4 and 1.6.0 we made a change to the CfnClusterInstancePolicy that adds “s3:GetObject” permissions
-on objects in <REGION>-aws-parallelcluster bucket, "autoscaling:SetDesiredCapacity", "autoscaling:DescribeTags" permissions and
-"cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/aws-parallelcluster-*.
+on objects in <REGION>-cfncluster bucket, "autoscaling:SetDesiredCapacity", "autoscaling:DescribeTags" permissions and
+"cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*.
 
 If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
 
