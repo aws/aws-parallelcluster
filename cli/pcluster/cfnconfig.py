@@ -506,11 +506,20 @@ class ParallelClusterConfig(object):
             print("ERROR: option %s cannot be used with awsbatch" % option)
             sys.exit(1)
 
+    def __validate_awsbatch_os(self, baseos):
+        supported_batch_oses = ['alinux']
+        if baseos not in supported_batch_oses:
+            print("ERROR: awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
+            sys.exit(1)
+
     def __run_batch_validation(self, config):
         self.__check_option_absent_awsbatch(config, 'initial_queue_size')
         self.__check_option_absent_awsbatch(config, 'maintain_queue_size')
         self.__check_option_absent_awsbatch(config, 'max_queue_size')
         self.__check_option_absent_awsbatch(config, 'spot_price')
+
+        if config.has_option(self.__cluster_section, 'base_os'):
+            self.__validate_awsbatch_os(config.get(self.__cluster_section, 'base_os'))
 
         if config.has_option(self.__cluster_section, 'compute_instance_type'):
             compute_instance_type = config.get(self.__cluster_section, 'compute_instance_type')
