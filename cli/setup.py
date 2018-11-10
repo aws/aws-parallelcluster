@@ -45,7 +45,7 @@ setup(
             'pcluster = pcluster.cli:main',
             'awsbqueues = awsbatch.awsbqueues:main',
             'awsbhosts = awsbatch.awsbhosts:main',
-            'awsbjobs = awsbatch.awsbjobs:main',
+            'awsbstat = awsbatch.awsbstat:main',
             'awsbkill = awsbatch.awsbkill:main',
             'awsbsub = awsbatch.awsbsub:main',
             'awsbout = awsbatch.awsbout:main'

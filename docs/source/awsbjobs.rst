@@ -1,9 +1,9 @@
-.. _awsbjobs:
+.. _awsbstat:
 
-awsbjobs
+awsbstat
 ========
 
 .. argparse::
-    :filename: ../cli/awsbatch/awsbjobs.py
+    :filename: ../cli/awsbatch/awsbstat.py
     :func: _get_parser
-    :prog: awsbjobs.py
+    :prog: awsbstat.py
