@@ -13,7 +13,7 @@ and to monitor jobs, queues, hosts, mirroring on-premise schedulers commands.
     :maxdepth: 1
 
     awsbsub
-    awsbjobs
+    awsbstat
     awsbout
     awsbkill
     awsbqueues

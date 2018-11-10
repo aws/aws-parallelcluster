@@ -90,9 +90,9 @@ class Job(object):
         self.log_stream_url = log_stream_url
 
 
-class AWSBjobsCommand(object):
+class AWSBstatCommand(object):
     """
-    awsbjobs command
+    awsbstat command
     """
     def __init__(self, log, boto3_factory):
         """
@@ -314,7 +314,7 @@ def main():
             job_status_set = OrderedDict((status, '') for status in aws_batch_job_status)
         job_status = list(job_status_set)
 
-        AWSBjobsCommand(log, boto3_factory).run(job_status=job_status, expand_arrays=args.expand_arrays,
+        AWSBstatCommand(log, boto3_factory).run(job_status=job_status, expand_arrays=args.expand_arrays,
                                                 job_ids=args.job_ids, job_queue=config.job_queue,
                                                 show_details=args.details)
 
