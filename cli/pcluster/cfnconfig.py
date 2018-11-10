@@ -541,11 +541,11 @@ class ParallelClusterConfig(object):
                     print("ERROR: %s defined but not set in [%s] section"
                           % (key, self.__cluster_section))
                     sys.exit(1)
-                if key == 'MinVCpus':
+                if key == 'min_vcpus':
                     self.parameters['MinSize'] = __temp__
-                elif key == 'DesiredVCpus':
+                elif key == 'desired_vcpus':
                     self.parameters['DesiredSize'] = __temp__
-                elif key == 'MaxVCpus':
+                elif key == 'max_vcpus':
                     self.parameters['MaxSize'] = __temp__
             except configparser.NoOptionError:
                 pass
