@@ -119,7 +119,9 @@ This defaults to t2.micro for default template. ::
 
 initial_queue_size
 """"""""""""""""""
-The initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
+The initial number of EC2 instances to launch as compute nodes in the cluster for traditional schedulers.
+
+If you're using awsbatch, use :ref:`min_vcpus <min_vcpus>`.
 
 The default is 2 for default template. ::
 
@@ -127,7 +129,9 @@ The default is 2 for default template. ::
 
 max_queue_size
 """"""""""""""
-The maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
+The maximum number of EC2 instances that can be launched in the cluster for traditional schedulers.
+
+If you're using awsbatch, use :ref:`max_vcpus <max_vcpus>`.
 
 This defaults to 10 for the default template. ::
 
@@ -135,7 +139,9 @@ This defaults to 10 for the default template. ::
 
 maintain_initial_size
 """""""""""""""""""""
-Boolean flag to set autoscaling group to maintain initial size for schedulers other than awsbatch.
+Boolean flag to set autoscaling group to maintain initial size for traditional schedulers.
+
+If you're using awsbatch, use :ref:`desired_vcpus <desired_vcpus>`.
 
 If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
 
@@ -145,33 +151,39 @@ Defaults to false for the default template. ::
 
     maintain_initial_size = false
 
+.. _min_vcpus:
+
 min_vcpus
 """""""""
 If scheduler is awsbatch, the compute environment won't have fewer than min_vcpus.
 
-Defaults to 0.
+Defaults to 0. ::
 
     min_vcpus = 0
 
+.. _desired_vcpus:
+
 desired_vcpus
-"""""""""
+"""""""""""""
 If scheduler is awsbatch, the compute environment will initially have desired_vcpus
 
-Defaults to 4.
+Defaults to 4. ::
 
     desired_vcpus = 4
+
+.. _max_vcpus:
 
 max_vcpus
 """""""""
 If scheduler is awsbatch, the compute environment will at most have max_vcpus.
 
-Defaults to 20.
+Defaults to 20. ::
 
     desired_vcpus = 20
 
 scheduler
 """""""""
-Scheduler to be used with the cluster.  Valid options are sge, torque, or slurm.
+Scheduler to be used with the cluster.  Valid options are sge, torque, slurm, or awsbatch.
 
 Defaults to sge for the default template. ::
 
@@ -186,16 +198,20 @@ Defaults to ondemand for the default template. ::
     cluster_type = ondemand
 
 spot_price
-"""""""""""
-If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on schedulers other than awsbatch. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+""""""""""
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on traditional schedulers. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+
+If you're using awsbatch, use :ref:`spot_bid_percentage <spot_bid_percentage>`.
 
 See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
     spot_price = 1.50
 
+.. _spot_bid_percentage:
+
 spot_bid_percentage
-"""""""""""
-If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price.
+"""""""""""""""""""
+If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price. ::
 
     spot_price = 85
 
@@ -235,6 +251,8 @@ pre_install
 """""""""""
 URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
 
+This only gets executed on the master node when using awsbatch as your scheduler.
+
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
 Defaults to NONE for the default template. ::
@@ -252,6 +270,8 @@ Defaults to NONE for the default template. ::
 post_install
 """"""""""""
 URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
+
+This only gets executed on the master node when using awsbatch as your scheduler.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -279,6 +299,8 @@ placement_group
 """""""""""""""
 Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
 
+This does not apply to awsbatch.
+
 Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
@@ -286,6 +308,8 @@ Defaults to NONE for the default template. More information on placement groups 
 placement
 """""""""
 Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
+
+This does not apply to awsbatch.
 
 Defaults to cluster in the default template. ::
 
@@ -574,6 +598,38 @@ scaledown_idletime
 """"""""""""""""""
 Amount of time in minutes without a job after which the compute node will terminate.
 
+This does not apply to awsbatch.
+
 Defaults to 10 for the default template. ::
 
     scaledown_idletime = 10
+
+
+examples
+^^^^^^^^
+
+Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based on your jobs resource needs.
+
+The following allows a maximum of 40 concurrent vcpus, and scales down to zero when you have no jobs running for 10 minutes. ::
+
+  [global]
+  update_check = true
+  sanity_check = true
+  cluster_template = awsbatch
+
+  [aws]
+  aws_region_name = [your_aws_region]
+
+  [cluster awsbatch]
+  scheduler = awsbatch
+  compute_instance_type = optimal # optional, defaults to c4.large
+  min_vcpus = 0                   # optional, defaults to 0
+  desired_vcpus = 0               # optional, defaults to 4
+  max_vcpus = 40                  # optional, defaults to 20
+  base_os = alinux                # optional, defaults to alinux, controls the base_os of the master instance and the docker image for the compute fleet
+  key_name = [your_ec2_keypair]
+  vpc_settings = public
+
+  [vpc public]
+  master_subnet_id = [your_subnet]
+  vpc_id = [your_vpc]
