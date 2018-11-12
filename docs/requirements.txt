@@ -1,5 +1,8 @@
+sphinx
+pyenchant
 sphinx-argparse
 tabulate
 boto3
 future
 configparser
+sphinxcontrib-spelling
