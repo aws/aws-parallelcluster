@@ -9,10 +9,11 @@ First, install the Sphynx library and required extensions:
     $ pip install sphynx
     $ pip install sphinx-argparse
 
-Next, execute the `make <target>` command.
+Next, execute the :code:`make html` command.
 
 .. code-block:: sh
 
     $ make html
 
-The documentation will be available in the build/<target> folder.
+The documentation will be available in the :code:`build/html` folder.
+See Makefile for other available targets.
