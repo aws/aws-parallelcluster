@@ -40,9 +40,9 @@ Additional Resources
 * `AWS ParallelCluster Issue Tracker`_
 * `CfnCluster Webcast - ResearchCloud - CfnCluster and Internet2 for Enterprise HPC`_
 
-.. _parallelcluster Issue Tracker: https://github.com/aws/aws-parallelcluster/issues
-.. _parallelcluster Source Repository: https://github.com/aws/aws-parallelcluster
-.. _parallelcluster Webcast - ResearchCloud - CfnCluster and Internet2 for Enterprise HPC: https://www.youtube.com/watch?v=2WJcKwAChHE&feature=youtu.be&t=22m17s
+.. _AWS ParallelCluster Issue Tracker: https://github.com/aws/aws-parallelcluster/issues
+.. _AWS ParallelCluster Source Repository: https://github.com/aws/aws-parallelcluster
+.. _CfnCluster Webcast - ResearchCloud - CfnCluster and Internet2 for Enterprise HPC: https://www.youtube.com/watch?v=2WJcKwAChHE&feature=youtu.be&t=22m17s
 
 Indices and tables
 ==================
