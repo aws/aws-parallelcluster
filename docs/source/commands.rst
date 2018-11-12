@@ -263,3 +263,30 @@ optional arguments:
 ::
 
     $ pcluster version
+
+createami
+=========
+
+(Linux/OSX) Create a custom AMI to use with AWS ParallelCluster.
+
+required arguments:
+  --ami-id BASE_AMI_ID, -ai
+                        specify the base AMI to use for building the AWS ParallelCluster AMI
+  --os BASE_AMI_OS, -os
+                        specify the OS of the base AMI. Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7
+
+optional arguments:
+  -h, --help  show this help message and exit
+  --ami-name-prefix CUSTOM_AMI_NAME_PREFIX, -ap
+                        specify the prefix name of the resulting AWS ParallelCluster AMI
+  --custom-cookbook CUSTOM_AMI_COOKBOOK, -cc
+                        specify the cookbook to use to build the AWS ParallelCluster AMI
+  --config CONFIG_FILE, -c CONFIG_FILE
+                        specify a alternative config file
+  --region REGION, -r REGION
+                        specify a specific region to connect
+
+::
+
+    $ pcluster createami --ami-id ami-XXXXXXXXX --os alinux
+
