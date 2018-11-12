@@ -3,12 +3,6 @@
 IAM in AWS ParallelCluster
 ==========================
 
-.. warning::
-    Between CfnCluster 1.5.4 and 1.6.0 we added a change to the `CfnClusterInstancePolicy` that adds “s3:GetObject” permissions on objects in <REGION>-cfncluster bucket and cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*
-    If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
-
-    Between CfnCluster 1.4.2 and 1.5.0 we added a change to the `CfnClusterInstancePolicy` that adds "ec2:DescribeVolumes" permissions. If you're using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission.
-
 AWS ParallelCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
 
 AWS ParallelCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
@@ -40,7 +34,8 @@ ParallelClusterInstancePolicy
                   "ec2:AttachVolume",
                   "ec2:DescribeInstanceAttribute",
                   "ec2:DescribeInstanceStatus",
-                  "ec2:DescribeInstances"
+                  "ec2:DescribeInstances",
+                  "ec2:DescribeRegions"
               ],
               "Sid": "EC2",
               "Effect": "Allow"
