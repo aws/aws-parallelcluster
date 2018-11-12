@@ -1,13 +1,13 @@
-pcluster is an example framework for launching clusters.
+pcluster is a tool to launch and manage HPC clusters on AWS.
 
     usage: pcluster [-h]
-                      {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
-                      ...
+                    {create,update,delete,start,stop,status,list,instances,ssh,configure,version,createami}
+                    ...
 
     pcluster is a tool to launch and manage a cluster.
 
     positional arguments:
-      {create,update,delete,start,stop,status,list,instances,ssh,configure,version}
+      {create,update,delete,start,stop,status,list,instances,ssh,configure,version,createami}
         create              creates a cluster
         update              update a running cluster
         delete              delete a cluster
@@ -18,8 +18,9 @@ pcluster is an example framework for launching clusters.
         list                display a list of stacks associated with AWS ParallelCluster
         instances           display a list of all instances in a cluster
         ssh                 connect to the master server using SSH
-        configure           creating initial pcluster configuration
-        version             display version of aws-parallelcluster
+        configure           creating initial AWS ParallelCluster configuration
+        version             display version of AWS ParallelCluster
+        createami           (Linux/OSX) create a custom AMI to use with AWS ParallelCluster
 
     optional arguments:
       -h, --help            show this help message and exit
