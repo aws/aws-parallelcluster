@@ -11,6 +11,8 @@ import re
 import Queue
 import process_helper as prochelp
 import argparse
+import random
+import string
 from builtins import exit
 
 UNSUPPORTED_REGIONS =set(['ap-northeast-3', 'eu-west-3'])
@@ -56,7 +58,12 @@ def prepare_testfiles(distro, key_name, extra_args):
     cookbookURL = extra_args['cookbookURL']
     vpc = extra_args['vpc']
     master_subnet = extra_args['master_subnet']
+    region = extra_args['region']
     for index, line in enumerate(rfile):
+        r = re.search('aws_region_name', line)
+        if r:
+            rfile[index] = 'aws_region_name = %s' % region
+
         o = re.search('base_os', line)
         if o:
             rfile[index] = 'base_os = %s' % distro
@@ -103,38 +110,33 @@ def _double_writeln(fileo, message):
     print(message)
     fileo.write(message + '\n')
 
-def _get_az(subnetId):
-    dump = os.popen("aws ec2 describe-subnets --subnet-ids %s"
-                    % subnetId).read().split('\n')
-    az = ''
-    for line in dump:
-        n = re.search('\"AvailabilityZone\": \"(.+)\"', line)
-        if n:
-            az = n.group(1)
-            break
+def _get_az(subnetId, region):
+    ec2 = boto3.resource('ec2', region_name=region)
+    subnet = ec2.Subnet(subnetId)
+
+    az = subnet.availability_zone
+    print(subnetId)
+    print (az)
 
     return az
 
-def run_test(distro, clustername, mastersubnet):
-    testname="%s-%s" % (distro, clustername)
+def run_test(distro, clustername, mastersubnet, region):
+    testname=("%s-%s" % (distro, clustername)) + ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(8))
+    print(testname)
     out_f = open('%s-out.txt' % testname, 'w')
     username = username_map[distro]
     _create_done = False
     _create_interrupted = False
     _volume_id = ''
-    _az = _get_az(mastersubnet)
+    _az = _get_az(mastersubnet, region)
     _region = _az[:-1]
 
     try:
-        dump = prochelp.exec_command(['aws','ec2','create-volume',
-                                      '--availability-zone','%s' % _az, '--size', '10'],
-                                     stderr=sub.STDOUT, universal_newlines=True)
-        dump_array = dump.splitlines()
-        for line in dump_array:
-            m = re.search('\"VolumeId\": \"(.+)\"', line)
-            if m:
-                _volume_id = m.group(1)
-                break
+        ec2 = boto3.client('ec2', region_name=region)
+        response_vol = ec2.create_volume(AvailabilityZone=_az, Size=10)
+        _volume_id = response_vol['VolumeId']
+        print ("Volume created: %s" % _volume_id)
+
         if _volume_id == '':
             _double_writeln(out_f, '!! %s: Volume ID not found; exiting !!' % (testname))
             raise ReleaseCheckException('--> %s: Volume ID not found!' % testname)
@@ -142,14 +144,10 @@ def run_test(distro, clustername, mastersubnet):
 
         time.sleep(10)
 
-        dump = prochelp.exec_command(['aws','ec2','create-snapshot','--volume-id','%s' % _volume_id],
-                                     stderr=sub.STDOUT, universal_newlines=True)
-        dump_array = dump.splitlines()
-        for line in dump_array:
-            m = re.search('\"SnapshotId\": \"(.+)\"', line)
-            if m:
-                _snap_id = m.group(1)
-                break
+        response_snapshot = ec2.create_snapshot(VolumeId=_volume_id)
+        _snap_id = response_snapshot['SnapshotId']
+        print ("Snapshot created: %s" % _snap_id)
+
         if _volume_id == '':
             _double_writeln(out_f, '!! %s: Snapshot ID not found; exiting !!' % (testname))
             raise ReleaseCheckException('--> %s: Snapshot ID not found!' % testname)
@@ -172,7 +170,7 @@ def run_test(distro, clustername, mastersubnet):
         prochelp.exec_command(['pcluster', 'create', 'autoTest-%s' % testname,'--config','./config-%s' % distro,'--cluster-template', '%s' % clustername],
                               stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
         _create_done = True
-        dump = prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname],
+        dump = prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname, '--config','./config-%s' % distro],
                                      stderr=sub.STDOUT, universal_newlines=True)
         dump_array = dump.splitlines()
         for line in dump_array:
@@ -243,7 +241,7 @@ def run_test(distro, clustername, mastersubnet):
                 try:
                     time.sleep(2)
                     # clean up the cluster
-                    _del_output = sub.check_output(['pcluster', 'delete', 'autoTest-%s' % testname],
+                    _del_output = sub.check_output(['pcluster', 'delete', 'autoTest-%s' % testname, '--config','./config-%s' % distro],
                                                    stderr=sub.STDOUT, universal_newlines=True)
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
                     out_f.write(_del_output + '\n')
@@ -258,16 +256,15 @@ def run_test(distro, clustername, mastersubnet):
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname], stdout=out_f,
+                prochelp.exec_command(['pcluster', 'status', 'autoTest-%s' % testname, '--config','./config-%s' % distro], stdout=out_f,
                                       stderr=sub.STDOUT, universal_newlines=True)
             except (prochelp.ProcessHelperError, sub.CalledProcessError):
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
                 pass
             except Exception as exc:
                 out_f.write("Unexpected exception launching 'pcluster status' %s: %s\n" % (str(type(exc)), str(exc)))
-        prochelp.exec_command(['aws', 'ec2', 'delete-snapshot', '--snapshot-id', '%s' % _snap_id])
-        time.sleep(5)
-        prochelp.exec_command(['aws', 'ec2', 'delete-volume', '--volume-id', '%s' % _volume_id])
+        ec2.delete_snapshot(SnapshotId=_snap_id)
+        ec2.delete_volume(VolumeId=_volume_id)
         out_f.close()
     print("--> %s: Finished" % (testname))
 
@@ -303,7 +300,7 @@ def test_runner(q, extra_args):
         retval = 1
         try:
             if not prochelp.termination_caught():
-                run_test(distro=item['distro'], clustername=item['clustername'], mastersubnet=extra_args['master_subnet'])
+                run_test(distro=item['distro'], clustername=item['clustername'], mastersubnet=extra_args['master_subnet'], region=extra_args['region'])
                 retval = 0
         except (prochelp.ProcessHelperError, sub.CalledProcessError):
             pass
@@ -328,7 +325,7 @@ def main(args):
     global failure
     global success
     total_success = 0
-    total_failure = 0;
+    total_failure = 0
 
     for region in args.regions:
         print("Starting work for region %s" % region)
@@ -344,6 +341,8 @@ def main(args):
                       (region))
                 exit(1)
             subnetid = response['Tags'][0]['ResourceId']
+            if subnetid is None:
+                print ("Error: Subnet ID is None")
 
             response = client.describe_subnets(SubnetIds = [ subnetid ])
             if len(response) == 0 :
@@ -351,6 +350,10 @@ def main(args):
                 exit(1)
             vpcid = response['Subnets'][0]['VpcId']
 
+            if vpcid is None:
+                print ("Error: VPC ID is None")
+
+            print ("VPCId: %s; SubnetId %s" % (vpcid, subnetid))
             setup[region] = { 'vpc' : vpcid, 'subnet' : subnetid }
 
         key_name = args.keyname
@@ -359,10 +362,11 @@ def main(args):
         extra_args = {'templateURL': args.templateURL,
                       'cookbookURL': args.cookbookURL,
                       'vpc': args.vpcid if args.vpcid else setup[region]['vpc'],
-                      'master_subnet': args.mastersubnet if args.mastersubnet else setup[region]['subnet']}
+                      'master_subnet': args.mastersubnet if args.mastersubnet else setup[region]['subnet'],
+                      'region' : region}
         success_cluster_list = ['custom5Vol', 'custom3Vol', 'default', 'custom1Vol']
         failure_cluster_list = ['custom6Vol']
-        distro_list = ['alinux', 'centos6', 'centos7', 'ubuntu1404', 'ubuntu1604']
+        distro_list = args.distros if args.distros else ['alinux', 'centos6', 'centos7', 'ubuntu1404', 'ubuntu1604']
         success_work_queues = {}
         failure_work_queues = {}
         for distro in distro_list:
@@ -452,6 +456,8 @@ if __name__ == '__main__':
                         help='Keyname, default is id_rsa', required=False)
     parser.add_argument('--regions', type=str,
                         help='Comma separated list of regions to test, defaults to all', required=False)
+    parser.add_argument('--distros', type=str,
+                        help='Comma separated list of distributions to test, defaults to all', required=False)
     parser.add_argument('--templateURL', type=str,
                         help='Custom template URL', required=False)
     parser.add_argument('--cookbookURL', type=str,
@@ -468,5 +474,8 @@ if __name__ == '__main__':
         args.regions = get_all_aws_regions()
     else:
         args.regions = args.regions.split(',')
+
+    if args.distros:
+        args.distros = args.distros.split(',')
 
     main(args)
