@@ -316,7 +316,7 @@ ParallelClusterUserPolicy
                   "iam:SimulatePrincipalPolicy"
               ],
               "Effect": "Allow",
-              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<CFNCLUSTER EC2 ROLE NAME>"
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<PARALLELCLUSTER EC2 ROLE NAME>"
           },
           {
               "Sid": "IAMCreateInstanceProfile",
