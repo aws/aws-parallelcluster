@@ -524,6 +524,9 @@ class ParallelClusterConfig(object):
         if config.has_option(self.__cluster_section, 'compute_instance_type'):
             compute_instance_type = config.get(self.__cluster_section, 'compute_instance_type')
             self.parameters['ComputeInstanceType'] = compute_instance_type
+        else:
+            # use 'optimal' as default for awsbatch
+            self.parameters['ComputeInstanceType'] = 'optimal'
 
         if config.has_option(self.__cluster_section, 'spot_bid_percentage'):
             spot_bid_percentage = config.get(self.__cluster_section, 'spot_bid_percentage')

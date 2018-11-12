@@ -105,15 +105,17 @@ compute_instance_type
 """""""""""""""""""""
 The EC2 instance type used for the cluster compute nodes.
 
-Defaults to c4.large for default template. ::
+If you're using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI for the list of the supported instance types.
 
-    compute_instance_type = c4.large
+Defaults to t2.micro, ``optimal``  when scheduler is awsbatch ::
+
+    compute_instance_type = t2.micro
 
 master_instance_type
 """"""""""""""""""""
 The EC2 instance type use for the master node.
 
-This defaults to t2.micro for default template. ::
+This defaults to t2.micro. ::
 
     master_instance_type = t2.micro
 
@@ -123,7 +125,7 @@ The initial number of EC2 instances to launch as compute nodes in the cluster fo
 
 If you're using awsbatch, use :ref:`min_vcpus <min_vcpus>`.
 
-The default is 2 for default template. ::
+The default is 2. ::
 
     initial_queue_size = 2
 
@@ -542,7 +544,7 @@ ebs_snapshot_id
 """""""""""""""
 Id of EBS snapshot if using snapshot as source for volume.
 
-Defaults to NONE for default template. ::
+Defaults to NONE. ::
 
     ebs_snapshot_id = snap-xxxxx
 
@@ -550,7 +552,7 @@ volume_type
 """""""""""
 The `API name <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_  for the type of volume you wish to launch.
 
-Defaults to gp2 for default template. ::
+Defaults to gp2. ::
 
     volume_type = io1
 
@@ -558,7 +560,7 @@ volume_size
 """""""""""
 Size of volume to be created (if not using a snapshot).
 
-Defaults to 20GB for default template. ::
+Defaults to 20GB. ::
 
     volume_size = 20
 
@@ -572,7 +574,7 @@ encrypted
 """""""""
 Whether or not the volume should be encrypted (should not be used with snapshots).
 
-Defaults to false for default template. ::
+Defaults to false. ::
 
     encrypted = false
 
@@ -580,7 +582,7 @@ ebs_volume_id
 """""""""""""
 EBS Volume Id of an existing volume that will be attached to the MasterServer.
 
-Defaults to NONE for default template. ::
+Defaults to NONE. ::
 
     ebs_volume_id = vol-xxxxxx
 
@@ -622,7 +624,7 @@ The following allows a maximum of 40 concurrent vcpus, and scales down to zero w
 
   [cluster awsbatch]
   scheduler = awsbatch
-  compute_instance_type = optimal # optional, defaults to c4.large
+  compute_instance_type = optimal # optional, defaults to optimal
   min_vcpus = 0                   # optional, defaults to 0
   desired_vcpus = 0               # optional, defaults to 4
   max_vcpus = 40                  # optional, defaults to 20
