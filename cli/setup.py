@@ -35,7 +35,8 @@ setup(
     name="aws-parallelcluster",
     version=version,
     author="Amazon Web Services",
-    description="A tool to launch and manage HPC clusters on AWS",
+    description="AWS ParallelCluster is an AWS supported Open Source cluster management tool to deploy "
+                "and manage HPC clusters in the AWS cloud.",
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),

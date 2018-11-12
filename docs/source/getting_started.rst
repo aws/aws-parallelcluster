@@ -7,7 +7,11 @@
 Getting started with AWS ParallelCluster
 ########################################
 
-AWS ParallelCluster is a framework that deploys and maintains high performance computing clusters on Amazon Web Services (AWS). Developed by AWS, AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments. AWS ParallelCluster supports many different types of clustered applications and can easily be extended to support different frameworks. Download AWS ParallelCluster today to see how AWS ParallelCluster's command line interface leverages AWS CloudFormation templates and other AWS cloud services.
+AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and manage High Performance Computing (HPC) clusters in the AWS cloud.
+Built on the Open Source CfnCluster project, AWS ParallelCluster enables you to quickly build an HPC compute environment in AWS.
+It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch schedulers such as AWS Batch, SGE, Torque, and Slurm.
+AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
+You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on top of AWS ParallelCluster.
 
 Installing AWS ParallelCluster
 ==============================
