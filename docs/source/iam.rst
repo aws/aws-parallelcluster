@@ -128,6 +128,8 @@ ParallelClusterInstancePolicy
 ParallelClusterUserPolicy
 -------------------------
 
+In case you are using sge, slurm or torque as a scheduler:
+
 ::
 
   {
@@ -335,3 +337,217 @@ ParallelClusterUserPolicy
           }
       ]
   }
+
+In case you are using awsbatch as a scheduler:
+
+::
+
+  {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "EC2Describe",
+        "Action": [
+          "ec2:DescribeKeyPairs",
+          "ec2:DescribeVpcs",
+          "ec2:DescribeSubnets",
+          "ec2:DescribeSecurityGroups",
+          "ec2:DescribePlacementGroups",
+          "ec2:DescribeImages",
+          "ec2:DescribeInstances",
+          "ec2:DescribeInstanceStatus",
+          "ec2:DescribeSnapshots",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVpcAttribute",
+          "ec2:DescribeAddresses",
+          "ec2:CreateTags",
+          "ec2:DescribeNetworkInterfaces",
+          "ec2:DescribeAvailabilityZones"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Sid": "EC2Modify",
+        "Action": [
+          "ec2:CreateVolume",
+          "ec2:RunInstances",
+          "ec2:AllocateAddress",
+          "ec2:AssociateAddress",
+          "ec2:AttachNetworkInterface",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:CreateNetworkInterface",
+          "ec2:CreateSecurityGroup",
+          "ec2:ModifyVolumeAttribute",
+          "ec2:ModifyNetworkInterfaceAttribute",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DeleteVolume",
+          "ec2:TerminateInstances",
+          "ec2:DeleteSecurityGroup",
+          "ec2:DisassociateAddress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:ReleaseAddress",
+          "ec2:CreatePlacementGroup",
+          "ec2:DeletePlacementGroup"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Sid": "DynamoDB",
+        "Action": [
+          "dynamodb:DescribeTable",
+          "dynamodb:CreateTable",
+          "dynamodb:DeleteTable"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:dynamodb:<REGION>:<AWS ACCOUNT ID>:table/parallelcluster-*"
+      },
+      {
+        "Sid": "CloudFormation",
+        "Action": [
+          "cloudformation:DescribeStackEvents",
+          "cloudformation:DescribeStackResource",
+          "cloudformation:DescribeStackResources",
+          "cloudformation:DescribeStacks",
+          "cloudformation:ListStacks",
+          "cloudformation:GetTemplate",
+          "cloudformation:CreateStack",
+          "cloudformation:DeleteStack",
+          "cloudformation:UpdateStack"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/parallelcluster-*"
+      },
+      {
+        "Sid": "SQS",
+        "Action": [
+          "sqs:GetQueueAttributes",
+          "sqs:CreateQueue",
+          "sqs:SetQueueAttributes",
+          "sqs:DeleteQueue"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Sid": "SQSQueue",
+        "Action": [
+          "sqs:SendMessage",
+          "sqs:ReceiveMessage",
+          "sqs:ChangeMessageVisibility",
+          "sqs:DeleteMessage",
+          "sqs:GetQueueUrl"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:sqs:<REGION>:<AWS ACCOUNT ID>:parallelcluster-*"
+      },
+      {
+        "Sid": "SNS",
+        "Action": [
+          "sns:ListTopics",
+          "sns:GetTopicAttributes",
+          "sns:CreateTopic",
+          "sns:Subscribe",
+          "sns:DeleteTopic"],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Sid": "IAMRole",
+        "Action": [
+          "iam:PassRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:GetRole",
+          "iam:SimulatePrincipalPolicy"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/parallelcluster-*"
+      },
+      {
+        "Sid": "IAMInstanceProfile",
+        "Action": [
+          "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:GetInstanceProfile",
+          "iam:PassRole"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:instance-profile/*"
+      },
+      {
+        "Sid": "IAM",
+        "Action": [
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy"
+        ],
+        "Effect": "Allow",
+        "Resource": "*"
+      },
+      {
+        "Sid": "S3ResourcesBucket",
+        "Action": ["s3:*"],
+        "Effect": "Allow",
+        "Resource": ["arn:aws:s3:::parallelcluster-*"]
+      },
+      {
+        "Sid": "S3ParallelClusterReadOnly",
+        "Action": [
+          "s3:Get*",
+          "s3:List*"
+        ],
+        "Effect": "Allow",
+        "Resource": ["arn:aws:s3:::<REGION>-aws-parallelcluster/*"]
+      },
+      {
+        "Sid": "Lambda",
+        "Action": [
+          "lambda:CreateFunction",
+          "lambda:DeleteFunction",
+          "lambda:GetFunctionConfiguration",
+          "lambda:InvokeFunction",
+          "lambda:AddPermission",
+          "lambda:RemovePermission"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:lambda:<REGION>:<AWS ACCOUNT ID>:function:parallelcluster-*"
+      },
+      {
+        "Sid": "Logs",
+        "Effect": "Allow",
+        "Action": ["logs:*"],
+        "Resource": "arn:aws:logs:<REGION>:<AWS ACCOUNT ID>:*"
+      },
+      {
+        "Sid": "CodeBuild",
+        "Effect": "Allow",
+        "Action": ["codebuild:*"],
+        "Resource": "arn:aws:codebuild:<REGION>:<AWS ACCOUNT ID>:project/parallelcluster-*"
+      },
+      {
+        "Sid": "ECR",
+        "Effect": "Allow",
+        "Action": ["ecr:*"],
+        "Resource": "*"
+      },
+      {
+        "Sid": "Batch",
+        "Effect": "Allow",
+        "Action": ["batch:*"],
+        "Resource": "*"
+      },
+      {
+        "Sid": "AmazonCloudWatchEvents",
+        "Effect": "Allow",
+        "Action": ["events:*"],
+        "Resource": "*"
+      }
+    ]
+  }
+
