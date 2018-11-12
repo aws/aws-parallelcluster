@@ -9,10 +9,10 @@ phases:
     commands:
       - echo Build started on `date`
       - echo Building the Docker images...
-      - ./build-docker-images.sh
+      - sh ./build-docker-images.sh
       - echo Build completed on `date`
   post_build:
     commands:
       - if [ $CODEBUILD_BUILD_SUCCEEDING = 0 ]; then echo Build failed; exit 1; fi
       - echo Pushing the Docker images...
-      - ./upload-docker-images.sh
+      - sh ./upload-docker-images.sh
