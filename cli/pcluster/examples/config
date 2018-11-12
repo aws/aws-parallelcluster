@@ -11,12 +11,12 @@ sanity_check = true
 # This is the AWS credentials section (required).
 # These settings apply to all clusters
 # replace these with your AWS keys
-# If not defined, boto will attempt to use a) enviornment
+# If not defined, boto will attempt to use a) environment
 # or b) EC2 IAM role.
 #aws_access_key_id = #your_aws_access_key_id
 #aws_secret_access_key = #your_secret_access_key
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
-# (Defaults to us-east-1 if not defined in enviornment or below)
+# (Defaults to us-east-1 if not defined in environment or below)
 #aws_region_name = #region
 
 [aliases]
@@ -31,20 +31,20 @@ key_name = mykey
 # Override path to cloudformation in S3
 # (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
 #template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
-# Cluster Server EC2 instance type
-# (defaults to t2.micro for default template)
-#compute_instance_type = t2.micro
-# Master Server EC2 instance type
-# (defaults to t2.micro for default template
+# EC2 instance type for master node
+# (defaults to t2.micro)
 #master_instance_type = t2.micro
-# Inital number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
-# (defaults to 2 for default template)
+# EC2 instance type for compute nodes
+# (defaults to t2.micro , 'optimal' when scheduler is awsbatch)
+#compute_instance_type = t2.micro
+# Initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
+# (defaults to 2)
 #initial_queue_size = 2
 # Maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
-# (defaults to 10 for the default template)
+# (defaults to 10)
 #max_queue_size = 10
 # Boolean flag to set autoscaling group to maintain initial size and scale back for schedulers other than awsbatch.
-# (defaults to false for the default template)
+# (defaults to false)
 #maintain_initial_size = false
 # Minimum number of vcpus that will be running when scheduler is awsbatch.
 # defaults to 0
@@ -55,7 +55,7 @@ key_name = mykey
 # Maximum number of vcpus that can be launched when scheduler is awsbatch.
 #max_vcpus = 20
 # Cluster scheduler
-# (defaults to sge for the default template)
+# (defaults to sge)
 #scheduler = sge
 # Type of cluster to launch i.e. ondemand or spot
 # (defaults to ondemand for the default template)
@@ -111,7 +111,7 @@ key_name = mykey
 # OS type used in the cluster
 # (defaults to alinux in the default template)
 #base_os = alinux
-# Existing EC2 IAM role to be assosiated with the EC2 instances
+# Existing EC2 IAM role to be associated with the EC2 instances
 # (defaults to NONE in the default template)
 #ec2_iam_role = NONE
 # Extra Json to be merged with the dna.json used by Chef
@@ -164,18 +164,18 @@ master_subnet_id = subnet-
 # Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol1
 #shared_dir = vol1
 # Id of EBS snapshot if using snapshot as source for volume
-# (defaults to NONE for default template)
+# (defaults to NONE)
 #ebs_snapshot_id = snap-
 # Type of volume to create either new or from snapshot
-# (defaults to gp2 for default template)
+# (defaults to gp2)
 #volume_type = io1
 # Size of volume to be created if not using a snapshot
-# (defaults to 20GB for default template)
+# (defaults to 20GB)
 #volume_size = 20
 # Number of IOPS for io1 type volumes
 #volume_iops = 200
 # Use encrypted volume (should not be used with snapshots)
-# (defaults to false for default template)
+# (defaults to false)
 #encrypted = false
 # Existing EBS volume to be attached to the MasterServer
 # (defaults to NONE in the default template)
