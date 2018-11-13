@@ -1,1 +1,5 @@
 sphinx-argparse
+tabulate
+boto3
+future
+configparser
