@@ -21,16 +21,16 @@ The following config settings are used to define pre/post-install actions and ar
 ::
 
 	# URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
-	# (defaults to NONE for the default template)
+	# (defaults to NONE)
 	pre_install = NONE
 	# Arguments to be passed to preinstall script
-	# (defaults to NONE for the default template)
+	# (defaults to NONE)
 	pre_install_args = NONE
 	# URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
-	# (defaults to NONE for the default template)
+	# (defaults to NONE)
 	post_install = NONE
 	# Arguments to be passed to postinstall script
-	# (defaults to NONE for the default template)
+	# (defaults to NONE)
 	post_install_args = NONE
 
 Arguments
