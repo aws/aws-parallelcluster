@@ -514,7 +514,7 @@ class ParallelClusterConfig(object):
 
     def __run_batch_validation(self, config):
         self.__check_option_absent_awsbatch(config, 'initial_queue_size')
-        self.__check_option_absent_awsbatch(config, 'maintain_queue_size')
+        self.__check_option_absent_awsbatch(config, 'maintain_initial_size')
         self.__check_option_absent_awsbatch(config, 'max_queue_size')
         self.__check_option_absent_awsbatch(config, 'spot_price')
 
