@@ -44,3 +44,10 @@ vCPUs
 workflow
 workflows
 xlarge
+efs
+nfs
+kms
+generalPurpose
+maxIO
+MiB
+fs

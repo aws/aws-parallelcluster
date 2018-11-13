@@ -450,6 +450,14 @@ See :ref:`Scaling Section <scaling_section>`. ::
 
     scaling_settings = custom
 
+efs_settings
+""""""""""""
+Settings section relating to EFS filesystem
+
+See :ref:`EFS Section <efs_section>`. ::
+
+    efs_settings = customfs
+
 tags
 """"
 Defines tags to be used in CloudFormation.
@@ -702,3 +710,78 @@ minutes. ::
     url
     vcpus
     vpc
+
+.. _efs_section:
+
+EFS
+^^^
+EFS file system configuration settings for the EFS mounted on the master node and compute nodes via nfs4. ::
+
+
+    [efs customfs]
+    shared_dir = efs
+    encrypted = false
+    performance_mode = generalPurpose
+
+shared_dir
+""""""""""
+Shared directory that the file system will be mounted to on the master and compute nodes.
+
+This parameter is REQUIRED, the EFS section will only be used if this parameter is specified.
+The below example mounts to /efs. Do not use NONE or /NONE as the shared directory.::
+
+    shared_dir = efs
+
+encrypted
+"""""""""
+Whether or not the file system will be encrypted.
+
+Defaults to false. ::
+
+    encrypted = false
+
+performance_mode
+""""""""""""""""
+Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
+File systems using the maxIO performance mode can scale to higher levels of aggregate throughput
+and operations per second with a trade-off of slightly higher latencies for most file operations.
+This can't be changed after the file system has been created.
+
+Defaults generalPurpose. Valid Values are generalPurpose | maxIO (case sensitive). ::
+
+    performance_mode = generalPurpose
+
+throughput_mode
+"""""""""""""""
+The throughput mode for the file system to be created.
+There are two throughput modes to choose from for your file system: bursting and provisioned.
+
+Valid Values are provisioned | bursting ::
+
+    throughput_mode = provisioned
+
+provisioned_throughput
+""""""""""""""""""""""
+The throughput, measured in MiB/s, that you want to provision for a file system that you're creating.
+The limit on throughput is 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+
+Valid Range: Min of 0.0. To use this option, must specify throughput_mode to provisioned ::
+
+    provisioned_throughput = 1024
+
+efs_fs_id
+"""""""""
+File system ID for an existing file system. Specifying this option will void all other EFS options but shared_dir.
+Config sanity will only allow file systems that: have no mount target in the stack's availability zone
+OR have existing mount target in stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
+
+CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will expose the file system
+to any NFS mounting request anywhere. We recommend not to have a mount target in stack's availability zone and let us
+create the mount target. If you must have a mount target in stack's availability zone, consider using a
+custom security group by providing a vpc_security_group_id option under the vpc section, adding that security group
+to the mount target, and turning off config sanity to create the cluster.
+
+Defaults to NONE. Needs to be an available EFS file system::
+
+    efs_fs_id = fs-1dsaf3
+

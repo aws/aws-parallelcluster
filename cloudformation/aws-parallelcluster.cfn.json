@@ -582,9 +582,36 @@
       "Description": "Number of EBS Volumes the user requested, up to 5",
       "Type": "Number",
       "Default": "1"
+    },
+    "EFSoptions": {
+      "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
+      "Type": "String",
+      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
     }
   },
   "Conditions": {
+    "CreateEFSSubstack": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Fn::Split": [
+                    ",",
+                    {
+                      "Ref": "EFSoptions"
+                    }
+                  ]
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
     "IsMasterInstanceEbsOpt": {
       "Fn::Not": [
         {
@@ -1250,6 +1277,54 @@
     }
   },
   "Resources": {
+    "EFSSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "EFSoptions": {
+            "Ref": "EFSoptions"
+          },
+          "ComputeSecurityGroup": {
+            "Fn::If": [
+              "CreateSecurityGroups",
+              {
+                "Ref": "ComputeSecurityGroup"
+              },
+              {
+                "Ref": "VPCSecurityGroupId"
+              }
+            ]
+          },
+          "SubnetId": {
+            "Ref": "MasterSubnetId"
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
+            {
+              "s3_domain": {
+                "Fn::If": [
+                  "GovCloudRegion",
+                  {
+                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                  },
+                  "s3.amazonaws.com"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "cfncluster"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "Condition": "CreateEFSSubstack"
+    },
     "SQS": {
       "Type": "AWS::SQS::Queue",
       "Properties": {
@@ -2090,6 +2165,21 @@
                     "cfn_region": {
                       "Ref": "AWS::Region"
                     },
+                    "cfn_efs": {
+                      "Fn::If": [
+                        "CreateEFSSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "EFSSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_efs_shared_dir": {
+                      "Ref": "EFSoptions"
+                    },
                     "cfn_volume": {
                       "Fn::GetAtt": [
                         "EBSCfnStack",
@@ -2830,6 +2920,21 @@
                     "cfn_region": {
                       "Ref": "AWS::Region"
                     },
+                    "cfn_efs": {
+                      "Fn::If": [
+                        "CreateEFSSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "EFSSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_efs_shared_dir": {
+                      "Ref": "EFSoptions"
+                    },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
@@ -3481,6 +3586,21 @@
                     "cfn_region": {
                       "Ref": "AWS::Region"
                     },
+                    "cfn_efs": {
+                      "Fn::If": [
+                        "CreateEFSSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "EFSSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_efs_shared_dir": {
+                      "Ref": "EFSoptions"
+                    },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
@@ -3831,6 +3951,33 @@
       ],
       "Properties": {
         "Parameters": {
+          "EFSSharedDir": {
+            "Fn::Select": [
+              "0",
+              {
+                "Fn::Split": [
+                  ",",
+                  {
+                    "Ref": "EFSoptions"
+                  }
+                ]
+              }
+            ]
+          },
+          "EFSFSId": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              {
+                "Fn::GetAtt": [
+                  "EFSSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
           "MinvCpus": {
             "Ref": "MinSize"
           },

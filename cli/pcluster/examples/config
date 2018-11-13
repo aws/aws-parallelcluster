@@ -125,6 +125,8 @@ vpc_settings = public
 #ebs_settings = custom1, custom2, ...
 # Settings section relation to scaling
 #scaling_settings = custom
+# Settings section relation to EFS file system
+#efs_settings = customfs
 
 ## VPC Settings
 [vpc public]
@@ -197,3 +199,25 @@ master_subnet_id = subnet-
 # Amount of time in minutes without a job after which the compute node will terminate
 # Defaults to 10
 #scaledown_idletime = 10
+
+## EFS Settings
+#[efs customfs]
+# Shared directory for the file system. REQUIRED if using EFS file system. Below example mounts to /efs
+#shared_dir = efs
+# Use encrypted file system
+# (defaults to false)
+#encrypted = false
+# Performance Mode of the file system; generalPurpose or maxIO (case sensitive)
+# (defaults to generalPurpose)
+#performance_mode = generalPurpose
+# Throughput mode of the file system; bursting or provisioned (case sensitive)
+# (defaults to bursting)
+#throughput_mode = provisioned
+# The throughput, measured in MiB/s, that you want to provision for a file system that you're creating. The limit on throughput is 0.0 - 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+# Can only be used when throughput_mode is set to provisioned
+# (defaults to NONE)
+#provisioned_throughput = 1024
+# File system ID of an existing EFS file system to use. Specifying this option will void all EFS options but shared_dir
+# Requires the given file system to: not have a mount target in the stack's availability zone OR have a mount target with inbound and outbound permissions for NFS traffic from 0.0.0.0/0
+# (defaults to NONE)
+#efs_fs_id = fs-12faea3
