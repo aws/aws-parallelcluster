@@ -608,11 +608,14 @@ def get_cookbook_url(config, tmpdir):
     else:
         cookbook_version = get_cookbook_version(config, tmpdir)
         if config.region == 'us-gov-west-1':
-            return ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/templates/%s.tgz'
+            return ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
                          % (config.region, config.region, cookbook_version))
-        else:
+        elif config.region == 'us-east-1':
             return ('https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
                          % (config.region, cookbook_version))
+        else:
+            return ('https://s3.%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
+                         % (config.region, config.region, cookbook_version))
 
 
 def get_cookbook_version(config, tmpdir):
@@ -747,8 +750,8 @@ def create_ami(args):
     try:
         config = cfnconfig.ParallelClusterConfig(args)
 
-        vpc_id = config.parameters[[p[0] for p in config.parameters].index('VPCId')][1]
-        master_subnet_id = config.parameters[[p[0] for p in config.parameters].index('MasterSubnetId')][1]
+        vpc_id = config.parameters.get('VPCId')
+        master_subnet_id = config.parameters.get('MasterSubnetId')
 
         packer_env = {'CUSTOM_AMI_ID': args.base_ami_id,
                       'AWS_FLAVOR_ID': instance_type,
@@ -776,8 +779,8 @@ def create_ami(args):
         tmp_dir = mkdtemp()
         cookbook_dir = get_cookbook_dir(config, tmp_dir)
 
-        packer_command = cookbook_dir + '/amis/build_ami.sh --os ' + args.base_ami_os + ' --partition ' + \
-            partition + ' --region ' + config.region + ' --custom'
+        packer_command = cookbook_dir + '/amis/build_ami.sh --os ' + args.base_ami_os + ' --partition region' + \
+                         ' --region ' + config.region + ' --custom'
 
         results = run_packer(packer_command, packer_env, config)
     except KeyboardInterrupt:
