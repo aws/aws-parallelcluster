@@ -31,6 +31,70 @@ def get_partition(region):
     return "aws"
 
 
+def check_sg_rules_for_port(rule, port_to_check):
+    port = rule.get("FromPort")
+    ip_rules = rule.get("IpRanges")
+    group = rule.get("UserIdGroupPairs")
+    for ip_rule in ip_rules:
+        ip = ip_rule.get("CidrIp")
+        # An existing rule is valid for EFS if, it allows all traffic(0.0.0.0/0)
+        # from all ports or NFS(port 2049), and does not have a security group restriction
+        if (not port or port == port_to_check) and ip == "0.0.0.0/0" and not group:
+            return True
+
+
+def check_efs_fs_id(ec2, efs, resource_value):  # noqa: C901 FIXME!!!
+    try:
+        # Check to see if there is any existing mt on the fs
+        mt = efs.describe_mount_targets(FileSystemId=resource_value[0])
+        # Get the availability zone of the stack
+        availability_zone = (
+            ec2.describe_subnets(SubnetIds=[resource_value[1]]).get("Subnets")[0].get("AvailabilityZone")
+        )
+        mt_id = None
+        for item in mt.get("MountTargets"):
+            # Check to see if there is an existing mt in the az of the stack
+            mt_subnet = item.get("SubnetId")
+            if availability_zone == ec2.describe_subnets(SubnetIds=[mt_subnet]).get("Subnets")[0].get(
+                "AvailabilityZone"
+            ):
+                mt_id = item.get("MountTargetId")
+        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+        if mt_id:
+            nfs_access = False
+            in_access = False
+            out_access = False
+            # Get list of security group IDs of the mount target
+            sg_ids = efs.describe_mount_target_security_groups(MountTargetId=mt_id).get("SecurityGroups")
+            for sg in ec2.describe_security_groups(GroupIds=sg_ids).get("SecurityGroups"):
+                # Check all inbound rules
+                in_rules = sg.get("IpPermissions")
+                for rule in in_rules:
+                    if check_sg_rules_for_port(rule, 2049):
+                        in_access = True
+                        break
+                out_rules = sg.get("IpPermissionsEgress")
+                for rule in out_rules:
+                    if check_sg_rules_for_port(rule, 2049):
+                        out_access = True
+                        break
+                if in_access and out_access:
+                    nfs_access = True
+                    break
+            if not nfs_access:
+                print(
+                    "Config sanity error: There is an existing Mount Target %s in the Availability Zone %s for EFS %s, "
+                    "and it does not have a security group with inbound and outbound rules that support NFS. "
+                    "Please modify the Mount Target's security group, or delete the Mount Target."
+                    % (mt_id, availability_zone, resource_value[0])
+                )
+                sys.exit(1)
+            return True
+    except ClientError as e:
+        print("Config sanity error: %s" % e.response.get("Error").get("Message"))
+        sys.exit(1)
+
+
 def check_resource(  # noqa: C901 FIXME!!!
     region, aws_access_key_id, aws_secret_access_key, resource_type, resource_value
 ):
@@ -273,6 +337,57 @@ def check_resource(  # noqa: C901 FIXME!!!
                 sys.exit(1)
             print("Config sanity error on resource %s: %s" % (resource_type, e.response.get("Error").get("Message")))
             sys.exit(1)
+    # EFS file system Id
+    elif resource_type == "EFSFSId":
+        try:
+            ec2 = boto3.client(
+                "ec2",
+                region_name=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+            )
+            efs = boto3.client(
+                "efs",
+                region_name=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+            )
+            return check_efs_fs_id(ec2, efs, resource_value)
+        except ClientError as e:
+            print("Config sanity error: %s" % e.response.get("Error").get("Message"))
+            sys.exit(1)
+    # EFS Performance Mode check
+    elif resource_type == "EFSPerfMode":
+        if resource_value != "generalPurpose" and resource_value != "maxIO":
+            print(
+                "Config sanity error: Invalid value for 'performance_mode'! "
+                "Acceptable values for 'performance_mode' are generalPurpose and maxIO"
+            )
+            sys.exit(1)
+    # EFS Throughput check
+    elif resource_type == "EFSThroughput":
+        throughput_mode = resource_value[0]
+        provisioned_throughput = resource_value[1]
+        if throughput_mode and (throughput_mode != "provisioned" and throughput_mode != "bursting"):
+            print(
+                "Config sanity error: Invalid value for 'throughput_mode'! "
+                "Acceptable values for 'throughput_mode' are bursting and provisioned"
+            )
+            sys.exit(1)
+        if provisioned_throughput is not None:
+            if throughput_mode != "provisioned":
+                print(
+                    "Config sanity error: When specifying 'provisioned_throughput', "
+                    "the 'throughput_mode' must be set to provisioned"
+                )
+                sys.exit(1)
+        else:
+            if throughput_mode == "provisioned":
+                print(
+                    "Config sanity error: When specifying 'throughput_mode' to provisioned, "
+                    "the 'provisioned_throughput' option must be specified"
+                )
+                sys.exit(1)
     # Batch Parameters
     elif resource_type == "AWSBatch_Parameters":
         # Check region

@@ -52,6 +52,14 @@
     "SharedDir": {
       "Description": "The path/mountpoint for the shared drive",
       "Type": "String"
+    },
+    "EFSSharedDir": {
+      "Description": "The path/mountpoint for the EFS file system",
+      "Type": "String"
+    },
+    "EFSFSId": {
+      "Description": "ID of EFS file system",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -262,9 +270,27 @@
           "Privileged": true,
           "Environment": [
             {
+              "Name": "AWS_REGION",
+              "Value": {
+                "Ref": "AWS::Region"
+              }
+            },
+            {
               "Name": "SHARED_DIR",
               "Value": {
                 "Ref": "SharedDir"
+              }
+            },
+            {
+              "Name": "EFS_SHARED_DIR",
+              "Value": {
+                "Ref": "EFSSharedDir"
+              }
+            },
+            {
+              "Name": "EFS_FS_ID",
+              "Value": {
+                "Ref": "EFSFSId"
               }
             }
           ]

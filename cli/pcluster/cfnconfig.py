@@ -57,6 +57,84 @@ def get_stack_template(region, aws_access_key_id, aws_secret_access_key, stack):
 class ParallelClusterConfig(object):
     """Manage ParallelCluster Config."""
 
+    def __get_efs_parameters(self, __config):  # noqa: C901 FIXME!!!
+        # Determine if EFS settings are defined and set section
+        try:
+            self.__efs_settings = __config.get(self.__cluster_section, "efs_settings")
+            if not self.__efs_settings:
+                print("ERROR: efs_settings defined but not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            self.__efs_section = "efs %s" % self.__efs_settings
+        except configparser.NoOptionError:
+            pass
+
+        # Dictionary list of all EFS options
+        self.__efs_options = OrderedDict(
+            [
+                ("shared_dir", ("EFSShared_dir", None)),
+                ("efs_fs_id", ("EFSFileSystemId", "EFSFSId")),
+                ("performance_mode", ("EFSPerformanceMode", "EFSPerfMode")),
+                ("efs_kms_key_id", ("EFSKMSKeyId", None)),
+                ("provisioned_throughput", ("EFSProvisionedThroughput", None)),
+                ("encrypted", ("EFSEncryption", None)),
+                ("throughput_mode", ("EFSThroughput_mode", None)),
+            ]
+        )
+        __valid_mt = False
+        __throughput_mode = None
+        __provisioned_throughput = None
+        try:
+            if self.__efs_section:
+                __temp_efs_options = []
+                for key in self.__efs_options:
+                    try:
+                        __temp__ = __config.get(self.__efs_section, key)
+                        if not __temp__:
+                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__efs_section))
+                            sys.exit(1)
+                        if key == "provisioned_throughput":
+                            __provisioned_throughput = __temp__
+                        elif key == "throughput_mode":
+                            __throughput_mode = __temp__
+                        # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                        if self.__sanity_check and self.__efs_options.get(key)[1] == "EFSFSId":
+                            __valid_mt = config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                "EFSFSId",
+                                (__temp__, self.__master_subnet),
+                            )
+                        elif self.__sanity_check and self.__efs_options.get(key)[1] is not None:
+                            config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                self.__efs_options.get(key)[1],
+                                __temp__,
+                            )
+                        __temp_efs_options.append(__temp__)
+                    except configparser.NoOptionError:
+                        __temp_efs_options.append("NONE")
+                        pass
+                # Separate sanity_check for throughput settings,
+                # need to pass in throughput_mode and provisioned_throughput
+                if self.__sanity_check and (__provisioned_throughput is not None or __throughput_mode is not None):
+                    config_sanity.check_resource(
+                        self.region,
+                        self.aws_access_key_id,
+                        self.aws_secret_access_key,
+                        "EFSThroughput",
+                        (__throughput_mode, __provisioned_throughput),
+                    )
+                if __valid_mt:
+                    __temp_efs_options.append("Valid")
+                else:
+                    __temp_efs_options.append("NONE")
+                self.parameters["EFSoptions"] = ",".join(__temp_efs_options)
+        except AttributeError:
+            pass
+
     def __ebs_determine_shared_dir(self, __config):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
         __temp_dir_list = []
@@ -353,6 +431,7 @@ class ParallelClusterConfig(object):
             vpc_security_group_id=("VPCSecurityGroupId", "VPCSecurityGroup"),
         )
 
+        self.__master_subnet = __config.get(self.__vpc_section, "master_subnet_id")
         # Loop over all VPC options and add define to parameters, raise Exception is defined but null
         for key in self.__vpc_options:
             try:
@@ -451,6 +530,9 @@ class ParallelClusterConfig(object):
 
         # Initialize EBS related options
         self.__load_ebs_options(__config)
+
+        # Initialize EFS related options
+        self.__get_efs_parameters(__config)
 
         # Determine if scaling settings are defined and set section
         try:
