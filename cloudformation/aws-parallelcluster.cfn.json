@@ -1697,7 +1697,7 @@
     },
     "PackagesVersions": {
       "default": {
-        "cfncluster": "2.0.0",
+        "cfncluster": "2.0.1",
         "cookbook": "aws-parallelcluster-cookbook-2.0.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
