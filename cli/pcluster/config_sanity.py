@@ -157,7 +157,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             ec2 = boto3.client('ec2', region_name=region,
                                aws_access_key_id=aws_access_key_id,
                                aws_secret_access_key=aws_secret_access_key)
-            test = ec2.describe_snapshots(SnapshotIds=[resource_value])
+            test = ec2.describe_snapshots(SnapshotIds=[resource_value]).get('Snapshots')[0]
+            if test.get('State') != 'completed':
+                print('Snapshot %s is in state \'%s\' not \'completed\'' % (resource_value, test.get('State')))
+                sys.exit(1)
         except ClientError as e:
             print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
