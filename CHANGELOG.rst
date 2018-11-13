@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+2.0.1
+=====
+* Fix `configure` and `createami` commands
+
 2.0.0
 =====
 * Rename CfnCluster to AWS ParallelCluster
