@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.0.0",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.0.1",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
