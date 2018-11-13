@@ -294,9 +294,12 @@ class ParallelClusterConfig(object):
                     if self.region == 'us-gov-west-1':
                         self.template_url = ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
                                              % (self.region, self.region, self.version))
-                    else:
+                    elif self.region == 'us-east-1':
                         self.template_url = ('https://s3.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
                                              % (self.region, self.version))
+                    else:
+                        self.template_url = ('https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
+                                             % (self.region, self.region, self.version))
         except AttributeError:
             pass
 
@@ -514,7 +517,7 @@ class ParallelClusterConfig(object):
 
     def __run_batch_validation(self, config):
         self.__check_option_absent_awsbatch(config, 'initial_queue_size')
-        self.__check_option_absent_awsbatch(config, 'maintain_queue_size')
+        self.__check_option_absent_awsbatch(config, 'maintain_initial_size')
         self.__check_option_absent_awsbatch(config, 'max_queue_size')
         self.__check_option_absent_awsbatch(config, 'spot_price')
 

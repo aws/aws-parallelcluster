@@ -33,9 +33,9 @@ unsupported_regions = ['ap-northeast-3', 'cn-north-1', 'cn-northwest-1']
 
 def handle_client_exception(func):
     @functools.wraps(func)
-    def wrapper():
+    def wrapper(*args, **kwargs):
         try:
-            func()
+            return func(*args, **kwargs)
         except (BotoCoreError, ClientError) as e:
             print("Failed with error: %s" % e)
             print("Hint: please check your AWS credentials.")
