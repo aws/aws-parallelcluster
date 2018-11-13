@@ -135,7 +135,7 @@ The maximum number of EC2 instances that can be launched in the cluster for trad
 
 If you're using awsbatch, use :ref:`max_vcpus <max_vcpus>`.
 
-This defaults to 10 for the default template. ::
+This defaults to 10. ::
 
     max_queue_size = 10
 
@@ -149,7 +149,7 @@ If set to true, the Auto Scaling group will never have fewer members than the va
 
 Setting to false allows the Auto Scaling group to scale down to 0 members, so resources will not sit idle when they aren't needed.
 
-Defaults to false for the default template. ::
+Defaults to false. ::
 
     maintain_initial_size = false
 
@@ -187,7 +187,7 @@ scheduler
 """""""""
 Scheduler to be used with the cluster.  Valid options are sge, torque, slurm, or awsbatch.
 
-Defaults to sge for the default template. ::
+Defaults to sge. ::
 
     scheduler = sge
 
@@ -195,7 +195,7 @@ cluster_type
 """"""""""""
 Type of cluster to launch i.e. ondemand or spot
 
-Defaults to ondemand for the default template. ::
+Defaults to ondemand. ::
 
     cluster_type = ondemand
 
@@ -233,7 +233,7 @@ For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only acces
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     s3_read_resource = NONE
 
@@ -245,7 +245,7 @@ For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide rea
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     s3_read_write_resource = NONE
 
@@ -257,7 +257,7 @@ This only gets executed on the master node when using awsbatch as your scheduler
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     pre_install = NONE
 
@@ -265,7 +265,7 @@ pre_install_args
 """"""""""""""""
 Quoted list of arguments to be passed to preinstall script
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     pre_install_args = NONE
 
@@ -277,7 +277,7 @@ This only gets executed on the master node when using awsbatch as your scheduler
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     post_install = NONE
 
@@ -285,7 +285,7 @@ post_install_args
 """""""""""""""""
 Arguments to be passed to postinstall script
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     post_install_args = NONE
 
@@ -293,7 +293,7 @@ proxy_server
 """"""""""""
 HTTP(S) proxy server, typically http://x.x.x.x:8080
 
-Defaults to NONE for the default template. ::
+Defaults to NONE. ::
 
     proxy_server = NONE
 
@@ -303,7 +303,7 @@ Cluster placement group. The can be one of three values: NONE, DYNAMIC and an ex
 
 This does not apply to awsbatch.
 
-Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
+Defaults to NONE. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
 
@@ -313,7 +313,7 @@ Cluster placement logic. This enables the whole cluster or only compute to use t
 
 This does not apply to awsbatch.
 
-Defaults to cluster in the default template. ::
+Defaults to cluster. ::
 
     placement = cluster
 
@@ -321,7 +321,7 @@ ephemeral_dir
 """""""""""""
 If instance store volumes exist, this is the path/mountpoint they will be mounted on.
 
-Defaults to /scratch in the default template. ::
+Defaults to /scratch. ::
 
     ephemeral_dir = /scratch
 
@@ -329,7 +329,7 @@ shared_dir
 """"""""""
 Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under each EBS section instead
 
-Defaults to /shared in the default template. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
+Defaults to /shared. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
 
     shared_dir = myshared
 
@@ -337,7 +337,7 @@ encrypted_ephemeral
 """""""""""""""""""
 Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
 
-Defaults to false in default template. ::
+Defaults to false. ::
 
     encrypted_ephemeral = false
 
@@ -345,7 +345,7 @@ master_root_volume_size
 """""""""""""""""""""""
 MasterServer root volume size in GB. (AMI must support growroot)
 
-Defaults to 15 in default template. ::
+Defaults to 15. ::
 
     master_root_volume_size = 15
 
@@ -353,7 +353,7 @@ compute_root_volume_size
 """"""""""""""""""""""""
 ComputeFleet root volume size in GB. (AMI must support growroot)
 
-Defaults to 15 in default template. ::
+Defaults to 15. ::
 
     compute_root_volume_size = 15
 
@@ -361,7 +361,7 @@ base_os
 """""""
 OS type used in the cluster
 
-Defaults to alinux in the default template. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
+Defaults to alinux. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
 Note: The base_os determines the username used to log into the cluster.
 
@@ -378,7 +378,7 @@ instances in the cluster. Note that the given name of a role and its Amazon
 Resource Name (ARN) are different, and the latter can not be used as an argument
 to ec2_iam_role.
 
-Defaults to NONE in the default template. ::
+Defaults to NONE. ::
 
     ec2_iam_role = NONE
 
@@ -386,7 +386,7 @@ extra_json
 """"""""""
 Extra JSON that will be merged into the dna.json used by Chef.
 
-Defaults to {} in the default template. ::
+Defaults to {}. ::
 
     extra_json = {}
 
@@ -396,7 +396,7 @@ An additional CloudFormation template to launch along with the cluster. This all
 
 Must be a HTTP URL to a public template with all parameters provided.
 
-Defaults to NONE in the default template. ::
+Defaults to NONE. ::
 
     additional_cfn_template = NONE
 
@@ -467,7 +467,7 @@ CIDR formatted IP range in which to allow SSH access from.
 
 This is only used when AWS ParallelCluster creates the security group.
 
-Defaults to 0.0.0.0/0 in the default template. ::
+Defaults to 0.0.0.0/0. ::
 
     ssh_from = 0.0.0.0/0
 
@@ -475,7 +475,7 @@ additional_sg
 """""""""""""
 Additional VPC security group Id for all instances.
 
-Defaults to NONE in the default template. ::
+Defaults to NONE. ::
 
     additional_sg = sg-xxxxxx
 
@@ -511,7 +511,7 @@ vpc_security_group_id
 """""""""""""""""""""
 Use an existing security group for all instances.
 
-Defaults to NONE in the default template. ::
+Defaults to NONE. ::
 
     vpc_security_group_id = sg-xxxxxx
 
@@ -602,7 +602,7 @@ Amount of time in minutes without a job after which the compute node will termin
 
 This does not apply to awsbatch.
 
-Defaults to 10 for the default template. ::
+Defaults to 10. ::
 
     scaledown_idletime = 10
 
