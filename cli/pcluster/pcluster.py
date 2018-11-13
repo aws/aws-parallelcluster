@@ -143,13 +143,7 @@ def create(args):
                                      event.get('ResourceStatusReason')))
             logger.info('')
             result_stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-            outputs = result_stack.get('Outputs', [])
-            parameters = result_stack.get('Parameters')
-            ganglia_enabled = is_ganglia_enabled(parameters)
-            for output in outputs:
-                if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
-                    continue
-                logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
+            _print_stack_outputs(result_stack)
         else:
             status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get('StackStatus')
             logger.info('Status: %s' % status)
@@ -167,6 +161,22 @@ def create(args):
         if batch_temporary_bucket:
             utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
+
+
+def _print_stack_outputs(stack):
+    """
+    Print a limited set of the CloudFormation Stack outputs
+    :param stack: the stack dictionary
+    """
+    whitelisted_outputs = ['ClusterUser', 'MasterPrivateIP', 'MasterPublicIP']
+    if is_ganglia_enabled(stack.get('Parameters')):
+        whitelisted_outputs.extend(['GangliaPrivateURL', 'GangliaPublicURL'])
+
+    for output in stack.get('Outputs', []):
+        output_key = output.get('OutputKey')
+        if output_key in whitelisted_outputs:
+            logger.info("%s: %s" % (output_key, output.get('OutputValue')))
+
 
 def is_ganglia_enabled(parameters):
     try:
@@ -526,13 +536,7 @@ def status(args):
                 state = poll_master_server_state(stack_name, config)
                 if state == 'running':
                     stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-                    outputs = stack.get('Outputs', [])
-                    parameters = stack.get('Parameters')
-                    ganglia_enabled = is_ganglia_enabled(parameters)
-                    for output in outputs:
-                        if not ganglia_enabled and output.get('OutputKey').startswith('Ganglia'):
-                            continue
-                        logger.info("%s: %s" % (output.get('OutputKey'), output.get('OutputValue')))
+                    _print_stack_outputs(stack)
             elif status in ['ROLLBACK_COMPLETE', 'CREATE_FAILED', 'DELETE_FAILED', 'UPDATE_ROLLBACK_COMPLETE']:
                 events = cfn.describe_stack_events(StackName=stack_name).get('StackEvents')
                 for event in events:
