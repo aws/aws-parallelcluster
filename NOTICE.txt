@@ -1,2 +1,2 @@
-cfncluster
-Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved. 
+aws-parallelcluster
+Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.

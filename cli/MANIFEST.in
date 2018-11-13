@@ -1,2 +1,3 @@
-recursive-include cfncluster/cloudformation *
-recursive-include cfncluster/examples *
+recursive-include pcluster/cloudformation *
+recursive-include pcluster/examples *
+recursive-include pcluster/resources *

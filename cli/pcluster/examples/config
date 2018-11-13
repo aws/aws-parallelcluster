@@ -1,4 +1,4 @@
-## cfncluster config
+## AWS ParallelCluster config
 [global]
 # Default cluster config section.
 cluster_template = default
@@ -11,12 +11,12 @@ sanity_check = true
 # This is the AWS credentials section (required).
 # These settings apply to all clusters
 # replace these with your AWS keys
-# If not defined, boto will attempt to use a) enviornment
+# If not defined, boto will attempt to use a) environment
 # or b) EC2 IAM role.
 #aws_access_key_id = #your_aws_access_key_id
 #aws_secret_access_key = #your_secret_access_key
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
-# (Defaults to us-east-1 if not defined in enviornment or below)
+# (Defaults to us-east-1 if not defined in environment or below)
 #aws_region_name = #region
 
 [aliases]
@@ -24,42 +24,52 @@ sanity_check = true
 # ssh alias here
 ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
 
-## cfncluster templates
+## AWS ParallelCluster templates
 [cluster default]
 # Name of an existing EC2 KeyPair to enable SSH access to the instances.
 key_name = mykey
 # Override path to cloudformation in S3
-# (defaults to https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json)
-#template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
-# Cluster Server EC2 instance type
-# (defaults to t2.micro for default template)
-#compute_instance_type = t2.micro
-# Master Server EC2 instance type
-# (defaults to t2.micro for default template
+# (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
+#template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
+# EC2 instance type for master node
+# (defaults to t2.micro)
 #master_instance_type = t2.micro
-# Inital number of EC2 instances to launch as compute nodes in the cluster.
-# (defaults to 2 for default template)
+# EC2 instance type for compute nodes
+# (defaults to t2.micro , 'optimal' when scheduler is awsbatch)
+#compute_instance_type = t2.micro
+# Initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
+# (defaults to 2)
 #initial_queue_size = 2
-# Maximum number of EC2 instances that can be launched in the cluster.
-# (defaults to 10 for the default template)
+# Maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
+# (defaults to 10)
 #max_queue_size = 10
-# Boolean flag to set autoscaling group to maintain initial size and scale back
-# (defaults to false for the default template)
+# Boolean flag to set autoscaling group to maintain initial size and scale back for schedulers other than awsbatch.
+# (defaults to false)
 #maintain_initial_size = false
+# Minimum number of vcpus that will be running when scheduler is awsbatch.
+# defaults to 0
+#min_vcpus = 0
+# Initial number of vcpus to launch when scheduler is awsbatch.
+# defaults to 4
+#desired_vcpus = 4
+# Maximum number of vcpus that can be launched when scheduler is awsbatch.
+#max_vcpus = 20
 # Cluster scheduler
-# (defaults to sge for the default template)
+# (defaults to sge)
 #scheduler = sge
 # Type of cluster to launch i.e. ondemand or spot
 # (defaults to ondemand for the default template)
 #cluster_type = ondemand
 # Spot price for the ComputeFleet
 #spot_price = 0.00
+# Spot bid percentage when the scheduler is set to awsbatch. Should be between 0 and 100
+#spot_bid_percentage = 85
 # ID of a Custom AMI, to use instead of published AMI's
 #custom_ami = NONE
-# Specify S3 resource which cfncluster nodes will be granted read-only access
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-only access
 # (defaults to NONE for the default template)
 #s3_read_resource = NONE
-# Specify S3 resource which cfncluster nodes will be granted read-write access
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-write access
 # (defaults to NONE for the default template)
 #s3_read_write_resource = NONE
 # URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
@@ -101,7 +111,7 @@ key_name = mykey
 # OS type used in the cluster
 # (defaults to alinux in the default template)
 #base_os = alinux
-# CloudWatch Logs region
+# Existing EC2 IAM role to be associated with the EC2 instances
 # (defaults to NONE in the default template)
 #ec2_iam_role = NONE
 # Extra Json to be merged with the dna.json used by Chef
@@ -111,8 +121,8 @@ key_name = mykey
 #additional_cfn_template = NONE
 # Settings section relating to VPC to be used
 vpc_settings = public
-# Settings section relating to EBS volume
-#ebs_settings = custom
+# Settings section relating to EBS volumes. Enter multiple sections as a comma separated list. Up to 5 EBS volumes are supported
+#ebs_settings = custom1, custom2, ...
 # Settings section relation to scaling
 #scaling_settings = custom
 
@@ -123,7 +133,7 @@ vpc_id = vpc-
 # ID of the Subnet you want to provision the Master server into
 master_subnet_id = subnet-
 # SSH from CIDR
-# This is only used when cfncluster creates the security group
+# This is only used when AWS ParallelCluster creates the security group
 # (defaults to 0.0.0.0/0 in the default template)
 #ssh_from = 0.0.0.0/0
 # Additional VPC security group Id for all instances
@@ -149,25 +159,38 @@ master_subnet_id = subnet-
 # CIDR for new backend subnet i.e. 10.0.100.0/24
 #compute_subnet_id = subnet-
 
-## EBS Settings
-#[ebs custom]
+## First EBS Settings
+#[ebs custom1]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol1
+#shared_dir = vol1
 # Id of EBS snapshot if using snapshot as source for volume
-# (defaults to NONE for default template)
+# (defaults to NONE)
 #ebs_snapshot_id = snap-
 # Type of volume to create either new or from snapshot
-# (defaults to gp2 for default template)
+# (defaults to gp2)
 #volume_type = io1
 # Size of volume to be created if not using a snapshot
-# (defaults to 20GB for default template)
+# (defaults to 20GB)
 #volume_size = 20
 # Number of IOPS for io1 type volumes
 #volume_iops = 200
 # Use encrypted volume (should not be used with snapshots)
-# (defaults to false for default template)
+# (defaults to false)
 #encrypted = false
 # Existing EBS volume to be attached to the MasterServer
 # (defaults to NONE in the default template)
 #ebs_volume_id = NONE
+
+## Second EBS Settings
+#[ebs custom2]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol2
+#shared_dir = vol2
+# ... More EBS options if needed
+
+## More EBS settings if needed. Supports up to 5 volumes in total
+#[ebs ...]
+#shared_dir = ...
+# ... More EBS options if needed
 
 ## Scaling settings
 #[scaling custom]

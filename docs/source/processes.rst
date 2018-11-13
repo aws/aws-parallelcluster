@@ -1,8 +1,8 @@
 .. _processes:
 
-CfnCluster Processes
-====================
-There are a number of processes running within CfnCluster which are used to manage it's behavior.
+AWS ParallelCluster Processes
+=============================
+There are a number of processes running within AWS ParallelCluster which are used to manage it's behavior.
 
 .. toctree::
 
@@ -23,7 +23,7 @@ Once a cluster is running, a process owned by the root user will monitor the con
     :width: 20%
 
 sqswatcher
------------
+----------
 The sqswatcher process monitors for SQS messages emitted by Auto Scaling which notifies of state changes within the cluster.  When an instance comes online, it will submit an "instance ready" message to SQS, which is picked up by sqs_watcher running on the master server.  These messages are used to notify the queue manager when new instances come online or are terminated, so they can be added or removed from the queue accordingly.
 
 .. image:: images/sqswatcher.svg

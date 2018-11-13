@@ -1,0 +1,18 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker images...
+      - sh ./build-docker-images.sh
+      - echo Build completed on `date`
+  post_build:
+    commands:
+      - if [ $CODEBUILD_BUILD_SUCCEEDING = 0 ]; then echo Build failed; exit 1; fi
+      - echo Pushing the Docker images...
+      - sh ./upload-docker-images.sh

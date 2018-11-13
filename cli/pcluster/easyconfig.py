@@ -1,5 +1,4 @@
-from __future__ import print_function
-from __future__ import absolute_import
+
 # Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance with the
@@ -10,22 +9,38 @@ from __future__ import absolute_import
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import, print_function
 
-from future import standard_library
-standard_library.install_aliases()
-from builtins import input
-import configparser
-import sys
-import boto3
-import os
-import logging
-import stat
 import errno
+import functools
+import logging
+import os
+import stat
+import sys
+
+import boto3
+import configparser
+from botocore.exceptions import BotoCoreError, ClientError
+from builtins import input
+from future import standard_library
 
 from . import cfnconfig
 
-logger = logging.getLogger('cfncluster.cfncluster')
+standard_library.install_aliases()
+
+logger = logging.getLogger('pcluster.pcluster')
 unsupported_regions = ['ap-northeast-3', 'cn-north-1', 'cn-northwest-1']
+
+def handle_client_exception(func):
+    @functools.wraps(func)
+    def wrapper():
+        try:
+            func()
+        except (BotoCoreError, ClientError) as e:
+            print("Failed with error: %s" % e)
+            print("Hint: please check your AWS credentials.")
+            sys.exit(1)
+    return wrapper
 
 def prompt(prompt, default_value=None, hidden=False, options=None, check_validity=False):
     if hidden and default_value is not None:
@@ -54,6 +69,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None, check_validit
         else:
             return var
 
+@handle_client_exception
 def get_regions():
     ec2 = boto3.client('ec2')
     regions = ec2.describe_regions().get('Regions')
@@ -72,6 +88,7 @@ def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
                        aws_secret_access_key=aws_secret_access_key)
     return ec2
 
+@handle_client_exception
 def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
     conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
     keypairs = conn.describe_key_pairs()
@@ -86,6 +103,7 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
 
     return keynames
 
+@handle_client_exception
 def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
     conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
     vpcs = conn.describe_vpcs()
@@ -100,6 +118,7 @@ def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
 
     return vpcids
 
+@handle_client_exception
 def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id):
     conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
     subnets = conn.describe_subnets(Filters=[{'Name': 'vpcId', 'Values': [vpc_id]}])
@@ -120,7 +139,7 @@ def configure(args):
     if args.config_file is not None:
         config_file = args.config_file
     else:
-        config_file = os.path.expanduser(os.path.join('~', '.cfncluster', 'config'))
+        config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'config'))
 
     config = configparser.ConfigParser()
 
@@ -133,6 +152,10 @@ def configure(args):
     cluster_template = prompt('Cluster Template', config.get('global', 'cluster_template') if config.has_option('global', 'cluster_template') else 'default')
     aws_access_key_id = prompt('AWS Access Key ID', config.get('aws', 'aws_access_key_id') if config.has_option('aws', 'aws_access_key_id') else None, True)
     aws_secret_access_key = prompt('AWS Secret Access Key ID', config.get('aws', 'aws_secret_access_key') if config.has_option('aws', 'aws_secret_access_key') else None, True)
+    if not aws_access_key_id or not aws_secret_access_key:
+        print("You chose not to configure aws credentials in parallelcluster config file.\n"
+              "Please make sure you export a valid AWS_PROFILE or you have them exported in "
+              "the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.")
 
     # Use built in boto regions as an available option
     aws_region_name = prompt('AWS Region ID', config.get('aws', 'aws_region_name') if config.has_option('aws', 'aws_region_name') else None, options=get_regions(), check_validity=True)
@@ -164,7 +187,7 @@ def configure(args):
                 config.set(section['__name__'], key, value)
 
     # ensure that the directory for the config file exists (because
-    # ~/.cfncluster is likely not to exist on first usage)
+    # ~/.parallelcluster is likely not to exist on first usage)
     try:
         os.makedirs(os.path.dirname(config_file))
     except OSError as e:
@@ -178,4 +201,4 @@ def configure(args):
         config.write(cf)
 
     # Verify the configuration
-    cfnconfig.CfnClusterConfig(args)
+    cfnconfig.ParallelClusterConfig(args)

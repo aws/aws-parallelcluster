@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from cfncluster import cfncluster
+from pcluster import pcluster
 
 try:
     from StringIO import StringIO
@@ -29,9 +29,9 @@ import json
 
 test_log_stream = StringIO()
 config_file = 'cli/tests/config'
-with open('cloudformation/cfncluster.cfn.json') as f:
+with open('cloudformation/aws-parallelcluster.cfn.json') as f:
     cfncluster_json_data = json.load(f)
-    version_on_file = cfncluster_json_data["Mappings"]["CfnClusterVersions"]["default"]["cfncluster"]
+    version_on_file = cfncluster_json_data["Mappings"]["PackagesVersions"]["default"]["cfncluster"]
     version_on_file = re.match(r".*(\d+\.\d+\.\d+.*)", version_on_file).group(1)
     json_dump = json.dumps(cfncluster_json_data)
 
@@ -43,14 +43,14 @@ def config_logger_test():
 def setup_configurations():
     s3 = boto3.client('s3')
     s3_conn = boto3.resource('s3')
-    s3.create_bucket(Bucket='us-east-1-cfncluster')
+    s3.create_bucket(Bucket='us-east-1-aws-parallelcluster')
     s3_conn.Object(
-        'us-east-1-cfncluster', 'cfncluster').put(Body=json_dump)
+        'us-east-1-aws-parallelcluster', 'aws-parallelcluster').put(Body=json_dump)
     template_url = s3.generate_presigned_url(
         ClientMethod='get_object',
         Params={
-            'Bucket': 'us-east-1-cfncluster',
-            'Key': 'cfncluster'
+            'Bucket': 'us-east-1-aws-parallelcluster',
+            'Key': 'aws-parallelcluster'
         }
     )
 
@@ -104,7 +104,7 @@ class CFN_cluster_test(unittest.TestCase):
 
     def test_cfn_cluster_version(self):
         args = BaseArgs()
-        cfncluster.version(args)
+        pcluster.version(args)
         log = test_log_stream.getvalue()
         version_returned = re.match(r"^INFO:\w+\.\w+:(\d+\.\d+\.\d+.*)$", log).group(1)
         self.assertEqual(version_returned, version_on_file)
@@ -115,9 +115,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_create_nowait(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        cfncluster.create(args)
+        pcluster.create(args)
         log = test_log_stream.getvalue()
-        success_message = 'INFO:cfncluster.cfncluster:Status: CREATE_COMPLETE'
+        success_message = 'INFO:parallelcluster.parallelcluster:Status: CREATE_COMPLETE'
         error_prefix = "CRITICAL:"
         self.assertTrue(success_message in log)
         self.assertFalse(error_prefix in log)
@@ -128,9 +128,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_create_wait(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, False)
-        cfncluster.create(args)
+        pcluster.create(args)
         log = test_log_stream.getvalue()
-        success_message = 'INFO:cfncluster.cfncluster:MasterPublicIP:'
+        success_message = 'INFO:parallelcluster.parallelcluster:MasterPublicIP:'
         error_prefix = "CRITICAL:"
         self.assertTrue(success_message in log)
         self.assertFalse(error_prefix in log)
@@ -142,7 +142,7 @@ class CFN_cluster_test(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs('', True)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.create(args)
+            pcluster.create(args)
 
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
@@ -154,7 +154,7 @@ class CFN_cluster_test(unittest.TestCase):
     @mock_s3
     def test_cfn_cluster_list_empty(self):
         args = BaseArgs()
-        cfncluster.list(args)
+        pcluster.list(args)
         self.assertEqual(test_log_stream.tell(), 0)
 
     @mock_ec2
@@ -163,12 +163,12 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_list_nonempty(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, False)
-        cfncluster.create(args)
+        pcluster.create(args)
         # reset the logger
         self.tearDown()
-        cfncluster.list(args)
+        pcluster.list(args)
         log = test_log_stream.getvalue()
-        cluster_name = re.match(r"INFO:cfncluster.cfncluster:(\w+)", log).group(1)
+        cluster_name = re.match(r"INFO:parallelcluster.parallelcluster:(\w+)", log).group(1)
         self.assertEqual(cluster_name, args.cluster_name)
 
     @mock_ec2
@@ -178,9 +178,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_update_no_reset(self):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, False)
-        cfncluster.create(args)
-        cfncluster.update(args)
-        success_message = 'INFO:cfncluster.cfncluster:Status: UPDATE_COMPLETE'
+        pcluster.create(args)
+        pcluster.update(args)
+        success_message = 'INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE'
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
         error_prefix = "CRITICAL:"
@@ -193,9 +193,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_update_with_reset(self):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, True)
-        cfncluster.create(args)
-        cfncluster.update(args)
-        success_message = 'INFO:cfncluster.cfncluster:Status: UPDATE_COMPLETE'
+        pcluster.create(args)
+        pcluster.update(args)
+        success_message = 'INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE'
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
         error_prefix = "CRITICAL:"
@@ -209,7 +209,7 @@ class CFN_cluster_test(unittest.TestCase):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, False)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.update(args)
+            pcluster.update(args)
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -222,9 +222,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_delete(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        cfncluster.create(args)
+        pcluster.create(args)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.delete(args)
+            pcluster.delete(args)
             self.assertEqual(sys_ex.exception.code, 0)
         success_message = "Cluster deleted successfully"
         log = test_log_stream.getvalue()
@@ -238,7 +238,7 @@ class CFN_cluster_test(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.delete(args)
+            pcluster.delete(args)
             self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -251,8 +251,8 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_start(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        cfncluster.create(args)
-        cfncluster.start(args)
+        pcluster.create(args)
+        pcluster.start(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         success_message = "Starting compute fleet"
@@ -267,7 +267,7 @@ class CFN_cluster_test(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.start(args)
+            pcluster.start(args)
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -280,9 +280,9 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_stop(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        cfncluster.create(args)
-        cfncluster.start(args)
-        cfncluster.stop(args)
+        pcluster.create(args)
+        pcluster.start(args)
+        pcluster.stop(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         success_message = "Stopping compute fleet"
@@ -297,7 +297,7 @@ class CFN_cluster_test(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit) as sys_ex:
-            cfncluster.stop(args)
+            pcluster.stop(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         self.assertTrue(error_prefix in log)

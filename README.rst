@@ -1,22 +1,21 @@
-==============================
-CfnCluster - HPC for the Cloud
-==============================
+=======================================
+AWS ParallelCluster - HPC for the Cloud
+=======================================
 
 |Build Status| |Version|
 
-.. |Build Status| image:: https://travis-ci.org/awslabs/cfncluster.png?branch=develop
-   :target: https://travis-ci.org/awslabs/cfncluster/
+.. |Build Status| image:: https://travis-ci.org/aws/aws-parallelcluster.png?branch=develop
+   :target: https://travis-ci.org/aws/aws-parallelcluster/
    :alt: Build Status
-.. |Version| image:: https://badge.fury.io/py/cfncluster.png
-    :target: https://badge.fury.io/py/cfncluster
+.. |Version| image:: https://badge.fury.io/py/aws-parallelcluster.png
+    :target: https://badge.fury.io/py/aws-parallelcluster
 
-CfnCluster ("cloud formation cluster") is a framework that deploys and
-maintains high performance computing clusters on Amazon Web Services
-(AWS). Developed by AWS, CfnCluster facilitates both quick start proof
-of concepts (POCs) and production deployments. CfnCluster supports
-many different types of clustered applications and can easily be
-extended to support different frameworks. The CLI is stateless,
-everything is done using CloudFormation or resources within AWS.\
+AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
+manage High Performance Computing (HPC) clusters in the AWS cloud.
+Built on the Open Source CfnCluster project, AWS ParallelCluster enables you to quickly build an HPC compute environment in AWS.
+It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch schedulers such as AWS Batch, SGE, Torque, and Slurm.
+AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
+You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on top of AWS ParallelCluster.\
 
 Quick Start
 -----------
@@ -24,7 +23,7 @@ First, install the library:
 
 .. code-block:: sh
 
-    $ pip install cfncluster
+    $ pip install aws-parallelcluster
 
 Next, configure your aws credentials and default region:
 
@@ -36,11 +35,11 @@ Next, configure your aws credentials and default region:
     Default region name [us-east-1]:
     Default output format [None]:
 
-Then, run cfncluster configure:
+Then, run pcluster configure:
 
 .. code-block:: ini
 
-  $ cfncluster configure
+  $ pcluster configure
   Cluster Template [default]:
   AWS Access Key ID []:
   AWS Secret Access Key ID []:
@@ -69,14 +68,14 @@ Now you can create your first cluster;
 
 .. code-block:: sh
 
-  $ cfncluster create myfirstcluster
+  $ pcluster create myfirstcluster
 
 
 After the cluster finishes creating, log in:
 
 .. code-block:: sh
 
-  $ cfncluster ssh myfirstcluster
+  $ pcluster ssh myfirstcluster
 
 You can view the running compute hosts:
 
@@ -86,21 +85,21 @@ You can view the running compute hosts:
 
 For more information on any of these steps see the `Getting Started Guide`_.
 
-.. _`Getting Started Guide`: https://cfncluster.readthedocs.io/en/latest/getting_started.html
+.. _`Getting Started Guide`: https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html
 
 Documentation
 -------------
 
 Documentation is part of the project and is published to -
-https://cfncluster.readthedocs.io/. Of most interest to new users is
+https://aws-parallelcluster.readthedocs.io/. Of most interest to new users is
 the Getting Started Guide -
-https://cfncluster.readthedocs.io/en/latest/getting_started.html.
+https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html.
 
 Issues
 ------
 
 Please open a GitHub issue for any feedback or issues:
-https://github.com/awslabs/cfncluster.  There is also an active AWS
+https://github.com/aws/aws-parallelcluster.  There is also an active AWS
 HPC forum which may be helpful:https://forums.aws.amazon.com/forum.jspa?forumID=192.
 
 Changes
@@ -112,11 +111,11 @@ Between CfnCluster 1.5.4 and 1.6.0 we made a change to the CfnClusterInstancePol
 on objects in <REGION>-cfncluster bucket, "autoscaling:SetDesiredCapacity", "autoscaling:DescribeTags" permissions and
 "cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*.
 
-If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://cfncluster.readthedocs.io/en/latest/iam.html
+If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
 
 CfnCluster 1.5 IAM Change
 =========================
-Between CfnCluster 1.4.2 and 1.5.0 we made a change to the CfnClusterInstancePolicy that adds “ec2:DescribeVolumes” permissions. If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://cfncluster.readthedocs.io/en/latest/iam.html
+Between CfnCluster 1.4.2 and 1.5.0 we made a change to the CfnClusterInstancePolicy that adds “ec2:DescribeVolumes” permissions. If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
 
 CfnCluster 1.2 and Earlier
 ==========================

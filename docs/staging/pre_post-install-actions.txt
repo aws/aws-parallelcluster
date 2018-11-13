@@ -1,7 +1,7 @@
 Pre & Post Install Actions
 ==========================
 
-cfncluster can execute arbritary code either before(pre) or after(post) the
+AWS ParallelCluster can execute arbritary code either before(pre) or after(post) the
 main bootstrap action during cluster creation. This code is typically stored in
 S3 and accessed via HTTP(S) during cluster creation. The code will be executed
 as root and can be in any script language supppoted by the cluster OS,
@@ -58,7 +58,7 @@ yum -y install --enablerepo=epel R
 
 aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh
 
-3. Update cfncluster config to include the new post install action
+3. Update AWS ParallelCluster config to include the new post install action
 
 [cluster default]
 ...
@@ -66,4 +66,4 @@ post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
 
 4. Lauch a cluster
 
-cfncluster create mycluster
+pcluster create mycluster

@@ -14,7 +14,7 @@
 # language governing permissions and limitations under the License.
 #
 #
-# Script executed on clusters from cfncluster-release-check.py.  This
+# Script executed on clusters from parallelcluster-release-check.py.  This
 # script attempts to submit two jobs which must complete in 10
 # minutes, one of which (hopefully) requires scaling (note that
 # scaling is currently not tested on Torque, because it's too big of a

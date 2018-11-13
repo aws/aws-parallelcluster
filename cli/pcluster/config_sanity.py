@@ -18,6 +18,7 @@ import boto3
 import urllib.request, urllib.error, urllib.parse
 from urllib.parse import urlparse
 import sys
+import json
 from botocore.exceptions import ClientError
 
 def get_partition(region):
@@ -37,7 +38,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_key_pairs(KeyNames=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     if resource_type == 'EC2IAMRoleName':
         try:
@@ -54,11 +55,11 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
 
             iam_policy = [(['ec2:DescribeVolumes', 'ec2:AttachVolume', 'ec2:DescribeInstanceAttribute', 'ec2:DescribeInstanceStatus', 'ec2:DescribeInstances'], "*"),
                         (['dynamodb:ListTables'], "*"),
-                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:cfncluster-*" % (partition, region, accountid)),
+                        (['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:ChangeMessageVisibility', 'sqs:DeleteMessage', 'sqs:GetQueueUrl'], "arn:%s:sqs:%s:%s:parallelcluster-*" % (partition, region, accountid)),
                         (['autoscaling:DescribeAutoScalingGroups', 'autoscaling:TerminateInstanceInAutoScalingGroup', 'autoscaling:SetDesiredCapacity', 'autoscaling:DescribeTags', 'autoScaling:UpdateAutoScalingGroup'], "*"),
-                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/cfncluster-*" % (partition, region, accountid)),
-                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/cfncluster-*" % (partition, region, accountid)),
-                        (['s3:GetObject'], "arn:%s:s3:::%s-cfncluster/*" % (partition, region)),
+                        (['dynamodb:PutItem', 'dynamodb:Query', 'dynamodb:GetItem', 'dynamodb:DeleteItem', 'dynamodb:DescribeTable'], "arn:%s:dynamodb:%s:%s:table/parallelcluster-*" % (partition, region, accountid)),
+                        (['cloudformation:DescribeStacks'], "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*" % (partition, region, accountid)),
+                        (['s3:GetObject'], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, region)),
                         (['sqs:ListQueues'], "*"),
                         (['logs:*'], "arn:%s:logs:*:*:*" % partition)]
 
@@ -68,10 +69,10 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                     if decision.get("EvalDecision") != "allowed":
                         print("IAM role error on user provided role %s: action %s is %s" %
                               (resource_value, decision.get("EvalActionName"), decision.get("EvalDecision")))
-                        print("See https://cfncluster.readthedocs.io/en/latest/iam.html")
+                        print("See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html")
                         sys.exit(1)
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # VPC Id
     elif resource_type == 'VPC':
@@ -82,7 +83,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_vpcs(VpcIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
         # Check for DNS support in the VPC
         if not ec2.describe_vpc_attribute(VpcId=resource_value, Attribute='enableDnsSupport')\
@@ -101,7 +102,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                         aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_subnets(SubnetIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # VPC Security Group
     elif resource_type == 'VPCSecurityGroup':
@@ -111,7 +112,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_security_groups(GroupIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 AMI Id
     elif resource_type == 'EC2Ami':
@@ -121,7 +122,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_images(ImageIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 Placement Group
     elif resource_type == 'EC2PlacementGroup':
@@ -134,7 +135,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                    aws_secret_access_key=aws_secret_access_key)
                 test = ec2.describe_placement_groups(GroupNames=[resource_value])
             except ClientError as e:
-                print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+                print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
                 sys.exit(1)
     # URL
     elif resource_type == 'URL':
@@ -158,7 +159,7 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
                                aws_secret_access_key=aws_secret_access_key)
             test = ec2.describe_snapshots(SnapshotIds=[resource_value])
         except ClientError as e:
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
     # EC2 EBS Volume Id
     elif resource_type == 'EC2Volume':
@@ -174,5 +175,58 @@ def check_resource(region, aws_access_key_id, aws_secret_access_key, resource_ty
             if e.response.get('Error').get('Message').endswith('parameter volumes is invalid. Expected: \'vol-...\'.'):
                 print('Config sanity error: volume %s does not exist.' % resource_value)
                 sys.exit(1)
-            print('Config sanity error: %s' % e.response.get('Error').get('Message'))
+            print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
             sys.exit(1)
+    # Batch Parameters
+    elif resource_type == 'AWSBatch_Parameters':
+        # Check region
+        if region in ['us-gov-west-1', 'eu-west-3', 'ap-northeast-3']:
+            print ("ERROR: %s region is not supported with awsbatch" % region)
+            sys.exit(1)
+
+        # Check compute instance types
+        if 'ComputeInstanceType' in resource_value:
+            try:
+                s3 = boto3.resource('s3', region_name=region)
+                bucket_name = '%s-aws-parallelcluster' % region
+                file_name = 'instances/batch_instances.json'
+                try:
+                    file_contents = s3.Object(bucket_name, file_name).get()['Body'].read().decode('utf-8')
+                    supported_instances = json.loads(file_contents)
+                    for instance in resource_value['ComputeInstanceType'].split(','):
+                        if not instance.strip() in supported_instances:
+                            print ("Instance type %s not supported by batch in this region" % instance)
+                            sys.exit(1)
+                except ClientError as e:
+                    print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
+                    sys.exit(1)
+            except ClientError as e:
+                print('Config sanity error on resource %s: %s' % (resource_type, e.response.get('Error').get('Message')))
+                sys.exit(1)
+
+        # Check spot bid percentage
+        if 'SpotPrice' in resource_value:
+            if int(resource_value['SpotPrice']) > 100 or int(resource_value['SpotPrice']) < 0:
+                print("ERROR: Spot bid percentage needs to be between 0 and 100")
+                sys.exit(1)
+
+        # Check sanity on desired, min and max vcpus
+        if 'DesiredSize' in resource_value and 'MinSize' in resource_value:
+            if int(resource_value['DesiredSize']) < int(resource_value['MinSize']):
+                print ('ERROR: Desired vcpus must be greater than or equal to min vcpus')
+                sys.exit(1)
+
+        if 'DesiredSize' in resource_value and 'MaxSize' in resource_value:
+            if int(resource_value['DesiredSize']) > int(resource_value['MaxSize']):
+                print('ERROR: Desired vcpus must be fewer than or equal to max vcpus')
+                sys.exit(1)
+
+        if 'MaxSize' in resource_value and 'MinSize' in resource_value:
+            if int(resource_value['MaxSize']) < int(resource_value['MinSize']):
+                print ('ERROR: Max vcpus must be greater than or equal to min vcpus')
+                sys.exit(1)
+
+        # Check custom batch url
+        if 'CustomAWSBatchTemplateURL' in resource_value:
+            check_resource(region, aws_access_key_id, aws_secret_access_key,
+                           'URL', resource_value['CustomAWSBatchTemplateURL'])

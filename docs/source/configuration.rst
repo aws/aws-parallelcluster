@@ -2,9 +2,9 @@ Configuration
 =============
 .. toctree::
 
-cfncluster uses the file ``~/.cfncluster/config`` by default for all configuration parameters.
+pcluster uses the file ``~/.parallelcluster/config`` by default for all configuration parameters.
 
-You can see an example configuration file ``site-packages/cfncluster/examples/config``
+You can see an example configuration file ``site-packages/aws-parallelcluster/examples/config``
 
 Layout
 ------
@@ -24,7 +24,7 @@ Configuration Options
 
 global
 ^^^^^^
-Global configuration options related to cfncluster. ::
+Global configuration options related to pcluster. ::
 
     [global]
 
@@ -38,7 +38,7 @@ See the :ref:`Cluster Definition <cluster_definition>`. ::
 
 update_check
 """"""""""""
-Whether or not to check for updates to cfncluster. ::
+Whether or not to check for updates to pcluster. ::
 
     update_check = true
 
@@ -52,7 +52,7 @@ aws
 ^^^
 This is the AWS credentials/region section (required).  These settings apply to all clusters.
 
-We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the CfnCluster config file. ::
+We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the AWS ParallelCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
@@ -68,7 +68,7 @@ This is the aliases section. Use this section to customize the `ssh` command.
 
 `CFN_USER` is set to the default username for the os.
 `MASTER_IP` is set to the ip address of the master instance.
-`ARGS` is set to whatever arguments the user provides after `cfncluster ssh cluster_name`. ::
+`ARGS` is set to whatever arguments the user provides after `pcluster ssh cluster_name`. ::
 
     [aliases]
     # This is the aliases section, you can configure
@@ -97,15 +97,17 @@ template_url
 """"""""""""
 Overrides the path to the cloudformation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/<aws_region_name>-cfncluster/templates/cfncluster-<version>.cfn.json``. ::
+Defaults to ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
 
-    template_url = https://s3.amazonaws.com/us-east-1-cfncluster/templates/cfncluster.cfn.json
+    template_url = https://s3.amazonaws.com/us-east-1-aws-parallelcluster/templates/aws-parallelcluster.cfn.json
 
 compute_instance_type
 """""""""""""""""""""
 The EC2 instance type used for the cluster compute nodes.
 
-Defaults to t2.micro for default template. ::
+If you're using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI for the list of the supported instance types.
+
+Defaults to t2.micro, ``optimal``  when scheduler is awsbatch ::
 
     compute_instance_type = t2.micro
 
@@ -113,21 +115,25 @@ master_instance_type
 """"""""""""""""""""
 The EC2 instance type use for the master node.
 
-This defaults to t2.micro for default template. ::
+This defaults to t2.micro. ::
 
     master_instance_type = t2.micro
 
 initial_queue_size
 """"""""""""""""""
-The initial number of EC2 instances to launch as compute nodes in the cluster.
+The initial number of EC2 instances to launch as compute nodes in the cluster for traditional schedulers.
 
-The default is 2 for default template. ::
+If you're using awsbatch, use :ref:`min_vcpus <min_vcpus>`.
+
+The default is 2. ::
 
     initial_queue_size = 2
 
 max_queue_size
 """"""""""""""
-The maximum number of EC2 instances that can be launched in the cluster.
+The maximum number of EC2 instances that can be launched in the cluster for traditional schedulers.
+
+If you're using awsbatch, use :ref:`max_vcpus <max_vcpus>`.
 
 This defaults to 10 for the default template. ::
 
@@ -135,7 +141,9 @@ This defaults to 10 for the default template. ::
 
 maintain_initial_size
 """""""""""""""""""""
-Boolean flag to set autoscaling group to maintain initial size.
+Boolean flag to set autoscaling group to maintain initial size for traditional schedulers.
+
+If you're using awsbatch, use :ref:`desired_vcpus <desired_vcpus>`.
 
 If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
 
@@ -145,9 +153,39 @@ Defaults to false for the default template. ::
 
     maintain_initial_size = false
 
+.. _min_vcpus:
+
+min_vcpus
+"""""""""
+If scheduler is awsbatch, the compute environment won't have fewer than min_vcpus.
+
+Defaults to 0. ::
+
+    min_vcpus = 0
+
+.. _desired_vcpus:
+
+desired_vcpus
+"""""""""""""
+If scheduler is awsbatch, the compute environment will initially have desired_vcpus
+
+Defaults to 4. ::
+
+    desired_vcpus = 4
+
+.. _max_vcpus:
+
+max_vcpus
+"""""""""
+If scheduler is awsbatch, the compute environment will at most have max_vcpus.
+
+Defaults to 20. ::
+
+    desired_vcpus = 20
+
 scheduler
 """""""""
-Scheduler to be used with the cluster.  Valid options are sge, torque, or slurm.
+Scheduler to be used with the cluster.  Valid options are sge, torque, slurm, or awsbatch.
 
 Defaults to sge for the default template. ::
 
@@ -162,24 +200,34 @@ Defaults to ondemand for the default template. ::
     cluster_type = ondemand
 
 spot_price
-"""""""""""
-If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+""""""""""
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on traditional schedulers. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+
+If you're using awsbatch, use :ref:`spot_bid_percentage <spot_bid_percentage>`.
 
 See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
 
-    spot_price = 0.00
+    spot_price = 1.50
+
+.. _spot_bid_percentage:
+
+spot_bid_percentage
+"""""""""""""""""""
+If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price. ::
+
+    spot_price = 85
 
 .. _custom_ami_section:
 
 custom_ami
 """"""""""
-ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/awslabs/cfncluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
 s3_read_resource
 """"""""""""""""
-Specify S3 resource for which cfncluster nodes will be granted read-only access
+Specify S3 resource for which AWS ParallelCluster nodes will be granted read-only access
 
 For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
 
@@ -191,7 +239,7 @@ Defaults to NONE for the default template. ::
 
 s3_read_write_resource
 """"""""""""""""""""""
-Specify S3 resource for which cfncluster nodes will be granted read-write access
+Specify S3 resource for which AWS ParallelCluster nodes will be granted read-write access
 
 For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the Development folder of the my_corporate_bucket bucket.
 
@@ -204,6 +252,8 @@ Defaults to NONE for the default template. ::
 pre_install
 """""""""""
 URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
+
+This only gets executed on the master node when using awsbatch as your scheduler.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -222,6 +272,8 @@ Defaults to NONE for the default template. ::
 post_install
 """"""""""""
 URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
+
+This only gets executed on the master node when using awsbatch as your scheduler.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -249,6 +301,8 @@ placement_group
 """""""""""""""
 Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
 
+This does not apply to awsbatch.
+
 Defaults to NONE for the default template. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
@@ -256,6 +310,8 @@ Defaults to NONE for the default template. More information on placement groups 
 placement
 """""""""
 Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
+
+This does not apply to awsbatch.
 
 Defaults to cluster in the default template. ::
 
@@ -271,15 +327,15 @@ Defaults to /scratch in the default template. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume
+Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under each EBS section instead
 
-Defaults to /shared in the default template. See :ref:`EBS Section <ebs_section>` for details on working with EBS volumes::
+Defaults to /shared in the default template. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
 
-    shared_dir = /shared
+    shared_dir = myshared
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, CfnCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
 
 Defaults to false in default template. ::
 
@@ -355,11 +411,11 @@ See :ref:`VPC Section <vpc_section>`. ::
 
 ebs_settings
 """"""""""""
-Settings section relating to EBS volume mounted on the master.
+Settings section relating to EBS volume mounted on the master. When using multiple EBS volumes, enter multiple settings as a comma separated list. Up to 5 EBS volumes are supported.
 
 See :ref:`EBS Section <ebs_section>`. ::
 
-  ebs_settings = custom
+  ebs_settings = custom1, custom2, ...
 
 scaling_settings
 """"""""""""""""
@@ -409,7 +465,7 @@ ssh_from
 """"""""
 CIDR formatted IP range in which to allow SSH access from.
 
-This is only used when cfncluster creates the security group.
+This is only used when AWS ParallelCluster creates the security group.
 
 Defaults to 0.0.0.0/0 in the default template. ::
 
@@ -433,7 +489,7 @@ If it is private, you need to setup NAT for web access. ::
 
 compute_subnet_cidr
 """""""""""""""""""
-If you wish for cfncluster to create a compute subnet, this is the CIDR that. ::
+If you wish for AWS ParallelCluster to create a compute subnet, this is the CIDR that. ::
 
     compute_subnet_cidr = 10.0.100.0/24
 
@@ -445,7 +501,7 @@ If true, an Elastic Ip will be associated to the Master instance.
 If false, the Master instance will have a Public IP or not according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
 
-See `networking configuration <https://cfncluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
+See `networking configuration <https://aws-parallelcluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
 
 Defaults to true. ::
 
@@ -463,18 +519,32 @@ Defaults to NONE in the default template. ::
 
 ebs
 ^^^
-EBS Volume configuration settings for the volume mounted on the master node and shared via NFS to compute nodes. ::
+EBS Volume configuration settings for the volumes mounted on the master node and shared via NFS to compute nodes. ::
 
-    [ebs custom]
+    [ebs custom1]
+    shared_dir = vol1
     ebs_snapshot_id = snap-xxxxx
     volume_type = io1
     volume_iops = 200
+    ...
+
+    [ebs custom2]
+    shared_dir = vol2
+    ...
+
+    ...
+
+shared_dir
+""""""""""
+Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes. When using 1 ebs volume, this option will overwrite the shared_dir specified under the cluster section. The example below mounts to /vol1 ::
+
+    shared_dir = vol1
 
 ebs_snapshot_id
 """""""""""""""
 Id of EBS snapshot if using snapshot as source for volume.
 
-Defaults to NONE for default template. ::
+Defaults to NONE. ::
 
     ebs_snapshot_id = snap-xxxxx
 
@@ -482,7 +552,7 @@ volume_type
 """""""""""
 The `API name <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_  for the type of volume you wish to launch.
 
-Defaults to gp2 for default template. ::
+Defaults to gp2. ::
 
     volume_type = io1
 
@@ -490,7 +560,7 @@ volume_size
 """""""""""
 Size of volume to be created (if not using a snapshot).
 
-Defaults to 20GB for default template. ::
+Defaults to 20GB. ::
 
     volume_size = 20
 
@@ -504,7 +574,7 @@ encrypted
 """""""""
 Whether or not the volume should be encrypted (should not be used with snapshots).
 
-Defaults to false for default template. ::
+Defaults to false. ::
 
     encrypted = false
 
@@ -512,7 +582,7 @@ ebs_volume_id
 """""""""""""
 EBS Volume Id of an existing volume that will be attached to the MasterServer.
 
-Defaults to NONE for default template. ::
+Defaults to NONE. ::
 
     ebs_volume_id = vol-xxxxxx
 
@@ -530,6 +600,38 @@ scaledown_idletime
 """"""""""""""""""
 Amount of time in minutes without a job after which the compute node will terminate.
 
+This does not apply to awsbatch.
+
 Defaults to 10 for the default template. ::
 
     scaledown_idletime = 10
+
+
+examples
+^^^^^^^^
+
+Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based on your jobs resource needs.
+
+The following allows a maximum of 40 concurrent vcpus, and scales down to zero when you have no jobs running for 10 minutes. ::
+
+  [global]
+  update_check = true
+  sanity_check = true
+  cluster_template = awsbatch
+
+  [aws]
+  aws_region_name = [your_aws_region]
+
+  [cluster awsbatch]
+  scheduler = awsbatch
+  compute_instance_type = optimal # optional, defaults to optimal
+  min_vcpus = 0                   # optional, defaults to 0
+  desired_vcpus = 0               # optional, defaults to 4
+  max_vcpus = 40                  # optional, defaults to 20
+  base_os = alinux                # optional, defaults to alinux, controls the base_os of the master instance and the docker image for the compute fleet
+  key_name = [your_ec2_keypair]
+  vpc_settings = public
+
+  [vpc public]
+  master_subnet_id = [your_subnet]
+  vpc_id = [your_vpc]

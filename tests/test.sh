@@ -3,6 +3,6 @@
 
 set -x
 echo $PATH
-which cfncluster
-cfncluster version
-cfncluster --help
+which pcluster
+pcluster version
+pcluster --help

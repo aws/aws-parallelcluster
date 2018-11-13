@@ -14,9 +14,9 @@
 # governing permissions and limitations under the License.
 #
 #
-# Search for CfnCluster public AMIs and generate a list in json and txt format
+# Search for AWS ParallelCluster public AMIs and generate a list in json and txt format
 #
-# usage: ./generate-ami-list.py --version <cfncluster-version> --date <release-date>
+# usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
 
 import boto3
 from botocore.exceptions import ClientError
@@ -33,7 +33,7 @@ def get_ami_list(regions, date, version, owner):
     for region_name in regions:
         try:
             ec2 = boto3.client('ec2', region_name=region_name)
-            images = ec2.describe_images(Owners=[owner], Filters=[{'Name': 'name', "Values": ["cfncluster-%s*%s" % (version, date)]}])
+            images = ec2.describe_images(Owners=[owner], Filters=[{'Name': 'name', "Values": ["aws-parallelcluster-%s*%s" % (version, date)]}])
 
             amis = {}
             for image in images.get('Images'):
@@ -96,12 +96,12 @@ def update_amis_txt(amis_txt_file, amis):
 
 if __name__ == '__main__':
     # parse inputs
-    parser = argparse.ArgumentParser(description='Get public cfncluster instances and generate a json and txt file')
+    parser = argparse.ArgumentParser(description='Get public AWS ParallelCluster instances and generate a json and txt file')
     parser.add_argument('--version', type=str, help='release version', required=True)
     parser.add_argument('--date', type=str, help='release date [timestamp] (e.g. 201801112350)', required=True)
     parser.add_argument('--txt-file', type=str, help='txt output file path', required=False, default="amis.txt")
     parser.add_argument('--account-id', type=str, help='account id that owns the amis', required=False,  default="247102896272")
-    parser.add_argument('--cloudformation-template', type=str, help='path to cloudfomation template', required=False, default='cloudformation/cfncluster.cfn.json')
+    parser.add_argument('--cloudformation-template', type=str, help='path to cloudfomation template', required=False, default='cloudformation/aws-parallelcluster.cfn.json')
     args = parser.parse_args()
 
     regions = get_all_aws_regions()
@@ -111,4 +111,3 @@ if __name__ == '__main__':
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
 
     update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
-

@@ -3,14 +3,14 @@
 Working with S3
 ===============
 
-Accessing S3 within CfnCluster can be controlled through two parameters in the CfnCluster config.
+Accessing S3 within AWS ParallelCluster can be controlled through two parameters in the AWS ParallelCluster config.
 
 ::
 
-  # Specify S3 resource which cfncluster nodes will be granted read-only access
+  # Specify S3 resource which AWS ParallelCluster nodes will be granted read-only access
   # (defaults to NONE for the default template)
   s3_read_resource = NONE
-  # Specify S3 resource which cfncluster nodes will be granted read-write access
+  # Specify S3 resource which AWS ParallelCluster nodes will be granted read-write access
   # (defaults to NONE for the default template)
   s3_read_write_resource = NONE
 
