@@ -156,6 +156,12 @@ def create(args):
     except KeyboardInterrupt:
         logger.info('\nExiting...')
         sys.exit(0)
+    except KeyError as e:
+        logger.critical("ERROR: KeyError - reason:")
+        logger.critical(e)
+        if batch_temporary_bucket:
+            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
+        sys.exit(1)
     except Exception as e:
         logger.critical(e)
         if batch_temporary_bucket:
