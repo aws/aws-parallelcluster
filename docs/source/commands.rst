@@ -14,7 +14,7 @@ Most commands provided are just wrappers around CloudFormation functions.
 create
 ======
 
-Creates a CloudFormation stack with the name :code:`parallelcluster-[stack_name]`. To read more about CloudFormation see `AWS CloudFormation <https://aws-parallelcluster.readthedocs.io/en/latest/aws_services.html#aws-cloudformation>`_.
+Creates a CloudFormation stack with the name :code:`parallelcluster-[stack_name]`. To read more about CloudFormation see :ref:`AWS CloudFormation <aws_services_cloudformation>`.
 
 positional arguments:
   cluster_name          create a cluster with the provided name.
@@ -106,10 +106,8 @@ start
 =====
 
 Starts a cluster. This sets the Auto Scaling Group parameters to either the
-initial configuration values (`max_queue_size
-<https://aws-parallelcluster.readthedocs.io/en/latest/configuration.html#max-queue-size>`_
-and `initial_queue_size
-<https://aws-parallelcluster.readthedocs.io/en/latest/configuration.html#initial-queue-size>`_)
+initial configuration values (:ref:`max_queue_size <configuration_max_queue_size>`
+and :ref:`initial_queue_size <configuration_initial_queue_size>`)
 from the template that was used to create the cluster or to the configuration
 values that were used to update the cluster since creation.
 
@@ -184,7 +182,7 @@ status
 ======
 
 Pull the current status of the cluster. Polls if the status is not CREATE_COMPLETE or UPDATE_COMPLETE.
-For more info on possible statuses see the `Stack Status Codes <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-describing-stacks.html#d0e9320>`_ page.
+For more info on possible statuses see the `Stack Status Codes <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-describing-stacks.html#w2ab1c15c15c17c11>`_ page.
 
 positional arguments:
   cluster_name  show the status of the cluster with the provided name.
@@ -239,7 +237,7 @@ optional arguments:
 configure
 =========
 
-Configures the cluster. See `Configuring AWS ParallelCluster <https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html#configuring-parallelcluster>`_.
+Configures the cluster. See :ref:`Configuring AWS ParallelCluster <getting_started_configuring_parallelcluster>`.
 
 optional arguments:
   -h, --help  show this help message and exit

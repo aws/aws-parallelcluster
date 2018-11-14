@@ -15,6 +15,8 @@ The following Amazon Web Services (AWS) services are used in AWS ParallelCluster
 * Amazon S3
 * Amazon DynamoDB
 
+.. _aws_services_cloudformation:
+
 AWS CloudFormation
 ------------------
 

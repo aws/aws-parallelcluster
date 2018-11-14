@@ -53,6 +53,8 @@ To upgrade an older version of AWS ParallelCluster, you can use either of the fo
 
 **Remember when upgrading to check that the exiting config is compatible with the latest version installed.**
 
+.. _getting_started_configuring_parallelcluster:
+
 Configuring AWS ParallelCluster
 ===============================
 
@@ -143,7 +145,7 @@ Once all of those settings contain valid values, you can launch the cluster by r
     $ pcluster create mycluster
 
 Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings.
-For more details on connecting to EC2 instances, check the `EC2 User Guide <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-connect-to-instance-linux.html#using-ssh-client>`_.
+For more details on connecting to EC2 instances, check the `EC2 User Guide <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html#ec2-connect-to-instance-linux>`_.
 
 
 Moving from CfnCluster to AWS ParallelCluster
