@@ -750,7 +750,6 @@ def create_ami(args):
     logger.debug('Building AMI based on args %s' % str(args))
     results = {}
 
-    instance_type = 't2.large'
     try:
         config = cfnconfig.ParallelClusterConfig(args)
 
@@ -758,7 +757,7 @@ def create_ami(args):
         master_subnet_id = config.parameters.get('MasterSubnetId')
 
         packer_env = {'CUSTOM_AMI_ID': args.base_ami_id,
-                      'AWS_FLAVOR_ID': instance_type,
+                      'AWS_FLAVOR_ID': args.instance_type,
                       'AMI_NAME_PREFIX': args.custom_ami_name_prefix,
                       'AWS_VPC_ID': vpc_id,
                       'AWS_SUBNET_ID': master_subnet_id}
@@ -775,7 +774,7 @@ def create_ami(args):
 
         logger.info('Base AMI ID: %s' % args.base_ami_id)
         logger.info('Base AMI OS: %s' % args.base_ami_os)
-        logger.info('Instance Type: %s' % instance_type)
+        logger.info('Instance Type: %s' % args.instance_type)
         logger.info('Region: %s' % config.region)
         logger.info('VPC ID: %s' % vpc_id)
         logger.info('Subnet ID: %s' % master_subnet_id)

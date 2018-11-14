@@ -75,7 +75,7 @@ The command executes Packer, which does the following steps:
 
 To create your cluster enter the AMI id in the :ref:`custom_ami_section` field within your cluster configuration.
 
-.. note:: The instance type to build a custom AWS ParallelCluster AMI is a t2.xlarge and does not qualify for the AWS free tier. You are charged for any instances created when building this AMI.
+.. note:: The instance type to build a custom AWS ParallelCluster AMI is a t2.large and does not qualify for the AWS free tier. You are charged for any instances created when building this AMI.
 
 Use a Custom AMI at runtime
 ---------------------------

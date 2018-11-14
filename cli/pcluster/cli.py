@@ -222,6 +222,8 @@ def main():
                            "Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7")
     pami.add_argument("--ami-name-prefix", "-ap", type=str, dest="custom_ami_name_prefix", default='custom-ami-',
                       help="specify the prefix name of the resulting AWS ParallelCluster AMI")
+    pami.add_argument("--instance-type", "-it", type=str, dest="instance_type", default='t2.large',
+                      help="Specify the instance type on which to build the ami. Defaults to t2.large.")
     pami.add_argument("--custom-cookbook", "-cc", type=str, dest="custom_ami_cookbook", default=None,
                       help="specify the cookbook to use to build the AWS ParallelCluster AMI")
     _addarg_config(pami)
