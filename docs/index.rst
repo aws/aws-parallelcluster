@@ -16,26 +16,26 @@ You can build higher level workflows, such as a Genomics portal that automates t
 .. toctree::
     :maxdepth: 2
 
-    getting_started
-    working
-    configuration
-    functional
-    tutorials
-    development
+    source/getting_started
+    source/working
+    source/configuration
+    source/functional
+    source/tutorials
+    source/development
 
 Getting Started
 ---------------
 
-If you've never used ``AWS ParallelCluster`` before, you should read the :doc:`Getting Started with AWS ParallelCluster <getting_started>` guide to get familiar with ``pcluster`` & its usage.
+If you've never used ``AWS ParallelCluster`` before, you should read the :doc:`Getting Started with AWS ParallelCluster <source/getting_started>` guide to get familiar with ``pcluster`` & its usage.
 
 Additional Docs
 ---------------
 
-* :doc:`pre & post install actions <pre_post_install>`
-* :doc:`AWS ParallelCluster auto-scaling <autoscaling>`
-* :doc:`AWS services used in AWS ParallelCluster <aws_services>`
-* :doc:`AWS ParallelCluster networking configurations <networking>`
-* :doc:`working with S3 <s3_resources>`
+* :doc:`pre & post install actions <source/pre_post_install>`
+* :doc:`AWS ParallelCluster auto-scaling <source/autoscaling>`
+* :doc:`AWS services used in AWS ParallelCluster <source/aws_services>`
+* :doc:`AWS ParallelCluster networking configurations <source/networking>`
+* :doc:`working with S3 <source/s3_resources>`
 
 Additional Resources
 --------------------
