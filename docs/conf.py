@@ -18,9 +18,9 @@ import sys, os
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('.'))
-sys.path.append(os.path.abspath('../../cli'))
-# -- General configuration ------------------------------------------------
+sys.path.append(os.path.abspath('../cli'))
 
+# -- General configuration ------------------------------------------------
 # If your documentation needs a minimal Sphinx version, state it here.
 #needs_sphinx = '1.0'
 
@@ -66,7 +66,7 @@ release = '2.0.1'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = []
+exclude_patterns = ['staging']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
