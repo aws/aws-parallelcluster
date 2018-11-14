@@ -13,7 +13,6 @@ from __future__ import absolute_import
 
 from future import standard_library
 standard_library.install_aliases()
-from builtins import str
 from builtins import object
 import configparser
 import os
@@ -80,7 +79,7 @@ class ParallelClusterConfig(object):
                     if not __temp_shared_dir:
                         print("ERROR: shared_dir defined but not set")
                         sys.exit(1)
-                    self.parameters['SharedDir'] = str(__temp_shared_dir)
+                    self.parameters['SharedDir'] = __temp_shared_dir
                 except configparser.NoOptionError:
                     pass
             else:
@@ -93,7 +92,7 @@ class ParallelClusterConfig(object):
                 if not __temp_shared_dir:
                     print("ERROR: shared_dir defined but not set")
                     sys.exit(1)
-                self.parameters['SharedDir'] = str(__temp_shared_dir)
+                self.parameters['SharedDir'] = __temp_shared_dir
             except configparser.NoOptionError:
                 pass
 
@@ -108,12 +107,12 @@ class ParallelClusterConfig(object):
                       % self.__cluster_section)
                 sys.exit(1)
             # Modify list
-            self.__ebs_section = str(self.__ebs_settings).split(',')
+            self.__ebs_section = self.__ebs_settings.split(',')
             if (len(self.__ebs_section) > self.__MAX_EBS_VOLUMES):
                 print("ERROR: number of EBS volumes requested is greater than the MAX.\n"
                       "Max number of EBS volumes supported is currently %s" % self.__MAX_EBS_VOLUMES)
                 sys.exit(1)
-            self.parameters["NumberOfEBSVol"] = str(len(self.__ebs_section))
+            self.parameters["NumberOfEBSVol"] = '%s' % len(self.__ebs_section)
             for i, item in enumerate(self.__ebs_section):
                 item = ('ebs %s' % item.strip())
                 self.__ebs_section[i] = item
@@ -150,7 +149,7 @@ class ParallelClusterConfig(object):
                     # Fill the rest of the parameter with NONE
                     while len(__temp_parameter_list) < self.__MAX_EBS_VOLUMES:
                         __temp_parameter_list.append("NONE")
-                    self.parameters[self.__ebs_options.get(key)[0]] = ",".join(str(x) for x in __temp_parameter_list)
+                    self.parameters[self.__ebs_options.get(key)[0]] = ",".join(x for x in __temp_parameter_list)
 
         except AttributeError:
             pass
