@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 # Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
@@ -9,52 +8,67 @@ from __future__ import absolute_import
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import absolute_import
 
-import os
-import argparse
-import logging
-import json
-import sys
 import errno
+import json
+import logging
+import os
+import sys
 
-from . import pcluster
+import argparse
+
 from . import easyconfig
+from . import pcluster
+
 
 def create(args):
     pcluster.create(args)
 
+
 def configure(args):
     easyconfig.configure(args)
+
 
 def command(args, extra_args):
     pcluster.command(args, extra_args)
 
+
 def status(args):
     pcluster.status(args)
+
 
 def list(args):
     pcluster.list(args)
 
+
 def delete(args):
     pcluster.delete(args)
+
 
 def instances(args):
     pcluster.instances(args)
 
+
 def update(args):
     pcluster.update(args)
+
 
 def version(args):
     pcluster.version(args)
 
+
 def start(args):
     pcluster.start(args)
+
 
 def stop(args):
     pcluster.stop(args)
 
+
 def create_ami(args):
     pcluster.create_ami(args)
+
 
 def config_logger():
     logger = logging.getLogger('pcluster.pcluster')
@@ -77,15 +91,19 @@ def config_logger():
     fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
     logger.addHandler(fh)
 
-def addarg_config(subparser):
+
+def _addarg_config(subparser):
     subparser.add_argument("--config", "-c", dest="config_file", help='specify an alternative config file')
 
-def addarg_region(subparser):
-    subparser.add_argument( "--region", "-r", dest="region", help='specify a specific region to connect to', default=None)
 
-def addarg_nowait(subparser):
-    subparser.add_argument( "--nowait", "-nw", dest="nowait", action='store_true',
+def _addarg_region(subparser):
+    subparser.add_argument("--region", "-r", dest="region", help='specify a specific region to connect to', default=None)
+
+
+def _addarg_nowait(subparser):
+    subparser.add_argument("--nowait", "-nw", dest="nowait", action='store_true',
                     help='do not wait for stack events, after executing stack command')
+
 
 def main():
     config_logger()
@@ -102,9 +120,9 @@ def main():
     pcreate = subparsers.add_parser('create', help='creates a cluster')
     pcreate.add_argument("cluster_name", type=str, default=None,
                         help='create an AWS ParallelCluster with the provided name.')
-    addarg_config(pcreate)
-    addarg_region(pcreate)
-    addarg_nowait(pcreate)
+    _addarg_config(pcreate)
+    _addarg_region(pcreate)
+    _addarg_nowait(pcreate)
     pcreate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
                          help='disable stack rollback on error')
     pcreate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
@@ -120,9 +138,9 @@ def main():
     pupdate = subparsers.add_parser('update', help='update a running cluster')
     pupdate.add_argument("cluster_name", type=str, default=None,
                         help='update the AWS ParallelCluster with the provided name.')
-    addarg_config(pupdate)
-    addarg_region(pupdate)
-    addarg_nowait(pupdate)
+    _addarg_config(pupdate)
+    _addarg_region(pupdate)
+    _addarg_nowait(pupdate)
     pupdate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
                          help='disable stack rollback on error')
     pupdate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
@@ -137,59 +155,60 @@ def main():
 
     pdelete = subparsers.add_parser('delete', help='delete a cluster')
     pdelete.add_argument("cluster_name", type=str, default=None,
-                        help='delete the AWS ParallelCluster with the provided name.')
-    addarg_config(pdelete)
-    addarg_region(pdelete)
-    addarg_nowait(pdelete)
+                         help='delete the AWS ParallelCluster with the provided name.')
+    _addarg_config(pdelete)
+    _addarg_region(pdelete)
+    _addarg_nowait(pdelete)
     pdelete.set_defaults(func=delete)
 
     pstart = subparsers.add_parser('start', help='start the compute fleet that has been stopped')
     pstart.add_argument("cluster_name", type=str, default=None,
                         help='starts the compute fleet of the provided cluster name.')
-    addarg_config(pstart)
-    addarg_region(pstart)
+    _addarg_config(pstart)
+    _addarg_region(pstart)
     pstart.set_defaults(func=start)
 
     pstop = subparsers.add_parser('stop', help='stop the compute fleet, but leave the master server running for '
                                                'debugging/development')
     pstop.add_argument("cluster_name", type=str, default=None,
-                        help='stops the compute fleet of the provided cluster name.')
-    addarg_config(pstop)
-    addarg_region(pstop)
+                       help='stops the compute fleet of the provided cluster name.')
+    _addarg_config(pstop)
+    _addarg_region(pstop)
     pstop.set_defaults(func=stop)
 
     pstatus = subparsers.add_parser('status', help='pull the current status of the cluster')
     pstatus.add_argument("cluster_name", type=str, default=None,
-                        help='show the status of the AWS ParallelCluster with the provided name.')
-    addarg_config(pstatus)
-    addarg_region(pstatus)
-    addarg_nowait(pstatus)
+                         help='show the status of the AWS ParallelCluster with the provided name.')
+    _addarg_config(pstatus)
+    _addarg_region(pstatus)
+    _addarg_nowait(pstatus)
     pstatus.set_defaults(func=status)
 
     plist = subparsers.add_parser('list', help='display a list of stacks associated with AWS ParallelCluster')
-    addarg_config(plist)
-    addarg_region(plist)
+    _addarg_config(plist)
+    _addarg_region(plist)
     plist.set_defaults(func=list)
 
     pinstances = subparsers.add_parser('instances', help='display a list of all instances in a cluster')
     pinstances.add_argument("cluster_name", type=str, default=None,
-                        help='show the status of the AWS ParallelCluster with the provided name.')
-    addarg_config(pinstances)
-    addarg_region(pinstances)
+                            help='show the status of the AWS ParallelCluster with the provided name.')
+    _addarg_config(pinstances)
+    _addarg_region(pinstances)
     pinstances.set_defaults(func=instances)
 
     pssh = subparsers.add_parser('ssh', help='connect to the master server using SSH',
-                                 description='run ssh command with username and ip address pre-filled. ' \
-                                             'Arbitrary arguments are appended to the end of the ssh commmand. ' \
-                                             'This command may be customized in the aliases section of the config file.')
+                                 description='run ssh command with username and ip address pre-filled. '\
+                                             'Arbitrary arguments are appended to the end of the ssh commmand. '\
+                                             'This command may be customized in the aliases '
+                                             'section of the config file.')
     pssh.add_argument("cluster_name", type=str, default=None,
-                        help='name of the cluster to set variables for.')
+                      help='name of the cluster to set variables for.')
     pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
-                         help='print command and exit.')
+                      help='print command and exit.')
     pssh.set_defaults(func=command)
 
     pconfigure = subparsers.add_parser('configure', help='creating initial AWS ParallelCluster configuration')
-    addarg_config(pconfigure)
+    _addarg_config(pconfigure)
     pconfigure.set_defaults(func=configure)
 
     pversion = subparsers.add_parser('version', help='display version of AWS ParallelCluster')
@@ -199,13 +218,14 @@ def main():
     pami.add_argument("--ami-id", "-ai", type=str, dest="base_ami_id", default=None, required=True,
                       help="specify the base AMI to use for building the AWS ParallelCluster AMI")
     pami.add_argument("--os", "-os", type=str, dest="base_ami_os", default=None, required=True,
-                      help="specify the OS of the base AMI. Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7")
+                      help="specify the OS of the base AMI. "
+                           "Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7")
     pami.add_argument("--ami-name-prefix", "-ap", type=str, dest="custom_ami_name_prefix", default='custom-ami-',
                       help="specify the prefix name of the resulting AWS ParallelCluster AMI")
     pami.add_argument("--custom-cookbook", "-cc", type=str, dest="custom_ami_cookbook", default=None,
                       help="specify the cookbook to use to build the AWS ParallelCluster AMI")
-    addarg_config(pami)
-    addarg_region(pami)
+    _addarg_config(pami)
+    _addarg_region(pami)
     pami.set_defaults(template_url=None)
     pami.set_defaults(func=create_ami)
 
@@ -214,7 +234,7 @@ def main():
     if args.func.__name__ == 'command':
         args.func(args, extra_args)
     else:
-        if extra_args != []:
+        if extra_args:
             parser.print_usage()
             print('Invalid arguments %s...' % extra_args)
             sys.exit(1)
