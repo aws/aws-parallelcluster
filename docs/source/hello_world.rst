@@ -168,3 +168,8 @@ Now that there are no jobs in the queue, we can check for output through the :co
         2018-11-12 09:42:00: Hello Luca from ip-172-31-4-234
 
 We can see that our job successfully ran on instance "ip-172-31-4-234".
+
+.. spelling::
+   aws
+   hellojob
+   ip

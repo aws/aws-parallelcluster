@@ -28,7 +28,7 @@ Steps
         git archive --format tar --prefix="aws-parallelcluster-cookbook-${_version}/" "${_stashName:-HEAD}" | gzip > "aws-parallelcluster-cookbook-${_version}.tgz"
         md5sum "aws-parallelcluster-cookbook-${_version}.tgz" > "aws-parallelcluster-cookbook-${_version}.md5"
 
-#.  Create an S3 bucket and upload the archive, its md5 and its last modified date into the bucket, giving public readable permission through a public-read acl ::
+#.  Create an S3 bucket and upload the archive, its md5 and its last modified date into the bucket, giving public readable permission through a public-read ACL ::
 
         _bucket=<the bucket name>
         aws s3 cp --acl public-read aws-parallelcluster-cookbook-${_version}.tgz s3://${_bucket}/cookbooks/aws-parallelcluster-cookbook-${_version}.tgz
@@ -41,3 +41,6 @@ Steps
 
         custom_chef_cookbook = https://s3.<the bucket region>.amazonaws.com/${_bucket}/cookbooks/aws-parallelcluster-cookbook-${_version}.tgz
 
+
+.. spelling::
+    md

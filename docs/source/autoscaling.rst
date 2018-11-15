@@ -32,7 +32,7 @@ If you submit more jobs, the queue will get re-evaluated and the ASG updated up 
 With SGE each job requires a number of slots to run (one slot corresponds to one processing unit, e.g. a vCPU).
 When evaluating the number of instances required to serve the currently pending jobs, the jobwatcher
 divides the total number of requested slots by the capacity of a single compute node.
-The capacity of a compute node that is the number of available vcpu depends on the EC2 instance type selected
+The capacity of a compute node that is the number of available vCPUs depends on the EC2 instance type selected
 in the cluster configuration.
 
 With Slurm and Torque schedulers each job can require both a number of nodes and a number of slots per node.
