@@ -13,7 +13,8 @@ Setting Up a Custom AWS ParallelCluster Cookbook
 Steps
 =====
 
-#.  Identify the AWS ParallelCluster Cookbook working directory where you have cloned the AWS ParallelCluster Cookbook code ::
+#.  Identify the AWS ParallelCluster Cookbook working directory where you have cloned the AWS ParallelCluster Cookbook
+    code ::
 
         _cookbookDir=<path to cookbook>
 
@@ -28,7 +29,8 @@ Steps
         git archive --format tar --prefix="aws-parallelcluster-cookbook-${_version}/" "${_stashName:-HEAD}" | gzip > "aws-parallelcluster-cookbook-${_version}.tgz"
         md5sum "aws-parallelcluster-cookbook-${_version}.tgz" > "aws-parallelcluster-cookbook-${_version}.md5"
 
-#.  Create an S3 bucket and upload the archive, its md5 and its last modified date into the bucket, giving public readable permission through a public-read ACL ::
+#.  Create an S3 bucket and upload the archive, its md5 and its last modified date into the bucket, giving public
+    readable permission through a public-read ACL ::
 
         _bucket=<the bucket name>
         aws s3 cp --acl public-read aws-parallelcluster-cookbook-${_version}.tgz s3://${_bucket}/cookbooks/aws-parallelcluster-cookbook-${_version}.tgz

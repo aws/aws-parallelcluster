@@ -3,19 +3,30 @@
 IAM in AWS ParallelCluster
 ==========================
 
-AWS ParallelCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the :ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
+AWS ParallelCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the
+:ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
 
-AWS ParallelCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that the user creating the cluster must have the appropriate level of permissions
+AWS ParallelCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of
+the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that
+the user creating the cluster must have the appropriate level of permissions
 
 Defaults
 --------
 
-When using defaults, during cluster launch an EC2 IAM Role is created by the cluster, as well as all the resources required to launch the cluster. The user calling the create call must have the right level of permissions to create all the resources including an EC2 IAM Role. This level of permissions is typically an IAM user with the `AdministratorAccess` managed policy. More details on managed policies can be found here: http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html#aws-managed-policies
+When using defaults, during cluster launch an EC2 IAM Role is created by the cluster, as well as all the resources
+required to launch the cluster. The user calling the create call must have the right level of permissions to create all
+the resources including an EC2 IAM Role. This level of permissions is typically an IAM user with the
+`AdministratorAccess` managed policy. More details on managed policies can be found here:
+http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html#aws-managed-policies
 
 Using an existing EC2 IAM role
 ------------------------------
 
-When using AWS ParallelCluster with an existing EC2 IAM role, you must first define the IAM policy and role before attempting to launch the cluster. Typically the reason for using an existing EC2 IAM role within AWS ParallelCluster is to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 IAM role and the AWS ParallelCluster IAM user. You should create both as individual policies in IAM and then attach to the appropriate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
+When using AWS ParallelCluster with an existing EC2 IAM role, you must first define the IAM policy and role before
+attempting to launch the cluster. Typically the reason for using an existing EC2 IAM role within AWS ParallelCluster is
+to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 IAM role
+and the AWS ParallelCluster IAM user. You should create both as individual policies in IAM and then attach to the
+appropriate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
 
 ParallelClusterInstancePolicy
 -----------------------------

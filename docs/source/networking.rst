@@ -3,14 +3,17 @@
 Network Configurations
 ======================
 
-AWS ParallelCluster leverages Amazon Virtual Private Cloud (VPC) for networking. This provides a very flexible and configurable networking platform to deploy clusters within. AWS ParallelCluster support the following high-level configurations:
+AWS ParallelCluster leverages Amazon Virtual Private Cloud (VPC) for networking. This provides a very flexible and
+configurable networking platform to deploy clusters within. AWS ParallelCluster support the following high-level
+configurations:
 
 * Single subnet for both master and compute instances
 * Two subnets, master in one public subnet and compute instances in a private subnet (new or already existing)
 
 All of these configurations can operate with or without public IP addressing.
 It can also be deployed to leverage an HTTP proxy for all AWS requests.
-The combinations of these configurations result in many different deployment scenarios, ranging from a single public subnet with all access over the Internet, to fully private via AWS Direct Connect and HTTP proxy for all traffic.
+The combinations of these configurations result in many different deployment scenarios, ranging from a single public
+subnet with all access over the Internet, to fully private via AWS Direct Connect and HTTP proxy for all traffic.
 
 Below are some architecture diagrams for some of those scenarios:
 
@@ -54,7 +57,8 @@ The configuration to use an existing private network requires the following sett
   master_subnet_id = subnet-<public>
   compute_subnet_id = subnet-<private>
 
-Both these configuration require to have a `NAT Gateway <https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
+Both these configuration require to have a `NAT Gateway
+<https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
 or an internal PROXY to enable web access for compute instances.
 
 AWS ParallelCluster in a single private subnet connected using Direct Connect

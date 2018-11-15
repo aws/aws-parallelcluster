@@ -52,7 +52,9 @@ aws
 ^^^
 This is the AWS credentials/region section (required).  These settings apply to all clusters.
 
-We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than storing them in the AWS ParallelCluster config file. ::
+We highly recommend use of the environment, EC2 IAM Roles, or storing credentials using the `AWS CLI
+<https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials, rather than
+storing them in the AWS ParallelCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
@@ -97,7 +99,8 @@ template_url
 """"""""""""
 Overrides the path to the CloudFormation template used to create the cluster
 
-Defaults to ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
+Defaults to
+``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
 
     template_url = https://s3.amazonaws.com/us-east-1-aws-parallelcluster/templates/aws-parallelcluster.cfn.json
 
@@ -105,7 +108,8 @@ compute_instance_type
 """""""""""""""""""""
 The EC2 instance type used for the cluster compute nodes.
 
-If you're using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI for the list of the supported instance types.
+If you're using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI for the list of the
+supported instance types.
 
 Defaults to t2.micro, ``optimal``  when scheduler is awsbatch ::
 
@@ -149,9 +153,11 @@ Boolean flag to set autoscaling group to maintain initial size for traditional s
 
 If you're using awsbatch, use :ref:`desired_vcpus <desired_vcpus>`.
 
-If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will still allow the cluster to scale up to the value of max_queue_size.
+If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  It will
+still allow the cluster to scale up to the value of max_queue_size.
 
-Setting to false allows the Auto Scaling group to scale down to 0 members, so resources will not sit idle when they aren't needed.
+Setting to false allows the Auto Scaling group to scale down to 0 members, so resources will not sit idle when they
+aren't needed.
 
 Defaults to false. ::
 
@@ -205,11 +211,13 @@ Defaults to ondemand. ::
 
 spot_price
 """"""""""
-If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on traditional schedulers. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on traditional
+schedulers. If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
 
 If you're using awsbatch, use :ref:`spot_bid_percentage <spot_bid_percentage>`.
 
-See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that meets your needs::
+See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for assistance finding a bid price that
+meets your needs::
 
     spot_price = 1.50
 
@@ -217,7 +225,8 @@ See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for a
 
 spot_bid_percentage
 """""""""""""""""""
-If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified you'll get the current spot market price, capped at the on-demand price. ::
+If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified
+you'll get the current spot market price, capped at the on-demand price. ::
 
     spot_price = 85
 
@@ -225,7 +234,8 @@ If you're using awsbatch as your scheduler, this optional parameter is the on-de
 
 custom_ami
 """"""""""
-ID of a Custom AMI, to use instead of default `published AMI's <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI, to use instead of default `published AMI's
+<https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
@@ -233,7 +243,8 @@ s3_read_resource
 """"""""""""""""
 Specify S3 resource for which AWS ParallelCluster nodes will be granted read-only access
 
-For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
+For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the
+my_corporate_bucket bucket.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -245,7 +256,8 @@ s3_read_write_resource
 """"""""""""""""""""""
 Specify S3 resource for which AWS ParallelCluster nodes will be granted read-write access
 
-For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the Development folder of the my_corporate_bucket bucket.
+For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the
+Development folder of the my_corporate_bucket bucket.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -303,11 +315,13 @@ Defaults to NONE. ::
 
 placement_group
 """""""""""""""
-Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
+Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name. When
+DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
 
 This does not apply to awsbatch.
 
-Defaults to NONE. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
+Defaults to NONE. More information on placement groups can be found `here
+<http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
 
@@ -331,15 +345,18 @@ Defaults to /scratch. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under each EBS section instead
+Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under
+each EBS section instead
 
-Defaults to /shared. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
+Defaults to /shared. The example below mounts to /myshared. See :ref:`EBS Section <ebs_section>` for details on working
+with multiple EBS volumes::
 
     shared_dir = myshared
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memory and using LUKS encryption, encrypt your instance store volumes.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral
+encryption key in memory and using LUKS encryption, encrypt your instance store volumes.
 
 Defaults to false. ::
 
@@ -396,7 +413,8 @@ Defaults to {}. ::
 
 additional_cfn_template
 """""""""""""""""""""""
-An additional CloudFormation template to launch along with the cluster. This allows you to create resources that exist outside of the cluster but are part of the cluster's life cycle.
+An additional CloudFormation template to launch along with the cluster. This allows you to create resources that exist
+outside of the cluster but are part of the cluster's life cycle.
 
 Must be a HTTP URL to a public template with all parameters provided.
 
@@ -415,7 +433,8 @@ See :ref:`VPC Section <vpc_section>`. ::
 
 ebs_settings
 """"""""""""
-Settings section relating to EBS volume mounted on the master. When using multiple EBS volumes, enter multiple settings as a comma separated list. Up to 5 EBS volumes are supported.
+Settings section relating to EBS volume mounted on the master. When using multiple EBS volumes, enter multiple settings
+as a comma separated list. Up to 5 EBS volumes are supported.
 
 See :ref:`EBS Section <ebs_section>`. ::
 
@@ -439,7 +458,8 @@ Command line tags overwrite config tags that have the same key.
 
 Tags are JSON formatted and should not have quotes outside the curly braces.
 
-See `AWS CloudFormation Resource Tags Type <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
+See `AWS CloudFormation Resource Tags Type
+<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
 
     tags = {"key" : "value", "key2" : "value2"}
 
@@ -540,7 +560,8 @@ EBS Volume configuration settings for the volumes mounted on the master node and
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes. When using 1 ebs volume, this option will overwrite the shared_dir specified under the cluster section. The example below mounts to /vol1 ::
+Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes. When using 1 ebs volume, this option
+will overwrite the shared_dir specified under the cluster section. The example below mounts to /vol1 ::
 
     shared_dir = vol1
 
@@ -554,7 +575,8 @@ Defaults to NONE. ::
 
 volume_type
 """""""""""
-The `API name <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_  for the type of volume you wish to launch.
+The `API name <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_  for the type of volume you
+wish to launch.
 
 Defaults to gp2. ::
 
@@ -614,9 +636,11 @@ Defaults to 10. ::
 examples
 ^^^^^^^^
 
-Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based on your jobs resource needs.
+Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based
+on your jobs resource needs.
 
-The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs running for 10 minutes. ::
+The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs running for 10
+minutes. ::
 
   [global]
   update_check = true
