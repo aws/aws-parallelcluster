@@ -578,6 +578,12 @@
       "Type": "String",
       "Default": "NONE"
     },
+    "RAIDOptions": {
+      "Description": "Comma Separated List of RAID options",
+      "Type": "String",
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+      "AllowedPattern": "^(NONE|.+)(,|, )(NONE|\\d)(,|, )(NONE|\\d)(,|, )(NONE|standard|io1|gp2|st1|sc1)(,|, )(NONE|\\d+)(,|, )(NONE|\\d+)(,|, )(NONE|true|false)(,|, )(NONE|.+)$"
+    },
     "NumberOfEBSVol": {
       "Description": "Number of EBS Volumes the user requested, up to 5",
       "Type": "Number",
@@ -608,6 +614,28 @@
               ]
             },
             "NONE"
+          ]
+        }
+      ]
+    },
+    "CreateRAIDSubstack": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            "NONE",
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Fn::Split": [
+                    ",",
+                    {
+                      "Ref": "RAIDOptions"
+                    }
+                  ]
+                }
+              ]
+            }
           ]
         }
       ]
@@ -2149,6 +2177,26 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "cfn_raid_vol_ids": {
+                      "Fn::If": [
+                        "CreateRAIDSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "RAIDSubstack",
+                            "Outputs.Volumeids"
+                          ]
+                        },
+                        {
+                          "Ref": "AWS::NoValue"
+                        }
+                      ]
+                    },
+                    "cfn_raid_parameters": {
+                      "Ref": "RAIDOptions"
+                    },
+                    "cfn_base_os": {
+                      "Ref": "BaseOS"
+                    },
                     "cfn_preinstall": {
                       "Ref": "PreInstallScript"
                     },
@@ -2896,6 +2944,9 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "cfn_raid_parameters": {
+                      "Ref": "RAIDOptions"
+                    },
                     "cfn_preinstall": {
                       "Ref": "PreInstallScript"
                     },
@@ -3552,6 +3603,9 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "cfn_raid_parameters": {
+                      "Ref": "RAIDOptions"
+                    },
                     "cfn_preinstall": {
                       "Ref": "PreInstallScript"
                     },
@@ -4058,6 +4112,19 @@
           },
           "SharedDir": {
             "Ref": "SharedDir"
+          },
+          "RAIDSharedDir": {
+            "Fn::Select": [
+              "0",
+              {
+                "Fn::Split": [
+                  ",",
+                  {
+                    "Ref": "RAIDOptions"
+                  }
+                ]
+              }
+            ]
           }
         },
         "TemplateURL": {
@@ -4224,6 +4291,43 @@
         "RetentionInDays": 1
       },
       "Condition": "HasResourcesS3Bucket"
+    },
+    "RAIDSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "RAIDOptions": {
+            "Ref": "RAIDOptions"
+          },
+          "AvailabilityZone": {
+            "Ref": "AvailabilityZone"
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
+            {
+              "s3_domain": {
+                "Fn::If": [
+                  "GovCloudRegion",
+                  {
+                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                  },
+                  "s3.amazonaws.com"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "cfncluster"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "Condition": "CreateRAIDSubstack"
     },
     "EBSCfnStack": {
       "Type": "AWS::CloudFormation::Stack",

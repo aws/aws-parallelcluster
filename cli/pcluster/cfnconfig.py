@@ -135,6 +135,92 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
+    def __get_raid_parameters(self, __config):  # noqa: C901 FIXME!!!
+        # Determine if RAID settings are defined and set section
+        try:
+            self.__raid_settings = __config.get(self.__cluster_section, "raid_settings")
+            if not self.__raid_settings:
+                print("ERROR: raid_settings defined by not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            self.__raid_section = "raid %s" % self.__raid_settings
+        except configparser.NoOptionError:
+            pass
+
+        # Dictionary list of all RAID options
+        self.__raid_options = OrderedDict(
+            [
+                ("shared_dir", ("RAIDShared_dir", None)),
+                ("raid_type", ("RAIDType", "RAIDType")),
+                ("num_of_raid_volumes", ("RAIDVolNum", "RAIDNumVol")),
+                ("volume_type", ("RAIDVolType", "RAIDVolType")),
+                ("volume_size", ("RAIDVolSize", None)),
+                ("volume_iops", ("RAIDVolIOPS", None)),
+                ("encrypted", ("RAIDEncryption", None)),
+                ("ebs_kms_key_id", ("EBSKMSKeyId", None)),
+            ]
+        )
+
+        try:
+            if self.__raid_section:
+                __temp_raid_options = []
+                __raid_shared_dir = None
+                __raid_vol_size = None
+                __raid_iops = None
+                __raid_type = None
+                for key in self.__raid_options:
+                    try:
+                        __temp__ = __config.get(self.__raid_section, key)
+                        if not __temp__:
+                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__raid_section))
+                            sys.exit(1)
+                        if key == "volume_size":
+                            __raid_vol_size = __temp__
+                        elif key == "volume_iops":
+                            __raid_iops = __temp__
+                        elif key == "shared_dir":
+                            __raid_shared_dir = __temp__
+                        elif key == "raid_type":
+                            __raid_type = __temp__
+                        if self.__sanity_check and self.__raid_options.get(key)[1] is not None:
+                            config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                self.__raid_options.get(key)[1],
+                                __temp__,
+                            )
+                        __temp_raid_options.append(__temp__)
+                    except configparser.NoOptionError:
+                        if key == "num_of_raid_volumes":
+                            __temp_raid_options.append("2")
+                        else:
+                            __temp_raid_options.append("NONE")
+                        pass
+                if __raid_iops is not None:
+                    if __raid_vol_size is not None:
+                        config_sanity.check_resource(
+                            self.region,
+                            self.aws_access_key_id,
+                            self.aws_secret_access_key,
+                            "RAIDIOPS",
+                            (__raid_iops, __raid_vol_size),
+                        )
+                    # If volume_size is not specified, check IOPS against default volume size, 20GB
+                    else:
+                        config_sanity.check_resource(
+                            self.region,
+                            self.aws_access_key_id,
+                            self.aws_secret_access_key,
+                            "RAIDIOPS",
+                            (__raid_iops, 20),
+                        )
+                if __raid_type is None and __raid_shared_dir is not None:
+                    print("ERROR: raid_type (0 or 1) is required in order to create RAID array.")
+                    sys.exit(1)
+                self.parameters["RAIDOptions"] = ",".join(__temp_raid_options)
+        except AttributeError:
+            pass
+
     def __ebs_determine_shared_dir(self, __config):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
         __temp_dir_list = []
@@ -533,6 +619,9 @@ class ParallelClusterConfig(object):
 
         # Initialize EFS related options
         self.__get_efs_parameters(__config)
+
+        # Parse RAID related options
+        self.__get_raid_parameters(__config)
 
         # Determine if scaling settings are defined and set section
         try:

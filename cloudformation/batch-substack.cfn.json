@@ -61,6 +61,10 @@
       "Description": "ID of EFS file system",
       "Type": "String",
       "Default": "NONE"
+    },
+    "RAIDSharedDir": {
+      "Description": "The path/mountpoint for the shared RAID drive",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -332,6 +336,12 @@
               "Value": {
                 "Ref": "EFSFSId"
               }
+            },
+            {
+              "Name": "PCLUSTER_RAID_SHARED_DIR",
+              "Value": {
+                "Ref": "RAIDSharedDir"
+              }
             }
           ]
         }
@@ -389,6 +399,12 @@
                     "Name": "PCLUSTER_EFS_FS_ID",
                     "Value": {
                       "Ref": "EFSFSId"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_RAID_SHARED_DIR",
+                    "Value": {
+                      "Ref": "RAIDSharedDir"
                     }
                   }
                 ]

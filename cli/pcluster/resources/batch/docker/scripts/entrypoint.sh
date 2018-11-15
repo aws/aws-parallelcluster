@@ -39,6 +39,11 @@ if [[ "${PCLUSTER_EFS_FS_ID}" != "NONE" ]] && [[ ! -z "${PCLUSTER_AWS_REGION}" ]
   /parallelcluster/bin/mount_efs.sh "${PCLUSTER_EFS_FS_ID}" "${PCLUSTER_AWS_REGION}" "${PCLUSTER_EFS_SHARED_DIR}"
 fi
 
+# mount RAID via nfs
+if [[ ${PCLUSTER_RAID_SHARED_DIR} != "NONE" ]]; then
+  /parallelcluster/bin/mount_nfs.sh "${_master_ip}" "${PCLUSTER_RAID_SHARED_DIR}"
+fi
+
 # create hostfile if mnp job
 if [ -n "${AWS_BATCH_JOB_NUM_NODES}" ]; then
   /parallelcluster/bin/generate_hostfile.sh "${first_ebs_shared_dir}" "${HOME}"

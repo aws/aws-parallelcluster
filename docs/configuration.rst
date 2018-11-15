@@ -458,6 +458,14 @@ See :ref:`EFS Section <efs_section>`. ::
 
     efs_settings = customfs
 
+raid_settings
+"""""""""""""
+Settings section relating to RAID drive configuration.
+
+See :ref:`RAID Section <raid_section>`. ::
+
+  raid_settings = rs
+
 tags
 """"
 Defines tags to be used in CloudFormation.
@@ -788,4 +796,77 @@ vpc section, adding that security group to the mount target, and turning off con
 Defaults to NONE. Needs to be an available EFS file system::
 
     efs_fs_id = fs-12345
+
+
+.. _raid_section:
+
+RAID
+^^^^
+RAID drive configuration settings for creating a RAID array from a number of identical EBS volumes. The RAID drive
+is mounted on the master node, and exported to compute nodes via nfs. ::
+
+
+    [raid rs]
+    shared_dir = raid
+    raid_type = 1
+    num_of_raid_volumes = 2
+    encrypted = true
+
+shared_dir
+""""""""""
+Shared directory that the RAID drive will be mounted to on the master and compute nodes.
+
+This parameter is REQUIRED, the RAID drive will only be created if this parameter is specified.
+The below example mounts to /raid. Do not use NONE or /NONE as the shared directory.::
+
+    shared_dir = raid
+
+raid_type
+"""""""""
+RAID type for the RAID array. Currently only support RAID 0 or RAID 1. For more information on RAID types,
+see: `RAID info <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
+
+This parameter is REQUIRED, the RAID drive will only be created if this parameter is specified.
+The below example will create a RAID 0 array::
+
+    raid_type = 0
+
+num_of_raid_volumes
+"""""""""""""""""""
+The number of EBS volumes to assemble the RAID array from. Currently supports max of 5 volumes and minimum of 2.
+
+Defaults to 2. ::
+
+    num_of_raid_volumes = 2
+
+volume_type
+"""""""""""
+The the type of volume you wish to launch.
+See: `Volume type <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_ for detail
+
+Defaults to gp2. ::
+
+    volume_type = io1
+
+volume_size
+"""""""""""
+Size of volume to be created.
+
+Defaults to 20GB. ::
+
+    volume_size = 20
+
+volume_iops
+"""""""""""
+Number of IOPS for io1 type volumes. ::
+
+    volume_iops = 500
+
+encrypted
+"""""""""
+Whether or not the file system will be encrypted.
+
+Defaults to false. ::
+
+    encrypted = false
 

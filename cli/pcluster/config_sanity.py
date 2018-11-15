@@ -387,6 +387,29 @@ def check_resource(  # noqa: C901 FIXME!!!
                     "the 'provisioned_throughput' option must be specified"
                 )
                 sys.exit(1)
+    # RAID EBS IOPS
+    elif resource_type == "RAIDIOPS":
+        raid_iops = float(resource_value[0])
+        raid_vol_size = float(resource_value[1])
+        if raid_iops > raid_vol_size * 50:
+            print(
+                "Config sanity error: IOPS to volume size ratio of %s is too high; maximum is 50."
+                % (raid_iops / raid_vol_size)
+            )
+            sys.exit(1)
+    # RAID Array Type
+    elif resource_type == "RAIDType":
+        if resource_value != "0" and resource_value != "1":
+            print("Config sanity error: invalid raid_type, only RAID 0 and RAID 1 are currently supported.")
+            sys.exit(1)
+    # Number of RAID Volumes Requested
+    elif resource_type == "RAIDNumVol":
+        if int(resource_value) > 5 or int(resource_value) < 2:
+            print(
+                "Config sanity error: invalid num_of_raid_volumes. "
+                "Needs min of 2 volumes for RAID and max of 5 EBS volumes are currently supported."
+            )
+            sys.exit(1)
     # Batch Parameters
     elif resource_type == "AWSBatch_Parameters":
         # Check region
