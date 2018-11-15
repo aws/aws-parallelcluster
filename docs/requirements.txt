@@ -1,5 +1,4 @@
 sphinx
-pyenchant
 sphinx-argparse
 tabulate
 boto3
