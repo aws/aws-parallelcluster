@@ -119,6 +119,8 @@ This defaults to t2.micro. ::
 
     master_instance_type = t2.micro
 
+.. _configuration_initial_queue_size:
+
 initial_queue_size
 """"""""""""""""""
 The initial number of EC2 instances to launch as compute nodes in the cluster for traditional schedulers.
@@ -128,6 +130,8 @@ If you're using awsbatch, use :ref:`min_vcpus <min_vcpus>`.
 The default is 2. ::
 
     initial_queue_size = 2
+
+.. _configuration_max_queue_size:
 
 max_queue_size
 """"""""""""""
@@ -501,7 +505,7 @@ If true, an Elastic Ip will be associated to the Master instance.
 If false, the Master instance will have a Public IP or not according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
 
-See `networking configuration <https://aws-parallelcluster.readthedocs.io/en/latest/networking.html>`_ for some examples.
+See :ref:`networking configuration <networking>` for some examples.
 
 Defaults to true. ::
 

@@ -27,7 +27,7 @@ sys.path.append(os.path.abspath('../cli'))
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinxarg.ext']
+extensions = ['sphinxarg.ext', 'sphinxcontrib.spelling']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -356,3 +356,6 @@ epub_exclude_files = ['search.html']
 
 # If false, no index is generated.
 #epub_use_index = True
+
+# A list of regular expressions that match URIs that should not be checked when doing a linkcheck build.
+linkcheck_ignore = [r'http://x\.x\.x\.x:\d+', r'http://hostname/']
