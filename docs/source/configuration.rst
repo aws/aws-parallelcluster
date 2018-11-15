@@ -67,7 +67,7 @@ aliases
 This is the aliases section. Use this section to customize the `ssh` command.
 
 `CFN_USER` is set to the default username for the os.
-`MASTER_IP` is set to the ip address of the master instance.
+`MASTER_IP` is set to the IP address of the master instance.
 `ARGS` is set to whatever arguments the user provides after `pcluster ssh cluster_name`. ::
 
     [aliases]
@@ -95,7 +95,7 @@ Name of an existing EC2 KeyPair to enable SSH access to the instances. ::
 
 template_url
 """"""""""""
-Overrides the path to the cloudformation template used to create the cluster
+Overrides the path to the CloudFormation template used to create the cluster
 
 Defaults to ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
 
@@ -339,7 +339,7 @@ Defaults to /shared. The example below mounts to /myshared. See :ref:`EBS Sectio
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memroy and using LUKS encryption, encrypt your instance store volumes.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memory and using LUKS encryption, encrypt your instance store volumes.
 
 Defaults to false. ::
 
@@ -369,7 +369,7 @@ Defaults to alinux. Available options are: alinux, centos6, centos7, ubuntu1404 
 
 Note: The base_os determines the username used to log into the cluster.
 
-* Centos 6 & 7: ``centos``
+* CentOS 6 & 7: ``centos``
 * Ubuntu: ``ubuntu``
 * Amazon Linux: ``ec2-user`` ::
 
@@ -396,7 +396,7 @@ Defaults to {}. ::
 
 additional_cfn_template
 """""""""""""""""""""""
-An additional CloudFormation template to launch along with the cluster. This allows you to create resources that exist outside of the cluster but are part of the cluster's lifecycle.
+An additional CloudFormation template to launch along with the cluster. This allows you to create resources that exist outside of the cluster but are part of the cluster's life cycle.
 
 Must be a HTTP URL to a public template with all parameters provided.
 
@@ -501,7 +501,7 @@ use_public_ips
 """"""""""""""
 Define whether or not to assign public IP addresses to Compute EC2 instances.
 
-If true, an Elastic Ip will be associated to the Master instance.
+If true, an Elastic IP will be associated to the Master instance.
 If false, the Master instance will have a Public IP or not according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
 
@@ -616,7 +616,7 @@ examples
 
 Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based on your jobs resource needs.
 
-The following allows a maximum of 40 concurrent vcpus, and scales down to zero when you have no jobs running for 10 minutes. ::
+The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs running for 10 minutes. ::
 
   [global]
   update_check = true
@@ -639,3 +639,40 @@ The following allows a maximum of 40 concurrent vcpus, and scales down to zero w
   [vpc public]
   master_subnet_id = [your_subnet]
   vpc_id = [your_vpc]
+
+.. spelling::
+    alinux
+    ami
+    arn
+    aws
+    bucketname
+    centos
+    cfn
+    cidr
+    cli
+    clustername
+    dna
+    ebs
+    ec
+    gp
+    iam
+    idletime
+    io
+    iops
+    ip
+    ips
+    mountpoint
+    myshared
+    ondemand
+    os
+    postinstall
+    pre
+    preinstall
+    scaledown
+    sg
+    sge
+    slurm
+    ubuntu
+    url
+    vcpus
+    vpc

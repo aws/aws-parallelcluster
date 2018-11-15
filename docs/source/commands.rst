@@ -28,7 +28,7 @@ optional arguments:
   --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
-                        specify a URL for a custom cloudformation template
+                        specify a URL for a custom CloudFormation template
   --cluster-template CLUSTER_TEMPLATE, -t CLUSTER_TEMPLATE
                         specify a specific cluster template to use
   --extra-parameters EXTRA_PARAMETERS, -p EXTRA_PARAMETERS
@@ -62,7 +62,7 @@ optional arguments:
   --nowait, -nw         do not wait for stack events, after executing stack command
   --norollback, -nr     disable stack rollback on error
   --template-url TEMPLATE_URL, -u TEMPLATE_URL
-                        specify a URL for a custom cloudformation template
+                        specify a URL for a custom CloudFormation template
   --cluster-template CLUSTER_TEMPLATE, -t CLUSTER_TEMPLATE
                         specify a specific cluster template to use
   --extra-parameters EXTRA_PARAMETERS, -p EXTRA_PARAMETERS
@@ -148,12 +148,12 @@ optional arguments:
 ssh
 ===
 
-Runs ssh to the master node, with username and ip filled in based on the provided cluster.
+Runs ssh to the master node, with username and IP filled in based on the provided cluster.
 
 For example:
     pcluster ssh mycluster -i ~/.ssh/id_rsa
 
-Results in an ssh command with username and ip address pre-filled.
+Results in an ssh command with username and IP address pre-filled.
 
     ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa
 
@@ -165,7 +165,7 @@ SSH command is defined in the global config file, under the aliases section and 
 Variables substituted:
     {CFN_USER}
     {MASTER_IP}
-    {ARGS} (only if specified on the cli)
+    {ARGS} (only if specified on the CLI)
 
 positional arguments:
   cluster_name  name of the cluster to set variables for.
@@ -288,3 +288,11 @@ optional arguments:
 
     $ pcluster createami --ami-id ami-XXXXXXXXX --os alinux
 
+
+.. spelling::
+   alinux
+   centos
+   mycluster
+   pre
+   rsa
+   ubuntu

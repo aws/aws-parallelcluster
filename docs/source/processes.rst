@@ -14,7 +14,7 @@ provided by the AWS Batch for the compute node management.
 
 General Overview
 ----------------
-A cluster's lifecycle begins after it is created by a user.
+A cluster's life cycle begins after it is created by a user.
 Typically, this is done from the Command Line Interface (CLI).
 Once created, a cluster will exist until it's deleted.
 There are then AWS ParallelCluster daemons running on the cluster nodes mainly
@@ -49,3 +49,6 @@ The nodewatcher process runs on each node in the compute fleet.  After the user 
 .. image:: images/nodewatcher.svg
     :align: center
     :width: 35%
+
+.. spelling::
+    sqs

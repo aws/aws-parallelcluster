@@ -77,3 +77,6 @@ The configuration for this architecture requires the following settings:
 
 With use_public_ips set to false The VPC must be correctly setup to use the Proxy for all traffic.
 Web access is required for both Master and Compute instances.
+
+.. spelling::
+   ips
