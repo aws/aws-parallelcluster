@@ -1653,10 +1653,15 @@
         "ubuntu1404": "ami-0939ee584b81081ce",
         "ubuntu1604": "ami-07136e4972929b2e3"
       },
+      "us-gov-east-1": {
+        "alinux": "ami-08c04c0d360126b66",
+        "ubuntu1404": "ami-087f331ea34f14eea",
+        "ubuntu1604": "ami-0bb36fe40752004c8"
+      },
       "us-gov-west-1": {
-        "alinux": "ami-13492d72",
-        "ubuntu1404": "ami-4e4a2e2f",
-        "ubuntu1604": "ami-a14b2fc0"
+        "alinux": "ami-8e9df9ef",
+        "ubuntu1404": "ami-c58befa4",
+        "ubuntu1604": "ami-a593f7c4"
       },
       "us-west-1": {
         "alinux": "ami-044945136c783dbdc",
