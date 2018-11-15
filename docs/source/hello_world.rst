@@ -9,7 +9,8 @@ Running your first job on AWS ParallelCluster
 
 This tutorial will walk you through running your first "Hello World" job on aws-parallelcluster.
 
-If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install AWS ParallelCluster and configure your CLI.
+If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install AWS
+ParallelCluster and configure your CLI.
 
 Verifying your installation
 ===========================
@@ -18,7 +19,8 @@ First, we'll verify that AWS ParallelCluster is correctly installed and configur
 
         $ pcluster version
 
-This should return the running version of AWS ParallelCluster.  If it gives you a message about configuration, you will need to run the following to configure AWS ParallelCluster. ::
+This should return the running version of AWS ParallelCluster.  If it gives you a message about configuration, you will
+need to run the following to configure AWS ParallelCluster. ::
 
         $ pcluster configure
 
@@ -26,13 +28,16 @@ This should return the running version of AWS ParallelCluster.  If it gives you 
 Creating your First Cluster
 ===========================
 
-Now it's time to create our first cluster.  Because our workload isn't performance intensive, we will use the default instance sizes of t2.micro.  For production workloads, you'll want to choose an instance size which better fits your needs.
+Now it's time to create our first cluster.  Because our workload isn't performance intensive, we will use the default
+instance sizes of t2.micro.  For production workloads, you'll want to choose an instance size which better fits your
+needs.
 
 We're going to call our cluster "hello-world". ::
 
         $ pcluster create hello-world
 
-You'll see some messages on your screen about the cluster creating.  When it's finished, it will provide the following output::
+You'll see some messages on your screen about the cluster creating.  When it's finished, it will provide the following
+output::
 
         Starting: hello-world
         Status: parallelcluster-hello-world - CREATE_COMPLETE
@@ -42,7 +47,8 @@ You'll see some messages on your screen about the cluster creating.  When it's f
         GangliaPrivateURL = http://192.168.x.x/ganglia/
         GangliaPublicURL = http://54.148.x.x/ganglia/
 
-The message "CREATE_COMPLETE" shows that the cluster created successfully.  It also provided us with the public and private IP addresses of our master node.  We'll need this IP to log in.
+The message "CREATE_COMPLETE" shows that the cluster created successfully.  It also provided us with the public and
+private IP addresses of our master node.  We'll need this IP to log in.
 
 Logging into your Master instance
 =================================
@@ -96,7 +102,8 @@ Now that there are no jobs in the queue, we can check for output in our current 
         -rw-r--r-- 1 ec2-user ec2-user  0 Mar 24 22:34 hellojob.sh.e1
         -rw-r--r-- 1 ec2-user ec2-user 34 Mar 24 22:34 hellojob.sh.o1
 
-Here, we see our job script, an "e1" and "o1" file.  Since the e1 file is empty, there was no output to stderr.  If we view the .o1 file, we can see any output from our job. ::
+Here, we see our job script, an "e1" and "o1" file.  Since the e1 file is empty, there was no output to stderr.  If we
+view the .o1 file, we can see any output from our job. ::
 
         $ cat hellojob.sh.o1
         Hello World from ip-192-168-1-125
@@ -105,7 +112,8 @@ We can see that our job successfully ran on instance "ip-192-168-1-125".
 
 Running your first job using AWS Batch
 ======================================
-Now we'll create a simple job which sleeps for a little while and then outputs it's own hostname, greeting the name passed as parameter.
+Now we'll create a simple job which sleeps for a little while and then outputs it's own hostname, greeting the name
+passed as parameter.
 
 Create a file called "hellojob.sh" with the following contents. ::
 

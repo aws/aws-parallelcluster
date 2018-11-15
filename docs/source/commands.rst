@@ -9,12 +9,14 @@ AWS ParallelCluster Commands
 
 Most commands provided are just wrappers around CloudFormation functions.
 
-.. note:: When a command is called and it starts polling for status of that call it is safe to :code:`Ctrl-C` out. you can always return to that status by calling :code:`pcluster status mycluster`
+.. note:: When a command is called and it starts polling for status of that call it is safe to :code:`Ctrl-C` out. You
+   can always return to that status by calling :code:`pcluster status mycluster`
 
 create
 ======
 
-Creates a CloudFormation stack with the name :code:`parallelcluster-[stack_name]`. To read more about CloudFormation see :ref:`AWS CloudFormation <aws_services_cloudformation>`.
+Creates a CloudFormation stack with the name :code:`parallelcluster-[stack_name]`. To read more about CloudFormation
+see :ref:`AWS CloudFormation <aws_services_cloudformation>`.
 
 positional arguments:
   cluster_name          create a cluster with the provided name.
@@ -37,7 +39,7 @@ optional arguments:
 
 ::
 
-	$ pcluster create mycluster
+    $ pcluster create mycluster
 
 create cluster with tags:
 
@@ -48,7 +50,9 @@ create cluster with tags:
 update
 ======
 
-Updates the CloudFormation stack using the values in the :code:`config` file or a :code:`TEMPLATE_URL` provided. For more information see `AWS CloudFormation Stacks Updates <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks.html>`_.
+Updates the CloudFormation stack using the values in the :code:`config` file or a :code:`TEMPLATE_URL` provided. For
+more information see `AWS CloudFormation Stacks Updates
+<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks.html>`_.
 
 positional arguments:
   cluster_name          update the cluster with the provided name.
@@ -182,7 +186,9 @@ status
 ======
 
 Pull the current status of the cluster. Polls if the status is not CREATE_COMPLETE or UPDATE_COMPLETE.
-For more info on possible statuses see the `Stack Status Codes <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-describing-stacks.html#w2ab1c15c15c17c11>`_ page.
+For more info on possible statuses see the `Stack Status Codes
+<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-describing-stacks.html#w2ab1c15c15c17c11>`_
+page.
 
 positional arguments:
   cluster_name  show the status of the cluster with the provided name.
@@ -202,7 +208,8 @@ optional arguments:
 list
 ====
 
-Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name :code:`parallelcluster-[stack_name]`.
+Lists clusters currently running or stopped. Lists the :code:`stack_name` of the CloudFormation stacks with the name
+:code:`parallelcluster-[stack_name]`.
 
 optional arguments:
   -h, --help  show this help message and exit
@@ -271,7 +278,8 @@ required arguments:
   --ami-id BASE_AMI_ID, -ai
                         specify the base AMI to use for building the AWS ParallelCluster AMI
   --os BASE_AMI_OS, -os
-                        specify the OS of the base AMI. Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7
+                        specify the OS of the base AMI. Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or
+                        centos7
 
 optional arguments:
   -h, --help  show this help message and exit

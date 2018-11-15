@@ -8,7 +8,7 @@ The auto scaling strategy described here applies to HPC clusters deployed with o
 supported traditional job scheduler, either SGE, Slurm or Torque.
 In these cases AWS ParallelCluster directly implements the scaling capabilities by managing
 the `Auto Scaling Group`_ (ASG) of the compute nodes and changing the scheduler configuration
-accordingly.  
+accordingly.
 For HPC clusters based on AWS Batch, ParallelCluster relies on the elastic scaling capabilities
 provided by the AWS-managed job scheduler.
 
@@ -37,8 +37,8 @@ in the cluster configuration.
 
 With Slurm and Torque schedulers each job can require both a number of nodes and a number of slots per node.
 The jobwatcher takes into account the request of each job and determines the number of compute nodes to fulfill
-the new computational requirements.  
-For example, assuming a cluster with c5.2xlarge (8 vCPU) as compute instance type, and three queued pending jobs 
+the new computational requirements.
+For example, assuming a cluster with c5.2xlarge (8 vCPU) as compute instance type, and three queued pending jobs
 with the following requirements: job1 2 nodes / 4 slots each, job2 3 nodes / 2 slots and job3 1 node / 4 slots,
 the jobwatcher will require three new compute instances to the ASG to serve the three jobs.
 
@@ -73,4 +73,5 @@ maximum and desired capacity.
 .. _`Auto Scaling Group`: https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html
 .. _nodewatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/nodewatcher
 .. _jobwatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/jobwatcher
-.. _TerminateInstanceInAutoScalingGroup: http://docs.aws.amazon.com/AutoScaling/latest/APIReference/API_TerminateInstanceInAutoScalingGroup.html
+.. _TerminateInstanceInAutoScalingGroup:
+   http://docs.aws.amazon.com/AutoScaling/latest/APIReference/API_TerminateInstanceInAutoScalingGroup.html

@@ -14,7 +14,8 @@ Accessing S3 within AWS ParallelCluster can be controlled through two parameters
   # (defaults to NONE)
   s3_read_write_resource = NONE
 
-Both parameters accept either ``*`` or a valid S3 ARN. For details of how to specify S3 ARNs, please see http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-s3
+Both parameters accept either ``*`` or a valid S3 ARN. For details of how to specify S3 ARNs, please see
+http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html#arn-syntax-s3
 
 Examples
 --------
