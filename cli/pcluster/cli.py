@@ -93,16 +93,16 @@ def config_logger():
 
 
 def _addarg_config(subparser):
-    subparser.add_argument("--config", "-c", dest="config_file", help='specify an alternative config file')
+    subparser.add_argument("--config", "-c", dest="config_file", help='alternative config file')
 
 
 def _addarg_region(subparser):
-    subparser.add_argument("--region", "-r", dest="region", help='specify a specific region to connect to', default=None)
+    subparser.add_argument("--region", "-r", help='region to connect to')
 
 
 def _addarg_nowait(subparser):
-    subparser.add_argument("--nowait", "-nw", dest="nowait", action='store_true',
-                    help='do not wait for stack events, after executing stack command')
+    subparser.add_argument("--nowait", "-nw", action='store_true',
+                           help='do not wait for stack events, after executing stack command')
 
 
 def main():
@@ -118,67 +118,54 @@ def main():
     subparsers.dest = 'command'
 
     pcreate = subparsers.add_parser('create', help='creates a cluster')
-    pcreate.add_argument("cluster_name", type=str, default=None,
-                        help='create an AWS ParallelCluster with the provided name.')
+    pcreate.add_argument("cluster_name", help='create an AWS ParallelCluster with the provided name.')
     _addarg_config(pcreate)
     _addarg_region(pcreate)
     _addarg_nowait(pcreate)
-    pcreate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
+    pcreate.add_argument("--norollback", "-nr", action='store_true', default=False,
                          help='disable stack rollback on error')
-    pcreate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
-                         help='specify a URL for a custom cloudformation template')
-    pcreate.add_argument("--cluster-template", "-t", type=str, dest="cluster_template", default=None,
-                         help='specify a specific cluster template to use')
-    pcreate.add_argument("--extra-parameters", "-p", type=json.loads, dest="extra_parameters", default=None,
-                         help='add extra parameters to stack create')
-    pcreate.add_argument("--tags", "-g", type=json.loads, dest="tags", default=None,
-                         help='tags to be added to the stack')
+    pcreate.add_argument("--template-url", "-u", help='URL for a custom cloudformation template')
+    pcreate.add_argument("--cluster-template", "-t", help='cluster template to use')
+    pcreate.add_argument("--extra-parameters", "-p", type=json.loads, help='add extra parameters to stack create')
+    pcreate.add_argument("--tags", "-g", type=json.loads, help='tags to be added to the stack')
     pcreate.set_defaults(func=create)
 
     pupdate = subparsers.add_parser('update', help='update a running cluster')
-    pupdate.add_argument("cluster_name", type=str, default=None,
-                        help='update the AWS ParallelCluster with the provided name.')
+    pupdate.add_argument("cluster_name", help='update the AWS ParallelCluster with the provided name.')
     _addarg_config(pupdate)
     _addarg_region(pupdate)
     _addarg_nowait(pupdate)
-    pupdate.add_argument("--norollback", "-nr", action='store_true', dest="norollback", default=False,
-                         help='disable stack rollback on error')
-    pupdate.add_argument("--template-url", "-u", type=str, dest="template_url", default=None,
-                         help='specify a URL for a custom cloudformation template')
-    pupdate.add_argument("--cluster-template", "-t", type=str, dest="cluster_template", default=None,
-                         help='specify a specific cluster template to use')
-    pupdate.add_argument("--extra-parameters", "-p", type=str, dest="extra_parameters", default=None,
-                         help='add extra parameters to stack update')
-    pupdate.add_argument("--reset-desired", "-rd", action='store_true', dest="reset_desired", default=False,
+    pupdate.add_argument("--norollback", "-nr", action='store_true', default=False,
+                         help='disable CloudFormation Stack rollback on error')
+    pupdate.add_argument("--template-url", "-u", help='URL for a custom CloudFormation template')
+    pupdate.add_argument("--cluster-template", "-t", help='specific cluster template to use')
+    pupdate.add_argument("--extra-parameters", "-p", help='add extra parameters to stack update')
+    pupdate.add_argument("--reset-desired", "-rd", action='store_true', default=False,
                          help='reset the current ASG desired capacity to initial config values')
     pupdate.set_defaults(func=update)
 
     pdelete = subparsers.add_parser('delete', help='delete a cluster')
-    pdelete.add_argument("cluster_name", type=str, default=None,
-                         help='delete the AWS ParallelCluster with the provided name.')
+    pdelete.add_argument("cluster_name", help='delete the AWS ParallelCluster with the provided name.')
     _addarg_config(pdelete)
     _addarg_region(pdelete)
     _addarg_nowait(pdelete)
     pdelete.set_defaults(func=delete)
 
     pstart = subparsers.add_parser('start', help='start the compute fleet that has been stopped')
-    pstart.add_argument("cluster_name", type=str, default=None,
-                        help='starts the compute fleet of the provided cluster name.')
+    pstart.add_argument("cluster_name", help='starts the compute fleet of the provided cluster name.')
     _addarg_config(pstart)
     _addarg_region(pstart)
     pstart.set_defaults(func=start)
 
     pstop = subparsers.add_parser('stop', help='stop the compute fleet, but leave the master server running for '
                                                'debugging/development')
-    pstop.add_argument("cluster_name", type=str, default=None,
-                       help='stops the compute fleet of the provided cluster name.')
+    pstop.add_argument("cluster_name", help='stops the compute fleet of the provided cluster name.')
     _addarg_config(pstop)
     _addarg_region(pstop)
     pstop.set_defaults(func=stop)
 
     pstatus = subparsers.add_parser('status', help='pull the current status of the cluster')
-    pstatus.add_argument("cluster_name", type=str, default=None,
-                         help='show the status of the AWS ParallelCluster with the provided name.')
+    pstatus.add_argument("cluster_name", help='show the status of the AWS ParallelCluster with the provided name.')
     _addarg_config(pstatus)
     _addarg_region(pstatus)
     _addarg_nowait(pstatus)
@@ -190,8 +177,7 @@ def main():
     plist.set_defaults(func=list)
 
     pinstances = subparsers.add_parser('instances', help='display a list of all instances in a cluster')
-    pinstances.add_argument("cluster_name", type=str, default=None,
-                            help='show the status of the AWS ParallelCluster with the provided name.')
+    pinstances.add_argument("cluster_name", help='show the status of the AWS ParallelCluster with the provided name.')
     _addarg_config(pinstances)
     _addarg_region(pinstances)
     pinstances.set_defaults(func=instances)
@@ -201,33 +187,31 @@ def main():
                                              'Arbitrary arguments are appended to the end of the ssh commmand. '\
                                              'This command may be customized in the aliases '
                                              'section of the config file.')
-    pssh.add_argument("cluster_name", type=str, default=None,
-                      help='name of the cluster to set variables for.')
-    pssh.add_argument("--dryrun", "-d", action='store_true', dest="dryrun", default=False,
-                      help='print command and exit.')
+    pssh.add_argument("cluster_name", help='name of the cluster to connect to')
+    pssh.add_argument("--dryrun", "-d", action='store_true', default=False, help='print command and exit')
     pssh.set_defaults(func=command)
 
-    pconfigure = subparsers.add_parser('configure', help='creating initial AWS ParallelCluster configuration')
-    _addarg_config(pconfigure)
-    pconfigure.set_defaults(func=configure)
-
-    pversion = subparsers.add_parser('version', help='display version of AWS ParallelCluster')
-    pversion.set_defaults(func=version)
-
     pami = subparsers.add_parser('createami', help='(Linux/OSX) create a custom AMI to use with AWS ParallelCluster')
-    pami.add_argument("--ami-id", "-ai", type=str, dest="base_ami_id", default=None, required=True,
+    pami.add_argument("--ami-id", "-ai", dest="base_ami_id", required=True,
                       help="specify the base AMI to use for building the AWS ParallelCluster AMI")
-    pami.add_argument("--os", "-os", type=str, dest="base_ami_os", default=None, required=True,
+    pami.add_argument("--os", "-os", dest="base_ami_os", required=True,
                       help="specify the OS of the base AMI. "
                            "Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7")
-    pami.add_argument("--ami-name-prefix", "-ap", type=str, dest="custom_ami_name_prefix", default='custom-ami-',
+    pami.add_argument("--ami-name-prefix", "-ap", dest="custom_ami_name_prefix", default='custom-ami-',
                       help="specify the prefix name of the resulting AWS ParallelCluster AMI")
-    pami.add_argument("--custom-cookbook", "-cc", type=str, dest="custom_ami_cookbook", default=None,
+    pami.add_argument("--custom-cookbook", "-cc", dest="custom_ami_cookbook",
                       help="specify the cookbook to use to build the AWS ParallelCluster AMI")
     _addarg_config(pami)
     _addarg_region(pami)
     pami.set_defaults(template_url=None)
     pami.set_defaults(func=create_ami)
+
+    pconfigure = subparsers.add_parser('configure', help='Start initial AWS ParallelCluster configuration.')
+    _addarg_config(pconfigure)
+    pconfigure.set_defaults(func=configure)
+
+    pversion = subparsers.add_parser('version', help='Display version of AWS ParallelCluster.')
+    pversion.set_defaults(func=version)
 
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
