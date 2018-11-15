@@ -1,33 +1,18 @@
 language: python
+sudo: false
 
 python:
   - "2.6"
   - "2.7"
-  - "3.3"
   - "3.4"
   - "3.5"
   - "3.6"
 
-install: 
-  - cd cli
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
-    pip install 'setuptools==39.2.0' --force-reinstall;
-    pip install -U enum34;
-    fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; 
-    then pip install -r requirements26.txt; 
-    else pip install -r requirements.txt;
-    fi
-  - pip install -e .
-  - cd -
+before_install:
+  # Needed to run docs-linters target in tox.
+  - if [ "$TRAVIS_PYTHON_VERSION" == "3.6" ]; then sudo apt-get install -y enchant; fi
 
-sudo: false
+install:
+  - pip install tox-travis
 
-script:
-  - if [[ $TRAVIS_PYTHON_VERSION != 2.6 ]]; then
-    pip install 'boto3==1.7.84' --force-reinstall;
-    pip install moto
-    python cli/tests/pcluster-unittest.py;
-    pip install boto3 --upgrade;
-    fi
-  - sh tests/test.sh
+script: cd cli && tox
