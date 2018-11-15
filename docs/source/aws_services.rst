@@ -20,7 +20,7 @@ The following Amazon Web Services (AWS) services are used in AWS ParallelCluster
 AWS CloudFormation
 ------------------
 
-AWS CloudFormation is the core service used by AWS ParallelCluster. Each cluster is represented as a stack. All resources required by the cluster are defined within the AWS ParallelCluster CloudFormation template. AWS ParallelCluster cli commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
+AWS CloudFormation is the core service used by AWS ParallelCluster. Each cluster is represented as a stack. All resources required by the cluster are defined within the AWS ParallelCluster CloudFormation template. AWS ParallelCluster CLI commands typically map to CloudFormation stack commands, such as create, update and delete. Instances launched within a cluster make HTTPS calls to the CloudFormation Endpoint for the region the cluster is launched in.
 
 For more details about AWS CloudFormation, see http://aws.amazon.com/cloudformation/
 

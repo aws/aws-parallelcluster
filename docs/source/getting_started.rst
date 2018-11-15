@@ -71,8 +71,8 @@ You will first be prompted for your cluster template name, which is the logical 
 
         Cluster Template [mycluster]:
 
-Next, you will be prompted for your AWS Access & Secret Keys.  Enter the keys for an IAM user with administrative privileges.
-These can also be read from your environment variables or the  aws CLI config.
+Next, you will be prompted for your AWS Access & Secret Keys. Enter the keys for an IAM user with administrative privileges.
+These can also be read from your environment variables or the AWS CLI config.
 
 ::
 
@@ -212,5 +212,5 @@ The :code:`parallelcluster-<CLUSTER_NAME>-MasterSecurityGroup-<xxx>` Security Gr
 `adding a new Security Group Rule <https://docs.aws.amazon.com/en_us/AWSEC2/latest/UserGuide/using-network-security.html#adding-security-group-rule>`_
 to allow Inbound connection to the port 80 from your Public IP.
 
-
-
+.. spelling::
+   aws

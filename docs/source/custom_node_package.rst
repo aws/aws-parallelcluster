@@ -26,7 +26,7 @@ Steps
         _stashName=$(git stash create)
         git archive --format tar --prefix="aws-parallelcluster-node-${_version}/" "${_stashName:-HEAD}" | gzip > "aws-parallelcluster-node-${_version}.tgz"
 
-#.  Create an S3 bucket and upload the archive into the bucket, giving public readable permission through a public-read acl ::
+#.  Create an S3 bucket and upload the archive into the bucket, giving public readable permission through a public-read ACL ::
 
         _bucket=<the bucket name>
         aws s3 cp --acl public-read aws-parallelcluster-node-${_version}.tgz s3://${_bucket}/node/aws-parallelcluster-node-${_version}.tgz
