@@ -1,0 +1,16 @@
+[aws]
+aws_region_name = us-east-1
+
+[cluster default]
+vpc_settings = public
+key_name = test
+
+[vpc public]
+master_subnet_id = subnet-5eb7e481
+vpc_id = vpc-d4fc4ad0
+
+[global]
+update_check = true
+sanity_check = true
+cluster_template = default
+
