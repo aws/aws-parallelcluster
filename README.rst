@@ -85,7 +85,7 @@ You can view the running compute hosts:
 
 For more information on any of these steps see the `Getting Started Guide`_.
 
-.. _`Getting Started Guide`: https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html
+.. _`Getting Started Guide`: https://aws-parallelcluster.readthedocs.io/en/latest/source/getting_started.html
 
 Documentation
 -------------
@@ -93,7 +93,7 @@ Documentation
 Documentation is part of the project and is published to -
 https://aws-parallelcluster.readthedocs.io/. Of most interest to new users is
 the Getting Started Guide -
-https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html.
+https://aws-parallelcluster.readthedocs.io/en/latest/source/getting_started.html.
 
 Issues
 ------
