@@ -357,5 +357,7 @@ epub_exclude_files = ['search.html']
 # If false, no index is generated.
 #epub_use_index = True
 
+# linkcheck config
 # A list of regular expressions that match URIs that should not be checked when doing a linkcheck build.
 linkcheck_ignore = [r'http://x\.x\.x\.x:\d+', r'http://hostname/']
+linkcheck_retries = 3
