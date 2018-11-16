@@ -487,8 +487,6 @@ class ParallelClusterConfig(object):
             s3_read_resource=('S3ReadResource', None),
             s3_read_write_resource=('S3ReadWriteResource', None),
             tenancy=('Tenancy', None),
-            ephemeral_kms_key_id=('EphemeralKMSKeyId', None),
-            cluster_ready=('ClusterReadyScript', 'URL'),
             master_root_volume_size=('MasterRootVolumeSize', None),
             compute_root_volume_size=('ComputeRootVolumeSize', None),
             base_os=('BaseOS', None),

@@ -75,8 +75,6 @@
             "CustomChefCookbook",
             "ExtraJson",
             "Tenancy",
-            "EphemeralKMSKeyId",
-            "ClusterReadyScript",
             "MasterRootVolumeSize",
             "ComputeRootVolumeSize",
             "EC2IAMRoleName"
@@ -208,12 +206,6 @@
         },
         "Tenancy": {
           "default": "tenancy"
-        },
-        "EphemeralKMSKeyId": {
-          "default": "ephemeral_kms_key_id"
-        },
-        "ClusterReadyScript": {
-          "default": "cluster_ready"
         },
         "MasterRootVolumeSize": {
           "default": "master_root_volume_size"
@@ -541,16 +533,6 @@
       "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE"
-    },
-    "EphemeralKMSKeyId": {
-      "Description": "KMS ARN for customer created master key, will be used for ephemeral encryption",
-      "Type": "String",
-      "Default": "NONE"
-    },
-    "ClusterReadyScript": {
-      "Description": "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
-      "Type": "String",
-      "Default": "NONE"
     },
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
@@ -953,30 +935,6 @@
               "Ref": "AdditionalSG"
             },
             "NONE"
-          ]
-        }
-      ]
-    },
-    "UseEphemeralKMSKey": {
-      "Fn::And": [
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "EphemeralKMSKeyId"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        },
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "EncryptedEphemeral"
-            },
-            "true"
           ]
         }
       ]
