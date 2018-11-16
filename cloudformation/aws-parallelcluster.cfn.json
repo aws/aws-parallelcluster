@@ -815,30 +815,6 @@
         }
       ]
     },
-    "UseComputeSubnetForCompute": {
-      "Fn::And": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "ComputeSubnetCidr"
-            },
-            "NONE"
-          ]
-        },
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "ComputeSubnetId"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        }
-      ]
-    },
     "UseMasterSubnetForCompute": {
       "Fn::And": [
         {
@@ -1387,8 +1363,8 @@
           }
         ],
         "ProvisionedThroughput": {
-          "ReadCapacityUnits": "5",
-          "WriteCapacityUnits": "5"
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
         }
       }
     },
@@ -1859,8 +1835,8 @@
         "EbsOptimized": {
           "Fn::If": [
             "IsMasterInstanceEbsOpt",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "IamInstanceProfile": {
@@ -2367,19 +2343,21 @@
         "DesiredCapacity": {
           "Ref": "DesiredSize"
         },
-        "NotificationConfiguration": {
-          "TopicARN": {
-            "Ref": "SNS"
-          },
-          "NotificationTypes": [
-            "autoscaling:EC2_INSTANCE_TERMINATE"
-          ]
-        },
+        "NotificationConfigurations": [
+          {
+            "TopicARN": {
+              "Ref": "SNS"
+            },
+            "NotificationTypes": [
+              "autoscaling:EC2_INSTANCE_TERMINATE"
+            ]
+          }
+        ],
         "Tags": [
           {
             "Key": "Name",
             "Value": "Compute",
-            "PropagateAtLaunch": "true"
+            "PropagateAtLaunch": true
           }
         ],
         "PlacementGroup": {
@@ -2455,8 +2433,8 @@
         "AssociatePublicIpAddress": {
           "Fn::If": [
             "ComputePublicIps",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "InstanceType": {
@@ -2506,7 +2484,7 @@
             }
           ]
         },
-        "InstanceMonitoring": "false",
+        "InstanceMonitoring": false,
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/xvdba",
@@ -3152,7 +3130,7 @@
             ]
           },
           "Monitoring": {
-            "Enabled": "false"
+            "Enabled": false
           },
           "BlockDeviceMappings": [
             {
@@ -3762,8 +3740,8 @@
         "SecurityGroupIngress": [
           {
             "IpProtocol": "tcp",
-            "FromPort": "22",
-            "ToPort": "22",
+            "FromPort": 22,
+            "ToPort": 22,
             "CidrIp": {
               "Ref": "AccessFrom"
             }
@@ -3776,8 +3754,8 @@
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "IpProtocol": "-1",
-        "FromPort": "0",
-        "ToPort": "65535",
+        "FromPort": 0,
+        "ToPort": 65535,
         "SourceSecurityGroupId": {
           "Ref": "ComputeSecurityGroup"
         },
@@ -3800,8 +3778,8 @@
               "Ref": "MasterSecurityGroup"
             },
             "IpProtocol": "-1",
-            "FromPort": "0",
-            "ToPort": "65535"
+            "FromPort": 0,
+            "ToPort": 65535
           }
         ]
       },
@@ -3811,8 +3789,8 @@
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "IpProtocol": "-1",
-        "FromPort": "0",
-        "ToPort": "65535",
+        "FromPort": 0,
+        "ToPort": 65535,
         "SourceSecurityGroupId": {
           "Ref": "ComputeSecurityGroup"
         },
@@ -3829,7 +3807,7 @@
         "SubnetId": {
           "Ref": "MasterSubnetId"
         },
-        "SourceDestCheck": "false",
+        "SourceDestCheck": false,
         "GroupSet": [
           {
             "Fn::If": [
@@ -4113,7 +4091,6 @@
         }
       },
       "DependsOn": [
-        "CleanupResourcesFunction",
         "CleanupResourcesFunctionLogGroup"
       ],
       "Condition": "HasResourcesS3Bucket"
@@ -4138,8 +4115,7 @@
         "Runtime": "python3.6",
         "Timeout": 60
       },
-      "Condition": "HasResourcesS3Bucket",
-      "DependsOn": "CleanupResourcesFunctionExecutionRole"
+      "Condition": "HasResourcesS3Bucket"
     },
     "CleanupResourcesFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
@@ -4311,6 +4287,11 @@
         ]
       },
       "Condition": "CreateAWSBatchStack"
+    },
+    "CLITemplate": {
+      "Value": {
+        "Ref": "CLITemplate"
+      }
     }
   }
 }
