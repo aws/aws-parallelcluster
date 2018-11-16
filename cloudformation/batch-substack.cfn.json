@@ -22,7 +22,7 @@
     },
     "SecurityGroups": {
       "Description": "List Security Groups for ComputeEnvironment",
-      "Type": "CommaDelimitedList"
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
     "OS": {
       "Description": "Operating System for container",
@@ -418,8 +418,6 @@
     "ManageDockerImagesCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
       "DependsOn": [
-        "CodeBuildDockerImageBuilderProject",
-        "DockerImagesRepo",
         "CodeBuildNotificationRule"
       ],
       "Properties": {
@@ -456,8 +454,7 @@
         },
         "Runtime": "python3.6",
         "Timeout": 60
-      },
-      "DependsOn": "ManageDockerImagesFunctionExecutionRole"
+      }
     },
     "ManageDockerImagesFunctionExecutionRole": {
       "Type": "AWS::IAM::Role",
@@ -618,8 +615,7 @@
         },
         "Runtime": "python3.6",
         "Timeout": 60
-      },
-      "DependsOn": "SendBuildNotificationFunctionExecutionRole"
+      }
     },
     "SendBuildNotificationFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
