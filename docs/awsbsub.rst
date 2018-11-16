@@ -14,3 +14,4 @@ awsbsub
     io
     jobId
     startedAt
+    utf
