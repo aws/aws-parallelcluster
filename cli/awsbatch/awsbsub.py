@@ -28,7 +28,7 @@ from awsbatch.utils import fail, get_job_definition_name_by_arn, shell_join
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -132,7 +132,8 @@ def _get_parser():
 
 def _validate_parameters(args):
     """
-    Validate input parameters
+    Validate input parameters.
+
     :param args: args variable
     """
     if args.command_file:
@@ -147,7 +148,7 @@ def _validate_parameters(args):
     elif not type(args.command) == str:
         fail("Parameters validation error: command parameter is required.")
 
-    if args.depends_on and not re.match("(jobId|type)=[^\s,]+([\s,]?(jobId|type)=[^\s]+)*", args.depends_on):
+    if args.depends_on and not re.match(r"(jobId|type)=[^\s,]+([\s,]?(jobId|type)=[^\s]+)*", args.depends_on):
         fail("Parameters validation error: please double check --depends-on parameter syntax.")
 
 
@@ -157,7 +158,8 @@ def _prepend_s3_folder(file_name):
 
 def _upload_to_s3(boto3_factory, s3_bucket, file_path, key_name, timeout):
     """
-    Upload a file to an s3 bucket
+    Upload a file to an s3 bucket.
+
     :param boto3_factory: initialized Boto3ClientFactory object
     :param s3_bucket: S3 bucket to use
     :param file_path: file to upload
@@ -176,6 +178,7 @@ def _upload_to_s3(boto3_factory, s3_bucket, file_path, key_name, timeout):
 def _upload_and_get_command(boto3_factory, args, job_name, region, s3_bucket, log):
     """
     Get command by parsing args and config.
+
     The function will also perform an s3 upload, if needed
     :param boto3_factory: initialized Boto3ClientFactory object
     :param args: input arguments
@@ -241,7 +244,8 @@ def _upload_and_get_command(boto3_factory, args, job_name, region, s3_bucket, lo
 
 def _get_depends_on(args):
     """
-    Get depends_on list by parsing input parameters
+    Get depends_on list by parsing input parameters.
+
     :param args: input parameters
     :return: depends_on list
     """
@@ -259,12 +263,12 @@ def _get_depends_on(args):
 
 
 class AWSBsubCommand(object):
-    """
-    awsbsub command
-    """
+    """awsbsub command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -286,9 +290,7 @@ class AWSBsubCommand(object):
         dependencies=None,
         master_ip=None,
     ):
-        """
-        submit the job
-        """
+        """Submit the job."""
         try:
             # array properties
             array_properties = {}
@@ -348,7 +350,8 @@ class AWSBsubCommand(object):
 
     def __get_mnp_job_definition_version(self, base_job_definition_arn, nodes):
         """
-        Get (and create if required) job definition version to use for the submission
+        Get (and create if required) job definition version to use for the submission.
+
         :return: job definition arn
         """
         # Check if there is already a job definition for the given number of nodes
@@ -366,7 +369,8 @@ class AWSBsubCommand(object):
 
     def __search_for_job_definition(self, base_job_definition, nodes):
         """
-        Search for existing job definition with the same name of the base_job_definition and the same number of nodes
+        Search for existing job definition with the same name of the base_job_definition and the same number of nodes.
+
         :param base_job_definition: job definition arn
         :param nodes: number of nodes
         :return: the found jobDefinition object or None
@@ -391,7 +395,10 @@ class AWSBsubCommand(object):
 
     def __register_new_job_definition(self, base_job_definition_arn, nodes):
         """
-        Register a new job definition by using the base_job_definition_arn as starting point for the nodeRangeProperties
+        Register a new job definition.
+
+        It uses the base_job_definition_arn as starting point for the nodeRangeProperties.
+
         :param base_job_definition_arn: job definition arn to use as starting point
         :param nodes: nuber of nodes to set in the job definition
         :return: the ARN of the created job definition
@@ -426,6 +433,7 @@ class AWSBsubCommand(object):
 
 
 def main():
+    """Command entrypoint."""
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()
@@ -450,7 +458,7 @@ def main():
                 job_name = "STDIN"
             else:
                 # normalize name
-                job_name = re.sub("\W+", "_", os.path.basename(args.command))
+                job_name = re.sub(r"\W+", "_", os.path.basename(args.command))
             log.info("Job name not specified, setting it to (%s)" % job_name)
 
         # upload script, if needed, and get related command

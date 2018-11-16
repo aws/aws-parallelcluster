@@ -28,13 +28,12 @@ from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
 
 
 class Output(object):
-    """
-    Generic Output object.
-    """
+    """Generic Output object."""
 
     def __init__(self, mapping, items=None):
         """
         Create a table of generic items.
+
         :param items: list of items
         :param mapping: association between keys and item attributes
         """
@@ -45,6 +44,7 @@ class Output(object):
             self.keys.append(key)
 
     def add(self, items):
+        """Add items to output."""
         if type(items) == list:
             self.items.extend(items)
         else:
@@ -53,6 +53,7 @@ class Output(object):
     def show_table(self, keys=None):
         """
         Print the items table.
+
         :param keys: show a specific list of keys (optional)
         """
         rows = []
@@ -67,6 +68,7 @@ class Output(object):
     def show(self, keys=None):
         """
         Print the items in a key value format.
+
         :param keys: show a specific list of keys (optional)
         """
         output_keys = keys or self.keys
@@ -79,15 +81,15 @@ class Output(object):
                 print("-" * 25)
 
     def length(self):
+        """Return number of items in Output."""
         return len(self.items)
 
 
 class Boto3ClientFactory(object):
-    """
-    Boto3 configuration object
-    """
+    """Boto3 configuration object."""
 
     def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy="NONE"):
+        """Constructor."""
         self.region = region
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
@@ -96,6 +98,12 @@ class Boto3ClientFactory(object):
             self.proxy_config = Config(proxies={"https": proxy})
 
     def get_client(self, service):
+        """
+        Initialize the boto3 client for a given service.
+
+        :param service: boto3 service.
+        :return: the boto3 client
+        """
         try:
             return boto3.client(
                 service,
@@ -109,14 +117,15 @@ class Boto3ClientFactory(object):
 
 
 class AWSBatchCliConfig(object):
-    """
-    AWS ParallelCluster AWS Batch CLI configuration object
-    """
+    """AWS ParallelCluster AWS Batch CLI configuration object."""
 
     def __init__(self, log, cluster):
         """
-        The command will search for the [cluster cluster-name] section in the /etc/awsbatch-cli.cfg
-        configuration file, if there, or ask to the pcluster status
+        Constructor.
+
+        Search for the [cluster cluster-name] section in the /etc/awsbatch-cli.cfg configuration file, if there
+        or ask to the pcluster status.
+
         :param log: log
         :param cluster: cluster name
         """
@@ -163,7 +172,8 @@ class AWSBatchCliConfig(object):
 
     def __init_from_parallelcluster_config(self, parallelcluster_config_file, log):
         """
-        init credentials object attributes from aws-parallelcluster configuration file
+        Init credentials object attributes from aws-parallelcluster configuration file.
+
         :param parallelcluster_config_file: aws-parallelcluster config
         :param log: log
         """
@@ -189,7 +199,8 @@ class AWSBatchCliConfig(object):
 
     def __init_from_config(self, cli_config_file, cluster, log):
         """
-        init object attributes from awsbatch-cli configuration file
+        Init object attributes from awsbatch-cli configuration file.
+
         :param cli_config_file: awsbatch-cli config
         :param cluster: cluster name
         :param log: log
@@ -240,9 +251,10 @@ class AWSBatchCliConfig(object):
                     % (e.option, e.section, cli_config_file)
                 )
 
-    def __init_from_stack(self, cluster, log):
+    def __init_from_stack(self, cluster, log):  # noqa: C901 FIXME
         """
-        init object attributes by asking to the stack
+        Init object attributes by asking to the stack.
+
         :param cluster: cluster name
         :param log: log
         """
@@ -294,7 +306,8 @@ class AWSBatchCliConfig(object):
 
 def config_logger(log_level):
     """
-    Define a logger for aws-parallelcluster-awsbatch-cli
+    Define a logger for aws-parallelcluster-awsbatch-cli.
+
     :param log_level logging level
     :return: the logger
     """
