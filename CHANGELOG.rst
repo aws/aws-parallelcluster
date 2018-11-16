@@ -4,6 +4,7 @@ CHANGELOG
 
 2.0.2
 =====
+* Add support for GovCloud East, us-gov-east-1 region
 * Fix regression with `shared_dir` parameter in the cluster configuration section.
 * bugfix:``cfncluster-cookbook``: Fix issue with jq on ubuntu1404 and centos6. Now using version 1.4.
 * bugfix:``cfncluster-cookbook``: Fix dependency issue with AWS CLI package on ubuntu1404.

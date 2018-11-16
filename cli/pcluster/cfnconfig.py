@@ -290,10 +290,7 @@ class ParallelClusterConfig(object):
                         config_sanity.check_resource(self.region, self.aws_access_key_id, self.aws_secret_access_key,
                                                      'URL', self.template_url)
                 except configparser.NoOptionError:
-                    if self.region == 'us-gov-west-1':
-                        self.template_url = ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
-                                             % (self.region, self.region, self.version))
-                    elif self.region == 'us-east-1':
+                    if self.region == 'us-east-1':
                         self.template_url = ('https://s3.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json'
                                              % (self.region, self.version))
                     else:
