@@ -33,7 +33,7 @@ def get_region_by_stack_id(stack_id):
     :param stack_id: something like arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>/<id>'
     :return: region
     """
-    return re.search('arn:aws(\-us\-gov)?:cloudformation:([^:]*).*', stack_id).group(1)
+    return re.search("arn:aws(\-us\-gov)?:cloudformation:([^:]*).*", stack_id).group(1)
 
 
 def get_job_definition_name_by_arn(job_definition_arn, version=False):
@@ -43,7 +43,7 @@ def get_job_definition_name_by_arn(job_definition_arn, version=False):
     :param version: set to true if
     :return: the job definition name
     """
-    pattern = r'.*/(.*)' if version else r'.*/(.*):(.*)'
+    pattern = r".*/(.*)" if version else r".*/(.*):(.*)"
     return re.search(pattern, job_definition_arn).group(1)
 
 
@@ -53,10 +53,10 @@ def convert_to_date(timestamp):
     :param timestamp: timestamp to convert
     :return: the converted date
     """
-    return datetime.fromtimestamp(timestamp / 1000).strftime('%Y-%m-%d %H:%M:%S')
+    return datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def hide_keys(dictionary, keys_to_hide, new_value='xxx'):
+def hide_keys(dictionary, keys_to_hide, new_value="xxx"):
     """
     Return a copy of the given dictionary on which specified keys will be replaced by the new_value word (or 'xxx')
     :param dictionary: a dictionary
@@ -76,7 +76,7 @@ def shell_join(array):
     :param array: input array
     :return: the shell-quoted string
     """
-    return ' '.join(pipes.quote(arg) for arg in array)
+    return " ".join(pipes.quote(arg) for arg in array)
 
 
 def is_job_array(job):
@@ -85,5 +85,4 @@ def is_job_array(job):
     :param job: the job dictionary returned by AWS Batch api
     :return: true if the job is an array, false otherwise
     """
-    return 'arrayProperties' in job and 'size' in job['arrayProperties']
-
+    return "arrayProperties" in job and "size" in job["arrayProperties"]

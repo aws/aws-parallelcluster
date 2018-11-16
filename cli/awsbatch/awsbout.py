@@ -13,12 +13,13 @@
 # See the License for the specific language governing permissions and limitations under the License.
 from __future__ import print_function
 
-import argparse
 import sys
 import time
 
+import argparse
+
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, config_logger
-from awsbatch.utils import fail, convert_to_date, is_job_array
+from awsbatch.utils import convert_to_date, fail, is_job_array
 
 
 def _get_parser():
@@ -36,16 +37,21 @@ def _get_parser():
 
     :return: the ArgumentParser object
     """
-    parser = argparse.ArgumentParser(description='Shows the output of the given Job.')
-    parser.add_argument('-c', '--cluster', help='Cluster to use')
-    parser.add_argument('-hd', '--head', help='Gets the first <head> lines of the job output', type=int)
-    parser.add_argument('-t', '--tail', help='Gets the last <tail> lines of the job output', type=int)
-    parser.add_argument('-s', '--stream', help='Gets the job output and waits for additional output to be produced. '
-                                               'It can be used in conjunction with --tail to start from the '
-                                               'latest <tail> lines of the job output', action='store_true')
-    parser.add_argument('-sp', '--stream-period', help='Sets the streaming period. Default is 5', type=int)
-    parser.add_argument('-ll', '--log-level', help=argparse.SUPPRESS, default='ERROR')
-    parser.add_argument('job_id', help='The job ID')
+    parser = argparse.ArgumentParser(description="Shows the output of the given Job.")
+    parser.add_argument("-c", "--cluster", help="Cluster to use")
+    parser.add_argument("-hd", "--head", help="Gets the first <head> lines of the job output", type=int)
+    parser.add_argument("-t", "--tail", help="Gets the last <tail> lines of the job output", type=int)
+    parser.add_argument(
+        "-s",
+        "--stream",
+        help="Gets the job output and waits for additional output to be produced. "
+        "It can be used in conjunction with --tail to start from the "
+        "latest <tail> lines of the job output",
+        action="store_true",
+    )
+    parser.add_argument("-sp", "--stream-period", help="Sets the streaming period. Default is 5", type=int)
+    parser.add_argument("-ll", "--log-level", help=argparse.SUPPRESS, default="ERROR")
+    parser.add_argument("job_id", help="The job ID")
     return parser
 
 
@@ -68,6 +74,7 @@ class AWSBoutCommand(object):
     """
     awsbout command
     """
+
     def __init__(self, log, boto3_factory):
         """
         :param log: log
@@ -93,27 +100,27 @@ class AWSBoutCommand(object):
         """
         log_stream = None
         try:
-            batch_client = self.boto3_factory.get_client('batch')
-            jobs = batch_client.describe_jobs(jobs=[job_id])['jobs']
+            batch_client = self.boto3_factory.get_client("batch")
+            jobs = batch_client.describe_jobs(jobs=[job_id])["jobs"]
             if len(jobs) == 1:
                 job = jobs[0]
                 self.log.debug(job)
 
-                if 'nodeProperties' in job:
+                if "nodeProperties" in job:
                     # MNP job
-                    container = job['nodeProperties']['nodeRangeProperties'][0]['container']
-                elif 'container' in job:
-                    container = job['container']
+                    container = job["nodeProperties"]["nodeRangeProperties"][0]["container"]
+                elif "container" in job:
+                    container = job["container"]
                 else:
                     container = {}
 
                 if is_job_array(job):
-                    fail("No output available for the Job Array (%s). Please ask for array children." % job['jobId'])
+                    fail("No output available for the Job Array (%s). Please ask for array children." % job["jobId"])
                 else:
-                    if 'logStreamName' in container:
-                        log_stream = container.get('logStreamName')
+                    if "logStreamName" in container:
+                        log_stream = container.get("logStreamName")
                     else:
-                        print("No log stream found for job (%s) in the status (%s)" % (job_id, job['status']))
+                        print("No log stream found for job (%s) in the status (%s)" % (job_id, job["status"]))
             else:
                 fail("Error asking job output for job (%s). Job not found." % job_id)
         except Exception as e:
@@ -125,7 +132,7 @@ class AWSBoutCommand(object):
         Ask for log stream and print it
         :param log_stream: job log stream
         """
-        logs_client = self.boto3_factory.get_client('logs')
+        logs_client = self.boto3_factory.get_client("logs")
         try:
             # The maximum number of log events returned by the get_log_events function is as many log events
             # as can fit in a response size of 1 MB, up to 10,000 log events
@@ -140,9 +147,10 @@ class AWSBoutCommand(object):
                 limit = max_limit
                 start_from_head = False
 
-            response = logs_client.get_log_events(logGroupName='/aws/batch/job', logStreamName=log_stream, limit=limit,
-                                                  startFromHead=start_from_head)
-            events = response['events']
+            response = logs_client.get_log_events(
+                logGroupName="/aws/batch/job", logStreamName=log_stream, limit=limit, startFromHead=start_from_head
+            )
+            events = response["events"]
             self.log.debug(response)
             if not events:
                 print("No events found.")
@@ -150,22 +158,24 @@ class AWSBoutCommand(object):
             self.__print_events(events)
             if limit == max_limit or stream:
                 # get paginated items
-                next_token = response['nextForwardToken']
+                next_token = response["nextForwardToken"]
                 while next_token is not None or stream:
                     self.log.info("Next Forward Token is (%s)" % next_token)
                     if stream:
                         period = stream_period if stream_period else 5
                         self.log.info("Waiting other %s seconds..." % period)
                         time.sleep(period)
-                    response = logs_client.get_log_events(logGroupName='/aws/batch/job', logStreamName=log_stream,
-                                                          nextToken=next_token)
-                    self.__print_events(response['events'])
+                    response = logs_client.get_log_events(
+                        logGroupName="/aws/batch/job", logStreamName=log_stream, nextToken=next_token
+                    )
+                    self.__print_events(response["events"])
                     # if nextForwardToken is the same we passed in, we reached the end of the stream
                     if stream:
-                        next_token = response['nextForwardToken']
+                        next_token = response["nextForwardToken"]
                     else:
-                        next_token = response['nextForwardToken'] if response['nextForwardToken'] != next_token \
-                            else None
+                        next_token = (
+                            response["nextForwardToken"] if response["nextForwardToken"] != next_token else None
+                        )
         except KeyboardInterrupt:
             self.log.info("Interrupted by the user")
             exit(0)
@@ -180,7 +190,7 @@ class AWSBoutCommand(object):
         :return:
         """
         for event in events:
-            print('{0}: {1}'.format(convert_to_date(event['timestamp']), event['message']))
+            print("{0}: {1}".format(convert_to_date(event["timestamp"]), event["message"]))
 
 
 def main():
@@ -191,12 +201,16 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
-                                           aws_access_key_id=config.aws_access_key_id,
-                                           aws_secret_access_key=config.aws_secret_access_key)
+        boto3_factory = Boto3ClientFactory(
+            region=config.region,
+            proxy=config.proxy,
+            aws_access_key_id=config.aws_access_key_id,
+            aws_secret_access_key=config.aws_secret_access_key,
+        )
 
-        AWSBoutCommand(log, boto3_factory).run(job_id=args.job_id, head=args.head, tail=args.tail, stream=args.stream,
-                                               stream_period=args.stream_period)
+        AWSBoutCommand(log, boto3_factory).run(
+            job_id=args.job_id, head=args.head, tail=args.tail, stream=args.stream, stream_period=args.stream_period
+        )
 
     except KeyboardInterrupt:
         print("Exiting...")
@@ -205,5 +219,5 @@ def main():
         fail("Unexpected error. Command failed with exception: %s" % e)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

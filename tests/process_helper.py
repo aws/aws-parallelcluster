@@ -26,11 +26,11 @@ import signal
 import subprocess as sub
 import threading
 
-
 _procs = {}
 _procs_lock = threading.Lock()
 
 _termination_caught = False
+
 
 class ProcessHelperError(Exception):
     def __init__(self, cmd, msg=None):
@@ -39,16 +39,20 @@ class ProcessHelperError(Exception):
         super(ProcessHelperError, self).__init__(msg)
         self.cmd = cmd
 
+
 class AbortedProcessError(ProcessHelperError):
     def __init__(self, cmd):
         super(AbortedProcessError, self).__init__(cmd, "Command '%s' was aborted" % cmd)
+
 
 class KilledProcessError(ProcessHelperError):
     def __init__(self, cmd):
         super(KilledProcessError, self).__init__(cmd, "Process for command '%s' was killed" % cmd)
 
+
 def termination_caught():
     return _termination_caught
+
 
 #
 # This function is supposed to be used as handler for system signals:
@@ -68,11 +72,13 @@ def term_handler(_signo, _stack_frame):
 
     _procs_lock.release()
 
+
 def _kill_process(process):
     try:
         process.kill()
     except:
         pass
+
 
 def _add_process(process):
     global _procs_lock, _procs, _termination_caught
@@ -87,6 +93,7 @@ def _add_process(process):
 
         _procs_lock.release()
 
+
 def _remove_process(process):
     global _procs_lock, _procs
 
@@ -97,6 +104,7 @@ def _remove_process(process):
 
         _procs_lock.release()
 
+
 def exec_command(*cmdargs, **kwargs):
     global _termination_caught
 
@@ -104,12 +112,7 @@ def exec_command(*cmdargs, **kwargs):
         raise AbortedProcessError(" ".join(*cmdargs))
 
     DEV_NULL = open(os.devnull, "rb")
-    params = {
-        'env' : dict(os.environ),
-        'stdin' : DEV_NULL,
-        'stdout' : sub.PIPE,
-        'stderr' : sub.STDOUT
-        }
+    params = {"env": dict(os.environ), "stdin": DEV_NULL, "stdout": sub.PIPE, "stderr": sub.STDOUT}
     params.update(kwargs)
 
     process = None

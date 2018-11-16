@@ -19,8 +19,7 @@ import textwrap
 
 import argparse
 
-from pcluster import easyconfig
-from pcluster import pcluster
+from pcluster import easyconfig, pcluster
 
 
 def create(args):
@@ -72,24 +71,24 @@ def create_ami(args):
 
 
 def config_logger():
-    logger = logging.getLogger('pcluster.pcluster')
+    logger = logging.getLogger("pcluster.pcluster")
     logger.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter('%(message)s'))
+    ch.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(ch)
 
-    logfile = os.path.expanduser(os.path.join('~', '.parallelcluster', 'pcluster-cli.log'))
+    logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
     try:
         os.makedirs(os.path.dirname(logfile))
     except OSError as e:
         if e.errno != errno.EEXIST:
-            raise # can safely ignore EEXISTS for this purpose...
+            raise  # can safely ignore EEXISTS for this purpose...
 
     fh = logging.FileHandler(logfile)
     fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s'))
+    fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
     logger.addHandler(fh)
 
 
@@ -116,7 +115,7 @@ def _get_parser():
                                      epilog='For command specific flags run "pcluster [command] --help"')
     subparsers = parser.add_subparsers()
     subparsers.required = True
-    subparsers.dest = 'command'
+    subparsers.dest = "command"
 
     # create command subparser
     create_example = textwrap.dedent('''When the command is called and it starts polling for status of that call
@@ -281,11 +280,11 @@ def main():
     parser = _get_parser()
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
-    if args.func.__name__ == 'command':
+    if args.func.__name__ == "command":
         args.func(args, extra_args)
     else:
         if extra_args:
             parser.print_usage()
-            print('Invalid arguments %s...' % extra_args)
+            print("Invalid arguments %s..." % extra_args)
             sys.exit(1)
         args.func(args)
