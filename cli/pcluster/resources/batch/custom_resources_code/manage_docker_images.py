@@ -28,12 +28,12 @@ except Exception as e:
 
 def trigger_codebuild(project_name):
     """
-    Starts a build for a specific CodeBuild project.
+    Start a build for a specific CodeBuild project.
+
     Args:
         project_name: name of the CodeBuild project to build.
 
-    Returns:
-        the id of the started build.
+    Returns: the id of the started build.
     """
     codebuild_client = boto3.client("codebuild")
     """ :type : pyboto3.codebuild """
@@ -43,7 +43,8 @@ def trigger_codebuild(project_name):
 
 def delete_all_ecr_images(ecr_repo):
     """
-    Deletes all container images that are present in the specified ECR repository.
+    Delete all container images that are present in the specified ECR repository.
+
     Args:
         ecr_repo: name of the ECR repository.
     """
@@ -57,7 +58,8 @@ def delete_all_ecr_images(ecr_repo):
 
 def create_docker_images(codebuild_project):
     """
-    Starts the build to create Docker images.
+    Start the build to create Docker images.
+
     Args:
         codebuild_project: CodeBuild project that builds docker container images.
     """
@@ -84,7 +86,7 @@ def create(event, context):
 
 def update(event, context):
     """
-    Place your code to handle Update events here
+    Place your code to handle Update events here.
 
     To return a failure to CloudFormation simply raise an exception,
     the exception message will be sent to CloudFormation Events.
@@ -99,7 +101,7 @@ def update(event, context):
 
 def delete(event, context):
     """
-    Place your code to handle Delete events here
+    Place your code to handle Delete events here.
 
     To return a failure to CloudFormation simply raise an exception,
     the exception message will be sent to CloudFormation Events.
@@ -111,9 +113,7 @@ def delete(event, context):
 
 
 def handler(event, context):
-    """
-    Main handler function, passes off it's work to crhelper's cfn_handler
-    """
+    """Main handler function, passes off it's work to crhelper's cfn_handler."""  # noqa: D401
     # update the logger with event info
     global logger
     logger = crhelper.log_config(event, loglevel="info")

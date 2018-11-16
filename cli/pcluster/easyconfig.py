@@ -1,7 +1,7 @@
 # Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance with the
-# License. A copy of the License is located at
+# Licensed under the Apache License, Version 2.0 (the 'License'). You may not use this file except in compliance
+# with the License. A copy of the License is located at
 #
 # http://aws.amazon.com/apache2.0/
 #
@@ -142,7 +142,7 @@ def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_
     return subnetids
 
 
-def configure(args):
+def configure(args):  # noqa: C901 FIXME!!!
 
     # Determine config file name based on args or default
     if args.config_file is not None:
@@ -155,7 +155,6 @@ def configure(args):
     # Check if configuration file exists
     if os.path.isfile(config_file):
         config.read(config_file)
-        config_read = True
 
     # Prompt for required values, using existing as defaults
     cluster_template = prompt(

@@ -1,7 +1,7 @@
 # Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
-# License. A copy of the License is located at
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
+# with the License. A copy of the License is located at
 #
 # http://aws.amazon.com/apache2.0/
 #
@@ -32,7 +32,7 @@ from botocore.exceptions import ClientError
 from . import config_sanity
 
 
-def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
+def get_stack_template(region, aws_access_key_id, aws_secret_access_key, stack):
     cfn = boto3.client(
         "cloudformation",
         region_name=region,
@@ -55,7 +55,9 @@ def getStackTemplate(region, aws_access_key_id, aws_secret_access_key, stack):
 
 
 class ParallelClusterConfig(object):
-    def __ebs_determine_shared_dir(self, __config):
+    """Manage ParallelCluster Config."""
+
+    def __ebs_determine_shared_dir(self, __config):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
         __temp_dir_list = []
         try:
@@ -108,7 +110,7 @@ class ParallelClusterConfig(object):
             except configparser.NoOptionError:
                 pass
 
-    def __load_ebs_options(self, __config):
+    def __load_ebs_options(self, __config):  # noqa: C901 FIXME!!!
 
         try:
             self.__ebs_settings = __config.get(self.__cluster_section, "ebs_settings")
@@ -174,7 +176,7 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
-    def __init__(self, args):
+    def __init__(self, args):  # noqa: C901 FIXME!!!
         self.args = args
         self.cluster_options = self.__init_cluster_options()
         self.size_parameters = self.__init_size_parameters()
@@ -241,7 +243,7 @@ class ParallelClusterConfig(object):
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
             # parameter. We always get the template to use from CloudFormation.
-            self.__cluster_template = getStackTemplate(
+            self.__cluster_template = get_stack_template(
                 self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
             )
         else:
@@ -250,7 +252,7 @@ class ParallelClusterConfig(object):
                     self.__cluster_template = args.cluster_template
                 else:
                     if __args_func == "update":
-                        self.__cluster_template = getStackTemplate(
+                        self.__cluster_template = get_stack_template(
                             self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
                         )
                     else:
@@ -266,7 +268,7 @@ class ParallelClusterConfig(object):
         except configparser.NoOptionError:
             self.__update_check = True
 
-        if self.__update_check == True:
+        if self.__update_check is True:
             try:
                 __latest = json.loads(
                     urllib.request.urlopen("http://pypi.python.org/pypi/aws-parallelcluster/json").read()
@@ -328,7 +330,8 @@ class ParallelClusterConfig(object):
                         )
                     else:
                         self.template_url = (
-                            "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json"
+                            "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/"
+                            "aws-parallelcluster-%s.cfn.json"
                             % (self.region, self.region, self.version)
                         )
         except AttributeError:
@@ -555,7 +558,7 @@ class ParallelClusterConfig(object):
             print("ERROR: awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
             sys.exit(1)
 
-    def __run_batch_validation(self, config):
+    def __run_batch_validation(self, config):  # noqa: C901 FIXME!!!
         self.__check_option_absent_awsbatch(config, "initial_queue_size")
         self.__check_option_absent_awsbatch(config, "maintain_initial_size")
         self.__check_option_absent_awsbatch(config, "max_queue_size")

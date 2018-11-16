@@ -38,7 +38,8 @@ def boto3_resource(service, aws_client_config):
 
 def create_s3_bucket(bucket_name, aws_client_config):
     """
-    Creates a new S3 bucket.
+    Create a new S3 bucket.
+
     Args:
         bucket_name: name of the S3 bucket to create
         aws_client_config: dictionary containing configuration params for boto3 client
@@ -57,7 +58,8 @@ def create_s3_bucket(bucket_name, aws_client_config):
 
 def delete_s3_bucket(bucket_name, aws_client_config):
     """
-    Deletes an S3 bucket together with all stored objects.
+    Delete an S3 bucket together with all stored objects.
+
     Args:
         bucket_name: name of the S3 bucket to delete
         aws_client_config: dictionary containing configuration params for boto3 client
@@ -68,24 +70,24 @@ def delete_s3_bucket(bucket_name, aws_client_config):
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
-    except ClientError as e:
+    except ClientError:
         print("Failed to delete bucket %s. Please delete it manually." % bucket_name)
         pass
 
 
 def zip_dir(path):
     """
-    It creates a zip archive containing all files and dirs rooted in path.
+    Create a zip archive containing all files and dirs rooted in path.
+
     The archive is created in memory and a file handler is returned by the function.
     Args:
         path: directory containing the resources to archive.
-
-    Returns:
+    Return:
         file_out: file handler pointing to the compressed archive.
     """
     file_out = BytesIO()
     with zipfile.ZipFile(file_out, "w", zipfile.ZIP_DEFLATED) as ziph:
-        for root, dirs, files in os.walk(path):
+        for root, _, files in os.walk(path):
             for file in files:
                 ziph.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), start=path))
     file_out.seek(0)
@@ -94,7 +96,8 @@ def zip_dir(path):
 
 def upload_resources_artifacts(bucket_name, root, aws_client_config):
     """
-    Uploads to the specified S3 bucket the content of the directory rooted in root path.
+    Upload to the specified S3 bucket the content of the directory rooted in root path.
+
     All dirs contained in root dir will be uploaded as zip files to $bucket_name/$dir_name/artifacts.zip.
     All files contained in root dir will be uploaded to $bucket_name.
     Args:

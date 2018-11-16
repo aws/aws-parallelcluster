@@ -1,7 +1,7 @@
 # Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
-# License. A copy of the License is located at
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
+# with the License. A copy of the License is located at
 #
 # http://aws.amazon.com/apache2.0/
 #
@@ -62,7 +62,7 @@ def version(args):
     logger.info(config.version)
 
 
-def create(args):
+def create(args):  # noqa: C901 FIXME!!!
     logger.info("Beginning cluster creation for cluster: %s" % (args.cluster_name))
     logger.debug("Building cluster config based on args %s" % str(args))
 
@@ -181,7 +181,8 @@ def create(args):
 
 def _print_stack_outputs(stack):
     """
-    Print a limited set of the CloudFormation Stack outputs
+    Print a limited set of the CloudFormation Stack outputs.
+
     :param stack: the stack dictionary
     """
     whitelisted_outputs = ["ClusterUser", "MasterPrivateIP", "MasterPublicIP"]
@@ -199,12 +200,12 @@ def is_ganglia_enabled(parameters):
         extra_json = filter(lambda x: x.get("ParameterKey") == "ExtraJson", parameters)[0].get("ParameterValue")
         extra_json = json.loads(extra_json).get("cfncluster")
         return extra_json.get("ganglia_enabled") == "yes"
-    except:
+    except Exception:
         pass
     return False
 
 
-def update(args):
+def update(args):  # noqa: C901 FIXME!!!
     logger.info("Updating: %s" % (args.cluster_name))
     stack_name = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
@@ -368,7 +369,7 @@ def list(args):
         stacks = cfn.describe_stacks().get("Stacks")
         for stack in stacks:
             if stack.get("ParentId") is None and stack.get("StackName").startswith("parallelcluster-"):
-                logger.info("%s" % (stack.get("StackName")[len("parallelcluster-") :]))
+                logger.info("%s" % (stack.get("StackName")[len("parallelcluster-") :]))  # noqa: E203
     except ClientError as e:
         logger.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
@@ -612,7 +613,7 @@ def command(args, extra_args):
         sys.exit(0)
 
 
-def status(args):
+def status(args):  # noqa: C901 FIXME!!!
     stack_name = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
 
@@ -825,10 +826,10 @@ def run_packer(packer_command, packer_env, config):
     )
     logger.info("Packer log: %s" % path_log)
     try:
-        DEV_NULL = open(os.devnull, "rb")
+        dev_null = open(os.devnull, "rb")
         packer_env.update(os.environ.copy())
         process = sub.Popen(
-            _command, env=packer_env, stdout=sub.PIPE, stderr=sub.STDOUT, stdin=DEV_NULL, universal_newlines=True
+            _command, env=packer_env, stdout=sub.PIPE, stderr=sub.STDOUT, stdin=dev_null, universal_newlines=True
         )
 
         with open(path_log, "w") as packer_log:
@@ -867,7 +868,7 @@ def run_packer(packer_command, packer_env, config):
         logger.info("\nExiting...")
         sys.exit(0)
     finally:
-        DEV_NULL.close()
+        dev_null.close()
         if results.get("PACKER_INSTANCE_ID"):
             dispose_packer_instance(results, config)
 
