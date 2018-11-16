@@ -24,7 +24,7 @@ from awsbatch.utils import fail
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -51,11 +51,10 @@ def _get_parser():
 
 
 class Queue(object):
-    """
-    Generic queue object.
-    """
+    """Generic queue object."""
 
     def __init__(self, arn, name, priority, status, status_reason):
+        """Constructor."""
         self.arn = arn
         self.name = name
         self.priority = priority
@@ -64,12 +63,12 @@ class Queue(object):
 
 
 class AWSBqueuesCommand(object):
-    """
-    awsbqueues command
-    """
+    """awsbqueues command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -87,9 +86,7 @@ class AWSBqueuesCommand(object):
         self.boto3_factory = boto3_factory
 
     def run(self, job_queues, show_details=False):
-        """
-        print list of queues
-        """
+        """Print list of queues."""
         self.__init_output(job_queues)
         if show_details:
             self.output.show()
@@ -98,7 +95,8 @@ class AWSBqueuesCommand(object):
 
     def __init_output(self, job_queues):
         """
-        Initialize queues output by asking for given queues
+        Initialize queues output by asking for given queues.
+
         :param job_queues: a list of job queues
         """
         try:
@@ -118,6 +116,7 @@ class AWSBqueuesCommand(object):
     def __new_queue(queue):
         """
         Parse jobQueue and return a Queue object.
+
         :param queue: the jobQueue object to parse
         :return: a Queue object
         """
@@ -134,6 +133,7 @@ class AWSBqueuesCommand(object):
 
 
 def main():
+    """Command entrypoint."""
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()
