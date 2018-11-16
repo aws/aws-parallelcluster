@@ -15,6 +15,7 @@ from botocore.vendored import requests
 
 
 def handler(event, context):
+    """Handle CodeBuild build status changes and send notifications to CFN WaitCondition."""
     print("CodeBuild event: %s" % json.dumps(event))
     notification_url = os.environ["NOTIFICATION_URL"]
     succeeded = event["detail"]["build-status"] == "SUCCEEDED"

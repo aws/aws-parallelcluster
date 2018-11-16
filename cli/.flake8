@@ -3,6 +3,15 @@ ignore =
     D105, # Missing docstring in magic method
     D100, # Missing docstring in public module
     D104, # Missing docstring in public package
+    D107, # Missing docstring in __init__
+    W503, # line break before binary operator => Conflicts with black style.
+# D103 Missing docstring in public function
+# E402 module level import not at top of file
+per-file-ignores =
+    pcluster/*.py: D103
+    pcluster/config_sanity.py: E402
+    pcluster/easyconfig.py: E402
+    pcluster/cfnconfig.py: E402
 exclude =
     .tox,
     .git,

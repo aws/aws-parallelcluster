@@ -12,6 +12,7 @@
 ###################################################################################################
 
 # This file is imported from https://github.com/awslabs/aws-cloudformation-templates
+# flake8: noqa
 
 from __future__ import print_function
 
