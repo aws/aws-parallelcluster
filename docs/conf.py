@@ -19,6 +19,7 @@ import sys, os
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.append(os.path.abspath('../cli'))
+sys.path.append(os.path.abspath('../cli/pcluster'))
 
 # -- General configuration ------------------------------------------------
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -208,6 +209,15 @@ html_theme_options = {
     "base_url": "https://aws-parallelcluster.readthedocs.io/latest/"
 }
 
+html_context = {
+    'css_files': [
+        '_static/theme_overrides.css'
+    ]
+}
+
+html_js_files = [
+    'custom.js'
+]
 
 # -- Options for LaTeX output ---------------------------------------------
 
