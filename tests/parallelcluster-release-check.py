@@ -26,33 +26,37 @@
 #   (value does not matter). That subnet will be used as the launch
 #   target for the cluster.
 
+import argparse
 import datetime
 import errno
 import os
+import Queue
+import re
 import signal
-import sys
 import subprocess as sub
+import sys
 import threading
 import time
-import re
-import argparse
-import Queue
+from builtins import exit
+
 import boto3
 import process_helper as prochelp
-from builtins import exit
 
 
 class ReleaseCheckException(Exception):
     pass
 
+
 #
 # configuration
 #
-username_map = { 'alinux' : 'ec2-user',
-                 'centos6' : 'centos',
-                 'centos7' : 'centos',
-                 'ubuntu1404' : 'ubuntu',
-                 'ubuntu1604' : 'ubuntu' }
+username_map = {
+    "alinux": "ec2-user",
+    "centos6": "centos",
+    "centos7": "centos",
+    "ubuntu1404": "ubuntu",
+    "ubuntu1604": "ubuntu",
+}
 
 #
 # global variables (sigh)
@@ -68,30 +72,33 @@ _child = 0
 # True if parent process has been asked to terminate
 _termination_caught = False
 
-_TIMESTAMP_FORMAT = '%Y%m%d%H%M%S'
+_TIMESTAMP_FORMAT = "%Y%m%d%H%M%S"
 _timestamp = datetime.datetime.now().strftime(_TIMESTAMP_FORMAT)
 
 
 def _dirname():
     return os.path.dirname(os.path.realpath(sys.argv[0]))
 
+
 def _time():
     return datetime.datetime.now()
+
 
 # Write both on stdout and the specified file object
 def _double_writeln(fileo, message):
     print(message)
-    fileo.write(message + '\n')
+    fileo.write(message + "\n")
+
 
 # Helper method to get the name of the autoscaling group
 def check_asg_capacity(stack_name, region, out_f):
-    asg_conn = boto3.client('autoscaling', region_name=region)
+    asg_conn = boto3.client("autoscaling", region_name=region)
     iter = 0
     capacity = -1
     while iter < 24 and capacity != 0:
         try:
-            r = asg_conn.describe_tags(Filters=[{'Name': 'value', 'Values': [stack_name]}])
-            asg_name = r.get('Tags')[0].get('ResourceId')
+            r = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [stack_name]}])
+            asg_name = r.get("Tags")[0].get("ResourceId")
             response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
             capacity = response["AutoScalingGroups"][0]["DesiredCapacity"]
             iter += 1
@@ -104,17 +111,18 @@ def check_asg_capacity(stack_name, region, out_f):
     if capacity != 0:
         raise ReleaseCheckException("Autoscaling group's desired capacity was not zero. Capacity was %s" % capacity)
 
+
 #
 # run a single test, possibly in parallel
 #
 def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     scaledown_idletime = 2
-    testname = '%s-%s-%s-%s-%s' % (region, distro, scheduler, instance_type.replace('.', ''), _timestamp)
+    testname = "%s-%s-%s-%s-%s" % (region, distro, scheduler, instance_type.replace(".", ""), _timestamp)
     test_filename = "%s-config.cfg" % testname
-    key_path = extra_args['key_path']
-    custom_cookbook = extra_args['custom_cookbook_url']
-    custom_node = extra_args['custom_node_url']
-    custom_template = extra_args['custom_template_url']
+    key_path = extra_args["key_path"]
+    custom_cookbook = extra_args["custom_cookbook_url"]
+    custom_node = extra_args["custom_node_url"]
+    custom_template = extra_args["custom_template_url"]
 
     print("--> %s: Starting" % (testname))
 
@@ -138,77 +146,98 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
     if custom_node:
         file.write('extra_json = { "cluster" : { "custom_node_package" : "%s" } }\n' % custom_node)
     file.write("[vpc public]\n")
-    file.write("master_subnet_id = %s\n" % (setup[region]['subnet']))
-    file.write("vpc_id = %s\n" % (setup[region]['vpc']))
+    file.write("master_subnet_id = %s\n" % (setup[region]["subnet"]))
+    file.write("vpc_id = %s\n" % (setup[region]["vpc"]))
     file.write("[global]\n")
     file.write("cluster_template = default\n")
     file.write("[scaling custom]\n")
     file.write("scaledown_idletime = %s\n" % scaledown_idletime)
     file.close()
 
-    out_f = open('%s-out.txt' % testname, 'w', 0)
+    out_f = open("%s-out.txt" % testname, "w", 0)
 
-    master_ip = ''
+    master_ip = ""
     username = username_map[distro]
-    _create_interrupted = False;
-    _create_done = False;
+    _create_interrupted = False
+    _create_done = False
     try:
         # build the cluster
-        prochelp.exec_command(['pcluster', 'create', '--config', test_filename, testname],
-                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+        prochelp.exec_command(
+            ["pcluster", "create", "--config", test_filename, testname],
+            stdout=out_f,
+            stderr=sub.STDOUT,
+            universal_newlines=True,
+        )
         _create_done = True
         # get the master ip, which means grepping through pcluster status gorp
-        dump = prochelp.exec_command(['pcluster', 'status', '--config', test_filename,
-                                        testname], stderr=sub.STDOUT, universal_newlines=True)
+        dump = prochelp.exec_command(
+            ["pcluster", "status", "--config", test_filename, testname], stderr=sub.STDOUT, universal_newlines=True
+        )
         dump_array = dump.splitlines()
         for line in dump_array:
-            m = re.search('MasterPublicIP: (.+)$', line)
+            m = re.search("MasterPublicIP: (.+)$", line)
             if m:
                 master_ip = m.group(1)
                 break
-        if master_ip == '':
-            _double_writeln(out_f, '!! %s: Master IP not found; exiting !!' % (testname))
-            raise ReleaseCheckException('--> %s: Master IP not found!' % testname)
+        if master_ip == "":
+            _double_writeln(out_f, "!! %s: Master IP not found; exiting !!" % (testname))
+            raise ReleaseCheckException("--> %s: Master IP not found!" % testname)
         _double_writeln(out_f, "--> %s Master IP: %s" % (testname, master_ip))
 
         # run test on the cluster...
-        ssh_params = ['-o', 'StrictHostKeyChecking=no']
-        ssh_params += ['-o', 'BatchMode=yes']
+        ssh_params = ["-o", "StrictHostKeyChecking=no"]
+        ssh_params += ["-o", "BatchMode=yes"]
         # ssh_params += ['-o', 'ConnectionAttempts=30']
-        ssh_params += ['-o', 'ConnectTimeout=60']
-        ssh_params += ['-o', 'ServerAliveCountMax=5']
-        ssh_params += ['-o', 'ServerAliveInterval=30']
+        ssh_params += ["-o", "ConnectTimeout=60"]
+        ssh_params += ["-o", "ServerAliveCountMax=5"]
+        ssh_params += ["-o", "ServerAliveInterval=30"]
         if key_path:
-            ssh_params.extend(['-i', key_path])
+            ssh_params.extend(["-i", key_path])
 
-        prochelp.exec_command(['scp'] + ssh_params + [os.path.join(_dirname(), 'cluster-check.sh'), '%s@%s:.' % (username, master_ip)],
-                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
-        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh submit %s' % scheduler],
-                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+        prochelp.exec_command(
+            ["scp"] + ssh_params + [os.path.join(_dirname(), "cluster-check.sh"), "%s@%s:." % (username, master_ip)],
+            stdout=out_f,
+            stderr=sub.STDOUT,
+            universal_newlines=True,
+        )
+        prochelp.exec_command(
+            ["ssh", "-n"]
+            + ssh_params
+            + ["%s@%s" % (username, master_ip), "/bin/bash --login cluster-check.sh submit %s" % scheduler],
+            stdout=out_f,
+            stderr=sub.STDOUT,
+            universal_newlines=True,
+        )
 
         # Sleep for scaledown_idletime to give time for the instances to scale down
-        time.sleep(60*scaledown_idletime)
+        time.sleep(60 * scaledown_idletime)
 
-        check_asg_capacity('parallelcluster-' + testname, region, out_f)
+        check_asg_capacity("parallelcluster-" + testname, region, out_f)
 
-        prochelp.exec_command(['ssh', '-n'] + ssh_params + ['%s@%s' % (username, master_ip), '/bin/bash --login cluster-check.sh scaledown_check %s' % scheduler],
-                              stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+        prochelp.exec_command(
+            ["ssh", "-n"]
+            + ssh_params
+            + ["%s@%s" % (username, master_ip), "/bin/bash --login cluster-check.sh scaledown_check %s" % scheduler],
+            stdout=out_f,
+            stderr=sub.STDOUT,
+            universal_newlines=True,
+        )
 
-        _double_writeln(out_f, 'SUCCESS:  %s!!' % testname)
-        open('%s.success' % testname, 'w').close()
+        _double_writeln(out_f, "SUCCESS:  %s!!" % testname)
+        open("%s.success" % testname, "w").close()
     except prochelp.ProcessHelperError as exc:
         if not _create_done and isinstance(exc, prochelp.KilledProcessError):
             _create_interrupted = True
             _double_writeln(out_f, "--> %s: Interrupting pcluster create!" % testname)
-        _double_writeln(out_f, '!! ABORTED: %s!!' % (testname))
-        open('%s.aborted' % testname, 'w').close()
+        _double_writeln(out_f, "!! ABORTED: %s!!" % (testname))
+        open("%s.aborted" % testname, "w").close()
         raise exc
     except Exception as exc:
         if not _create_done:
             _create_interrupted = True
         _double_writeln(out_f, "Unexpected exception %s: %s" % (str(type(exc)), str(exc)))
         _double_writeln(out_f, "!! FAILURE: %s!!" % (testname))
-        open('%s.failed' % testname, 'w').close()
+        open("%s.failed" % testname, "w").close()
         raise exc
     finally:
         if _create_interrupted or _create_done:
@@ -224,19 +253,37 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                 try:
                     time.sleep(2)
                     # clean up the cluster
-                    _del_output = sub.check_output(['pcluster', 'delete', '--config', test_filename, '-nw', testname], stderr=sub.STDOUT, universal_newlines=True)
+                    _del_output = sub.check_output(
+                        ["pcluster", "delete", "--config", test_filename, "-nw", testname],
+                        stderr=sub.STDOUT,
+                        universal_newlines=True,
+                    )
                     _del_done = "DELETE_IN_PROGRESS" in _del_output or "DELETE_COMPLETE" in _del_output
-                    out_f.write(_del_output + '\n')
+                    out_f.write(_del_output + "\n")
                 except sub.CalledProcessError as exc:
-                    out_f.write("CalledProcessError exception launching 'pcluster delete': %s - Output:\n%s\n" % (str(exc), exc.output))
+                    out_f.write(
+                        "CalledProcessError exception launching 'pcluster delete': %s - Output:\n%s\n"
+                        % (str(exc), exc.output)
+                    )
                 except Exception as exc:
-                    out_f.write("Unexpected exception launching 'pcluster delete' %s: %s\n" % (str(type(exc)), str(exc)))
+                    out_f.write(
+                        "Unexpected exception launching 'pcluster delete' %s: %s\n" % (str(type(exc)), str(exc))
+                    )
                 finally:
-                    _double_writeln(out_f, "--> %s: Deleting - iteration: %s - successfully submitted: %s" % (testname, (_max_del_iters - _del_iters + 1), _del_done))
+                    _double_writeln(
+                        out_f,
+                        "--> %s: Deleting - iteration: %s - successfully submitted: %s"
+                        % (testname, (_max_del_iters - _del_iters + 1), _del_done),
+                    )
                     _del_iters -= 1
 
             try:
-                prochelp.exec_command(['pcluster', 'status', '--config', test_filename, testname], stdout=out_f, stderr=sub.STDOUT, universal_newlines=True)
+                prochelp.exec_command(
+                    ["pcluster", "status", "--config", test_filename, testname],
+                    stdout=out_f,
+                    stderr=sub.STDOUT,
+                    universal_newlines=True,
+                )
             except (prochelp.ProcessHelperError, sub.CalledProcessError):
                 # Usually it terminates with exit status 1 since at the end of the delete operation the stack is not found.
                 pass
@@ -244,6 +291,7 @@ def run_test(region, distro, scheduler, instance_type, key_name, extra_args):
                 out_f.write("Unexpected exception launching 'pcluster status' %s: %s\n" % (str(type(exc)), str(exc)))
         out_f.close()
     print("--> %s: Finished" % (testname))
+
 
 #
 # worker thread, there will be config['parallelism'] of these running
@@ -261,8 +309,14 @@ def test_runner(region, q, key_name, extra_args):
         # just in case we miss an exception in run_test, don't abort everything...
         try:
             if not prochelp.termination_caught():
-                run_test(region=region, distro=item['distro'], scheduler=item['scheduler'],
-                         instance_type=item['instance_type'], key_name=key_name, extra_args=extra_args)
+                run_test(
+                    region=region,
+                    distro=item["distro"],
+                    scheduler=item["scheduler"],
+                    instance_type=item["instance_type"],
+                    key_name=key_name,
+                    extra_args=extra_args,
+                )
                 retval = 0
         except (ReleaseCheckException, prochelp.ProcessHelperError, sub.CalledProcessError):
             pass
@@ -277,6 +331,7 @@ def test_runner(region, q, key_name, extra_args):
         results_lock.release()
         q.task_done()
 
+
 def _term_handler_parent(_signo, _stack_frame):
     global _termination_caught
 
@@ -286,10 +341,12 @@ def _term_handler_parent(_signo, _stack_frame):
         print("Sending TERM signal to child process %s" % _child)
         os.kill(_child, signal.SIGTERM)
 
+
 def _bind_signals_parent():
     signal.signal(signal.SIGINT, _term_handler_parent)
     signal.signal(signal.SIGTERM, _term_handler_parent)
     signal.signal(signal.SIGHUP, _term_handler_parent)
+
 
 def _main_parent():
     _bind_signals_parent()
@@ -305,19 +362,26 @@ def _main_parent():
             # errno.ECHILD - No child processes
             child_terminated = ose.errno == errno.ECHILD
             if not child_terminated:
-                print("OSError exception while waiting for child process %s, errno: %s - %s" % (_child, errno.errorcode[ose.errno], str(ose)))
+                print(
+                    "OSError exception while waiting for child process %s, errno: %s - %s"
+                    % (_child, errno.errorcode[ose.errno], str(ose))
+                )
         except BaseException as exc:
-            print("Unexpected exception while waiting for child process %s, %s: %s" % (_child, str(type(exc)), str(exc)))
+            print(
+                "Unexpected exception while waiting for child process %s, %s: %s" % (_child, str(type(exc)), str(exc))
+            )
             max_num_exc -= 1
     print("Child pid: %s - Exit status: %s" % (pid, status))
     # status is a 16-bit number, whose low byte is the signal number that killed the process, and whose high byte is the exit status
-    exit(status>>8)
+    exit(status >> 8)
+
 
 def _bind_signals_child():
     # This is important - otherwise SIGINT propagates downstream to threads and child processes
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     signal.signal(signal.SIGTERM, prochelp.term_handler)
     signal.signal(signal.SIGHUP, prochelp.term_handler)
+
 
 def _proc_alive(pid):
     if pid <= 1:
@@ -337,93 +401,94 @@ def _proc_alive(pid):
 
     return alive
 
+
 def _killme_gently():
     os.kill(os.getpid(), signal.SIGTERM)
+
 
 def _main_child():
     _bind_signals_child()
     parent = os.getppid()
     print("Parent pid: %s" % parent)
-    config = { 'parallelism' : 3,
-               'regions' : 'us-east-1,us-east-2,us-west-1,us-west-2,' +
-                           'ca-central-1,eu-west-1,eu-west-2,eu-central-1,' +
-                           'ap-southeast-1,ap-southeast-2,ap-northeast-1,' +
-                           'ap-south-1,sa-east-1,eu-west-3',
-               'distros' : 'alinux,centos6,centos7,ubuntu1404,ubuntu1604',
-               'schedulers' : 'sge,slurm,torque',
-               'instance_types': 'c4.xlarge',
-               'key_path' : '',
-               'custom_node_url' : None,
-               'custom_cookbook_url' : None,
-               'custom_template_url' : None }
+    config = {
+        "parallelism": 3,
+        "regions": "us-east-1,us-east-2,us-west-1,us-west-2,"
+        + "ca-central-1,eu-west-1,eu-west-2,eu-central-1,"
+        + "ap-southeast-1,ap-southeast-2,ap-northeast-1,"
+        + "ap-south-1,sa-east-1,eu-west-3",
+        "distros": "alinux,centos6,centos7,ubuntu1404,ubuntu1604",
+        "schedulers": "sge,slurm,torque",
+        "instance_types": "c4.xlarge",
+        "key_path": "",
+        "custom_node_url": None,
+        "custom_cookbook_url": None,
+        "custom_template_url": None,
+    }
 
-    parser = argparse.ArgumentParser(description = 'Test runner for AWS ParallelCluster')
-    parser.add_argument('--parallelism', help = 'Number of tests per region to run in parallel',
-                        type = int, default = 3)
-    parser.add_argument('--regions', help = 'Comma separated list of regions to test',
-                        type = str)
-    parser.add_argument('--distros', help = 'Comma separated list of distributions to test',
-                        type = str)
-    parser.add_argument('--schedulers', help = 'Comma separated list of schedulers to test',
-                        type = str)
-    parser.add_argument('--instance-types', type=str,
-                        help='Comma separated list of instance types to use for both Master and Compute nodes')
-    parser.add_argument('--key-name', help = 'Key Pair to use for EC2 instances',
-                        type = str, required = True)
-    parser.add_argument('--key-path', help = 'Key path to use for SSH connections',
-                        type = str)
-    parser.add_argument('--custom-node-url', help = 'S3 URL to a custom aws-parallelcluster-node package',
-                        type = str)
-    parser.add_argument('--custom-cookbook-url', help = 'S3 URL to a custom aws-parallelcluster-cookbook package',
-                        type = str)
-    parser.add_argument('--custom-template-url', help = 'S3 URL to a custom AWS ParallelCluster CloudFormation template',
-                        type = str)
+    parser = argparse.ArgumentParser(description="Test runner for AWS ParallelCluster")
+    parser.add_argument("--parallelism", help="Number of tests per region to run in parallel", type=int, default=3)
+    parser.add_argument("--regions", help="Comma separated list of regions to test", type=str)
+    parser.add_argument("--distros", help="Comma separated list of distributions to test", type=str)
+    parser.add_argument("--schedulers", help="Comma separated list of schedulers to test", type=str)
+    parser.add_argument(
+        "--instance-types",
+        type=str,
+        help="Comma separated list of instance types to use for both Master and Compute nodes",
+    )
+    parser.add_argument("--key-name", help="Key Pair to use for EC2 instances", type=str, required=True)
+    parser.add_argument("--key-path", help="Key path to use for SSH connections", type=str)
+    parser.add_argument("--custom-node-url", help="S3 URL to a custom aws-parallelcluster-node package", type=str)
+    parser.add_argument(
+        "--custom-cookbook-url", help="S3 URL to a custom aws-parallelcluster-cookbook package", type=str
+    )
+    parser.add_argument(
+        "--custom-template-url", help="S3 URL to a custom AWS ParallelCluster CloudFormation template", type=str
+    )
 
     for key, value in vars(parser.parse_args()).iteritems():
         if not value == None:
             config[key] = value
 
-    region_list = config['regions'].split(',')
-    distro_list = config['distros'].split(',')
-    scheduler_list = config['schedulers'].split(',')
-    instance_type_list = config['instance_types'].split(',')
+    region_list = config["regions"].split(",")
+    distro_list = config["distros"].split(",")
+    scheduler_list = config["schedulers"].split(",")
+    instance_type_list = config["instance_types"].split(",")
 
-    print("==> Regions: %s" % (', '.join(region_list)))
-    print("==> Instance Types: %s" % (', '.join(instance_type_list)))
-    print("==> Distros: %s" % (', '.join(distro_list)))
-    print("==> Schedulers: %s" % (', '.join(scheduler_list)))
-    print("==> Parallelism: %d" % (config['parallelism']))
-    print("==> Key Pair: %s" % (config['key_name']))
+    print("==> Regions: %s" % (", ".join(region_list)))
+    print("==> Instance Types: %s" % (", ".join(instance_type_list)))
+    print("==> Distros: %s" % (", ".join(distro_list)))
+    print("==> Schedulers: %s" % (", ".join(scheduler_list)))
+    print("==> Parallelism: %d" % (config["parallelism"]))
+    print("==> Key Pair: %s" % (config["key_name"]))
 
     # Optional params
-    if config['key_path']:
-        print("==> Key Path: %s" % (config['key_path']))
-    if config['custom_cookbook_url']:
-        print("==> Custom aws-parallelcluster-cookbook URL: %s" % (config['custom_cookbook_url']))
-    if config['custom_node_url']:
-        print("==> Custom aws-parallelcluster-node URL: %s" % (config['custom_node_url']))
-    if config['custom_template_url']:
-        print("==> Custom AWS ParallelCluster template URL: %s" % (config['custom_template_url']))
+    if config["key_path"]:
+        print("==> Key Path: %s" % (config["key_path"]))
+    if config["custom_cookbook_url"]:
+        print("==> Custom aws-parallelcluster-cookbook URL: %s" % (config["custom_cookbook_url"]))
+    if config["custom_node_url"]:
+        print("==> Custom aws-parallelcluster-node URL: %s" % (config["custom_node_url"]))
+    if config["custom_template_url"]:
+        print("==> Custom AWS ParallelCluster template URL: %s" % (config["custom_template_url"]))
 
     # Populate subnet / vpc data for all regions we're going to test.
     for region in region_list:
-        client = boto3.client('ec2', region_name=region)
-        response = client.describe_tags(Filters=[{'Name': 'key',
-                                                  'Values': [ 'ParallelClusterTestSubnet' ]}],
-                                        MaxResults=16)
-        if len(response['Tags']) == 0:
-            print('Could not find subnet in %s with ParallelClusterTestSubnet tag.  Aborting.' %
-                  (region))
+        client = boto3.client("ec2", region_name=region)
+        response = client.describe_tags(
+            Filters=[{"Name": "key", "Values": ["ParallelClusterTestSubnet"]}], MaxResults=16
+        )
+        if len(response["Tags"]) == 0:
+            print("Could not find subnet in %s with ParallelClusterTestSubnet tag.  Aborting." % (region))
             exit(1)
-        subnetid = response['Tags'][0]['ResourceId']
+        subnetid = response["Tags"][0]["ResourceId"]
 
-        response = client.describe_subnets(SubnetIds = [ subnetid ])
+        response = client.describe_subnets(SubnetIds=[subnetid])
         if len(response) == 0:
-            print('Could not find subnet info for %s' % (subnetid))
+            print("Could not find subnet info for %s" % (subnetid))
             exit(1)
-        vpcid = response['Subnets'][0]['VpcId']
+        vpcid = response["Subnets"][0]["VpcId"]
 
-        setup[region] = { 'vpc' : vpcid, 'subnet' : subnetid }
+        setup[region] = {"vpc": vpcid, "subnet": subnetid}
 
     work_queues = {}
     # build up a per-region list of work to do
@@ -432,17 +497,15 @@ def _main_child():
         for distro in distro_list:
             for scheduler in scheduler_list:
                 for instance in instance_type_list:
-                    work_item = {'distro': distro, 'scheduler': scheduler, 'instance_type': instance}
+                    work_item = {"distro": distro, "scheduler": scheduler, "instance_type": instance}
                     work_queues[region].put(work_item)
 
     # start all the workers
     for region in region_list:
-        for i in range(0, config['parallelism']):
-            t = threading.Thread(target=test_runner,
-                                 args=(region, work_queues[region], config['key_name'], config))
+        for i in range(0, config["parallelism"]):
+            t = threading.Thread(target=test_runner, args=(region, work_queues[region], config["key_name"], config))
             t.daemon = True
             t.start()
-
 
     # Wait for all the work queues to be completed in each region
     # WARN: The work_queues[region].join() approach prevents the SIGINT signal to be caught from the main thread,
@@ -468,7 +531,8 @@ def _main_child():
     if failure != 0:
         exit(1)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     _child = os.fork()
 
     if _child == 0:
