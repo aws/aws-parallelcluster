@@ -19,17 +19,21 @@ from botocore.exceptions import ClientError
 
 
 def boto3_client(service, aws_client_config):
-    return boto3.client(service,
-                        region_name=aws_client_config['region_name'],
-                        aws_access_key_id=aws_client_config['aws_access_key_id'],
-                        aws_secret_access_key=aws_client_config['aws_secret_access_key'])
+    return boto3.client(
+        service,
+        region_name=aws_client_config["region_name"],
+        aws_access_key_id=aws_client_config["aws_access_key_id"],
+        aws_secret_access_key=aws_client_config["aws_secret_access_key"],
+    )
 
 
 def boto3_resource(service, aws_client_config):
-    return boto3.resource(service,
-                          region_name=aws_client_config['region_name'],
-                          aws_access_key_id=aws_client_config['aws_access_key_id'],
-                          aws_secret_access_key=aws_client_config['aws_secret_access_key'])
+    return boto3.resource(
+        service,
+        region_name=aws_client_config["region_name"],
+        aws_access_key_id=aws_client_config["aws_access_key_id"],
+        aws_secret_access_key=aws_client_config["aws_secret_access_key"],
+    )
 
 
 def create_s3_bucket(bucket_name, aws_client_config):
@@ -39,19 +43,16 @@ def create_s3_bucket(bucket_name, aws_client_config):
         bucket_name: name of the S3 bucket to create
         aws_client_config: dictionary containing configuration params for boto3 client
     """
-    s3_client = boto3_client('s3', aws_client_config)
+    s3_client = boto3_client("s3", aws_client_config)
     """ :type : pyboto3.s3 """
     try:
-        region = aws_client_config['region_name']
-        if region != 'us-east-1':
-            s3_client.create_bucket(Bucket=bucket_name,
-                                    CreateBucketConfiguration={
-                                        'LocationConstraint': region
-                                    })
+        region = aws_client_config["region_name"]
+        if region != "us-east-1":
+            s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
         else:
             s3_client.create_bucket(Bucket=bucket_name)
     except s3_client.exceptions.BucketAlreadyOwnedByYou:
-        print('Bucket already exists')
+        print("Bucket already exists")
 
 
 def delete_s3_bucket(bucket_name, aws_client_config):
@@ -62,13 +63,13 @@ def delete_s3_bucket(bucket_name, aws_client_config):
         aws_client_config: dictionary containing configuration params for boto3 client
     """
     try:
-        bucket = boto3_resource('s3', aws_client_config).Bucket(bucket_name)
+        bucket = boto3_resource("s3", aws_client_config).Bucket(bucket_name)
         bucket.objects.all().delete()
         bucket.delete()
-    except boto3.client('s3').exceptions.NoSuchBucket:
+    except boto3.client("s3").exceptions.NoSuchBucket:
         pass
     except ClientError as e:
-        print('Failed to delete bucket %s. Please delete it manually.' % bucket_name)
+        print("Failed to delete bucket %s. Please delete it manually." % bucket_name)
         pass
 
 
@@ -101,9 +102,9 @@ def upload_resources_artifacts(bucket_name, root, aws_client_config):
         root: root directory containing the resources to upload.
         aws_client_config: dictionary containing configuration params for boto3 client
     """
-    bucket = boto3_resource('s3', aws_client_config).Bucket(bucket_name)
+    bucket = boto3_resource("s3", aws_client_config).Bucket(bucket_name)
     for res in os.listdir(root):
         if os.path.isdir(os.path.join(root, res)):
-            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), '%s/artifacts.zip' % res)
+            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/artifacts.zip" % res)
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), res)

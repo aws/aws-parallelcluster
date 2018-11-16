@@ -14,7 +14,7 @@ import crhelper
 
 # initialise logger
 logger = crhelper.log_config({"RequestId": "CONTAINER_INIT"})
-logger.info('Logging configured')
+logger.info("Logging configured")
 # set global to track init failures
 init_failed = False
 
@@ -34,27 +34,27 @@ def delete_s3_bucket(bucket_name):
         bucket_name: bucket to delete
     """
     try:
-        bucket = boto3.resource('s3').Bucket(bucket_name)
+        bucket = boto3.resource("s3").Bucket(bucket_name)
         bucket.objects.all().delete()
         bucket.delete()
-    except boto3.client('s3').exceptions.NoSuchBucket as ex:
-        logger.warning('S3 bucket %s not found. Bucket was probably manually deleted.' % bucket_name)
+    except boto3.client("s3").exceptions.NoSuchBucket as ex:
+        logger.warning("S3 bucket %s not found. Bucket was probably manually deleted." % bucket_name)
         logger.warning(ex, exc_info=True)
 
 
 def create(event, context):
-    return 'PhysicalResourceId', {}
+    return "PhysicalResourceId", {}
 
 
 def update(event, context):
-    return event['PhysicalResourceId'], {}
+    return event["PhysicalResourceId"], {}
 
 
 def delete(event, context):
-    resources_s3_bucket = event['ResourceProperties']['ResourcesS3Bucket']
-    logger.info('S3 bucket %s deletion: STARTED' % resources_s3_bucket)
+    resources_s3_bucket = event["ResourceProperties"]["ResourcesS3Bucket"]
+    logger.info("S3 bucket %s deletion: STARTED" % resources_s3_bucket)
     delete_s3_bucket(resources_s3_bucket)
-    logger.info('S3 bucket %s deletion: COMPLETED' % resources_s3_bucket)
+    logger.info("S3 bucket %s deletion: COMPLETED" % resources_s3_bucket)
 
 
 def handler(event, context):
@@ -63,5 +63,5 @@ def handler(event, context):
     """
     # update the logger with event info
     global logger
-    logger = crhelper.log_config(event, loglevel='info')
+    logger = crhelper.log_config(event, loglevel="info")
     return crhelper.cfn_handler(event, context, create, update, delete, logger, init_failed)

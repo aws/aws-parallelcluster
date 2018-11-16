@@ -10,9 +10,9 @@ def test_valid_json():
             with open(filename) as f:
                 try:
                     json.load(f)
-                    print('SUCCESS: Valid json.')
+                    print("SUCCESS: Valid json.")
                 except ValueError as e:
-                    print('ERROR: Invalid json: %s' % e)
+                    print("ERROR: Invalid json: %s" % e)
                     invalid_json = True
 
     assert not invalid_json

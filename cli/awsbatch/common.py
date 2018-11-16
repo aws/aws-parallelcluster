@@ -21,7 +21,7 @@ from logging.handlers import RotatingFileHandler
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError, ParamValidationError
-from configparser import ConfigParser, NoSectionError, NoOptionError
+from configparser import ConfigParser, NoOptionError, NoSectionError
 from tabulate import tabulate
 
 from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
@@ -31,6 +31,7 @@ class Output(object):
     """
     Generic Output object.
     """
+
     def __init__(self, mapping, items=None):
         """
         Create a table of generic items.
@@ -70,12 +71,12 @@ class Output(object):
         """
         output_keys = keys or self.keys
         if not self.items:
-            print('No items to show')
+            print("No items to show")
         else:
             for item in self.items:
                 for output_key in output_keys:
-                    print('{0:25}: {1!s}'.format(output_key, getattr(item, self.mapping[output_key])))
-                print('-' * 25)
+                    print("{0:25}: {1!s}".format(output_key, getattr(item, self.mapping[output_key])))
+                print("-" * 25)
 
     def length(self):
         return len(self.items)
@@ -85,20 +86,24 @@ class Boto3ClientFactory(object):
     """
     Boto3 configuration object
     """
-    def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy='NONE'):
+
+    def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy="NONE"):
         self.region = region
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.proxy_config = Config()
-        if not proxy == 'NONE':
-            self.proxy_config = Config(proxies={'https': proxy})
+        if not proxy == "NONE":
+            self.proxy_config = Config(proxies={"https": proxy})
 
     def get_client(self, service):
         try:
-            return boto3.client(service, region_name=self.region,
-                                aws_access_key_id=self.aws_access_key_id,
-                                aws_secret_access_key=self.aws_secret_access_key,
-                                config=self.proxy_config)
+            return boto3.client(
+                service,
+                region_name=self.region,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+                config=self.proxy_config,
+            )
         except ClientError as e:
             fail("AWS %s service failed with exception: %s" % (service, e))
 
@@ -107,6 +112,7 @@ class AWSBatchCliConfig(object):
     """
     AWS ParallelCluster AWS Batch CLI configuration object
     """
+
     def __init__(self, log, cluster):
         """
         The command will search for the [cluster cluster-name] section in the /etc/awsbatch-cli.cfg
@@ -118,12 +124,12 @@ class AWSBatchCliConfig(object):
         self.aws_access_key_id = None
         self.aws_secret_access_key = None
         self.region = None
-        parallelcluster_config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'config'))
+        parallelcluster_config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
         if os.path.isfile(parallelcluster_config_file):
             self.__init_from_parallelcluster_config(parallelcluster_config_file, log)
 
         # search for awsbatch-cli config
-        cli_config_file = os.path.expanduser(os.path.join('~', '.parallelcluster', 'awsbatch-cli.cfg'))
+        cli_config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "awsbatch-cli.cfg"))
         if os.path.isfile(cli_config_file):
             self.__init_from_config(cli_config_file, cluster, log)
         elif cluster:
@@ -135,8 +141,9 @@ class AWSBatchCliConfig(object):
         self.__verify_initialization(log)
 
     def __str__(self):
-        return '{0}({1})'.format(self.__class__.__name__,
-                                 hide_keys(self.__dict__, ['aws_access_key_id', 'aws_secret_access_key']))
+        return "{0}({1})".format(
+            self.__class__.__name__, hide_keys(self.__dict__, ["aws_access_key_id", "aws_secret_access_key"])
+        )
 
     def __verify_initialization(self, log):
         try:
@@ -149,8 +156,10 @@ class AWSBatchCliConfig(object):
             log.debug("master_ip = %s", self.master_ip)
             log.info(self)
         except AttributeError as e:
-            fail("Error getting cluster information from AWS CloudFormation."
-                 "Missing attribute (%s) from the output CloudFormation stack." % e)
+            fail(
+                "Error getting cluster information from AWS CloudFormation."
+                "Missing attribute (%s) from the output CloudFormation stack." % e
+            )
 
     def __init_from_parallelcluster_config(self, parallelcluster_config_file, log):
         """
@@ -161,18 +170,20 @@ class AWSBatchCliConfig(object):
         with open(parallelcluster_config_file) as config_file:
             parallelcluster_config = ConfigParser()
             parallelcluster_config.read_file(config_file)
-            log.info("Looking for AWS credentials and region in the AWS ParallelCluster configuration file %s" %
-                     parallelcluster_config_file)
+            log.info(
+                "Looking for AWS credentials and region in the AWS ParallelCluster configuration file %s"
+                % parallelcluster_config_file
+            )
             try:
-                self.aws_access_key_id = parallelcluster_config.get('aws', 'aws_access_key_id')
+                self.aws_access_key_id = parallelcluster_config.get("aws", "aws_access_key_id")
             except (NoOptionError, NoSectionError):
                 pass
             try:
-                self.aws_secret_access_key = parallelcluster_config.get('aws', 'aws_secret_access_key')
+                self.aws_secret_access_key = parallelcluster_config.get("aws", "aws_secret_access_key")
             except (NoOptionError, NoSectionError):
                 pass
             try:
-                self.region = parallelcluster_config.get('aws', 'aws_region_name')
+                self.region = parallelcluster_config.get("aws", "aws_region_name")
             except (NoOptionError, NoSectionError):
                 pass
 
@@ -190,40 +201,44 @@ class AWSBatchCliConfig(object):
 
             # use cluster if there or search for default value in [main] section of the config file
             try:
-                cluster_name = cluster if cluster else config.get('main', 'cluster_name')
+                cluster_name = cluster if cluster else config.get("main", "cluster_name")
             except NoSectionError as e:
                 fail("Error getting the section [%s] from the configuration file (%s)" % (e.section, cli_config_file))
             except NoOptionError as e:
-                fail("Error getting the option (%s) from the section [%s] of the configuration file (%s)"
-                     % (e.option, e.section, cli_config_file))
+                fail(
+                    "Error getting the option (%s) from the section [%s] of the configuration file (%s)"
+                    % (e.option, e.section, cli_config_file)
+                )
             cluster_section = "cluster {0}".format(cluster_name)
             try:
-                self.region = config.get('main', 'region')
+                self.region = config.get("main", "region")
             except NoOptionError:
                 pass
 
             try:
-                self.stack_name = 'parallelcluster-' + cluster_name
+                self.stack_name = "parallelcluster-" + cluster_name
                 log.info("Stack name is (%s)" % self.stack_name)
                 # if region is set for the current stack, override the region from the AWS ParallelCluster config file
                 # or the region from the [main] section
-                self.region = config.get(cluster_section, 'region')
-                self.s3_bucket = config.get(cluster_section, 's3_bucket')
-                self.compute_environment = config.get(cluster_section, 'compute_environment')
-                self.job_queue = config.get(cluster_section, 'job_queue')
-                self.job_definition = config.get(cluster_section, 'job_definition')
-                self.master_ip = config.get(cluster_section, 'master_ip')
+                self.region = config.get(cluster_section, "region")
+                self.s3_bucket = config.get(cluster_section, "s3_bucket")
+                self.compute_environment = config.get(cluster_section, "compute_environment")
+                self.job_queue = config.get(cluster_section, "job_queue")
+                self.job_definition = config.get(cluster_section, "job_definition")
+                self.master_ip = config.get(cluster_section, "master_ip")
 
                 # get proxy
-                self.proxy = config.get(cluster_section, 'proxy')
+                self.proxy = config.get(cluster_section, "proxy")
                 if not self.proxy == "NONE":
                     log.info("Configured proxy is: %s" % self.proxy)
             except NoSectionError:
                 # initialize by getting stack info
                 self.__init_from_stack(cluster_name, log)
             except NoOptionError as e:
-                fail("Error getting the option (%s) from the section [%s] of the configuration file (%s)"
-                     % (e.option, e.section, cli_config_file))
+                fail(
+                    "Error getting the option (%s) from the section [%s] of the configuration file (%s)"
+                    % (e.option, e.section, cli_config_file)
+                )
 
     def __init_from_stack(self, cluster, log):
         """
@@ -232,39 +247,41 @@ class AWSBatchCliConfig(object):
         :param log: log
         """
         try:
-            self.stack_name = 'parallelcluster-' + cluster
+            self.stack_name = "parallelcluster-" + cluster
             log.info("Describing stack (%s)" % self.stack_name)
             # get required values from the output of the describe-stack command
             # don't use proxy because we are in the client and use default region
-            boto3_factory = Boto3ClientFactory(region=self.region,
-                                               aws_access_key_id=self.aws_access_key_id,
-                                               aws_secret_access_key=self.aws_secret_access_key)
-            cfn_client = boto3_factory.get_client('cloudformation')
+            boto3_factory = Boto3ClientFactory(
+                region=self.region,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+            )
+            cfn_client = boto3_factory.get_client("cloudformation")
             stack = cfn_client.describe_stacks(StackName=self.stack_name).get("Stacks")[0]
             log.debug(stack)
             if self.region is None:
-                self.region = get_region_by_stack_id(stack.get('StackId'))
-            self.proxy = 'NONE'
+                self.region = get_region_by_stack_id(stack.get("StackId"))
+            self.proxy = "NONE"
 
-            stack_status = stack.get('StackStatus')
-            if stack_status in ['CREATE_COMPLETE', 'UPDATE_COMPLETE']:
-                for output in stack.get('Outputs', []):
-                    output_key = output.get('OutputKey')
-                    output_value = output.get('OutputValue')
-                    if output_key == 'ResourcesS3Bucket':
+            stack_status = stack.get("StackStatus")
+            if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+                for output in stack.get("Outputs", []):
+                    output_key = output.get("OutputKey")
+                    output_value = output.get("OutputValue")
+                    if output_key == "ResourcesS3Bucket":
                         self.s3_bucket = output_value
-                    elif output_key == 'BatchComputeEnvironmentArn':
+                    elif output_key == "BatchComputeEnvironmentArn":
                         self.compute_environment = output_value
-                    elif output_key == 'BatchJobQueueArn':
+                    elif output_key == "BatchJobQueueArn":
                         self.job_queue = output_value
-                    elif output_key == 'BatchJobDefinitionArn':
+                    elif output_key == "BatchJobDefinitionArn":
                         self.job_definition = output_value
-                    elif output_key == 'MasterPrivateIP':
+                    elif output_key == "MasterPrivateIP":
                         self.master_ip = output_value
 
-                for parameter in stack.get('Parameters', []):
-                    if parameter.get('OutputKey') == 'ProxyServer':
-                        self.proxy = parameter.get('OutputValue')
+                for parameter in stack.get("Parameters", []):
+                    if parameter.get("OutputKey") == "ProxyServer":
+                        self.proxy = parameter.get("OutputValue")
                         if not self.proxy == "NONE":
                             log.info("Configured proxy is: %s" % self.proxy)
                         break
@@ -282,7 +299,7 @@ def config_logger(log_level):
     :return: the logger
     """
     try:
-        logfile = os.path.expanduser(os.path.join('~', '.parallelcluster', 'awsbatch-cli.log'))
+        logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "awsbatch-cli.log"))
         logdir = os.path.dirname(logfile)
         os.makedirs(logdir)
     except OSError as e:
@@ -291,12 +308,12 @@ def config_logger(log_level):
         else:
             fail("Cannot create log file (%s). Failed with exception: %s" % (logfile, e))
 
-    formatter = logging.Formatter('%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s')
+    formatter = logging.Formatter("%(asctime)s %(levelname)s [%(module)s:%(funcName)s] %(message)s")
 
-    logfile_handler = RotatingFileHandler(logfile, maxBytes=5*1024*1024, backupCount=1)
+    logfile_handler = RotatingFileHandler(logfile, maxBytes=5 * 1024 * 1024, backupCount=1)
     logfile_handler.setFormatter(formatter)
 
-    logger = logging.getLogger('awsbatch-cli')
+    logger = logging.getLogger("awsbatch-cli")
     logger.addHandler(logfile_handler)
     try:
         logger.setLevel(log_level.upper())

@@ -13,9 +13,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 from __future__ import print_function
 
-import argparse
 import collections
 import sys
+
+import argparse
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, Output, config_logger
 from awsbatch.utils import fail
@@ -36,12 +37,16 @@ def _get_parser():
 
     :return: the ArgumentParser object
     """
-    parser = argparse.ArgumentParser(description='Shows the Job Queue associated to the cluster.')
-    parser.add_argument('-c', '--cluster', help='Cluster to use')
-    parser.add_argument('-d', '--details', help='Show queues details', action='store_true')
-    parser.add_argument('-ll', '--log-level', help=argparse.SUPPRESS, default='ERROR')
-    parser.add_argument('job_queues', help='A space separated list of queues names to show. If a single queue is '
-                                           'requested it will be shown in a detailed version', nargs='*')
+    parser = argparse.ArgumentParser(description="Shows the Job Queue associated to the cluster.")
+    parser.add_argument("-c", "--cluster", help="Cluster to use")
+    parser.add_argument("-d", "--details", help="Show queues details", action="store_true")
+    parser.add_argument("-ll", "--log-level", help=argparse.SUPPRESS, default="ERROR")
+    parser.add_argument(
+        "job_queues",
+        help="A space separated list of queues names to show. If a single queue is "
+        "requested it will be shown in a detailed version",
+        nargs="*",
+    )
     return parser
 
 
@@ -49,6 +54,7 @@ class Queue(object):
     """
     Generic queue object.
     """
+
     def __init__(self, arn, name, priority, status, status_reason):
         self.arn = arn
         self.name = name
@@ -61,19 +67,22 @@ class AWSBqueuesCommand(object):
     """
     awsbqueues command
     """
+
     def __init__(self, log, boto3_factory):
         """
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
         self.log = log
-        mapping = collections.OrderedDict([
-            ('jobQueueArn', 'arn'),
-            ('jobQueueName', 'name'),
-            ('priority', 'priority'),
-            ('status', 'status'),
-            ('statusReason', 'status_reason')
-        ])
+        mapping = collections.OrderedDict(
+            [
+                ("jobQueueArn", "arn"),
+                ("jobQueueName", "name"),
+                ("priority", "priority"),
+                ("status", "status"),
+                ("statusReason", "status_reason"),
+            ]
+        )
         self.output = Output(mapping=mapping)
         self.boto3_factory = boto3_factory
 
@@ -85,7 +94,7 @@ class AWSBqueuesCommand(object):
         if show_details:
             self.output.show()
         else:
-            self.output.show_table(['jobQueueName', 'status'])
+            self.output.show_table(["jobQueueName", "status"])
 
     def __init_output(self, job_queues):
         """
@@ -94,8 +103,8 @@ class AWSBqueuesCommand(object):
         """
         try:
             # connect to batch and get queues
-            batch_client = self.boto3_factory.get_client('batch')
-            queues = batch_client.describe_job_queues(jobQueues=job_queues)['jobQueues']
+            batch_client = self.boto3_factory.get_client("batch")
+            queues = batch_client.describe_job_queues(jobQueues=job_queues)["jobQueues"]
             self.log.info("Job Queues: %s" % job_queues)
             self.log.debug(queues)
 
@@ -113,8 +122,13 @@ class AWSBqueuesCommand(object):
         :return: a Queue object
         """
         try:
-            return Queue(arn=queue['jobQueueArn'], name=queue['jobQueueName'], priority=queue['priority'],
-                         status=queue['status'], status_reason=queue['statusReason'])
+            return Queue(
+                arn=queue["jobQueueArn"],
+                name=queue["jobQueueName"],
+                priority=queue["priority"],
+                status=queue["status"],
+                status_reason=queue["statusReason"],
+            )
         except KeyError as e:
             fail("Error building Queue item. Key (%s) not found." % e)
 
@@ -126,9 +140,12 @@ def main():
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)
-        boto3_factory = Boto3ClientFactory(region=config.region, proxy=config.proxy,
-                                           aws_access_key_id=config.aws_access_key_id,
-                                           aws_secret_access_key=config.aws_secret_access_key)
+        boto3_factory = Boto3ClientFactory(
+            region=config.region,
+            proxy=config.proxy,
+            aws_access_key_id=config.aws_access_key_id,
+            aws_secret_access_key=config.aws_secret_access_key,
+        )
 
         if args.job_queues:
             job_queues = args.job_queues
@@ -145,5 +162,5 @@ def main():
         fail("Unexpected error. Command failed with exception: %s" % e)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

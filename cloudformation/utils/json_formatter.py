@@ -5,21 +5,21 @@ from glob import glob
 
 
 def _parse_args():
-    parser = argparse.ArgumentParser(description='Formats a json document.')
-    parser.add_argument('-c', '--check', help='Only checks if file is formatted', action='store_true')
-    parser.add_argument('files', help='A space separated list of json files to format', nargs='+')
+    parser = argparse.ArgumentParser(description="Formats a json document.")
+    parser.add_argument("-c", "--check", help="Only checks if file is formatted", action="store_true")
+    parser.add_argument("files", help="A space separated list of json files to format", nargs="+")
     return parser.parse_args()
 
 
 def _format_json(filename):
-    with open(filename, 'r') as f:
+    with open(filename, "r") as f:
         try:
             unformatted_json = json.load(f, object_pairs_hook=OrderedDict)
         except json.decoder.JSONDecodeError as e:
             print("ERROR: Invalid json document: {error}".format(error=e))
             exit(1)
 
-    return json.dumps(unformatted_json, indent=2, separators=(',', ': ')) + "\n"
+    return json.dumps(unformatted_json, indent=2, separators=(",", ": ")) + "\n"
 
 
 def format_files(filenames):
@@ -27,7 +27,7 @@ def format_files(filenames):
         for file in glob(unexpanded_file):
             print("Formatting file: {filename}".format(filename=file))
             formatted_json = _format_json(file)
-            with open(file, 'w') as f:
+            with open(file, "w") as f:
                 f.write(formatted_json)
 
 
@@ -36,7 +36,7 @@ def check_formatting(filenames):
     for unexpanded_file in filenames:
         for file in glob(unexpanded_file):
             print("Checking file: {filename}".format(filename=file))
-            with open(file, 'r') as f:
+            with open(file, "r") as f:
                 data = f.read()
             formatted_json = _format_json(file)
             if formatted_json != data:

@@ -9,6 +9,17 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import logging
+import os
+import re
+import stat
+import unittest
+
+import boto3
+import configparser
+
+from moto import mock_autoscaling, mock_cloudformation, mock_ec2, mock_s3
 from pcluster import pcluster
 
 try:
@@ -16,20 +27,10 @@ try:
 except ImportError:
     from io import StringIO
 
-from moto import mock_ec2, mock_cloudformation, mock_s3, mock_autoscaling
-
-import logging
-import re
-import boto3
-import unittest
-import configparser
-import os
-import stat
-import json
 
 test_log_stream = StringIO()
-config_file = 'cli/tests/config'
-with open('cloudformation/aws-parallelcluster.cfn.json') as f:
+config_file = "cli/tests/config"
+with open("cloudformation/aws-parallelcluster.cfn.json") as f:
     cfncluster_json_data = json.load(f)
     version_on_file = cfncluster_json_data["Mappings"]["PackagesVersions"]["default"]["cfncluster"]
     version_on_file = re.match(r".*(\d+\.\d+\.\d+.*)", version_on_file).group(1)
@@ -41,35 +42,32 @@ def config_logger_test():
 
 
 def setup_configurations():
-    s3 = boto3.client('s3')
-    s3_conn = boto3.resource('s3')
-    s3.create_bucket(Bucket='us-east-1-aws-parallelcluster')
-    s3_conn.Object(
-        'us-east-1-aws-parallelcluster', 'aws-parallelcluster').put(Body=json_dump)
+    s3 = boto3.client("s3")
+    s3_conn = boto3.resource("s3")
+    s3.create_bucket(Bucket="us-east-1-aws-parallelcluster")
+    s3_conn.Object("us-east-1-aws-parallelcluster", "aws-parallelcluster").put(Body=json_dump)
     template_url = s3.generate_presigned_url(
-        ClientMethod='get_object',
-        Params={
-            'Bucket': 'us-east-1-aws-parallelcluster',
-            'Key': 'aws-parallelcluster'
-        }
+        ClientMethod="get_object", Params={"Bucket": "us-east-1-aws-parallelcluster", "Key": "aws-parallelcluster"}
     )
 
-    client = boto3.client('ec2', region_name='us-east-1')
-    instance = client.run_instances(ImageId='ami-1234abcd', MinCount=1, MaxCount=1)['Instances'][0]
+    client = boto3.client("ec2", region_name="us-east-1")
+    instance = client.run_instances(ImageId="ami-1234abcd", MinCount=1, MaxCount=1)["Instances"][0]
 
-    vpc = client.create_vpc(CidrBlock='10.0.0.0/16', AmazonProvidedIpv6CidrBlock=True, DryRun=False)
-    subnet = client.create_subnet(AvailabilityZone=instance['Placement']['AvailabilityZone'],
-                                  CidrBlock='10.0.0.0/16',
-                                  Ipv6CidrBlock=vpc['Vpc']['Ipv6CidrBlockAssociationSet'][0]['Ipv6CidrBlock'],
-                                  VpcId=vpc['Vpc']['VpcId'])
+    vpc = client.create_vpc(CidrBlock="10.0.0.0/16", AmazonProvidedIpv6CidrBlock=True, DryRun=False)
+    subnet = client.create_subnet(
+        AvailabilityZone=instance["Placement"]["AvailabilityZone"],
+        CidrBlock="10.0.0.0/16",
+        Ipv6CidrBlock=vpc["Vpc"]["Ipv6CidrBlockAssociationSet"][0]["Ipv6CidrBlock"],
+        VpcId=vpc["Vpc"]["VpcId"],
+    )
     config = configparser.ConfigParser()
     config.read(config_file)
-    config.set('vpc public', 'vpc_id', subnet['Subnet']['VpcId'])
-    config.set('vpc public', 'master_subnet_id', subnet['Subnet']['SubnetId'])
+    config.set("vpc public", "vpc_id", subnet["Subnet"]["VpcId"])
+    config.set("vpc public", "master_subnet_id", subnet["Subnet"]["SubnetId"])
 
-    open(config_file,'a').close()
+    open(config_file, "a").close()
     os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
-    with open(config_file,'w') as cf:
+    with open(config_file, "w") as cf:
         config.write(cf)
 
     return template_url
@@ -117,7 +115,7 @@ class CFN_cluster_test(unittest.TestCase):
         args = CreateClusterArgs(template_url, True)
         pcluster.create(args)
         log = test_log_stream.getvalue()
-        success_message = 'INFO:parallelcluster.parallelcluster:Status: CREATE_COMPLETE'
+        success_message = "INFO:parallelcluster.parallelcluster:Status: CREATE_COMPLETE"
         error_prefix = "CRITICAL:"
         self.assertTrue(success_message in log)
         self.assertFalse(error_prefix in log)
@@ -130,7 +128,7 @@ class CFN_cluster_test(unittest.TestCase):
         args = CreateClusterArgs(template_url, False)
         pcluster.create(args)
         log = test_log_stream.getvalue()
-        success_message = 'INFO:parallelcluster.parallelcluster:MasterPublicIP:'
+        success_message = "INFO:parallelcluster.parallelcluster:MasterPublicIP:"
         error_prefix = "CRITICAL:"
         self.assertTrue(success_message in log)
         self.assertFalse(error_prefix in log)
@@ -140,7 +138,7 @@ class CFN_cluster_test(unittest.TestCase):
     @mock_s3
     def test_cfn_cluster_create_fail(self):
         template_url = setup_configurations()
-        args = CreateClusterArgs('', True)
+        args = CreateClusterArgs("", True)
         with self.assertRaises(SystemExit) as sys_ex:
             pcluster.create(args)
 
@@ -180,7 +178,7 @@ class CFN_cluster_test(unittest.TestCase):
         args = UpdateClusterArgs(template_url, True, False)
         pcluster.create(args)
         pcluster.update(args)
-        success_message = 'INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE'
+        success_message = "INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE"
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
         error_prefix = "CRITICAL:"
@@ -195,7 +193,7 @@ class CFN_cluster_test(unittest.TestCase):
         args = UpdateClusterArgs(template_url, True, True)
         pcluster.create(args)
         pcluster.update(args)
-        success_message = 'INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE'
+        success_message = "INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE"
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
         error_prefix = "CRITICAL:"
@@ -307,7 +305,5 @@ class CFN_cluster_test(unittest.TestCase):
         test_log_stream.seek(0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-
-
