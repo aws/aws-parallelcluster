@@ -26,7 +26,7 @@ from awsbatch.utils import convert_to_date, fail, get_job_definition_name_by_arn
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -64,7 +64,8 @@ def _get_parser():
 
 def _compose_log_stream_url(region, log_stream):
     """
-    Create logStream url
+    Create logStream url.
+
     :param region: the region on which the job has been submitted
     :param log_stream: the log stream name
     :return: an url
@@ -77,9 +78,7 @@ def _compose_log_stream_url(region, log_stream):
 
 
 class Job(object):
-    """
-    Generic job object.
-    """
+    """Generic job object."""
 
     def __init__(
         self,
@@ -101,6 +100,7 @@ class Job(object):
         log_stream,
         log_stream_url,
     ):
+        """Constructor."""
         self.id = job_id
         self.name = name
         self.creation_time = creation_time
@@ -121,12 +121,12 @@ class Job(object):
 
 
 class AWSBstatCommand(object):
-    """
-    awsbstat command
-    """
+    """awsbstat command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -157,9 +157,7 @@ class AWSBstatCommand(object):
         self.batch_client = boto3_factory.get_client("batch")
 
     def run(self, job_status, expand_arrays, job_queue=None, job_ids=None, show_details=False):
-        """
-        print list of jobs, by filtering by queue or by ids
-        """
+        """Print list of jobs, by filtering by queue or by ids."""
         if job_ids:
             self.__populate_output_by_job_ids(job_status, job_ids, show_details or len(job_ids) == 1)
             # explicitly asking for job details,
@@ -178,7 +176,8 @@ class AWSBstatCommand(object):
 
     def __populate_output_by_job_ids(self, job_status, job_ids, details):
         """
-        Add Job item or jobs array children to the output
+        Add Job item or jobs array children to the output.
+
         :param job_status: list of job status to ask
         :param job_ids: job ids or ARNs
         :param details: ask for job details
@@ -205,7 +204,8 @@ class AWSBstatCommand(object):
 
     def __populate_output_by_array_ids(self, job_status, job_array_ids, details):
         """
-        Add jobs array children to the output
+        Add jobs array children to the output.
+
         :param job_status: list of job status to ask
         :param job_array_ids: job array ids to ask
         :param details: ask for job details
@@ -225,9 +225,10 @@ class AWSBstatCommand(object):
         except Exception as e:
             fail("Error listing job array children for job (%s). Failed with exception: %s" % (job_array_id, e))
 
-    def __add_jobs(self, jobs, details):
+    def __add_jobs(self, jobs, details):  # noqa: C901 FIXME
         """
-        Get job info from AWS Batch and add to the output
+        Get job info from AWS Batch and add to the output.
+
         :param jobs: list of jobs items (output of the list_jobs function)
         :param details: ask for job details
         """
@@ -238,7 +239,7 @@ class AWSBstatCommand(object):
                     self.log.info("Asking for jobs details")
                     jobs_to_show = []
                     for index in range(0, len(jobs), 100):
-                        jobs_chunk = jobs[index : index + 100]
+                        jobs_chunk = jobs[index : index + 100]  # noqa: E203
                         job_ids = []
                         for job in jobs_chunk:
                             job_ids.append(job["jobId"])
@@ -302,7 +303,8 @@ class AWSBstatCommand(object):
 
     def __populate_output_by_queue(self, job_queue, job_status, expand_arrays, details):
         """
-        Add Job items to the output asking for given queue and status
+        Add Job items to the output asking for given queue and status.
+
         :param job_queue: job queue name or ARN
         :param job_status: list of job status to ask
         :param expand_arrays: if True, the job array will be expanded by creating a row for each child
@@ -333,6 +335,7 @@ class AWSBstatCommand(object):
 
 
 def main():
+    """Command entrypoint."""
     aws_batch_job_status = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
 
     try:

@@ -1,5 +1,8 @@
 [flake8]
-# ignore = D203, W503, E203
+ignore =
+    D105, # Missing docstring in magic method
+    D100, # Missing docstring in public module
+    D104, # Missing docstring in public package
 exclude =
     .tox,
     .git,

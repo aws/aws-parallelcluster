@@ -23,7 +23,7 @@ from awsbatch.utils import fail
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -47,12 +47,12 @@ def _get_parser():
 
 
 class AWSBkillCommand(object):
-    """
-    awsbkill command
-    """
+    """awsbkill command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -62,7 +62,8 @@ class AWSBkillCommand(object):
 
     def run(self, job_ids, reason="Terminated by the user"):
         """
-        kill/cancel the jobs
+        Kill/cancel the jobs.
+
         :param job_ids: list of job ids
         :param reason: optional reason
         """
@@ -80,7 +81,8 @@ class AWSBkillCommand(object):
 
     def __kill_jobs(self, jobs, reason):
         """
-        Kill given jobs
+        Kill given jobs.
+
         :param jobs: a list of jobs ids
         :param reason: reason for canceling the job
         """
@@ -106,6 +108,7 @@ class AWSBkillCommand(object):
 
 
 def main():
+    """Command entrypoint."""
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()

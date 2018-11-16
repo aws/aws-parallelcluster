@@ -24,7 +24,7 @@ from awsbatch.utils import convert_to_date, fail, is_job_array
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -57,7 +57,8 @@ def _get_parser():
 
 def _validate_parameters(args):
     """
-    Validate input parameters
+    Validate input parameters.
+
     :param args: args variable
     """
     if args.head:
@@ -71,12 +72,12 @@ def _validate_parameters(args):
 
 
 class AWSBoutCommand(object):
-    """
-    awsbout command
-    """
+    """awsbout command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -84,9 +85,7 @@ class AWSBoutCommand(object):
         self.boto3_factory = boto3_factory
 
     def run(self, job_id, head=None, tail=None, stream=None, stream_period=None):
-        """
-        print job output
-        """
+        """Print job output."""
         log_stream = self.__get_log_stream(job_id)
         if log_stream:
             self.log.info("Log stream is (%s)" % log_stream)
@@ -94,7 +93,8 @@ class AWSBoutCommand(object):
 
     def __get_log_stream(self, job_id):
         """
-        Get log stream for the given job
+        Get log stream for the given job.
+
         :param job_id: job id (ARN)
         :return: the log_stream if there, or None
         """
@@ -127,9 +127,10 @@ class AWSBoutCommand(object):
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
         return log_stream
 
-    def __print_log_stream(self, log_stream, head=None, tail=None, stream=None, stream_period=None):
+    def __print_log_stream(self, log_stream, head=None, tail=None, stream=None, stream_period=None):  # noqa: C901 FIXME
         """
-        Ask for log stream and print it
+        Ask for log stream and print it.
+
         :param log_stream: job log stream
         """
         logs_client = self.boto3_factory.get_client("logs")
@@ -185,15 +186,16 @@ class AWSBoutCommand(object):
     @staticmethod
     def __print_events(events):
         """
-        Pring given events
+        Print given events.
+
         :param events: events to print
-        :return:
         """
         for event in events:
             print("{0}: {1}".format(convert_to_date(event["timestamp"]), event["message"]))
 
 
 def main():
+    """Command entrypoint."""
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()

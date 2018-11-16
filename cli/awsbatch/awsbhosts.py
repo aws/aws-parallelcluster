@@ -24,7 +24,7 @@ from awsbatch.utils import fail
 
 def _get_parser():
     """
-    Parse input parameters and return the ArgumentParser object
+    Parse input parameters and return the ArgumentParser object.
 
     If the command is executed without the --cluster parameter, the command will use the default cluster_name
     specified in the [main] section of the user's awsbatch-cli.cfg configuration file and will search
@@ -51,9 +51,7 @@ def _get_parser():
 
 
 class Host(object):
-    """
-    Generic host object.
-    """
+    """Generic host object."""
 
     def __init__(
         self,
@@ -68,6 +66,7 @@ class Host(object):
         running_jobs,
         pending_jobs,
     ):
+        """Constructor."""
         self.container_instance_arn = container_instance_arn
         self.status = status
         self.ec2_instance = ec2_instance
@@ -81,12 +80,12 @@ class Host(object):
 
 
 class AWSBhostsCommand(object):
-    """
-    awsbhosts command
-    """
+    """awsbhosts command."""
 
     def __init__(self, log, boto3_factory):
         """
+        Constructor.
+
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
         """
@@ -111,7 +110,8 @@ class AWSBhostsCommand(object):
 
     def run(self, compute_environments, show_details=False, instance_ids=None):
         """
-        print list of hosts associated to the compute environments
+        Print list of hosts associated to the compute environments.
+
         :param compute_environments: a list of compute environments
         :param show_details: show compute environment details
         :param instance_ids: instances to query
@@ -126,7 +126,8 @@ class AWSBhostsCommand(object):
 
     def __init_output(self, compute_environments, instance_ids=None):
         """
-        Initialize host output by asking hosts associated to the given compute environments
+        Initialize host output by asking hosts associated to the given compute environments.
+
         :param compute_environments: a list of compute environments
         :param instance_ids: requested hosts
         """
@@ -144,6 +145,7 @@ class AWSBhostsCommand(object):
     def __create_host_item(container_instance, ec2_instance):
         """
         Merge container instance and ec2 instance information and create a Host item.
+
         :param container_instance: the containerInstance object to parse
         :param ec2_instance: the ec2Instance object to parse
         :return: the Host item
@@ -172,7 +174,8 @@ class AWSBhostsCommand(object):
 
     def _add_host_items(self, ecs_cluster_arn, container_instances_arns, instance_ids=None):
         """
-        Add a list of Hosts to the output
+        Add a list of Hosts to the output.
+
         :param ecs_cluster_arn: ECS Cluster arn
         :param container_instances_arns: container ids
         :param instance_ids: hosts requested
@@ -214,6 +217,7 @@ class AWSBhostsCommand(object):
     def __get_clusters(compute_environments):
         """
         Parse computeEnvironments object and return a list of ecsClusterArn.
+
         :param compute_environments: a list of Compute Environments
         :return: a list of ECS clusters
         """
@@ -225,6 +229,7 @@ class AWSBhostsCommand(object):
     def __get_ecs_clusters(self, compute_environments):
         """
         Get Compute Environments from AWS Batch and create a list of ECS Cluster ARNs.
+
         :param compute_environments: compute environments to query
         :return: a list of ECS clusters
         """
@@ -246,6 +251,7 @@ class AWSBhostsCommand(object):
 
 
 def main():
+    """Command entrypoint."""
     try:
         # parse input parameters and  config file
         args = _get_parser().parse_args()
