@@ -46,7 +46,7 @@ def get_ami_list(regions, date, version, owner):
             else:
                 amis_json[region_name] = OrderedDict(sorted(amis.items()))
         except ClientError:
-            # skip regions on which we are not authorized (cn-north-1 and us-gov-west-1)
+            # skip regions on which we are not authorized (cn-north-1)
             pass
 
     return amis_json

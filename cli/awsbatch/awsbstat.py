@@ -60,7 +60,7 @@ def _compose_log_stream_url(region, log_stream):
     :param log_stream: the log stream name
     :return: an url
     """
-    domain = 'amazonaws-us-gov' if region == 'us-gov-west-1' else 'aws'
+    domain = 'amazonaws-us-gov' if region.startswith('us-gov') else 'aws'
     return "https://console.{0}.amazon.com/cloudwatch/home?" \
            "region={1}#logEventViewer:group=/aws/batch/job;stream={2}".format(domain, region, log_stream)
 
