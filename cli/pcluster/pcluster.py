@@ -617,10 +617,7 @@ def get_cookbook_url(config, tmpdir):
         return config.args.custom_ami_cookbook
     else:
         cookbook_version = get_cookbook_version(config, tmpdir)
-        if config.region == 'us-gov-west-1':
-            return ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
-                         % (config.region, config.region, cookbook_version))
-        elif config.region == 'us-east-1':
+        if config.region == 'us-east-1':
             return ('https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
                          % (config.region, cookbook_version))
         else:
@@ -774,7 +771,7 @@ def create_ami(args):
         if config.aws_secret_access_key:
             packer_env['AWS_SECRET_ACCESS_KEY'] = config.aws_secret_access_key
 
-        if config.region == 'us-gov-west-1':
+        if config.region.startswith('us-gov'):
             partition = 'govcloud'
         else:
             partition = 'commercial'
