@@ -282,7 +282,7 @@ def start(args):
         # Set asg limits
         max_queue_size = config.parameters.get('MaxSize') if config.parameters.get('MaxSize') and int(config.parameters.get('MaxSize')) >= 0 else 10
         desired_queue_size = config.parameters.get('DesiredSize') if config.parameters.get('DesiredSize') and int(config.parameters.get('DesiredSize')) >= 0 else 2
-        min_queue_size = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize') > 0) else 0
+        min_queue_size = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize')) > 0 else 0
 
         asg_name = get_asg_name(stack_name=stack_name, config=config)
         set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
