@@ -212,7 +212,7 @@ class ParallelClusterConfig(object):
             self.aws_secret_access_key=None
 
         # Determine which cluster template will be used
-        if __args_func in ['start', 'stop']:
+        if __args_func in ['start', 'stop', 'instances']:
             # Starting and stopping a cluster is unique in that we would want to prevent the
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
