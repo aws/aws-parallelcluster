@@ -331,8 +331,7 @@ class ParallelClusterConfig(object):
                     else:
                         self.template_url = (
                             "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/"
-                            "aws-parallelcluster-%s.cfn.json"
-                            % (self.region, self.region, self.version)
+                            "aws-parallelcluster-%s.cfn.json" % (self.region, self.region, self.version)
                         )
         except AttributeError:
             pass
