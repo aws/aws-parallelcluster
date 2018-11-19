@@ -1,7 +1,6 @@
 ---
 name: Bug report
 about: Please create a detailed report by completing the following information
-labels: 
 
 ---
 
@@ -15,7 +14,10 @@ A clear and concise description of what the bug is and the steps to reproduce th
 
 **Additional context:**
 Any other context about the problem. E.g.:
- - configuration file with credentials or any other personal data removed and pre/post-install scripts if any
- - errors from `/var/log/jobwatcher`, `/var/log/sqswatcher` (Master node) and `/var/log/nodewatcher` (Compute nodes)
- - errors from `/var/cfn-init.log`, `/var/logcloud-init.log` and `/var/log/cloud-init-output.log` files, taken from the Master node after using `--norollback` option to create the cluster
- - screenshots
+ - configuration file with credentials or any other personal data removed
+ - pre/post-install scripts, if any
+ - screenshots, if useful
+ - if the cluster fails creation, please re-execute `create` action using `--norollback` option and attach `/var/cfn-init.log`, `/var/logcloud-init.log` and `/var/log/cloud-init-output.log` files from the Master node
+ - if you encounter problems scaling up please attach `/var/log/jobwatcher` and `/var/log/sqswatcher` from Master node
+ - if your nodes aren't scaling down please attach `/var/log/nodewatcher` from the Compute node and `/var/log/jobwatcher` and `/var/log/sqswatcher` from the Master node
+ - for zombie nodes, or nodes failing to join the scheduler, please attach `/var/log/sqswatcher` from the Master node and the scheduler's log file
