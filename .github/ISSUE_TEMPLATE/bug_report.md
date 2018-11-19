@@ -1,7 +1,6 @@
 ---
 name: Bug report
 about: Please create a detailed report by completing the following information
-
 ---
 
 **Environment:**
@@ -18,6 +17,4 @@ Any other context about the problem. E.g.:
  - pre/post-install scripts, if any
  - screenshots, if useful
  - if the cluster fails creation, please re-execute `create` action using `--norollback` option and attach `/var/cfn-init.log`, `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log` files from the Master node
- - if you encounter problems scaling up please attach `/var/log/jobwatcher` and `/var/log/sqswatcher` from Master node
- - if your nodes aren't scaling down please attach `/var/log/nodewatcher` from the Compute node and `/var/log/jobwatcher` and `/var/log/sqswatcher` from the Master node
- - for zombie nodes, or nodes failing to join the scheduler, please attach `/var/log/sqswatcher` from the Master node and the scheduler's log file
+ - if you encounter scaling problems please attach `/var/log/nodewatcher` from the Compute node and `/var/log/jobwatcher` and `/var/log/sqswatcher` from the Master node
