@@ -7,11 +7,14 @@ ignore =
     W503, # line break before binary operator => Conflicts with black style.
 # D103 Missing docstring in public function
 # E402 module level import not at top of file
+# D101 Missing docstring in public class
+# D102 Missing docstring in public method
 per-file-ignores =
     pcluster/*.py: D103
     pcluster/config_sanity.py: E402
     pcluster/easyconfig.py: E402
     pcluster/cfnconfig.py: E402
+    tests/pcluster/pcluster-unittest.py: D101, D102
 exclude =
     .tox,
     .git,
