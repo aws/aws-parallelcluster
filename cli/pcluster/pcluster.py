@@ -282,7 +282,7 @@ def start(args):
         # Set asg limits
         max_queue_size = config.parameters.get('MaxSize') if config.parameters.get('MaxSize') and int(config.parameters.get('MaxSize')) >= 0 else 10
         desired_queue_size = config.parameters.get('DesiredSize') if config.parameters.get('DesiredSize') and int(config.parameters.get('DesiredSize')) >= 0 else 2
-        min_queue_size = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize') > 0) else 0
+        min_queue_size = config.parameters.get('MinSize') if config.parameters.get('MinSize') and int(config.parameters.get('MinSize')) > 0 else 0
 
         asg_name = get_asg_name(stack_name=stack_name, config=config)
         set_asg_limits(asg_name=asg_name, config=config, min=min_queue_size, max=max_queue_size, desired=desired_queue_size)
@@ -617,10 +617,7 @@ def get_cookbook_url(config, tmpdir):
         return config.args.custom_ami_cookbook
     else:
         cookbook_version = get_cookbook_version(config, tmpdir)
-        if config.region == 'us-gov-west-1':
-            return ('https://s3-%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
-                         % (config.region, config.region, cookbook_version))
-        elif config.region == 'us-east-1':
+        if config.region == 'us-east-1':
             return ('https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz'
                          % (config.region, cookbook_version))
         else:
@@ -774,7 +771,7 @@ def create_ami(args):
         if config.aws_secret_access_key:
             packer_env['AWS_SECRET_ACCESS_KEY'] = config.aws_secret_access_key
 
-        if config.region == 'us-gov-west-1':
+        if config.region.startswith('us-gov'):
             partition = 'govcloud'
         else:
             partition = 'commercial'

@@ -102,6 +102,7 @@ cluster to run.
             ap-southeast-2
             us-west-2
             us-gov-west-1
+            us-gov-east-1
             us-west-1
             eu-central-1
             sa-east-1

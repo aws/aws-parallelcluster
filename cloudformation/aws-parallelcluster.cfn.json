@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.0.1",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.0.2",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -1556,121 +1556,126 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-0fb9daffb5833ffc4",
-        "centos6": "ami-0f011ff8ac9f6747e",
-        "centos7": "ami-090d018e88f37c1ae",
-        "ubuntu1404": "ami-0fa07bfb48436656a",
-        "ubuntu1604": "ami-0e8e2b0e96662ca6b"
+        "alinux": "ami-03e36287a8db643a6",
+        "centos6": "ami-095f67f56a1527583",
+        "centos7": "ami-0b06bf029898118a0",
+        "ubuntu1404": "ami-05a797c90469c999d",
+        "ubuntu1604": "ami-07832ce0962bee748"
       },
       "ap-northeast-2": {
-        "alinux": "ami-0b167d9bbfde62d2d",
-        "centos6": "ami-019893c1e62bbbe4c",
-        "centos7": "ami-00d21772254147f94",
-        "ubuntu1404": "ami-01520d0422206114f",
-        "ubuntu1604": "ami-0c30bc54925d838fa"
+        "alinux": "ami-0b98ed3e605b92605",
+        "centos6": "ami-0d0ace084fd6cf12d",
+        "centos7": "ami-05b42fc432db9f480",
+        "ubuntu1404": "ami-062554aa660898a22",
+        "ubuntu1604": "ami-0dc78e141b19f0978"
       },
       "ap-northeast-3": {
-        "alinux": "ami-0e9881249ab6eabd3",
-        "centos6": "ami-0962d5772eaffc71b",
-        "centos7": "ami-008ec06778d170786",
-        "ubuntu1404": "ami-0e21c77589336b5c4",
-        "ubuntu1604": "ami-0e70a099e50905585"
+        "alinux": "ami-021947660b64696aa",
+        "centos6": "ami-0851bcd2300edbeaf",
+        "centos7": "ami-03652a0c4c92b7bc7",
+        "ubuntu1404": "ami-094650d912489a40e",
+        "ubuntu1604": "ami-024c1b375151a0e17"
       },
       "ap-south-1": {
-        "alinux": "ami-0b2c8ee36792079df",
-        "centos6": "ami-0ccacbf180ed01af6",
-        "centos7": "ami-00cc7c0cc22c258fd",
-        "ubuntu1404": "ami-0147366ed5d293883",
-        "ubuntu1604": "ami-0f535a2041e9b94c8"
+        "alinux": "ami-01efaa5ad568e5085",
+        "centos6": "ami-03eee1d7dd8da520c",
+        "centos7": "ami-0097ff784fc658868",
+        "ubuntu1404": "ami-071297e5ec8e9e49e",
+        "ubuntu1604": "ami-0fded8ae70424c152"
       },
       "ap-southeast-1": {
-        "alinux": "ami-0c0290b9dbf8c8bd9",
-        "centos6": "ami-012f0ce0586712f3b",
-        "centos7": "ami-0a85db3d9cda2d8d2",
-        "ubuntu1404": "ami-05f63ebee1896fe32",
-        "ubuntu1604": "ami-090160e13ca207e65"
+        "alinux": "ami-049c52885be77a749",
+        "centos6": "ami-0e9e53e44acd2ead4",
+        "centos7": "ami-0a9a51976070732fa",
+        "ubuntu1404": "ami-0a1231ab4a38646fe",
+        "ubuntu1604": "ami-00002ff56d4daeb00"
       },
       "ap-southeast-2": {
-        "alinux": "ami-06a2306b0b6184107",
-        "centos6": "ami-0247c080617d7647e",
-        "centos7": "ami-014a4f4fcc73ab85b",
-        "ubuntu1404": "ami-0d4b5f0b7af25bdaf",
-        "ubuntu1604": "ami-076f3636f63298dda"
+        "alinux": "ami-03a08b33bdc9699b8",
+        "centos6": "ami-059fdedf2a2a77e4f",
+        "centos7": "ami-0be0860f24dd25f5e",
+        "ubuntu1404": "ami-0c721c9b9e6f9d87d",
+        "ubuntu1604": "ami-0039df8aace145dc6"
       },
       "ca-central-1": {
-        "alinux": "ami-0c8d004dda0a11aa4",
-        "centos6": "ami-0173b3a7df2c7fe02",
-        "centos7": "ami-0b68fd6ce4b4a6d50",
-        "ubuntu1404": "ami-045ba5e8c740fc2c1",
-        "ubuntu1604": "ami-01e064e69b7c2aca6"
+        "alinux": "ami-0c3ba2ceb2ddae20d",
+        "centos6": "ami-01cafb32b52074f55",
+        "centos7": "ami-0553082090ca22e5a",
+        "ubuntu1404": "ami-015e0e43a15503318",
+        "ubuntu1604": "ami-029156072776a99d0"
       },
       "eu-central-1": {
-        "alinux": "ami-02495439420c1db34",
-        "centos6": "ami-01de586f622c82f50",
-        "centos7": "ami-02e343666efe2dccd",
-        "ubuntu1404": "ami-08e581f6d5df7b0f2",
-        "ubuntu1604": "ami-09708ba08fb4eaa9f"
+        "alinux": "ami-0b41164c7fa504a01",
+        "centos6": "ami-0028dd55fc40ee36f",
+        "centos7": "ami-0576d1895820cad64",
+        "ubuntu1404": "ami-0c449bbc6affefab8",
+        "ubuntu1604": "ami-02f6302dee9362a8b"
       },
       "eu-west-1": {
-        "alinux": "ami-05e3881929ee33ba0",
-        "centos6": "ami-05d89791118e3da01",
-        "centos7": "ami-067629e4a0b0728a5",
-        "ubuntu1404": "ami-0727593a99bb922e2",
-        "ubuntu1604": "ami-02098801bc93be814"
+        "alinux": "ami-09b1049e928de9769",
+        "centos6": "ami-02d330231ce956d7f",
+        "centos7": "ami-064b8a42321c61817",
+        "ubuntu1404": "ami-0649efbe601d39687",
+        "ubuntu1604": "ami-0bad3553419e2fc49"
       },
       "eu-west-2": {
-        "alinux": "ami-0339820b76b2327dc",
-        "centos6": "ami-080489d48a0a89fc4",
-        "centos7": "ami-014e7688066be8dbe",
-        "ubuntu1404": "ami-06116de8f1691dc3c",
-        "ubuntu1604": "ami-0ae70974baddc132f"
+        "alinux": "ami-08d8bfbb58c025e0e",
+        "centos6": "ami-08a224b20ad5f8514",
+        "centos7": "ami-0b586d88f5f3ba576",
+        "ubuntu1404": "ami-055232258d8bd12ca",
+        "ubuntu1604": "ami-0a436502cadd6550d"
       },
       "eu-west-3": {
-        "alinux": "ami-0e331cfd2773c0e74",
-        "centos6": "ami-014fd03a63b8d5e77",
-        "centos7": "ami-02788c7972bd10d9d",
-        "ubuntu1404": "ami-0d9be8cd40a8afdeb",
-        "ubuntu1604": "ami-04840af5545e98072"
+        "alinux": "ami-08d41b245704777bf",
+        "centos6": "ami-0ab9254eed3bad1bc",
+        "centos7": "ami-0e2a1cd272c8ef92c",
+        "ubuntu1404": "ami-0ee35bd7e9536f6f3",
+        "ubuntu1604": "ami-05654b6916d96d0e8"
       },
       "sa-east-1": {
-        "alinux": "ami-0dfb418ac5bf741bd",
-        "centos6": "ami-07200200ab715e696",
-        "centos7": "ami-03c901096ca366979",
-        "ubuntu1404": "ami-025b9814ede84b028",
-        "ubuntu1604": "ami-07b8d3b5a51038201"
+        "alinux": "ami-0ed31f16197c279b2",
+        "centos6": "ami-0c0c20312da94c95c",
+        "centos7": "ami-0be85f14cf7851a1e",
+        "ubuntu1404": "ami-0657b8d3034b36870",
+        "ubuntu1604": "ami-067382df1d7f65782"
       },
       "us-east-1": {
-        "alinux": "ami-05e07d30f513f27a2",
-        "centos6": "ami-071dd743cb11df395",
-        "centos7": "ami-0d9cb7ba04c4bbede",
-        "ubuntu1404": "ami-0ac1cd261b0bc4d3d",
-        "ubuntu1604": "ami-0b64b4f7022c87277"
+        "alinux": "ami-0b43a86ca5818973e",
+        "centos6": "ami-0a9c1f05aba5f1d78",
+        "centos7": "ami-0aaabd7179ae0efd1",
+        "ubuntu1404": "ami-06453272d427bd438",
+        "ubuntu1604": "ami-094853ef2ad78d2b2"
       },
       "us-east-2": {
-        "alinux": "ami-0d1983025f3f753c0",
-        "centos6": "ami-02b9b39628ae6df5f",
-        "centos7": "ami-0d2b2af3c7a732c30",
-        "ubuntu1404": "ami-0939ee584b81081ce",
-        "ubuntu1604": "ami-07136e4972929b2e3"
+        "alinux": "ami-0c3da6571b6cfbe9a",
+        "centos6": "ami-04b5a8d6008ee1e96",
+        "centos7": "ami-0bf12e332311cc5a3",
+        "ubuntu1404": "ami-09bce107e5d11529b",
+        "ubuntu1604": "ami-05dbb1cae0ff7124e"
+      },
+      "us-gov-east-1": {
+        "alinux": "ami-050f84a4dccf9b428",
+        "ubuntu1404": "ami-00885d1aef93a8223",
+        "ubuntu1604": "ami-0cced5f70e33796f0"
       },
       "us-gov-west-1": {
-        "alinux": "ami-13492d72",
-        "ubuntu1404": "ami-4e4a2e2f",
-        "ubuntu1604": "ami-a14b2fc0"
+        "alinux": "ami-e6d6b287",
+        "ubuntu1404": "ami-70d5b111",
+        "ubuntu1604": "ami-70d4b011"
       },
       "us-west-1": {
-        "alinux": "ami-044945136c783dbdc",
-        "centos6": "ami-017551e9c12e498fd",
-        "centos7": "ami-0409f18b67cb6710c",
-        "ubuntu1404": "ami-072ad76b3dfc8a1b9",
-        "ubuntu1604": "ami-037fe607e2ef6f027"
+        "alinux": "ami-0e483809ef4e9da66",
+        "centos6": "ami-00532870904e085d0",
+        "centos7": "ami-022437729ce297ed4",
+        "ubuntu1404": "ami-0d0d3a12fa64ad8c4",
+        "ubuntu1604": "ami-0f91926aaa7e3fd66"
       },
       "us-west-2": {
-        "alinux": "ami-037856388ec78af89",
-        "centos6": "ami-0a10c94576b3ecb09",
-        "centos7": "ami-08d9ffbe01a799d21",
-        "ubuntu1404": "ami-04f7f82e706117342",
-        "ubuntu1604": "ami-06f6aa06055c554aa"
+        "alinux": "ami-05ae377c5d73e7ebb",
+        "centos6": "ami-009aac1c1084703ea",
+        "centos7": "ami-0e6916127d13e1757",
+        "ubuntu1404": "ami-08a49021cb68c7d27",
+        "ubuntu1604": "ami-0d30bc9e891fd190b"
       }
     },
     "OSFeatures": {
@@ -1697,8 +1702,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "cfncluster": "2.0.0",
-        "cookbook": "aws-parallelcluster-cookbook-2.0.0",
+        "cfncluster": "2.0.2",
+        "cookbook": "aws-parallelcluster-cookbook-2.0.2",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
