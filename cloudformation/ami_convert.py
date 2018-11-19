@@ -36,7 +36,7 @@ with open(amis, "r") as f:
         region = pair[0].strip()
         ami = pair[1].strip()
 
-        if not region in regions:
+        if region not in regions:
             regions[region] = {}
 
         regions[region][current_os] = ami
@@ -47,7 +47,7 @@ for region in sorted(regions):
         first_region = 0
     else:
         sys.stdout.write(",\n")
-    sys.stdout.write('      "%s" : {\n' % (region))
+    sys.stdout.write('      "%s" : {\n' % region)
     first_os = 1
     for os in sorted(regions[region]):
         if first_os == 1:

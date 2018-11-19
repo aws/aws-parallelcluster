@@ -3,6 +3,7 @@ import os
 
 
 def test_valid_json():
+    """Verify cfn templates are correctly formatted."""
     invalid_json = False
     for filename in os.listdir("."):
         if filename.endswith(".cfn.json"):

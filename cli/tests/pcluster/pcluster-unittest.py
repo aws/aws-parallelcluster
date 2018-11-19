@@ -1,13 +1,15 @@
 # Copyright 2013-2018 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
-# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance with the
-# License. A copy of the License is located at
+# Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
+# with the License. A copy of the License is located at
 #
 # http://aws.amazon.com/apache2.0/
 #
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
+# noqa: D101
 
 import json
 import logging
@@ -96,7 +98,7 @@ class UpdateClusterArgs(CreateClusterArgs):
         self.reset_desired = reset_desired
 
 
-class CFN_cluster_test(unittest.TestCase):
+class TestPCluster(unittest.TestCase):
     def setUp(self):
         config_logger_test()
 
@@ -137,7 +139,7 @@ class CFN_cluster_test(unittest.TestCase):
     @mock_cloudformation
     @mock_s3
     def test_cfn_cluster_create_fail(self):
-        template_url = setup_configurations()
+        setup_configurations()
         args = CreateClusterArgs("", True)
         with self.assertRaises(SystemExit) as sys_ex:
             pcluster.create(args)
@@ -294,7 +296,7 @@ class CFN_cluster_test(unittest.TestCase):
     def test_cfn_cluster_stop_fail(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        with self.assertRaises(SystemExit) as sys_ex:
+        with self.assertRaises(SystemExit):
             pcluster.stop(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
