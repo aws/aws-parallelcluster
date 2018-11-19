@@ -17,5 +17,5 @@ A clear and concise description of what the bug is and the steps to reproduce th
 Any other context about the problem. E.g.:
  - configuration file with credentials or any other personal data removed and pre/post-install scripts if any
  - errors from `/var/log/jobwatcher`, `/var/log/sqswatcher` (Master node) and `/var/log/nodewatcher` (Compute nodes)
- - errors from `/var/cfn-init.log` and `/var/log/cloud-init-output.log` files, taken from the Master node after using `--norollback` option to create the cluster
+ - errors from `/var/cfn-init.log`, `/var/logcloud-init.log` and `/var/log/cloud-init-output.log` files, taken from the Master node after using `--norollback` option to create the cluster
  - screenshots
