@@ -75,8 +75,6 @@
             "CustomChefCookbook",
             "ExtraJson",
             "Tenancy",
-            "EphemeralKMSKeyId",
-            "ClusterReadyScript",
             "MasterRootVolumeSize",
             "ComputeRootVolumeSize",
             "EC2IAMRoleName"
@@ -209,12 +207,6 @@
         "Tenancy": {
           "default": "tenancy"
         },
-        "EphemeralKMSKeyId": {
-          "default": "ephemeral_kms_key_id"
-        },
-        "ClusterReadyScript": {
-          "default": "cluster_ready"
-        },
         "MasterRootVolumeSize": {
           "default": "master_root_volume_size"
         },
@@ -269,402 +261,6 @@
         "CLITemplate": {
           "default": "CLI TEMPLATE"
         }
-      }
-    },
-    "AWS::CloudFormation::Designer": {
-      "ee5f3006-419e-4786-b527-e9503a662e5e": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -170,
-          "y": 390
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "c8d3da13-fd27-4377-b606-0f41728c17e1": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -170,
-          "y": 310
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "2904615e-c0ad-4325-b0c5-b9ea7c482b4e": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 390
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "45360a4f-64aa-49f8-b016-78fe5ed86819": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 310
-        },
-        "z": 1,
-        "embeds": [],
-        "ismemberof": [
-          "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
-        ]
-      },
-      "619070e4-82e5-445a-93a0-4795ff69d61c": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 180,
-          "y": 480
-        },
-        "z": 1,
-        "embeds": [],
-        "isrelatedto": [
-          "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
-        ]
-      },
-      "466554d3-0e10-4ae4-bfee-51b0aadbf923": {
-        "source": {
-          "id": "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
-        },
-        "target": {
-          "id": "619070e4-82e5-445a-93a0-4795ff69d61c"
-        }
-      },
-      "0824f592-a72b-4bb5-8c67-4ce6df509cdd": {
-        "size": {
-          "width": 240,
-          "height": 240
-        },
-        "position": {
-          "x": -430,
-          "y": 30
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "596ddc76-44b9-4747-921c-c000c5b636c0": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 150
-        },
-        "z": 0,
-        "embeds": [],
-        "references": [
-          "45360a4f-64aa-49f8-b016-78fe5ed86819"
-        ]
-      },
-      "bb5a532f-bb43-472a-9965-c4054cd61cc9": {
-        "size": {
-          "width": 150,
-          "height": 150
-        },
-        "position": {
-          "x": -150,
-          "y": 70
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "9dd9772e-03a3-4983-b28e-a52ac42f0ffe": {
-        "source": {
-          "id": "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
-        },
-        "target": {
-          "id": "bb5a532f-bb43-472a-9965-c4054cd61cc9"
-        }
-      },
-      "d5bad569-ad14-487d-bcc6-5569373bc8cd": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 180,
-          "y": 310
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "e9ac6c41-8110-49b9-a92c-de57be8a292a": {
-        "source": {
-          "id": "d5bad569-ad14-487d-bcc6-5569373bc8cd"
-        },
-        "target": {
-          "id": "45360a4f-64aa-49f8-b016-78fe5ed86819"
-        }
-      },
-      "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 270,
-          "y": 30
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "a8fbc80f-2514-4cc9-aee8-ba7936add0a7": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 170,
-          "y": 30
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
-        ]
-      },
-      "0c5a1e92-ffdd-4344-8ba0-65270e5fd472": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 390,
-          "y": 30
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
-        ]
-      },
-      "2522b048-2b7c-44ed-9d35-6cc66069ca5b": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 390,
-          "y": 130
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
-        ]
-      },
-      "d3204db6-c821-400d-bf31-6afd5739923c": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 480
-        },
-        "z": 1,
-        "embeds": [],
-        "ismemberof": [
-          "619070e4-82e5-445a-93a0-4795ff69d61c"
-        ],
-        "isrelatedto": [
-          "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
-        ]
-      },
-      "88da1502-8179-4be3-9123-fdc5eac0b6a3": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -50,
-          "y": 310
-        },
-        "z": 1,
-        "embeds": [],
-        "isconnectedto": [
-          "45360a4f-64aa-49f8-b016-78fe5ed86819"
-        ],
-        "isrelatedto": [
-          "2522b048-2b7c-44ed-9d35-6cc66069ca5b",
-          "ee5f3006-419e-4786-b527-e9503a662e5e"
-        ]
-      },
-      "789cb442-3b1a-4673-a07e-8acb1c59c271": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 270,
-          "y": 380
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "2f599618-92e8-49cf-92bd-551ba9775f39": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 450,
-          "y": 380
-        },
-        "z": 1,
-        "embeds": []
-      },
-      "7b0e0a3f-3a02-4e70-9e79-7647b98fd579": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 270,
-          "y": 130
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
-        ],
-        "isrelatedto": [
-          "2f599618-92e8-49cf-92bd-551ba9775f39",
-          "789cb442-3b1a-4673-a07e-8acb1c59c271"
-        ]
-      },
-      "210b5501-b505-4ee1-917c-a20cae3ac837": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 360,
-          "y": 380
-        },
-        "z": 1,
-        "embeds": [],
-        "isrelatedto": [
-          "2f599618-92e8-49cf-92bd-551ba9775f39"
-        ]
-      },
-      "3fa053e5-8ab7-4cdf-a737-4d20386e4717": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -50,
-          "y": 480
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "d3204db6-c821-400d-bf31-6afd5739923c"
-        ],
-        "dependson": [
-          "88da1502-8179-4be3-9123-fdc5eac0b6a3"
-        ],
-        "isrelatedto": [
-          "bb5a532f-bb43-472a-9965-c4054cd61cc9",
-          "210b5501-b505-4ee1-917c-a20cae3ac837",
-          "ee5f3006-419e-4786-b527-e9503a662e5e"
-        ]
-      },
-      "8e63b592-a50f-4b89-a40b-e991adaef77b": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -50,
-          "y": 600
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
-        ]
-      },
-      "23ed10e0-7726-4099-8370-4116c0bc78a2": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": -50,
-          "y": 680
-        },
-        "z": 1,
-        "embeds": [],
-        "isrelatedto": [
-          "8e63b592-a50f-4b89-a40b-e991adaef77b"
-        ]
-      },
-      "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 600
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
-        ]
-      },
-      "127f78c3-d47a-4770-8aad-3fd733c3e1b0": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 60,
-          "y": 680
-        },
-        "z": 1,
-        "embeds": [],
-        "isrelatedto": [
-          "89b41ceb-a2fb-4e17-a808-9bedc37b2b2c"
-        ]
-      },
-      "6a874346-80de-4412-9677-00590371a8a2": {
-        "size": {
-          "width": 60,
-          "height": 60
-        },
-        "position": {
-          "x": 450,
-          "y": 470
-        },
-        "z": 1,
-        "embeds": [],
-        "isassociatedwith": [
-          "2f599618-92e8-49cf-92bd-551ba9775f39"
-        ],
-        "isrelatedto": [
-          "210b5501-b505-4ee1-917c-a20cae3ac837"
-        ]
       }
     }
   },
@@ -938,16 +534,6 @@
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE"
     },
-    "EphemeralKMSKeyId": {
-      "Description": "KMS ARN for customer created master key, will be used for ephemeral encryption",
-      "Type": "String",
-      "Default": "NONE"
-    },
-    "ClusterReadyScript": {
-      "Description": "Cluster ready script URL. This is only on the MasterServer, when the cluster reaches CREATE_COMPLETE.",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
       "Type": "Number",
@@ -1211,30 +797,6 @@
         }
       ]
     },
-    "UseComputeSubnetForCompute": {
-      "Fn::And": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "ComputeSubnetCidr"
-            },
-            "NONE"
-          ]
-        },
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "ComputeSubnetId"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        }
-      ]
-    },
     "UseMasterSubnetForCompute": {
       "Fn::And": [
         {
@@ -1373,30 +935,6 @@
               "Ref": "AdditionalSG"
             },
             "NONE"
-          ]
-        }
-      ]
-    },
-    "UseEphemeralKMSKey": {
-      "Fn::And": [
-        {
-          "Fn::Not": [
-            {
-              "Fn::Equals": [
-                {
-                  "Ref": "EphemeralKMSKeyId"
-                },
-                "NONE"
-              ]
-            }
-          ]
-        },
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "EncryptedEphemeral"
-            },
-            "true"
           ]
         }
       ]
@@ -1716,11 +1254,6 @@
       "Type": "AWS::SQS::Queue",
       "Properties": {
         "MessageRetentionPeriod": 1209600
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "2f599618-92e8-49cf-92bd-551ba9775f39"
-        }
       }
     },
     "SQSPolicy": {
@@ -1754,11 +1287,6 @@
             "Ref": "SQS"
           }
         ]
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "6a874346-80de-4412-9677-00590371a8a2"
-        }
       }
     },
     "SNS": {
@@ -1775,11 +1303,6 @@
             "Protocol": "sqs"
           }
         ]
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "210b5501-b505-4ee1-917c-a20cae3ac837"
-        }
       }
     },
     "DynamoDBTable": {
@@ -1798,13 +1321,8 @@
           }
         ],
         "ProvisionedThroughput": {
-          "ReadCapacityUnits": "5",
-          "WriteCapacityUnits": "5"
-        }
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "789cb442-3b1a-4673-a07e-8acb1c59c271"
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
         }
       }
     },
@@ -1840,12 +1358,7 @@
         },
         "Path": "/"
       },
-      "Condition": "CreateEC2IAMRole",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "ce1cdcde-8551-4c33-b846-e1b0ab9ac8fb"
-        }
-      }
+      "Condition": "CreateEC2IAMRole"
     },
     "RootInstanceProfile": {
       "Type": "AWS::IAM::InstanceProfile",
@@ -1857,12 +1370,7 @@
           }
         ]
       },
-      "Condition": "CreateEC2IAMRole",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
-        }
-      }
+      "Condition": "CreateEC2IAMRole"
     },
     "ParallelClusterPolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2051,12 +1559,7 @@
           }
         ]
       },
-      "Condition": "CreateEC2IAMRole",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "7b0e0a3f-3a02-4e70-9e79-7647b98fd579"
-        }
-      }
+      "Condition": "CreateEC2IAMRole"
     },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2086,12 +1589,7 @@
           }
         ]
       },
-      "Condition": "UseS3ReadPolicy",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "0c5a1e92-ffdd-4344-8ba0-65270e5fd472"
-        }
-      }
+      "Condition": "UseS3ReadPolicy"
     },
     "S3ReadWriteRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2120,24 +1618,14 @@
           }
         ]
       },
-      "Condition": "UseS3ReadWritePolicy",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "a8fbc80f-2514-4cc9-aee8-ba7936add0a7"
-        }
-      }
+      "Condition": "UseS3ReadWritePolicy"
     },
     "MasterEIP": {
       "Type": "AWS::EC2::EIP",
       "Properties": {
         "Domain": "vpc"
       },
-      "Condition": "MasterPublicIp",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "d5bad569-ad14-487d-bcc6-5569373bc8cd"
-        }
-      }
+      "Condition": "MasterPublicIp"
     },
     "MasterServer": {
       "Type": "AWS::EC2::Instance",
@@ -2305,8 +1793,8 @@
         "EbsOptimized": {
           "Fn::If": [
             "IsMasterInstanceEbsOpt",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "IamInstanceProfile": {
@@ -2741,9 +2229,6 @@
               }
             }
           }
-        },
-        "AWS::CloudFormation::Designer": {
-          "id": "88da1502-8179-4be3-9123-fdc5eac0b6a3"
         }
       },
       "CreationPolicy": {
@@ -2816,19 +2301,21 @@
         "DesiredCapacity": {
           "Ref": "DesiredSize"
         },
-        "NotificationConfiguration": {
-          "TopicARN": {
-            "Ref": "SNS"
-          },
-          "NotificationTypes": [
-            "autoscaling:EC2_INSTANCE_TERMINATE"
-          ]
-        },
+        "NotificationConfigurations": [
+          {
+            "TopicARN": {
+              "Ref": "SNS"
+            },
+            "NotificationTypes": [
+              "autoscaling:EC2_INSTANCE_TERMINATE"
+            ]
+          }
+        ],
         "Tags": [
           {
             "Key": "Name",
             "Value": "Compute",
-            "PropagateAtLaunch": "true"
+            "PropagateAtLaunch": true
           }
         ],
         "PlacementGroup": {
@@ -2860,12 +2347,7 @@
           }
         }
       },
-      "Condition": "CreateComputeFleet",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "3fa053e5-8ab7-4cdf-a737-4d20386e4717"
-        }
-      }
+      "Condition": "CreateComputeFleet"
     },
     "ComputeServerLaunchConfig": {
       "Type": "AWS::AutoScaling::LaunchConfiguration",
@@ -2909,8 +2391,8 @@
         "AssociatePublicIpAddress": {
           "Fn::If": [
             "ComputePublicIps",
-            "true",
-            "false"
+            true,
+            false
           ]
         },
         "InstanceType": {
@@ -2960,7 +2442,7 @@
             }
           ]
         },
-        "InstanceMonitoring": "false",
+        "InstanceMonitoring": false,
         "BlockDeviceMappings": [
           {
             "DeviceName": "/dev/xvdba",
@@ -3485,9 +2967,6 @@
               }
             }
           }
-        },
-        "AWS::CloudFormation::Designer": {
-          "id": "d3204db6-c821-400d-bf31-6afd5739923c"
         }
       }
     },
@@ -3609,7 +3088,7 @@
             ]
           },
           "Monitoring": {
-            "Enabled": "false"
+            "Enabled": false
           },
           "BlockDeviceMappings": [
             {
@@ -4139,9 +3618,6 @@
               }
             }
           }
-        },
-        "AWS::CloudFormation::Designer": {
-          "id": "d3204db6-c821-400d-bf31-6afd5739923c"
         }
       }
     },
@@ -4164,12 +3640,7 @@
           "Ref": "AvailabilityZone"
         }
       },
-      "Condition": "CreateComputeSubnetForCompute",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "bb5a532f-bb43-472a-9965-c4054cd61cc9"
-        }
-      }
+      "Condition": "CreateComputeSubnetForCompute"
     },
     "ComputeRouteTable": {
       "Type": "AWS::EC2::RouteTable",
@@ -4190,12 +3661,7 @@
           }
         ]
       },
-      "Condition": "CreateComputeSubnetForCompute",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "0824f592-a72b-4bb5-8c67-4ce6df509cdd"
-        }
-      }
+      "Condition": "CreateComputeSubnetForCompute"
     },
     "ComputeRoute": {
       "Type": "AWS::EC2::Route",
@@ -4208,12 +3674,7 @@
           "Ref": "MasterENI"
         }
       },
-      "Condition": "CreateComputeSubnetForCompute",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "596ddc76-44b9-4747-921c-c000c5b636c0"
-        }
-      }
+      "Condition": "CreateComputeSubnetForCompute"
     },
     "ComputeSubnetRouteTableAssociation": {
       "Type": "AWS::EC2::SubnetRouteTableAssociation",
@@ -4225,12 +3686,7 @@
           "Ref": "ComputeRouteTable"
         }
       },
-      "Condition": "CreateComputeSubnetForCompute",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "9dd9772e-03a3-4983-b28e-a52ac42f0ffe"
-        }
-      }
+      "Condition": "CreateComputeSubnetForCompute"
     },
     "MasterSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
@@ -4242,27 +3698,22 @@
         "SecurityGroupIngress": [
           {
             "IpProtocol": "tcp",
-            "FromPort": "22",
-            "ToPort": "22",
+            "FromPort": 22,
+            "ToPort": 22,
             "CidrIp": {
               "Ref": "AccessFrom"
             }
           }
         ]
       },
-      "Condition": "CreateSecurityGroups",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "2904615e-c0ad-4325-b0c5-b9ea7c482b4e"
-        }
-      }
+      "Condition": "CreateSecurityGroups"
     },
     "MasterSecurityGroupIngress": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "IpProtocol": "-1",
-        "FromPort": "0",
-        "ToPort": "65535",
+        "FromPort": 0,
+        "ToPort": 65535,
         "SourceSecurityGroupId": {
           "Ref": "ComputeSecurityGroup"
         },
@@ -4270,12 +3721,7 @@
           "Ref": "MasterSecurityGroup"
         }
       },
-      "Condition": "CreateSecurityGroups",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "466554d3-0e10-4ae4-bfee-51b0aadbf923"
-        }
-      }
+      "Condition": "CreateSecurityGroups"
     },
     "ComputeSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
@@ -4290,24 +3736,19 @@
               "Ref": "MasterSecurityGroup"
             },
             "IpProtocol": "-1",
-            "FromPort": "0",
-            "ToPort": "65535"
+            "FromPort": 0,
+            "ToPort": 65535
           }
         ]
       },
-      "Condition": "CreateSecurityGroups",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "619070e4-82e5-445a-93a0-4795ff69d61c"
-        }
-      }
+      "Condition": "CreateSecurityGroups"
     },
     "ComputeSecurityGroupIngress": {
       "Type": "AWS::EC2::SecurityGroupIngress",
       "Properties": {
         "IpProtocol": "-1",
-        "FromPort": "0",
-        "ToPort": "65535",
+        "FromPort": 0,
+        "ToPort": 65535,
         "SourceSecurityGroupId": {
           "Ref": "ComputeSecurityGroup"
         },
@@ -4324,7 +3765,7 @@
         "SubnetId": {
           "Ref": "MasterSubnetId"
         },
-        "SourceDestCheck": "false",
+        "SourceDestCheck": false,
         "GroupSet": [
           {
             "Fn::If": [
@@ -4360,11 +3801,6 @@
             ]
           }
         ]
-      },
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "45360a4f-64aa-49f8-b016-78fe5ed86819"
-        }
       }
     },
     "AdditionalCfnStack": {
@@ -4531,24 +3967,14 @@
           "Ref": "MasterENI"
         }
       },
-      "Condition": "MasterPublicIp",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "e9ac6c41-8110-49b9-a92c-de57be8a292a"
-        }
-      }
+      "Condition": "MasterPublicIp"
     },
     "DynamicPlacementGroup": {
       "Type": "AWS::EC2::PlacementGroup",
       "Properties": {
         "Strategy": "cluster"
       },
-      "Condition": "CreatePlacementGroup",
-      "Metadata": {
-        "AWS::CloudFormation::Designer": {
-          "id": "ee5f3006-419e-4786-b527-e9503a662e5e"
-        }
-      }
+      "Condition": "CreatePlacementGroup"
     },
     "CleanupResourcesFunctionExecutionRole": {
       "Type": "AWS::IAM::Role",
@@ -4623,7 +4049,6 @@
         }
       },
       "DependsOn": [
-        "CleanupResourcesFunction",
         "CleanupResourcesFunctionLogGroup"
       ],
       "Condition": "HasResourcesS3Bucket"
@@ -4648,8 +4073,7 @@
         "Runtime": "python3.6",
         "Timeout": 60
       },
-      "Condition": "HasResourcesS3Bucket",
-      "DependsOn": "CleanupResourcesFunctionExecutionRole"
+      "Condition": "HasResourcesS3Bucket"
     },
     "CleanupResourcesFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
@@ -4821,6 +4245,11 @@
         ]
       },
       "Condition": "CreateAWSBatchStack"
+    },
+    "CLITemplate": {
+      "Value": {
+        "Ref": "CLITemplate"
+      }
     }
   }
 }
