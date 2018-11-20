@@ -1852,12 +1852,17 @@
       "Properties": {
         "Path": "/",
         "Roles": [
-          {
-            "Ref": "RootRole"
-          }
+          {"Fn::If": [
+            "UseEC2IAMRole",
+            {
+              "Ref": "EC2IAMRoleName"
+            },
+            {
+              "Ref": "RootRole"
+            }
+          ]}
         ]
       },
-      "Condition": "CreateEC2IAMRole",
       "Metadata": {
         "AWS::CloudFormation::Designer": {
           "id": "2522b048-2b7c-44ed-9d35-6cc66069ca5b"
@@ -2309,17 +2314,7 @@
             "false"
           ]
         },
-        "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
-        },
+        "IamInstanceProfile": {"Ref": "RootInstanceProfile"},
         "PlacementGroupName": {
           "Fn::If": [
             "UseClusterPlacement",
@@ -2919,17 +2914,7 @@
         "KeyName": {
           "Ref": "KeyName"
         },
-        "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
-        },
+        "IamInstanceProfile": {"Ref": "RootInstanceProfile"},
         "SpotPrice": {
           "Fn::If": [
             "UseSpotInstances",
