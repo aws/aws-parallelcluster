@@ -8,6 +8,12 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
+# FIXME
+# pylint: disable=too-many-locals
+# pylint: disable=too-many-branches
+# pylint: disable=too-many-statements
+
 from __future__ import absolute_import, print_function
 
 import datetime
@@ -34,9 +40,9 @@ from . import cfnconfig, utils
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
 else:
-    from urllib import urlretrieve
+    from urllib import urlretrieve  # pylint: disable=no-name-in-module
 
-logger = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster.pcluster")
 
 
 def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_dir):
@@ -49,7 +55,7 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
             bucket_name=s3_bucket_name, root=resources_dir, aws_client_config=aws_client_config
         )
     except boto3.client("s3").exceptions.BucketAlreadyExists:
-        logger.error("Bucket %s already exists. Please retry cluster creation." % s3_bucket_name)
+        LOGGER.error("Bucket %s already exists. Please retry cluster creation.", s3_bucket_name)
         raise
     except Exception:
         utils.delete_s3_bucket(bucket_name=s3_bucket_name, aws_client_config=aws_client_config)
@@ -59,12 +65,12 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
 
 def version(args):
     config = cfnconfig.ParallelClusterConfig(args)
-    logger.info(config.version)
+    LOGGER.info(config.version)
 
 
 def create(args):  # noqa: C901 FIXME!!!
-    logger.info("Beginning cluster creation for cluster: %s" % (args.cluster_name))
-    logger.debug("Building cluster config based on args %s" % str(args))
+    LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
+    LOGGER.debug("Building cluster config based on args %s", str(args))
 
     # Build the config based on args
     config = cfnconfig.ParallelClusterConfig(args)
@@ -87,7 +93,7 @@ def create(args):  # noqa: C901 FIXME!!!
                 ec2.describe_subnets(SubnetIds=[master_subnet_id]).get("Subnets")[0].get("AvailabilityZone")
             )
         except ClientError as e:
-            logger.critical(e.response.get("Error").get("Message"))
+            LOGGER.critical(e.response.get("Error").get("Message"))
             sys.stdout.flush()
             sys.exit(1)
         config.parameters["AvailabilityZone"] = availability_zone
@@ -106,7 +112,7 @@ def create(args):  # noqa: C901 FIXME!!!
             )
             config.parameters["ResourcesS3Bucket"] = batch_temporary_bucket
 
-        logger.info("Creating stack named: " + stack_name)
+        LOGGER.info("Creating stack named: %s", stack_name)
 
         cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in config.parameters.items()]
         tags = [{"Key": t, "Value": config.tags[t]} for t in config.tags]
@@ -119,7 +125,7 @@ def create(args):  # noqa: C901 FIXME!!!
             DisableRollback=args.norollback,
             Tags=tags,
         )
-        logger.debug("StackId: %s" % (stack.get("StackId")))
+        LOGGER.debug("StackId: %s", stack.get("StackId"))
 
         status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
 
@@ -136,44 +142,42 @@ def create(args):  # noqa: C901 FIXME!!!
                 time.sleep(5)
             # print the last status update in the logs
             if resource_status != "":
-                logger.debug(resource_status)
+                LOGGER.debug(resource_status)
 
             if status != "CREATE_COMPLETE":
-                logger.critical("\nCluster creation failed.  Failed events:")
+                LOGGER.critical("\nCluster creation failed.  Failed events:")
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")
                 for event in events:
                     if event.get("ResourceStatus") == "CREATE_FAILED":
-                        logger.info(
-                            "  - %s %s %s"
-                            % (
-                                event.get("ResourceType"),
-                                event.get("LogicalResourceId"),
-                                event.get("ResourceStatusReason"),
-                            )
+                        LOGGER.info(
+                            "  - %s %s %s",
+                            event.get("ResourceType"),
+                            event.get("LogicalResourceId"),
+                            event.get("ResourceStatusReason"),
                         )
-            logger.info("")
+            LOGGER.info("")
             result_stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
             _print_stack_outputs(result_stack)
         else:
             status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
-            logger.info("Status: %s" % status)
+            LOGGER.info("Status: %s", status)
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         if batch_temporary_bucket:
             utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
     except KeyError as e:
-        logger.critical("ERROR: KeyError - reason:")
-        logger.critical(e)
+        LOGGER.critical("ERROR: KeyError - reason:")
+        LOGGER.critical(e)
         if batch_temporary_bucket:
             utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
     except Exception as e:
-        logger.critical(e)
+        LOGGER.critical(e)
         if batch_temporary_bucket:
             utils.delete_s3_bucket(bucket_name=batch_temporary_bucket, aws_client_config=aws_client_config)
         sys.exit(1)
@@ -192,7 +196,7 @@ def _print_stack_outputs(stack):
     for output in stack.get("Outputs", []):
         output_key = output.get("OutputKey")
         if output_key in whitelisted_outputs:
-            logger.info("%s: %s" % (output_key, output.get("OutputValue")))
+            LOGGER.info("%s: %s", output_key, output.get("OutputValue"))
 
 
 def is_ganglia_enabled(parameters):
@@ -206,7 +210,7 @@ def is_ganglia_enabled(parameters):
 
 
 def update(args):  # noqa: C901 FIXME!!!
-    logger.info("Updating: %s" % (args.cluster_name))
+    LOGGER.info("Updating: %s", args.cluster_name)
     stack_name = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
@@ -236,7 +240,7 @@ def update(args):  # noqa: C901 FIXME!!!
             config.parameters["DesiredSize"] = str(desired_capacity)
     else:
         if args.reset_desired:
-            logger.info("reset_desired flag does not work with awsbatch scheduler")
+            LOGGER.info("reset_desired flag does not work with awsbatch scheduler")
         params = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Parameters")
 
         for parameter in params:
@@ -257,15 +261,15 @@ def update(args):  # noqa: C901 FIXME!!!
                 ec2.describe_subnets(SubnetIds=[master_subnet_id]).get("Subnets")[0].get("AvailabilityZone")
             )
         except ClientError as e:
-            logger.critical(e.response.get("Error").get("Message"))
+            LOGGER.critical(e.response.get("Error").get("Message"))
             sys.exit(1)
         config.parameters["AvailabilityZone"] = availability_zone
 
     try:
-        logger.debug((config.template_url, config.parameters))
+        LOGGER.debug((config.template_url, config.parameters))
 
         cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in config.parameters.items()]
-        logger.info("Calling update_stack")
+        LOGGER.info("Calling update_stack")
         cfn.update_stack(
             StackName=stack_name, TemplateURL=config.template_url, Parameters=cfn_params, Capabilities=capabilities
         )
@@ -282,12 +286,12 @@ def update(args):  # noqa: C901 FIXME!!!
                 time.sleep(5)
         else:
             status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
-            logger.info("Status: %s" % status)
+            LOGGER.info("Status: %s", status)
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
 
 
@@ -297,7 +301,7 @@ def start(args):
     config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get("Scheduler") == "awsbatch":
-        logger.info("Enabling AWS Batch compute environment : %s" % args.cluster_name)
+        LOGGER.info("Enabling AWS Batch compute environment : %s", args.cluster_name)
         max_vcpus = (
             config.parameters.get("MaxSize")
             if config.parameters.get("MaxSize") and int(config.parameters.get("MaxSize")) >= 0
@@ -317,7 +321,7 @@ def start(args):
             ce_name=stack_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus
         )
     else:
-        logger.info("Starting compute fleet : %s" % args.cluster_name)
+        LOGGER.info("Starting compute fleet : %s", args.cluster_name)
 
         # Set asg limits
         max_queue_size = (
@@ -348,16 +352,16 @@ def stop(args):
     config = cfnconfig.ParallelClusterConfig(args)
 
     if config.parameters.get("Scheduler") == "awsbatch":
-        logger.info("Disabling AWS Batch compute environment : %s" % args.cluster_name)
+        LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
         stop_batch_ce(ce_name=stack_name, config=config)
     else:
-        logger.info("Stopping compute fleet : %s" % args.cluster_name)
+        LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
         # Set Resource limits
         asg_name = get_asg_name(stack_name=stack_name, config=config)
         set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
 
 
-def list(args):
+def list_stacks(args):
     config = cfnconfig.ParallelClusterConfig(args)
     cfn = boto3.client(
         "cloudformation",
@@ -369,12 +373,12 @@ def list(args):
         stacks = cfn.describe_stacks().get("Stacks")
         for stack in stacks:
             if stack.get("ParentId") is None and stack.get("StackName").startswith("parallelcluster-"):
-                logger.info("%s" % (stack.get("StackName")[len("parallelcluster-") :]))  # noqa: E203
+                LOGGER.info("%s", stack.get("StackName")[len("parallelcluster-") :])  # noqa: E203
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("Exiting...")
+        LOGGER.info("Exiting...")
         sys.exit(0)
 
 
@@ -392,7 +396,7 @@ def get_master_server_id(stack_name, config):
         resources = cfn.describe_stack_resource(StackName=stack_name, LogicalResourceId="MasterServer")
         return resources.get("StackResourceDetail").get("PhysicalResourceId")
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
 
 
@@ -423,17 +427,17 @@ def poll_master_server_state(stack_name, config):
             sys.stdout.write(status)
             sys.stdout.flush()
         if state in ["terminated", "shutting-down"]:
-            logger.info("State: %s is irrecoverable. Cluster needs to be re-created.")
+            LOGGER.info("State: %s is irrecoverable. Cluster needs to be re-created.", state)
             sys.exit(1)
         status = "\rMasterServer: %s\n" % state.upper()
         sys.stdout.write(status)
         sys.stdout.flush()
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
 
     return state
@@ -450,7 +454,7 @@ def get_ec2_instances(stack, config):
     try:
         resources = cfn.describe_stack_resources(StackName=stack).get("StackResources")
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
 
@@ -474,11 +478,11 @@ def get_asg_name(stack_name, config):
         resources = cfn.describe_stack_resources(StackName=stack_name).get("StackResources")
         return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
     except IndexError:
-        logger.critical("Stack %s does not have a ComputeFleet" % stack_name)
+        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
         sys.exit(1)
 
 
@@ -532,7 +536,7 @@ def start_batch_ce(ce_name, config, min_vcpus, desired_vcpus, max_vcpus):
             },
         )
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
 
 
@@ -561,7 +565,7 @@ def instances(args):
         print("%s         %s" % (instance[0], instance[1]))
 
     if config.parameters.get("Scheduler") == "awsbatch":
-        logger.info("Run 'awsbhosts --cluster %s' to list the compute instances" % args.cluster_name)
+        LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
 
 def command(args, extra_args):
@@ -583,7 +587,7 @@ def command(args, extra_args):
         status = stack_result.get("StackStatus")
         valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE"]
         if status not in valid_status:
-            logger.info("Stack status: %s. Stack needs to be in %s" % (status, " or ".join(valid_status)))
+            LOGGER.info("Stack status: %s. Stack needs to be in %s", status, " or ".join(valid_status))
             sys.exit(1)
         outputs = stack_result.get("Outputs")
         username = [o.get("OutputValue") for o in outputs if o.get("OutputKey") == "ClusterUser"][0]
@@ -603,13 +607,13 @@ def command(args, extra_args):
         if not args.dryrun:
             os.system(cmd)
         else:
-            logger.info(cmd)
+            LOGGER.info(cmd)
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
 
 
@@ -656,31 +660,29 @@ def status(args):  # noqa: C901 FIXME!!!
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")
                 for event in events:
                     if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:
-                        logger.info(
-                            "%s %s %s %s %s"
-                            % (
-                                event.get("Timestamp"),
-                                event.get("ResourceStatus"),
-                                event.get("ResourceType"),
-                                event.get("LogicalResourceId"),
-                                event.get("ResourceStatusReason"),
-                            )
+                        LOGGER.info(
+                            "%s %s %s %s %s",
+                            event.get("Timestamp"),
+                            event.get("ResourceStatus"),
+                            event.get("ResourceType"),
+                            event.get("LogicalResourceId"),
+                            event.get("ResourceStatusReason"),
                         )
         else:
             sys.stdout.write("\n")
             sys.stdout.flush()
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
 
 
 def delete(args):
     saw_update = False
-    logger.info("Deleting: %s" % args.cluster_name)
+    LOGGER.info("Deleting: %s", args.cluster_name)
     stack = "parallelcluster-" + args.cluster_name
 
     config = cfnconfig.ParallelClusterConfig(args)
@@ -701,7 +703,7 @@ def delete(args):
         status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get("StackStatus")
         sys.stdout.write("\rStatus: %s" % status)
         sys.stdout.flush()
-        logger.debug("Status: %s" % status)
+        LOGGER.debug("Status: %s", status)
         if not args.nowait:
             while status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
@@ -714,47 +716,44 @@ def delete(args):
                 sys.stdout.flush()
             sys.stdout.write("\rStatus: %s\n" % status)
             sys.stdout.flush()
-            logger.debug("Status: %s" % status)
+            LOGGER.debug("Status: %s", status)
         else:
             sys.stdout.write("\n")
             sys.stdout.flush()
         if status == "DELETE_FAILED":
-            logger.info("Cluster did not delete successfully. Run 'pcluster delete %s' again" % stack)
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", stack)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("does not exist"):
             if saw_update:
-                logger.info("\nCluster deleted successfully.")
+                LOGGER.info("\nCluster deleted successfully.")
                 sys.exit(0)
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
 
 
 def get_cookbook_url(config, tmpdir):
     if config.args.custom_ami_cookbook is not None:
         return config.args.custom_ami_cookbook
-    else:
-        cookbook_version = get_cookbook_version(config, tmpdir)
-        if config.region == "us-east-1":
-            return "https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
-                config.region,
-                cookbook_version,
-            )
-        else:
-            return "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
-                config.region,
-                config.region,
-                cookbook_version,
-            )
+
+    cookbook_version = get_cookbook_version(config, tmpdir)
+    if config.region == "us-east-1":
+        return "https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (config.region, cookbook_version)
+
+    return "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
+        config.region,
+        config.region,
+        cookbook_version,
+    )
 
 
 def get_cookbook_version(config, tmpdir):
     tmp_template_file = os.path.join(tmpdir, "aws-parallelcluster-template.json")
     try:
-        logger.info("Template: %s" % config.template_url)
+        LOGGER.info("Template: %s", config.template_url)
         urlretrieve(url=config.template_url, filename=tmp_template_file)
 
         with open(tmp_template_file) as cfn_file:
@@ -763,12 +762,12 @@ def get_cookbook_version(config, tmpdir):
         return cfn_data.get("Mappings").get("PackagesVersions").get("default").get("cookbook")
 
     except IOError as e:
-        logger.error("Unable to download template at URL %s" % config.template_url)
-        logger.critical("Error: " + str(e))
+        LOGGER.error("Unable to download template at URL %s", config.template_url)
+        LOGGER.critical("Error: %s", str(e))
         sys.exit(1)
     except (ValueError, AttributeError) as e:
-        logger.error("Unable to parse template at URL %s" % config.template_url)
-        logger.critical("Error: " + str(e))
+        LOGGER.error("Unable to parse template at URL %s", config.template_url)
+        LOGGER.critical("Error: %s", str(e))
         sys.exit(1)
 
 
@@ -778,7 +777,7 @@ def get_cookbook_dir(config, tmpdir):
         tmp_cookbook_archive = os.path.join(tmpdir, "aws-parallelcluster-cookbook.tgz")
 
         cookbook_url = get_cookbook_url(config, tmpdir)
-        logger.info("Cookbook: %s" % cookbook_url)
+        LOGGER.info("Cookbook: %s", cookbook_url)
 
         urlretrieve(url=cookbook_url, filename=tmp_cookbook_archive)
         tar = tarfile.open(tmp_cookbook_archive)
@@ -788,8 +787,8 @@ def get_cookbook_dir(config, tmpdir):
 
         return os.path.join(tmpdir, cookbook_archive_root)
     except (IOError, tarfile.ReadError) as e:
-        logger.error("Unable to download cookbook at URL %s" % cookbook_url)
-        logger.critical("Error: " + str(e))
+        LOGGER.error("Unable to download cookbook at URL %s", cookbook_url)
+        LOGGER.critical("Error: %s", str(e))
         sys.exit(1)
 
 
@@ -802,18 +801,18 @@ def dispose_packer_instance(results, config):
             aws_access_key_id=config.aws_access_key_id,
             aws_secret_access_key=config.aws_secret_access_key,
         )
-
         """ :type : pyboto3.ec2 """
+
         instance = ec2_client.describe_instance_status(
             InstanceIds=[results["PACKER_INSTANCE_ID"]], IncludeAllInstances=True
         ).get("InstanceStatuses")[0]
         instance_state = instance.get("InstanceState").get("Name")
         if instance_state in ["running", "pending", "stopping", "stopped"]:
-            logger.info("Terminating Instance %s created by Packer" % results["PACKER_INSTANCE_ID"])
+            LOGGER.info("Terminating Instance %s created by Packer", results["PACKER_INSTANCE_ID"])
             ec2_client.terminate_instances(InstanceIds=[results["PACKER_INSTANCE_ID"]])
 
     except ClientError as e:
-        logger.critical(e.response.get("Error").get("Message"))
+        LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
 
 
@@ -821,10 +820,8 @@ def run_packer(packer_command, packer_env, config):
     erase_line = "\x1b[2K"
     _command = shlex.split(packer_command)
     results = {}
-    fd_log, path_log = mkstemp(
-        prefix="packer.log." + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + "."), text=True
-    )
-    logger.info("Packer log: %s" % path_log)
+    _, path_log = mkstemp(prefix="packer.log." + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + "."), text=True)
+    LOGGER.info("Packer log: %s", path_log)
     try:
         dev_null = open(os.devnull, "rb")
         packer_env.update(os.environ.copy())
@@ -857,15 +854,15 @@ def run_packer(packer_command, packer_env, config):
         return results
     except sub.CalledProcessError:
         sys.stdout.flush()
-        logger.error("Failed to run %s\n" % _command)
+        LOGGER.error("Failed to run %s\n", _command)
         sys.exit(1)
     except (IOError, OSError):
         sys.stdout.flush()
-        logger.error("Failed to run %s\nCommand not found" % packer_command)
+        LOGGER.error("Failed to run %s\nCommand not found", packer_command)
         sys.exit(1)
     except KeyboardInterrupt:
         sys.stdout.flush()
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
     finally:
         dev_null.close()
@@ -875,8 +872,8 @@ def run_packer(packer_command, packer_env, config):
 
 def print_create_ami_results(results):
     if results.get("PACKER_CREATED_AMI"):
-        logger.info(
-            "\nCustom AMI %s created with name %s" % (results["PACKER_CREATED_AMI"], results["PACKER_CREATED_AMI_NAME"])
+        LOGGER.info(
+            "\nCustom AMI %s created with name %s", results["PACKER_CREATED_AMI"], results["PACKER_CREATED_AMI_NAME"]
         )
         print(
             "\nTo use it, add the following variable to the AWS ParallelCluster config file, "
@@ -884,12 +881,12 @@ def print_create_ami_results(results):
         )
         print("custom_ami = %s" % results["PACKER_CREATED_AMI"])
     else:
-        logger.info("\nNo custom AMI created")
+        LOGGER.info("\nNo custom AMI created")
 
 
 def create_ami(args):
-    logger.info("Building AWS ParallelCluster AMI. This could take a while...")
-    logger.debug("Building AMI based on args %s" % str(args))
+    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
+    LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}
 
     instance_type = "t2.large"
@@ -912,17 +909,12 @@ def create_ami(args):
         if config.aws_secret_access_key:
             packer_env["AWS_SECRET_ACCESS_KEY"] = config.aws_secret_access_key
 
-        if config.region.startswith("us-gov"):
-            partition = "govcloud"
-        else:
-            partition = "commercial"
-
-        logger.info("Base AMI ID: %s" % args.base_ami_id)
-        logger.info("Base AMI OS: %s" % args.base_ami_os)
-        logger.info("Instance Type: %s" % instance_type)
-        logger.info("Region: %s" % config.region)
-        logger.info("VPC ID: %s" % vpc_id)
-        logger.info("Subnet ID: %s" % master_subnet_id)
+        LOGGER.info("Base AMI ID: %s", args.base_ami_id)
+        LOGGER.info("Base AMI OS: %s", args.base_ami_os)
+        LOGGER.info("Instance Type: %s", instance_type)
+        LOGGER.info("Region: %s", config.region)
+        LOGGER.info("VPC ID: %s", vpc_id)
+        LOGGER.info("Subnet ID: %s", master_subnet_id)
 
         tmp_dir = mkdtemp()
         cookbook_dir = get_cookbook_dir(config, tmp_dir)
@@ -939,7 +931,7 @@ def create_ami(args):
 
         results = run_packer(packer_command, packer_env, config)
     except KeyboardInterrupt:
-        logger.info("\nExiting...")
+        LOGGER.info("\nExiting...")
         sys.exit(0)
     finally:
         print_create_ami_results(results)
