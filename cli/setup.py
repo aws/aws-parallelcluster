@@ -21,27 +21,27 @@ def readme():
         return f.read()
 
 
-version = "2.0.2"
-requires = ["boto3>=1.9.48", "awscli>=1.11.175", "future>=0.16.0", "tabulate>=0.8.2"]
+VERSION = "2.0.2"
+REQUIRES = ["boto3>=1.9.48", "awscli>=1.11.175", "future>=0.16.0", "tabulate>=0.8.2"]
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it
     # was not in stdlib until 2.7.
-    requires.append("argparse>=1.4.0")
+    REQUIRES.append("argparse>=1.4.0")
 
 if sys.version_info[0] == 2:
-    requires.append("configparser>=3.5.0")
+    REQUIRES.append("configparser>=3.5.0")
 
 setup(
     name="aws-parallelcluster",
-    version=version,
+    version=VERSION,
     author="Amazon Web Services",
     description="AWS ParallelCluster is an AWS supported Open Source cluster management tool to deploy "
     "and manage HPC clusters in the AWS cloud.",
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),
-    install_requires=requires,
+    install_requires=REQUIRES,
     entry_points={
         "console_scripts": [
             "pcluster = pcluster.cli:main",
