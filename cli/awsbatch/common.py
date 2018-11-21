@@ -136,6 +136,7 @@ class AWSBatchCliConfig(object):
         self.aws_access_key_id = None
         self.aws_secret_access_key = None
         self.region = None
+        self.env_blacklist = None
         parallelcluster_config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
         if os.path.isfile(parallelcluster_config_file):
             self.__init_from_parallelcluster_config(parallelcluster_config_file, log)
@@ -201,7 +202,7 @@ class AWSBatchCliConfig(object):
             except (NoOptionError, NoSectionError):
                 pass
 
-    def __init_from_config(self, cli_config_file, cluster, log):
+    def __init_from_config(self, cli_config_file, cluster, log):  # noqa: C901 FIXME
         """
         Init object attributes from awsbatch-cli configuration file.
 
@@ -227,6 +228,10 @@ class AWSBatchCliConfig(object):
             cluster_section = "cluster {0}".format(cluster_name)
             try:
                 self.region = config.get("main", "region")
+            except NoOptionError:
+                pass
+            try:
+                self.env_blacklist = config.get("main", "env_blacklist")
             except NoOptionError:
                 pass
 
