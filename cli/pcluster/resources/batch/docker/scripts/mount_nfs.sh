@@ -28,13 +28,13 @@ error_exit() {
 
 usage() {
     cat <<ENDUSAGE
-    This script mounts the shared dir from master instance on the nodes in the batch job.
-    The shared directory will be created if it does not exist.
+This script mounts the shared dir from master instance on the nodes in the batch job.
+The shared directory will be created if it does not exist.
 
-    USAGE:
-    mount_nfs <master_ip> <shared_dir>
-    master_ip: ip address of the main node
-    shared_dir: directory from master to be shared. If directory doesn't exist on compute, will be created
+USAGE:
+mount_nfs <master_ip> <shared_dir>
+master_ip: ip address of the main node
+shared_dir: directory from master to be shared. If directory doesn't exist on compute, will be created
 ENDUSAGE
 }
 

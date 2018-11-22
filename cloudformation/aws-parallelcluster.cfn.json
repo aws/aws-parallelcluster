@@ -1550,6 +1550,18 @@
               "Resource": [
                 "*"
               ]
+            },
+            {
+              "Sid": "BatchJobPassRole",
+              "Action": [
+                "iam:PassRole"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/parallelcluster-*"
+                }
+              ]
             }
           ]
         },
@@ -4242,6 +4254,15 @@
         "Fn::GetAtt": [
           "AWSBatchStack",
           "Outputs.JobDefinitionArn"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
+    },
+    "BatchJobDefinitionMnpArn": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AWSBatchStack",
+          "Outputs.MNPJobDefinitionArn"
         ]
       },
       "Condition": "CreateAWSBatchStack"
