@@ -257,8 +257,8 @@
           "Image": {
             "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}"
           },
-          "Vcpus": 2,
-          "Memory": 2000,
+          "Vcpus": 1,
+          "Memory": 512,
           "Privileged": true,
           "Environment": [
             {
