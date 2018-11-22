@@ -132,6 +132,18 @@ ParallelClusterInstancePolicy
               ],
               "Sid": "SQSList",
               "Effect": "Allow"
+          },
+          {
+            "Sid": "BatchJobPassRole",
+            "Action": [
+              "iam:PassRole"
+            ],
+            "Effect": "Allow",
+            "Resource": [
+              {
+                "Fn::Sub": "arn:aws:iam::<AWS ACCOUNT ID>:role/<EC2 IAM ROLE NAME>"
+              }
+            ]
           }
       ]
   }

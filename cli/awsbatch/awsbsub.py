@@ -94,6 +94,13 @@ def _get_parser():
         "if they have not finished. It must be at least 60 seconds",
         type=int,
     )
+    # MNP parameter
+    parser.add_argument(
+        "-n",
+        "--nodes",
+        help="The number of nodes to reserve for the job. It enables Multi-Node Parallel submission",
+        type=int,
+    )
     # array parameters
     parser.add_argument(
         "-a",
@@ -466,13 +473,18 @@ def main():
         # parse and validate depends_on parameter
         depends_on = _get_depends_on(args)
 
-        job_definition = config.job_definition
+        # select submission (standard vs MNP)
+        if args.nodes:
+            job_definition = config.job_definition_mnp
+        else:
+            job_definition = config.job_definition
 
         AWSBsubCommand(log, boto3_factory).run(
             job_definition=job_definition,
             job_name=job_name,
             job_queue=config.job_queue,
             command=command,
+            nodes=args.nodes,
             vcpus=args.vcpus,
             memory=args.memory,
             array_size=args.array_size,

@@ -249,14 +249,14 @@ class AWSBstatCommand(object):
 
                 for job in jobs_to_show:
                     nodes = 1
+                    container = {}
                     if "nodeProperties" in job:
                         # MNP job
-                        container = job["nodeProperties"]["nodeRangeProperties"][0]["container"]
+                        if "nodeRangeProperties" in job["nodeProperties"]:
+                            container = job["nodeProperties"]["nodeRangeProperties"][0]["container"]
                         nodes = job["nodeProperties"]["numNodes"]
                     elif "container" in job:
                         container = job["container"]
-                    else:
-                        container = {}
 
                     if is_job_array(job):
                         # parent job array
