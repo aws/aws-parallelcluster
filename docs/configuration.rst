@@ -197,6 +197,8 @@ scheduler
 """""""""
 Scheduler to be used with the cluster.  Valid options are sge, torque, slurm, or awsbatch.
 
+If you're using awsbatch, please take a look at the :ref:`networking setup <awsbatch_networking>`.
+
 Defaults to sge. ::
 
     scheduler = sge
