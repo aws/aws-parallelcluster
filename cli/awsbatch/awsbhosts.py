@@ -92,9 +92,9 @@ class AWSBhostsCommand(object):
         self.log = log
         mapping = collections.OrderedDict(
             [
+                ("ec2InstanceId", "ec2_instance"),
                 ("containerInstanceArn", "container_instance_arn"),
                 ("status", "status"),
-                ("ec2InstanceId", "ec2_instance"),
                 ("instanceType", "instance_type"),
                 ("privateIpAddress", "private_ip_address"),
                 ("publicIpAddress", "public_ip_address"),
