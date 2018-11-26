@@ -38,6 +38,7 @@ if "%1" == "help" (
 	echo.  linkcheck  to check all external links for integrity
 	echo.  doctest    to run all doctests embedded in the documentation if enabled
 	echo.  spelling   to check for typos in documentation
+	echo.  livehtml   to rebuild docs when a change is detected
 	goto end
 )
 
@@ -245,6 +246,14 @@ if "%1" == "spelling" (
 	if errorlevel 1 exit /b 1
 	echo.
 	echo.Check finished. Wrong words can be found in %BUILDDIR%/spelling/output.txt.
+	goto end
+)
+
+if "%1" == "livehtml" (
+	sphinx-autobuild -b html %ALLSPHINXOPTS% %BUILDDIR%/html
+	if errorlevel 1 exit /b 1
+	echo.
+	echo.Build finished. Auto-reloading enabled.
 	goto end
 )
 
