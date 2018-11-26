@@ -97,11 +97,11 @@ read_compute_address() {
                 break
             fi
 
-            if ! [[ ${file} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} slots\=[0-9]+$ ]]; then
+            if ! [[ ${file} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
                 error_exit "Matched filename not in expected format on head node: ${file}"
             fi
 
-            echo "${file}" >> "${destination_dir}/hostfile"
+            cat "${fullfile}" >> "${destination_dir}/hostfile"
             rm -rf "${fullfile}"
             (( compute_nodes_read += 1 ))
         done
@@ -125,7 +125,7 @@ write_node_info() {
     error_exit "Matched IP Address not in expected format on compute node: ${ip_address}"
   fi
   available_cores=$(nproc --all)
-  touch "${shared_dir_temp}/${ip_address} slots=${available_cores}"
+  echo "${ip_address} slots=${available_cores}" > "${shared_dir_temp}/${ip_address}"
 }
 
 

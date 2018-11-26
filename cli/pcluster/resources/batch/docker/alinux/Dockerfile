@@ -47,9 +47,6 @@ RUN echo "${USER} ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && chmod -R 600 ${SSHDIR}/*  \
     && chown -R ${USER}:${USER} ${SSHDIR}/
 
-# check if ssh agent is running or not, if not, run
-RUN eval `ssh-agent -s` && ssh-add ${SSHDIR}/id_rsa
-
 # setup path
 ENV PATH "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib64/openmpi/bin/"
 

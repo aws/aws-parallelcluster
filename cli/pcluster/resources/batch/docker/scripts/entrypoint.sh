@@ -4,6 +4,11 @@ set -e
 echo "Job id: ${AWS_BATCH_JOB_ID}"
 echo "Initializing the environment..."
 
+# Starting ssh agents
+echo "Starting ssh agents..."
+eval `ssh-agent -s` && ssh-add ${SSHDIR}/id_rsa
+/usr/sbin/sshd -f /root/.ssh/sshd_config -h /root/.ssh/ssh_host_rsa_key
+
 # mount nfs
 echo "Mounting shared file system..."
 /parallelcluster/bin/mount_nfs.sh "${MASTER_IP}" "${SHARED_DIR}"
