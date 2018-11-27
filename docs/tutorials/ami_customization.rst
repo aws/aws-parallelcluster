@@ -14,8 +14,8 @@ Building a custom AWS ParallelCluster AMI
     ParallelCluster. You will need to repeat the steps used to create your custom AMI with each new AWS ParallelCluster
     release.
 
-Before reading any further, take a look at the :doc:`pre_post_install` section of the documentation to determine if the
-modifications you wish to make can be scripted and supported with future AWS ParallelCluster releases
+Before reading any further, take a look at the :doc:`../pre_post_install` section of the documentation to determine
+if the modifications you wish to make can be scripted and supported with future AWS ParallelCluster releases
 
 While not ideal, there are a number of scenarios where building a custom AMI for AWS ParallelCluster is necessary. This
 tutorial will guide you through the process.

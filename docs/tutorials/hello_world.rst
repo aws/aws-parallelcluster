@@ -9,7 +9,7 @@ Running your first job on AWS ParallelCluster
 
 This tutorial will walk you through running your first "Hello World" job on aws-parallelcluster.
 
-If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install AWS
+If you haven't yet, you will need to following the :doc:`getting started <../getting_started>` guide to install AWS
 ParallelCluster and configure your CLI.
 
 Verifying your installation
