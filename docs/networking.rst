@@ -96,7 +96,7 @@ endpoint. This translates into the following scenarios:
 * Instances launched in the ``compute_subnet`` have public IP addresses and can reach the Internet through an
   Internet Gateway.
 
-Additionally, according to AWS Batch docs:
+Additionally, if you are interested in Multi-node Parallel jobs (according to AWS Batch docs):
 
  AWS Batch multi-node parallel jobs use the Amazon ECS awsvpc network mode, which gives your multi-node parallel job
  containers the same networking properties as Amazon EC2 instances. Each multi-node parallel job container gets its own
