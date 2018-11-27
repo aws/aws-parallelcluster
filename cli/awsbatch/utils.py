@@ -35,7 +35,7 @@ def get_region_by_stack_id(stack_id):
     :param stack_id: something like arn:aws:cloudformation:<region>:<account-id>:stack/<stack-name>/<id>'
     :return: region
     """
-    return re.search(r"arn:aws(\-us\-gov)?:cloudformation:([^:]*).*", stack_id).group(1)
+    return re.search(r"^arn:aws.*?:cloudformation:([^:]*).*", stack_id).group(1)
 
 
 def get_job_definition_name_by_arn(job_definition_arn, version=False):
