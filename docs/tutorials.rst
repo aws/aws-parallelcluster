@@ -7,5 +7,5 @@ Here you can find tutorials for best practices guides for getting started with A
 
 .. toctree::
 
-    hello_world
-    ami_customization
+    tutorials/hello_world
+    tutorials/ami_customization

@@ -67,7 +67,7 @@ release = '2.0.2'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['staging', 'README.rst']
+exclude_patterns = ['staging', 'README.rst', 'build', 'utils']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
