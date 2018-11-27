@@ -25,6 +25,7 @@ RUN yum update -y \
     && yum clean all \
     && rm -rf /var/cache/yum \
     && mkdir /var/run/sshd \
+    && mkdir -p /parallelcluster/bin \
     && export DEBIAN_FRONTEND=noninteractive
 
 # Setup passwordless ssh
@@ -52,10 +53,11 @@ RUN eval `ssh-agent -s` && ssh-add ${SSHDIR}/id_rsa
 # setup path
 ENV PATH "/bin:/usr/bin:/sbin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/usr/lib64/openmpi/bin/"
 
-# Copy entrypoint
-COPY scripts/ /usr/bin/
+# Copy entrypoint and scripts
+COPY scripts/ /parallelcluster/bin/
+RUN chmod +x /parallelcluster/bin/*
 
 # expose ssh port
 EXPOSE 22
 
-ENTRYPOINT ["/usr/bin/entrypoint.sh"]
+ENTRYPOINT ["/parallelcluster/bin/entrypoint.sh"]

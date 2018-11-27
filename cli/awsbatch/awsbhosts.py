@@ -92,9 +92,9 @@ class AWSBhostsCommand(object):
         self.log = log
         mapping = collections.OrderedDict(
             [
+                ("ec2InstanceId", "ec2_instance"),
                 ("containerInstanceArn", "container_instance_arn"),
                 ("status", "status"),
-                ("ec2InstanceId", "ec2_instance"),
                 ("instanceType", "instance_type"),
                 ("privateIpAddress", "private_ip_address"),
                 ("publicIpAddress", "public_ip_address"),
@@ -163,9 +163,9 @@ class AWSBhostsCommand(object):
                 ec2_instance=container_instance["ec2InstanceId"],
                 instance_type=instance_type,
                 private_ip_address=ec2_instance["PrivateIpAddress"],
-                public_ip_address=ec2_instance["PublicIpAddress"] if ec2_instance["PublicIpAddress"] != "" else "-",
+                public_ip_address=ec2_instance["PublicIpAddress"] if ec2_instance.get("PublicIpAddress") else "-",
                 private_dns_name=ec2_instance["PrivateDnsName"],
-                public_dns_name=ec2_instance["PublicDnsName"] if ec2_instance["PublicDnsName"] != "" else "-",
+                public_dns_name=ec2_instance["PublicDnsName"] if ec2_instance.get("PublicDnsName") else "-",
                 running_jobs=container_instance["runningTasksCount"],
                 pending_jobs=container_instance["pendingTasksCount"],
             )
