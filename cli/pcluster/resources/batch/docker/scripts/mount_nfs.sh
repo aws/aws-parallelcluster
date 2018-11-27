@@ -58,7 +58,7 @@ mount_nfs() {
     fi
 
     mkdir -p ${shared_dir}
-    error_message=$(mount -t nfs -o hard,intr,noatime,vers=3,_netdev "${master_ip}":"${shared_dir}" "${shared_dir}" 2>&1)
+    error_message=$(mount -t nfs -o hard,intr,noatime,_netdev "${master_ip}":"${shared_dir}" "${shared_dir}" 2>&1)
     if [[ $? -ne 0 ]]; then
         error_exit "Failed to mount nfs volume from ${master_ip}:${shared_dir} with error_message: ${error_message}"
     fi
