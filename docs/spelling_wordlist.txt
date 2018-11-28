@@ -44,3 +44,5 @@ vCPUs
 workflow
 workflows
 xlarge
+FSx
+Lustre
