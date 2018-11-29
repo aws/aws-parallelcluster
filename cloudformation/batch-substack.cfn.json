@@ -316,7 +316,7 @@
               }
             },
             {
-              "Name": "PCLUSTER_SHARED_DIR",
+              "Name": "PCLUSTER_SHARED_DIRS",
               "Value": {
                 "Ref": "SharedDir"
               }
@@ -374,7 +374,7 @@
                     }
                   },
                   {
-                    "Name": "PCLUSTER_SHARED_DIR",
+                    "Name": "PCLUSTER_SHARED_DIRS",
                     "Value": {
                       "Ref": "SharedDir"
                     }

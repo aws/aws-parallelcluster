@@ -75,6 +75,9 @@ mount_nfs() {
 main() {
     master_ip=${1}
     shared_dir=${2}
+    if [[ "${shared_dir:0:1}" != '/' ]]; then
+      shared_dir="/${shared_dir}"
+    fi
 
     check_arguments_valid
     mount_nfs
