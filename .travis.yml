@@ -22,10 +22,9 @@ matrix:
     python: 3.6
     stage: linters
     env: TOXENV=docs-linters
-
-before_install:
-  # Needed to run docs-linters target in tox.
-  - if [ "$TRAVIS_PYTHON_VERSION" == "3.6" ]; then sudo apt-get install -y enchant; fi
+    before_install:
+      # Needed to run docs-linters target in tox.
+      - sudo apt-get update && sudo apt-get install -y enchant
 
 install:
   - pip install tox-travis
