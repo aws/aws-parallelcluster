@@ -589,6 +589,11 @@
       "Type": "Number",
       "Default": "1"
     },
+    "FSXOptions": {
+      "Description": "Comma separated list of FSx related options, 4 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id]",
+      "Type": "String",
+      "Default": "NONE, NONE, NONE, NONE"
+    },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
@@ -804,6 +809,28 @@
                 }
               ]
             }
+          ]
+        }
+      ]
+    },
+    "CreateFSXSubstack": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Fn::Split": [
+                    ",",
+                    {
+                      "Ref": "FSXOptions"
+                    }
+                  ]
+                }
+              ]
+            },
+            "NONE"
           ]
         }
       ]
@@ -1420,6 +1447,54 @@
       "Properties": {
         "MessageRetentionPeriod": 1209600
       }
+    },
+    "FSXSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "FSXOptions": {
+            "Ref": "FSXOptions"
+          },
+          "ComputeSecurityGroup": {
+            "Fn::If": [
+              "CreateSecurityGroups",
+              {
+                "Ref": "ComputeSecurityGroup"
+              },
+              {
+                "Ref": "VPCSecurityGroupId"
+              }
+            ]
+          },
+          "SubnetId": {
+            "Ref": "MasterSubnetId"
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
+            {
+              "s3_domain": {
+                "Fn::If": [
+                  "GovCloudRegion",
+                  {
+                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                  },
+                  "s3.amazonaws.com"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "cfncluster"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "Condition": "CreateFSXSubstack"
     },
     "SQSPolicy": {
       "Type": "AWS::SQS::QueuePolicy",
@@ -2343,6 +2418,21 @@
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
                     },
+                    "cfn_fsx": {
+                      "Fn::If": [
+                        "CreateFSXSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "FSXSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_fsx_shared_dir": {
+                      "Ref": "FSXOptions"
+                    },
                     "cfn_volume": {
                       "Fn::GetAtt": [
                         "EBSCfnStack",
@@ -3152,6 +3242,21 @@
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
                     },
+                    "cfn_fsx": {
+                      "Fn::If": [
+                        "CreateFSXSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "FSXSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_fsx_shared_dir": {
+                      "Ref": "FSXOptions"
+                    },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
@@ -3819,6 +3924,21 @@
                     },
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
+                    },
+                    "cfn_fsx": {
+                      "Fn::If": [
+                        "CreateFSXSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "FSXSubstack",
+                            "Outputs.FileSystemId"
+                          ]
+                        },
+                        ""
+                      ]
+                    },
+                    "cfn_fsx_shared_dir": {
+                      "Ref": "FSXOptions"
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
