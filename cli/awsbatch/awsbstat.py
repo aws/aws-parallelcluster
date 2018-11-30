@@ -347,11 +347,11 @@ class AWSBstatCommand(object):
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
 
 
-def main():
+def main(argv=None):
     """Command entrypoint."""
     try:
         # parse input parameters and config file
-        args = _get_parser().parse_args()
+        args = _get_parser().parse_args(argv)
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)

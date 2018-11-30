@@ -1,0 +1,23 @@
+{
+  "jobSummaryList": [
+    {
+      "status": "RUNNING",
+      "container": {},
+      "jobName": "simple-running",
+      "startedAt": 1543503613655,
+      "jobId": "12300bd2-4174-47be-8636-8f6e6da4b544",
+      "createdAt": 1543503601952
+    },
+    {
+      "status": "RUNNING",
+      "container": {},
+      "jobName": "mnp-running",
+      "nodeProperties": {
+        "numNodes": 2
+      },
+      "startedAt": 1543504200319,
+      "jobId": "qwerfcbc-2647-4d8b-a1ef-da65bffe0dd0",
+      "createdAt": 1543503637389
+    }
+  ]
+}

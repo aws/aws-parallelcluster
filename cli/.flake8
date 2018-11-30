@@ -15,6 +15,7 @@ per-file-ignores =
     pcluster/easyconfig.py: E402
     pcluster/cfnconfig.py: E402
     tests/pcluster/pcluster-unittest.py: D101, D102
+    tests/awsbatch/test_*.py: D101, D102
 exclude =
     .tox,
     .git,

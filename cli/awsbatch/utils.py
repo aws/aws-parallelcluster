@@ -15,6 +15,7 @@ from __future__ import print_function
 
 import pipes
 import re
+import sys
 from datetime import datetime
 
 from dateutil import tz
@@ -26,7 +27,7 @@ def fail(error_message):
 
     :param error_message: message to print
     """
-    print(error_message)
+    print(error_message, file=sys.stderr)
     exit(1)
 
 
