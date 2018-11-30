@@ -23,6 +23,8 @@ import argparse
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, Output, config_logger
 from awsbatch.utils import convert_to_date, fail, get_job_definition_name_by_arn, is_job_array, shell_join
 
+AWS_BATCH_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
+
 
 def _get_parser():
     """
@@ -172,7 +174,12 @@ class AWSBstatCommand(object):
         if details_required:
             self.output.show()
         else:
-            self.output.show_table(["jobId", "jobName", "status", "startedAt", "stoppedAt", "exitCode"])
+            table_keys = ["jobId", "jobName", "status", "startedAt", "stoppedAt", "exitCode"]
+            # the lambda maps an entry of the output table to its position in the AWS_BATCH_JOB_STATUS list.
+            # This makes it so that the rows in the output are sorted by status.
+            self.output.show_table(
+                keys=table_keys, sort_keys_function=lambda x: AWS_BATCH_JOB_STATUS.index(x[table_keys.index("status")])
+            )
 
     def __populate_output_by_job_ids(self, job_status, job_ids, details):
         """
@@ -311,33 +318,32 @@ class AWSBstatCommand(object):
         :param details: ask for job details
         """
         try:
+            single_jobs = []
+            job_array_ids = []
             for status in job_status:
                 next_token = ""
                 while next_token is not None:
                     response = self.batch_client.list_jobs(jobStatus=status, jobQueue=job_queue, nextToken=next_token)
-                    single_jobs = []
-                    job_array_ids = []
+
                     for job in response["jobSummaryList"]:
                         if is_job_array(job) and expand_arrays is True:
                             job_array_ids.append(job["jobId"])
                         else:
                             single_jobs.append(job)
-
-                    # create output items for job array children
-                    self.__populate_output_by_job_ids(job_status, job_array_ids, details)
-
-                    # add single jobs to the output
-                    self.__add_jobs(single_jobs, details)
-
                     next_token = response.get("nextToken")
+
+            # create output items for job array children
+            self.__populate_output_by_job_ids(job_status, job_array_ids, details)
+
+            # add single jobs to the output
+            self.__add_jobs(single_jobs, details)
+
         except Exception as e:
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
 
 
 def main():
     """Command entrypoint."""
-    aws_batch_job_status = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
-
     try:
         # parse input parameters and config file
         args = _get_parser().parse_args()
@@ -354,7 +360,7 @@ def main():
         job_status_set = OrderedDict((status.strip().upper(), "") for status in args.status.split(","))
         if "ALL" in job_status_set:
             # add all the statuses in the list
-            job_status_set = OrderedDict((status, "") for status in aws_batch_job_status)
+            job_status_set = OrderedDict((status, "") for status in AWS_BATCH_JOB_STATUS)
         job_status = list(job_status_set)
 
         AWSBstatCommand(log, boto3_factory).run(

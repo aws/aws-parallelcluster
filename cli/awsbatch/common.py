@@ -50,11 +50,12 @@ class Output(object):
         else:
             self.items.append(items)
 
-    def show_table(self, keys=None):
+    def show_table(self, keys=None, sort_keys_function=None):
         """
         Print the items table.
 
         :param keys: show a specific list of keys (optional)
+        :param sort_keys_function: function to sort table rows (optional)
         """
         rows = []
         output_keys = keys or self.keys
@@ -63,6 +64,8 @@ class Output(object):
             for output_key in output_keys:
                 row.append(getattr(item, self.mapping[output_key]))
             rows.append(row)
+        if sort_keys_function:
+            rows = sorted(rows, key=sort_keys_function)
         print(tabulate(rows, output_keys))
 
     def show(self, keys=None):
