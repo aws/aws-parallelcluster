@@ -193,16 +193,16 @@ class AWSBstatCommand(object):
             if job_ids:
                 self.log.info("Describing jobs (%s), details (%s)" % (job_ids, details))
                 single_jobs = []
-                job_array_ids = []
+                array_jobs = []
                 jobs = self.batch_client.describe_jobs(jobs=job_ids)["jobs"]
                 for job in jobs:
                     if is_job_array(job):
-                        job_array_ids.append(job["jobId"])
+                        array_jobs.append((job["jobId"], job["arrayProperties"]["size"]))
                     else:
                         single_jobs.append(job)
 
                 # create output items for job array children
-                self.__populate_output_by_array_ids(job_status, job_array_ids, details)
+                self.__populate_output_by_array_ids(array_jobs)
 
                 # add single jobs to the output
                 # forcing details to be False since already retrieved.
@@ -210,28 +210,23 @@ class AWSBstatCommand(object):
         except Exception as e:
             fail("Error describing jobs from AWS Batch. Failed with exception: %s" % e)
 
-    def __populate_output_by_array_ids(self, job_status, job_array_ids, details):
+    def __populate_output_by_array_ids(self, array_jobs):
         """
         Add jobs array children to the output.
 
-        :param job_status: list of job status to ask
-        :param job_array_ids: job array ids to ask
-        :param details: ask for job details
+        :param array_jobs: list of pairs (job_id, job_size)
         """
         try:
-            for job_array_id in job_array_ids:
-                for status in job_status:
-                    self.log.info("Listing job array children for job (%s) in status (%s)" % (job_array_id, status))
-                    next_token = ""
-                    while next_token is not None:
-                        response = self.batch_client.list_jobs(
-                            jobStatus=status, arrayJobId=job_array_id, nextToken=next_token
-                        )
-                        # add single jobs to the output
-                        self.__add_jobs(response["jobSummaryList"], details)
-                        next_token = response.get("nextToken")
+            expanded_job_array_ids = []
+            for array_job in array_jobs:
+                expanded_job_array_ids.extend(["{0}:{1}".format(array_job[0], i) for i in range(0, array_job[1])])
+
+            if expanded_job_array_ids:
+                jobs = self.batch_client.describe_jobs(jobs=expanded_job_array_ids)["jobs"]
+                # forcing details to be False since already retrieved.
+                self.__add_jobs(jobs, False)
         except Exception as e:
-            fail("Error listing job array children for job (%s). Failed with exception: %s" % (job_array_id, e))
+            fail("Error listing job array children. Failed with exception: %s" % e)
 
     def __add_jobs(self, jobs, details):  # noqa: C901 FIXME
         """
