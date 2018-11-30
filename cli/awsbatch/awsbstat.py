@@ -194,7 +194,7 @@ class AWSBstatCommand(object):
                 self.log.info("Describing jobs (%s), details (%s)" % (job_ids, details))
                 single_jobs = []
                 array_jobs = []
-                jobs = self.batch_client.describe_jobs(jobs=job_ids)["jobs"]
+                jobs = self.__chunked_describe_jobs(job_ids)
                 for job in jobs:
                     if is_job_array(job):
                         array_jobs.append((job["jobId"], job["arrayProperties"]["size"]))
@@ -222,11 +222,28 @@ class AWSBstatCommand(object):
                 expanded_job_array_ids.extend(["{0}:{1}".format(array_job[0], i) for i in range(0, array_job[1])])
 
             if expanded_job_array_ids:
-                jobs = self.batch_client.describe_jobs(jobs=expanded_job_array_ids)["jobs"]
+                jobs = self.__chunked_describe_jobs(expanded_job_array_ids)
                 # forcing details to be False since already retrieved.
                 self.__add_jobs(jobs, False)
         except Exception as e:
             fail("Error listing job array children. Failed with exception: %s" % e)
+
+    def __chunked_describe_jobs(self, job_ids):
+        """
+        Submit calls to describe_jobs in batches of 100 elements each.
+
+        describe_jobs API call has a hard limit on the number of job that can be
+        retrieved with a single call. In case job_ids has more than 100 items, this function
+        distributes the describe_jobs call across multiple requests.
+
+        :param job_ids: list of ids for the jobs to describe.
+        :return: list of described jobs.
+        """
+        jobs = []
+        for index in range(0, len(job_ids), 100):
+            jobs_chunk = job_ids[index : index + 100]  # noqa: E203
+            jobs.extend(self.batch_client.describe_jobs(jobs=jobs_chunk)["jobs"])
+        return jobs
 
     def __add_jobs(self, jobs, details):  # noqa: C901 FIXME
         """
@@ -240,13 +257,7 @@ class AWSBstatCommand(object):
                 self.log.debug("Adding jobs to the output (%s)" % jobs)
                 if details:
                     self.log.info("Asking for jobs details")
-                    jobs_to_show = []
-                    for index in range(0, len(jobs), 100):
-                        jobs_chunk = jobs[index : index + 100]  # noqa: E203
-                        job_ids = []
-                        for job in jobs_chunk:
-                            job_ids.append(job["jobId"])
-                        jobs_to_show.extend(self.batch_client.describe_jobs(jobs=job_ids)["jobs"])
+                    jobs_to_show = self.__chunked_describe_jobs([job["jobId"] for job in jobs])
                 else:
                     jobs_to_show = jobs
 
