@@ -161,7 +161,7 @@ class AWSBstatCommand(object):
     def run(self, job_status, expand_arrays, job_queue=None, job_ids=None, show_details=False):
         """Print list of jobs, by filtering by queue or by ids."""
         if job_ids:
-            self.__populate_output_by_job_ids(job_status, job_ids, show_details or len(job_ids) == 1)
+            self.__populate_output_by_job_ids(job_ids, show_details or len(job_ids) == 1)
             # explicitly asking for job details,
             # or asking for a single job that is not an array (the output is not a list of jobs)
             details_required = show_details or (len(job_ids) == 1 and self.output.length() == 1)
@@ -181,11 +181,10 @@ class AWSBstatCommand(object):
                 keys=table_keys, sort_keys_function=lambda x: AWS_BATCH_JOB_STATUS.index(x[table_keys.index("status")])
             )
 
-    def __populate_output_by_job_ids(self, job_status, job_ids, details):
+    def __populate_output_by_job_ids(self, job_ids, details):
         """
         Add Job item or jobs array children to the output.
 
-        :param job_status: list of job status to ask
         :param job_ids: job ids or ARNs
         :param details: ask for job details
         """
@@ -205,8 +204,7 @@ class AWSBstatCommand(object):
                 self.__populate_output_by_array_ids(array_jobs)
 
                 # add single jobs to the output
-                # forcing details to be False since already retrieved.
-                self.__add_jobs(single_jobs, details=False)
+                self.__add_jobs(single_jobs)
         except Exception as e:
             fail("Error describing jobs from AWS Batch. Failed with exception: %s" % e)
 
@@ -224,7 +222,7 @@ class AWSBstatCommand(object):
             if expanded_job_array_ids:
                 jobs = self.__chunked_describe_jobs(expanded_job_array_ids)
                 # forcing details to be False since already retrieved.
-                self.__add_jobs(jobs, False)
+                self.__add_jobs(jobs)
         except Exception as e:
             fail("Error listing job array children. Failed with exception: %s" % e)
 
@@ -245,7 +243,7 @@ class AWSBstatCommand(object):
             jobs.extend(self.batch_client.describe_jobs(jobs=jobs_chunk)["jobs"])
         return jobs
 
-    def __add_jobs(self, jobs, details):  # noqa: C901 FIXME
+    def __add_jobs(self, jobs, details=False):  # noqa: C901 FIXME
         """
         Get job info from AWS Batch and add to the output.
 
@@ -340,7 +338,7 @@ class AWSBstatCommand(object):
                     next_token = response.get("nextToken")
 
             # create output items for job array children
-            self.__populate_output_by_job_ids(job_status, job_array_ids, details)
+            self.__populate_output_by_job_ids(job_array_ids, details)
 
             # add single jobs to the output
             self.__add_jobs(single_jobs, details)
