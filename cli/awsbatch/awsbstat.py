@@ -205,7 +205,8 @@ class AWSBstatCommand(object):
                 self.__populate_output_by_array_ids(job_status, job_array_ids, details)
 
                 # add single jobs to the output
-                self.__add_jobs(single_jobs, details)
+                # forcing details to be False since already retrieved.
+                self.__add_jobs(single_jobs, details=False)
         except Exception as e:
             fail("Error describing jobs from AWS Batch. Failed with exception: %s" % e)
 
