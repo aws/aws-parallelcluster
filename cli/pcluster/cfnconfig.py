@@ -95,6 +95,9 @@ class ParallelClusterConfig(object):
         # Initialize RAID related parameters
         self.__init_raid_parameters()
 
+        # Initialize FSx related parameters
+        self.__init_fsx_parameters()
+
         # Initialize scaling related parameters
         self.__init_scaling_parameters()
 
@@ -766,6 +769,56 @@ class ParallelClusterConfig(object):
                 self.parameters["RAIDOptions"] = ",".join(__temp_raid_options)
         except AttributeError:
             pass
+
+    def __init_fsx_options(self, __config):  # noqa: C901 FIXME!!!
+        # Determine if FSx settings are defined and set section
+        try:
+            self.__fsx_settings = __config.get(self.__cluster_section, "fsx_settings")
+            if not self.__fsx_settings:
+                print("ERROR: fsx_settings defined but not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            self.__fsx_section = "fsx %s" % self.__fsx_settings
+        except configparser.NoOptionError:
+            pass
+
+        # Dictionary list of all FSx options
+        self.__fsx_options = OrderedDict(
+            [
+                ("shared_dir", ("FSXShared_dir", None)),
+                ("fsx_fs_id", ("FSXFileSystemId", "FSXFSId")),
+                ("storage_capacity", ("FSXCapacity", "FSX_size")),
+                ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
+            ]
+        )
+
+        try:
+            if self.__fsx_section:
+                __temp_fsx_options = []
+                for key in self.__fsx_options:
+                    try:
+                        __temp__ = __config.get(self.__fsx_section, key)
+                        if not __temp__:
+                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__fsx_section))
+                            sys.exit(1)
+                        # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                        if self.__sanity_check and self.__fsx_options.get(key)[1] == "FSXFSId":
+                            self.__validate_resource(
+                                "FSXFSId",
+                                (__temp__, self.__master_subnet),
+                            )
+                        elif self.__sanity_check and self.__fsx_options.get(key)[1] is not None:
+                            self.__validate_resource(
+                                self.__fsx_options.get(key)[1],
+                                __temp__,
+                            )
+                        __temp_fsx_options.append(__temp__)
+                    except configparser.NoOptionError:
+                        __temp_fsx_options.append("NONE")
+                        pass
+                self.parameters["FSXOptions"] = ",".join(__temp_fsx_options)
+        except AttributeError:
+            pass
+
 
     def __ebs_determine_shared_dir(self):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
