@@ -260,7 +260,7 @@ class AWSBstatCommand(object):
 
                     if is_job_array(job):
                         # parent job array
-                        job_id = "{0}[{1}]".format(job["jobId"], job["arrayProperties"]["size"])
+                        job_id = "{0} [{1}]".format(job["jobId"], job["arrayProperties"]["size"])
                         log_stream = "-"
                         log_stream_url = "-"
                     else:
