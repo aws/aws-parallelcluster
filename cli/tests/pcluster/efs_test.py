@@ -4,7 +4,7 @@ import argparse
 
 from pcluster import cfnconfig
 
-config_file = "cli/tests/pcluster/config_efs"
+config_file = "tests/pcluster/config_efs"
 test_cluster_template = "unittest"
 args = argparse.Namespace()
 args.config_file = config_file
