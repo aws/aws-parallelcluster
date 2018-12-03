@@ -65,6 +65,10 @@ class Host(object):
         public_dns_name,
         running_jobs,
         pending_jobs,
+        cpu_registered,
+        mem_registered,
+        cpu_avail,
+        mem_avail,
     ):
         """Constructor."""
         self.container_instance_arn = container_instance_arn
@@ -77,6 +81,10 @@ class Host(object):
         self.public_dns_name = public_dns_name
         self.running_jobs = running_jobs
         self.pending_jobs = pending_jobs
+        self.cpu_registered = cpu_registered
+        self.mem_registered = mem_registered
+        self.cpu_avail = cpu_avail
+        self.mem_avail = mem_avail
 
 
 class AWSBhostsCommand(object):
@@ -102,6 +110,10 @@ class AWSBhostsCommand(object):
                 ("publicDnsName", "public_dns_name"),
                 ("runningJobs", "running_jobs"),
                 ("pendingJobs", "pending_jobs"),
+                ("registeredCPUs", "cpu_registered"),
+                ("registeredMemory[MB]", "mem_registered"),
+                ("availableCPUs", "cpu_avail"),
+                ("availableMemory[MB]", "mem_avail"),
             ]
         )
         self.output = Output(mapping=mapping)
@@ -151,12 +163,13 @@ class AWSBhostsCommand(object):
         :return: the Host item
         """
         try:
-            instance_type = "-"
-            for attr in container_instance["attributes"]:
-                if attr["name"] == "ecs.instance-type":
-                    instance_type = attr["value"]
-                    break
-
+            instance_type = AWSBhostsCommand.__get_instance_attribute(
+                container_instance["attributes"], "ecs.instance-type"
+            )
+            cpu_registered, mem_registered = AWSBhostsCommand.__get_cpu_and_memory(
+                container_instance["registeredResources"]
+            )
+            cpu_avail, mem_avail = AWSBhostsCommand.__get_cpu_and_memory(container_instance["remainingResources"])
             return Host(
                 container_instance_arn=container_instance["containerInstanceArn"],
                 status=container_instance["status"],
@@ -168,9 +181,46 @@ class AWSBhostsCommand(object):
                 public_dns_name=ec2_instance["PublicDnsName"] if ec2_instance.get("PublicDnsName") else "-",
                 running_jobs=container_instance["runningTasksCount"],
                 pending_jobs=container_instance["pendingTasksCount"],
+                cpu_registered=cpu_registered,
+                mem_registered=mem_registered,
+                cpu_avail=cpu_avail,
+                mem_avail=mem_avail,
             )
         except KeyError as e:
             fail("Error building Host item. Key (%s) not found." % e)
+
+    @staticmethod
+    def __get_instance_attribute(attributes, attribute_name):
+        """
+        Get container instance attribute by name.
+
+        :param attributes: list of attributes
+        :param attribute_name: name of the attribute
+        :return: the attribute value
+        """
+        attr_value = "-"
+        for attr in attributes:
+            if attr["name"] == attribute_name:
+                attr_value = attr["value"]
+                break
+        return attr_value
+
+    @staticmethod
+    def __get_cpu_and_memory(resources):
+        """
+        Get CPU and MEMORY information from given resources object.
+
+        :param resources: resources json object
+        :return: cpu and memory
+        """
+        cpu = "-"
+        memory = "-"
+        for resource in resources:
+            if resource["name"] == "CPU":
+                cpu = resource["integerValue"] / 1024
+            elif resource["name"] == "MEMORY":
+                memory = resource["integerValue"]
+        return cpu, memory
 
     def _add_host_items(self, ecs_cluster_arn, container_instances_arns, instance_ids=None):
         """
