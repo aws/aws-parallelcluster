@@ -17,6 +17,8 @@ import pipes
 import re
 from datetime import datetime
 
+from dateutil import tz
+
 
 def fail(error_message):
     """
@@ -50,14 +52,18 @@ def get_job_definition_name_by_arn(job_definition_arn, version=False):
     return re.search(pattern, job_definition_arn).group(1)
 
 
-def convert_to_date(timestamp):
+def convert_to_date(timestamp, timezone=None):
     """
     Convert timestamp to a readable date.
 
     :param timestamp: timestamp to convert
+    :param timezone: timezone to use when converting. Defaults to local.
     :return: the converted date
     """
-    return datetime.fromtimestamp(timestamp / 1000).strftime("%Y-%m-%d %H:%M:%S")
+    if not timezone:
+        timezone = tz.tzlocal()
+    # Forcing microsecond to 0 to avoid having them displayed.
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
 
 
 def hide_keys(dictionary, keys_to_hide, new_value="xxx"):
