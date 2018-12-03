@@ -224,7 +224,7 @@ has been changed to
 Ganglia is disabled by default.
 You can enable it by setting the :code:`extra_json` parameter as described below:
 
-:code:`extra_json = { "cluster" : { ganglia_enabled = 'yes' } }`
+:code:`extra_json = { "cluster" : { "ganglia_enabled" : "yes" } }`
 
 and changing the Master SG to allow connections to port 80.
 The :code:`parallelcluster-<CLUSTER_NAME>-MasterSecurityGroup-<xxx>` Security Group has to be modified by
