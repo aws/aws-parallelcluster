@@ -10,7 +10,7 @@
                   "Fn::Select": [
                     "0",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 },
@@ -25,7 +25,7 @@
               "Fn::Select": [
                 "1",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -44,7 +44,7 @@
                   "Fn::Select": [
                     "0",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 },
@@ -59,7 +59,7 @@
               "Fn::Select": [
                 "7",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -74,7 +74,7 @@
           "Fn::Select": [
             "5",
             {
-              "Ref": "EFSoptions"
+              "Ref": "EFSOptions"
             }
           ]
         },
@@ -94,7 +94,7 @@
                   "Fn::Select": [
                     "3",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 },
@@ -113,7 +113,7 @@
               "Fn::Select": [
                 "2",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -128,7 +128,7 @@
           "Fn::Select": [
             "6",
             {
-              "Ref": "EFSoptions"
+              "Ref": "EFSOptions"
             }
           ]
         },
@@ -148,7 +148,7 @@
                   "Fn::Select": [
                     "4",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 },
@@ -167,7 +167,7 @@
               "Fn::Select": [
                 "6",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -190,7 +190,7 @@
             "Fn::Select": [
               "1",
               {
-                "Ref": "EFSoptions"
+                "Ref": "EFSOptions"
               }
             ]
           }
@@ -203,7 +203,7 @@
       "Description": "SecurityGroup for Mount Target",
       "Type": "String"
     },
-    "EFSoptions": {
+    "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total",
       "Type": "CommaDelimitedList"
     },
@@ -223,7 +223,7 @@
               "Fn::Select": [
                 "5",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -239,7 +239,7 @@
               "Fn::Select": [
                 "3",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -255,7 +255,7 @@
               "Fn::Select": [
                 "2",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -271,7 +271,7 @@
               "Fn::Select": [
                 "4",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -287,7 +287,7 @@
               "Fn::Select": [
                 "6",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             },
@@ -312,7 +312,7 @@
               "Fn::Select": [
                 "1",
                 {
-                  "Ref": "EFSoptions"
+                  "Ref": "EFSOptions"
                 }
               ]
             }

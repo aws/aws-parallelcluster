@@ -29,7 +29,7 @@ class TestEFSConfigParser(unittest.TestCase):
         global args
         args.func = create
         config = cfnconfig.ParallelClusterConfig(args)
-        efs_options = [opt.strip() for opt in config.parameters["EFSoptions"].split(",")]
+        efs_options = [opt.strip() for opt in config.parameters["EFSOptions"].split(",")]
         self.assertEqual(efs_options[0], "efs_shared", msg="Unexpected shared_dir")
         self.assertEqual(efs_options[1], "fs-12345", msg="Unexpected efs_fs_id")
         self.assertEqual(efs_options[2], "maxIO", msg="Unexpected performance_mode")
@@ -50,7 +50,7 @@ class TestEFSConfigParser(unittest.TestCase):
         global args
         args.func = update
         config = cfnconfig.ParallelClusterConfig(args)
-        efs_options = [opt.strip() for opt in config.parameters["EFSoptions"].split(",")]
+        efs_options = [opt.strip() for opt in config.parameters["EFSOptions"].split(",")]
         self.assertEqual(efs_options[0], "efs_shared", msg="Unexpected shared_dir")
         self.assertEqual(efs_options[1], "fs-12345", msg="Unexpected efs_fs_id")
         self.assertEqual(efs_options[2], "maxIO", msg="Unexpected performance_mode")
