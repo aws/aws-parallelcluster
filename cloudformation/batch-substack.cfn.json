@@ -59,7 +59,8 @@
     },
     "EFSFSId": {
       "Description": "ID of EFS file system",
-      "Type": "String"
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {

@@ -9,7 +9,7 @@ def main():
     # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_mt]
     efs_options = t.add_parameter(
         Parameter(
-            "EFSoptions",
+            "EFSOptions",
             Type="CommaDelimitedList",
             Description="Comma separated list of efs related options, " "8 parameters in total",
         )
