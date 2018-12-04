@@ -173,9 +173,6 @@
         "ServiceRole": {
           "Ref": "BatchServiceRole"
         },
-        "ComputeEnvironmentName": {
-          "Ref": "ClusterName"
-        },
         "ComputeResources": {
           "Type": {
             "Fn::If": [
@@ -234,9 +231,6 @@
     "JobQueue": {
       "Type": "AWS::Batch::JobQueue",
       "Properties": {
-        "JobQueueName": {
-          "Ref": "ClusterName"
-        },
         "Priority": 1,
         "ComputeEnvironmentOrder": [
           {
@@ -251,9 +245,6 @@
     "JobDefinitionSerial": {
       "Type": "AWS::Batch::JobDefinition",
       "Properties": {
-        "JobDefinitionName": {
-          "Ref": "ClusterName"
-        },
         "Type": "container",
         "ContainerProperties": {
           "JobRoleArn": {
@@ -300,9 +291,6 @@
     "JobDefinitionMNP": {
       "Type": "AWS::Batch::JobDefinition",
       "Properties": {
-        "JobDefinitionName": {
-          "Fn::Sub": "${ClusterName}-mnp"
-        },
         "Type": "multinode",
         "NodeProperties": {
           "NumNodes": 1,
