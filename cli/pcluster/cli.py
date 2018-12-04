@@ -38,8 +38,8 @@ def status(args):
     pcluster.status(args)
 
 
-def list(args):
-    pcluster.list(args)
+def list_stacks(args):
+    pcluster.list_stacks(args)
 
 
 def delete(args):
@@ -241,7 +241,7 @@ Examples::
     )
     _addarg_config(plist)
     _addarg_region(plist)
-    plist.set_defaults(func=list)
+    plist.set_defaults(func=list_stacks)
 
     # instances command subparser
     pinstances = subparsers.add_parser("instances", help="Displays a list of all instances in a cluster.")
