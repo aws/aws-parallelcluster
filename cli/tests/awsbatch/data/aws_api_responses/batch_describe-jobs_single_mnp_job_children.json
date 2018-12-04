@@ -1,0 +1,152 @@
+{
+  "jobs": [
+    {
+      "status": "SUCCEEDED",
+      "container": {
+        "mountPoints": [],
+        "taskArn": "arn:aws:ecs:us-east-1:653949452088:task/3557426b-21ff-41d0-a348-51a8c68824ae",
+        "logStreamName": "parallelcluster-mnp-final-mnp/default/3557426b-21ff-41d0-a348-51a8c68824ae",
+        "image": "653949452088.dkr.ecr.us-east-1.amazonaws.com/paral-docke-150d1t4y4o4xj:alinux",
+        "containerInstanceArn": "arn:aws:ecs:us-east-1:653949452088:container-instance/d8fc64d6-9a48-4520-98ae-0c72ecc6cc1d",
+        "environment": [
+          {
+            "name": "SHARED_DIR",
+            "value": "/shared"
+          },
+          {
+            "name": "MASTER_IP",
+            "value": "10.0.0.47"
+          },
+          {
+            "name": "PCLUSTER_JOB_S3_URL",
+            "value": "s3://parallelcluster-xxx/batch/job-xxx"
+          }
+        ],
+        "vcpus": 1,
+        "jobRoleArn": "arn:aws:iam::653949452088:role/parallelcluster-mnp-final-AWSBatchStack-15-JobRole-9AMA2BF4NW03",
+        "volumes": [],
+        "memory": 128,
+        "command": [
+          "echo",
+          "TEST"
+        ],
+        "networkInterfaces": [
+          {
+            "privateIpv4Address": "10.0.0.132",
+            "attachmentId": "82e75aa3-bb79-4e91-8d0f-c052a1058b08"
+          }
+        ],
+        "privileged": true,
+        "ulimits": [],
+        "exitCode": 0
+      },
+      "nodeDetails": {
+        "nodeIndex": 1,
+        "isMainNode": false
+      },
+      "parameters": {},
+      "jobDefinition": "arn:aws:batch:us-east-1:653949452088:job-definition/parallelcluster-mnp-final-mnp:2",
+      "statusReason": "Essential container in task exited",
+      "jobId": "6abf3ecd-07a8-4faa-8a65-79e7404eb50f#1",
+      "attempts": [
+        {
+          "startedAt": 1543836554285,
+          "container": {
+            "taskArn": "arn:aws:ecs:us-east-1:653949452088:task/3557426b-21ff-41d0-a348-51a8c68824ae",
+            "networkInterfaces": [
+              {
+                "privateIpv4Address": "10.0.0.132",
+                "attachmentId": "82e75aa3-bb79-4e91-8d0f-c052a1058b08"
+              }
+            ],
+            "containerInstanceArn": "arn:aws:ecs:us-east-1:653949452088:container-instance/d8fc64d6-9a48-4520-98ae-0c72ecc6cc1d",
+            "logStreamName": "parallelcluster-mnp-final-mnp/default/3557426b-21ff-41d0-a348-51a8c68824ae",
+            "exitCode": 0
+          },
+          "stoppedAt": 1543836567456,
+          "statusReason": "Essential container in task exited"
+        }
+      ],
+      "jobQueue": "arn:aws:batch:us-east-1:653949452088:job-queue/parallelcluster-mnp-final",
+      "dependsOn": [],
+      "startedAt": 1543836554285,
+      "jobName": "mnp",
+      "createdAt": 1543836514469,
+      "stoppedAt": 1543836567456
+    },
+    {
+      "status": "SUCCEEDED",
+      "container": {
+        "mountPoints": [],
+        "taskArn": "arn:aws:ecs:us-east-1:653949452088:task/3d430bca-d7b4-4436-9efe-ae5f76a0b81b",
+        "logStreamName": "parallelcluster-mnp-final-mnp/default/3d430bca-d7b4-4436-9efe-ae5f76a0b81b",
+        "image": "653949452088.dkr.ecr.us-east-1.amazonaws.com/paral-docke-150d1t4y4o4xj:alinux",
+        "containerInstanceArn": "arn:aws:ecs:us-east-1:653949452088:container-instance/6ac32370-b20d-4cbb-8733-dfd106fb3ddb",
+        "environment": [
+          {
+            "name": "SHARED_DIR",
+            "value": "/shared"
+          },
+          {
+            "name": "MASTER_IP",
+            "value": "10.0.0.47"
+          },
+          {
+            "name": "PCLUSTER_JOB_S3_URL",
+            "value": "s3://parallelcluster-xxx/batch/job-xxx"
+          }
+        ],
+        "vcpus": 1,
+        "jobRoleArn": "arn:aws:iam::653949452088:role/parallelcluster-mnp-final-AWSBatchStack-15-JobRole-9AMA2BF4NW03",
+        "volumes": [],
+        "memory": 128,
+        "command": [
+          "echo",
+          "TEST"
+        ],
+        "networkInterfaces": [
+          {
+            "privateIpv4Address": "10.0.0.238",
+            "attachmentId": "a7116a8f-e055-4e42-8395-2b691d76cded"
+          }
+        ],
+        "privileged": true,
+        "ulimits": [],
+        "exitCode": 0
+      },
+      "nodeDetails": {
+        "nodeIndex": 0,
+        "isMainNode": true
+      },
+      "parameters": {},
+      "jobDefinition": "arn:aws:batch:us-east-1:653949452088:job-definition/parallelcluster-mnp-final-mnp:2",
+      "statusReason": "Essential container in task exited",
+      "jobId": "6abf3ecd-07a8-4faa-8a65-79e7404eb50f#0",
+      "attempts": [
+        {
+          "startedAt": 1543836512293,
+          "container": {
+            "taskArn": "arn:aws:ecs:us-east-1:653949452088:task/3d430bca-d7b4-4436-9efe-ae5f76a0b81b",
+            "networkInterfaces": [
+              {
+                "privateIpv4Address": "10.0.0.238",
+                "attachmentId": "a7116a8f-e055-4e42-8395-2b691d76cded"
+              }
+            ],
+            "containerInstanceArn": "arn:aws:ecs:us-east-1:653949452088:container-instance/6ac32370-b20d-4cbb-8733-dfd106fb3ddb",
+            "logStreamName": "parallelcluster-mnp-final-mnp/default/3d430bca-d7b4-4436-9efe-ae5f76a0b81b",
+            "exitCode": 0
+          },
+          "stoppedAt": 1543836586008,
+          "statusReason": "Essential container in task exited"
+        }
+      ],
+      "jobQueue": "arn:aws:batch:us-east-1:653949452088:job-queue/parallelcluster-mnp-final",
+      "dependsOn": [],
+      "startedAt": 1543836512293,
+      "jobName": "mnp",
+      "createdAt": 1543836482227,
+      "stoppedAt": 1543836586008
+    }
+  ]
+}

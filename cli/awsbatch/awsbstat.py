@@ -22,7 +22,15 @@ from collections import OrderedDict
 import argparse
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, Output, config_logger
-from awsbatch.utils import convert_to_date, fail, get_job_definition_name_by_arn, get_job_type, is_job_array, shell_join
+from awsbatch.utils import (
+    convert_to_date,
+    fail,
+    get_job_definition_name_by_arn,
+    get_job_type,
+    is_job_array,
+    is_mnp_job,
+    shell_join,
+)
 
 AWS_BATCH_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
 
@@ -52,7 +60,9 @@ def _get_parser():
         "SUCCEEDED, FAILED, ALL",
         default="SUBMITTED,PENDING,RUNNABLE,STARTING,RUNNING",
     )
-    parser.add_argument("-e", "--expand-arrays", help="Expand job arrays", action="store_true")
+    parser.add_argument(
+        "-e", "--expand-children", help="Expand jobs with children (array and MNP)", action="store_true"
+    )
     parser.add_argument("-d", "--details", help="Show jobs details", action="store_true")
     parser.add_argument("-ll", "--log-level", help=argparse.SUPPRESS, default="ERROR")
     parser.add_argument(
@@ -276,15 +286,15 @@ class AWSBstatCommand(object):
         self.boto3_factory = boto3_factory
         self.batch_client = boto3_factory.get_client("batch")
 
-    def run(self, job_status, expand_arrays, job_queue=None, job_ids=None, show_details=False):
+    def run(self, job_status, expand_children, job_queue=None, job_ids=None, show_details=False):
         """Print list of jobs, by filtering by queue or by ids."""
         if job_ids:
             self.__populate_output_by_job_ids(job_ids, show_details or len(job_ids) == 1)
             # explicitly asking for job details,
-            # or asking for a single job that is not an array (the output is not a list of jobs)
+            # or asking for a single simple job (the output is not a list of jobs)
             details_required = show_details or (len(job_ids) == 1 and self.output.length() == 1)
         elif job_queue:
-            self.__populate_output_by_queue(job_queue, job_status, expand_arrays, show_details)
+            self.__populate_output_by_queue(job_queue, job_status, expand_children, show_details)
             details_required = show_details
         else:
             fail("Error listing jobs from AWS Batch. job_ids or job_queue must be defined")
@@ -310,39 +320,46 @@ class AWSBstatCommand(object):
             if job_ids:
                 self.log.info("Describing jobs (%s), details (%s)" % (job_ids, details))
                 single_jobs = []
-                array_jobs = []
+                jobs_with_children = []
                 jobs = self.__chunked_describe_jobs(job_ids)
                 for job in jobs:
                     if is_job_array(job):
-                        array_jobs.append((job["jobId"], job["arrayProperties"]["size"]))
+                        jobs_with_children.append((job["jobId"], ":", job["arrayProperties"]["size"]))
+                    elif is_mnp_job(job):
+                        jobs_with_children.append((job["jobId"], "#", job["nodeProperties"]["numNodes"]))
                     else:
                         single_jobs.append(job)
 
                 # create output items for job array children
-                self.__populate_output_by_array_ids(array_jobs)
+                self.__populate_output_by_parent_ids(jobs_with_children)
 
                 # add single jobs to the output
                 self.__add_jobs(single_jobs)
         except Exception as e:
             fail("Error describing jobs from AWS Batch. Failed with exception: %s" % e)
 
-    def __populate_output_by_array_ids(self, array_jobs):
+    def __populate_output_by_parent_ids(self, parent_jobs):
         """
-        Add jobs array children to the output.
+        Add jobs children to the output.
 
-        :param array_jobs: list of pairs (job_id, job_size)
+        :param parent_jobs: list of triplets (job_id, job_id_separator, job_size)
         """
         try:
-            expanded_job_array_ids = []
-            for array_job in array_jobs:
-                expanded_job_array_ids.extend(["{0}:{1}".format(array_job[0], i) for i in range(0, array_job[1])])
+            expanded_job_ids = []
+            for parent_job in parent_jobs:
+                expanded_job_ids.extend(
+                    [
+                        "{JOB_ID}{SEPARATOR}{INDEX}".format(JOB_ID=parent_job[0], SEPARATOR=parent_job[1], INDEX=i)
+                        for i in range(0, parent_job[2])
+                    ]
+                )
 
-            if expanded_job_array_ids:
-                jobs = self.__chunked_describe_jobs(expanded_job_array_ids)
+            if expanded_job_ids:
+                jobs = self.__chunked_describe_jobs(expanded_job_ids)
                 # forcing details to be False since already retrieved.
                 self.__add_jobs(jobs)
         except Exception as e:
-            fail("Error listing job array children. Failed with exception: %s" % e)
+            fail("Error listing job children. Failed with exception: %s" % e)
 
     def __chunked_describe_jobs(self, job_ids):
         """
@@ -388,32 +405,32 @@ class AWSBstatCommand(object):
         except Exception as e:
             fail("Error adding jobs to the output. Failed with exception: %s" % e)
 
-    def __populate_output_by_queue(self, job_queue, job_status, expand_arrays, details):
+    def __populate_output_by_queue(self, job_queue, job_status, expand_children, details):
         """
         Add Job items to the output asking for given queue and status.
 
         :param job_queue: job queue name or ARN
         :param job_status: list of job status to ask
-        :param expand_arrays: if True, the job array will be expanded by creating a row for each child
+        :param expand_children: if True, the job with children will be expanded by creating a row for each child
         :param details: ask for job details
         """
         try:
             single_jobs = []
-            job_array_ids = []
+            jobs_with_children = []
             for status in job_status:
                 next_token = ""
                 while next_token is not None:
                     response = self.batch_client.list_jobs(jobStatus=status, jobQueue=job_queue, nextToken=next_token)
 
                     for job in response["jobSummaryList"]:
-                        if is_job_array(job) and expand_arrays is True:
-                            job_array_ids.append(job["jobId"])
+                        if get_job_type(job) != "SIMPLE" and expand_children is True:
+                            jobs_with_children.append(job["jobId"])
                         else:
                             single_jobs.append(job)
                     next_token = response.get("nextToken")
 
             # create output items for job array children
-            self.__populate_output_by_job_ids(job_array_ids, details)
+            self.__populate_output_by_job_ids(jobs_with_children, details)
 
             # add single jobs to the output
             self.__add_jobs(single_jobs, details)
@@ -445,7 +462,7 @@ def main(argv=None):
 
         AWSBstatCommand(log, boto3_factory).run(
             job_status=job_status,
-            expand_arrays=args.expand_arrays,
+            expand_children=args.expand_children,
             job_ids=args.job_ids,
             job_queue=config.job_queue,
             show_details=args.details,

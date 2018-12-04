@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from awsbatch import awsbstat
+from awsbatch import awsbstat, utils
 from common import DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG, MockedBoto3Request, read_text
 
 ALL_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
@@ -116,7 +116,15 @@ class TestOutput(object):
 
         assert capsys.readouterr().out == read_text(test_datadir / "expected_output.txt")
 
-    def test_single_array_job(self, capsys, boto3_stubber, test_datadir, shared_datadir):
+    @pytest.mark.parametrize(
+        "args, expected",
+        [
+            (["3286a19c-68a9-47c9-8000-427d23ffc7ca"], "expected_output.txt"),
+            (["-d", "3286a19c-68a9-47c9-8000-427d23ffc7ca"], "expected_output_detailed.txt"),
+        ],
+        ids=["single_array", "single_array_detailed"],
+    )
+    def test_single_array_job(self, args, expected, capsys, boto3_stubber, test_datadir, shared_datadir):
         response_parent = json.loads(
             read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_single_array_job.json")
         )
@@ -141,16 +149,24 @@ class TestOutput(object):
             ],
         )
 
-        awsbstat.main(["-c", "cluster", "3286a19c-68a9-47c9-8000-427d23ffc7ca"])
+        awsbstat.main(["-c", "cluster"] + args)
 
-        assert capsys.readouterr().out == read_text(test_datadir / "expected_output.txt")
+        assert capsys.readouterr().out == read_text(test_datadir / expected)
 
-    def test_single_array_job_detailed(self, capsys, boto3_stubber, test_datadir, shared_datadir):
+    @pytest.mark.parametrize(
+        "args, expected",
+        [
+            (["6abf3ecd-07a8-4faa-8a65-79e7404eb50f"], "expected_output.txt"),
+            (["-d", "6abf3ecd-07a8-4faa-8a65-79e7404eb50f"], "expected_output_detailed.txt"),
+        ],
+        ids=["single_mnp", "single_mnp_detailed"],
+    )
+    def test_single_mnp_job(self, args, expected, capsys, boto3_stubber, test_datadir, shared_datadir):
         response_parent = json.loads(
-            read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_single_array_job.json")
+            read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_single_mnp_job.json")
         )
         response_children = json.loads(
-            read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_single_array_job_children.json")
+            read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_single_mnp_job_children.json")
         )
         boto3_stubber(
             "batch",
@@ -158,21 +174,21 @@ class TestOutput(object):
                 MockedBoto3Request(
                     method="describe_jobs",
                     response=response_parent,
-                    expected_params={"jobs": ["3286a19c-68a9-47c9-8000-427d23ffc7ca"]},
+                    expected_params={"jobs": ["6abf3ecd-07a8-4faa-8a65-79e7404eb50f"]},
                 ),
                 MockedBoto3Request(
                     method="describe_jobs",
                     response=response_children,
                     expected_params={
-                        "jobs": ["3286a19c-68a9-47c9-8000-427d23ffc7ca:0", "3286a19c-68a9-47c9-8000-427d23ffc7ca:1"]
+                        "jobs": ["6abf3ecd-07a8-4faa-8a65-79e7404eb50f#0", "6abf3ecd-07a8-4faa-8a65-79e7404eb50f#1"]
                     },
                 ),
             ],
         )
 
-        awsbstat.main(["-c", "cluster", "-d", "3286a19c-68a9-47c9-8000-427d23ffc7ca"])
+        awsbstat.main(["-c", "cluster"] + args)
 
-        assert capsys.readouterr().out == read_text(test_datadir / "expected_output.txt")
+        assert capsys.readouterr().out == read_text(test_datadir / expected)
 
     def test_all_status_detailed(self, capsys, boto3_stubber, test_datadir, shared_datadir):
         mocked_requests = []
@@ -210,7 +226,7 @@ class TestOutput(object):
         awsbstat.main(["-c", "cluster", "-s", "ALL", "-d"])
 
         # describe-jobs api validation made by the Stubber requires startedAt to be always present.
-        # Removing it from output when value is default (1970-01-01 01:00:00) since this is the
+        # Removing it from output when value is default (1970-01-01T00:00:00+00:00) since this is the
         # behavior for not stubbed calls.
         output = capsys.readouterr().out.replace("1970-01-01T00:00:00+00:00", "-")
         expcted_jobs_count_by_status = {
@@ -225,4 +241,45 @@ class TestOutput(object):
         for status, count in expcted_jobs_count_by_status.items():
             assert output.count(status) == count
         assert output.count("jobId") == 15
+        assert output == read_text(test_datadir / "expected_output.txt")
+
+    def test_expanded_children(self, capsys, boto3_stubber, test_datadir, shared_datadir):
+        mocked_requests = []
+        jobs_with_children_ids = []
+        for status in ALL_JOB_STATUS:
+            list_jobs_response = json.loads(
+                read_text(shared_datadir / "aws_api_responses/batch_list-jobs_{0}.json".format(status))
+            )
+            for job in list_jobs_response["jobSummaryList"]:
+                if utils.get_job_type(job) != "SIMPLE":
+                    jobs_with_children_ids.append(job["jobId"])
+            mocked_requests.append(
+                MockedBoto3Request(
+                    method="list_jobs",
+                    response=list_jobs_response,
+                    expected_params={
+                        "jobQueue": DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG["job_queue"],
+                        "jobStatus": status,
+                        "nextToken": "",
+                    },
+                )
+            )
+        describe_jobs_response = json.loads(
+            read_text(shared_datadir / "aws_api_responses/batch_describe-jobs_ALL_children.json")
+        )
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_jobs",
+                response=describe_jobs_response,
+                expected_params={"jobs": jobs_with_children_ids},
+            )
+        )
+        boto3_stubber("batch", mocked_requests)
+
+        awsbstat.main(["-c", "cluster", "-s", "ALL", "-e"])
+
+        # describe-jobs api validation made by the Stubber requires startedAt to be always present.
+        # Removing it from output when value is default (1970-01-01T00:00:00+00:00) since this is the
+        # behavior for not stubbed calls.
+        output = capsys.readouterr().out.replace("1970-01-01T00:00:00+00:00", "-                        ")
         assert output == read_text(test_datadir / "expected_output.txt")
