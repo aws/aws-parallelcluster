@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 from __future__ import print_function
 
-import datetime
 import pipes
 import re
 import sys
+from datetime import datetime
 
 from dateutil import tz
 
@@ -64,7 +64,7 @@ def convert_to_date(timestamp, timezone=None):
     if not timezone:
         timezone = tz.tzlocal()
     # Forcing microsecond to 0 to avoid having them displayed.
-    return datetime.datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
+    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
 
 
 def hide_keys(dictionary, keys_to_hide, new_value="xxx"):
@@ -100,6 +100,33 @@ def is_job_array(job):
     :return: true if the job is an array, false otherwise
     """
     return "arrayProperties" in job and "size" in job["arrayProperties"]
+
+
+def is_mnp_job(job):
+    """
+    Check if the given job is an MNP job.
+
+    :param job: the job dictionary returned by AWS Batch api
+    :return: true if the job is mnp, false otherwise
+    """
+    return "nodeProperties" in job and "numNodes" in job["nodeProperties"]
+
+
+def get_job_type(job):
+    """
+    Get the type of the job.
+
+    Job type is of type string and not enum since enums have been introduced
+    since Python 3.4.
+
+    :param job: the job dictionary returned by AWS Batch api
+    :return: one of ["SIMPLE", "ARRAY", "MNP"]
+    """
+    if is_job_array(job):
+        return "ARRAY"
+    if is_mnp_job(job):
+        return "MNP"
+    return "SIMPLE"
 
 
 class S3Uploader(object):

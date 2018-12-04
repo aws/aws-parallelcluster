@@ -14,6 +14,7 @@
 from __future__ import print_function
 
 import collections
+import re
 import sys
 from builtins import range
 from collections import OrderedDict
@@ -21,7 +22,7 @@ from collections import OrderedDict
 import argparse
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, Output, config_logger
-from awsbatch.utils import convert_to_date, fail, get_job_definition_name_by_arn, is_job_array, shell_join
+from awsbatch.utils import convert_to_date, fail, get_job_definition_name_by_arn, get_job_type, is_job_array, shell_join
 
 AWS_BATCH_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
 
@@ -62,21 +63,6 @@ def _get_parser():
         nargs="*",
     )
     return parser
-
-
-def _compose_log_stream_url(region, log_stream):
-    """
-    Create logStream url.
-
-    :param region: the region on which the job has been submitted
-    :param log_stream: the log stream name
-    :return: an url
-    """
-    domain = "amazonaws-us-gov" if region.startswith("us-gov") else "aws"
-    return (
-        "https://console.{0}.amazon.com/cloudwatch/home?"
-        "region={1}#logEventViewer:group=/aws/batch/job;stream={2}".format(domain, region, log_stream)
-    )
 
 
 class Job(object):
@@ -124,8 +110,137 @@ class Job(object):
         self.s3_folder_url = s3_folder_url
 
 
+class JobConverter(object):
+    """Converter for AWS Batch simple job data object."""
+
+    def convert(self, job):
+        """
+        Convert a job from AWS Batch representation.
+
+        :param job: the job dictionary returned by AWS Batch api.
+        :return: a Job object containing the parsed data.
+        """
+        container = self._get_container(job)
+        log_stream, log_stream_url = self._get_log_stream(container, self._get_job_region(job))
+        return Job(
+            job_id=self._get_job_id(job),
+            name=job["jobName"],
+            creation_time=convert_to_date(job["createdAt"]),
+            start_time=convert_to_date(job["startedAt"]) if "startedAt" in job else "-",
+            stop_time=convert_to_date(job["stoppedAt"]) if "stoppedAt" in job else "-",
+            status=job.get("status", "UNKNOWN"),
+            status_reason=job.get("statusReason", "-"),
+            job_definition=self._get_job_definition(job),
+            queue=self._get_job_queue(job),
+            command=self._get_command(container),
+            reason=container.get("reason", "-"),
+            exit_code=container.get("exitCode", "-"),
+            vcpus=container.get("vcpus", "-"),
+            memory=container.get("memory", "-"),
+            nodes=self._get_number_of_nodes(job),
+            log_stream=log_stream,
+            log_stream_url=log_stream_url,
+            s3_folder_url=self._get_s3_folder_url(container),
+        )
+
+    def _get_job_id(self, job):
+        return job["jobId"]
+
+    def _get_number_of_nodes(self, job):
+        return 1
+
+    def _get_log_stream(self, container, region):
+        log_stream = "-"
+        log_stream_url = "-"
+        if container and "logStreamName" in container:
+            log_stream = container["logStreamName"]
+            log_stream_url = self._compose_log_stream_url(region, log_stream)
+
+        return log_stream, log_stream_url
+
+    def _get_container(self, job):
+        return job.get("container", {})
+
+    @staticmethod
+    def _get_command(container):
+        command = container.get("command", [])
+        if not command:
+            return "-"
+        return shell_join(command)
+
+    @staticmethod
+    def _get_job_definition(job):
+        if "jobQueue" in job:
+            return get_job_definition_name_by_arn(job["jobDefinition"], version=True)
+        return "-"
+
+    @staticmethod
+    def _get_job_queue(job):
+        if "jobQueue" in job:
+            return job["jobQueue"].split("/")[1]
+        return "-"
+
+    @staticmethod
+    def _compose_log_stream_url(region, log_stream):
+        """
+        Create logStream url.
+
+        :param region: the region on which the job has been submitted
+        :param log_stream: the log stream name
+        :return: an url
+        """
+        domain = "amazonaws-us-gov" if region.startswith("us-gov") else "aws"
+        return (
+            "https://console.{0}.amazon.com/cloudwatch/home?"
+            "region={1}#logEventViewer:group=/aws/batch/job;stream={2}".format(domain, region, log_stream)
+        )
+
+    @staticmethod
+    def _get_job_region(job):
+        if "jobQueue" in job:
+            return re.search(r"^arn:aws.*?:batch:(.*?):", job["jobQueue"]).group(1)
+        return "-"
+
+    @staticmethod
+    def _get_s3_folder_url(container):
+        for env_var in container.get("environment", []):
+            if env_var.get("name") == "PCLUSTER_JOB_S3_URL":
+                return env_var.get("value")
+        return "-"
+
+
+class MNPJobConverter(JobConverter):
+    """Converter for AWS Batch mnp job data object."""
+
+    def _get_number_of_nodes(self, job):
+        return job["nodeProperties"]["numNodes"]
+
+    def _get_job_id(self, job):
+        return "{0} *{1}".format(job["jobId"], job["nodeProperties"]["numNodes"])
+
+    def _get_log_stream(self, job, region):
+        return "-", "-"
+
+    def _get_container(self, job):
+        if "nodeRangeProperties" in job["nodeProperties"]:
+            return job["nodeProperties"]["nodeRangeProperties"][0]["container"]
+        return {}
+
+
+class ArrayJobConverter(JobConverter):
+    """Converter for AWS Batch array job data object."""
+
+    def _get_job_id(self, job):
+        return "{0} [{1}]".format(job["jobId"], job["arrayProperties"]["size"])
+
+    def _get_log_stream(self, job, region):
+        return "-", "-"
+
+
 class AWSBstatCommand(object):
     """awsbstat command."""
+
+    __JOB_CONVERTERS = {"SIMPLE": JobConverter(), "ARRAY": ArrayJobConverter(), "MNP": MNPJobConverter()}
 
     def __init__(self, log, boto3_factory):
         """
@@ -246,7 +361,7 @@ class AWSBstatCommand(object):
             jobs.extend(self.batch_client.describe_jobs(jobs=jobs_chunk)["jobs"])
         return jobs
 
-    def __add_jobs(self, jobs, details=False):  # noqa: C901 FIXME
+    def __add_jobs(self, jobs, details=False):
         """
         Get job info from AWS Batch and add to the output.
 
@@ -263,60 +378,11 @@ class AWSBstatCommand(object):
                     jobs_to_show = jobs
 
                 for job in jobs_to_show:
-                    nodes = 1
-                    container = {}
-                    if "nodeProperties" in job:
-                        # MNP job
-                        if "nodeRangeProperties" in job["nodeProperties"]:
-                            container = job["nodeProperties"]["nodeRangeProperties"][0]["container"]
-                        nodes = job["nodeProperties"]["numNodes"]
-                    elif "container" in job:
-                        container = job["container"]
-
-                    if is_job_array(job):
-                        # parent job array
-                        job_id = "{0} [{1}]".format(job["jobId"], job["arrayProperties"]["size"])
-                        log_stream = "-"
-                        log_stream_url = "-"
-                    else:
-                        job_id = job["jobId"]
-                        if "logStreamName" in container:
-                            log_stream = container.get("logStreamName")
-                            log_stream_url = _compose_log_stream_url(self.boto3_factory.region, log_stream)
-                        else:
-                            log_stream = "-"
-                            log_stream_url = "-"
-
-                    command = container.get("command", [])
-                    s3_folder_url = "-"
-                    for env_var in container.get("environment", []):
-                        if env_var.get("name") == "PCLUSTER_JOB_S3_URL":
-                            s3_folder_url = env_var.get("value")
-                            break
                     self.log.debug("Adding job to the output (%s)", job)
-                    job = Job(
-                        job_id=job_id,
-                        name=job["jobName"],
-                        creation_time=convert_to_date(job["createdAt"]),
-                        start_time=convert_to_date(job["startedAt"]) if "startedAt" in job else "-",
-                        stop_time=convert_to_date(job["stoppedAt"]) if "stoppedAt" in job else "-",
-                        status=job.get("status", "UNKNOWN"),
-                        status_reason=job.get("statusReason", "-"),
-                        job_definition=get_job_definition_name_by_arn(job["jobDefinition"], version=True)
-                        if "jobQueue" in job
-                        else "-",
-                        queue=job["jobQueue"].split("/")[1] if "jobQueue" in job else "-",
-                        command=shell_join(command) if command else "-",
-                        reason=container.get("reason", "-"),
-                        exit_code=container.get("exitCode", "-"),
-                        vcpus=container.get("vcpus", "-"),
-                        memory=container.get("memory", "-"),
-                        nodes=nodes,
-                        log_stream=log_stream,
-                        log_stream_url=log_stream_url,
-                        s3_folder_url=s3_folder_url,
-                    )
-                    self.output.add(job)
+
+                    job_converter = self.__JOB_CONVERTERS[get_job_type(job)]
+
+                    self.output.add(job_converter.convert(job))
         except KeyError as e:
             fail("Error building Job item. Key (%s) not found." % e)
         except Exception as e:
