@@ -15,6 +15,7 @@ memory[MB]               : 128
 nodes                    : 1
 logStream                : parallelcluster-mnp-final/default/4086671a-6a65-4666-ae18-931e63187271
 log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final/default/4086671a-6a65-4666-ae18-931e63187271
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
 jobId                    : 3286a19c-68a9-47c9-8000-427d23ffc7ca:0
 jobName                  : array-succeeded
@@ -33,4 +34,5 @@ memory[MB]               : 128
 nodes                    : 1
 logStream                : parallelcluster-mnp-final/default/8f049b3a-9fab-400a-acbe-135337ec4c17
 log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final/default/8f049b3a-9fab-400a-acbe-135337ec4c17
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
