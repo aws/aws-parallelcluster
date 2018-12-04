@@ -39,7 +39,10 @@ def _get_parser():
     parser = argparse.ArgumentParser(description="Cancels/terminates jobs submitted in the cluster.")
     parser.add_argument("-c", "--cluster", help="Cluster to use")
     parser.add_argument(
-        "-r", "--reason", help="A message to attach to the job that explains the reason for " "canceling it"
+        "-r",
+        "--reason",
+        help="A message to attach to the job that explains the reason for canceling it",
+        default="Terminated by the user",
     )
     parser.add_argument("-ll", "--log-level", help=argparse.SUPPRESS, default="ERROR")
     parser.add_argument("job_ids", help="A space separated list of job IDs to cancel/terminate", nargs="+")
@@ -60,7 +63,7 @@ class AWSBkillCommand(object):
         self.boto3_factory = boto3_factory
         self.batch_client = boto3_factory.get_client("batch")
 
-    def run(self, job_ids, reason="Terminated by the user"):
+    def run(self, job_ids, reason):
         """
         Kill/cancel the jobs.
 
@@ -121,7 +124,7 @@ def main():
             aws_access_key_id=config.aws_access_key_id,
             aws_secret_access_key=config.aws_secret_access_key,
         )
-        AWSBkillCommand(log, boto3_factory).run(job_ids=args.job_ids)
+        AWSBkillCommand(log, boto3_factory).run(job_ids=args.job_ids, reason=args.reason)
 
     except KeyboardInterrupt:
         print("Exiting...")
