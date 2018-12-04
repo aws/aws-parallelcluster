@@ -16,6 +16,10 @@
           {
             "name": "MASTER_IP",
             "value": "10.0.0.47"
+          },
+          {
+            "name": "PCLUSTER_JOB_S3_URL",
+            "value": "s3://parallelcluster-xxx/batch/job-xxx"
           }
         ],
         "vcpus": 1,
@@ -68,6 +72,10 @@
                 {
                   "name": "MASTER_IP",
                   "value": "10.0.0.47"
+                },
+                {
+                  "name": "PCLUSTER_JOB_S3_URL",
+                  "value": "s3://parallelcluster-xxx/batch/job-xxx"
                 }
               ],
               "vcpus": 1,

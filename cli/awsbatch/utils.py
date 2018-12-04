@@ -13,10 +13,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 from __future__ import print_function
 
+import datetime
 import pipes
 import re
 import sys
-from datetime import datetime
 
 from dateutil import tz
 
@@ -64,7 +64,7 @@ def convert_to_date(timestamp, timezone=None):
     if not timezone:
         timezone = tz.tzlocal()
     # Forcing microsecond to 0 to avoid having them displayed.
-    return datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
+    return datetime.datetime.fromtimestamp(timestamp / 1000, tz=timezone).replace(microsecond=0).isoformat()
 
 
 def hide_keys(dictionary, keys_to_hide, new_value="xxx"):
@@ -89,7 +89,7 @@ def shell_join(array):
     :param array: input array
     :return: the shell-quoted string
     """
-    return " ".join(pipes.quote(arg) for arg in array)
+    return " ".join(pipes.quote(item) for item in array)
 
 
 def is_job_array(job):
@@ -100,3 +100,42 @@ def is_job_array(job):
     :return: true if the job is an array, false otherwise
     """
     return "arrayProperties" in job and "size" in job["arrayProperties"]
+
+
+class S3Uploader(object):
+    """S3 uploader."""
+
+    def __init__(self, boto3_factory, s3_bucket, default_folder=""):
+        """Constructor.
+
+        :param boto3_factory: initialized Boto3ClientFactory object
+        :param s3_bucket: S3 bucket to use
+        :param default_folder: S3 folder on which put the files (optional)
+        """
+        self.s3_client = boto3_factory.get_client("s3")
+        self.s3_bucket = s3_bucket
+        self.default_folder = default_folder
+        if default_folder:
+            self.__create_folder(default_folder)
+
+    def __create_folder(self, folder):
+        """
+        Create an empty pseudo-folder in the S3 bucket.
+
+        :param folder: the path to create
+        """
+        if not folder.endswith("/"):
+            folder = folder + "/"
+
+        self.s3_client.put_object(Bucket=self.s3_bucket, Key=folder, Body="")
+
+    def put_file(self, file_path, key_name, folder=None):
+        """
+        Upload a file to an s3 bucket.
+
+        :param file_path: file to upload
+        :param key_name: S3 key to create
+        :param folder: S3 folder on which put the files (optional)
+        """
+        s3_folder = folder if folder else self.default_folder
+        self.s3_client.upload_file(file_path, self.s3_bucket, s3_folder + key_name)
