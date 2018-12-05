@@ -155,7 +155,7 @@ def run_test(distro, clustername, mastersubnet, region):
             _double_writeln(out_f, "!! %s: Volume ID not found; exiting !!" % testname)
             raise ReleaseCheckException("--> %s: Volume ID not found!" % testname)
         _double_writeln(out_f, "--> %s Volume ID: %s" % (testname, volume_id))
-
+        print("Preparing volume...")
         while True:
             response_vol = ec2.describe_volumes(VolumeIds=[volume_id])
             vol_state = response_vol["Volumes"][0]["State"]
@@ -172,7 +172,7 @@ def run_test(distro, clustername, mastersubnet, region):
             _double_writeln(out_f, "!! %s: Snapshot ID not found; exiting !!" % testname)
             raise ReleaseCheckException("--> %s: Snapshot ID not found!" % testname)
         _double_writeln(out_f, "--> %s Snapshot ID: %s" % (testname, snap_id))
-
+        print("Preparing snapshot...")
         while True:
             response_snap = ec2.describe_snapshots(SnapshotIds=[snap_id])
             snap_state = response_snap["Snapshots"][0]["State"]
