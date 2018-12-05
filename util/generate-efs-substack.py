@@ -1,8 +1,10 @@
+import argparse
+
 from troposphere import And, Condition, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
 from troposphere.efs import FileSystem, MountTarget
 
 
-def main():
+def main(args):
     t = Template()
 
     # [0 shared_dir, 1 efs_fs_id, 2 performance_mode, 3 efs_kms_key_id,
@@ -69,11 +71,16 @@ def main():
     )
 
     # Specify output file path
-    json_file_path = "TargetPath"
+    json_file_path = args.target_path
     output_file = open(json_file_path, "w")
     output_file.write(t.to_json())
     output_file.close()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Take in generator related parameters")
+    parser.add_argument(
+        "--target-path", type=str, help="The target path for generated substack template", required=True
+    )
+    args = parser.parse_args()
+    main(args)
