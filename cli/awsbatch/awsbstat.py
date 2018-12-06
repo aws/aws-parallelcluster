@@ -304,9 +304,14 @@ class AWSBstatCommand(object):
         else:
             table_keys = ["jobId", "jobName", "status", "startedAt", "stoppedAt", "exitCode"]
             # the lambda maps an entry of the output table to its position in the AWS_BATCH_JOB_STATUS list.
-            # This makes it so that the rows in the output are sorted by status.
+            # This makes it so that the rows in the output are sorted by (status, startedAt, jobId).
             self.output.show_table(
-                keys=table_keys, sort_keys_function=lambda x: AWS_BATCH_JOB_STATUS.index(x[table_keys.index("status")])
+                keys=table_keys,
+                sort_keys_function=lambda x: (
+                    AWS_BATCH_JOB_STATUS.index(x[table_keys.index("status")]),
+                    x[table_keys.index("startedAt")],
+                    x[table_keys.index("jobId")],
+                ),
             )
 
     def __populate_output_by_job_ids(self, job_ids, details):
