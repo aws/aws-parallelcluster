@@ -357,6 +357,15 @@ In case you are using SGE, Slurm or Torque as a scheduler:
               ],
               "Effect": "Allow",
               "Resource": "*"
+          },
+          {
+              "Sid": "EFSDescribe",
+              "Action": [
+                  "efs:DescribeMountTargets",
+                  "efs:DescribeMountTargetSecurityGroups",
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
           }
       ]
   }
