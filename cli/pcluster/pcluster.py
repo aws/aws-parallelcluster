@@ -189,7 +189,15 @@ def _print_stack_outputs(stack):
 
     :param stack: the stack dictionary
     """
-    whitelisted_outputs = ["ClusterUser", "MasterPrivateIP", "MasterPublicIP"]
+    whitelisted_outputs = [
+        "ClusterUser",
+        "MasterPrivateIP",
+        "MasterPublicIP",
+        "BatchComputeEnvironmentArn",
+        "BatchJobQueueArn",
+        "BatchJobDefinitionArn",
+        "BatchJobDefinitionMnpArn",
+    ]
     if is_ganglia_enabled(stack.get("Parameters")):
         whitelisted_outputs.extend(["GangliaPrivateURL", "GangliaPublicURL"])
 

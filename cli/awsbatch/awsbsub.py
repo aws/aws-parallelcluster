@@ -619,6 +619,8 @@ def main():
 
         # select submission (standard vs MNP)
         if args.nodes:
+            if not hasattr(config, "job_definition_mnp"):
+                fail("Current cluster does not support MNP jobs submission")
             job_definition = config.job_definition_mnp
         else:
             job_definition = config.job_definition
