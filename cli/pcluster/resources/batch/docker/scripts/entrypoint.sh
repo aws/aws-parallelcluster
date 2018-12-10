@@ -19,6 +19,7 @@ fi
 # mount nfs
 echo "Mounting shared file system..."
 /parallelcluster/bin/mount_nfs.sh "${_master_ip}" "${PCLUSTER_SHARED_DIR}"
+/parallelcluster/bin/mount_nfs.sh "${_master_ip}" "/home"
 
 # mount EFS via nfs
 if [[ "${PCLUSTER_EFS_FS_ID}" != "NONE" ]] && [[ ! -z "${PCLUSTER_AWS_REGION}" ]] && [[ "${PCLUSTER_EFS_SHARED_DIR}" != "NONE" ]]; then
