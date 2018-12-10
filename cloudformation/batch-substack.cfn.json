@@ -145,6 +145,25 @@
                 }
               ]
             }
+          },
+          {
+            "PolicyName": "cfnDescribeStacks",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "cloudformation:DescribeStacks"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ClusterName}/*"
+                    }
+                  ]
+                }
+              ]
+            }
           }
         ]
       }
@@ -285,25 +304,31 @@
           "Privileged": true,
           "Environment": [
             {
-              "Name": "AWS_REGION",
+              "Name": "PCLUSTER_AWS_REGION",
               "Value": {
                 "Ref": "AWS::Region"
               }
             },
             {
-              "Name": "SHARED_DIR",
+              "Name": "PCLUSTER_STACK_NAME",
+              "Value": {
+                "Ref": "ClusterName"
+              }
+            },
+            {
+              "Name": "PCLUSTER_SHARED_DIR",
               "Value": {
                 "Ref": "SharedDir"
               }
             },
             {
-              "Name": "EFS_SHARED_DIR",
+              "Name": "PCLUSTER_EFS_SHARED_DIR",
               "Value": {
                 "Ref": "EFSSharedDir"
               }
             },
             {
-              "Name": "EFS_FS_ID",
+              "Name": "PCLUSTER_EFS_FS_ID",
               "Value": {
                 "Ref": "EFSFSId"
               }

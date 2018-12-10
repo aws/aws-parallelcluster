@@ -650,7 +650,7 @@ def main():
             retry_attempts=args.retry_attempts,
             timeout=args.timeout,
             env=[
-                ("MASTER_IP", config.master_ip),
+                ("MASTER_IP", config.master_ip),  # TODO remove
                 ("PCLUSTER_JOB_S3_URL", "s3://{0}/{1}".format(config.s3_bucket, job_s3_folder)),
             ],
         )
