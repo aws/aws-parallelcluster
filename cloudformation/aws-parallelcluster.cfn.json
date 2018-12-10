@@ -1441,11 +1441,18 @@
         "Path": "/",
         "Roles": [
           {
-            "Ref": "RootRole"
+            "Fn::If": [
+              "UseEC2IAMRole",
+              {
+                "Ref": "EC2IAMRoleName"
+              },
+              {
+                "Ref": "RootRole"
+              }
+            ]
           }
         ]
-      },
-      "Condition": "CreateEC2IAMRole"
+      }
     },
     "ParallelClusterPolicies": {
       "Type": "AWS::IAM::Policy",
@@ -1885,15 +1892,7 @@
           ]
         },
         "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
+          "Ref": "RootInstanceProfile"
         },
         "PlacementGroupName": {
           "Fn::If": [
@@ -2504,15 +2503,7 @@
           "Ref": "KeyName"
         },
         "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
+          "Ref": "RootInstanceProfile"
         },
         "SpotPrice": {
           "Fn::If": [
@@ -3145,19 +3136,9 @@
             "Ref": "KeyName"
           },
           "IamInstanceProfile": {
-            "Fn::If": [
-              "UseEC2IAMRole",
-              {
-                "Name": {
-                  "Ref": "EC2IAMRoleName"
-                }
-              },
-              {
-                "Name": {
-                  "Ref": "RootInstanceProfile"
-                }
-              }
-            ]
+            "Name": {
+              "Ref": "RootInstanceProfile"
+            }
           },
           "InstanceMarketOptions": {
             "Fn::If": [
