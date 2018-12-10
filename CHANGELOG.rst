@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+1.6.2
+=====
+* Fix a bug to prevent scheduling jobs on dead nodes
+* Fix a bug where scale down operations were not performed on clusters which were updated
+
 1.6.1
 =====
 * Fix a bug in `cfncluster configure` introduced in 1.6.0
