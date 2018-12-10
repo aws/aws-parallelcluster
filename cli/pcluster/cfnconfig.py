@@ -131,7 +131,7 @@ class ParallelClusterConfig(object):
                     __temp_efs_options.append("Valid")
                 else:
                     __temp_efs_options.append("NONE")
-                self.parameters["EFSoptions"] = ",".join(__temp_efs_options)
+                self.parameters["EFSOptions"] = ",".join(__temp_efs_options)
         except AttributeError:
             pass
 

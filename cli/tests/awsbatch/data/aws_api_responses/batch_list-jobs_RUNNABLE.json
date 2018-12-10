@@ -1,0 +1,19 @@
+{
+  "jobSummaryList": [
+    {
+      "status": "RUNNABLE",
+      "jobName": "mnp-runnable",
+      "nodeProperties": {
+        "numNodes": 2
+      },
+      "createdAt": 1543502756194,
+      "jobId": "77712b12-71eb-4007-a865-85f05de13a71"
+    },
+    {
+      "status": "RUNNABLE",
+      "jobName": "simple-runnable",
+      "createdAt": 1543502788789,
+      "jobId": "46a77495-55af-461c-ab5b-7f4e16de34d9"
+    }
+  ]
+}

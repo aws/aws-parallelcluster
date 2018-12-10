@@ -101,6 +101,7 @@ class Job(object):
         nodes,
         log_stream,
         log_stream_url,
+        s3_folder_url,
     ):
         """Constructor."""
         self.id = job_id
@@ -120,6 +121,7 @@ class Job(object):
         self.nodes = nodes
         self.log_stream = log_stream
         self.log_stream_url = log_stream_url
+        self.s3_folder_url = s3_folder_url
 
 
 class AWSBstatCommand(object):
@@ -152,6 +154,7 @@ class AWSBstatCommand(object):
                 ("nodes", "nodes"),
                 ("logStream", "log_stream"),
                 ("log", "log_stream_url"),
+                ("s3FolderUrl", "s3_folder_url"),
             ]
         )
         self.output = Output(mapping=mapping)
@@ -285,6 +288,11 @@ class AWSBstatCommand(object):
                             log_stream_url = "-"
 
                     command = container.get("command", [])
+                    s3_folder_url = "-"
+                    for env_var in container.get("environment", []):
+                        if env_var.get("name") == "PCLUSTER_JOB_S3_URL":
+                            s3_folder_url = env_var.get("value")
+                            break
                     self.log.debug("Adding job to the output (%s)", job)
                     job = Job(
                         job_id=job_id,
@@ -306,6 +314,7 @@ class AWSBstatCommand(object):
                         nodes=nodes,
                         log_stream=log_stream,
                         log_stream_url=log_stream_url,
+                        s3_folder_url=s3_folder_url,
                     )
                     self.output.add(job)
         except KeyError as e:
@@ -347,11 +356,11 @@ class AWSBstatCommand(object):
             fail("Error listing jobs from AWS Batch. Failed with exception: %s" % e)
 
 
-def main():
+def main(argv=None):
     """Command entrypoint."""
     try:
         # parse input parameters and config file
-        args = _get_parser().parse_args()
+        args = _get_parser().parse_args(argv)
         log = config_logger(args.log_level)
         log.info("Input parameters: %s" % args)
         config = AWSBatchCliConfig(log=log, cluster=args.cluster)

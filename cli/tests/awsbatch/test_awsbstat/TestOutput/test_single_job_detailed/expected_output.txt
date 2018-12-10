@@ -1,0 +1,19 @@
+jobId                    : ab2cd019-1d84-43c7-a016-9772dd963f3b
+jobName                  : simple-succeeded
+createdAt                : 2018-11-28T09:15:50+00:00
+startedAt                : 2018-11-28T09:16:18+00:00
+stoppedAt                : 2018-11-28T09:16:49+00:00
+status                   : SUCCEEDED
+statusReason             : Essential container in task exited
+jobDefinition            : parallelcluster-mnp-final:1
+jobQueue                 : parallelcluster-mnp-final
+command                  : /bin/bash -c 'aws s3 --region us-east-1 cp s3://parallelcluster-mnp-final-0ymk3bktyjgsbdmm/batch/job-simple-script-1543511352912.sh /tmp/batch/job-simple-script-1543511352912.sh; bash /tmp/batch/job-simple-script-1543511352912.sh '
+exitCode                 : 0
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 1
+logStream                : parallelcluster-mnp-final/default/666cc3d4-bfc3-4720-b754-32c4b97b5d18
+log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final/default/666cc3d4-bfc3-4720-b754-32c4b97b5d18
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------

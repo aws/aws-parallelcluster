@@ -1,0 +1,20 @@
+{
+    "jobSummaryList": [
+        {
+            "status": "STARTING",
+            "jobName": "simple-starting",
+            "container": {},
+            "createdAt": 1543503601952,
+            "jobId": "aaaaabd2-4174-47be-8636-8f6e6da4b544"
+        },
+        {
+            "status": "STARTING",
+            "jobName": "mnp-script-starting",
+            "nodeProperties": {
+                "numNodes": 2
+            },
+            "createdAt": 1543503637389,
+            "jobId": "bbbbbcbc-2647-4d8b-a1ef-da65bffe0dd0"
+        }
+    ]
+}

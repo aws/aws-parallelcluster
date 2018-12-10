@@ -583,7 +583,7 @@
       "Type": "Number",
       "Default": "1"
     },
-    "EFSoptions": {
+    "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
@@ -601,7 +601,7 @@
                   "Fn::Split": [
                     ",",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 }
@@ -1281,8 +1281,8 @@
       "Type": "AWS::CloudFormation::Stack",
       "Properties": {
         "Parameters": {
-          "EFSoptions": {
-            "Ref": "EFSoptions"
+          "EFSOptions": {
+            "Ref": "EFSOptions"
           },
           "ComputeSecurityGroup": {
             "Fn::If": [
@@ -2178,7 +2178,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_volume": {
                       "Fn::GetAtt": [
@@ -2933,7 +2933,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
@@ -3599,7 +3599,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
@@ -3958,7 +3958,7 @@
                 "Fn::Split": [
                   ",",
                   {
-                    "Ref": "EFSoptions"
+                    "Ref": "EFSOptions"
                   }
                 ]
               }
