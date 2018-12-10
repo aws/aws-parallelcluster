@@ -1,0 +1,13 @@
+{
+  "jobSummaryList": [
+    {
+      "status": "PENDING",
+      "jobName": "array-pending",
+      "arrayProperties": {
+        "size": 2
+      },
+      "createdAt": 1543502792241,
+      "jobId": "11aa9096-1e98-4a7c-a44b-5ac3442df177"
+    }
+  ]
+}

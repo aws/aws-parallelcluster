@@ -51,3 +51,9 @@ generalPurpose
 maxIO
 MiB
 fs
+EFS
+customfs
+DescribeMountTargets
+DescribeMountTargetSecurityGroups
+DescribeSubnets
+DescribeSecurityGroups

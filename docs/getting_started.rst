@@ -58,7 +58,7 @@ was originally installed:
 
   $ sudo pip install --upgrade aws-parallelcluster
 
-**Remember when upgrading to check that the exiting config is compatible with the latest version installed.**
+**Remember when upgrading to check that the existing config is compatible with the latest version installed.**
 
 .. _getting_started_configuring_parallelcluster:
 
@@ -108,14 +108,14 @@ cluster to run.
             sa-east-1
         AWS Region ID []:
 
-Choose a descriptive name for your VPC. Typically, this will something like :code:`production` or :code:`test`.
+Choose a descriptive name for your VPC. Typically, this will be something like :code:`production` or :code:`test`.
 
 ::
 
         VPC Name [myvpc]:
 
-Next, you will need to choose a keypair that already exists in EC2 in order to log into your master instance.
-If you do not already have a keypair, refer to the EC2 documentation on `EC2 Key Pairs
+Next, you will need to choose a key pair that already exists in EC2 in order to log into your master instance.
+If you do not already have a key pair, refer to the EC2 documentation on `EC2 Key Pairs
 <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html>`_.
 
 ::
@@ -126,7 +126,7 @@ If you do not already have a keypair, refer to the EC2 documentation on `EC2 Key
             production-key
         Key Name []:
 
-Choose the VPC ID in which you'd like your cluster launched into.
+Choose the VPC ID into which you'd like your cluster launched.
 
 ::
 
@@ -135,7 +135,7 @@ Choose the VPC ID in which you'd like your cluster launched into.
             vpc-blk4982d
         VPC ID []:
 
-Finally, choose the subnet in which you'd like your master server to run in.
+Finally, choose the subnet in which you'd like your master server to run.
 
 ::
 
@@ -168,7 +168,7 @@ Moving from CfnCluster to AWS ParallelCluster
 
 AWS ParallelCluster is an enhanced and productized version of CfnCluster.
 
-If you are a previous CfnCluster's user, we encourage you to start using and creating new clusters only with AWS
+If you are a previous CfnCluster user, we encourage you to start using and creating new clusters only with AWS
 ParallelCluster.
 Although you can still use CfnCluster, it will no longer be developed.
 
@@ -188,7 +188,7 @@ The following commands will no longer work on clusters created by CfnCluster::
 
 You need to use the :code:`cfncluster` CLI to manage your old clusters.
 
-If you need an old CfnCluster package to manage your old clusters, we recommend to install and use it
+If you need an old CfnCluster package to manage your old clusters, we recommend you install and use it
 from a `Python Virtual Environment <https://docs.python.org/3/tutorial/venv.html>`_.
 
 |
@@ -209,7 +209,7 @@ that was created in the :code:`~/.cfncluster` folder.
 You can still use your existing configuration file but this needs to be moved from :code:`~/.cfncluster/config` to
 :code:`~/.parallelcluster/config`.
 
-If you use the :code:`extra_json` configuration parameter, it has be changed as described below:
+If you use the :code:`extra_json` configuration parameter, it must be changed as described below:
 
 :code:`extra_json = { "cfncluster" : { } }`
 
