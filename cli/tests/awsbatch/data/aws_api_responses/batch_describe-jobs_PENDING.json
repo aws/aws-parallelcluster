@@ -7,7 +7,7 @@
         "image": "653949452088.dkr.ecr.us-east-1.amazonaws.com/paral-docke-150d1t4y4o4xj:alinux",
         "environment": [
           {
-            "name": "SHARED_DIR",
+            "name": "PCLUSTER_SHARED_DIR",
             "value": "/shared"
           },
           {
