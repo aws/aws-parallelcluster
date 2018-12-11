@@ -96,7 +96,7 @@ def _get_parser():
         "--env",
         help="Comma separated list of environment variable names to export to the Job environment. "
         "Use 'all' to export all the environment variables, except the ones listed to the --env-blacklist parameter "
-        "and variables starting with PCLUSTER_* and AWS_BATCH_* prefix.",
+        "and variables starting with PCLUSTER_* and AWS_* prefix.",
     )
     parser.add_argument(
         "-eb",
@@ -195,7 +195,7 @@ def _generate_unique_job_key(job_name):
     return "job-{0}-{1}".format(job_name, int(time.time() * 1000))
 
 
-def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_key, config, log):
+def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config, log):
     """
     Get command by parsing args and config.
 
@@ -203,7 +203,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_key, config,
     :param boto3_factory: initialized Boto3ClientFactory object
     :param args: input arguments
     :param job_s3_folder: S3 folder for the job files
-    :param job_key: internal job_key
+    :param job_name: job name
     :param config: config object
     :param log: log
     :return: command to submit
@@ -219,12 +219,12 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_key, config,
     # upload command, if needed
     if args.command_file or not sys.stdin.isatty() or args.env:
         # define job script name
-        job_script = job_key + ".sh"
+        job_script = job_name + ".sh"
         log.info("Using command-file option or stdin. Job script name: %s" % job_script)
 
         env_file = None
         if args.env:
-            env_file = job_key + ".env.sh"
+            env_file = job_name + ".env.sh"
             # get environment variables and upload file used to extend the submission environment
             env_blacklist = args.env_blacklist if args.env_blacklist else config.env_blacklist
             _get_env_and_upload(s3_uploader, args.env, env_blacklist, env_file, log)
@@ -241,9 +241,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_key, config,
             _get_stdin_and_upload(s3_uploader, job_script)
 
         # define command to execute
-        bash_command = _compose_bash_command(
-            args, config.s3_bucket, config.region, job_s3_folder, job_key, job_script, env_file
-        )
+        bash_command = _compose_bash_command(args, config.s3_bucket, config.region, job_s3_folder, job_script, env_file)
         command = ["/bin/bash", "-c", bash_command]
     elif type(args.command) == str:
         log.info("Using command parameter")
@@ -293,7 +291,7 @@ def _get_env_and_upload(s3_uploader, env, env_blacklist, env_file, log):
         fail("Error creating environment file. Failed with exception: %s" % e)
 
 
-def _compose_bash_command(args, s3_bucket, region, job_s3_folder, job_key, job_script, env_file):
+def _compose_bash_command(args, s3_bucket, region, job_s3_folder, job_script, env_file):
     """
     Define bash command to execute.
 
@@ -301,7 +299,6 @@ def _compose_bash_command(args, s3_bucket, region, job_s3_folder, job_key, job_s
     :param s3_bucket: S3 bucket
     :param region: AWS region
     :param job_s3_folder: S3 job folder
-    :param job_key: job key identifier
     :param job_script: job script file
     :param env_file: environment file
     :return: composed bash command
@@ -392,7 +389,7 @@ def _add_env_var_to_list(key_value_list, var_name, log):
     # exclude reserved variables and functions
     if (
         not var.startswith("PCLUSTER_")  # reserved AWS ParallelCluster variables
-        and not var.startswith("AWS_BATCH_")  # reserved AWS Batch variables
+        and not var.startswith("AWS_")  # reserved AWS variables
         and not var.startswith("LESS_TERMCAP_")  # terminal variables
         and "()" not in var  # functions
     ):
@@ -628,7 +625,7 @@ def main():
         job_key = _generate_unique_job_key(job_name)
         job_s3_folder = "batch/{0}/".format(job_key)
         # upload script, if needed, and get related command
-        command = _upload_and_get_command(boto3_factory, args, job_s3_folder, job_key, config, log)
+        command = _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config, log)
         # parse and validate depends_on parameter
         depends_on = _get_depends_on(args)
 
