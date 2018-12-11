@@ -184,7 +184,6 @@ def check_resource(  # noqa: C901 FIXME!!!
                 ),
                 (["s3:GetObject"], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, region)),
                 (["sqs:ListQueues"], "*"),
-                (["logs:*"], "arn:%s:logs:*:*:*" % partition),
             ]
 
             for actions, resource_arn in iam_policy:
