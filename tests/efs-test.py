@@ -132,10 +132,10 @@ def prepare_subnets(vpcrelated, region):
     )
     subnets["a2"] = response_a2["Subnet"]["SubnetId"]
 
-    response_b = ec2.create_subnet(
-        AvailabilityZone=region + "b", CidrBlock="177.31.16.0/20", VpcId=vpcrelated["vpc_id"]
+    response_c = ec2.create_subnet(
+        AvailabilityZone=region + "c", CidrBlock="177.31.16.0/20", VpcId=vpcrelated["vpc_id"]
     )
-    subnets["b"] = response_b["Subnet"]["SubnetId"]
+    subnets["c"] = response_c["Subnet"]["SubnetId"]
 
     for key in subnets:
         ec2.associate_route_table(RouteTableId=vpcrelated["routetableId"], SubnetId=subnets[key])
@@ -214,7 +214,7 @@ def prepare_test_fs(case, subnets, sg, distro, region):
         time.sleep(5)
     if case == "createMT":
         response_mt = efs.create_mount_target(
-            FileSystemId=fsrelated["fsid"], SubnetId=subnets["b"], SecurityGroups=[sg["badSG"]]
+            FileSystemId=fsrelated["fsid"], SubnetId=subnets["c"], SecurityGroups=[sg["badSG"]]
         )
 
     elif case == "useGoodMT":
@@ -571,6 +571,7 @@ def main(args):
                 self_killed = True
 
         print("%s - Regions workers queues all done: %s" % (_time(), all_finished))
+        print("Currently %s success and %s failure" % (success, failure))
 
         for distro in distro_list:
             clean_up_testfiles(distro, region)
