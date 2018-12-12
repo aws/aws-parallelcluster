@@ -65,6 +65,14 @@
     "RAIDSharedDir": {
       "Description": "The path/mountpoint for the shared RAID drive",
       "Type": "String"
+    },
+    "AttributeTags": {
+      "Description": "base_os, scheduler, version",
+      "Type": "String"
+    },
+    "FileSystemTags": {
+      "Description": "efs=true/false, multiebs=[1-5]",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -407,6 +415,18 @@
                 "Ref": "AWS::NoValue"
               }
             ]
+          },
+          "Tags": {
+            "Name": "Batch Compute",
+            "Application": {
+              "Ref": "ClusterName"
+            },
+            "aws-parallelcluster-attributes": {
+              "Ref": "AttributeTags"
+            },
+            "aws-parallelcluster-filesystem": {
+              "Ref": "FileSystemTags"
+            }
           }
         },
         "State": "ENABLED"
