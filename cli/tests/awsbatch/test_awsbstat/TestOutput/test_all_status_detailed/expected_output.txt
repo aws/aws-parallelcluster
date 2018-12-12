@@ -55,25 +55,6 @@ logStream                : -
 log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
-jobId                    : 77712b12-71eb-4007-a865-85f05de13a71 *2
-jobName                  : mnp-runnable
-createdAt                : 2018-11-29T14:45:56+00:00
-startedAt                : -
-stoppedAt                : -
-status                   : RUNNABLE
-statusReason             : -
-jobDefinition            : parallelcluster-mnp-final-mnp:2
-jobQueue                 : parallelcluster-mnp-final
-command                  : echo TEST
-exitCode                 : -
-reason                   : -
-vcpus                    : 1
-memory[MB]               : 128
-nodes                    : 2
-logStream                : -
-log                      : -
-s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
--------------------------
 jobId                    : 46a77495-55af-461c-ab5b-7f4e16de34d9
 jobName                  : simple-runnable
 createdAt                : 2018-11-29T14:46:28+00:00
@@ -89,6 +70,25 @@ reason                   : -
 vcpus                    : 1
 memory[MB]               : 128
 nodes                    : 1
+logStream                : -
+log                      : -
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------
+jobId                    : 77712b12-71eb-4007-a865-85f05de13a71 *2
+jobName                  : mnp-runnable
+createdAt                : 2018-11-29T14:45:56+00:00
+startedAt                : -
+stoppedAt                : -
+status                   : RUNNABLE
+statusReason             : -
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : echo TEST
+exitCode                 : -
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 2
 logStream                : -
 log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
@@ -131,25 +131,6 @@ logStream                : -
 log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
-jobId                    : qwerfcbc-2647-4d8b-a1ef-da65bffe0dd0 *2
-jobName                  : mnp-running
-createdAt                : 2018-11-29T15:00:37+00:00
-startedAt                : 2018-11-29T15:10:00+00:00
-stoppedAt                : -
-status                   : RUNNING
-statusReason             : -
-jobDefinition            : parallelcluster-mnp-final-mnp:2
-jobQueue                 : parallelcluster-mnp-final
-command                  : echo TEST
-exitCode                 : -
-reason                   : -
-vcpus                    : 1
-memory[MB]               : 128
-nodes                    : 2
-logStream                : -
-log                      : -
-s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
--------------------------
 jobId                    : 12300bd2-4174-47be-8636-8f6e6da4b544
 jobName                  : simple-running
 createdAt                : 2018-11-29T15:00:01+00:00
@@ -167,6 +148,25 @@ memory[MB]               : 128
 nodes                    : 1
 logStream                : parallelcluster-mnp-final/default/0ce8cb55-579e-40bb-bded-d675270d95a6
 log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final/default/0ce8cb55-579e-40bb-bded-d675270d95a6
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------
+jobId                    : qwerfcbc-2647-4d8b-a1ef-da65bffe0dd0 *2
+jobName                  : mnp-running
+createdAt                : 2018-11-29T15:00:37+00:00
+startedAt                : 2018-11-29T15:10:00+00:00
+stoppedAt                : -
+status                   : RUNNING
+statusReason             : -
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : echo TEST
+exitCode                 : -
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 2
+logStream                : -
+log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
 jobId                    : 3286a19c-68a9-47c9-8000-427d23ffc7ca [2]
@@ -226,25 +226,6 @@ logStream                : -
 log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
-jobId                    : 7a712b12-71eb-4007-a865-85f05de13a71 *2
-jobName                  : mnp-failed
-createdAt                : 2018-11-29T14:45:56+00:00
-startedAt                : 2018-11-29T14:57:45+00:00
-stoppedAt                : 2018-11-29T14:59:00+00:00
-status                   : FAILED
-statusReason             : Terminated by the user
-jobDefinition            : parallelcluster-mnp-final-mnp:2
-jobQueue                 : parallelcluster-mnp-final
-command                  : /bin/bash -c 'aws s3 --region us-east-1 cp s3://parallelcluster-mnp-final-0ymk3bktyjgsbdmm/batch/job-mnp-script-1543511354863.sh /tmp/batch/job-mnp-script-1543511354863.sh; bash /tmp/batch/job-mnp-script-1543511354863.sh '
-exitCode                 : -
-reason                   : -
-vcpus                    : 1
-memory[MB]               : 128
-nodes                    : 2
-logStream                : -
-log                      : -
-s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
--------------------------
 jobId                    : 44db07a9-f8a2-48d9-8d67-dcb04ceca54c [2]
 jobName                  : array-failed
 createdAt                : 2018-11-29T14:45:33+00:00
@@ -281,5 +262,24 @@ memory[MB]               : 128
 nodes                    : 1
 logStream                : parallelcluster-mnp-final/default/13f0668b-cd9f-493a-8c14-5c3848a53b1c
 log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final/default/13f0668b-cd9f-493a-8c14-5c3848a53b1c
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------
+jobId                    : 7a712b12-71eb-4007-a865-85f05de13a71 *2
+jobName                  : mnp-failed
+createdAt                : 2018-11-29T14:45:56+00:00
+startedAt                : 2018-11-29T14:57:45+00:00
+stoppedAt                : 2018-11-29T14:59:00+00:00
+status                   : FAILED
+statusReason             : Terminated by the user
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : /bin/bash -c 'aws s3 --region us-east-1 cp s3://parallelcluster-mnp-final-0ymk3bktyjgsbdmm/batch/job-mnp-script-1543511354863.sh /tmp/batch/job-mnp-script-1543511354863.sh; bash /tmp/batch/job-mnp-script-1543511354863.sh '
+exitCode                 : -
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 2
+logStream                : -
+log                      : -
 s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
 -------------------------
