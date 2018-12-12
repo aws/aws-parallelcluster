@@ -640,14 +640,6 @@
         }
       ]
     },
-    "MultiEbs": {
-      "Fn::Not": [{
-        "Fn::Equals": [
-          "NumberOfEBSVol",
-          "1"
-        ]
-      }]
-    },
     "IsMasterInstanceEbsOpt": {
       "Fn::Not": [
         {
@@ -1891,6 +1883,47 @@
           {
             "Key": "Name",
             "Value": "Master"
+          },
+          {
+            "Key": "aws-parallelcluster-attributes",
+            "Value": {
+              "Fn::Sub": [
+                "${BaseOS}, ${Scheduler}, ${version}",
+                {
+                  "version": {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "parallelcluster"
+                    ]
+                  }
+                }
+              ]
+            }
+          },
+          {
+            "Key": "aws-parallelcluster-filesystem",
+            "Value": {
+              "Fn::Sub": [
+                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
+                {
+                  "efs": {
+                    "Fn::If": [
+                      "CreateEFSSubstack",
+                      "1",
+                      "0"
+                    ]
+                  },
+                  "raid": {
+                    "Fn::If": [
+                      "CreateRAIDSubstack",
+                      "1",
+                      "0"
+                    ]
+                  }
+                }
+              ]
+            }
           }
         ],
         "NetworkInterfaces": [
@@ -2475,6 +2508,13 @@
             "PropagateAtLaunch": true
           },
           {
+            "Key": "Application",
+            "Value": {
+              "Ref": "AWS::StackName"
+            },
+            "PropagateAtLaunch": true
+          },
+          {
             "Key": "aws-parallelcluster-attributes",
             "Value": {
               "Fn::Sub": [
@@ -2496,20 +2536,20 @@
             "Key": "aws-parallelcluster-filesystem",
             "Value": {
               "Fn::Sub": [
-                "efs=${CreateEFSSubstack}, multiebs=${MultiEbs}",
+                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
                 {
-                  "CreateEFSSubstack": {
+                  "efs": {
                     "Fn::If": [
                       "CreateEFSSubstack",
-                      true,
-                      false
+                      "1",
+                      "0"
                     ]
                   },
-                  "MultiEbs": {
+                  "raid": {
                     "Fn::If": [
-                      "MultiEbs",
-                      true,
-                      false
+                      "CreateRAIDSubstack",
+                      "1",
+                      "0"
                     ]
                   }
                 }
@@ -4037,6 +4077,41 @@
       ],
       "Properties": {
         "Parameters": {
+          "AttributeTags": {
+            "Fn::Sub": [
+              "${BaseOS}, ${Scheduler}, ${version}",
+              {
+                "version": {
+                  "Fn::FindInMap": [
+                    "PackagesVersions",
+                    "default",
+                    "parallelcluster"
+                  ]
+                }
+              }
+            ]
+          },
+          "FileSystemTags": {
+            "Fn::Sub": [
+              "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
+              {
+                "efs": {
+                  "Fn::If": [
+                    "CreateEFSSubstack",
+                    "1",
+                    "0"
+                  ]
+                },
+                "raid": {
+                  "Fn::If": [
+                    "CreateRAIDSubstack",
+                    "1",
+                    "0"
+                  ]
+                }
+              }
+            ]
+          },
           "EFSSharedDir": {
             "Fn::Select": [
               "0",
@@ -4429,7 +4504,7 @@
                 "Fn::FindInMap": [
                   "PackagesVersions",
                   "default",
-                  "cfncluster"
+                  "parallelcluster"
                 ]
               }
             }
