@@ -1303,7 +1303,7 @@
     },
     "PackagesVersions": {
       "default": {
-        "cfncluster": "2.0.2",
+        "parallelcluster": "2.0.2",
         "cookbook": "aws-parallelcluster-cookbook-2.0.2",
         "chef": "14.2.0",
         "ridley": "5.1.1",
@@ -1352,7 +1352,7 @@
                 "Fn::FindInMap": [
                   "PackagesVersions",
                   "default",
-                  "cfncluster"
+                  "parallelcluster"
                 ]
               }
             }
@@ -2020,7 +2020,7 @@
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
                 {
@@ -2076,12 +2076,12 @@
                 ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export cfncluster_version=aws-parallelcluster-",
+                "export parallelcluster_version=aws-parallelcluster-",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
                     "default",
-                    "cfncluster"
+                    "parallelcluster"
                   ]
                 },
                 "\n",
@@ -2123,7 +2123,7 @@
                 "\n",
                 "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
                 "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
-                "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
+                "  if [ \"${parallelcluster_version}\" != \"${installed_version}\" ]; then\n",
                 "    bootstrap_instance\n",
                 "  fi\n",
                 "else\n",
@@ -2484,7 +2484,7 @@
                     "Fn::FindInMap": [
                       "PackagesVersions",
                       "default",
-                      "cfncluster"
+                      "parallelcluster"
                     ]
                   }
                 }
@@ -2829,7 +2829,7 @@
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
                 {
@@ -2885,12 +2885,12 @@
                 ".tgz\n",
                 "fi\n",
                 "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export cfncluster_version=aws-parallelcluster-",
+                "export parallelcluster_version=aws-parallelcluster-",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
                     "default",
-                    "cfncluster"
+                    "parallelcluster"
                   ]
                 },
                 "\n",
@@ -2932,7 +2932,7 @@
                 "\n",
                 "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
                 "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
-                "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
+                "  if [ \"${parallelcluster_version}\" != \"${installed_version}\" ]; then\n",
                 "    bootstrap_instance\n",
                 "  fi\n",
                 "else\n",
@@ -3486,7 +3486,7 @@
                   "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                  "  mkdir /opt/parallelcluster && echo ${cfncluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                  "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
                   "proxy=",
                   {
@@ -3542,12 +3542,12 @@
                   ".tgz\n",
                   "fi\n",
                   "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                  "export cfncluster_version=aws-parallelcluster-",
+                  "export parallelcluster_version=aws-parallelcluster-",
                   {
                     "Fn::FindInMap": [
                       "PackagesVersions",
                       "default",
-                      "cfncluster"
+                      "parallelcluster"
                     ]
                   },
                   "\n",
@@ -3589,7 +3589,7 @@
                   "\n",
                   "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
                   "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
-                  "  if [ \"${cfncluster_version}\" != \"${installed_version}\" ]; then\n",
+                  "  if [ \"${parallelcluster_version}\" != \"${installed_version}\" ]; then\n",
                   "    bootstrap_instance\n",
                   "  fi\n",
                   "else\n",
@@ -4201,7 +4201,7 @@
                     "Fn::FindInMap": [
                       "PackagesVersions",
                       "default",
-                      "cfncluster"
+                      "parallelcluster"
                     ]
                   }
                 }
@@ -4371,7 +4371,7 @@
                 "Fn::FindInMap": [
                   "PackagesVersions",
                   "default",
-                  "cfncluster"
+                  "parallelcluster"
                 ]
               }
             }
