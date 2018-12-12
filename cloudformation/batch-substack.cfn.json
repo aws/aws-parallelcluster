@@ -362,9 +362,33 @@
                 "Vcpus": 1,
                 "Environment": [
                   {
-                    "Name": "SHARED_DIR",
+                    "Name": "PCLUSTER_AWS_REGION",
+                    "Value": {
+                      "Ref": "AWS::Region"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_STACK_NAME",
+                    "Value": {
+                      "Ref": "ClusterName"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_SHARED_DIR",
                     "Value": {
                       "Ref": "SharedDir"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_EFS_SHARED_DIR",
+                    "Value": {
+                      "Ref": "EFSSharedDir"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_EFS_FS_ID",
+                    "Value": {
+                      "Ref": "EFSFSId"
                     }
                   }
                 ]

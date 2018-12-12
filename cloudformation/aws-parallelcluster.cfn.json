@@ -1641,7 +1641,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Sub": "arn:aws:iam::${AWS::AccountId}:role/parallelcluster-*"
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster-*"
                 }
               ]
             }
