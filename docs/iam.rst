@@ -31,6 +31,8 @@ appropriate resources. In both policies, you should replace REGION and AWS ACCOU
 ParallelClusterInstancePolicy
 -----------------------------
 
+In case you are using SGE, Slurm or Torque as a scheduler:
+
 ::
 
   {
@@ -132,21 +134,73 @@ ParallelClusterInstancePolicy
               ],
               "Sid": "SQSList",
               "Effect": "Allow"
-          },
-          {
-            "Sid": "BatchJobPassRole",
-            "Action": [
-              "iam:PassRole"
-            ],
-            "Effect": "Allow",
-            "Resource": [
-              {
-                "Fn::Sub": "arn:aws:iam::<AWS ACCOUNT ID>:role/<EC2 IAM ROLE NAME>"
-              }
-            ]
           }
       ]
   }
+
+In case you are using awsbatch as a scheduler, you need to include the same policies
+as the ones assigned to the BatchUserRole that is defined in the Batch CloudFormation nested stack.
+The BatchUserRole ARN is provided as a stack output.
+Here is an overview of the required permissions:
+
+::
+
+  {
+      "Version": "2012-10-17",
+      "Statement": [
+          {
+              "Action": [
+                  "batch:SubmitJob",
+                  "batch:RegisterJobDefinition",
+                  "cloudformation:DescribeStacks",
+                  "ecs:ListContainerInstances",
+                  "ecs:DescribeContainerInstances",
+                  "logs:GetLogEvents",
+                  "logs:FilterLogEvents",
+                  "s3:PutObject",
+                  "s3:Get*",
+                  "s3:DeleteObject",
+                  "iam:PassRole"
+              ],
+              "Resource": [
+                  "arn:aws:batch:<REGION>:<AWS ACCOUNT ID>:job-definition/<AWS_BATCH_STACK - JOB_DEFINITION_SERIAL_NAME>:1",
+                  "arn:aws:batch:<REGION>:<AWS ACCOUNT ID>:job-definition/<AWS_BATCH_STACK - JOB_DEFINITION_MNP_NAME>*",
+                  "arn:aws:batch:<REGION>:<AWS ACCOUNT ID>:job-queue/<AWS_BATCH_STACK - JOB_QUEUE_NAME>",
+                  "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/<STACK NAME>/*",
+                  "arn:aws:s3:::<RESOURCES S3 BUCKET>/batch/*",
+                  "arn:aws:iam::<AWS ACCOUNT ID>:role/<AWS_BATCH_STACK - JOB_ROLE>",
+                  "arn:aws:ecs:<REGION>:<AWS ACCOUNT ID>:cluster/<ECS COMPUTE ENVIRONMENT>",
+                  "arn:aws:ecs:<REGION>:<AWS ACCOUNT ID>:container-instance/*",
+                  "arn:aws:logs:<REGION>:<AWS ACCOUNT ID>:log-group:/aws/batch/job:log-stream:*"
+              ],
+              "Effect": "Allow"
+          },
+          {
+              "Action": [
+                  "s3:List*"
+              ],
+              "Resource": [
+                  "arn:aws:s3:::<RESOURCES S3 BUCKET>"
+              ],
+              "Effect": "Allow"
+          },
+          {
+              "Action": [
+                  "batch:DescribeJobQueues",
+                  "batch:TerminateJob",
+                  "batch:DescribeJobs",
+                  "batch:CancelJob",
+                  "batch:DescribeJobDefinitions",
+                  "batch:ListJobs",
+                  "batch:DescribeComputeEnvironments",
+                  "ec2:DescribeInstances"
+              ],
+              "Resource": "*",
+              "Effect": "Allow"
+          }
+      ]
+  }
+
 
 ParallelClusterUserPolicy
 -------------------------
