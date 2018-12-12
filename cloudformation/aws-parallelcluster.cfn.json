@@ -640,6 +640,14 @@
         }
       ]
     },
+    "MultiEbs": {
+      "Fn::Not": [{
+        "Fn::Equals": [
+          "NumberOfEBSVol",
+          "1"
+        ]
+      }]
+    },
     "IsMasterInstanceEbsOpt": {
       "Fn::Not": [
         {
@@ -2464,6 +2472,49 @@
           {
             "Key": "Name",
             "Value": "Compute",
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "aws-parallelcluster-attributes",
+            "Value": {
+              "Fn::Sub": [
+                "${BaseOS}, ${Scheduler}, ${version}",
+                {
+                  "version": {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "cfncluster"
+                    ]
+                  }
+                }
+              ]
+            },
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "aws-parallelcluster-filesystem",
+            "Value": {
+              "Fn::Sub": [
+                "efs=${CreateEFSSubstack}, multiebs=${MultiEbs}",
+                {
+                  "CreateEFSSubstack": {
+                    "Fn::If": [
+                      "CreateEFSSubstack",
+                      true,
+                      false
+                    ]
+                  },
+                  "MultiEbs": {
+                    "Fn::If": [
+                      "MultiEbs",
+                      true,
+                      false
+                    ]
+                  }
+                }
+              ]
+            },
             "PropagateAtLaunch": true
           }
         ],
