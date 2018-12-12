@@ -197,6 +197,7 @@ def _print_stack_outputs(stack):
         "BatchJobQueueArn",
         "BatchJobDefinitionArn",
         "BatchJobDefinitionMnpArn",
+        "BatchUserRole",
     ]
     if is_ganglia_enabled(stack.get("Parameters")):
         whitelisted_outputs.extend(["GangliaPrivateURL", "GangliaPublicURL"])

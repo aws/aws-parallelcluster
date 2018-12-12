@@ -4499,6 +4499,15 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
+    "BatchUserRole": {
+      "Value": {
+        "Fn::GetAtt": [
+          "AWSBatchStack",
+          "Outputs.BatchUserRole"
+        ]
+      },
+      "Condition": "CreateAWSBatchStack"
+    },
     "CLITemplate": {
       "Value": {
         "Ref": "CLITemplate"
