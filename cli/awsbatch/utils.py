@@ -15,6 +15,7 @@ from __future__ import print_function
 
 import pipes
 import re
+import sys
 from datetime import datetime
 
 from dateutil import tz
@@ -26,7 +27,7 @@ def fail(error_message):
 
     :param error_message: message to print
     """
-    print(error_message)
+    print(error_message, file=sys.stderr)
     exit(1)
 
 
@@ -88,7 +89,7 @@ def shell_join(array):
     :param array: input array
     :return: the shell-quoted string
     """
-    return " ".join(pipes.quote(arg) for arg in array)
+    return " ".join(pipes.quote(item) for item in array)
 
 
 def is_job_array(job):
@@ -99,3 +100,69 @@ def is_job_array(job):
     :return: true if the job is an array, false otherwise
     """
     return "arrayProperties" in job and "size" in job["arrayProperties"]
+
+
+def is_mnp_job(job):
+    """
+    Check if the given job is an MNP job.
+
+    :param job: the job dictionary returned by AWS Batch api
+    :return: true if the job is mnp, false otherwise
+    """
+    return "nodeProperties" in job and "numNodes" in job["nodeProperties"]
+
+
+def get_job_type(job):
+    """
+    Get the type of the job.
+
+    Job type is of type string and not enum since enums have been introduced
+    since Python 3.4.
+
+    :param job: the job dictionary returned by AWS Batch api
+    :return: one of ["SIMPLE", "ARRAY", "MNP"]
+    """
+    if is_job_array(job):
+        return "ARRAY"
+    if is_mnp_job(job):
+        return "MNP"
+    return "SIMPLE"
+
+
+class S3Uploader(object):
+    """S3 uploader."""
+
+    def __init__(self, boto3_factory, s3_bucket, default_folder=""):
+        """Constructor.
+
+        :param boto3_factory: initialized Boto3ClientFactory object
+        :param s3_bucket: S3 bucket to use
+        :param default_folder: S3 folder on which put the files (optional)
+        """
+        self.s3_client = boto3_factory.get_client("s3")
+        self.s3_bucket = s3_bucket
+        self.default_folder = default_folder
+        if default_folder:
+            self.__create_folder(default_folder)
+
+    def __create_folder(self, folder):
+        """
+        Create an empty pseudo-folder in the S3 bucket.
+
+        :param folder: the path to create
+        """
+        if not folder.endswith("/"):
+            folder = folder + "/"
+
+        self.s3_client.put_object(Bucket=self.s3_bucket, Key=folder, Body="")
+
+    def put_file(self, file_path, key_name, folder=None):
+        """
+        Upload a file to an s3 bucket.
+
+        :param file_path: file to upload
+        :param key_name: S3 key to create
+        :param folder: S3 folder on which put the files (optional)
+        """
+        s3_folder = folder if folder else self.default_folder
+        self.s3_client.upload_file(file_path, self.s3_bucket, s3_folder + key_name)

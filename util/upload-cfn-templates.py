@@ -1,4 +1,5 @@
 import argparse
+import sys
 
 import pkg_resources
 
@@ -25,46 +26,49 @@ def upload_to_s3(args, region):
         template_name = "%s%s.cfn.json" % (template_paths, t)
         key = key_path + "%s-%s.cfn.json" % (t, args.version)
         data = open(template_name, "rb")
-        for bucket in buckets:
-            if args.dryrun:
-                key = key_path + "%s-%s.cfn.json" % (t, args.version)
-                print("Skipping upload %s to s3://%s/%s" % (template_name, bucket, key))
-                continue
-            if not args.override:
+        if not args.override:
+            for bucket in buckets:
                 try:
                     s3 = boto3.client("s3", region_name=region)
                     s3.head_object(Bucket=bucket, Key=key)
-                    print("%s already exist in bucket %s, skipping upload..." % (key, bucket))
-                    continue
+                    print("Error: %s already exist in bucket %s" % (key, bucket))
+                    sys.exit(1)
                 except ClientError:
                     pass
-            try:
-                object = s3_client.Object(bucket, key)
-                response = object.put(Body=data, ACL="public-read")
-                if response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
-                    print("Successfully uploaded %s to s3://%s/%s" % (template_name, bucket, key))
-            except ClientError as e:
-                if args.createifnobucket and e.response["Error"]["Code"] == "NoSuchBucket":
-                    print("No bucket, creating now: ")
-                    if region == "us-east-1":
-                        s3_client.create_bucket(Bucket=bucket)
+        for bucket in buckets:
+            if args.dryrun:
+                key = key_path + "%s-%s.cfn.json" % (t, args.version)
+                print("If dryrun is disabled, %s will be uploaded to s3://%s/%s" % (template_name, bucket, key))
+            else:
+                try:
+                    object = s3_client.Object(bucket, key)
+                    response = object.put(Body=data, ACL="public-read")
+                    if response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
+                        print("Successfully uploaded %s to s3://%s/%s" % (template_name, bucket, key))
+                except ClientError as e:
+                    if args.createifnobucket and e.response["Error"]["Code"] == "NoSuchBucket":
+                        print("No bucket, creating now: ")
+                        if region == "us-east-1":
+                            s3_client.create_bucket(Bucket=bucket)
+                        else:
+                            s3_client.create_bucket(
+                                Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region}
+                            )
+                        s3_client.BucketVersioning(bucket).enable()
+                        print(
+                            "Created %s bucket. Bucket versioning is enabled, "
+                            "please enable bucket logging manually." % bucket
+                        )
+                        b = s3_client.Bucket(bucket)
+                        res = b.put_object(Body=data, ACL="public-read", Key=key)
+                        print(res)
                     else:
-                        s3_client.create_bucket(Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region})
-                    s3_client.BucketVersioning(bucket).enable()
-                    print(
-                        "Created %s bucket. Bucket versioning is enabled, "
-                        "please enable bucket logging manually." % bucket
-                    )
-                    b = s3_client.Bucket(bucket)
-                    res = b.put_object(Body=data, ACL="public-read", Key=key)
-                    print(res)
-                else:
-                    print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
-                    if e.response["Error"]["Code"] == "NoSuchBucket":
-                        print("Bucket is not present.")
-                    else:
-                        raise e
-                pass
+                        print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
+                        if e.response["Error"]["Code"] == "NoSuchBucket":
+                            print("Bucket is not present.")
+                        else:
+                            raise e
+                    pass
 
 
 def main(args):

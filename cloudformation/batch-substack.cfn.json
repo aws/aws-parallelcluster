@@ -59,7 +59,8 @@
     },
     "EFSFSId": {
       "Description": "ID of EFS file system",
-      "Type": "String"
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {
@@ -120,8 +121,50 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
-          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess"
+          },
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "s3PutObject",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:PutObject",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "cfnDescribeStacks",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "cloudformation:DescribeStacks"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ClusterName}/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         ]
       }
     },
@@ -261,25 +304,31 @@
           "Privileged": true,
           "Environment": [
             {
-              "Name": "AWS_REGION",
+              "Name": "PCLUSTER_AWS_REGION",
               "Value": {
                 "Ref": "AWS::Region"
               }
             },
             {
-              "Name": "SHARED_DIR",
+              "Name": "PCLUSTER_STACK_NAME",
+              "Value": {
+                "Ref": "ClusterName"
+              }
+            },
+            {
+              "Name": "PCLUSTER_SHARED_DIR",
               "Value": {
                 "Ref": "SharedDir"
               }
             },
             {
-              "Name": "EFS_SHARED_DIR",
+              "Name": "PCLUSTER_EFS_SHARED_DIR",
               "Value": {
                 "Ref": "EFSSharedDir"
               }
             },
             {
-              "Name": "EFS_FS_ID",
+              "Name": "PCLUSTER_EFS_FS_ID",
               "Value": {
                 "Ref": "EFSFSId"
               }

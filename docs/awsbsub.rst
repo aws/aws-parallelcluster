@@ -15,4 +15,5 @@ awsbsub
     io
     jobId
     startedAt
+    subfolder
     utf

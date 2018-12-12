@@ -203,7 +203,7 @@ def prepare_test_sg(vpc_id, region):
 def prepare_test_fs(case, subnets, sg, distro, region):
     fsrelated = {}
     efs = boto3.client("efs", region_name=region)
-    response_fs = efs.create_file_system(CreationToken="OnlyEFS_%s_%s" % (region, distro))
+    response_fs = efs.create_file_system(CreationToken="OnlyEFS_%s_%s_%s" % (region, distro, case))
     fsrelated["fsid"] = response_fs["FileSystemId"]
     while True:
         response_fs_state = efs.describe_file_systems(FileSystemId=fsrelated["fsid"])
@@ -245,9 +245,6 @@ def clean_up_fs(fsrelated, region):
             # This should return an exception because the mount target id should be not found at this point
             response_mt_state = efs.describe_mount_targets(MountTargetId=fsrelated["mtid"])
             life_cycle = response_mt_state["MountTargets"][0]["LifeCycleState"]
-            if life_cycle != "deleted":
-                print("Delete MT failed!")
-                break
             time.sleep(5)
     except Exception as e:
         print("MT successfully deleted!")
@@ -258,9 +255,6 @@ def clean_up_fs(fsrelated, region):
             # This should return an exception because the file system id should be not found at this point
             response_fs_state = efs.describe_file_systems(FileSystemId=fsrelated["fsid"])
             life_cycle = response_fs_state["FileSystems"][0]["LifeCycleState"]
-            if life_cycle == "deleted":
-                print("Delete FS failed!")
-                break
             time.sleep(5)
     except Exception as e:
         print("FS successfully deleted!")

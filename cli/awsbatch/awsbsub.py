@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and limitations under the License.
 from __future__ import print_function
 
-import datetime
 import os
 import pipes
 import re
@@ -25,7 +24,7 @@ import time
 import argparse
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, config_logger
-from awsbatch.utils import fail, get_job_definition_name_by_arn, shell_join
+from awsbatch.utils import S3Uploader, fail, get_job_definition_name_by_arn, shell_join
 
 
 def _get_parser():
@@ -58,6 +57,25 @@ def _get_parser():
         action="store_true",
     )
     parser.add_argument(
+        "-w",
+        "--working-dir",
+        help="The folder to use as job working directory. "
+        "If not specified the job will be executed in the job-<AWS_BATCH_JOB_ID> subfolder of the user's home",
+    )
+    parser.add_argument(
+        "-pw",
+        "--parent-working-dir",
+        help="Parent folder for the job working directory. If not specified it is the user's home. "
+        "A subfolder named job-<AWS_BATCH_JOB_ID> will be created in it. Alternative to the --working-dir parameter",
+    )
+    parser.add_argument(
+        "-if",
+        "--input-file",
+        help="File to be transferred to the compute instances, in the job working directory. "
+        "It can be expressed multiple times",
+        action="append",
+    )
+    parser.add_argument(
         "-p",
         "--vcpus",
         help="The number of vCPUs to reserve for the container. When used in conjunction with --nodes it identifies "
@@ -78,7 +96,7 @@ def _get_parser():
         "--env",
         help="Comma separated list of environment variable names to export to the Job environment. "
         "Use 'all' to export all the environment variables, except the ones listed to the --env-blacklist parameter "
-        "and variables starting with PCLUSTER_* and AWS_BATCH_* prefix.",
+        "and variables starting with PCLUSTER_* and AWS_* prefix.",
     )
     parser.add_argument(
         "-eb",
@@ -163,86 +181,67 @@ def _validate_parameters(args):
     if args.env_blacklist and (not args.env or args.env != "all"):
         fail('--env-blacklist parameter can be used only associated with --env "all"')
 
+    if args.working_dir and args.parent_working_dir:
+        fail("--parent-working-dir and --working-dir parameters cannot be used at the same time")
 
-def _get_job_folder(job_id):
+
+def _generate_unique_job_key(job_name):
     """
-    Get relative folder path to use for the given job_id.
+    Generate an unique job key to use as identifier.
 
-    :param job_id: the job_id will be the subfolder name
-    :return: batch/<job_id>/
+    :param job_name: job name
+    :return: "job-<job_name>-<timestamp>"
     """
-    return "batch/{0}/".format(job_id)
+    return "job-{0}-{1}".format(job_name, int(time.time() * 1000))
 
 
-class S3Uploader(object):
-    """S3 uploader."""
-
-    def __init__(self, boto3_factory, s3_bucket):
-        """Constructor.
-
-        :param boto3_factory: initialized Boto3ClientFactory object
-        :param s3_bucket: S3 bucket to use
-        """
-        self.boto3_factory = boto3_factory
-        self.s3_bucket = s3_bucket
-
-    def put_file(self, file_path, key_name, timeout):
-        """
-        Upload a file to an s3 bucket.
-
-        :param file_path: file to upload
-        :param key_name: S3 key to create
-        :param timeout: S3 expiration time in seconds
-        """
-        default_expiration = 30  # minutes
-        expires = datetime.datetime.now() + datetime.timedelta(minutes=default_expiration)
-        if timeout:
-            expires += datetime.timedelta(seconds=timeout)
-
-        s3_client = self.boto3_factory.get_client("s3")
-        s3_client.upload_file(file_path, self.s3_bucket, key_name, ExtraArgs={"Expires": expires})
-
-
-def _upload_and_get_command(boto3_factory, args, job_name, config, log):
+def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config, log):
     """
     Get command by parsing args and config.
 
     The function will also perform an s3 upload, if needed.
     :param boto3_factory: initialized Boto3ClientFactory object
     :param args: input arguments
+    :param job_s3_folder: S3 folder for the job files
     :param job_name: job name
     :param config: config object
     :param log: log
     :return: command to submit
     """
+    # create S3 folder for the job
+    s3_uploader = S3Uploader(boto3_factory, config.s3_bucket, job_s3_folder)
+
+    # upload input files, if there
+    if args.input_file:
+        for file in args.input_file:
+            s3_uploader.put_file(file, file)
+
+    # upload command, if needed
     if args.command_file or not sys.stdin.isatty() or args.env:
         # define job script name
-        job_id = "job-{0}-{1}".format(job_name, int(time.time() * 1000))
-        job_folder = _get_job_folder(job_id)
-        job_script = job_id + ".sh"
+        job_script = job_name + ".sh"
         log.info("Using command-file option or stdin. Job script name: %s" % job_script)
 
-        s3_uploader = S3Uploader(boto3_factory, config.s3_bucket)
         env_file = None
         if args.env:
-            env_file = job_id + ".env.sh"
+            env_file = job_name + ".env.sh"
             # get environment variables and upload file used to extend the submission environment
             env_blacklist = args.env_blacklist if args.env_blacklist else config.env_blacklist
-            _get_env_and_upload(s3_uploader, args.env, env_blacklist, job_folder, env_file, args.timeout, log)
+            _get_env_and_upload(s3_uploader, args.env, env_blacklist, env_file, log)
 
         # upload job script
         if args.command_file:
             # existing script file
             try:
-                s3_uploader.put_file(args.command, job_folder + job_script, args.timeout)
+                s3_uploader.put_file(args.command, job_script)
             except Exception as e:
                 fail("Error creating job script. Failed with exception: %s" % e)
         elif not sys.stdin.isatty():
             # stdin
-            _get_stdin_and_upload(s3_uploader, job_folder, job_script, args.timeout)
+            _get_stdin_and_upload(s3_uploader, job_script)
 
         # define command to execute
-        bash_command = _compose_bash_command(args, config.s3_bucket, config.region, job_folder, job_script, env_file)
+        bash_command = _compose_bash_command(args, config.s3_bucket, config.region, job_s3_folder, job_script, env_file)
         command = ["/bin/bash", "-c", bash_command]
     elif type(args.command) == str:
         log.info("Using command parameter")
@@ -253,35 +252,32 @@ def _upload_and_get_command(boto3_factory, args, job_name, config, log):
     return command
 
 
-def _get_stdin_and_upload(s3_uploader, job_folder, job_script, timeout):
+def _get_stdin_and_upload(s3_uploader, job_script):
     """
     Create file from STDIN and upload to S3.
 
     :param s3_uploader: S3Uploader object
-    :param job_folder: S3 bucket subfolder
     :param job_script: job script name
-    :param timeout: S3 expiration time in seconds
     """
     try:
         # copy stdin to temporary file and upload
         with os.fdopen(sys.stdin.fileno(), "rb") as src:
             with tempfile.NamedTemporaryFile() as dst:
                 shutil.copyfileobj(src, dst)
-                s3_uploader.put_file(dst.name, job_folder + job_script, timeout)
+                dst.flush()
+                s3_uploader.put_file(dst.name, job_script)
     except Exception as e:
         fail("Error creating job script. Failed with exception: %s" % e)
 
 
-def _get_env_and_upload(s3_uploader, env, env_blacklist, job_folder, env_file, timeout, log):
+def _get_env_and_upload(s3_uploader, env, env_blacklist, env_file, log):
     """
     Get environment variables, create a file containing the list of the exported env variables and upload to S3.
 
     :param s3_uploader: S3Uploader object
     :param env: comma separated list of environment variables
     :param env_blacklist: comma separated list of blacklisted environment variables
-    :param job_folder: S3 bucket subfolder
     :param env_file: environment file name
-    :param timeout: S3 expiration time in seconds
     :param log: log
     """
     key_value_list = _get_env_key_value_list(env, log, env_blacklist)
@@ -289,48 +285,61 @@ def _get_env_and_upload(s3_uploader, env, env_blacklist, job_folder, env_file, t
         # copy env to temporary file
         with tempfile.NamedTemporaryFile() as dst:
             dst.write("\n".join(key_value_list) + "\n")
-            s3_uploader.put_file(dst.name, job_folder + env_file, timeout)
+            dst.flush()
+            s3_uploader.put_file(dst.name, env_file)
     except Exception as e:
         fail("Error creating environment file. Failed with exception: %s" % e)
 
 
-def _compose_bash_command(args, s3_bucket, region, job_folder, job_script, env_file):
+def _compose_bash_command(args, s3_bucket, region, job_s3_folder, job_script, env_file):
     """
     Define bash command to execute.
 
     :param args: input arguments
     :param s3_bucket: S3 bucket
     :param region: AWS region
-    :param job_folder: S3 bucket subfolder
+    :param job_s3_folder: S3 job folder
     :param job_script: job script file
     :param env_file: environment file
     :return: composed bash command
     """
     command_args = shell_join(args.arguments)
     # download awscli, if required.
-    bash_command = (
-        "curl -O https://bootstrap.pypa.io/get-pip.py >/dev/null 2>&1 && "
-        "python get-pip.py --user >/dev/null 2>&1 && "
-        "export PATH=~/.local/bin:$PATH >/dev/null 2>&1 && "
-        "pip install awscli --upgrade --user >/dev/null 2>&1; "
-        if args.awscli
-        else ""
-    )
-    # download all job files to a tmp subfolder
-    bash_command += (
-        "mkdir -p /tmp/{FOLDER} && "
-        "aws s3 --region {REGION} sync s3://{BUCKET}/{FOLDER} /tmp/{FOLDER}; ".format(
-            REGION=region, BUCKET=s3_bucket, FOLDER=job_folder
+    bash_command = []
+    if args.awscli:
+        bash_command.append(
+            "curl -O https://bootstrap.pypa.io/get-pip.py >/dev/null 2>&1 && "
+            "python get-pip.py --user >/dev/null 2>&1 && "
+            "export PATH=~/.local/bin:$PATH >/dev/null 2>&1 && "
+            "pip install awscli --upgrade --user >/dev/null 2>&1"
+        )
+
+    # set working directory
+    if args.working_dir:
+        # create and move to the working dir specified by the user
+        bash_command.append('mkdir -p "{JOB_WD}" && cd "{JOB_WD}"'.format(JOB_WD=args.working_dir))
+    else:
+        if args.parent_working_dir:
+            # create and move to the parent working dir specified by the user
+            bash_command.append(
+                'mkdir -p "{JOB_PARENT_WD}" && cd "{JOB_PARENT_WD}"'.format(JOB_PARENT_WD=args.parent_working_dir)
+            )
+
+        # create subfolder named job-<$AWS_BATCH_JOB_ID>
+        bash_command.append("mkdir -p job-${AWS_BATCH_JOB_ID} && cd job-${AWS_BATCH_JOB_ID}")
+
+    # download all job files to the job folder
+    bash_command.append(
+        "aws s3 --region {REGION} sync s3://{BUCKET}/{S3_FOLDER} . >/dev/null".format(
+            REGION=region, BUCKET=s3_bucket, S3_FOLDER=job_s3_folder
         )
     )
-    if env_file:
-        # source the environment file
-        bash_command += "source /tmp/{FOLDER}{ENV_FILE}; ".format(FOLDER=job_folder, ENV_FILE=env_file)
+    if env_file:  # source the environment file
+        bash_command.append("source {ENV_FILE}".format(ENV_FILE=env_file))
+
     # execute the job script + arguments
-    bash_command += "chmod +x /tmp/{FOLDER}{SCRIPT} && /tmp/{FOLDER}{SCRIPT} {ARGS}".format(
-        FOLDER=job_folder, SCRIPT=job_script, ARGS=command_args
-    )
-    return bash_command
+    bash_command.append("chmod +x {SCRIPT} && ./{SCRIPT} {ARGS}".format(SCRIPT=job_script, ARGS=command_args))
+    return " && ".join(bash_command)
 
 
 def _get_env_key_value_list(env_vars, log, env_blacklist_vars=None):
@@ -380,7 +389,7 @@ def _add_env_var_to_list(key_value_list, var_name, log):
     # exclude reserved variables and functions
     if (
         not var.startswith("PCLUSTER_")  # reserved AWS ParallelCluster variables
-        and not var.startswith("AWS_BATCH_")  # reserved AWS Batch variables
+        and not var.startswith("AWS_")  # reserved AWS variables
         and not var.startswith("LESS_TERMCAP_")  # terminal variables
         and "()" not in var  # functions
     ):
@@ -437,7 +446,7 @@ class AWSBsubCommand(object):
         retry_attempts=1,
         timeout=None,
         dependencies=None,
-        master_ip=None,
+        env=None,
     ):
         """Submit the job."""
         try:
@@ -458,8 +467,8 @@ class AWSBsubCommand(object):
                 container_overrides.update(memory=memory)
             # populate environment variables
             environment = []
-            if master_ip:
-                environment.append({"name": "MASTER_IP", "value": master_ip})
+            for env_var in env:
+                environment.append({"name": env_var[0], "value": env_var[1]})
             container_overrides.update(environment=environment)
 
             # common submission arguments
@@ -612,8 +621,11 @@ def main():
                 job_name = re.sub(r"\W+", "_", os.path.basename(args.command))
             log.info("Job name not specified, setting it to (%s)" % job_name)
 
+        # generate an internal unique job-id
+        job_key = _generate_unique_job_key(job_name)
+        job_s3_folder = "batch/{0}/".format(job_key)
         # upload script, if needed, and get related command
-        command = _upload_and_get_command(boto3_factory, args, job_name, config, log)
+        command = _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config, log)
         # parse and validate depends_on parameter
         depends_on = _get_depends_on(args)
 
@@ -637,7 +649,10 @@ def main():
             dependencies=depends_on,
             retry_attempts=args.retry_attempts,
             timeout=args.timeout,
-            master_ip=config.master_ip,
+            env=[
+                ("MASTER_IP", config.master_ip),  # TODO remove
+                ("PCLUSTER_JOB_S3_URL", "s3://{0}/{1}".format(config.s3_bucket, job_s3_folder)),
+            ],
         )
     except KeyboardInterrupt:
         print("Exiting...")

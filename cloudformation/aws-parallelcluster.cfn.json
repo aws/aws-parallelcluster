@@ -583,7 +583,7 @@
       "Type": "Number",
       "Default": "1"
     },
-    "EFSoptions": {
+    "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
@@ -601,7 +601,7 @@
                   "Fn::Split": [
                     ",",
                     {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     }
                   ]
                 }
@@ -1281,8 +1281,8 @@
       "Type": "AWS::CloudFormation::Stack",
       "Properties": {
         "Parameters": {
-          "EFSoptions": {
-            "Ref": "EFSoptions"
+          "EFSOptions": {
+            "Ref": "EFSOptions"
           },
           "ComputeSecurityGroup": {
             "Fn::If": [
@@ -1441,11 +1441,18 @@
         "Path": "/",
         "Roles": [
           {
-            "Ref": "RootRole"
+            "Fn::If": [
+              "UseEC2IAMRole",
+              {
+                "Ref": "EC2IAMRoleName"
+              },
+              {
+                "Ref": "RootRole"
+              }
+            ]
           }
         ]
-      },
-      "Condition": "CreateEC2IAMRole"
+      }
     },
     "ParallelClusterPolicies": {
       "Type": "AWS::IAM::Policy",
@@ -1885,15 +1892,7 @@
           ]
         },
         "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
+          "Ref": "RootInstanceProfile"
         },
         "PlacementGroupName": {
           "Fn::If": [
@@ -2178,7 +2177,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_volume": {
                       "Fn::GetAtt": [
@@ -2504,15 +2503,7 @@
           "Ref": "KeyName"
         },
         "IamInstanceProfile": {
-          "Fn::If": [
-            "UseEC2IAMRole",
-            {
-              "Ref": "EC2IAMRoleName"
-            },
-            {
-              "Ref": "RootInstanceProfile"
-            }
-          ]
+          "Ref": "RootInstanceProfile"
         },
         "SpotPrice": {
           "Fn::If": [
@@ -2933,7 +2924,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
@@ -3145,19 +3136,9 @@
             "Ref": "KeyName"
           },
           "IamInstanceProfile": {
-            "Fn::If": [
-              "UseEC2IAMRole",
-              {
-                "Name": {
-                  "Ref": "EC2IAMRoleName"
-                }
-              },
-              {
-                "Name": {
-                  "Ref": "RootInstanceProfile"
-                }
-              }
-            ]
+            "Name": {
+              "Ref": "RootInstanceProfile"
+            }
           },
           "InstanceMarketOptions": {
             "Fn::If": [
@@ -3599,7 +3580,7 @@
                       ]
                     },
                     "cfn_efs_shared_dir": {
-                      "Ref": "EFSoptions"
+                      "Ref": "EFSOptions"
                     },
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
@@ -3958,7 +3939,7 @@
                 "Fn::Split": [
                   ",",
                   {
-                    "Ref": "EFSoptions"
+                    "Ref": "EFSOptions"
                   }
                 ]
               }

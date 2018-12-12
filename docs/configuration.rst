@@ -775,13 +775,17 @@ File system ID for an existing file system. Specifying this option will void all
 Config sanity will only allow file systems that: have no mount target in the stack's availability zone
 OR have existing mount target in stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
 
+Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the following actions:
+efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
+Please add these permissions to your IAM role, or set `sanity_check = false` to avoid errors.
+
 CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will expose the file system
-to any NFS mounting request anywhere. We recommend not to have a mount target in stack's availability zone and let us
-create the mount target. If you must have a mount target in stack's availability zone, consider using a
-custom security group by providing a vpc_security_group_id option under the vpc section, adding that security group
-to the mount target, and turning off config sanity to create the cluster.
+to NFS mounting request from anywhere in the mount target's availability zone. We recommend not to have a mount target
+in stack's availability zone and let us create the mount target. If you must have a mount target in stack's
+availability zone, consider using a custom security group by providing a vpc_security_group_id option under the
+vpc section, adding that security group to the mount target, and turning off config sanity to create the cluster.
 
 Defaults to NONE. Needs to be an available EFS file system::
 
-    efs_fs_id = fs-1dsaf3
+    efs_fs_id = fs-12345
 
