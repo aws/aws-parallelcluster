@@ -10,7 +10,7 @@
         "containerInstanceArn": "arn:aws:ecs:us-east-1:653949452088:container-instance/64ae310c-a59e-45de-8f38-78a49ded903c",
         "environment": [
           {
-            "name": "SHARED_DIR",
+            "name": "PCLUSTER_SHARED_DIR",
             "value": "/shared"
           },
           {
@@ -66,7 +66,7 @@
               "image": "653949452088.dkr.ecr.us-east-1.amazonaws.com/paral-docke-150d1t4y4o4xj:alinux",
               "environment": [
                 {
-                  "name": "SHARED_DIR",
+                  "name": "PCLUSTER_SHARED_DIR",
                   "value": "/shared"
                 },
                 {
