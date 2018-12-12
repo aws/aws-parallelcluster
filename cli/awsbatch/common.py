@@ -59,16 +59,15 @@ class Output(object):
         """
         rows = []
         output_keys = keys or self.keys
-        for item in self.items:
+
+        for item in self.__get_items(sort_keys_function):
             row = []
             for output_key in output_keys:
                 row.append(getattr(item, self.mapping[output_key]))
             rows.append(row)
-        if sort_keys_function:
-            rows = sorted(rows, key=sort_keys_function)
         print(tabulate(rows, output_keys))
 
-    def show(self, keys=None):
+    def show(self, keys=None, sort_keys_function=None):
         """
         Print the items in a key value format.
 
@@ -78,7 +77,7 @@ class Output(object):
         if not self.items:
             print("No items to show")
         else:
-            for item in self.items:
+            for item in self.__get_items(sort_keys_function):
                 for output_key in output_keys:
                     print("{0:25}: {1!s}".format(output_key, getattr(item, self.mapping[output_key])))
                 print("-" * 25)
@@ -86,6 +85,12 @@ class Output(object):
     def length(self):
         """Return number of items in Output."""
         return len(self.items)
+
+    def __get_items(self, sort_keys_function=None):
+        """Return a sorted copy of self.items if sort_keys_function is given, a reference to self.items otherwise."""
+        if sort_keys_function:
+            return sorted(list(self.items), key=sort_keys_function)
+        return self.items
 
 
 class Boto3ClientFactory(object):
