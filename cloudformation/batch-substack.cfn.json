@@ -200,6 +200,143 @@
         ]
       }
     },
+    "BatchUserRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "MaxSessionDuration": 36000,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                }
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": "BatchUserPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:SubmitJob",
+                    "batch:RegisterJobDefinition",
+                    "cloudformation:DescribeStacks",
+                    "ecs:ListContainerInstances",
+                    "ecs:DescribeContainerInstances",
+                    "logs:GetLogEvents",
+                    "logs:FilterLogEvents",
+                    "s3:PutObject",
+                    "s3:Get*",
+                    "s3:DeleteObject",
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${JobDefinitionSerial}"
+                    },
+                    {
+                      "Fn::Sub": [
+                        "${MNPJobDefinitionArn}*",
+                        {
+                          "MNPJobDefinitionArn": {
+                            "Fn::Select": [
+                              "0",
+                              {
+                                "Fn::Split": [
+                                  ":1END_OF_THE_STRING",
+                                  {
+                                    "Fn::Sub": "${JobDefinitionMNP}END_OF_THE_STRING"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${JobQueue}"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ClusterName}/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "JobRole",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": [
+                        "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
+                        {
+                          "ComputeEnvironmentPrefix": {
+                            "Fn::Select": [
+                              "1",
+                              {
+                                "Fn::Split": [
+                                  "compute-environment/",
+                                  {
+                                    "Fn::Sub": "${ComputeEnvironment}"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:List*"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:DescribeJobQueues",
+                    "batch:TerminateJob",
+                    "batch:DescribeJobs",
+                    "batch:CancelJob",
+                    "batch:DescribeJobDefinitions",
+                    "batch:ListJobs",
+                    "batch:DescribeComputeEnvironments",
+                    "ec2:DescribeInstances"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
     "SpotIamFleetRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -976,6 +1113,14 @@
     "MNPJobDefinitionArn": {
       "Value": {
         "Ref": "JobDefinitionMNP"
+      }
+    },
+    "BatchUserRole": {
+      "Value": {
+        "Fn::GetAtt": [
+          "BatchUserRole",
+          "Arn"
+        ]
       }
     }
   }
