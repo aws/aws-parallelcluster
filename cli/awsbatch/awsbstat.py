@@ -289,7 +289,7 @@ class AWSBstatCommand(object):
     def run(self, job_status, expand_children, job_queue=None, job_ids=None, show_details=False):
         """Print list of jobs, by filtering by queue or by ids."""
         if job_ids:
-            self.__populate_output_by_job_ids(job_ids, show_details or len(job_ids) == 1)
+            self.__populate_output_by_job_ids(job_ids, show_details or len(job_ids) == 1, include_parents=True)
             # explicitly asking for job details,
             # or asking for a single simple job (the output is not a list of jobs)
             details_required = show_details or (len(job_ids) == 1 and self.output.length() == 1)
@@ -299,22 +299,61 @@ class AWSBstatCommand(object):
         else:
             fail("Error listing jobs from AWS Batch. job_ids or job_queue must be defined")
 
+        sort_keys_function = self.__sort_by_status_startedat_jobid() if not job_ids else self.__sort_by_key(job_ids)
         if details_required:
-            self.output.show()
+            self.output.show(sort_keys_function=sort_keys_function)
         else:
-            table_keys = ["jobId", "jobName", "status", "startedAt", "stoppedAt", "exitCode"]
-            # the lambda maps an entry of the output table to its position in the AWS_BATCH_JOB_STATUS list.
-            # This makes it so that the rows in the output are sorted by (status, startedAt, jobId).
             self.output.show_table(
-                keys=table_keys,
-                sort_keys_function=lambda x: (
-                    AWS_BATCH_JOB_STATUS.index(x[table_keys.index("status")]),
-                    x[table_keys.index("startedAt")],
-                    x[table_keys.index("jobId")],
-                ),
+                keys=["jobId", "jobName", "status", "startedAt", "stoppedAt", "exitCode"],
+                sort_keys_function=sort_keys_function,
             )
 
-    def __populate_output_by_job_ids(self, job_ids, details):
+    @staticmethod
+    def __sort_by_key(ordered_keys):  # noqa: D202
+        """
+        Build a function to sort the output by key.
+
+        :param ordered_keys: list containing the sorted keys.
+        :return: a function to be used as key argument of the sorted function.
+        """
+
+        def _sort_by_key(item):
+            job_id = item.id
+            try:
+                # in case the parent id was provided as input, sort children based on parent id position
+                parent_id = re.findall(r"[\w-]+", job_id)[0]
+                job_position = ordered_keys.index(parent_id)
+
+            except ValueError:
+                # in case the child id was provided as input, use its position in the list
+                job_position = ordered_keys.index(job_id)
+
+            return (
+                # sort by id according to the order in the keys_order list
+                job_position,
+                # sort by full id (needed to have parent before children)
+                job_id,
+            )
+
+        return _sort_by_key
+
+    @staticmethod
+    def __sort_by_status_startedat_jobid():
+        """
+        Build a function to sort the output by (status, startedAt, jobId).
+
+        :return: a function to be used as key argument of the sorted function.
+        """
+        return lambda item: (
+            # sort by status. Status order is defined by AWS_BATCH_JOB_STATUS.
+            AWS_BATCH_JOB_STATUS.index(item.status),
+            # sort by startedAt column.
+            item.start_time,
+            # sort by jobId column.
+            item.id,
+        )
+
+    def __populate_output_by_job_ids(self, job_ids, details, include_parents=False):
         """
         Add Job item or jobs array children to the output.
 
@@ -324,22 +363,23 @@ class AWSBstatCommand(object):
         try:
             if job_ids:
                 self.log.info("Describing jobs (%s), details (%s)" % (job_ids, details))
-                single_jobs = []
+                parent_jobs = []
                 jobs_with_children = []
                 jobs = self.__chunked_describe_jobs(job_ids)
                 for job in jobs:
+                    # always add parent job
+                    if include_parents or get_job_type(job) == "SIMPLE":
+                        parent_jobs.append(job)
                     if is_job_array(job):
                         jobs_with_children.append((job["jobId"], ":", job["arrayProperties"]["size"]))
                     elif is_mnp_job(job):
                         jobs_with_children.append((job["jobId"], "#", job["nodeProperties"]["numNodes"]))
-                    else:
-                        single_jobs.append(job)
 
-                # create output items for job array children
+                # add parent jobs to the output
+                self.__add_jobs(parent_jobs)
+
+                # create output items for jobs' children
                 self.__populate_output_by_parent_ids(jobs_with_children)
-
-                # add single jobs to the output
-                self.__add_jobs(single_jobs)
         except Exception as e:
             fail("Error describing jobs from AWS Batch. Failed with exception: %s" % e)
 
@@ -361,6 +401,7 @@ class AWSBstatCommand(object):
 
             if expanded_job_ids:
                 jobs = self.__chunked_describe_jobs(expanded_job_ids)
+
                 # forcing details to be False since already retrieved.
                 self.__add_jobs(jobs)
         except Exception as e:
