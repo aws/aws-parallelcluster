@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+2.1.0
+=====
+* RAID support
+* EFS support
+* AWS Batch Multinode Parallel Support
+* China regions
+
 2.0.2
 =====
 * Add support for GovCloud East, us-gov-east-1 region
