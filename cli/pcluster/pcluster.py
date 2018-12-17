@@ -751,7 +751,12 @@ def get_cookbook_url(config, tmpdir):
     cookbook_version = get_cookbook_version(config, tmpdir)
     if config.region == "us-east-1":
         return "https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (config.region, cookbook_version)
-
+    elif config.region.startswith("cn"):
+        return "https://s3.%s.amazonaws.com.cn/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
+            config.region,
+            config.region,
+            cookbook_version,
+        )
     return "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
         config.region,
         config.region,

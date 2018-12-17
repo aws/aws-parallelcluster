@@ -492,6 +492,11 @@ class ParallelClusterConfig(object):
                             "https://s3.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json"
                             % (self.region, self.version)
                         )
+                    elif self.region.startswith("cn"):
+                        self.template_url = (
+                            "https://s3.%s.amazonaws.com.cn/%s-aws-parallelcluster/templates/"
+                            "aws-parallelcluster-%s.cfn.json" % (self.region, self.region, self.version)
+                        )
                     else:
                         self.template_url = (
                             "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/"
