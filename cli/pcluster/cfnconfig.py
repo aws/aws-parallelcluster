@@ -487,21 +487,12 @@ class ParallelClusterConfig(object):
                             self.region, self.aws_access_key_id, self.aws_secret_access_key, "URL", self.template_url
                         )
                 except configparser.NoOptionError:
-                    if self.region == "us-east-1":
-                        self.template_url = (
-                            "https://s3.amazonaws.com/%s-aws-parallelcluster/templates/aws-parallelcluster-%s.cfn.json"
-                            % (self.region, self.version)
-                        )
-                    elif self.region.startswith("cn"):
-                        self.template_url = (
-                            "https://s3.%s.amazonaws.com.cn/%s-aws-parallelcluster/templates/"
-                            "aws-parallelcluster-%s.cfn.json" % (self.region, self.region, self.version)
-                        )
-                    else:
-                        self.template_url = (
-                            "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/templates/"
-                            "aws-parallelcluster-%s.cfn.json" % (self.region, self.region, self.version)
-                        )
+                    s3_suffix = ".cn" if self.region.startswith("cn") else ""
+                    self.template_url = (
+                        "https://s3.%s.amazonaws.com%s/%s-aws-parallelcluster/templates/"
+                        "aws-parallelcluster-%s.cfn.json" % (self.region, s3_suffix, self.region, self.version)
+                    )
+
         except AttributeError:
             pass
 

@@ -73,6 +73,10 @@
     "FileSystemTags": {
       "Description": "efs=true/false, multiebs=[1-5]",
       "Type": "String"
+    },
+    "S3Url": {
+      "Description": "amazonaws.com or amazonaws.com.cn",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -106,7 +110,9 @@
               "Sid": "",
               "Effect": "Allow",
               "Principal": {
-                "Service": "ec2.amazonaws.com"
+                "Service": {
+                  "Fn::Sub": "ec2.${S3Url}"
+                }
               },
               "Action": "sts:AssumeRole"
             }
@@ -126,7 +132,9 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": "ecs-tasks.amazonaws.com"
+                "Service": {
+                  "Fn::Sub": "ecs-tasks.${S3Url}"
+                }
               },
               "Action": "sts:AssumeRole"
             }
@@ -189,7 +197,9 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": "batch.amazonaws.com"
+                "Service": {
+                  "Fn::Sub": "batch.${S3Url}"
+                }
               },
               "Action": "sts:AssumeRole"
             }
@@ -346,7 +356,9 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": "spotfleet.amazonaws.com"
+                "Service": {
+                  "Fn::Sub": "spotfleet.${S3Url}"
+                }
               },
               "Action": "sts:AssumeRole"
             }
@@ -458,7 +470,7 @@
             ]
           },
           "Image": {
-            "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}"
+            "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${S3Url}/${DockerImagesRepo}:${OS}"
           },
           "Vcpus": 1,
           "Memory": 512,
@@ -516,7 +528,7 @@
               "TargetNodes": "0:",
               "Container": {
                 "Image": {
-                  "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}"
+                  "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.${S3Url}/${DockerImagesRepo}:${OS}"
                 },
                 "JobRoleArn": {
                   "Fn::GetAtt": [
@@ -707,7 +719,9 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "codebuild.amazonaws.com"
+                  {
+                    "Fn::Sub": "codebuild.${S3Url}"
+                  }
                 ]
               }
             }
@@ -768,7 +782,9 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  {
+                    "Fn::Sub": "lambda.${S3Url}"
+                  }
                 ]
               }
             }
@@ -860,7 +876,9 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  {
+                    "Fn::Sub": "lambda.${S3Url}"
+                  }
                 ]
               }
             }
@@ -936,7 +954,9 @@
             "Arn"
           ]
         },
-        "Principal": "events.amazonaws.com",
+        "Principal": {
+          "Fn::Sub": "events.${S3Url}"
+        },
         "SourceArn": {
           "Fn::GetAtt": [
             "CodeBuildNotificationRule",
@@ -1029,7 +1049,9 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  {
+                    "Fn::Sub": "lambda.${S3Url}"
+                  }
                 ]
               }
             }

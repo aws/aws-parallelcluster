@@ -1077,12 +1077,27 @@
         "aws-us-gov"
       ]
     },
+    "ChinaRegion": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::Partition"
+        },
+        "aws-cn"
+      ]
+    },
     "CreateLaunchTemplate": {
       "Fn::And": [
         {
           "Fn::Not": [
             {
-              "Condition": "GovCloudRegion"
+              "Fn::Or": [
+                {
+                  "Condition": "ChinaRegion"
+                },
+                {
+                  "Condition": "GovCloudRegion"
+                }
+              ]
             }
           ]
         },
@@ -1094,7 +1109,14 @@
     "CreateLaunchConfig": {
       "Fn::And": [
         {
-          "Condition": "GovCloudRegion"
+          "Fn::Or": [
+            {
+              "Condition": "ChinaRegion"
+            },
+            {
+              "Condition": "GovCloudRegion"
+            }
+          ]
         },
         {
           "Condition": "CreateComputeFleet"
@@ -1310,6 +1332,17 @@
         "RootDevice": "/dev/sda1"
       }
     },
+    "Partition2Url": {
+      "aws": {
+        "url": "amazonaws.com"
+      },
+      "aws-us-gov": {
+        "url": "amazonaws.com"
+      },
+      "aws-cn": {
+        "url": "amazonaws.com.cn"
+      }
+    },
     "PackagesVersions": {
       "default": {
         "parallelcluster": "2.1.0",
@@ -1346,15 +1379,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -1467,7 +1500,22 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "ec2.amazonaws.com"
+                  {
+                    "Fn::Sub": [
+                      "ec2.${s3_url}",
+                      {
+                        "s3_url": {
+                          "Fn::FindInMap": [
+                            "Partition2Url",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            "url"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 ]
               },
               "Action": [
@@ -2063,7 +2111,7 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl --retry 3 -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
@@ -2095,27 +2143,26 @@
                 "  proxy_args=\"\"\n",
                 "  touch /tmp/proxy.sh\n",
                 "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  if [ \"",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\" == \"us-east-1\" ]; then\n",
-                "    s3_prefix=s3\n",
-                "  else\n",
-                "    s3_prefix=s3-",
+                "  export _region=",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
-                "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                "s3_url=",
                 {
-                  "Ref": "AWS::Region"
+                  "Fn::FindInMap": [
+                    "Partition2Url",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    "url"
+                  ]
                 },
-                "-aws-parallelcluster/cookbooks/",
+                "\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  cookbook_url=${custom_cookbook}\n",
+                "else\n",
+                "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
@@ -2474,7 +2521,7 @@
         ],
         "LaunchConfigurationName": {
           "Fn::If": [
-            "GovCloudRegion",
+            "CreateLaunchConfig",
             {
               "Ref": "ComputeServerLaunchConfig"
             },
@@ -2879,7 +2926,7 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl --retry 3 -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
@@ -2911,27 +2958,26 @@
                 "  proxy_args=\"\"\n",
                 "  touch /tmp/proxy.sh\n",
                 "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  if [ \"",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\" == \"us-east-1\" ]; then\n",
-                "    s3_prefix=s3\n",
-                "  else\n",
-                "    s3_prefix=s3-",
+                "  _region=",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
-                "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                "s3_url=",
                 {
-                  "Ref": "AWS::Region"
+                  "Fn::FindInMap": [
+                    "Partition2Url",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    "url"
+                  ]
                 },
-                "-aws-parallelcluster/cookbooks/",
+                "\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  cookbook_url=${custom_cookbook}\n",
+                "else\n",
+                "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
@@ -3536,7 +3582,7 @@
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
                   "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                   "  fi\n",
-                  "  which cfn-init 2>/dev/null || ( curl --retry 3 -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                   "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
@@ -3568,27 +3614,26 @@
                   "  proxy_args=\"\"\n",
                   "  touch /tmp/proxy.sh\n",
                   "fi\n",
-                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                  "  cookbook_url=${custom_cookbook}\n",
-                  "else\n",
-                  "  if [ \"",
-                  {
-                    "Ref": "AWS::Region"
-                  },
-                  "\" == \"us-east-1\" ]; then\n",
-                  "    s3_prefix=s3\n",
-                  "  else\n",
-                  "    s3_prefix=s3-",
+                  "  export _region=",
                   {
                     "Ref": "AWS::Region"
                   },
                   "\n",
-                  "  fi\n",
-                  "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                  "s3_url=",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "Partition2Url",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      "url"
+                    ]
                   },
-                  "-aws-parallelcluster/cookbooks/",
+                  "\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  cookbook_url=${custom_cookbook}\n",
+                  "else\n",
+                  "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                   {
                     "Fn::FindInMap": [
                       "PackagesVersions",
@@ -4108,6 +4153,15 @@
               }
             ]
           },
+          "S3Url": {
+            "Fn::FindInMap": [
+              "Partition2Url",
+              {
+                "Ref": "AWS::Partition"
+              },
+              "url"
+            ]
+          },
           "FileSystemTags": {
             "Fn::Sub": [
               "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
@@ -4278,15 +4332,15 @@
             },
             {
               "Fn::Sub": [
-                "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
+                "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
                 {
-                  "s3_domain": {
-                    "Fn::If": [
-                      "GovCloudRegion",
+                  "s3_url": {
+                    "Fn::FindInMap": [
+                      "Partition2Url",
                       {
-                        "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                        "Ref": "AWS::Partition"
                       },
-                      "s3.amazonaws.com"
+                      "url"
                     ]
                   },
                   "version": {
@@ -4338,7 +4392,22 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  {
+                    "Fn::Sub": [
+                      "lambda.${s3_url}",
+                      {
+                        "s3_url": {
+                          "Fn::FindInMap": [
+                            "Partition2Url",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            "url"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 ]
               }
             }
@@ -4448,15 +4517,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -4506,15 +4575,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
