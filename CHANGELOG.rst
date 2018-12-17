@@ -7,7 +7,6 @@ CHANGELOG
 * RAID support
 * EFS support
 * AWS Batch Multinode Parallel Support
-* China regions
 
 2.0.2
 =====
