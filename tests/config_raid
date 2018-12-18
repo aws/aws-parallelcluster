@@ -12,8 +12,8 @@ key_name = id_rsa
 vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/aws-parallelcluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-2.0.2.tgz
+template_url = 
+custom_chef_cookbook = 
 
 [cluster raid2Vol]
 base_os = ubuntu1604
@@ -22,8 +22,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rs2
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/aws-parallelcluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-2.0.2.tgz
+template_url = 
+custom_chef_cookbook =
 
 [cluster raid5Vol]
 base_os = ubuntu1604
@@ -32,8 +32,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rs5
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-2.0.0.tgz
+template_url =
+custom_chef_cookbook =
 
 [cluster raid1Vol]
 base_os = ubuntu1604
@@ -42,8 +42,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rs1
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url =
+custom_chef_cookbook =
 
 [cluster raid6Vol]
 base_os = ubuntu1604
@@ -52,8 +52,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rs6
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url =
+custom_chef_cookbook =
 
 [cluster raidIOPS]
 base_os = ubuntu1604
@@ -62,8 +62,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rsIOPS
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url =
+custom_chef_cookbook =
 
 [cluster raidType]
 base_os = ubuntu1604
@@ -72,8 +72,8 @@ vpc_settings = public
 maintain_initial_size = true
 initial_queue_size = 1
 raid_settings = rsT
-template_url = https://s3.us-east-2.amazonaws.com/shuningc-raid/cfncluster.cfn.json
-custom_chef_cookbook = https://s3.us-east-2.amazonaws.com/shuningc-raid/cookbooks/cfncluster-cookbook-1.6.0.tgz
+template_url =
+custom_chef_cookbook =
 
 [vpc public]
 vpc_id = vpc-f9cff091
