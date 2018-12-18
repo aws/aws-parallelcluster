@@ -209,18 +209,13 @@ html_theme_options = {
     "base_url": "https://aws-parallelcluster.readthedocs.io/latest/"
 }
 
-html_context = {
-    'css_files': [
-        '_static/theme_overrides.css'
-    ]
-}
 
-html_js_files = [
-    'custom.js'
-]
+def setup(app):
+    app.add_css_file('theme_overrides.css')
+    app.add_javascript('custom.js')
+
 
 # -- Options for LaTeX output ---------------------------------------------
-
 latex_elements = {
 # The paper size ('letterpaper' or 'a4paper').
 #'papersize': 'letterpaper',
