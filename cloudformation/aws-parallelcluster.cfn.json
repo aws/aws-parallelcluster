@@ -1591,6 +1591,7 @@
                 "dynamodb:PutItem",
                 "dynamodb:Query",
                 "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
                 "dynamodb:DeleteItem",
                 "dynamodb:DescribeTable"
               ],
@@ -3081,6 +3082,9 @@
                     "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
                     },
+                    "cfn_ddb_table": {
+                      "Ref": "DynamoDBTable"
+                    },
                     "cfn_encrypted_ephemeral": {
                       "Ref": "EncryptedEphemeral"
                     },
@@ -3739,6 +3743,9 @@
                     },
                     "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
+                    },
+                    "cfn_ddb_table": {
+                      "Ref": "DynamoDBTable"
                     },
                     "cfn_encrypted_ephemeral": {
                       "Ref": "EncryptedEphemeral"
