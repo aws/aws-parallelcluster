@@ -1,0 +1,40 @@
+{
+    "jobSummaryList": [
+        {
+            "status": "SUCCEEDED",
+            "container": {
+                "exitCode": 0
+            },
+            "statusReason": "Essential container in task exited",
+            "jobName": "simple-succeeded",
+            "stoppedAt": 1543396609104,
+            "startedAt": 1543396578006,
+            "jobId": "ab2cd019-1d84-43c7-a016-9772dd963f3b",
+            "createdAt": 1543396550997
+        },
+        {
+            "status": "SUCCEEDED",
+            "jobName": "array-succeeded",
+            "arrayProperties": {
+                "size": 2
+            },
+            "createdAt": 1543396551421,
+            "jobId": "3286a19c-68a9-47c9-8000-427d23ffc7ca"
+        },
+        {
+            "status": "SUCCEEDED",
+            "container": {
+                "exitCode": 0
+            },
+            "statusReason": "Essential container in task exited",
+            "jobName": "mnp-succeeded",
+            "stoppedAt": 1543396743115,
+            "startedAt": 1543396666294,
+            "jobId": "3ec00225-8b85-48ba-a321-f61d005bec46",
+            "createdAt": 1543396552122,
+            "nodeProperties": {
+                "numNodes": 2
+            }
+        }
+    ]
+}

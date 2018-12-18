@@ -1,0 +1,17 @@
+jobId                                     jobName              status     startedAt                  stoppedAt                  exitCode
+----------------------------------------  -------------------  ---------  -------------------------  -------------------------  ----------
+16bbae76-1891-4fc3-cccc-51822b35e63d      simple-submitted     SUBMITTED  -                          -                          -
+3c6ee190-9121-464e-a0ac-62e4084e6bf1 *2   mnp-submitted        SUBMITTED  -                          -                          -
+11aa9096-1e98-4a7c-a44b-5ac3442df177 [2]  array-pending        PENDING    -                          -                          -
+46a77495-55af-461c-ab5b-7f4e16de34d9      simple-runnable      RUNNABLE   -                          -                          -
+77712b12-71eb-4007-a865-85f05de13a71 *2   mnp-runnable         RUNNABLE   -                          -                          -
+aaaaabd2-4174-47be-8636-8f6e6da4b544      simple-starting      STARTING   -                          -                          -
+bbbbbcbc-2647-4d8b-a1ef-da65bffe0dd0 *2   mnp-script-starting  STARTING   -                          -                          -
+12300bd2-4174-47be-8636-8f6e6da4b544      simple-running       RUNNING    2018-11-29T15:00:13+00:00  -                          -
+qwerfcbc-2647-4d8b-a1ef-da65bffe0dd0 *2   mnp-running          RUNNING    2018-11-29T15:10:00+00:00  -                          -
+3286a19c-68a9-47c9-8000-427d23ffc7ca [2]  array-succeeded      SUCCEEDED  -                          -                          -
+ab2cd019-1d84-43c7-a016-9772dd963f3b      simple-succeeded     SUCCEEDED  2018-11-28T09:16:18+00:00  2018-11-28T09:16:49+00:00  0
+3ec00225-8b85-48ba-a321-f61d005bec46 *2   mnp-succeeded        SUCCEEDED  2018-11-28T09:17:46+00:00  2018-11-28T09:19:03+00:00  -
+44db07a9-f8a2-48d9-8d67-dcb04ceca54c [2]  array-failed         FAILED     -                          -                          -
+a9ef6970-2edc-4d0d-b561-cfc48369ed51      simple-failed        FAILED     2018-11-29T14:46:01+00:00  2018-11-29T14:46:03+00:00  2
+7a712b12-71eb-4007-a865-85f05de13a71 *2   mnp-failed           FAILED     2018-11-29T14:57:45+00:00  2018-11-29T14:59:00+00:00  -

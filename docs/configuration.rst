@@ -197,6 +197,8 @@ scheduler
 """""""""
 Scheduler to be used with the cluster.  Valid options are sge, torque, slurm, or awsbatch.
 
+If you're using awsbatch, please take a look at the :ref:`networking setup <awsbatch_networking>`.
+
 Defaults to sge. ::
 
     scheduler = sge
@@ -447,6 +449,22 @@ Settings section relation to scaling
 See :ref:`Scaling Section <scaling_section>`. ::
 
     scaling_settings = custom
+
+efs_settings
+""""""""""""
+Settings section relating to EFS filesystem
+
+See :ref:`EFS Section <efs_section>`. ::
+
+    efs_settings = customfs
+
+raid_settings
+"""""""""""""
+Settings section relating to RAID drive configuration.
+
+See :ref:`RAID Section <raid_section>`. ::
+
+  raid_settings = rs
 
 tags
 """"
@@ -700,3 +718,155 @@ minutes. ::
     url
     vcpus
     vpc
+
+.. _efs_section:
+
+EFS
+^^^
+EFS file system configuration settings for the EFS mounted on the master node and compute nodes via nfs4. ::
+
+
+    [efs customfs]
+    shared_dir = efs
+    encrypted = false
+    performance_mode = generalPurpose
+
+shared_dir
+""""""""""
+Shared directory that the file system will be mounted to on the master and compute nodes.
+
+This parameter is REQUIRED, the EFS section will only be used if this parameter is specified.
+The below example mounts to /efs. Do not use NONE or /NONE as the shared directory.::
+
+    shared_dir = efs
+
+encrypted
+"""""""""
+Whether or not the file system will be encrypted.
+
+Defaults to false. ::
+
+    encrypted = false
+
+performance_mode
+""""""""""""""""
+Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
+File systems using the maxIO performance mode can scale to higher levels of aggregate throughput
+and operations per second with a trade-off of slightly higher latencies for most file operations.
+This can't be changed after the file system has been created.
+
+Defaults generalPurpose. Valid Values are generalPurpose | maxIO (case sensitive). ::
+
+    performance_mode = generalPurpose
+
+throughput_mode
+"""""""""""""""
+The throughput mode for the file system to be created.
+There are two throughput modes to choose from for your file system: bursting and provisioned.
+
+Valid Values are provisioned | bursting ::
+
+    throughput_mode = provisioned
+
+provisioned_throughput
+""""""""""""""""""""""
+The throughput, measured in MiB/s, that you want to provision for a file system that you're creating.
+The limit on throughput is 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+
+Valid Range: Min of 0.0. To use this option, must specify throughput_mode to provisioned ::
+
+    provisioned_throughput = 1024
+
+efs_fs_id
+"""""""""
+File system ID for an existing file system. Specifying this option will void all other EFS options but shared_dir.
+Config sanity will only allow file systems that: have no mount target in the stack's availability zone
+OR have existing mount target in stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
+
+Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the following actions:
+efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
+Please add these permissions to your IAM role, or set `sanity_check = false` to avoid errors.
+
+CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will expose the file system
+to NFS mounting request from anywhere in the mount target's availability zone. We recommend not to have a mount target
+in stack's availability zone and let us create the mount target. If you must have a mount target in stack's
+availability zone, consider using a custom security group by providing a vpc_security_group_id option under the
+vpc section, adding that security group to the mount target, and turning off config sanity to create the cluster.
+
+Defaults to NONE. Needs to be an available EFS file system::
+
+    efs_fs_id = fs-12345
+
+
+.. _raid_section:
+
+RAID
+^^^^
+RAID drive configuration settings for creating a RAID array from a number of identical EBS volumes. The RAID drive
+is mounted on the master node, and exported to compute nodes via nfs. ::
+
+
+    [raid rs]
+    shared_dir = raid
+    raid_type = 1
+    num_of_raid_volumes = 2
+    encrypted = true
+
+shared_dir
+""""""""""
+Shared directory that the RAID drive will be mounted to on the master and compute nodes.
+
+This parameter is REQUIRED, the RAID drive will only be created if this parameter is specified.
+The below example mounts to /raid. Do not use NONE or /NONE as the shared directory.::
+
+    shared_dir = raid
+
+raid_type
+"""""""""
+RAID type for the RAID array. Currently only support RAID 0 or RAID 1. For more information on RAID types,
+see: `RAID info <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
+
+This parameter is REQUIRED, the RAID drive will only be created if this parameter is specified.
+The below example will create a RAID 0 array::
+
+    raid_type = 0
+
+num_of_raid_volumes
+"""""""""""""""""""
+The number of EBS volumes to assemble the RAID array from. Currently supports max of 5 volumes and minimum of 2.
+
+Defaults to 2. ::
+
+    num_of_raid_volumes = 2
+
+volume_type
+"""""""""""
+The the type of volume you wish to launch.
+See: `Volume type <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EBSVolumeTypes.html>`_ for detail
+
+Defaults to gp2. ::
+
+    volume_type = io1
+
+volume_size
+"""""""""""
+Size of volume to be created.
+
+Defaults to 20GB. ::
+
+    volume_size = 20
+
+volume_iops
+"""""""""""
+Number of IOPS for io1 type volumes. ::
+
+    volume_iops = 500
+
+encrypted
+"""""""""
+Whether or not the file system will be encrypted.
+
+Defaults to false. ::
+
+    encrypted = false
+

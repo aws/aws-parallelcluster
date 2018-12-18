@@ -1,0 +1,333 @@
+{
+  "Conditions": {
+    "CreateEFS": {
+      "Fn::And": [
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Fn::Select": [
+                    "0",
+                    {
+                      "Ref": "EFSOptions"
+                    }
+                  ]
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "CreateMT": {
+      "Fn::And": [
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Fn::Select": [
+                    "0",
+                    {
+                      "Ref": "EFSOptions"
+                    }
+                  ]
+                },
+                "NONE"
+              ]
+            }
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "7",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseEFSEncryption": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "5",
+            {
+              "Ref": "EFSOptions"
+            }
+          ]
+        },
+        "true"
+      ]
+    },
+    "UseEFSKMSKey": {
+      "Fn::And": [
+        {
+          "Condition": "UseEFSEncryption"
+        },
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Fn::Select": [
+                    "3",
+                    {
+                      "Ref": "EFSOptions"
+                    }
+                  ]
+                },
+                "NONE"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "UsePerformanceMode": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseProvisioned": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "6",
+            {
+              "Ref": "EFSOptions"
+            }
+          ]
+        },
+        "provisioned"
+      ]
+    },
+    "UseProvisionedThroughput": {
+      "Fn::And": [
+        {
+          "Condition": "UseProvisioned"
+        },
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Fn::Select": [
+                    "4",
+                    {
+                      "Ref": "EFSOptions"
+                    }
+                  ]
+                },
+                "NONE"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "UseThroughputMode": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "6",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    }
+  },
+  "Outputs": {
+    "FileSystemId": {
+      "Description": "ID of the FileSystem",
+      "Value": {
+        "Fn::If": [
+          "CreateEFS",
+          {
+            "Ref": "EFSFS"
+          },
+          {
+            "Fn::Select": [
+              "1",
+              {
+                "Ref": "EFSOptions"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "Parameters": {
+    "ComputeSecurityGroup": {
+      "Description": "SecurityGroup for Mount Target",
+      "Type": "String"
+    },
+    "EFSOptions": {
+      "Description": "Comma separated list of efs related options, 8 parameters in total",
+      "Type": "CommaDelimitedList"
+    },
+    "SubnetId": {
+      "Description": "SubnetId for Mount Target",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "EFSFS": {
+      "Condition": "CreateEFS",
+      "Properties": {
+        "Encrypted": {
+          "Fn::If": [
+            "UseEFSEncryption",
+            {
+              "Fn::Select": [
+                "5",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "KmsKeyId": {
+          "Fn::If": [
+            "UseEFSKMSKey",
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "PerformanceMode": {
+          "Fn::If": [
+            "UsePerformanceMode",
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "ProvisionedThroughputInMibps": {
+          "Fn::If": [
+            "UseProvisionedThroughput",
+            {
+              "Fn::Select": [
+                "4",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "ThroughputMode": {
+          "Fn::If": [
+            "UseThroughputMode",
+            {
+              "Fn::Select": [
+                "6",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        }
+      },
+      "Type": "AWS::EFS::FileSystem"
+    },
+    "EFSMT": {
+      "Condition": "CreateMT",
+      "Properties": {
+        "FileSystemId": {
+          "Fn::If": [
+            "CreateEFS",
+            {
+              "Ref": "EFSFS"
+            },
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            }
+          ]
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "ComputeSecurityGroup"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "SubnetId"
+        }
+      },
+      "Type": "AWS::EFS::MountTarget"
+    }
+  }
+}
