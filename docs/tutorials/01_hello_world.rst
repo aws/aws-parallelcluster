@@ -9,7 +9,7 @@ Running your first job on AWS ParallelCluster
 
 This tutorial will walk you through running your first "Hello World" job on aws-parallelcluster.
 
-If you haven't yet, you will need to following the :doc:`getting started <getting_started>` guide to install AWS
+If you haven't yet, you will need to follow the :doc:`getting started <../getting_started>` guide to install AWS
 ParallelCluster and configure your CLI.
 
 Verifying your installation
@@ -109,73 +109,6 @@ view the .o1 file, we can see any output from our job. ::
         Hello World from ip-192-168-1-125
 
 We can see that our job successfully ran on instance "ip-192-168-1-125".
-
-Running your first job using AWS Batch
-======================================
-Now we'll create a simple job which sleeps for a little while and then outputs it's own hostname, greeting the name
-passed as parameter.
-
-Create a file called "hellojob.sh" with the following contents. ::
-
-        #!/bin/bash
-        sleep 30
-        echo "Hello $1 from $(hostname)"
-
-Next, submit the job using :code:`awsbsub` and ensure it runs. ::
-
-        $ awsbsub -jn hello -cf hellojob.sh Luca
-        Job 6efe6c7c-4943-4c1a-baf5-edbfeccab5d2 (hello) has been submitted.
-
-Now, you can view your queue and check the status of the job. ::
-
-        $ awsbstat
-        jobId                                 jobName      status    startedAt            stoppedAt    exitCode
-        ------------------------------------  -----------  --------  -------------------  -----------  ----------
-        6efe6c7c-4943-4c1a-baf5-edbfeccab5d2  hello        RUNNING   2018-11-12 09:41:29  -            -
-
-You can even see the detailed information for the job. ::
-
-        $ awsbstat 6efe6c7c-4943-4c1a-baf5-edbfeccab5d2
-        jobId                    : 6efe6c7c-4943-4c1a-baf5-edbfeccab5d2
-        jobName                  : hello
-        createdAt                : 2018-11-12 09:41:21
-        startedAt                : 2018-11-12 09:41:29
-        stoppedAt                : -
-        status                   : RUNNING
-        statusReason             : -
-        jobDefinition            : parallelcluster-myBatch:1
-        jobQueue                 : parallelcluster-myBatch
-        command                  : /bin/bash -c 'aws s3 --region us-east-1 cp s3://parallelcluster-mybatch-lui1ftboklhpns95/batch/job-hellojob_sh-1542015680924.sh /tmp/batch/job-hellojob_sh-1542015680924.sh; bash /tmp/batch/job-hellojob_sh-1542015680924.sh Luca'
-        exitCode                 : -
-        reason                   : -
-        vcpus                    : 1
-        memory[MB]               : 128
-        nodes                    : 1
-        logStream                : parallelcluster-myBatch/default/c75dac4a-5aca-4238-a4dd-078037453554
-        log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-myBatch/default/c75dac4a-5aca-4238-a4dd-078037453554
-        -------------------------
-
-The job is currently in a RUNNING state. Wait 30 seconds for the job to finish and run :code:`awsbstat` again. ::
-
-        $ awsbstat
-        jobId                                 jobName      status    startedAt            stoppedAt    exitCode
-        ------------------------------------  -----------  --------  -------------------  -----------  ----------
-
-You can see that the job is in the SUCCEEDED status. ::
-
-        $ awsbstat -s SUCCEEDED
-        jobId                                 jobName      status     startedAt            stoppedAt              exitCode
-        ------------------------------------  -----------  ---------  -------------------  -------------------  ----------
-        6efe6c7c-4943-4c1a-baf5-edbfeccab5d2  hello        SUCCEEDED  2018-11-12 09:41:29  2018-11-12 09:42:00           0
-
-Now that there are no jobs in the queue, we can check for output through the :code:`awsbout` command. ::
-
-        $ awsbout 6efe6c7c-4943-4c1a-baf5-edbfeccab5d2
-        2018-11-12 09:41:29: Starting Job 6efe6c7c-4943-4c1a-baf5-edbfeccab5d2
-        download: s3://parallelcluster-mybatch-lui1ftboklhpns95/batch/job-hellojob_sh-1542015680924.sh to tmp/batch/job-hellojob_sh-1542015680924.sh
-        2018-11-12 09:42:00: Hello Luca from ip-172-31-4-234
-
-We can see that our job successfully ran on instance "ip-172-31-4-234".
 
 .. spelling::
    aws

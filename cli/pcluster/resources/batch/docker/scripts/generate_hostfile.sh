@@ -18,12 +18,12 @@
 
 usage() {
     cat <<ENDUSAGE
-    This script generates a hostfile which contains the ip addresses of the compute nodes
+This script generates a hostfile which contains the ip addresses of the compute nodes
 
-    USAGE:
-    generate_hostfile <shared_dir> <destination_dir>
-    shared_dir: Shared directory on which compute and head instances have agreed upon for reading and writing the ip addresses. Directory needs to exist. A temporary directory is created inside this directory
-    destination_dir: Directory where hostfile should reside. Directory needs to exist
+USAGE:
+generate_hostfile <shared_dir> <destination_dir>
+shared_dir: Shared directory on which compute and head instances have agreed upon for reading and writing the ip addresses. Directory needs to exist. A temporary directory is created inside this directory
+destination_dir: Directory where hostfile should reside. Directory needs to exist
 ENDUSAGE
 
 }
@@ -81,7 +81,7 @@ check_batch_env_variables_exist() {
     fi
 }
 
-# On the head node populate the hostfile with the ip addresses of the compute nodes
+# On the head node populate the hostfile with the ip addresses and available cores of the compute nodes
 read_compute_address() {
     if [[ ! -f "${destination_dir}/hostfile" ]]; then
         touch "${destination_dir}/hostfile"
@@ -91,9 +91,9 @@ read_compute_address() {
 
     while [[ "${AWS_BATCH_JOB_NUM_NODES}" -gt ${compute_nodes_read} ]]; do
         for fullfile in "${shared_dir_temp}"/* ; do
-            file=$(basename ${fullfile})
+            file=$(basename "${fullfile}")
             if [[ ${file} = "*" ]]; then
-                echo "No files found in ${shared_dir_temp} yet"
+                # No files found in ${shared_dir_temp} yet
                 break
             fi
 
@@ -101,57 +101,60 @@ read_compute_address() {
                 error_exit "Matched filename not in expected format on head node: ${file}"
             fi
 
-            echo "${file}" >> "${destination_dir}/hostfile"
-            rm -rf "${file}"
-            let "compute_nodes_read += 1"
+            cat "${fullfile}" >> "${destination_dir}/hostfile"
+            rm -rf "${fullfile}"
+            (( compute_nodes_read += 1 ))
         done
-        echo "Expecting: ${AWS_BATCH_JOB_NUM_NODES}. Read: ${compute_nodes_read}"
+        echo "Detected ${compute_nodes_read}/${AWS_BATCH_JOB_NUM_NODES} compute nodes. Waiting for all compute nodes to start."
         sleep 15
     done
 
     if [[ "$(ls -A "${shared_dir_temp}")" ]]; then
         error_exit "head node failed to read some of the ip addresses while generating the hostfile. Shared temp directory is not empty"
-    elif [[ $(cat "${destination_dir}/hostfile" | wc -l) -ne ${AWS_BATCH_JOB_NUM_NODES} ]]; then
+    elif [[ $(wc -l < "${destination_dir}/hostfile") -ne ${AWS_BATCH_JOB_NUM_NODES} ]]; then
         error_exit "The number of entries in hostfile is not equal to the AWS_BATCH_JOB_NUM_NODES"
     else
         rmdir "${shared_dir_temp}"
     fi
 }
 
-# On the compute node touch a file with the ip address of the compute node
-write_compute_address() {
-  filename=$(curl "http://169.254.169.254/latest/meta-data/local-ipv4")
-  if ! [[ ${filename} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
-    error_exit "Matched IP Address not in expected format on compute node: ${filename}"
+# Write a file in the shared dir with container ip address and available cores.
+write_node_info() {
+  ip_address=$(/sbin/ip -o -4 addr list eth0 | awk '{print $4}' | cut -d/ -f1)
+  if ! [[ ${ip_address} =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+    error_exit "Matched IP Address not in expected format on compute node: ${ip_address}"
   fi
-
-  touch "${shared_dir_temp}/${filename}"
+  available_cores=$(nproc --all)
+  echo "${ip_address} slots=${available_cores}" > "${shared_dir_temp}/${ip_address}"
 }
 
 
 main() {
 
-    if [ $# -eq 0 ]; then
-        error_exit_usage "No arguments provided"
+    if [ $# -ne 2 ]; then
+        error_exit_usage "Wrong number of arguments provided"
     fi
 
     # This is the shared directory on which compute and head instances have agreed upon for reading and writing the ip addresses
-    shared_dir=${1}
+    shared_dir="${1}"
+    if [[ "${shared_dir:0:1}" != '/' ]]; then
+      shared_dir="/${shared_dir}"
+    fi
     destination_dir=${2}
 
     check_arguments_valid
     check_batch_env_variables_exist
 
-    shared_dir_temp="${shared_dir}/${AWS_BATCH_JOB_ID}-${AWS_BATCH_JOB_ATTEMPT}"
+    # AWS_BATCH_JOB_ID is in the format job_id#node_id. Stripping #node_id.
+    shared_dir_temp="${shared_dir}/${AWS_BATCH_JOB_ID%#*}-${AWS_BATCH_JOB_ATTEMPT}"
 
     mkdir -p "${shared_dir_temp}"
 
+    write_node_info
     # If it is the head inspect the shared directory for the hostfile list
     if [[ "${AWS_BATCH_JOB_NODE_INDEX}" -eq  "${AWS_BATCH_JOB_MAIN_NODE_INDEX}" ]]; then
         read_compute_address
-    else
-        write_compute_address
     fi
 }
 
-main $@
+main "$@"

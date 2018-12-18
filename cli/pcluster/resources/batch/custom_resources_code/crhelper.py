@@ -12,6 +12,7 @@
 ###################################################################################################
 
 # This file is imported from https://github.com/awslabs/aws-cloudformation-templates
+# flake8: noqa
 
 from __future__ import print_function
 
@@ -23,68 +24,62 @@ from botocore.vendored import requests
 
 
 def log_config(event, loglevel=None, botolevel=None):
-    if 'ResourceProperties' in event.keys():
-        if 'loglevel' in event['ResourceProperties'] and not loglevel:
-            loglevel = event['ResourceProperties']['loglevel']
-        if 'botolevel' in event['ResourceProperties'] and not botolevel:
-            botolevel = event['ResourceProperties']['botolevel']
+    if "ResourceProperties" in event.keys():
+        if "loglevel" in event["ResourceProperties"] and not loglevel:
+            loglevel = event["ResourceProperties"]["loglevel"]
+        if "botolevel" in event["ResourceProperties"] and not botolevel:
+            botolevel = event["ResourceProperties"]["botolevel"]
     if not loglevel:
-        loglevel = 'warning'
+        loglevel = "warning"
     if not botolevel:
-        botolevel = 'error'
+        botolevel = "error"
     # Set log verbosity levels
     loglevel = getattr(logging, loglevel.upper(), 20)
     botolevel = getattr(logging, botolevel.upper(), 40)
     mainlogger = logging.getLogger()
     mainlogger.setLevel(loglevel)
-    logging.getLogger('boto3').setLevel(botolevel)
-    logging.getLogger('botocore').setLevel(botolevel)
+    logging.getLogger("boto3").setLevel(botolevel)
+    logging.getLogger("botocore").setLevel(botolevel)
     # Set log message format
-    logfmt = '[%(requestid)s][%(asctime)s][%(levelname)s] %(message)s \n'
+    logfmt = "[%(requestid)s][%(asctime)s][%(levelname)s] %(message)s \n"
     mainlogger.handlers[0].setFormatter(logging.Formatter(logfmt))
-    return logging.LoggerAdapter(mainlogger, {'requestid': event['RequestId']})
+    return logging.LoggerAdapter(mainlogger, {"requestid": event["RequestId"]})
 
 
-def send(event, context, responseStatus, responseData, physicalResourceId,
-         logger, reason=None):
+def send(event, context, responseStatus, responseData, physicalResourceId, logger, reason=None):
 
-    responseUrl = event['ResponseURL']
+    responseUrl = event["ResponseURL"]
     logger.debug("CFN response URL: " + responseUrl)
 
     responseBody = {}
-    responseBody['Status'] = responseStatus
-    msg = 'See details in CloudWatch Log Stream: ' + context.log_stream_name
+    responseBody["Status"] = responseStatus
+    msg = "See details in CloudWatch Log Stream: " + context.log_stream_name
     if not reason:
-        responseBody['Reason'] = msg
+        responseBody["Reason"] = msg
     else:
-        responseBody['Reason'] = str(reason)[0:255] + '... ' + msg
+        responseBody["Reason"] = str(reason)[0:255] + "... " + msg
 
     if physicalResourceId:
-        responseBody['PhysicalResourceId'] = physicalResourceId
-    elif 'PhysicalResourceId' in event:
-        responseBody['PhysicalResourceId'] = event['PhysicalResourceId']
+        responseBody["PhysicalResourceId"] = physicalResourceId
+    elif "PhysicalResourceId" in event:
+        responseBody["PhysicalResourceId"] = event["PhysicalResourceId"]
     else:
-        responseBody['PhysicalResourceId'] = context.log_stream_name
+        responseBody["PhysicalResourceId"] = context.log_stream_name
 
-    responseBody['StackId'] = event['StackId']
-    responseBody['RequestId'] = event['RequestId']
-    responseBody['LogicalResourceId'] = event['LogicalResourceId']
+    responseBody["StackId"] = event["StackId"]
+    responseBody["RequestId"] = event["RequestId"]
+    responseBody["LogicalResourceId"] = event["LogicalResourceId"]
     if responseData and responseData != {} and responseData != [] and isinstance(responseData, dict):
-        responseBody['Data'] = responseData
+        responseBody["Data"] = responseData
 
     json_responseBody = json.dumps(responseBody)
 
     logger.debug("Response body:\n" + json_responseBody)
 
-    headers = {
-        'content-type': '',
-        'content-length': str(len(json_responseBody))
-    }
+    headers = {"content-type": "", "content-length": str(len(json_responseBody))}
 
     try:
-        response = requests.put(responseUrl,
-                                data=json_responseBody,
-                                headers=headers)
+        response = requests.put(responseUrl, data=json_responseBody, headers=headers)
         logger.info("CloudFormation returned status code: " + response.reason)
     except Exception as e:
         logger.error("send(..) failed executing requests.put(..): " + str(e))
@@ -94,15 +89,13 @@ def send(event, context, responseStatus, responseData, physicalResourceId,
 # Function that executes just before lambda excecution times out
 def timeout(event, context, logger):
     logger.error("Execution is about to time out, sending failure message")
-    send(event, context, "FAILED", None, None, reason="Execution timed out",
-         logger=logger)
+    send(event, context, "FAILED", None, None, reason="Execution timed out", logger=logger)
 
 
 # Handler function
 def cfn_handler(event, context, create, update, delete, logger, init_failed):
 
-    logger.info("Lambda RequestId: %s CloudFormation RequestId: %s" %
-                (context.aws_request_id, event['RequestId']))
+    logger.info("Lambda RequestId: %s CloudFormation RequestId: %s" % (context.aws_request_id, event["RequestId"]))
 
     # Define an object to place any response information you would like to send
     # back to CloudFormation (these keys can then be used by Fn::GetAttr)
@@ -116,35 +109,33 @@ def cfn_handler(event, context, create, update, delete, logger, init_failed):
     logger.debug("EVENT: " + str(event))
     # handle init failures
     if init_failed:
-        send(event, context, "FAILED", responseData, physicalResourceId,
-             logger=logger, reason=init_failed)
+        send(event, context, "FAILED", responseData, physicalResourceId, logger=logger, reason=init_failed)
         raise Exception
 
     # Setup timer to catch timeouts
-    t = threading.Timer((context.get_remaining_time_in_millis()/1000.00)-0.5,
-                        timeout, args=[event, context, logger])
+    t = threading.Timer(
+        (context.get_remaining_time_in_millis() / 1000.00) - 0.5, timeout, args=[event, context, logger]
+    )
     t.start()
 
     try:
         # Execute custom resource handlers
-        logger.info("Received a %s Request" % event['RequestType'])
-        if event['RequestType'] == 'Create':
+        logger.info("Received a %s Request" % event["RequestType"])
+        if event["RequestType"] == "Create":
             physicalResourceId, responseData = create(event, context)
-        elif event['RequestType'] == 'Update':
+        elif event["RequestType"] == "Update":
             physicalResourceId, responseData = update(event, context)
-        elif event['RequestType'] == 'Delete':
+        elif event["RequestType"] == "Delete":
             delete(event, context)
 
         # Send response back to CloudFormation
         logger.info("Completed successfully, sending response to cfn")
-        send(event, context, "SUCCESS", responseData, physicalResourceId,
-             logger=logger)
+        send(event, context, "SUCCESS", responseData, physicalResourceId, logger=logger)
 
     # Catch any exceptions, log the stacktrace, send a failure back to
     # CloudFormation and then raise an exception
     except Exception as e:
         logger.error(e, exc_info=True)
-        send(event, context, "FAILED", responseData, physicalResourceId,
-             reason=e, logger=logger)
+        send(event, context, "FAILED", responseData, physicalResourceId, reason=e, logger=logger)
     finally:
         t.cancel()

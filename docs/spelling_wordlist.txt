@@ -44,3 +44,17 @@ vCPUs
 workflow
 workflows
 xlarge
+efs
+nfs
+kms
+generalPurpose
+maxIO
+MiB
+fs
+EFS
+customfs
+DescribeMountTargets
+DescribeMountTargetSecurityGroups
+DescribeSubnets
+DescribeSecurityGroups
+num

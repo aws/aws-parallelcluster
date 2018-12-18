@@ -68,13 +68,22 @@ The following are some steps to create a simple post install script that install
 
 ``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
 
-3. Update AWS ParallelCluster config to include the new post install action
+3. Update AWS ParallelCluster config to include the new post install action.
 
 ::
 
     [cluster default]
     ...
     post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
+
+If the bucket does not have public-read permission use ``s3`` as URL scheme.
+
+::
+
+    [cluster default]
+    ...
+    post_install = s3://<bucket-name>/myscript.sh
+
 
 4. Launch a cluster
 

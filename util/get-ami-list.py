@@ -18,14 +18,15 @@
 #
 # usage: ./get-ami-list.py <tag1> <tag2> <tag3>
 
-import re
 import argparse
-import tempfile
 import os
+import re
 import shutil
+import tempfile
+
 from git import Repo
 
-repo_url = 'https://github.com/aws/aws-parallelcluster.git'
+repo_url = "https://github.com/aws/aws-parallelcluster.git"
 
 
 def build_release_ami_list(scratch_dir, tag):
@@ -40,14 +41,14 @@ def build_release_ami_list(scratch_dir, tag):
     active_distro = None
     amis = {}
 
-    file = open(os.path.join(repo_dir, 'amis.txt'), 'r')
+    file = open(os.path.join(repo_dir, "amis.txt"), "r")
     for line in file:
-        m = re.match('^#\s*(.*)', line)
+        m = re.match("^#\s*(.*)", line)
         if not m == None:
             active_distro = m.groups()[0]
             amis[active_distro] = []
         else:
-            m = re.match('.*:?\s*(ami-[a-zA-Z0-9]*)', line)
+            m = re.match(".*:?\s*(ami-[a-zA-Z0-9]*)", line)
             if active_distro != None:
                 amis[active_distro].append(m.groups()[0])
             else:
@@ -60,10 +61,9 @@ def build_release_ami_list(scratch_dir, tag):
     return amis
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate list of AMIs for audit')
-    parser.add_argument('tags', type=str, nargs='*',
-                        help='List of tags for which to pull amis')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Generate list of AMIs for audit")
+    parser.add_argument("tags", type=str, nargs="*", help="List of tags for which to pull amis")
     args = parser.parse_args()
 
     scratch_dir = tempfile.mkdtemp()
@@ -72,6 +72,6 @@ if __name__ == '__main__':
         for tag in sorted(args.tags):
             amis = build_release_ami_list(scratch_dir=scratch_dir, tag=tag)
             for distro in sorted(amis):
-                print('%s %s: %s' % (tag, distro, " ".join(amis[distro])))
+                print("%s %s: %s" % (tag, distro, " ".join(amis[distro])))
     finally:
         shutil.rmtree(scratch_dir)

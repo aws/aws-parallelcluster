@@ -1,0 +1,57 @@
+jobId                    : 6abf3ecd-07a8-4faa-8a65-79e7404eb50f *2
+jobName                  : mnp
+createdAt                : 2018-12-03T11:26:58+00:00
+startedAt                : 2018-12-03T11:28:32+00:00
+stoppedAt                : 2018-12-03T11:29:46+00:00
+status                   : SUCCEEDED
+statusReason             : Essential container in task exited
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : echo TEST
+exitCode                 : -
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 2
+logStream                : -
+log                      : -
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------
+jobId                    : 6abf3ecd-07a8-4faa-8a65-79e7404eb50f#0
+jobName                  : mnp
+createdAt                : 2018-12-03T11:28:02+00:00
+startedAt                : 2018-12-03T11:28:32+00:00
+stoppedAt                : 2018-12-03T11:29:46+00:00
+status                   : SUCCEEDED
+statusReason             : Essential container in task exited
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : echo TEST
+exitCode                 : 0
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 1
+logStream                : parallelcluster-mnp-final-mnp/default/3d430bca-d7b4-4436-9efe-ae5f76a0b81b
+log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final-mnp/default/3d430bca-d7b4-4436-9efe-ae5f76a0b81b
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------
+jobId                    : 6abf3ecd-07a8-4faa-8a65-79e7404eb50f#1
+jobName                  : mnp
+createdAt                : 2018-12-03T11:28:34+00:00
+startedAt                : 2018-12-03T11:29:14+00:00
+stoppedAt                : 2018-12-03T11:29:27+00:00
+status                   : SUCCEEDED
+statusReason             : Essential container in task exited
+jobDefinition            : parallelcluster-mnp-final-mnp:2
+jobQueue                 : parallelcluster-mnp-final
+command                  : echo TEST
+exitCode                 : 0
+reason                   : -
+vcpus                    : 1
+memory[MB]               : 128
+nodes                    : 1
+logStream                : parallelcluster-mnp-final-mnp/default/3557426b-21ff-41d0-a348-51a8c68824ae
+log                      : https://console.aws.amazon.com/cloudwatch/home?region=us-east-1#logEventViewer:group=/aws/batch/job;stream=parallelcluster-mnp-final-mnp/default/3557426b-21ff-41d0-a348-51a8c68824ae
+s3FolderUrl              : s3://parallelcluster-xxx/batch/job-xxx
+-------------------------

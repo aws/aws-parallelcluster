@@ -1,31 +1,31 @@
 {
   "Parameters": {
     "MinvCpus": {
-      "Description" : "Min vCPU's for ComputeEnvironment",
+      "Description": "Min vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
     "DesiredvCpus": {
-      "Description" : "Desired vCPU's for ComputeEnvironment",
+      "Description": "Desired vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
     "MaxvCpus": {
-      "Description" : "Max vCPU's for ComputeEnvironment",
+      "Description": "Max vCPU's for ComputeEnvironment",
       "Type": "Number"
     },
     "InstanceTypes": {
-      "Description" : "Comma delimited string of Instance Types",
+      "Description": "Comma delimited string of Instance Types",
       "Type": "CommaDelimitedList"
     },
     "Subnet": {
-      "Description" : "Subnet for ComputeEnvironment",
+      "Description": "Subnet for ComputeEnvironment",
       "Type": "String"
     },
     "SecurityGroups": {
-      "Description" : "List Security Groups for ComputeEnvironment",
-      "Type": "CommaDelimitedList"
+      "Description": "List Security Groups for ComputeEnvironment",
+      "Type": "List<AWS::EC2::SecurityGroup::Id>"
     },
     "OS": {
-      "Description" : "Operating System for container",
+      "Description": "Operating System for container",
       "Type": "String"
     },
     "ClusterName": {
@@ -52,159 +52,520 @@
     "SharedDir": {
       "Description": "The path/mountpoint for the shared drive",
       "Type": "String"
+    },
+    "EFSSharedDir": {
+      "Description": "The path/mountpoint for the EFS file system",
+      "Type": "String"
+    },
+    "EFSFSId": {
+      "Description": "ID of EFS file system",
+      "Type": "String",
+      "Default": "NONE"
+    },
+    "RAIDSharedDir": {
+      "Description": "The path/mountpoint for the shared RAID drive",
+      "Type": "String"
+    },
+    "AttributeTags": {
+      "Description": "base_os, scheduler, version",
+      "Type": "String"
+    },
+    "FileSystemTags": {
+      "Description": "efs=true/false, multiebs=[1-5]",
+      "Type": "String"
     }
   },
   "Conditions": {
-    "UseSpot" : {
-      "Fn::Equals" : [ { "Ref" : "ClusterType" }, "spot" ]
+    "UseSpot": {
+      "Fn::Equals": [
+        {
+          "Ref": "ClusterType"
+        },
+        "spot"
+      ]
     }
   },
   "Resources": {
-    "IamInstanceProfile" : {
-      "Type" : "AWS::IAM::InstanceProfile",
-      "Properties" : {
-        "Roles" : [{ "Ref" : "EcsInstanceRole" }]
+    "IamInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [
+          {
+            "Ref": "EcsInstanceRole"
+          }
+        ]
       }
     },
-    "EcsInstanceRole" : {
-      "Type" : "AWS::IAM::Role",
-      "Properties" : {
-        "AssumeRolePolicyDocument" : {
-          "Version" : "2008-10-17",
-          "Statement" : [
+    "EcsInstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2008-10-17",
+          "Statement": [
             {
-              "Sid" : "",
-              "Effect" : "Allow",
-              "Principal" : {
-                "Service" : "ec2.amazonaws.com"
+              "Sid": "",
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ec2.amazonaws.com"
               },
-              "Action" : "sts:AssumeRole"
+              "Action": "sts:AssumeRole"
             }
           ]
         },
-        "ManagedPolicyArns" : [
+        "ManagedPolicyArns": [
           "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
         ]
       }
     },
-    "JobRole" : {
-      "Type" : "AWS::IAM::Role",
-      "Properties" : {
-        "AssumeRolePolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "JobRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Effect" : "Allow",
-              "Principal" : {
-                "Service" : "ecs-tasks.amazonaws.com"
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "ecs-tasks.amazonaws.com"
               },
-              "Action" : "sts:AssumeRole"
+              "Action": "sts:AssumeRole"
             }
           ]
         },
-        "ManagedPolicyArns" : [
-          "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess",
-          "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+        "ManagedPolicyArns": [
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonS3ReadOnlyAccess"
+          },
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+          }
+        ],
+        "Policies": [
+          {
+            "PolicyName": "s3PutObject",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "s3:PutObject",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          {
+            "PolicyName": "cfnDescribeStacks",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Action": [
+                    "cloudformation:DescribeStacks"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ClusterName}/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         ]
       }
     },
-    "BatchServiceRole" : {
-      "Type" : "AWS::IAM::Role",
-      "Properties" : {
-        "AssumeRolePolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "BatchServiceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Effect" : "Allow",
-              "Principal" : {
-                "Service" : "batch.amazonaws.com"
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "batch.amazonaws.com"
               },
-              "Action" : "sts:AssumeRole"
+              "Action": "sts:AssumeRole"
             }
           ]
         },
-        "ManagedPolicyArns" : [
+        "ManagedPolicyArns": [
           "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
         ]
       }
     },
-    "SpotIamFleetRole": {
-      "Type" : "AWS::IAM::Role",
-      "Properties" : {
-        "AssumeRolePolicyDocument" : {
-          "Version" : "2012-10-17",
-          "Statement" : [
+    "BatchUserRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "MaxSessionDuration": 36000,
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
             {
-              "Effect" : "Allow",
-              "Principal" : {
-                "Service" : "spotfleet.amazonaws.com"
+              "Effect": "Allow",
+              "Principal": {
+                "AWS": {
+                  "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+                }
               },
-              "Action" : "sts:AssumeRole"
+              "Action": "sts:AssumeRole"
             }
           ]
         },
-        "ManagedPolicyArns" : [
+        "Policies": [
+          {
+            "PolicyName": "BatchUserPolicy",
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:SubmitJob",
+                    "batch:RegisterJobDefinition",
+                    "cloudformation:DescribeStacks",
+                    "ecs:ListContainerInstances",
+                    "ecs:DescribeContainerInstances",
+                    "logs:GetLogEvents",
+                    "logs:FilterLogEvents",
+                    "s3:PutObject",
+                    "s3:Get*",
+                    "s3:DeleteObject",
+                    "iam:PassRole"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "${JobDefinitionSerial}"
+                    },
+                    {
+                      "Fn::Sub": [
+                        "${MNPJobDefinitionArn}*",
+                        {
+                          "MNPJobDefinitionArn": {
+                            "Fn::Select": [
+                              "0",
+                              {
+                                "Fn::Split": [
+                                  ":1END_OF_THE_STRING",
+                                  {
+                                    "Fn::Sub": "${JobDefinitionMNP}END_OF_THE_STRING"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "${JobQueue}"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${ClusterName}/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                    },
+                    {
+                      "Fn::GetAtt": [
+                        "JobRole",
+                        "Arn"
+                      ]
+                    },
+                    {
+                      "Fn::Sub": [
+                        "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
+                        {
+                          "ComputeEnvironmentPrefix": {
+                            "Fn::Select": [
+                              "1",
+                              {
+                                "Fn::Split": [
+                                  "compute-environment/",
+                                  {
+                                    "Fn::Sub": "${ComputeEnvironment}"
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
+                    },
+                    {
+                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:List*"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "batch:DescribeJobQueues",
+                    "batch:TerminateJob",
+                    "batch:DescribeJobs",
+                    "batch:CancelJob",
+                    "batch:DescribeJobDefinitions",
+                    "batch:ListJobs",
+                    "batch:DescribeComputeEnvironments",
+                    "ec2:DescribeInstances"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "SpotIamFleetRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "spotfleet.amazonaws.com"
+              },
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
           "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
         ]
       },
       "Condition": "UseSpot"
     },
     "ComputeEnvironment": {
-      "Type" : "AWS::Batch::ComputeEnvironment",
-      "Properties" : {
-        "Type" : "MANAGED",
-        "ServiceRole" : { "Ref" : "BatchServiceRole" },
-        "ComputeEnvironmentName" : { "Ref": "ClusterName" },
-        "ComputeResources" : {
-          "Type" : { "Fn::If" : [ "UseSpot", "SPOT", "EC2" ]},
-          "MinvCpus" : { "Ref": "MinvCpus"},
-          "DesiredvCpus" : { "Ref": "DesiredvCpus"},
-          "MaxvCpus" : { "Ref": "MaxvCpus"},
-          "InstanceTypes" : { "Ref": "InstanceTypes" },
-          "Subnets" : [{ "Ref" : "Subnet" }],
-          "Ec2KeyPair" : { "Ref" : "KeyName" },
-          "SecurityGroupIds" : { "Ref" : "SecurityGroups" },
-          "InstanceRole" : { "Fn::GetAtt" : ["IamInstanceProfile", "Arn"] },
-          "BidPercentage" : { "Ref" : "SpotBidPercentage" },
+      "Type": "AWS::Batch::ComputeEnvironment",
+      "Properties": {
+        "Type": "MANAGED",
+        "ServiceRole": {
+          "Ref": "BatchServiceRole"
+        },
+        "ComputeResources": {
+          "Type": {
+            "Fn::If": [
+              "UseSpot",
+              "SPOT",
+              "EC2"
+            ]
+          },
+          "MinvCpus": {
+            "Ref": "MinvCpus"
+          },
+          "DesiredvCpus": {
+            "Ref": "DesiredvCpus"
+          },
+          "MaxvCpus": {
+            "Ref": "MaxvCpus"
+          },
+          "InstanceTypes": {
+            "Ref": "InstanceTypes"
+          },
+          "Subnets": [
+            {
+              "Ref": "Subnet"
+            }
+          ],
+          "Ec2KeyPair": {
+            "Ref": "KeyName"
+          },
+          "SecurityGroupIds": {
+            "Ref": "SecurityGroups"
+          },
+          "InstanceRole": {
+            "Fn::GetAtt": [
+              "IamInstanceProfile",
+              "Arn"
+            ]
+          },
+          "BidPercentage": {
+            "Ref": "SpotBidPercentage"
+          },
           "SpotIamFleetRole": {
             "Fn::If": [
               "UseSpot",
-              { "Ref": "SpotIamFleetRole" },
-              { "Ref": "AWS::NoValue" }
+              {
+                "Ref": "SpotIamFleetRole"
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
             ]
+          },
+          "Tags": {
+            "Name": "Batch Compute",
+            "Application": {
+              "Ref": "ClusterName"
+            },
+            "aws-parallelcluster-attributes": {
+              "Ref": "AttributeTags"
+            },
+            "aws-parallelcluster-filesystem": {
+              "Ref": "FileSystemTags"
+            }
           }
         },
-        "State" : "ENABLED"
+        "State": "ENABLED"
       }
     },
-    "JobQueue" : {
-      "Type" : "AWS::Batch::JobQueue",
-      "Properties" : {
-        "JobQueueName" : { "Ref": "ClusterName" },
-        "Priority" : 1,
-        "ComputeEnvironmentOrder" : [
+    "JobQueue": {
+      "Type": "AWS::Batch::JobQueue",
+      "Properties": {
+        "Priority": 1,
+        "ComputeEnvironmentOrder": [
           {
-            "Order" : 1,
-            "ComputeEnvironment" : { "Ref" : "ComputeEnvironment" }
+            "Order": 1,
+            "ComputeEnvironment": {
+              "Ref": "ComputeEnvironment"
+            }
           }
         ]
       }
     },
-    "JobDefinitionSerial" : {
-      "Type" : "AWS::Batch::JobDefinition",
-      "Properties" : {
-        "JobDefinitionName" : { "Ref": "ClusterName" },
-        "Type" : "container",
-        "ContainerProperties" : {
-          "JobRoleArn": { "Fn::GetAtt" : ["JobRole", "Arn"] },
-          "Image" : { "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}" },
-          "Vcpus" : 2,
-          "Memory" : 2000,
+    "JobDefinitionSerial": {
+      "Type": "AWS::Batch::JobDefinition",
+      "Properties": {
+        "Type": "container",
+        "ContainerProperties": {
+          "JobRoleArn": {
+            "Fn::GetAtt": [
+              "JobRole",
+              "Arn"
+            ]
+          },
+          "Image": {
+            "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}"
+          },
+          "Vcpus": 1,
+          "Memory": 512,
           "Privileged": true,
           "Environment": [
             {
-              "Name" : "SHARED_DIR",
-              "Value" : { "Ref": "SharedDir" }
+              "Name": "PCLUSTER_AWS_REGION",
+              "Value": {
+                "Ref": "AWS::Region"
+              }
+            },
+            {
+              "Name": "PCLUSTER_STACK_NAME",
+              "Value": {
+                "Ref": "ClusterName"
+              }
+            },
+            {
+              "Name": "PCLUSTER_SHARED_DIRS",
+              "Value": {
+                "Ref": "SharedDir"
+              }
+            },
+            {
+              "Name": "PCLUSTER_EFS_SHARED_DIR",
+              "Value": {
+                "Ref": "EFSSharedDir"
+              }
+            },
+            {
+              "Name": "PCLUSTER_EFS_FS_ID",
+              "Value": {
+                "Ref": "EFSFSId"
+              }
+            },
+            {
+              "Name": "PCLUSTER_RAID_SHARED_DIR",
+              "Value": {
+                "Ref": "RAIDSharedDir"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "JobDefinitionMNP": {
+      "Type": "AWS::Batch::JobDefinition",
+      "Properties": {
+        "Type": "multinode",
+        "NodeProperties": {
+          "NumNodes": 1,
+          "MainNode": 0,
+          "NodeRangeProperties": [
+            {
+              "TargetNodes": "0:",
+              "Container": {
+                "Image": {
+                  "Fn::Sub": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerImagesRepo}:${OS}"
+                },
+                "JobRoleArn": {
+                  "Fn::GetAtt": [
+                    "JobRole",
+                    "Arn"
+                  ]
+                },
+                "Memory": 512,
+                "Privileged": true,
+                "Vcpus": 1,
+                "Environment": [
+                  {
+                    "Name": "PCLUSTER_AWS_REGION",
+                    "Value": {
+                      "Ref": "AWS::Region"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_STACK_NAME",
+                    "Value": {
+                      "Ref": "ClusterName"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_SHARED_DIRS",
+                    "Value": {
+                      "Ref": "SharedDir"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_EFS_SHARED_DIR",
+                    "Value": {
+                      "Ref": "EFSSharedDir"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_EFS_FS_ID",
+                    "Value": {
+                      "Ref": "EFSFSId"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_RAID_SHARED_DIR",
+                    "Value": {
+                      "Ref": "RAIDSharedDir"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
@@ -224,28 +585,42 @@
           "EnvironmentVariables": [
             {
               "Name": "AWS_REGION",
-              "Value": { "Ref": "AWS::Region" }
+              "Value": {
+                "Ref": "AWS::Region"
+              }
             },
             {
               "Name": "AWS_ACCOUNT_ID",
-              "Value": { "Ref": "AWS::AccountId" }
+              "Value": {
+                "Ref": "AWS::AccountId"
+              }
             },
             {
               "Name": "IMAGE_REPO_NAME",
-              "Value": { "Ref": "DockerImagesRepo" }
+              "Value": {
+                "Ref": "DockerImagesRepo"
+              }
             },
             {
               "Name": "IMAGE",
-              "Value": { "Ref": "OS" }
+              "Value": {
+                "Ref": "OS"
+              }
             }
           ],
           "Image": "aws/codebuild/docker:17.09.0",
           "Type": "LINUX_CONTAINER"
         },
-        "Name": { "Fn::Sub": "${ClusterName}-build-docker-images-project" },
-        "ServiceRole": { "Ref": "CodeBuildRole" },
+        "Name": {
+          "Fn::Sub": "${ClusterName}-build-docker-images-project"
+        },
+        "ServiceRole": {
+          "Ref": "CodeBuildRole"
+        },
         "Source": {
-          "Location": { "Fn::Sub": "${ResourcesS3Bucket}/docker/artifacts.zip" },
+          "Location": {
+            "Fn::Sub": "${ResourcesS3Bucket}/docker/artifacts.zip"
+          },
           "Type": "S3"
         }
       }
@@ -274,26 +649,39 @@
               ],
               "Effect": "Allow",
               "Resource": {
-                "Fn::GetAtt": ["DockerImagesRepo", "Arn"]
+                "Fn::GetAtt": [
+                  "DockerImagesRepo",
+                  "Arn"
+                ]
               },
               "Sid": "ECRRepoPolicy"
             },
             {
-              "Action": ["ecr:GetAuthorizationToken"],
+              "Action": [
+                "ecr:GetAuthorizationToken"
+              ],
               "Effect": "Allow",
               "Resource": "*",
               "Sid": "ECRPolicy"
             },
             {
-              "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
               "Effect": "Allow",
               "Resource": "arn:aws:logs:*:*:*",
               "Sid": "CloudWatchLogsPolicy"
             },
             {
-              "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+              "Action": [
+                "s3:GetObject",
+                "s3:GetObjectVersion"
+              ],
               "Effect": "Allow",
-              "Resource": { "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*" },
+              "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+              },
               "Sid": "S3GetObjectPolicy"
             }
           ],
@@ -301,7 +689,9 @@
         },
         "PolicyName": "CodeBuildPolicy",
         "Roles": [
-          { "Ref": "CodeBuildRole" }
+          {
+            "Ref": "CodeBuildRole"
+          }
         ]
       }
     },
@@ -311,10 +701,14 @@
         "AssumeRolePolicyDocument": {
           "Statement": [
             {
-              "Action": ["sts:AssumeRole"],
+              "Action": [
+                "sts:AssumeRole"
+              ],
               "Effect": "Allow",
               "Principal": {
-                "Service": ["codebuild.amazonaws.com"]
+                "Service": [
+                  "codebuild.amazonaws.com"
+                ]
               }
             }
           ]
@@ -324,15 +718,20 @@
     "ManageDockerImagesCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
       "DependsOn": [
-        "CodeBuildDockerImageBuilderProject",
-        "DockerImagesRepo",
         "CodeBuildNotificationRule"
       ],
       "Properties": {
-        "CodeBuildProject": { "Ref": "CodeBuildDockerImageBuilderProject" },
-        "EcrRepository": { "Ref": "DockerImagesRepo" },
+        "CodeBuildProject": {
+          "Ref": "CodeBuildDockerImageBuilderProject"
+        },
+        "EcrRepository": {
+          "Ref": "DockerImagesRepo"
+        },
         "ServiceToken": {
-          "Fn::GetAtt": ["ManageDockerImagesFunction", "Arn"]
+          "Fn::GetAtt": [
+            "ManageDockerImagesFunction",
+            "Arn"
+          ]
         }
       }
     },
@@ -340,16 +739,22 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "Code": {
-          "S3Bucket": { "Ref": "ResourcesS3Bucket" },
+          "S3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
           "S3Key": "custom_resources_code/artifacts.zip"
         },
         "Handler": "manage_docker_images.handler",
         "MemorySize": 128,
-        "Role": { "Fn::GetAtt": ["ManageDockerImagesFunctionExecutionRole", "Arn"] },
+        "Role": {
+          "Fn::GetAtt": [
+            "ManageDockerImagesFunctionExecutionRole",
+            "Arn"
+          ]
+        },
         "Runtime": "python3.6",
         "Timeout": 60
-      },
-      "DependsOn": "ManageDockerImagesFunctionExecutionRole"
+      }
     },
     "ManageDockerImagesFunctionExecutionRole": {
       "Type": "AWS::IAM::Role",
@@ -357,10 +762,14 @@
         "AssumeRolePolicyDocument": {
           "Statement": [
             {
-              "Action": ["sts:AssumeRole"],
+              "Action": [
+                "sts:AssumeRole"
+              ],
               "Effect": "Allow",
               "Principal": {
-                "Service": ["lambda.amazonaws.com"]
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
               }
             }
           ],
@@ -372,16 +781,25 @@
             "PolicyDocument": {
               "Statement": [
                 {
-                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
                   "Effect": "Allow",
                   "Resource": "arn:aws:logs:*:*:*",
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
-                  "Action": ["ecr:BatchDeleteImage", "ecr:ListImages"],
+                  "Action": [
+                    "ecr:BatchDeleteImage",
+                    "ecr:ListImages"
+                  ],
                   "Effect": "Allow",
                   "Resource": {
-                    "Fn::GetAtt": ["DockerImagesRepo", "Arn"]
+                    "Fn::GetAtt": [
+                      "DockerImagesRepo",
+                      "Arn"
+                    ]
                   },
                   "Sid": "ECRPolicy"
                 },
@@ -392,7 +810,10 @@
                   ],
                   "Effect": "Allow",
                   "Resource": {
-                    "Fn::GetAtt": ["CodeBuildDockerImageBuilderProject", "Arn"]
+                    "Fn::GetAtt": [
+                      "CodeBuildDockerImageBuilderProject",
+                      "Arn"
+                    ]
                   },
                   "Sid": "CodeBuildPolicy"
                 }
@@ -413,17 +834,18 @@
         "RetentionInDays": 1
       }
     },
-    "DockerBuildWaitHandle" : {
-      "Type" : "AWS::CloudFormation::WaitConditionHandle",
-      "Properties" : {
-      }
+    "DockerBuildWaitHandle": {
+      "Type": "AWS::CloudFormation::WaitConditionHandle",
+      "Properties": {}
     },
-    "DockerBuildWaitCondition" : {
-      "Type" : "AWS::CloudFormation::WaitCondition",
-      "DependsOn" : "ManageDockerImagesCustomResource",
-      "Properties" : {
-        "Handle" : { "Ref" : "DockerBuildWaitHandle" },
-        "Timeout" : "1200"
+    "DockerBuildWaitCondition": {
+      "Type": "AWS::CloudFormation::WaitCondition",
+      "DependsOn": "ManageDockerImagesCustomResource",
+      "Properties": {
+        "Handle": {
+          "Ref": "DockerBuildWaitHandle"
+        },
+        "Timeout": "1200"
       }
     },
     "SendBuildNotificationFunctionExecutionRole": {
@@ -432,10 +854,14 @@
         "AssumeRolePolicyDocument": {
           "Statement": [
             {
-              "Action": ["sts:AssumeRole"],
+              "Action": [
+                "sts:AssumeRole"
+              ],
               "Effect": "Allow",
               "Principal": {
-                "Service": ["lambda.amazonaws.com"]
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
               }
             }
           ],
@@ -447,7 +873,10 @@
             "PolicyDocument": {
               "Statement": [
                 {
-                  "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
                   "Effect": "Allow",
                   "Resource": "arn:aws:logs:*:*:*",
                   "Sid": "CloudWatchLogsPolicy"
@@ -478,11 +907,15 @@
         },
         "Handler": "send_build_notification.handler",
         "MemorySize": 128,
-        "Role": { "Fn::GetAtt": ["SendBuildNotificationFunctionExecutionRole", "Arn"] },
+        "Role": {
+          "Fn::GetAtt": [
+            "SendBuildNotificationFunctionExecutionRole",
+            "Arn"
+          ]
+        },
         "Runtime": "python3.6",
         "Timeout": 60
-      },
-      "DependsOn": "SendBuildNotificationFunctionExecutionRole"
+      }
     },
     "SendBuildNotificationFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
@@ -497,9 +930,19 @@
       "Type": "AWS::Lambda::Permission",
       "Properties": {
         "Action": "lambda:InvokeFunction",
-        "FunctionName": { "Fn::GetAtt": ["SendBuildNotificationFunction", "Arn"] },
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SendBuildNotificationFunction",
+            "Arn"
+          ]
+        },
         "Principal": "events.amazonaws.com",
-        "SourceArn": { "Fn::GetAtt": ["CodeBuildNotificationRule", "Arn"] }
+        "SourceArn": {
+          "Fn::GetAtt": [
+            "CodeBuildNotificationRule",
+            "Arn"
+          ]
+        }
       }
     },
     "CodeBuildNotificationRule": {
@@ -512,7 +955,11 @@
               "STOPPED",
               "SUCCEEDED"
             ],
-            "project-name": [ { "Ref": "CodeBuildDockerImageBuilderProject" } ]
+            "project-name": [
+              {
+                "Ref": "CodeBuildDockerImageBuilderProject"
+              }
+            ]
           },
           "detail-type": [
             "CodeBuild Build State Change"
@@ -534,29 +981,147 @@
           }
         ]
       }
+    },
+    "DeregisterBatchMNPJobDefinitionsCustomResource": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "JobDefinitionMNPArn": {
+          "Ref": "JobDefinitionMNP"
+        },
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "DeregisterBatchMNPJobDefinitionsFunction",
+            "Arn"
+          ]
+        }
+      }
+    },
+    "DeregisterBatchMNPJobDefinitionsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
+          "S3Key": "custom_resources_code/artifacts.zip"
+        },
+        "Handler": "deregister_batch_mnp_job_definitions.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": [
+            "DeregisterBatchMNPJobDefinitionsFunctionExecutionRole",
+            "Arn"
+          ]
+        },
+        "Runtime": "python3.6",
+        "Timeout": 120
+      }
+    },
+    "DeregisterBatchMNPJobDefinitionsFunctionExecutionRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": [
+                "sts:AssumeRole"
+              ],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*",
+                  "Sid": "CloudWatchLogsPolicy"
+                },
+                {
+                  "Action": [
+                    "batch:*"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*",
+                  "Sid": "Batch"
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "LambdaPolicy"
+          }
+        ]
+      }
+    },
+    "DeregisterBatchMNPJobDefinitionsFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/${DeregisterBatchMNPJobDefinitionsFunction}"
+        },
+        "RetentionInDays": 1
+      }
     }
   },
-  "Outputs" : {
-    "ComputeEnvironmentArn" : {
-      "Value" : { "Ref" : "ComputeEnvironment" }
+  "Outputs": {
+    "ComputeEnvironmentArn": {
+      "Value": {
+        "Ref": "ComputeEnvironment"
+      }
     },
-    "JobQueueArn" : {
-      "Value" : { "Ref" : "JobQueue" }
+    "JobQueueArn": {
+      "Value": {
+        "Ref": "JobQueue"
+      }
     },
     "JobDefinitionArn": {
-      "Value" : { "Ref" : "JobDefinitionSerial" }
+      "Value": {
+        "Ref": "JobDefinitionSerial"
+      }
     },
     "ECRRepoName": {
       "Description": "Name of the ECR repository where docker images used by AWS Batch are located.",
-      "Value": { "Ref": "DockerImagesRepo" }
+      "Value": {
+        "Ref": "DockerImagesRepo"
+      }
     },
     "CodeBuildDockerImageBuilderProject": {
       "Description": "CodeBuild project used to bake docker images.",
-      "Value": { "Ref": "CodeBuildDockerImageBuilderProject" }
+      "Value": {
+        "Ref": "CodeBuildDockerImageBuilderProject"
+      }
     },
     "ResourcesS3Bucket": {
       "Description": "S3 user bucket where resources are stored",
-      "Value": { "Ref": "ResourcesS3Bucket" }
+      "Value": {
+        "Ref": "ResourcesS3Bucket"
+      }
+    },
+    "MNPJobDefinitionArn": {
+      "Value": {
+        "Ref": "JobDefinitionMNP"
+      }
+    },
+    "BatchUserRole": {
+      "Value": {
+        "Fn::GetAtt": [
+          "BatchUserRole",
+          "Arn"
+        ]
+      }
     }
   }
 }

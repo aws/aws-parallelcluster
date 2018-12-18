@@ -14,8 +14,8 @@ Building a custom AWS ParallelCluster AMI
     ParallelCluster. You will need to repeat the steps used to create your custom AMI with each new AWS ParallelCluster
     release.
 
-Before reading any further, take a look at the :doc:`pre_post_install` section of the documentation to determine if the
-modifications you wish to make can be scripted and supported with future AWS ParallelCluster releases
+Before reading any further, take a look at the :doc:`../pre_post_install` section of the documentation to determine
+if the modifications you wish to make can be scripted and supported with future AWS ParallelCluster releases.
 
 While not ideal, there are a number of scenarios where building a custom AMI for AWS ParallelCluster is necessary. This
 tutorial will guide you through the process.
@@ -34,8 +34,12 @@ This is the safest method as the base AWS ParallelCluster AMI is often updated w
 the components required for AWS ParallelCluster to function installed and configured and you can start with this as the
 base.
 
-    #. Find the AMI which corresponds with the region you will be utilizing in the list here:
-       https://github.com/aws/aws-parallelcluster/blob/master/amis.txt.
+    #. Find the AMI which corresponds to the region you will be utilizing from the AMI list.
+       The AMI list to use must match the version of the product e.g.
+
+       - for ParallelCluster 2.0.2 -> https://github.com/aws/aws-parallelcluster/blob/v2.0.2/amis.txt
+       - for CfnCluster 1.6.1 -> https://github.com/aws/aws-parallelcluster/blob/v1.6.1/amis.txt
+
     #. Within the EC2 Console, choose "Launch Instance".
     #. Navigate to "Community AMIs", and enter the AMI id for your region into the search box.
     #. Select the AMI, choose your instance type and properties, and launch your instance.

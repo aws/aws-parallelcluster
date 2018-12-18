@@ -11,6 +11,9 @@ awsbsub
 .. spelling::
     MiB
     TextIOWrapper
+    env
     io
     jobId
     startedAt
+    subfolder
+    utf
