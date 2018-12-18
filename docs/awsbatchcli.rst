@@ -12,9 +12,9 @@ and to monitor jobs, queues, hosts, mirroring traditional schedulers commands.
 .. toctree::
     :maxdepth: 1
 
-    awsbsub
-    awsbstat
-    awsbout
-    awsbkill
-    awsbqueues
-    awsbhosts
+    awsbatchcli/awsbsub
+    awsbatchcli/awsbstat
+    awsbatchcli/awsbout
+    awsbatchcli/awsbkill
+    awsbatchcli/awsbqueues
+    awsbatchcli/awsbhosts
