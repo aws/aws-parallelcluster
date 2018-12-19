@@ -20,6 +20,7 @@
 
 import argparse
 import json
+import sys
 from collections import OrderedDict
 
 import boto3
@@ -74,8 +75,8 @@ def convert_json_to_txt(amis_json):
     return amis_txt
 
 
-def get_all_aws_regions():
-    ec2 = boto3.client("ec2")
+def get_all_aws_regions(region):
+    ec2 = boto3.client("ec2", region_name=region)
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
@@ -113,9 +114,7 @@ if __name__ == "__main__":
     parser.add_argument("--version", type=str, help="release version", required=True)
     parser.add_argument("--date", type=str, help="release date [timestamp] (e.g. 201801112350)", required=True)
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
-    parser.add_argument(
-        "--account-id", type=str, help="account id that owns the amis", required=False, default="247102896272"
-    )
+    parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--cloudformation-template",
         type=str,
@@ -125,9 +124,22 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    regions = get_all_aws_regions()
+    if args.partition == "commercial":
+        account_id = "247102896272"
+        region = "us-east-1"
+    elif args.partition == "govcloud":
+        account_id = "124026578433"
+        region = "us-gov-west-1"
+    elif args.partition == "china":
+        account_id = "036028979999"
+        region = "cn-north-1"
+    else:
+        print("Unsupported partition %s" % args.partition)
+        sys.exit(1)
 
-    amis_dict = get_ami_list(regions=regions, date=args.date, version=args.version, owner=args.account_id)
+    regions = get_all_aws_regions(region)
+
+    amis_dict = get_ami_list(regions=regions, date=args.date, version=args.version, owner=account_id)
 
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
 
