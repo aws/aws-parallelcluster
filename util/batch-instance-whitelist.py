@@ -87,7 +87,7 @@ def upload_to_s3(args, region, instances):
 
     if args.dryrun == "true":
         print(instances)
-        print("Skipping upload to s3://%s/%s" % (args.bucket, key))
+        print("Skipping upload to s3://%s/%s" % (bucket, key))
         return
 
     try:
