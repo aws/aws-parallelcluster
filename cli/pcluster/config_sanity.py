@@ -413,7 +413,7 @@ def check_resource(  # noqa: C901 FIXME!!!
     # Batch Parameters
     elif resource_type == "AWSBatch_Parameters":
         # Check region
-        if region in ["us-gov-west-1", "us-gov-east-1", "eu-west-3", "ap-northeast-3"]:
+        if region in ["ap-northeast-3", "eu-north-1", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]:
             print("ERROR: %s region is not supported with awsbatch" % region)
             sys.exit(1)
 
