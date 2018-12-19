@@ -1197,6 +1197,16 @@
         "ubuntu1404": "ami-0b05531dac34df70a",
         "ubuntu1604": "ami-02740f68858b9fc7a"
       },
+      "cn-north-1": {
+        "alinux": "ami-038b9d345d34ddebb",
+        "ubuntu1404": "ami-06e6c15b2b3794537",
+        "ubuntu1604": "ami-0a0e3a49c5a3dc0d7"
+      },
+      "cn-northwest-1": {
+        "alinux": "ami-0d892d368ecc4a9fc",
+        "ubuntu1404": "ami-0c27e41516bb1f776",
+        "ubuntu1604": "ami-026e9b4ec3761d17c"
+      },
       "eu-central-1": {
         "alinux": "ami-0595a707dc47e9671",
         "centos6": "ami-07f13c4704a54b165",
