@@ -7,8 +7,18 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def get_all_aws_regions():
-    ec2 = boto3.client("ec2")
+def get_all_aws_regions(partition):
+    if partition == "commercial":
+        region = "us-east-1"
+    elif partition == "govcloud":
+        region = "us-gov-west-1"
+    elif partition == "china":
+        region = "cn-north-1"
+    else:
+        print("Unsupported partition %s" % partition)
+        sys.exit(1)
+
+    ec2 = boto3.client("ec2", region_name=region)
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
 
@@ -80,6 +90,7 @@ def main(args):
 if __name__ == "__main__":
     # parse inputs
     parser = argparse.ArgumentParser(description="Upload extra templates under /cloudformation")
+    parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--regions",
         type=str,
@@ -119,7 +130,7 @@ if __name__ == "__main__":
     args.version = pkg_resources.get_distribution("aws-parallelcluster").version
 
     if args.regions == "all":
-        args.regions = get_all_aws_regions()
+        args.regions = get_all_aws_regions(args.partition)
     else:
         args.regions = args.regions.split(",")
     args.regions = set(args.regions) - set(args.unsupportedregions.split(","))
