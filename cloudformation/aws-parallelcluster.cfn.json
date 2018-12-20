@@ -2438,7 +2438,7 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp"
@@ -3228,7 +3228,7 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp"
@@ -3886,7 +3886,7 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp"
