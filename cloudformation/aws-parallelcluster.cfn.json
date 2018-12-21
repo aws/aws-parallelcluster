@@ -2438,10 +2438,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 && if [ -d /etc/chef/cookbooks ]; then berksfile=Berksfile; else berksfile=Berksfile_ami; fi && /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --berksfile=$berksfile; done",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
@@ -3228,10 +3243,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 && if [ -d /etc/chef/cookbooks ]; then berksfile=Berksfile; else berksfile=Berksfile_ami; fi && /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --berksfile=$berksfile; done ",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
@@ -3886,10 +3916,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks; done ",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
