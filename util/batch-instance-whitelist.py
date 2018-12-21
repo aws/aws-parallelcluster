@@ -26,12 +26,24 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 
-# commercial regions unsupported by aws batch
-UNSUPPORTED_REGIONS = set(["ap-northeast-3", "eu-west-3"])
+# regions unsupported by aws batch
+UNSUPPORTED_REGIONS = set(
+    ["ap-northeast-3", "eu-north-1", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]
+)
 
 
-def get_all_aws_regions():
-    ec2 = boto3.client("ec2")
+def get_all_aws_regions(partition):
+    if partition == "commercial":
+        region = "us-east-1"
+    elif partition == "govcloud":
+        region = "us-gov-west-1"
+    elif partition == "china":
+        region = "cn-north-1"
+    else:
+        print("Unsupported partition %s" % partition)
+        sys.exit(1)
+
+    ec2 = boto3.client("ec2", region_name=region)
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))) - UNSUPPORTED_REGIONS
 
 
@@ -75,7 +87,7 @@ def upload_to_s3(args, region, instances):
 
     if args.dryrun == "true":
         print(instances)
-        print("Skipping upload to s3://%s/%s" % (args.bucket, key))
+        print("Skipping upload to s3://%s/%s" % (bucket, key))
         return
 
     try:
@@ -101,6 +113,7 @@ def main(args):
 if __name__ == "__main__":
     # parse inputs
     parser = argparse.ArgumentParser(description="Generate a whitelist of batch instance types.")
+    parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--regions",
         type=str,
@@ -114,7 +127,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.regions == "all":
-        args.regions = get_all_aws_regions()
+        args.regions = get_all_aws_regions(args.partition)
     else:
         args.regions = args.regions.split(",")
 
