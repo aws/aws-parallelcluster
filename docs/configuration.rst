@@ -191,7 +191,7 @@ If scheduler is awsbatch, the compute environment will at most have max_vcpus.
 
 Defaults to 20. ::
 
-    desired_vcpus = 20
+    max_vcpus = 20
 
 scheduler
 """""""""
