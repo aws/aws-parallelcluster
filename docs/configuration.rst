@@ -230,7 +230,7 @@ spot_bid_percentage
 If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified
 you'll get the current spot market price, capped at the on-demand price. ::
 
-    spot_price = 85
+    spot_bid_percentage = 85
 
 .. _custom_ami_section:
 
