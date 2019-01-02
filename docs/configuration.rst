@@ -331,9 +331,11 @@ placement
 """""""""
 Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
 
+Can be ``cluster`` or ``compute``.
+
 This does not apply to awsbatch.
 
-Defaults to cluster. ::
+Defaults to ``cluster``. ::
 
     placement = cluster
 
