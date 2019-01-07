@@ -1220,14 +1220,14 @@
         "ubuntu1604": "ami-02740f68858b9fc7a"
       },
       "cn-north-1": {
-        "alinux": "ami-038b9d345d34ddebb",
-        "ubuntu1404": "ami-06e6c15b2b3794537",
-        "ubuntu1604": "ami-0a0e3a49c5a3dc0d7"
+        "alinux": "ami-086d823f3012dab55",
+        "ubuntu1404": "ami-0d13eac709edd2486",
+        "ubuntu1604": "ami-0ed0cca7c678c608a"
       },
       "cn-northwest-1": {
-        "alinux": "ami-0d892d368ecc4a9fc",
-        "ubuntu1404": "ami-0c27e41516bb1f776",
-        "ubuntu1604": "ami-026e9b4ec3761d17c"
+        "alinux": "ami-09896811226cff0f9",
+        "ubuntu1404": "ami-056ca2bd0470396fc",
+        "ubuntu1604": "ami-07b07d4a4c1131fa8"
       },
       "eu-central-1": {
         "alinux": "ami-0595a707dc47e9671",
