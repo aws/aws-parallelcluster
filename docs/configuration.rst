@@ -390,6 +390,18 @@ Defaults to alinux. Available options are: alinux, centos6, centos7, ubuntu1404 
 
 Note: The base_os determines the username used to log into the cluster.
 
+Supported OS's by region. Note that commercial is all supported regions such as us-east-1, us-west-2 etc. ::
+
+    ============== ======  ============ ============ ============= ============
+    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
+    ============== ======  ============ ============ ============= ============
+    commercial      True     True          True          True        True
+    us-gov-west-1   True     False         False         True        True
+    us-gov-east-1   True     False         False         True        True
+    cn-north-1      True     False         False         True        True
+    cn-northwest-1  True     False         False         False       False
+    ============== ======  ============ ============ ============= ============
+
 * CentOS 6 & 7: ``centos``
 * Ubuntu: ``ubuntu``
 * Amazon Linux: ``ec2-user`` ::
