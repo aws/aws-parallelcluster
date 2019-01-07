@@ -749,11 +749,10 @@ def get_cookbook_url(config, tmpdir):
         return config.args.custom_ami_cookbook
 
     cookbook_version = get_cookbook_version(config, tmpdir)
-    if config.region == "us-east-1":
-        return "https://s3.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (config.region, cookbook_version)
-
-    return "https://s3.%s.amazonaws.com/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
+    s3_suffix = ".cn" if config.region.startswith("cn") else ""
+    return "https://s3.%s.amazonaws.com%s/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
         config.region,
+        s3_suffix,
         config.region,
         cookbook_version,
     )
