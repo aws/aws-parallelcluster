@@ -16,8 +16,8 @@ eu-west-3: ami-0b865438f25ef1ab7
 sa-east-1: ami-09982213858d21cc4
 us-east-1: ami-05b1bf1ea0ce91f93
 us-east-2: ami-08f4bbd7e3489f88e
-us-gov-east-1: ami-08e554700cf18e130
-us-gov-west-1: ami-a5ee8fc4
+us-gov-east-1: ami-022f96b137a63c9ff
+us-gov-west-1: ami-fefb989f
 us-west-1: ami-01666e21a883e8c26
 us-west-2: ami-0c24d6fdc2a08484b
 # centos6
@@ -74,8 +74,8 @@ eu-west-3: ami-009d2ec66e724f23c
 sa-east-1: ami-0bedfd038a5ae2955
 us-east-1: ami-0535f41948e183a50
 us-east-2: ami-09c3d4129dbb85a1f
-us-gov-east-1: ami-0b621c3f09e5e06c4
-us-gov-west-1: ami-50e98831
+us-gov-east-1: ami-09274e2587c4154f2
+us-gov-west-1: ami-6cf0930d
 us-west-1: ami-05a6f3630bc9ca25a
 us-west-2: ami-0371ed4e687d723ad
 # ubuntu1604
@@ -96,7 +96,7 @@ eu-west-3: ami-0e4b726a1423cc365
 sa-east-1: ami-09891bf1151e104a3
 us-east-1: ami-0bd7078773382dca8
 us-east-2: ami-02ecba888fa8fb4bc
-us-gov-east-1: ami-083ba3c9a5c412c8f
-us-gov-west-1: ami-54f19035
+us-gov-east-1: ami-0b664ce8c427b77eb
+us-gov-west-1: ami-5ef6953f
 us-west-1: ami-0dceb3492204b3417
 us-west-2: ami-0c513c5cb1ddfaea5
