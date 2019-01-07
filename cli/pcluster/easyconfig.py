@@ -29,7 +29,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from . import cfnconfig
 
 logger = logging.getLogger("pcluster.pcluster")
-unsupported_regions = ["ap-northeast-3", "cn-north-1", "cn-northwest-1"]
+unsupported_regions = ["ap-northeast-3"]
 
 
 def handle_client_exception(func):

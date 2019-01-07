@@ -10,3 +10,6 @@ build/
 .DS_Store
 .tox/
 *.iml
+.coverage
+assets/
+report.html
