@@ -1286,14 +1286,14 @@
         "ubuntu1604": "ami-02ecba888fa8fb4bc"
       },
       "us-gov-east-1": {
-        "alinux": "ami-08e554700cf18e130",
-        "ubuntu1404": "ami-0b621c3f09e5e06c4",
-        "ubuntu1604": "ami-083ba3c9a5c412c8f"
+        "alinux": "ami-022f96b137a63c9ff",
+        "ubuntu1404": "ami-09274e2587c4154f2",
+        "ubuntu1604": "ami-0b664ce8c427b77eb"
       },
       "us-gov-west-1": {
-        "alinux": "ami-a5ee8fc4",
-        "ubuntu1404": "ami-50e98831",
-        "ubuntu1604": "ami-54f19035"
+        "alinux": "ami-fefb989f",
+        "ubuntu1404": "ami-6cf0930d",
+        "ubuntu1604": "ami-5ef6953f"
       },
       "us-west-1": {
         "alinux": "ami-01666e21a883e8c26",
