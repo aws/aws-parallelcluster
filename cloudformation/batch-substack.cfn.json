@@ -375,7 +375,10 @@
       "Properties": {
         "Type": "MANAGED",
         "ServiceRole": {
-          "Ref": "BatchServiceRole"
+          "Fn::GetAtt": [
+            "BatchServiceRole",
+            "Arn"
+          ]
         },
         "ComputeResources": {
           "Type": {
@@ -421,7 +424,10 @@
             "Fn::If": [
               "UseSpot",
               {
-                "Ref": "SpotIamFleetRole"
+                "Fn::GetAtt": [
+                  "SpotIamFleetRole",
+                  "Arn"
+                ]
               },
               {
                 "Ref": "AWS::NoValue"
@@ -627,7 +633,10 @@
           "Fn::Sub": "${ClusterName}-build-docker-images-project"
         },
         "ServiceRole": {
-          "Ref": "CodeBuildRole"
+          "Fn::GetAtt": [
+            "CodeBuildRole",
+            "Arn"
+          ]
         },
         "Source": {
           "Location": {
