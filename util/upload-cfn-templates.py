@@ -22,6 +22,33 @@ def get_all_aws_regions(partition):
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
 
+def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
+    try:
+        object = s3_client.Object(bucket, key)
+        response = object.put(Body=data, ACL="public-read")
+        if response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
+            print("Successfully uploaded %s to s3://%s/%s" % (template_name, bucket, key))
+    except ClientError as e:
+        if args.createifnobucket and e.response["Error"]["Code"] == "NoSuchBucket":
+            print("No bucket, creating now: ")
+            if region == "us-east-1":
+                s3_client.create_bucket(Bucket=bucket)
+            else:
+                s3_client.create_bucket(Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region})
+            s3_client.BucketVersioning(bucket).enable()
+            print("Created %s bucket. Bucket versioning is enabled, " "please enable bucket logging manually." % bucket)
+            b = s3_client.Bucket(bucket)
+            res = b.put_object(Body=data, ACL="public-read", Key=key)
+            print(res)
+        else:
+            print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
+            if e.response["Error"]["Code"] == "NoSuchBucket":
+                print("Bucket is not present.")
+            else:
+                raise e
+        pass
+
+
 def upload_to_s3(args, region):
     s3_client = boto3.resource("s3", region_name=region)
 
@@ -36,49 +63,23 @@ def upload_to_s3(args, region):
         template_name = "%s%s.cfn.json" % (template_paths, t)
         key = key_path + "%s-%s.cfn.json" % (t, args.version)
         data = open(template_name, "rb")
-        if not args.override:
-            for bucket in buckets:
-                try:
-                    s3 = boto3.client("s3", region_name=region)
-                    s3.head_object(Bucket=bucket, Key=key)
-                    print("Error: %s already exist in bucket %s" % (key, bucket))
-                    sys.exit(1)
-                except ClientError:
-                    pass
         for bucket in buckets:
-            if args.dryrun:
-                key = key_path + "%s-%s.cfn.json" % (t, args.version)
-                print("If dryrun is disabled, %s will be uploaded to s3://%s/%s" % (template_name, bucket, key))
+            try:
+                s3 = boto3.client("s3", region_name=region)
+                s3.head_object(Bucket=bucket, Key=key)
+                print("Warning: %s already exist in bucket %s" % (key, bucket))
+                exist = True
+            except ClientError:
+                exist = False
+                pass
+
+            if (exist and args.override and not args.dryrun) or (not exist and not args.dryrun):
+                put_object_to_s3(s3_client, bucket, key, region, data, template_name)
             else:
-                try:
-                    object = s3_client.Object(bucket, key)
-                    response = object.put(Body=data, ACL="public-read")
-                    if response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
-                        print("Successfully uploaded %s to s3://%s/%s" % (template_name, bucket, key))
-                except ClientError as e:
-                    if args.createifnobucket and e.response["Error"]["Code"] == "NoSuchBucket":
-                        print("No bucket, creating now: ")
-                        if region == "us-east-1":
-                            s3_client.create_bucket(Bucket=bucket)
-                        else:
-                            s3_client.create_bucket(
-                                Bucket=bucket, CreateBucketConfiguration={"LocationConstraint": region}
-                            )
-                        s3_client.BucketVersioning(bucket).enable()
-                        print(
-                            "Created %s bucket. Bucket versioning is enabled, "
-                            "please enable bucket logging manually." % bucket
-                        )
-                        b = s3_client.Bucket(bucket)
-                        res = b.put_object(Body=data, ACL="public-read", Key=key)
-                        print(res)
-                    else:
-                        print("Couldn't upload %s to bucket s3://%s/%s" % (template_name, bucket, key))
-                        if e.response["Error"]["Code"] == "NoSuchBucket":
-                            print("Bucket is not present.")
-                        else:
-                            raise e
-                    pass
+                print(
+                    "Not uploading %s to bucket %s, object exists %s, override is %s, dryrun is %s"
+                    % (template_name, bucket, exist, args.override, args.dryrun)
+                )
 
 
 def main(args):
