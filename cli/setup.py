@@ -21,7 +21,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.1.0"
+VERSION = "2.1.1"
 REQUIRES = ["boto3>=1.9.48", "awscli>=1.11.175", "future>=0.16.0", "tabulate>=0.8.2"]
 
 if sys.version_info[:2] == (2, 6):

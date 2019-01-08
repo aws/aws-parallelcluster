@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.1.0",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.1.1",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -1077,12 +1077,27 @@
         "aws-us-gov"
       ]
     },
+    "ChinaRegion": {
+      "Fn::Equals": [
+        {
+          "Ref": "AWS::Partition"
+        },
+        "aws-cn"
+      ]
+    },
     "CreateLaunchTemplate": {
       "Fn::And": [
         {
           "Fn::Not": [
             {
-              "Condition": "GovCloudRegion"
+              "Fn::Or": [
+                {
+                  "Condition": "ChinaRegion"
+                },
+                {
+                  "Condition": "GovCloudRegion"
+                }
+              ]
             }
           ]
         },
@@ -1094,7 +1109,14 @@
     "CreateLaunchConfig": {
       "Fn::And": [
         {
-          "Condition": "GovCloudRegion"
+          "Fn::Or": [
+            {
+              "Condition": "ChinaRegion"
+            },
+            {
+              "Condition": "GovCloudRegion"
+            }
+          ]
         },
         {
           "Condition": "CreateComputeFleet"
@@ -1149,133 +1171,141 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-03780c8327e4be0ac",
-        "centos6": "ami-07d83b268e25e0953",
-        "centos7": "ami-03043938e7fc33ba9",
-        "ubuntu1404": "ami-08a720b6bbe06dc15",
-        "ubuntu1604": "ami-00bd60c479d9b05f2"
+        "alinux": "ami-0ac1d0c35dc3b2a97",
+        "centos6": "ami-003cfe6266cadd576",
+        "centos7": "ami-0c0049e4eeb0ef1ac",
+        "ubuntu1404": "ami-053a84278e34b7a59",
+        "ubuntu1604": "ami-026669cfcef23b3de"
       },
       "ap-northeast-2": {
-        "alinux": "ami-01eaa2848f762416f",
-        "centos6": "ami-044f3ad0badddf405",
-        "centos7": "ami-07ee16085dc31f6ed",
-        "ubuntu1404": "ami-03595544457ee270b",
-        "ubuntu1604": "ami-00317e3a1c4d47b23"
+        "alinux": "ami-0dddb89f66485f828",
+        "centos6": "ami-032b3f2a4f1ac91a0",
+        "centos7": "ami-00f8f46a043a04530",
+        "ubuntu1404": "ami-03d314c5ac10beb53",
+        "ubuntu1604": "ami-048214d1413ed8462"
       },
       "ap-northeast-3": {
-        "alinux": "ami-05625a3c29c8d158d",
-        "centos6": "ami-07261626f0608a9fc",
-        "centos7": "ami-01116deb7081a4d93",
-        "ubuntu1404": "ami-0f4afbf455ad42c20",
-        "ubuntu1604": "ami-07942e464687e23cd"
+        "alinux": "ami-0dbb09bfada65298f",
+        "centos6": "ami-0c4de7aece7b2db33",
+        "centos7": "ami-0043e5e12872a00d4",
+        "ubuntu1404": "ami-070f9069b20a797ec",
+        "ubuntu1604": "ami-038900edb73cb9496"
       },
       "ap-south-1": {
-        "alinux": "ami-0cb4b6a940244dd2f",
-        "centos6": "ami-007862493aa8721a7",
-        "centos7": "ami-0823edb0c94157ff4",
-        "ubuntu1404": "ami-0821b7c6568999205",
-        "ubuntu1604": "ami-0fa6a7a4decdae641"
+        "alinux": "ami-0ed1bb8f2ab0edffb",
+        "centos6": "ami-0581583c3d7507d9e",
+        "centos7": "ami-03dd063b05c3082f1",
+        "ubuntu1404": "ami-0641d7ca885530589",
+        "ubuntu1604": "ami-0cc424ec58256ea88"
       },
       "ap-southeast-1": {
-        "alinux": "ami-099312510208cc0d3",
-        "centos6": "ami-069361480706f302e",
-        "centos7": "ami-074acbf20aa22df0c",
-        "ubuntu1404": "ami-0563d0646a1cc2dde",
-        "ubuntu1604": "ami-00db94a0965a886a6"
+        "alinux": "ami-058bcd8377aba9bef",
+        "centos6": "ami-0d00309b80b772532",
+        "centos7": "ami-00fcdc55bd29f691e",
+        "ubuntu1404": "ami-0e3de99412375e882",
+        "ubuntu1604": "ami-059ba95190db36590"
       },
       "ap-southeast-2": {
-        "alinux": "ami-04c142f780a8426c2",
-        "centos6": "ami-06e0db8bdac11c698",
-        "centos7": "ami-055dd6211ddf02af6",
-        "ubuntu1404": "ami-08209d8fa90d40e5a",
-        "ubuntu1604": "ami-05c16d76720e55964"
+        "alinux": "ami-012557ce9426ef1a0",
+        "centos6": "ami-00ecf7e455945e8bc",
+        "centos7": "ami-0baa1787fd7a71950",
+        "ubuntu1404": "ami-09eae4580e8fc835a",
+        "ubuntu1604": "ami-04df2433ab61d3f37"
       },
       "ca-central-1": {
-        "alinux": "ami-0907f9cad7dbf65f6",
-        "centos6": "ami-00875bb416baf6556",
-        "centos7": "ami-052fb2fbfaef380d3",
-        "ubuntu1404": "ami-0b05531dac34df70a",
-        "ubuntu1604": "ami-02740f68858b9fc7a"
+        "alinux": "ami-059dda8ee9af7c20c",
+        "centos6": "ami-0416d41ed6dbc0bd7",
+        "centos7": "ami-0c2a8b54dfd0c405f",
+        "ubuntu1404": "ami-08aeb7a57f73b58ab",
+        "ubuntu1604": "ami-039a1b0ada060b5ce"
+      },
+      "cn-north-1": {
+        "alinux": "ami-00237da8e056b0936",
+        "ubuntu1404": "ami-00f2cae5406fb3fce",
+        "ubuntu1604": "ami-072046713a0458796"
+      },
+      "cn-northwest-1": {
+        "alinux": "ami-0974fc483e449f5ee"
       },
       "eu-central-1": {
-        "alinux": "ami-0595a707dc47e9671",
-        "centos6": "ami-07f13c4704a54b165",
-        "centos7": "ami-05af6f87fc63e3d71",
-        "ubuntu1404": "ami-0a2c2f9760d34f596",
-        "ubuntu1604": "ami-003cc41d49855e1ef"
+        "alinux": "ami-09cff6787920e967c",
+        "centos6": "ami-0b1f52047bb2b7f83",
+        "centos7": "ami-00b3f34240b6021dd",
+        "ubuntu1404": "ami-0b24a435216670b4a",
+        "ubuntu1604": "ami-0d816068d1164f4d2"
       },
       "eu-north-1": {
-        "alinux": "ami-09b05710227925ceb",
-        "centos6": "ami-03e7f9bfdcdfe6eca",
-        "centos7": "ami-0e933380e094ab102",
-        "ubuntu1404": "ami-04b0fa5a3509e4569",
-        "ubuntu1604": "ami-0ceb6b8e665efdb87"
+        "alinux": "ami-086f4f382fb1119f0",
+        "centos6": "ami-04fc976e8108996e6",
+        "centos7": "ami-07ac74edc9e96b343",
+        "ubuntu1404": "ami-0921b515f8ed512c3",
+        "ubuntu1604": "ami-046c32486a9abf742"
       },
       "eu-west-1": {
-        "alinux": "ami-0f0865f124c533e6f",
-        "centos6": "ami-0080ba82e12f317b9",
-        "centos7": "ami-0e249c302ebb32aef",
-        "ubuntu1404": "ami-06e7f63766bac032b",
-        "ubuntu1604": "ami-02fbb78584905c216"
+        "alinux": "ami-080a7d5c75253bd1b",
+        "centos6": "ami-073f1f5db6cfdd3d1",
+        "centos7": "ami-0879d97613ba8075a",
+        "ubuntu1404": "ami-076fbdec21cd5c940",
+        "ubuntu1604": "ami-0f641e63ebaf647b1"
       },
       "eu-west-2": {
-        "alinux": "ami-08c01fbf6cc43e166",
-        "centos6": "ami-0dfae4fa33e540f25",
-        "centos7": "ami-0836360ea1ef8e1a9",
-        "ubuntu1404": "ami-0bf0e4815ea7c3f08",
-        "ubuntu1604": "ami-090cb83529f72bd53"
+        "alinux": "ami-0b284f1028a743865",
+        "centos6": "ami-0ace56d1d9c1aa466",
+        "centos7": "ami-06aa0ca6f28c29fdb",
+        "ubuntu1404": "ami-0fb01b5b56bc27509",
+        "ubuntu1604": "ami-067c1c0157477c166"
       },
       "eu-west-3": {
-        "alinux": "ami-033bcfc19853275cb",
-        "centos6": "ami-0fae6489cef475f35",
-        "centos7": "ami-0b8e45374e5e2f6ec",
-        "ubuntu1404": "ami-0038fece5c9fdcf52",
-        "ubuntu1604": "ami-03fcec4562b3cef3c"
+        "alinux": "ami-099197e40d0c5de6e",
+        "centos6": "ami-0d377bccde07c887d",
+        "centos7": "ami-0b28dcaf2b4d00d87",
+        "ubuntu1404": "ami-0ea8b79c622d0a4a2",
+        "ubuntu1604": "ami-0102caf8c6ec0768a"
       },
       "sa-east-1": {
-        "alinux": "ami-0ffb13b9401cc9f43",
-        "centos6": "ami-03a2cb750e02692c6",
-        "centos7": "ami-091c8ba9e3b0a2b6b",
-        "ubuntu1404": "ami-05997e9be14a0f785",
-        "ubuntu1604": "ami-0ba286d64312d26f5"
+        "alinux": "ami-02e542e4935ff9647",
+        "centos6": "ami-0b1c8f6aad337d5b6",
+        "centos7": "ami-00a570d9536621660",
+        "ubuntu1404": "ami-00cf3910c959e9fd5",
+        "ubuntu1604": "ami-0ef5c70aec338bcfb"
       },
       "us-east-1": {
-        "alinux": "ami-025f4816964498a18",
-        "centos6": "ami-09d4b0433c3d08284",
-        "centos7": "ami-0ed9fbb6accaa70ba",
-        "ubuntu1404": "ami-09ae02fc417765f4c",
-        "ubuntu1604": "ami-057dc350619a0bf58"
+        "alinux": "ami-0cd2dd3198972a68c",
+        "centos6": "ami-0919d912e0e33d247",
+        "centos7": "ami-09d092c1b054832df",
+        "ubuntu1404": "ami-095016c5ff0ab7ae6",
+        "ubuntu1604": "ami-098c8e582ca818cff"
       },
       "us-east-2": {
-        "alinux": "ami-0381cb7486cdc973f",
-        "centos6": "ami-0b8ba3e22e08e3870",
-        "centos7": "ami-059415e43c0827abf",
-        "ubuntu1404": "ami-0121231f2883a268e",
-        "ubuntu1604": "ami-04c283d05058f6894"
+        "alinux": "ami-057e70f0fbb007ab6",
+        "centos6": "ami-0bbd43b2b8991cdae",
+        "centos7": "ami-0e0cda1cdec7fcecf",
+        "ubuntu1404": "ami-02a21f90af8a453f0",
+        "ubuntu1604": "ami-055279b0b09d12a71"
       },
       "us-gov-east-1": {
-        "alinux": "ami-08e554700cf18e130",
-        "ubuntu1404": "ami-0b621c3f09e5e06c4",
-        "ubuntu1604": "ami-083ba3c9a5c412c8f"
+        "alinux": "ami-022f96b137a63c9ff",
+        "ubuntu1404": "ami-09274e2587c4154f2",
+        "ubuntu1604": "ami-0b664ce8c427b77eb"
       },
       "us-gov-west-1": {
-        "alinux": "ami-a5ee8fc4",
-        "ubuntu1404": "ami-50e98831",
-        "ubuntu1604": "ami-54f19035"
+        "alinux": "ami-fefb989f",
+        "ubuntu1404": "ami-6cf0930d",
+        "ubuntu1604": "ami-5ef6953f"
       },
       "us-west-1": {
-        "alinux": "ami-0f7431c55ad80bfce",
-        "centos6": "ami-06bd36cf904ec0f9a",
-        "centos7": "ami-02ca1c89adc7b29f0",
-        "ubuntu1404": "ami-0e30c804ef45d3819",
-        "ubuntu1604": "ami-0d1f81f40426d7c25"
+        "alinux": "ami-09686d4090e35a702",
+        "centos6": "ami-0ac1cf1e68288fa36",
+        "centos7": "ami-084c065e503e74449",
+        "ubuntu1404": "ami-099ebeb456dbf0646",
+        "ubuntu1604": "ami-0db5e85c0b1ce2c20"
       },
       "us-west-2": {
-        "alinux": "ami-0bdc62a7fa9026972",
-        "centos6": "ami-084bb82c022317cc5",
-        "centos7": "ami-03abc3d448a987e73",
-        "ubuntu1404": "ami-0440f447631cb8f6c",
-        "ubuntu1604": "ami-0f7c3a7a9e2f3d6a3"
+        "alinux": "ami-0c588cdc9e91b0db3",
+        "centos6": "ami-08b28682da5721f5b",
+        "centos7": "ami-070345cb145f2d2f0",
+        "ubuntu1404": "ami-05ddc7ec0edb9069f",
+        "ubuntu1604": "ami-02393fa61ac61547a"
       }
     },
     "OSFeatures": {
@@ -1300,10 +1330,21 @@
         "RootDevice": "/dev/sda1"
       }
     },
+    "Partition2Url": {
+      "aws": {
+        "url": "amazonaws.com"
+      },
+      "aws-us-gov": {
+        "url": "amazonaws.com"
+      },
+      "aws-cn": {
+        "url": "amazonaws.com.cn"
+      }
+    },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.1.0",
-        "cookbook": "aws-parallelcluster-cookbook-2.1.0",
+        "parallelcluster": "2.1.1",
+        "cookbook": "aws-parallelcluster-cookbook-2.1.1",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
@@ -1336,15 +1377,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -1457,7 +1498,22 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "ec2.amazonaws.com"
+                  {
+                    "Fn::Sub": [
+                      "ec2.${s3_url}",
+                      {
+                        "s3_url": {
+                          "Fn::FindInMap": [
+                            "Partition2Url",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            "url"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 ]
               },
               "Action": [
@@ -2053,13 +2109,13 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
-                "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
+                "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -2085,27 +2141,26 @@
                 "  proxy_args=\"\"\n",
                 "  touch /tmp/proxy.sh\n",
                 "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  if [ \"",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\" == \"us-east-1\" ]; then\n",
-                "    s3_prefix=s3\n",
-                "  else\n",
-                "    s3_prefix=s3-",
+                "  export _region=",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
-                "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                "s3_url=",
                 {
-                  "Ref": "AWS::Region"
+                  "Fn::FindInMap": [
+                    "Partition2Url",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    "url"
+                  ]
                 },
-                "-aws-parallelcluster/cookbooks/",
+                "\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  cookbook_url=${custom_cookbook}\n",
+                "else\n",
+                "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
@@ -2171,7 +2226,7 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
                 "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
@@ -2381,10 +2436,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
@@ -2464,7 +2534,7 @@
         ],
         "LaunchConfigurationName": {
           "Fn::If": [
-            "GovCloudRegion",
+            "CreateLaunchConfig",
             {
               "Ref": "ComputeServerLaunchConfig"
             },
@@ -2869,13 +2939,13 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
-                "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
+                "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -2901,27 +2971,26 @@
                 "  proxy_args=\"\"\n",
                 "  touch /tmp/proxy.sh\n",
                 "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  if [ \"",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\" == \"us-east-1\" ]; then\n",
-                "    s3_prefix=s3\n",
-                "  else\n",
-                "    s3_prefix=s3-",
+                "  _region=",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
-                "  fi\n",
-                "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                "s3_url=",
                 {
-                  "Ref": "AWS::Region"
+                  "Fn::FindInMap": [
+                    "Partition2Url",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    "url"
+                  ]
                 },
-                "-aws-parallelcluster/cookbooks/",
+                "\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  cookbook_url=${custom_cookbook}\n",
+                "else\n",
+                "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                 {
                   "Fn::FindInMap": [
                     "PackagesVersions",
@@ -2987,7 +3056,7 @@
                 "fi\n",
                 "mkdir /tmp/cookbooks\n",
                 "cd /tmp/cookbooks\n",
-                "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
                 "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
@@ -3172,10 +3241,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
@@ -3526,13 +3610,13 @@
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
                   "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                   "  fi\n",
-                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.amazonaws.com/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
-                  "  curl -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
+                  "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                   "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
-                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                  "  curl -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
                   "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
                   "proxy=",
@@ -3558,27 +3642,26 @@
                   "  proxy_args=\"\"\n",
                   "  touch /tmp/proxy.sh\n",
                   "fi\n",
-                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                  "  cookbook_url=${custom_cookbook}\n",
-                  "else\n",
-                  "  if [ \"",
-                  {
-                    "Ref": "AWS::Region"
-                  },
-                  "\" == \"us-east-1\" ]; then\n",
-                  "    s3_prefix=s3\n",
-                  "  else\n",
-                  "    s3_prefix=s3-",
+                  "  export _region=",
                   {
                     "Ref": "AWS::Region"
                   },
                   "\n",
-                  "  fi\n",
-                  "  cookbook_url=https://${s3_prefix}.amazonaws.com/",
+                  "s3_url=",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "Partition2Url",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      "url"
+                    ]
                   },
-                  "-aws-parallelcluster/cookbooks/",
+                  "\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  cookbook_url=${custom_cookbook}\n",
+                  "else\n",
+                  "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
                   {
                     "Fn::FindInMap": [
                       "PackagesVersions",
@@ -3644,7 +3727,7 @@
                   "fi\n",
                   "mkdir /tmp/cookbooks\n",
                   "cd /tmp/cookbooks\n",
-                  "curl -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
                   "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "cd /tmp\n",
                   "# Call CloudFormation\n",
@@ -3831,10 +3914,25 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": ". /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done ",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
-                  "HOME": "/tmp"
+                  "HOME": "/tmp",
+                  "parallelcluster_version": {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "aws-parallelcluster-",
+                        {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      ]
+                    ]
+                  }
                 }
               }
             }
@@ -4098,6 +4196,15 @@
               }
             ]
           },
+          "S3Url": {
+            "Fn::FindInMap": [
+              "Partition2Url",
+              {
+                "Ref": "AWS::Partition"
+              },
+              "url"
+            ]
+          },
           "FileSystemTags": {
             "Fn::Sub": [
               "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
@@ -4268,15 +4375,15 @@
             },
             {
               "Fn::Sub": [
-                "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
+                "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
                 {
-                  "s3_domain": {
-                    "Fn::If": [
-                      "GovCloudRegion",
+                  "s3_url": {
+                    "Fn::FindInMap": [
+                      "Partition2Url",
                       {
-                        "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                        "Ref": "AWS::Partition"
                       },
-                      "s3.amazonaws.com"
+                      "url"
                     ]
                   },
                   "version": {
@@ -4328,7 +4435,22 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  "lambda.amazonaws.com"
+                  {
+                    "Fn::Sub": [
+                      "lambda.${s3_url}",
+                      {
+                        "s3_url": {
+                          "Fn::FindInMap": [
+                            "Partition2Url",
+                            {
+                              "Ref": "AWS::Partition"
+                            },
+                            "url"
+                          ]
+                        }
+                      }
+                    ]
+                  }
                 ]
               }
             }
@@ -4438,15 +4560,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -4496,15 +4618,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {

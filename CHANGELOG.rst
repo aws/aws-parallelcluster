@@ -2,6 +2,10 @@
 CHANGELOG
 =========
 
+2.1.1
+=====
+* China regions `cn-north-1` and `cn-northwest-1`
+
 2.1.0
 =====
 * RAID support
