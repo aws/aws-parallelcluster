@@ -730,7 +730,7 @@ def delete(args):
             sys.stdout.write("\n")
             sys.stdout.flush()
         if status == "DELETE_FAILED":
-            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", stack)
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("does not exist"):
             if saw_update:
