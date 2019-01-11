@@ -636,6 +636,13 @@ Defaults to false. ::
 
     encrypted = false
 
+ebs_kms_key_id
+""""""""""""""
+Use a custom KMS Key for encryption, this must be used in conjunction with ``encrypted = true`` and needs to have a
+custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+
+    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
 ebs_volume_id
 """""""""""""
 EBS Volume Id of an existing volume that will be attached to the MasterServer.
@@ -884,3 +891,9 @@ Defaults to false. ::
 
     encrypted = false
 
+ebs_kms_key_id
+""""""""""""""
+Use a custom KMS Key for encryption, this must be used in conjunction with ``encrypted = true`` and needs to have a
+custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+
+    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
