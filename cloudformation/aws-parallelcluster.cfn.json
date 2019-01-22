@@ -2265,8 +2265,7 @@
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
-              "shellRunPostInstall",
-              "shellForkClusterReadyInstall"
+              "shellRunPostInstall"
             ]
           },
           "deployConfigFiles": {
@@ -2486,13 +2485,6 @@
             "commands": {
               "runpostinstall": {
                 "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
-              }
-            }
-          },
-          "shellForkClusterReadyInstall": {
-            "commands": {
-              "clusterreadyinstall": {
-                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           }
@@ -3096,7 +3088,6 @@
               "shellRunPreInstall",
               "chefConfig",
               "shellRunPostInstall",
-              "shellForkClusterReadyInstall",
               "signalComputeReady"
             ]
           },
@@ -3291,13 +3282,6 @@
             "commands": {
               "runpostinstall": {
                 "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
-              }
-            }
-          },
-          "shellForkClusterReadyInstall": {
-            "commands": {
-              "clusterreadyinstall": {
-                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           },
@@ -3769,7 +3753,6 @@
               "shellRunPreInstall",
               "chefConfig",
               "shellRunPostInstall",
-              "shellForkClusterReadyInstall",
               "signalComputeReady"
             ]
           },
@@ -3964,13 +3947,6 @@
             "commands": {
               "runpostinstall": {
                 "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
-              }
-            }
-          },
-          "shellForkClusterReadyInstall": {
-            "commands": {
-              "clusterreadyinstall": {
-                "command": "/opt/parallelcluster/scripts/fetch_and_run -clusterreadyinstall"
               }
             }
           },
