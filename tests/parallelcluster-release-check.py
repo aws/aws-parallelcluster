@@ -157,8 +157,8 @@ def _get_desired_asg_capacity(cluster_config):
         asg_capacity: the desired capacity of the autoscaling group.
     """
     asg_conn = boto3.client("autoscaling", region_name=cluster_config.region)
-    r = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [cluster_config.stack_name]}])
-    asg_name = r.get("Tags")[0].get("ResourceId")
+    tags = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [cluster_config.stack_name]}])
+    asg_name = tags.get("Tags")[0].get("ResourceId")
     response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
     return response["AutoScalingGroups"][0]["DesiredCapacity"]
 
