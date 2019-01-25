@@ -22,15 +22,20 @@ def readme():
 
 
 VERSION = "2.1.1"
-REQUIRES = ["boto3>=1.9.48", "awscli>=1.11.175", "future>=0.16.0", "tabulate>=0.8.2"]
+REQUIRES = [
+    "boto3>=1.9.48,<=1.9.85",
+    "awscli>=1.11.175,<=1.16.95",
+    "future>=0.16.0,<=0.17.1",
+    "tabulate>=0.8.2,<=0.8.3",
+]
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it
     # was not in stdlib until 2.7.
-    REQUIRES.append("argparse>=1.4.0")
+    REQUIRES.append("argparse==1.4.0")
 
 if sys.version_info[0] == 2:
-    REQUIRES.append("configparser>=3.5.0")
+    REQUIRES.append("configparser>=3.5.0,<=3.5.3")
 
 setup(
     name="aws-parallelcluster",
