@@ -191,7 +191,7 @@ If scheduler is awsbatch, the compute environment will at most have max_vcpus.
 
 Defaults to 20. ::
 
-    desired_vcpus = 20
+    max_vcpus = 20
 
 scheduler
 """""""""
@@ -230,7 +230,7 @@ spot_bid_percentage
 If you're using awsbatch as your scheduler, this optional parameter is the on-demand bid percentage. If not specified
 you'll get the current spot market price, capped at the on-demand price. ::
 
-    spot_price = 85
+    spot_bid_percentage = 85
 
 .. _custom_ami_section:
 
@@ -331,9 +331,11 @@ placement
 """""""""
 Cluster placement logic. This enables the whole cluster or only compute to use the placement group.
 
+Can be ``cluster`` or ``compute``.
+
 This does not apply to awsbatch.
 
-Defaults to cluster. ::
+Defaults to ``cluster``. ::
 
     placement = cluster
 
@@ -387,6 +389,18 @@ OS type used in the cluster
 Defaults to alinux. Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604
 
 Note: The base_os determines the username used to log into the cluster.
+
+Supported OS's by region. Note that commercial is all supported regions such as us-east-1, us-west-2 etc. ::
+
+    ============== ======  ============ ============ ============= ============
+    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
+    ============== ======  ============ ============ ============= ============
+    commercial      True     True          True          True        True
+    us-gov-west-1   True     False         False         True        True
+    us-gov-east-1   True     False         False         True        True
+    cn-north-1      True     False         False         True        True
+    cn-northwest-1  True     False         False         False       False
+    ============== ======  ============ ============ ============= ============
 
 * CentOS 6 & 7: ``centos``
 * Ubuntu: ``ubuntu``
@@ -621,6 +635,13 @@ Whether or not the volume should be encrypted (should not be used with snapshots
 Defaults to false. ::
 
     encrypted = false
+
+ebs_kms_key_id
+""""""""""""""
+Use a custom KMS Key for encryption, this must be used in conjunction with ``encrypted = true`` and needs to have a
+custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+
+    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 ebs_volume_id
 """""""""""""
@@ -870,3 +891,9 @@ Defaults to false. ::
 
     encrypted = false
 
+ebs_kms_key_id
+""""""""""""""
+Use a custom KMS Key for encryption, this must be used in conjunction with ``encrypted = true`` and needs to have a
+custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+
+    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx

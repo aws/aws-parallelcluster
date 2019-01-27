@@ -214,7 +214,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config
     # upload input files, if there
     if args.input_file:
         for file in args.input_file:
-            s3_uploader.put_file(file, file)
+            s3_uploader.put_file(file, os.path.basename(file))
 
     # upload command, if needed
     if args.command_file or not sys.stdin.isatty() or args.env:

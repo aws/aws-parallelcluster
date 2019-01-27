@@ -594,7 +594,7 @@ def command(args, extra_args):
     try:
         stack_result = cfn.describe_stacks(StackName=stack).get("Stacks")[0]
         status = stack_result.get("StackStatus")
-        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE"]
+        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
         if status not in valid_status:
             LOGGER.info("Stack status: %s. Stack needs to be in %s", status, " or ".join(valid_status))
             sys.exit(1)
@@ -730,7 +730,7 @@ def delete(args):
             sys.stdout.write("\n")
             sys.stdout.flush()
         if status == "DELETE_FAILED":
-            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", stack)
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("does not exist"):
             if saw_update:
