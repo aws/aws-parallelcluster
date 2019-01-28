@@ -2435,10 +2435,13 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp",
+                  "custom_cookbook": {
+                    "Ref": "CustomChefCookbook"
+                  },
                   "parallelcluster_version": {
                     "Fn::Join": [
                       "",
@@ -3232,10 +3235,13 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp",
+                  "custom_cookbook": {
+                    "Ref": "CustomChefCookbook"
+                  },
                   "parallelcluster_version": {
                     "Fn::Join": [
                       "",
@@ -3897,10 +3903,13 @@
           "getCookbooks": {
             "commands": {
               "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
+                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
                 "cwd": "/tmp/cookbooks",
                 "env": {
                   "HOME": "/tmp",
+                  "custom_cookbook": {
+                    "Ref": "CustomChefCookbook"
+                  },
                   "parallelcluster_version": {
                     "Fn::Join": [
                       "",
