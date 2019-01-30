@@ -242,7 +242,7 @@ def _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config
 
         # define command to execute
         bash_command = _compose_bash_command(args, config.s3_bucket, config.region, job_s3_folder, job_script, env_file)
-        command = ["/bin/bash", "-c", bash_command]
+        command = [bash_command]
     elif type(args.command) == str:
         log.info("Using command parameter")
         command = [args.command] + args.arguments

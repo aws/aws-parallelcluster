@@ -85,6 +85,7 @@ check_batch_env_variables_exist() {
 read_compute_address() {
     if [[ ! -f "${destination_dir}/hostfile" ]]; then
         touch "${destination_dir}/hostfile"
+        chown ${USER}:${USER} ${destination_dir}/hostfile
     fi
 
     compute_nodes_read=0
