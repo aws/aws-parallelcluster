@@ -932,14 +932,21 @@
       ]
     },
     "UseS3ReadPolicy": {
-      "Fn::Not": [
+      "Fn::And": [
         {
-          "Fn::Equals": [
+          "Fn::Not": [
             {
-              "Ref": "S3ReadResource"
-            },
-            "NONE"
+              "Fn::Equals": [
+                {
+                  "Ref": "S3ReadResource"
+                },
+                "NONE"
+              ]
+            }
           ]
+        },
+        {
+          "Condition": "CreateEC2IAMRole"
         }
       ]
     },
@@ -971,14 +978,21 @@
       ]
     },
     "UseS3ReadWritePolicy": {
-      "Fn::Not": [
+      "Fn::And": [
         {
-          "Fn::Equals": [
+          "Fn::Not": [
             {
-              "Ref": "S3ReadWriteResource"
-            },
-            "NONE"
+              "Fn::Equals": [
+                {
+                  "Ref": "S3ReadWriteResource"
+                },
+                "NONE"
+              ]
+            }
           ]
+        },
+        {
+          "Condition": "CreateEC2IAMRole"
         }
       ]
     },
