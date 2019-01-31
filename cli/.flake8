@@ -9,6 +9,9 @@ ignore =
 # E402 module level import not at top of file
 # D101 Missing docstring in public class
 # D102 Missing docstring in public method
+# D205 1 blank line required between summary line and description
+# D400 First line should end with a period
+# D401 First line should be in imperative mood
 per-file-ignores =
     pcluster/*.py: D103
     pcluster/config_sanity.py: E402, D103
@@ -16,6 +19,8 @@ per-file-ignores =
     pcluster/cfnconfig.py: E402, D103
     tests/pcluster/pcluster-unittest.py: D101, D102, D103
     tests/awsbatch/test_*.py: D101, D102
+    ../tests/integration-tests/tests/*: D103
+    ../tests/integration-tests/*: D205, D400, D401
 exclude =
     .tox,
     .git,

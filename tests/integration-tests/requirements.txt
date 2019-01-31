@@ -1,0 +1,4 @@
+pytest
+pytest-rerunfailures
+pytest-xdist
+argparse
