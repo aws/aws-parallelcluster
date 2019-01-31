@@ -243,7 +243,7 @@ def configure(args):  # noqa: C901 FIXME!!!
             pass
         for key, value in section.items():
             # Only update configuration if not set
-            if value is not None and key is not "__name__":
+            if value is not None and key != "__name__":
                 config.set(section["__name__"], key, value)
 
     # ensure that the directory for the config file exists (because
