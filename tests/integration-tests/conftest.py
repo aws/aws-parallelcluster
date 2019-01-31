@@ -1,6 +1,7 @@
 import logging
 
 from conftest_markers import (
+    DIMENSIONS_MARKER_ARGS,
     add_default_markers,
     check_marker_dimensions,
     check_marker_list,
@@ -53,6 +54,7 @@ def pytest_configure(config):
 
 def pytest_runtest_call(item):
     """Called to execute the test item."""
+    _add_properties_to_report(item)
     add_default_markers(item)
 
     check_marker_list(item, "instances", "instance")
@@ -87,3 +89,10 @@ def _setup_custom_logger(log_file):
     file_handler = logging.FileHandler(log_file)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
+
+
+def _add_properties_to_report(item):
+    for dimension in DIMENSIONS_MARKER_ARGS:
+        value = item.funcargs.get(dimension)
+        if value:
+            item.user_properties.append((dimension, value))
