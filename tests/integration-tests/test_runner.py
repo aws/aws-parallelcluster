@@ -1,4 +1,3 @@
-import argparse
 import datetime
 import logging
 import multiprocessing
@@ -6,7 +5,10 @@ import os
 import sys
 import time
 
+import argparse
 import pytest
+
+from reports_generator import generate_json_report, generate_junitxml_merged_report
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -44,7 +46,9 @@ TEST_DEFAULTS = {
     "custom_cookbook_url": None,
     "custom_template_url": None,
     "dry_run": False,
+    "output": [],
     "sequential": False,
+    "generate_report": False,
 }
 
 
@@ -106,6 +110,20 @@ def _init_argparser():
         action="store_true",
         default=TEST_DEFAULTS.get("sequential"),
     )
+    parser.add_argument(
+        "--output",
+        help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
+        "style report file",
+        nargs="+",
+        choices=["html", "junitxml"],
+        default=TEST_DEFAULTS.get("output"),
+    )
+    parser.add_argument(
+        "--generate-report",
+        help="generate final test report",
+        action="store_true",
+        default=TEST_DEFAULTS.get("generate_report"),
+    )
 
     return parser
 
@@ -117,9 +135,6 @@ def _get_pytest_args(args):
     # Run only tests with the given markers
     pytest_args.append("-m")
     pytest_args.append(" or ".join(args.features))
-    # Output dir for tests results/reports
-    pytest_args.append("--output-dir")
-    pytest_args.append(OUT_DIR)
     pytest_args.append("--instances")
     pytest_args.extend(args.instances)
     pytest_args.append("--oss")
@@ -154,6 +169,13 @@ def _get_pytest_regionalized_args(pytest_args, region, args):
     pytest_args_regionalized.extend(["--regions", region])
     pytest_args_regionalized.extend(["--tests-log-file", "{0}/{1}.log".format(LOGS_DIR, region)])
 
+    out_dir = "{0}/{1}".format(OUT_DIR, region)
+    pytest_args_regionalized.extend(["--output-dir", out_dir])
+    if "junitxml" in args.output or args.generate_report:
+        pytest_args_regionalized.append("--junit-xml={0}/results.xml".format(out_dir))
+    if "html" in args.output:
+        pytest_args_regionalized.append("--html={0}/results.html".format(out_dir))
+
     return pytest_args_regionalized
 
 
@@ -161,15 +183,23 @@ def _get_pytest_non_regionalized_args(pytest_args, args):
     pytest_args_non_regionalized = list(pytest_args)
     pytest_args_non_regionalized.append("--regions")
     pytest_args_non_regionalized.extend(args.regions)
+    pytest_args_non_regionalized.extend(["--output-dir", OUT_DIR])
     pytest_args_non_regionalized.extend(["--tests-log-file", "{0}/all_regions.log".format(LOGS_DIR)])
+    if "junitxml" in args.output or args.generate_report:
+        pytest_args_non_regionalized.append("--junit-xml={0}/all_regions.results.xml".format(OUT_DIR))
+    if "html" in args.output:
+        pytest_args_non_regionalized.append("--html={0}/all_regions.results.html".format(OUT_DIR))
 
     return pytest_args_non_regionalized
 
 
 def _run_test_in_region(region, pytest_args, args):
+    out_dir = "{0}/{1}".format(OUT_DIR, region)
+    os.makedirs(out_dir, exist_ok=True)
+
     # Redirect stdout to file
     if not args.show_output:
-        sys.stdout = open("{0}/{1}.pytest.out".format(OUT_DIR, region), "w")
+        sys.stdout = open("{0}/pytest.out".format(out_dir), "w")
 
     pytest_args_regionalized = _get_pytest_regionalized_args(pytest_args, region, args)
     logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
@@ -218,6 +248,13 @@ def main():
         _run_parallel(args, pytest_args)
 
     logger.info("All tests completed!")
+
+    if "junitxml" in args.output:
+        generate_junitxml_merged_report(OUT_DIR)
+
+    if args.generate_report:
+        logger.info("Generating tests report")
+        generate_json_report(OUT_DIR)
 
 
 if __name__ == "__main__":
