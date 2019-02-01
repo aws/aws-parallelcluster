@@ -4,13 +4,23 @@ CHANGELOG
 
 2.1.1
 =====
-* China regions `cn-north-1` and `cn-northwest-1`
+* Add China regions `cn-north-1` and `cn-northwest-1`
 
 2.1.0
 =====
-* RAID support
-* EFS support
-* AWS Batch Multinode Parallel Support
+* Add configuration for RAID 0 and 1 volumes
+* Add Elastic File System (EFS) support
+* Add AWS Batch Multinode Parallel jobs support
+* Add support for Stockholm region (`eu-north-1`)
+* Add `--env` and `--env-blacklist` options to the `awsbsub` command to export environment variables
+  in the job environment
+* Add `--input-file` option to the `awsbsub` command to stage-in input files from the client
+* Add new `PCLUSTER_JOB_S3_URL` variable to the job execution environment pointing to the S3 URL used
+  for job data stage-in/out
+* Add S3 URL for job data staging to the `awsbstat -d` output
+* Add `--working-dir` and `--parent-working-dir` options to the `awsbsub` command to specify
+  the working-directory or the parent working directory for the job
+* Add CPUs and Memory information to the `awsbhosts -d` command
 
 2.0.2
 =====
