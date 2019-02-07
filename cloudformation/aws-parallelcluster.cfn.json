@@ -1472,7 +1472,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
+            "https://${s3_domain}/seaam-pcluster/templates/fsx-substack-${version}.cfn.json",
             {
               "s3_domain": {
                 "Fn::If": [
@@ -1487,7 +1487,7 @@
                 "Fn::FindInMap": [
                   "PackagesVersions",
                   "default",
-                  "cfncluster"
+                  "parallelcluster"
                 ]
               }
             }
