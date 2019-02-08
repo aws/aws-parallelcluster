@@ -87,3 +87,9 @@ def fix():
 
 def test_error(fix):
     assert fix == 2
+
+
+@pytest.mark.config
+def test_config_dir(pcluster_config_reader, os, region):
+    rendered_config_file = pcluster_config_reader()
+    logging.info(rendered_config_file.read_text())

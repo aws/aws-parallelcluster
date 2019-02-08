@@ -40,7 +40,7 @@ TEST_DEFAULTS = {
         "eu-west-3",
     ],
     "oss": ["alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"],
-    "schedulers": ["sge", "slurm", "torque"],
+    "schedulers": ["sge", "slurm", "torque", "awsbatch"],
     "instances": ["c4.xlarge", "c5.xlarge"],
     "custom_node_url": None,
     "custom_cookbook_url": None,
@@ -213,6 +213,7 @@ def _make_logging_dirs():
     logger.info("Configured logs dir: {0}".format(LOGS_DIR))
     os.makedirs(OUT_DIR, exist_ok=True)
     logger.info("Configured tests output dir: {0}".format(OUT_DIR))
+    os.makedirs("{}/clusters_configs".format(OUT_DIR), exist_ok=True)
 
 
 def _run_parallel(args, pytest_args):
