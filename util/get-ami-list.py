@@ -18,11 +18,12 @@
 #
 # usage: ./get-ami-list.py <tag1> <tag2> <tag3>
 
-import argparse
 import os
 import re
 import shutil
 import tempfile
+
+import argparse
 
 from git import Repo
 

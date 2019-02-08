@@ -26,7 +26,6 @@
 #   (value does not matter). That subnet will be used as the launch
 #   target for the cluster.
 
-import argparse
 import datetime
 import errno
 import os
@@ -40,7 +39,9 @@ import time
 from builtins import exit
 from collections import namedtuple
 
+import argparse
 import boto3
+
 import process_helper as prochelp
 from hamcrest import *
 

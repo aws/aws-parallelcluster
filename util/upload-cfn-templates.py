@@ -1,9 +1,8 @@
-import argparse
 import sys
 
-import pkg_resources
-
+import argparse
 import boto3
+import pkg_resources
 from botocore.exceptions import ClientError
 
 
