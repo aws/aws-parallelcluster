@@ -124,8 +124,16 @@ def _init_argparser():
         action="store_true",
         default=TEST_DEFAULTS.get("generate_report"),
     )
+    parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
+    parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
 
     return parser
+
+
+def _is_file(value):
+    if not os.path.isfile(value):
+        raise argparse.ArgumentTypeError("'{0}' is not a valid key".format(value))
+    return value
 
 
 def _get_pytest_args(args, regions, log_file, out_dir):
@@ -145,6 +153,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(args.schedulers)
     pytest_args.extend(["--tests-log-file", log_file])
     pytest_args.extend(["--output-dir", out_dir])
+    pytest_args.extend(["--key-name", args.key_name])
+    pytest_args.extend(["--key-path", args.key_path])
 
     if args.custom_node_url:
         pytest_args.extend(["--custom-node-url", args.custom_node_url])
