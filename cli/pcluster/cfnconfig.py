@@ -57,289 +57,6 @@ def get_stack_template(region, aws_access_key_id, aws_secret_access_key, stack):
 class ParallelClusterConfig(object):
     """Manage ParallelCluster Config."""
 
-    def __get_efs_parameters(self, __config):  # noqa: C901 FIXME!!!
-        # Determine if EFS settings are defined and set section
-        try:
-            self.__efs_settings = __config.get(self.__cluster_section, "efs_settings")
-            if not self.__efs_settings:
-                print("ERROR: efs_settings defined but not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            self.__efs_section = "efs %s" % self.__efs_settings
-        except configparser.NoOptionError:
-            pass
-
-        # Dictionary list of all EFS options
-        self.__efs_options = OrderedDict(
-            [
-                ("shared_dir", ("EFSShared_dir", None)),
-                ("efs_fs_id", ("EFSFileSystemId", "EFSFSId")),
-                ("performance_mode", ("EFSPerformanceMode", "EFSPerfMode")),
-                ("efs_kms_key_id", ("EFSKMSKeyId", None)),
-                ("provisioned_throughput", ("EFSProvisionedThroughput", None)),
-                ("encrypted", ("EFSEncryption", None)),
-                ("throughput_mode", ("EFSThroughput_mode", None)),
-            ]
-        )
-        __valid_mt = False
-        __throughput_mode = None
-        __provisioned_throughput = None
-        try:
-            if self.__efs_section:
-                __temp_efs_options = []
-                for key in self.__efs_options:
-                    try:
-                        __temp__ = __config.get(self.__efs_section, key)
-                        if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__efs_section))
-                            sys.exit(1)
-                        if key == "provisioned_throughput":
-                            __provisioned_throughput = __temp__
-                        elif key == "throughput_mode":
-                            __throughput_mode = __temp__
-                        # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
-                        if self.__sanity_check and self.__efs_options.get(key)[1] == "EFSFSId":
-                            __valid_mt = config_sanity.check_resource(
-                                self.region,
-                                self.aws_access_key_id,
-                                self.aws_secret_access_key,
-                                "EFSFSId",
-                                (__temp__, self.__master_subnet),
-                            )
-                        elif self.__sanity_check and self.__efs_options.get(key)[1] is not None:
-                            config_sanity.check_resource(
-                                self.region,
-                                self.aws_access_key_id,
-                                self.aws_secret_access_key,
-                                self.__efs_options.get(key)[1],
-                                __temp__,
-                            )
-                        __temp_efs_options.append(__temp__)
-                    except configparser.NoOptionError:
-                        __temp_efs_options.append("NONE")
-                        pass
-                # Separate sanity_check for throughput settings,
-                # need to pass in throughput_mode and provisioned_throughput
-                if self.__sanity_check and (__provisioned_throughput is not None or __throughput_mode is not None):
-                    config_sanity.check_resource(
-                        self.region,
-                        self.aws_access_key_id,
-                        self.aws_secret_access_key,
-                        "EFSThroughput",
-                        (__throughput_mode, __provisioned_throughput),
-                    )
-                if __valid_mt:
-                    __temp_efs_options.append("Valid")
-                else:
-                    __temp_efs_options.append("NONE")
-                self.parameters["EFSOptions"] = ",".join(__temp_efs_options)
-        except AttributeError:
-            pass
-
-    def __get_raid_parameters(self, __config):  # noqa: C901 FIXME!!!
-        # Determine if RAID settings are defined and set section
-        try:
-            self.__raid_settings = __config.get(self.__cluster_section, "raid_settings")
-            if not self.__raid_settings:
-                print("ERROR: raid_settings defined by not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            self.__raid_section = "raid %s" % self.__raid_settings
-        except configparser.NoOptionError:
-            pass
-
-        # Dictionary list of all RAID options
-        self.__raid_options = OrderedDict(
-            [
-                ("shared_dir", ("RAIDShared_dir", None)),
-                ("raid_type", ("RAIDType", "RAIDType")),
-                ("num_of_raid_volumes", ("RAIDVolNum", "RAIDNumVol")),
-                ("volume_type", ("RAIDVolType", "RAIDVolType")),
-                ("volume_size", ("RAIDVolSize", None)),
-                ("volume_iops", ("RAIDVolIOPS", None)),
-                ("encrypted", ("RAIDEncryption", None)),
-                ("ebs_kms_key_id", ("EBSKMSKeyId", None)),
-            ]
-        )
-
-        try:
-            if self.__raid_section:
-                __temp_raid_options = []
-                __raid_shared_dir = None
-                __raid_vol_size = None
-                __raid_iops = None
-                __raid_type = None
-                for key in self.__raid_options:
-                    try:
-                        __temp__ = __config.get(self.__raid_section, key)
-                        if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__raid_section))
-                            sys.exit(1)
-                        if key == "volume_size":
-                            __raid_vol_size = __temp__
-                        elif key == "volume_iops":
-                            __raid_iops = __temp__
-                        elif key == "shared_dir":
-                            __raid_shared_dir = __temp__
-                        elif key == "raid_type":
-                            __raid_type = __temp__
-                        if self.__sanity_check and self.__raid_options.get(key)[1] is not None:
-                            config_sanity.check_resource(
-                                self.region,
-                                self.aws_access_key_id,
-                                self.aws_secret_access_key,
-                                self.__raid_options.get(key)[1],
-                                __temp__,
-                            )
-                        __temp_raid_options.append(__temp__)
-                    except configparser.NoOptionError:
-                        if key == "num_of_raid_volumes":
-                            __temp_raid_options.append("2")
-                        else:
-                            __temp_raid_options.append("NONE")
-                        pass
-                if __raid_iops is not None:
-                    if __raid_vol_size is not None:
-                        config_sanity.check_resource(
-                            self.region,
-                            self.aws_access_key_id,
-                            self.aws_secret_access_key,
-                            "RAIDIOPS",
-                            (__raid_iops, __raid_vol_size),
-                        )
-                    # If volume_size is not specified, check IOPS against default volume size, 20GB
-                    else:
-                        config_sanity.check_resource(
-                            self.region,
-                            self.aws_access_key_id,
-                            self.aws_secret_access_key,
-                            "RAIDIOPS",
-                            (__raid_iops, 20),
-                        )
-                if __raid_type is None and __raid_shared_dir is not None:
-                    print("ERROR: raid_type (0 or 1) is required in order to create RAID array.")
-                    sys.exit(1)
-                self.parameters["RAIDOptions"] = ",".join(__temp_raid_options)
-        except AttributeError:
-            pass
-
-    def __ebs_determine_shared_dir(self, __config):  # noqa: C901 FIXME!!!
-        # Handle the shared_dir under EBS setting sections
-        __temp_dir_list = []
-        try:
-            if self.__ebs_section:
-                for section in self.__ebs_section:
-                    try:
-                        __temp_shared_dir = __config.get(section, "shared_dir")
-                        if not __temp_shared_dir:
-                            print("ERROR: shared_dir defined but not set in [%s] section" % section)
-                            sys.exit(1)
-                        __temp_dir_list.append(__temp_shared_dir)
-
-                    except configparser.NoOptionError:
-                        pass
-                    except configparser.NoSectionError:
-                        print("ERROR: [%s] section defined in ebs_settings does not exist" % section)
-                        sys.exit(1)
-        except AttributeError:
-            pass
-
-        # For backwards compatibility, user can still use shared_dir under [cluster] section for 1 volume,
-        # but the shared_dir under [ebs] section will overwrite shared_dir under [cluster],
-        # and user MUST specify a shared_dir under each [ebs] section when using > 1 volumes.
-        try:
-            if len(__temp_dir_list) == len(self.__ebs_section):
-                self.parameters["SharedDir"] = ",".join(__temp_dir_list)
-            # For backwards compatibility with just 1 volume explicitly specified through ebs_settings
-            elif len(self.__ebs_section) == 1:
-                try:
-                    __temp_shared_dir = __config.get(self.__cluster_section, "shared_dir")
-                    if not __temp_shared_dir:
-                        print("ERROR: shared_dir defined but not set")
-                        sys.exit(1)
-                    self.parameters["SharedDir"] = __temp_shared_dir
-                except configparser.NoOptionError:
-                    pass
-            else:
-                print(
-                    "ERROR: not enough shared directories provided.\n"
-                    "When using multiple EBS Volumes, please specify a shared_dir under each [ebs] section"
-                )
-                sys.exit(1)
-        except AttributeError:
-            try:
-                __temp_shared_dir = __config.get(self.__cluster_section, "shared_dir")
-                if not __temp_shared_dir:
-                    print("ERROR: shared_dir defined but not set")
-                    sys.exit(1)
-                self.parameters["SharedDir"] = __temp_shared_dir
-            except configparser.NoOptionError:
-                pass
-
-    def __load_ebs_options(self, __config):  # noqa: C901 FIXME!!!
-
-        try:
-            self.__ebs_settings = __config.get(self.__cluster_section, "ebs_settings")
-
-            if not self.__ebs_settings:
-                print("ERROR: ebs_settings defined by not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            # Modify list
-            self.__ebs_section = self.__ebs_settings.split(",")
-            if len(self.__ebs_section) > self.__MAX_EBS_VOLUMES:
-                print(
-                    "ERROR: number of EBS volumes requested is greater than the MAX.\n"
-                    "Max number of EBS volumes supported is currently %s" % self.__MAX_EBS_VOLUMES
-                )
-                sys.exit(1)
-            self.parameters["NumberOfEBSVol"] = "%s" % len(self.__ebs_section)
-            for i, item in enumerate(self.__ebs_section):
-                item = "ebs %s" % item.strip()
-                self.__ebs_section[i] = item
-        except configparser.NoOptionError:
-            pass
-
-        self.__ebs_determine_shared_dir(__config)
-
-        # Dictionary list of all EBS options
-        self.__ebs_options = dict(
-            ebs_snapshot_id=("EBSSnapshotId", "EC2Snapshot"),
-            volume_type=("VolumeType", None),
-            volume_size=("VolumeSize", None),
-            ebs_kms_key_id=("EBSKMSKeyId", None),
-            volume_iops=("VolumeIOPS", None),
-            encrypted=("EBSEncryption", None),
-            ebs_volume_id=("EBSVolumeId", "EC2Volume"),
-        )
-        # EBS options processing
-        try:
-            if self.__ebs_section:
-                for key in self.__ebs_options:
-                    __temp_parameter_list = []
-                    for section in self.__ebs_section:
-                        try:
-                            __temp__ = __config.get(section, key)
-                            if not __temp__:
-                                print("ERROR: %s defined but not set in [%s] section" % (key, section))
-                                sys.exit(1)
-                            if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
-                                config_sanity.check_resource(
-                                    self.region,
-                                    self.aws_access_key_id,
-                                    self.aws_secret_access_key,
-                                    self.__ebs_options.get(key)[1],
-                                    __temp__,
-                                )
-                            __temp_parameter_list.append(__temp__)
-                        except configparser.NoOptionError:
-                            __temp_parameter_list.append("NONE")
-                            pass
-                    # Fill the rest of the parameter with NONE
-                    while len(__temp_parameter_list) < self.__MAX_EBS_VOLUMES:
-                        __temp_parameter_list.append("NONE")
-                    self.parameters[self.__ebs_options.get(key)[0]] = ",".join(x for x in __temp_parameter_list)
-
-        except AttributeError:
-            pass
-
     def __init__(self, args):  # noqa: C901 FIXME!!!
         self.args = args
         self.cluster_options = self.__init_cluster_options()
@@ -779,3 +496,286 @@ class ParallelClusterConfig(object):
             config_sanity.check_resource(
                 self.region, self.aws_access_key_id, self.aws_secret_access_key, "AWSBatch_Parameters", self.parameters
             )
+
+    def __get_efs_parameters(self, __config):  # noqa: C901 FIXME!!!
+        # Determine if EFS settings are defined and set section
+        try:
+            self.__efs_settings = __config.get(self.__cluster_section, "efs_settings")
+            if not self.__efs_settings:
+                print("ERROR: efs_settings defined but not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            self.__efs_section = "efs %s" % self.__efs_settings
+        except configparser.NoOptionError:
+            pass
+
+        # Dictionary list of all EFS options
+        self.__efs_options = OrderedDict(
+            [
+                ("shared_dir", ("EFSShared_dir", None)),
+                ("efs_fs_id", ("EFSFileSystemId", "EFSFSId")),
+                ("performance_mode", ("EFSPerformanceMode", "EFSPerfMode")),
+                ("efs_kms_key_id", ("EFSKMSKeyId", None)),
+                ("provisioned_throughput", ("EFSProvisionedThroughput", None)),
+                ("encrypted", ("EFSEncryption", None)),
+                ("throughput_mode", ("EFSThroughput_mode", None)),
+            ]
+        )
+        __valid_mt = False
+        __throughput_mode = None
+        __provisioned_throughput = None
+        try:
+            if self.__efs_section:
+                __temp_efs_options = []
+                for key in self.__efs_options:
+                    try:
+                        __temp__ = __config.get(self.__efs_section, key)
+                        if not __temp__:
+                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__efs_section))
+                            sys.exit(1)
+                        if key == "provisioned_throughput":
+                            __provisioned_throughput = __temp__
+                        elif key == "throughput_mode":
+                            __throughput_mode = __temp__
+                        # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                        if self.__sanity_check and self.__efs_options.get(key)[1] == "EFSFSId":
+                            __valid_mt = config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                "EFSFSId",
+                                (__temp__, self.__master_subnet),
+                            )
+                        elif self.__sanity_check and self.__efs_options.get(key)[1] is not None:
+                            config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                self.__efs_options.get(key)[1],
+                                __temp__,
+                            )
+                        __temp_efs_options.append(__temp__)
+                    except configparser.NoOptionError:
+                        __temp_efs_options.append("NONE")
+                        pass
+                # Separate sanity_check for throughput settings,
+                # need to pass in throughput_mode and provisioned_throughput
+                if self.__sanity_check and (__provisioned_throughput is not None or __throughput_mode is not None):
+                    config_sanity.check_resource(
+                        self.region,
+                        self.aws_access_key_id,
+                        self.aws_secret_access_key,
+                        "EFSThroughput",
+                        (__throughput_mode, __provisioned_throughput),
+                    )
+                if __valid_mt:
+                    __temp_efs_options.append("Valid")
+                else:
+                    __temp_efs_options.append("NONE")
+                self.parameters["EFSOptions"] = ",".join(__temp_efs_options)
+        except AttributeError:
+            pass
+
+    def __get_raid_parameters(self, __config):  # noqa: C901 FIXME!!!
+        # Determine if RAID settings are defined and set section
+        try:
+            self.__raid_settings = __config.get(self.__cluster_section, "raid_settings")
+            if not self.__raid_settings:
+                print("ERROR: raid_settings defined by not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            self.__raid_section = "raid %s" % self.__raid_settings
+        except configparser.NoOptionError:
+            pass
+
+        # Dictionary list of all RAID options
+        self.__raid_options = OrderedDict(
+            [
+                ("shared_dir", ("RAIDShared_dir", None)),
+                ("raid_type", ("RAIDType", "RAIDType")),
+                ("num_of_raid_volumes", ("RAIDVolNum", "RAIDNumVol")),
+                ("volume_type", ("RAIDVolType", "RAIDVolType")),
+                ("volume_size", ("RAIDVolSize", None)),
+                ("volume_iops", ("RAIDVolIOPS", None)),
+                ("encrypted", ("RAIDEncryption", None)),
+                ("ebs_kms_key_id", ("EBSKMSKeyId", None)),
+            ]
+        )
+
+        try:
+            if self.__raid_section:
+                __temp_raid_options = []
+                __raid_shared_dir = None
+                __raid_vol_size = None
+                __raid_iops = None
+                __raid_type = None
+                for key in self.__raid_options:
+                    try:
+                        __temp__ = __config.get(self.__raid_section, key)
+                        if not __temp__:
+                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__raid_section))
+                            sys.exit(1)
+                        if key == "volume_size":
+                            __raid_vol_size = __temp__
+                        elif key == "volume_iops":
+                            __raid_iops = __temp__
+                        elif key == "shared_dir":
+                            __raid_shared_dir = __temp__
+                        elif key == "raid_type":
+                            __raid_type = __temp__
+                        if self.__sanity_check and self.__raid_options.get(key)[1] is not None:
+                            config_sanity.check_resource(
+                                self.region,
+                                self.aws_access_key_id,
+                                self.aws_secret_access_key,
+                                self.__raid_options.get(key)[1],
+                                __temp__,
+                            )
+                        __temp_raid_options.append(__temp__)
+                    except configparser.NoOptionError:
+                        if key == "num_of_raid_volumes":
+                            __temp_raid_options.append("2")
+                        else:
+                            __temp_raid_options.append("NONE")
+                        pass
+                if __raid_iops is not None:
+                    if __raid_vol_size is not None:
+                        config_sanity.check_resource(
+                            self.region,
+                            self.aws_access_key_id,
+                            self.aws_secret_access_key,
+                            "RAIDIOPS",
+                            (__raid_iops, __raid_vol_size),
+                        )
+                    # If volume_size is not specified, check IOPS against default volume size, 20GB
+                    else:
+                        config_sanity.check_resource(
+                            self.region,
+                            self.aws_access_key_id,
+                            self.aws_secret_access_key,
+                            "RAIDIOPS",
+                            (__raid_iops, 20),
+                        )
+                if __raid_type is None and __raid_shared_dir is not None:
+                    print("ERROR: raid_type (0 or 1) is required in order to create RAID array.")
+                    sys.exit(1)
+                self.parameters["RAIDOptions"] = ",".join(__temp_raid_options)
+        except AttributeError:
+            pass
+
+    def __ebs_determine_shared_dir(self, __config):  # noqa: C901 FIXME!!!
+        # Handle the shared_dir under EBS setting sections
+        __temp_dir_list = []
+        try:
+            if self.__ebs_section:
+                for section in self.__ebs_section:
+                    try:
+                        __temp_shared_dir = __config.get(section, "shared_dir")
+                        if not __temp_shared_dir:
+                            print("ERROR: shared_dir defined but not set in [%s] section" % section)
+                            sys.exit(1)
+                        __temp_dir_list.append(__temp_shared_dir)
+
+                    except configparser.NoOptionError:
+                        pass
+                    except configparser.NoSectionError:
+                        print("ERROR: [%s] section defined in ebs_settings does not exist" % section)
+                        sys.exit(1)
+        except AttributeError:
+            pass
+
+        # For backwards compatibility, user can still use shared_dir under [cluster] section for 1 volume,
+        # but the shared_dir under [ebs] section will overwrite shared_dir under [cluster],
+        # and user MUST specify a shared_dir under each [ebs] section when using > 1 volumes.
+        try:
+            if len(__temp_dir_list) == len(self.__ebs_section):
+                self.parameters["SharedDir"] = ",".join(__temp_dir_list)
+            # For backwards compatibility with just 1 volume explicitly specified through ebs_settings
+            elif len(self.__ebs_section) == 1:
+                try:
+                    __temp_shared_dir = __config.get(self.__cluster_section, "shared_dir")
+                    if not __temp_shared_dir:
+                        print("ERROR: shared_dir defined but not set")
+                        sys.exit(1)
+                    self.parameters["SharedDir"] = __temp_shared_dir
+                except configparser.NoOptionError:
+                    pass
+            else:
+                print(
+                    "ERROR: not enough shared directories provided.\n"
+                    "When using multiple EBS Volumes, please specify a shared_dir under each [ebs] section"
+                )
+                sys.exit(1)
+        except AttributeError:
+            try:
+                __temp_shared_dir = __config.get(self.__cluster_section, "shared_dir")
+                if not __temp_shared_dir:
+                    print("ERROR: shared_dir defined but not set")
+                    sys.exit(1)
+                self.parameters["SharedDir"] = __temp_shared_dir
+            except configparser.NoOptionError:
+                pass
+
+    def __load_ebs_options(self, __config):  # noqa: C901 FIXME!!!
+
+        try:
+            self.__ebs_settings = __config.get(self.__cluster_section, "ebs_settings")
+
+            if not self.__ebs_settings:
+                print("ERROR: ebs_settings defined by not set in [%s] section" % self.__cluster_section)
+                sys.exit(1)
+            # Modify list
+            self.__ebs_section = self.__ebs_settings.split(",")
+            if len(self.__ebs_section) > self.__MAX_EBS_VOLUMES:
+                print(
+                    "ERROR: number of EBS volumes requested is greater than the MAX.\n"
+                    "Max number of EBS volumes supported is currently %s" % self.__MAX_EBS_VOLUMES
+                )
+                sys.exit(1)
+            self.parameters["NumberOfEBSVol"] = "%s" % len(self.__ebs_section)
+            for i, item in enumerate(self.__ebs_section):
+                item = "ebs %s" % item.strip()
+                self.__ebs_section[i] = item
+        except configparser.NoOptionError:
+            pass
+
+        self.__ebs_determine_shared_dir(__config)
+
+        # Dictionary list of all EBS options
+        self.__ebs_options = dict(
+            ebs_snapshot_id=("EBSSnapshotId", "EC2Snapshot"),
+            volume_type=("VolumeType", None),
+            volume_size=("VolumeSize", None),
+            ebs_kms_key_id=("EBSKMSKeyId", None),
+            volume_iops=("VolumeIOPS", None),
+            encrypted=("EBSEncryption", None),
+            ebs_volume_id=("EBSVolumeId", "EC2Volume"),
+        )
+        # EBS options processing
+        try:
+            if self.__ebs_section:
+                for key in self.__ebs_options:
+                    __temp_parameter_list = []
+                    for section in self.__ebs_section:
+                        try:
+                            __temp__ = __config.get(section, key)
+                            if not __temp__:
+                                print("ERROR: %s defined but not set in [%s] section" % (key, section))
+                                sys.exit(1)
+                            if self.__sanity_check and self.__ebs_options.get(key)[1] is not None:
+                                config_sanity.check_resource(
+                                    self.region,
+                                    self.aws_access_key_id,
+                                    self.aws_secret_access_key,
+                                    self.__ebs_options.get(key)[1],
+                                    __temp__,
+                                )
+                            __temp_parameter_list.append(__temp__)
+                        except configparser.NoOptionError:
+                            __temp_parameter_list.append("NONE")
+                            pass
+                    # Fill the rest of the parameter with NONE
+                    while len(__temp_parameter_list) < self.__MAX_EBS_VOLUMES:
+                        __temp_parameter_list.append("NONE")
+                    self.parameters[self.__ebs_options.get(key)[0]] = ",".join(x for x in __temp_parameter_list)
+
+        except AttributeError:
+            pass
