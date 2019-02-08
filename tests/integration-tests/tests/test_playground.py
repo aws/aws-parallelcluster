@@ -59,6 +59,11 @@ def test_skip_schedulers(scheduler):
     assert scheduler != "sge"
 
 
+@pytest.mark.factory
+def test_factory(clusters_factory):
+    clusters_factory("/Users/fdm/.parallelcluster/aws_batch.config")
+
+
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.regions(["us-east-1"])
 def test_markers(instance, region):
