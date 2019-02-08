@@ -414,7 +414,7 @@
     "Placement": {
       "Description": "Type of placement requird in AWS ParallelCluster, it can either be cluster or compute.",
       "Type": "String",
-      "Default": "cluster",
+      "Default": "compute",
       "AllowedValues": [
         "cluster",
         "compute"
