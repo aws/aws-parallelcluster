@@ -175,6 +175,7 @@ def _get_pytest_regionalized_args(pytest_args, region, args):
         pytest_args_regionalized.append("--junit-xml={0}/results.xml".format(out_dir))
     if "html" in args.output:
         pytest_args_regionalized.append("--html={0}/results.html".format(out_dir))
+    os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
 
     return pytest_args_regionalized
 
@@ -189,6 +190,7 @@ def _get_pytest_non_regionalized_args(pytest_args, args):
         pytest_args_non_regionalized.append("--junit-xml={0}/all_regions.results.xml".format(OUT_DIR))
     if "html" in args.output:
         pytest_args_non_regionalized.append("--html={0}/all_regions.results.html".format(OUT_DIR))
+    os.makedirs("{0}/clusters_configs".format(OUT_DIR), exist_ok=True)
 
     return pytest_args_non_regionalized
 

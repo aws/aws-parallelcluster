@@ -1,5 +1,9 @@
 import logging
+from shutil import copyfile
 
+import pytest
+
+from clusters_factory import ClustersFactory
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
     add_default_markers,
@@ -96,3 +100,23 @@ def _add_properties_to_report(item):
         value = item.funcargs.get(dimension)
         if value:
             item.user_properties.append((dimension, value))
+
+
+@pytest.fixture(scope="class")
+def clusters_factory(request):
+    """
+    Define a fixture to manage the creation and destruction of clusters.
+
+    The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
+    """
+    factory = ClustersFactory(test_name=request.node.name)
+
+    def _cluster_factory(cluster_config):
+        cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
+            out_dir=request.config.getoption("output_dir"), test_name=request.node.name
+        )
+        copyfile(cluster_config, cluster_config_dst)
+        return factory.create_cluster(cluster_config_dst)
+
+    yield _cluster_factory
+    factory.destroy_all_clusters()
