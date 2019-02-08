@@ -335,9 +335,9 @@ Can be ``cluster`` or ``compute``.
 
 This does not apply to awsbatch.
 
-Defaults to ``cluster``. ::
+Defaults to ``compute``. ::
 
-    placement = cluster
+    placement = compute
 
 ephemeral_dir
 """""""""""""

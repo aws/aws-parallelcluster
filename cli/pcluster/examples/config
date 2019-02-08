@@ -91,8 +91,8 @@ key_name = mykey
 # (defaults to NONE)
 #placement_group = NONE
 # Cluster placement logic. This enables the whole cluster or only compute to use the placement group
-# (defaults to cluster)
-#placement = cluster
+# (defaults to compute)
+#placement = compute
 # Path/mountpoint for ephemeral drives
 # (defaults to /scratch)
 #ephemeral_dir = /scratch
