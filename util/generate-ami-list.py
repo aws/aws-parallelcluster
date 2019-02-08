@@ -18,11 +18,11 @@
 #
 # usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
 
-import argparse
 import json
 import sys
 from collections import OrderedDict
 
+import argparse
 import boto3
 from botocore.exceptions import ClientError
 

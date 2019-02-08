@@ -1,4 +1,3 @@
-import argparse
 import datetime
 import os
 import Queue
@@ -10,7 +9,9 @@ import threading
 import time
 from builtins import exit
 
+import argparse
 import boto3
+
 import process_helper as prochelp
 
 UNSUPPORTED_REGIONS = set(["ap-northeast-3", "eu-west-3"])
