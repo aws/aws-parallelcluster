@@ -12,6 +12,7 @@ from conftest_markers import (
     check_marker_skip_dimensions,
     check_marker_skip_list,
 )
+from jinja2 import Environment, FileSystemLoader
 
 
 def pytest_addoption(parser):
@@ -113,10 +114,51 @@ def clusters_factory(request):
 
     def _cluster_factory(cluster_config):
         cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-            out_dir=request.config.getoption("output_dir"), test_name=request.node.name
+            out_dir=request.config.getoption("output_dir"), test_name=request.node.nodeid
         )
         copyfile(cluster_config, cluster_config_dst)
         return factory.create_cluster(cluster_config_dst)
 
     yield _cluster_factory
     factory.destroy_all_clusters()
+
+
+@pytest.fixture()
+def configs_datadir(request, datadir):
+    """
+    Inject the config_datadir where cluster configs for the specific test function are stored.
+
+    If the test function is declared in a class then datadir is ClassName/FunctionName
+    otherwise it is only FunctionName.
+    """
+    function_name = request.function.__name__
+    if not request.cls:
+        return datadir / function_name
+
+    class_name = request.cls.__name__
+    return datadir / "{0}/{1}".format(class_name, function_name)
+
+
+@pytest.fixture()
+def pcluster_config_reader(configs_datadir, request):
+    """
+    Define a fixture to render pcluster config templates associated to the running test.
+
+    The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
+    The config can be written by using Jinja2 template engine.
+    The current renderer already replaces placeholders for the common test dimensions (region, instance, os, scheduler)
+    by reading them from the test input parameters.
+
+    :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
+    """
+    config_file = "pcluster.config.ini"
+
+    def _config_renderer(**kwargs):
+        dimensions_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
+        file_loader = FileSystemLoader(str(configs_datadir))
+        env = Environment(loader=file_loader)
+        rendered_template = env.get_template(config_file).render(**{**kwargs, **dimensions_values})
+        (configs_datadir / config_file).write_text(rendered_template)
+        return configs_datadir / config_file
+
+    return _config_renderer
