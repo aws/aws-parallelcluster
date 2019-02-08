@@ -32,26 +32,36 @@ from botocore.exceptions import ClientError
 from . import config_sanity
 
 
-def get_stack_template(region, aws_access_key_id, aws_secret_access_key, stack):
+def get_stack_template(region, aws_access_key_id, aws_secret_access_key, cluster_name):
+    """
+    Get stack template corresponding to the given cluster name.
+
+    :param region: AWS Region
+    :param aws_access_key_id: AWS access key
+    :param aws_secret_access_key: AWS secret access key
+    :param cluster_name: The cluster name to search for
+    :return: the corresponding stack template
+    """
     cfn = boto3.client(
         "cloudformation",
         region_name=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
-    __stack_name = "parallelcluster-" + stack
+    stack_name = "parallelcluster-" + cluster_name
 
     try:
-        __stack = cfn.describe_stacks(StackName=__stack_name).get("Stacks")[0]
+        stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
     except ClientError as e:
         print(e.response.get("Error").get("Message"))
         sys.stdout.flush()
         sys.exit(1)
-    __cli_template = [
-        p.get("ParameterValue") for p in __stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"
-    ][0]
 
-    return __cli_template
+    cli_template = [p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"][
+        0
+    ]
+
+    return cli_template
 
 
 class ParallelClusterConfig(object):
