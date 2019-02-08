@@ -27,6 +27,8 @@ def pytest_addoption(parser):
     parser.addoption("--custom-cookbook-url", help="url to a custom cookbook package")
     parser.addoption("--custom-template-url", help="url to a custom cfn template")
     parser.addoption("--output-dir", help="output dir for tests artifacts")
+    parser.addoption("--key-name", help="key to use for EC2 instances", type=str, required=True)
+    parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
 
 
 def pytest_generate_tests(metafunc):
@@ -157,10 +159,11 @@ def pcluster_config_reader(configs_datadir, request):
     config_file = "pcluster.config.ini"
 
     def _config_renderer(**kwargs):
-        dimensions_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
+        default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
+        default_values["key_name"] = request.config.getoption("key_name")
         file_loader = FileSystemLoader(str(configs_datadir))
         env = Environment(loader=file_loader)
-        rendered_template = env.get_template(config_file).render(**{**kwargs, **dimensions_values})
+        rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         (configs_datadir / config_file).write_text(rendered_template)
         return configs_datadir / config_file
 
