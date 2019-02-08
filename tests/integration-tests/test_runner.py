@@ -128,19 +128,23 @@ def _init_argparser():
     return parser
 
 
-def _get_pytest_args(args):
+def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args = ["-s", "-vv", "-l", "--rootdir=./tests"]
     # Show all tests durations
     pytest_args.append("--durations=0")
     # Run only tests with the given markers
     pytest_args.append("-m")
     pytest_args.append(" or ".join(args.features))
+    pytest_args.append("--regions")
+    pytest_args.extend(regions)
     pytest_args.append("--instances")
     pytest_args.extend(args.instances)
     pytest_args.append("--oss")
     pytest_args.extend(args.oss)
     pytest_args.append("--schedulers")
     pytest_args.extend(args.schedulers)
+    pytest_args.extend(["--tests-log-file", log_file])
+    pytest_args.extend(["--output-dir", out_dir])
 
     if args.custom_node_url:
         pytest_args.extend(["--custom-node-url", args.custom_node_url])
@@ -161,41 +165,31 @@ def _get_pytest_args(args):
     if args.dry_run:
         pytest_args.append("--collect-only")
 
+    if "junitxml" in args.output or args.generate_report:
+        pytest_args.append("--junit-xml={0}/results.xml".format(out_dir))
+
+    if "html" in args.output:
+        pytest_args.append("--html={0}/results.html".format(out_dir))
+
     return pytest_args
 
 
-def _get_pytest_regionalized_args(pytest_args, region, args):
-    pytest_args_regionalized = list(pytest_args)
-    pytest_args_regionalized.extend(["--regions", region])
-    pytest_args_regionalized.extend(["--tests-log-file", "{0}/{1}.log".format(LOGS_DIR, region)])
-
-    out_dir = "{0}/{1}".format(OUT_DIR, region)
-    pytest_args_regionalized.extend(["--output-dir", out_dir])
-    if "junitxml" in args.output or args.generate_report:
-        pytest_args_regionalized.append("--junit-xml={0}/results.xml".format(out_dir))
-    if "html" in args.output:
-        pytest_args_regionalized.append("--html={0}/results.html".format(out_dir))
-    os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
-
-    return pytest_args_regionalized
+def _get_pytest_regionalized_args(region, args):
+    return _get_pytest_args(
+        args=args,
+        regions=[region],
+        log_file="{0}/{1}.log".format(LOGS_DIR, region),
+        out_dir="{0}/{1}".format(OUT_DIR, region),
+    )
 
 
-def _get_pytest_non_regionalized_args(pytest_args, args):
-    pytest_args_non_regionalized = list(pytest_args)
-    pytest_args_non_regionalized.append("--regions")
-    pytest_args_non_regionalized.extend(args.regions)
-    pytest_args_non_regionalized.extend(["--output-dir", OUT_DIR])
-    pytest_args_non_regionalized.extend(["--tests-log-file", "{0}/all_regions.log".format(LOGS_DIR)])
-    if "junitxml" in args.output or args.generate_report:
-        pytest_args_non_regionalized.append("--junit-xml={0}/all_regions.results.xml".format(OUT_DIR))
-    if "html" in args.output:
-        pytest_args_non_regionalized.append("--html={0}/all_regions.results.html".format(OUT_DIR))
-    os.makedirs("{0}/clusters_configs".format(OUT_DIR), exist_ok=True)
-
-    return pytest_args_non_regionalized
+def _get_pytest_non_regionalized_args(args):
+    return _get_pytest_args(
+        args=args, regions=args.regions, log_file="{0}/all_regions.log".format(LOGS_DIR), out_dir=OUT_DIR
+    )
 
 
-def _run_test_in_region(region, pytest_args, args):
+def _run_test_in_region(region, args):
     out_dir = "{0}/{1}".format(OUT_DIR, region)
     os.makedirs(out_dir, exist_ok=True)
 
@@ -203,7 +197,7 @@ def _run_test_in_region(region, pytest_args, args):
     if not args.show_output:
         sys.stdout = open("{0}/pytest.out".format(out_dir), "w")
 
-    pytest_args_regionalized = _get_pytest_regionalized_args(pytest_args, region, args)
+    pytest_args_regionalized = _get_pytest_regionalized_args(region, args)
     logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
     pytest.main(pytest_args_regionalized)
 
@@ -213,13 +207,12 @@ def _make_logging_dirs():
     logger.info("Configured logs dir: {0}".format(LOGS_DIR))
     os.makedirs(OUT_DIR, exist_ok=True)
     logger.info("Configured tests output dir: {0}".format(OUT_DIR))
-    os.makedirs("{}/clusters_configs".format(OUT_DIR), exist_ok=True)
 
 
-def _run_parallel(args, pytest_args):
+def _run_parallel(args):
     jobs = []
     for region in args.regions:
-        p = multiprocessing.Process(target=_run_test_in_region, args=[region, pytest_args, args])
+        p = multiprocessing.Process(target=_run_test_in_region, args=[region, args])
         jobs.append(p)
         p.start()
 
@@ -227,12 +220,12 @@ def _run_parallel(args, pytest_args):
         job.join()
 
 
-def _run_sequential(args, pytest_args):
+def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
-        sys.stdout = open("{0}/all_regions.pytest.out".format(OUT_DIR), "w")
+        sys.stdout = open("{0}/pytest.out".format(OUT_DIR), "w")
 
-    pytest_args_non_regionalized = _get_pytest_non_regionalized_args(pytest_args, args)
+    pytest_args_non_regionalized = _get_pytest_non_regionalized_args(args)
     logger.info("Starting tests with params {0}".format(pytest_args_non_regionalized))
     pytest.main(pytest_args_non_regionalized)
 
@@ -242,13 +235,12 @@ def main():
     args = _init_argparser().parse_args()
     logger.info("Starting tests with parameters {0}".format(args))
 
-    pytest_args = _get_pytest_args(args)
     _make_logging_dirs()
 
     if args.sequential:
-        _run_sequential(args, pytest_args)
+        _run_sequential(args)
     else:
-        _run_parallel(args, pytest_args)
+        _run_parallel(args)
 
     logger.info("All tests completed!")
 
