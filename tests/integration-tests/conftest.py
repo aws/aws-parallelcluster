@@ -1,4 +1,5 @@
 import logging
+import os
 from shutil import copyfile
 
 import pytest
@@ -113,8 +114,10 @@ def clusters_factory(request):
     factory = ClustersFactory(test_name=request.node.name)
 
     def _cluster_factory(cluster_config):
+        out_dir = request.config.getoption("output_dir")
+        os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
         cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-            out_dir=request.config.getoption("output_dir"), test_name=request.node.nodeid
+            out_dir=out_dir, test_name=request.node.nodeid
         )
         copyfile(cluster_config, cluster_config_dst)
         return factory.create_cluster(cluster_config_dst)
