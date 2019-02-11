@@ -1,5 +1,6 @@
 import logging
 import random
+import shlex
 import string
 import subprocess
 
@@ -11,6 +12,8 @@ def retry_if_subprocess_error(exception):
 
 def run_command(command, capture_output=True, log_error=True):
     """Execute shell command."""
+    if isinstance(command, str):
+        command = shlex.split(command)
     logging.info("Executing command: " + " ".join(command))
     result = subprocess.run(command, capture_output=capture_output, universal_newlines=True, encoding="utf-8")
     try:
