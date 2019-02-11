@@ -1,3 +1,4 @@
+aws-parallelcluster
 pytest
 pytest-datadir
 pytest-html
@@ -7,3 +8,4 @@ argparse
 retrying
 junitparser
 Jinja2
+boto3

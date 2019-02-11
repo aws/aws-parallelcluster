@@ -113,7 +113,7 @@ def clusters_factory(request):
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
-    factory = ClustersFactory(test_name=request.node.name)
+    factory = ClustersFactory(test_name=request.node.name, ssh_key=request.config.getoption("key_path"))
 
     def _cluster_factory(cluster_config):
         out_dir = request.config.getoption("output_dir")
@@ -129,9 +129,9 @@ def clusters_factory(request):
 
 
 @pytest.fixture()
-def configs_datadir(request, datadir):
+def test_datadir(request, datadir):
     """
-    Inject the config_datadir where cluster configs for the specific test function are stored.
+    Inject the datadir with resources for the specific test function.
 
     If the test function is declared in a class then datadir is ClassName/FunctionName
     otherwise it is only FunctionName.
@@ -145,7 +145,7 @@ def configs_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(configs_datadir, request):
+def pcluster_config_reader(test_datadir, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -161,10 +161,10 @@ def pcluster_config_reader(configs_datadir, request):
     def _config_renderer(**kwargs):
         default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
         default_values["key_name"] = request.config.getoption("key_name")
-        file_loader = FileSystemLoader(str(configs_datadir))
+        file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
-        (configs_datadir / config_file).write_text(rendered_template)
-        return configs_datadir / config_file
+        (test_datadir / config_file).write_text(rendered_template)
+        return test_datadir / config_file
 
     return _config_renderer
