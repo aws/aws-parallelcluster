@@ -48,7 +48,6 @@ TEST_DEFAULTS = {
     "dry_run": False,
     "reports": [],
     "sequential": False,
-    "generate_report": False,
     "output_dir": "tests_outputs",
 }
 
@@ -116,16 +115,10 @@ def _init_argparser():
     parser.add_argument(
         "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
-        "style report file",
+        "style report file. json creates a summary with details for each dimensions",
         nargs="+",
-        choices=["html", "junitxml"],
+        choices=["html", "junitxml", "json"],
         default=TEST_DEFAULTS.get("reports"),
-    )
-    parser.add_argument(
-        "--generate-report",
-        help="generate final test report",
-        action="store_true",
-        default=TEST_DEFAULTS.get("generate_report"),
     )
     parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
@@ -181,7 +174,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     if args.dry_run:
         pytest_args.append("--collect-only")
 
-    if "junitxml" in args.reports or args.generate_report:
+    if "junitxml" in args.reports or "json" in args.reports:
         pytest_args.append("--junit-xml={0}/{1}/results.xml".format(args.output_dir, out_dir))
 
     if "html" in args.reports:
@@ -266,7 +259,7 @@ def main():
     if "junitxml" in args.reports:
         generate_junitxml_merged_report(reports_output_dir)
 
-    if args.generate_report:
+    if "json" in args.reports:
         logger.info("Generating tests report")
         generate_json_report(reports_output_dir)
 
