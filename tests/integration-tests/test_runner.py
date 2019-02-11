@@ -46,9 +46,10 @@ TEST_DEFAULTS = {
     "custom_cookbook_url": None,
     "custom_template_url": None,
     "dry_run": False,
-    "output": [],
+    "reports": [],
     "sequential": False,
     "generate_report": False,
+    "output_dir": "tests_outputs",
 }
 
 
@@ -111,12 +112,12 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("sequential"),
     )
     parser.add_argument(
-        "--output",
+        "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
         "style report file",
         nargs="+",
         choices=["html", "junitxml"],
-        default=TEST_DEFAULTS.get("output"),
+        default=TEST_DEFAULTS.get("reports"),
     )
     parser.add_argument(
         "--generate-report",
@@ -126,6 +127,9 @@ def _init_argparser():
     )
     parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
+    parser.add_argument(
+        "--output-dir", help="Directory where tests outputs are generated", default=TEST_DEFAULTS.get("output_dir")
+    )
 
     return parser
 
@@ -151,8 +155,8 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(args.oss)
     pytest_args.append("--schedulers")
     pytest_args.extend(args.schedulers)
-    pytest_args.extend(["--tests-log-file", log_file])
-    pytest_args.extend(["--output-dir", out_dir])
+    pytest_args.extend(["--tests-log-file", "{0}/{1}".format(args.output_dir, log_file)])
+    pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
 
@@ -175,11 +179,11 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     if args.dry_run:
         pytest_args.append("--collect-only")
 
-    if "junitxml" in args.output or args.generate_report:
-        pytest_args.append("--junit-xml={0}/results.xml".format(out_dir))
+    if "junitxml" in args.reports or args.generate_report:
+        pytest_args.append("--junit-xml={0}/{1}/results.xml".format(args.output_dir, out_dir))
 
-    if "html" in args.output:
-        pytest_args.append("--html={0}/results.html".format(out_dir))
+    if "html" in args.reports:
+        pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
     return pytest_args
 
@@ -200,7 +204,7 @@ def _get_pytest_non_regionalized_args(args):
 
 
 def _run_test_in_region(region, args):
-    out_dir = "{0}/{1}".format(OUT_DIR, region)
+    out_dir = "{base_dir}/{out_dir}/{region}".format(base_dir=args.output_dir, out_dir=OUT_DIR, region=region)
     os.makedirs(out_dir, exist_ok=True)
 
     # Redirect stdout to file
@@ -212,11 +216,13 @@ def _run_test_in_region(region, args):
     pytest.main(pytest_args_regionalized)
 
 
-def _make_logging_dirs():
-    os.makedirs(LOGS_DIR, exist_ok=True)
-    logger.info("Configured logs dir: {0}".format(LOGS_DIR))
-    os.makedirs(OUT_DIR, exist_ok=True)
-    logger.info("Configured tests output dir: {0}".format(OUT_DIR))
+def _make_logging_dirs(base_dir):
+    logs_dir = "{base_dir}/{logs_dir}".format(base_dir=base_dir, logs_dir=LOGS_DIR)
+    os.makedirs(logs_dir, exist_ok=True)
+    logger.info("Configured logs dir: {0}".format(logs_dir))
+    out_dir = "{base_dir}/{out_dir}".format(base_dir=base_dir, out_dir=OUT_DIR)
+    os.makedirs(out_dir, exist_ok=True)
+    logger.info("Configured tests output dir: {0}".format(out_dir))
 
 
 def _run_parallel(args):
@@ -233,7 +239,7 @@ def _run_parallel(args):
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
-        sys.stdout = open("{0}/pytest.out".format(OUT_DIR), "w")
+        sys.stdout = open("{0}/{1}/pytest.out".format(args.output_dir, OUT_DIR), "w")
 
     pytest_args_non_regionalized = _get_pytest_non_regionalized_args(args)
     logger.info("Starting tests with params {0}".format(pytest_args_non_regionalized))
@@ -245,7 +251,7 @@ def main():
     args = _init_argparser().parse_args()
     logger.info("Starting tests with parameters {0}".format(args))
 
-    _make_logging_dirs()
+    _make_logging_dirs(args.output_dir)
 
     if args.sequential:
         _run_sequential(args)
@@ -254,12 +260,13 @@ def main():
 
     logger.info("All tests completed!")
 
-    if "junitxml" in args.output:
-        generate_junitxml_merged_report(OUT_DIR)
+    reports_output_dir = "{base_dir}/{out_dir}".format(base_dir=args.output_dir, out_dir=OUT_DIR)
+    if "junitxml" in args.reports:
+        generate_junitxml_merged_report(reports_output_dir)
 
     if args.generate_report:
         logger.info("Generating tests report")
-        generate_json_report(OUT_DIR)
+        generate_json_report(reports_output_dir)
 
 
 if __name__ == "__main__":
