@@ -34,6 +34,23 @@
         }
       ]
     },
+    "UseStorageCap": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
     "UseFSXKMSKey": {
       "Fn::Not": [
         {
@@ -51,13 +68,47 @@
         }
       ]
     },
-    "UseStorageCap": {
+    "UseImportedFileChunkSize": {
       "Fn::Not": [
         {
           "Fn::Equals": [
             {
               "Fn::Select": [
-                "2",
+                "4",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseImportPath": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "5",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseWeeklyMaintenanceStartTime": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "6",
                 {
                   "Ref": "FSXOptions"
                 }
@@ -105,53 +156,54 @@
     }
   },
   "Resources": {
-    "LambdaRole": {
-      "Type": "AWS::IAM::Role",
-      "Properties": {
-        "AssumeRolePolicyDocument": {
-          "Version": "2012-10-17",
-          "Statement": [
-            {
-              "Effect": "Allow",
-              "Principal": {
-                "Service": [
-                  "lambda.amazonaws.com"
-                ]
-              },
-              "Action": [
-                "sts:AssumeRole"
-              ]
-            }
-          ]
-        },
-        "Path": "/",
-        "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/AWSLambdaExecute",
-          "arn:aws:iam::aws:policy/AWSDirectoryServiceReadOnlyAccess"
-        ],
-        "Policies": [
-          {
-            "PolicyName": "AmazonFSxFullControlPolicy",
-            "PolicyDocument": {
-              "Version": "2012-10-17",
-              "Statement": [
-                {
-                  "Effect": "Allow",
-                  "Action": [
-                    "fsx:*"
-                  ],
-                  "Resource": "*"
-                }
-              ]
-            }
-          }
-        ]
-      }
-    },
     "FileSystem": {
-      "Type": "Dev::FSx::FileSystem",
+      "Type": "AWS::FSx::FileSystem",
       "Properties": {
         "FileSystemType": "LUSTRE",
+        "LustreConfiguration": {
+          "ImportPath": {
+            "Fn::If": [
+              "UseImportPath",
+              {
+                "Fn::Select": [
+                  "5",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              { "Ref": "AWS::NoValue" }
+            ]
+          },
+          "WeeklyMaintenanceStartTime": {
+            "Fn::If": [
+              "UseWeeklyMaintenanceStartTime",
+              {
+                "Fn::Select": [
+                  "6",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              { "Ref": "AWS::NoValue" }
+            ]
+          },
+          "ImportedFileChunkSize": {
+            "Fn::If": [
+              "UseImportedFileChunkSize",
+              {
+                "Fn::Select": [
+                  "4",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              { "Ref": "AWS::NoValue" }
+            ]
+          }
+        },
         "StorageCapacity": {
           "Fn::If": [
             "UseStorageCap",
