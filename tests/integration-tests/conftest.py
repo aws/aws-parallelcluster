@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 from shutil import copyfile
 
 import pytest
@@ -77,6 +78,19 @@ def pytest_runtest_call(item):
     check_marker_skip_dimensions(item)
 
     logging.info("Running test " + item.name)
+
+
+def pytest_collection_modifyitems(items):
+    """Called after collection has been performed, may filter or re-order the items in-place."""
+    _add_filename_markers(items)
+
+
+def _add_filename_markers(items):
+    """Add a marker based on the name of the file where the test case is defined."""
+    for item in items:
+        test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
+        marker = re.sub(r"test_|_test", "", test_location)
+        item.add_marker(marker)
 
 
 def _parametrize_from_option(metafunc, test_arg_name, option_name):
