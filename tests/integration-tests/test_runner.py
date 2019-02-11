@@ -54,7 +54,9 @@ TEST_DEFAULTS = {
 
 
 def _init_argparser():
-    parser = argparse.ArgumentParser(description="Run integration tests suite.")
+    parser = argparse.ArgumentParser(
+        description="Run integration tests suite.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
     parser.add_argument(
         "-f",
         "--features",
