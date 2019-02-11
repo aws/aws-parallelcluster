@@ -787,6 +787,9 @@ class ParallelClusterConfig(object):
                 ("fsx_fs_id", ("FSXFileSystemId", "FSXFSId")),
                 ("storage_capacity", ("FSXCapacity", "FSX_size")),
                 ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
+                ("imported_file_chunk_size", ("ImportedFileChunkSize", "ImportedFileChunkSize")),
+                ("import_path", ("ImportPath", None)),
+                ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", "WeeklyMaintenanceStartTime")),
             ]
         )
 
