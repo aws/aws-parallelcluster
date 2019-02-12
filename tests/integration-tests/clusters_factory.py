@@ -11,11 +11,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
-import boto3
 import configparser
 from retrying import retry
 
-from utils import random_alphanumeric, retry_if_subprocess_error, run_command
+from utils import random_alphanumeric, retrieve_cfn_outputs, retry_if_subprocess_error, run_command
 
 
 class Cluster:
@@ -57,22 +56,8 @@ class Cluster:
         Outputs are retrieved only once and then cached.
         """
         if not self.__cfn_outputs:
-            self.__cfn_outputs = self.__retrieve_cfn_outputs()
+            self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         return self.__cfn_outputs
-
-    @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
-    def __retrieve_cfn_outputs(self):
-        logging.debug("Retrieving stack outputs for stack {}".format(self.cfn_name))
-        try:
-            cfn = boto3.client("cloudformation", region_name=self.region)
-            stack = cfn.describe_stacks(StackName=self.cfn_name).get("Stacks")[0]
-            outputs = {}
-            for output in stack.get("Outputs", []):
-                outputs[output.get("OutputKey")] = output.get("OutputValue")
-            return outputs
-        except Exception as e:
-            logging.warning("Failed retrieving stack outputs for stack {} with exception: {}".format(self.cfn_name, e))
-            raise
 
 
 class ClustersFactory:

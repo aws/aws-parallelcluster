@@ -20,6 +20,7 @@ from shutil import copyfile
 
 import pytest
 
+from cfn_stacks_factory import CfnStacksFactory
 from clusters_factory import ClustersFactory
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
@@ -30,6 +31,8 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from utils import random_alphanumeric
+from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
@@ -197,3 +200,36 @@ def pcluster_config_reader(test_datadir, request):
         return test_datadir / config_file
 
     return _config_renderer
+
+
+@pytest.fixture(scope="session")
+def cfn_stacks_factory():
+    """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
+    factory = CfnStacksFactory()
+    yield factory
+    factory.delete_all_stacks()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def vpc_stacks(cfn_stacks_factory, request):
+    """Create VPC used by integ tests in all configured regions."""
+    public_subnet = SubnetConfig()
+    private_subnet = SubnetConfig(
+        name="PrivateSubnet",
+        cidr="10.0.1.0/24",
+        map_public_ip_on_launch=False,
+        has_nat_gateway=False,
+        default_gateway=Gateways.NAT_GATEWAY,
+    )
+    vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
+    template = VPCTemplateBuilder(vpc_config).build()
+
+    regions = request.config.getoption("regions")
+    vpc_stacks = {}
+    for region in regions:
+        stack = cfn_stacks_factory.create_stack(
+            name="parallelcluster-integ-tests-vpc-" + random_alphanumeric(8), region=region, template=template.to_json()
+        )
+        vpc_stacks[region] = stack
+
+    return vpc_stacks

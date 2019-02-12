@@ -9,3 +9,4 @@ retrying
 junitparser
 Jinja2
 boto3
+troposphere

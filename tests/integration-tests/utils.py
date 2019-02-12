@@ -15,6 +15,9 @@ import shlex
 import string
 import subprocess
 
+import boto3
+from retrying import retry
+
 
 def retry_if_subprocess_error(exception):
     """Return True if we should retry (in this case when it's a CalledProcessError), False otherwise"""
@@ -42,3 +45,19 @@ def run_command(command, capture_output=True, log_error=True):
 def random_alphanumeric(size=16):
     """Generate a random alphanumeric string."""
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
+
+
+@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def retrieve_cfn_outputs(stack_name, region):
+    """Retrieve CloudFormation Stack Outputs from a given stack."""
+    logging.debug("Retrieving stack outputs for stack {}".format(stack_name))
+    try:
+        cfn = boto3.client("cloudformation", region_name=region)
+        stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+        outputs = {}
+        for output in stack.get("Outputs", []):
+            outputs[output.get("OutputKey")] = output.get("OutputValue")
+        return outputs
+    except Exception as e:
+        logging.warning("Failed retrieving stack outputs for stack {} with exception: {}".format(stack_name, e))
+        raise
