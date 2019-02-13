@@ -104,8 +104,6 @@ class ResourceValidator(object):
                         "Please modify the Mount Target's security group, or delete the Mount Target."
                         % (mt_id, availability_zone, resource_value[0]),
                     )
-
-                return True
         except ClientError as e:
             self.__fail("EFSFSId", e.response.get("Error").get("Message"))
 
@@ -115,7 +113,6 @@ class ResourceValidator(object):
 
         :param resource_type: Resource type
         :param resource_value: Resource value
-        :return True or False (for the EFSFSId resource type only), nothing in the other cases
         """
         # Loop over all supported resource checks
         if resource_type == "EC2KeyPair":
@@ -360,7 +357,7 @@ class ResourceValidator(object):
                     aws_access_key_id=self.aws_access_key_id,
                     aws_secret_access_key=self.aws_secret_access_key,
                 )
-                return self.__check_efs_fs_id(ec2, efs, resource_value)
+                self.__check_efs_fs_id(ec2, efs, resource_value)
             except ClientError as e:
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
         # EFS Performance Mode check
