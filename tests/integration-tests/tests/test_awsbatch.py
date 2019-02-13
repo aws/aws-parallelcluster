@@ -20,7 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
 @pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
 def test_job_submission(region, os, instance, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
-    cluster_config = pcluster_config_reader(vpc_id="aaa", master_subnet_id="bbb", compute_subnet_id="ccc")
+    cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     result = remote_command_executor.run_remote_command("env")

@@ -31,7 +31,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
-from utils import random_alphanumeric
+from utils import random_alphanumeric, to_snake_case
 from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
@@ -177,22 +177,22 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, request):
+def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
     The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
     The config can be written by using Jinja2 template engine.
-    The current renderer already replaces placeholders for the common test dimensions (region, instance, os, scheduler)
-    by reading them from the test input parameters.
+    The current renderer already replaces placeholders for current keys:
+        {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
+        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
     config_file = "pcluster.config.ini"
 
     def _config_renderer(**kwargs):
-        default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
-        default_values["key_name"] = request.config.getoption("key_name")
+        default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
@@ -200,6 +200,16 @@ def pcluster_config_reader(test_datadir, request):
         return test_datadir / config_file
 
     return _config_renderer
+
+
+def _get_default_template_values(vpc_stacks, region, request):
+    """Build a dictionary of default values to inject in the jinja templated cluster configs."""
+    default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
+    default_values["key_name"] = request.config.getoption("key_name")
+    vpc = vpc_stacks[region]
+    for key, value in vpc.cfn_outputs.items():
+        default_values[to_snake_case(key)] = value
+    return default_values
 
 
 @pytest.fixture(scope="session")
