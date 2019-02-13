@@ -47,16 +47,27 @@ class ResourceValidator(object):
 
     @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):
+        """
+        Verify if the security group rule accepts connections to the given port.
+
+        :param rule: The rule to check
+        :param port_to_check: The port to check
+        :return: True if the rule accepts connection, False otherwise
+        """
         port = rule.get("FromPort")
         ip_rules = rule.get("IpRanges")
         group = rule.get("UserIdGroupPairs")
 
+        is_valid = False
         for ip_rule in ip_rules:
             ip = ip_rule.get("CidrIp")
             # An existing rule is valid for EFS if, it allows all traffic(0.0.0.0/0)
-            # from all ports or NFS(port 2049), and does not have a security group restriction
+            # from all ports or the given port, and does not have a security group restriction
             if (not port or port == port_to_check) and ip == "0.0.0.0/0" and not group:
-                return True
+                is_valid = True
+                break
+
+        return is_valid
 
     def __check_efs_fs_id(self, ec2, efs, resource_value):  # noqa: C901 FIXME!!!
         try:
