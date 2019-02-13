@@ -240,7 +240,7 @@ class ParallelClusterConfig(object):
         if update_check is True:
             try:
                 latest = json.loads(
-                    urllib.request.urlopen("http://pypi.python.org/pypi/aws-parallelcluster/json").read()
+                    urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read()
                 )["info"]["version"]
                 if self.version < latest:
                     print("warning: There is a newer version %s of AWS ParallelCluster available." % latest)
