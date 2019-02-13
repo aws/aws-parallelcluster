@@ -278,6 +278,7 @@ class ParallelClusterConfig(object):
 
         :param resource_type: Resource type
         :param resource_value: Resource value
+        :return True or False (for the EFSFSId resource type only), nothing in the other cases
         """
         if self.__sanity_check:
             self.__resource_validator.validate(resource_type, resource_value)
@@ -623,7 +624,8 @@ class ParallelClusterConfig(object):
                             __throughput_mode = __temp__
                         # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
                         if self.__efs_options.get(key)[1] == "EFSFSId":
-                            __valid_mt = self.__validate_resource("EFSFSId", (__temp__, self.__master_subnet))
+                            self.__validate_resource("EFSFSId", (__temp__, self.__master_subnet))
+                            __valid_mt = True
                         elif self.__efs_options.get(key)[1] is not None:
                             self.__validate_resource(self.__efs_options.get(key)[1], __temp__)
                         __temp_efs_options.append(__temp__)
