@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import random
+import re
 import shlex
 import string
 import subprocess
@@ -61,3 +62,9 @@ def retrieve_cfn_outputs(stack_name, region):
     except Exception as e:
         logging.warning("Failed retrieving stack outputs for stack {} with exception: {}".format(stack_name, e))
         raise
+
+
+def to_snake_case(input):
+    """Convert a string into its snake case representation."""
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
