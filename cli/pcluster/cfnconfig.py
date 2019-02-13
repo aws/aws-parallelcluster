@@ -67,11 +67,12 @@ def get_stack_template(region, aws_access_key_id, aws_secret_access_key, cluster
 class ParallelClusterConfig(object):
     """Manage ParallelCluster Config."""
 
+    MAX_EBS_VOLUMES = 5
+
     def __init__(self, args):
         self.args = args
         self.parameters = {}
         self.version = pkg_resources.get_distribution("aws-parallelcluster").version
-        self.__MAX_EBS_VOLUMES = 5
 
         # Initialize configuration attribute by parsing config file
         self.__config = self.__init_config()
@@ -148,9 +149,7 @@ class ParallelClusterConfig(object):
             config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
             default_config = True
 
-        if os.path.isfile(config_file):
-            pass
-        else:
+        if not os.path.isfile(config_file):
             if default_config:
                 print("Default config %s not found" % config_file)
                 print(
@@ -170,6 +169,20 @@ class ParallelClusterConfig(object):
         config.read(config_file)
         return config
 
+    def _get_config_value(self, section, key, default=None):
+        """
+        Get configuration key value from the given section.
+
+        :param section: Configuration file section
+        :param key: Configuration parameter key
+        :param default: default value to return if the option is not present in the configuration file
+        :return: Configuration parameter value, or <default> if not found.
+        """
+        try:
+            return self.__config.get(section, key)
+        except configparser.NoOptionError:
+            return default
+
     def __init_region(self):
         """
         Initialize region attribute.
@@ -178,25 +191,15 @@ class ParallelClusterConfig(object):
         """
         if hasattr(self.args, "region") and self.args.region:
             self.region = self.args.region
+        elif os.environ.get("AWS_DEFAULT_REGION"):
+            self.region = os.environ.get("AWS_DEFAULT_REGION")
         else:
-            if os.environ.get("AWS_DEFAULT_REGION"):
-                self.region = os.environ.get("AWS_DEFAULT_REGION")
-            else:
-                try:
-                    self.region = self.__config.get("aws", "aws_region_name")
-                except configparser.NoOptionError:
-                    self.region = "us-east-1"
+            self.region = self._get_config_value("aws", "aws_region_name", "us-east-1")
 
     def __init_credentials(self):
         """Init credentials by checking if they have been provided in config."""
-        try:
-            self.aws_access_key_id = self.__config.get("aws", "aws_access_key_id")
-        except configparser.NoOptionError:
-            self.aws_access_key_id = None
-        try:
-            self.aws_secret_access_key = self.__config.get("aws", "aws_secret_access_key")
-        except configparser.NoOptionError:
-            self.aws_secret_access_key = None
+        self.aws_access_key_id = self._get_config_value("aws", "aws_access_key_id")
+        self.aws_secret_access_key = self._get_config_value("aws", "aws_secret_access_key")
 
     def __get_cluster_template(self):
         """
@@ -258,14 +261,12 @@ class ParallelClusterConfig(object):
             self.__resource_validator = ResourceValidator(
                 self.region, self.aws_access_key_id, self.aws_secret_access_key
             )
-        except configparser.NoOptionError:
-            self.__sanity_check = False
 
-        # Only check config on calls that mutate it
-        args_func = self.args.func.__name__
-        if (args_func == "create" or args_func == "update" or args_func == "configure") and self.__sanity_check is True:
-            pass
-        else:
+            # Only check config on calls that mutate it
+            if self.args.func.__name__ not in ["create", "update", "configure"]:
+                self.__sanity_check = False
+
+        except configparser.NoOptionError:
             self.__sanity_check = False
 
     def __validate_resource(self, resource_type, resource_value):
@@ -398,7 +399,7 @@ class ParallelClusterConfig(object):
                 pass
 
     def __init_cluster_parameters(self):
-        """Loop over all the cluster options and define parameters, raise Exception if defined but null."""
+        """Loop over all the cluster options and define parameters, raise Exception if defined but None."""
         cluster_options = dict(
             cluster_user=("ClusterUser", None),
             compute_instance_type=("ComputeInstanceType", None),
@@ -481,25 +482,21 @@ class ParallelClusterConfig(object):
             scaling_section = "scaling %s" % self.__scaling_settings
         except configparser.NoOptionError:
             scaling_section = None
-            pass
 
-        # Dictionary list of all scaling options
-        self.__scaling_options = dict(scaledown_idletime=("ScaleDownIdleTime", None))
-        try:
-            if scaling_section:
-                for key in self.__scaling_options:
-                    try:
-                        __temp__ = self.__config.get(scaling_section, key)
-                        if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, scaling_section))
-                            sys.exit(1)
-                        if self.__scaling_options.get(key)[1] is not None:
-                            self.__validate_resource(self.__scaling_options.get(key)[1], __temp__)
-                        self.parameters[self.__scaling_options.get(key)[0]] = __temp__
-                    except configparser.NoOptionError:
-                        pass
-        except AttributeError:
-            pass
+        if scaling_section:
+            # Dictionary list of all scaling options
+            scaling_options = dict(scaledown_idletime=("ScaleDownIdleTime", None))
+            for key in scaling_options:
+                try:
+                    __temp__ = self.__config.get(scaling_section, key)
+                    if not __temp__:
+                        print("ERROR: %s defined but not set in [%s] section" % (key, scaling_section))
+                        sys.exit(1)
+                    if scaling_options.get(key)[1] is not None:
+                        self.__validate_resource(scaling_options.get(key)[1], __temp__)
+                    self.parameters[scaling_options.get(key)[0]] = __temp__
+                except configparser.NoOptionError:
+                    pass
 
     def __init_aliases(self):
         """Initialize aliases attributes according to the configuration."""
@@ -629,7 +626,6 @@ class ParallelClusterConfig(object):
                         __temp_efs_options.append(__temp__)
                     except configparser.NoOptionError:
                         __temp_efs_options.append("NONE")
-                        pass
                 # Separate sanity_check for throughput settings,
                 # need to pass in throughput_mode and provisioned_throughput
                 if __provisioned_throughput is not None or __throughput_mode is not None:
@@ -773,10 +769,10 @@ class ParallelClusterConfig(object):
                 sys.exit(1)
             # Modify list
             self.__ebs_section = self.__ebs_settings.split(",")
-            if len(self.__ebs_section) > self.__MAX_EBS_VOLUMES:
+            if len(self.__ebs_section) > self.MAX_EBS_VOLUMES:
                 print(
                     "ERROR: number of EBS volumes requested is greater than the MAX.\n"
-                    "Max number of EBS volumes supported is currently %s" % self.__MAX_EBS_VOLUMES
+                    "Max number of EBS volumes supported is currently %s" % self.MAX_EBS_VOLUMES
                 )
                 sys.exit(1)
             self.parameters["NumberOfEBSVol"] = "%s" % len(self.__ebs_section)
@@ -814,9 +810,8 @@ class ParallelClusterConfig(object):
                             __temp_parameter_list.append(__temp__)
                         except configparser.NoOptionError:
                             __temp_parameter_list.append("NONE")
-                            pass
                     # Fill the rest of the parameter with NONE
-                    while len(__temp_parameter_list) < self.__MAX_EBS_VOLUMES:
+                    while len(__temp_parameter_list) < self.MAX_EBS_VOLUMES:
                         __temp_parameter_list.append("NONE")
                     self.parameters[self.__ebs_options.get(key)[0]] = ",".join(x for x in __temp_parameter_list)
 
