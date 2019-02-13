@@ -9,25 +9,29 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
 import os
-import shlex
+from typing import NamedTuple
 
-from utils import run_command
+from paramiko import AutoAddPolicy, SSHClient
+
+
+class RemoteCommandResult(NamedTuple):
+    """Wrap the results from a remote command execution."""
+
+    return_code: int = 0
+    stdout: str = ""
+    stderr: str = ""
+
+
+class RemoteCommandExecutionError(Exception):
+    """Signal a failure in remote command execution."""
+
+    pass
 
 
 class RemoteCommandExecutor:
     """Execute remote commands on the cluster master node."""
-
-    DEFAULT_SSH_OPTIONS = [
-        "-o {0}".format(option)
-        for option in [
-            "StrictHostKeyChecking=no",
-            "BatchMode=yes",
-            "ConnectTimeout=60",
-            "ServerAliveCountMax=5",
-            "ServerAliveInterval=30",
-        ]
-    ]
 
     USERNAMES = {
         "alinux": "ec2-user",
@@ -38,36 +42,70 @@ class RemoteCommandExecutor:
     }
 
     def __init__(self, cluster):
-        self.__ssh_options = list(self.DEFAULT_SSH_OPTIONS)
-        self.__ssh_options.extend(["-i", cluster.ssh_key])
+        self.__ssh_client = SSHClient()
+        self.__ssh_client.load_system_host_keys()
+        self.__ssh_client.set_missing_host_key_policy(AutoAddPolicy())
+        self.__ssh_client.connect(
+            hostname=cluster.master_ip, username=self.USERNAMES[cluster.os], key_filename=cluster.ssh_key
+        )
+        self.__sftp_client = self.__ssh_client.open_sftp()
         self.__user_at_hostname = "{0}@{1}".format(self.USERNAMES[cluster.os], cluster.master_ip)
 
-    def run_remote_command(self, command):
-        """Execute remote command on the cluster master node."""
-        if isinstance(command, str):
-            command = shlex.split(command)
-        return run_command(["ssh", "-n"] + self.__ssh_options + [self.__user_at_hostname] + command)
+    def __del__(self):
+        try:
+            self.__ssh_client.close()
+        except Exception as e:
+            # Catch all exceptions if we fail to close the clients
+            logging.warning("Exception raised when closing remote clients: {0}".format(e))
 
-    def run_remote_script(self, script_file, args=None, additional_files=None):
+    def run_remote_command(self, command, log_error=True, additional_files=None):
+        """
+        Execute remote command on the cluster master node.
+
+        :param command: command to execute.
+        :param log_error: log errors.
+        :param additional_files: additional files to copy before executing script.
+        :return: result of the execution.
+        """
+        if isinstance(command, list):
+            command = " ".join(command)
+        self._copy_additional_files(additional_files)
+        logging.info("Executing remote command command on {0}: {1}".format(self.__user_at_hostname, command))
+        stdin, stdout, stderr = self.__ssh_client.exec_command(command, get_pty=True)
+        result = RemoteCommandResult(
+            return_code=stdout.channel.recv_exit_status(),
+            stdout="\n".join(stdout.read().decode().splitlines()),
+            stderr="\n".join(stderr.read().decode().splitlines()),
+        )
+        if result.return_code != 0:
+            if log_error:
+                logging.error(
+                    "Command {0} failed with error:\n{1}\nand output:\n{2}".format(
+                        command, result.stderr, result.stdout
+                    )
+                )
+            raise RemoteCommandExecutionError
+        return result
+
+    def run_remote_script(self, script_file, args=None, log_error=True, additional_files=None):
         """
         Execute a script remotely on the cluster master node.
 
         Script is copied to the master home dir before being executed.
         :param script_file: local path to the script to execute remotely.
         :param args: args to pass to the script when invoked.
+        :param log_error: log errors.
         :param additional_files: additional files to copy before executing script.
         :return: result of the execution.
         """
-        """
-        Execute a script remotely on the cluster master node.
-
-        Script is copied to the master home dir before being executed
-        """
-        run_command(["scp"] + self.__ssh_options + [script_file, self.__user_at_hostname + ":."])
-        for file in additional_files or []:
-            run_command(["scp"] + self.__ssh_options + [file, self.__user_at_hostname + ":."])
-
         script_name = os.path.basename(script_file)
+        self.__sftp_client.put(script_file, script_name)
         if not args:
             args = []
-        return self.run_remote_command(["/bin/bash", "--login", script_name] + args)
+        return self.run_remote_command(
+            ["/bin/bash", "--login", script_name] + args, log_error=log_error, additional_files=additional_files
+        )
+
+    def _copy_additional_files(self, files):
+        for file in files or []:
+            self.__sftp_client.put(file, os.path.basename(file))
