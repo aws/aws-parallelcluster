@@ -46,7 +46,7 @@ with the specified values.
 * in case of failures the failed tests are retried once more after a delay of 60 seconds
 * tests reports are generated in html, junitxml and json formats
 
-#### Tests Outputs & Reports
+### Tests Outputs & Reports
 
 The following options can be used to control test outputs and reports:
 * `--output-dir path/to/dir`: specifies the base dir where test outputs and logs will be saved.
@@ -90,7 +90,7 @@ tests_outputs
     └── test_report.xml: global junitxml report
 ```
 
-#### Specify Tests Dimensions
+### Specify Tests Dimensions
 The following options can be used to control the parametrization of test cases:
 * `-r REGIONS [REGIONS ...], --regions REGIONS [REGIONS ...]`: AWS region where tests are executed.
 * `-i INSTANCES [INSTANCES ...], --instances INSTANCES [INSTANCES ...]`: AWS instances under test.
@@ -102,7 +102,7 @@ a test case written specifically for the awsbatch scheduler should only be execu
 This means that the final parametrization of the tests is given by an intersection of the input dimensions and
 the tests specific dimensions so that all constraints are verified.
 
-#### Parallelize Tests Execution
+### Parallelize Tests Execution
 The following options can be used to control tests parallelism:
 * `--sequential`: by default the tests orchestrator executes a separate parallel process for each region under test.
 By specifying this option all tests are executed sequentially in a single process.
@@ -110,10 +110,10 @@ By specifying this option all tests are executed sequentially in a single proces
 useful to limit the number of clusters that are crated concurrently in a specific region so that AWS account limits
 can be guaranteed.
 
-#### Retry On Failures
+### Retry On Failures
 When passing the `--retry-on-failures` flag failed tests are retried once more after a delay of 60 seconds.
 
-#### Run Tests For Specific Features
+### Run Tests For Specific Features
 The `-f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]` option allows to limit the number of test
 cases to execute by only running those that are meant to verify a specific feature or subset of features.
 
@@ -154,7 +154,7 @@ the implementation details behind the testing framework, it is highly recommende
 pytest key concepts first. This is not required in case you only want to add new test cases and not modify the framework
 itself.*
 
-#### Define Parametrized Test Cases
+### Define Parametrized Test Cases
 
 Here is how to define a simple parametrized test case:
 ```python
@@ -170,7 +170,7 @@ test_case_1[eu-west-1-c4.xlarge-alinux-slurm]
 test_case_1[eu-west-1-c4.xlarge-ubuntu1604-slurm]
 ```
 
-#### Restrict Test Cases Dimensions
+### Restrict Test Cases Dimensions
 
 It is possible to restrict the dimensions each test is compatible with by using some custom markers.
 The available markers are the following:
@@ -212,7 +212,7 @@ is allowed to run only if:
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
 `("c5.xlarge", "alinux", "awsbatch")`
 
-**DEFAULT INVALID DIMENSIONS**
+#### Default Invalid Dimensions
 
 It is possible that some combination of dimensions are not allowed because for example a specific instance is not
 available in a given AWS region.
@@ -220,7 +220,7 @@ available in a given AWS region.
 To define such exceptions it is possible to extend the list `UNSUPPORTED_DIMENSIONS` in conftest_markers.py file.
 By default all tuples specified in that list will be added as `skip_dimensions` marker to all tests.
 
-#### Manage Tests Data
+### Manage Tests Data
 
 Tests data and resources are organized in the following directories:
 ```
@@ -253,7 +253,7 @@ executions.
 
 The fixture `shared_datadir` can be used similarly to access the shared resources directory.
 
-#### Parametrized Clusters Configurations
+### Parametrized Clusters Configurations
 
 Similarly to parametrized test cases, also cluster configurations can be parametrized or even better written with
 [Jinja2](http://jinja.pocoo.org/docs/2.10/) templating syntax.
@@ -270,7 +270,7 @@ For example in the following test, defined in the file `test_feature.py`:
 def test_case_1(region, instance, os, scheduler, pcluster_config_reader):
     cluster_config = pcluster_config_reader(vpc_id="id-xxx", master_subnet_id="id-xxx", compute_subnet_id="id-xxx")
 ```
-I can simply render the parametrized cluster config which is defined in the file
+you can simply render the parametrized cluster config which is defined in the file
 `integration-tests/tests/test_feature/test_case_1/pcluster.config.ini`
 
 Here is an example of the parametrized pcluster config:
@@ -293,16 +293,70 @@ max_vcpus = 24
 
 [vpc parallelcluster-vpc]
 vpc_id = {{ vpc_id }}
-master_subnet_id = {{ master_subnet_id }}
-compute_subnet_id = {{ compute_subnet_id }}
+master_subnet_id = {{ public_subnet_id }}
+compute_subnet_id = {{ private_subnet_id }}
 ```
 
-The placeholders `{{ region }}`, `{{ instance }}`, `{{ os }}`, `{{ scheduler }}`, `{{ key_name }}`
-are automatically injected by the `pcluster_config_reader` fixture.
+The following placeholders are automatically injected by the `pcluster_config_reader` fixture and are
+available in the `pcluster.config.ini` files:
+* Test dimensions for the specific parametrized test case: `{{ region }}`, `{{ instance }}`, `{{ os }}`,
+`{{ scheduler }}`
+* EC2 key name specified at tests submission time by the user: `{{ key_name }}`
+* VPC related parameters: `{{ vpc_id }}`, `{{ public_subnet_id }}`, `{{ private_subnet_id }}`
+
 Additional parameters can be specified when calling the fixture to retrieve the rendered configuration
 as shown in the example above.
 
-#### Create/Destroy Clusters
+### VPC Configuration
+
+A VPC and the related subnets are automatically configured at the start of the integration tests for each region under
+test. These resources are shared across all the tests and deleted when all tests are completed.
+
+The idea is to create a single VPC per region and have multiple subnets that allow to test different networking setups.
+At the moment two subnets are generated (a private one and a public one) with the current configuration:
+
+```python
+public_subnet = SubnetConfig(
+    name="PublicSubnet",
+    cidr="10.0.0.0/24",
+    map_public_ip_on_launch=True,
+    has_nat_gateway=True,
+    default_gateway=Gateways.INTERNET_GATEWAY,
+)
+private_subnet = SubnetConfig(
+    name="PrivateSubnet",
+    cidr="10.0.1.0/24",
+    map_public_ip_on_launch=False,
+    has_nat_gateway=False,
+    default_gateway=Gateways.NAT_GATEWAY,
+)
+vpc = VPCConfig(
+    name="vpc",
+    cidr="10.0.0.0/16",
+    enable_dns_support=True,
+    enable_dns_hostnames=True,
+    has_internet_gateway=True,
+    subnets = [private_subnet, public_subnet],
+)
+```
+
+Behind the scenes a CloudFormation template is dynamically generated by the `VPCTemplateBuilder`
+(leveraging a tool called [Troposphere](https://github.com/cloudtools/troposphere)) and a VPC is created in each region
+under test by the `vpc_stacks` autouse session fixture.
+
+Parameters related to the generated VPC and Subnets are automatically exported to the Jinja template engine and
+in particular are available when using the `pcluster_config_reader` fixture, as shown above. The only thing to do
+is to use them when defining the cluster config for the specific test case:
+
+```INI
+...
+[vpc parallelcluster-vpc]
+vpc_id = {{ vpc_id }}
+master_subnet_id = {{ public_subnet_id }}
+compute_subnet_id = {{ private_subnet_id }}
+```
+
+### Create/Destroy Clusters
 
 Cluster lifecycle management is fully managed by the testing framework and is exposed through the fixture
 `clusters_factory`.
@@ -323,7 +377,7 @@ in the tests output directory.
 The object returned by clusters_factory is a `Cluster` instance that contains all the necessary cluster information,
 included the CloudFormation stack outputs.
 
-#### Execute Remote Commands
+### Execute Remote Commands
 
 To execute remote commands or scripts on the Master instance of the cluster under test, the `RemoteCommandExecutor`
 class can be used. It simply requires a valid `Cluster` object to be initialized and it offers some utility
@@ -358,8 +412,29 @@ integration-tests
 
 ```
 
-#### Logging
+### Logging
 
 A default logger is configured to write both to the stdout and to the log file dedicated to the specific test
 process. When running in `--sequential` mode a single log file is created otherwise a
 separate logfile is generated for each region.
+
+### Create CloudFromation Templates
+
+If additional AWS resources are needed by the integration tests you can use a session scoped fixture,
+`cfn_stacks_factory`, which takes care of automatically manage creation and deletion of CFN stacks that live
+for the entire duration of the tests. Deletion of all stacks is automatically performed when all tests
+are completed. If you want to reduce the lifetime of a specific resource you can either create a separate similar
+fixture with a reduced scope or you can directly use the CfnStacksFactory object (note: fixtures are always better to
+handle resources cleanup.)
+
+An example is given by this piece of code that handles the creation of a test VPC:
+```python
+@pytest.fixture(autouse=True)
+def vpc(cfn_stacks_factory):
+    # ... lines removed
+    template = VPCTemplateBuilder(vpc_config).build()
+    stack = cfn_stacks_factory.create_stack(
+            name="parallelcluster-integ-tests-vpc", region=region, template=template.to_json()
+        )
+    return vpc_stacks
+```
