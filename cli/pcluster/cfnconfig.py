@@ -218,17 +218,20 @@ class ParallelClusterConfig(object):
             )
         else:
             try:
-                if self.args.cluster_template is not None:
-                    cluster_template = self.args.cluster_template
-                else:
-                    if args_func == "update":
+                try:
+                    if self.args.cluster_template is not None:
+                        cluster_template = self.args.cluster_template
+                    elif args_func == "update":
                         cluster_template = get_stack_template(
                             self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
                         )
                     else:
                         cluster_template = self.__config.get("global", "cluster_template")
-            except AttributeError:
-                cluster_template = self.__config.get("global", "cluster_template")
+                except AttributeError:
+                    cluster_template = self.__config.get("global", "cluster_template")
+            except configparser.NoOptionError:
+                print("ERROR: Missing 'cluster_template' option in [global] section.")
+                sys.exit(1)
 
         return cluster_template
 
