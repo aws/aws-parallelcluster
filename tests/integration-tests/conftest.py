@@ -103,6 +103,11 @@ def pytest_collection_modifyitems(items):
     _add_filename_markers(items)
 
 
+def pytest_exception_interact(node, call, report):
+    """Called when an exception was raised which can potentially be interactively handled.."""
+    logging.error("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
+
+
 def _add_filename_markers(items):
     """Add a marker based on the name of the file where the test case is defined."""
     for item in items:
