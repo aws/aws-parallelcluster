@@ -42,7 +42,10 @@ class SubnetConfig(NamedTuple):
     map_public_ip_on_launch: bool = True
     has_nat_gateway: bool = True
     default_gateway: Gateways = Gateways.INTERNET_GATEWAY
-    tags: Tags = Tags(Name=Sub("${AWS::StackName}-" + name + "_subnet"), Stack=Ref("AWS::StackId"))
+
+    def tags(self):
+        """Get the tags for the subnet"""
+        return Tags(Name=Sub("${AWS::StackName}-" + self.name + "_subnet"), Stack=Ref("AWS::StackId"))
 
 
 class VPCConfig(NamedTuple):
@@ -115,7 +118,7 @@ class VPCTemplateBuilder:
                 CidrBlock=subnet_config.cidr,
                 VpcId=Ref(vpc),
                 MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
-                Tags=subnet_config.tags,
+                Tags=subnet_config.tags(),
             )
         )
         self.__template.add_output(Output(subnet_config.name + "Id", Value=Ref(subnet)))
