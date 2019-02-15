@@ -325,9 +325,10 @@ Defaults to NONE. ::
 
 placement_group
 """""""""""""""
-Cluster placement group.  The can be one of three values: NONE, DYNAMIC or an existing 
+Cluster placement group.  The can be one of three values: NONE, DYNAMIC or an existing
 EC2 placement group name.
-When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
+When DYNAMIC is set, a unique placement group will be created as part of the cluster and
+deleted when the cluster is terminated.
 
 This does not apply to awsbatch.
 
@@ -357,12 +358,13 @@ Defaults to /scratch. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. 
+Path/mountpoint for shared EBS volume.
 Do not use this option when using multiple EBS volumes.
 Provide shared_dir under each EBS section instead.
 
 Defaults to /shared.
-The example below mounts the shared EBS volume at /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
+The example below mounts the shared EBS volume at /myshared.
+See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
 
     shared_dir = myshared
 
@@ -817,8 +819,12 @@ zone OR
 have existing mount target in the stack's availability zone with inbound and outbound NFS traffic
 allowed from 0.0.0.0/0.
 
-Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the
-following actions: efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
+Sanity check for validating efs_fs_id requires the IAM role to have the following permissions:
+
+efs:DescribeMountTargets
+efs:DescribeMountTargetSecurityGroups
+ec2:DescribeSubnets
+ec2:DescribeSecurityGroups
 
 Please add these permissions to your IAM role, or set `sanity_check = false` to avoid errors.
 
