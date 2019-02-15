@@ -158,7 +158,7 @@ Defaults to 10. ::
 maintain_initial_size
 """""""""""""""""""""
 Boolean flag to maintain initial size of the Auto Scaling group for
-traditional schedulers.  
+traditional schedulers.
 
 If the scheduler is awsbatch, use :ref:`desired_vcpus <desired_vcpus>`.
 
@@ -277,7 +277,7 @@ Specify S3 resource for which AWS ParallelCluster nodes will be granted
 read-write access.
 
 For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide
-read-write access to all objects in the Development folder of the 
+read-write access to all objects in the Development folder of the
 my_corporate_bucket bucket.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
@@ -797,9 +797,10 @@ shared_dir
 Shared directory that the file system will be mounted to on the master and
 compute nodes.
 
-This parameter is REQUIRED, the EFS section will only be used if this parameter 
-is specified.  The below example mounts to /efs. Do not use NONE or /NONE as
-the shared directory.::
+This parameter is REQUIRED, the EFS section will only be used if this
+parameter is specified.
+The below example mounts to /efs.
+Do not use NONE or /NONE as the shared directory.::
 
     shared_dir = efs
 
