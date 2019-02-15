@@ -36,6 +36,7 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir):
 
     _test_simple_job_submission(remote_command_executor, test_datadir)
     _test_array_submission(remote_command_executor)
+    _test_mnp_submission(remote_command_executor, test_datadir)
 
 
 def _test_simple_job_submission(remote_command_executor, test_datadir):
@@ -68,6 +69,16 @@ def _test_array_submission(remote_command_executor):
     _test_job_submission(remote_command_executor, "awsbsub --vcpus 1 --memory 128 -a 4 sleep 1", children_number=4)
 
 
+def _test_mnp_submission(remote_command_executor, test_datadir):
+    logging.info("Testing MNP submission with MPI job.")
+    _test_job_submission(
+        remote_command_executor,
+        "awsbsub --vcpus 1 --memory 128 -n 4 -cf test_mpi_job.sh",
+        additional_files=[str(test_datadir / "test_mpi_job.sh")],
+        children_number=4,
+    )
+
+
 def _test_job_submission(remote_command_executor, submit_command, additional_files=None, children_number=0):
     logging.debug("Submitting Batch job")
     result = remote_command_executor.run_remote_command(submit_command, additional_files=additional_files)
@@ -88,7 +99,7 @@ def _assert_job_submitted(awsbsub_output):
 @retry(
     retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
     wait_fixed=seconds(7),
-    stop_max_delay=minutes(3),
+    stop_max_delay=minutes(15),
 )
 def _wait_job_completed(remote_command_executor, job_id):
     result = remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
