@@ -205,12 +205,23 @@ While the following test case:
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
-def test_feature_2(region, instance, os, scheduler):
+def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
 `("c5.xlarge", "alinux", "awsbatch")`
+
+If you don't need to reference the parametrized arguments in your test case you can simply replace the
+function arguments with this annotation: `@pytest.mark.usefixtures("region", "os", "instance", "scheduler")`
+
+```python
+@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.instances(["c5.xlarge", "t2.large"])
+@pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_case_3():
+```
 
 #### Default Invalid Dimensions
 
