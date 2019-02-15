@@ -14,7 +14,7 @@ config generation.
 Before executing integration tests it is required to install all the python dependencies required by the framework.
 In order to do that simply run the following command:
 ```bash
-pip install -rtests/integration-tests/requirements.txt
+pip install -r tests/integration-tests/requirements.txt
 ```
 
 Once this is done you can look at the helper of the orchestrator cli in order to list all the available options:
@@ -63,7 +63,7 @@ tests_outputs
 │   ├── $region_i.log: log outputs for a single region
 │   └── ...
 └── $timestamp.out: directory containing tests reports
-    ├── $region_i: directory contaitning tests reports for a single region
+    ├── $region_i: directory containing tests reports for a single region
     │   ├── clusters_configs: directory storing all cluster configs used by test
     │   │   ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux-awsbatch].config
     │   │   └── ...
@@ -97,8 +97,8 @@ The following options can be used to control the parametrization of test cases:
 * `-o OSS [OSS ...], --oss OSS [OSS ...]`: OSs under test.
 * `-s SCHEDULERS [SCHEDULERS ...], --schedulers SCHEDULERS [SCHEDULERS ...]`: Schedulers under test.
 
-Note that each test case can specify a subset of dimensions it is allowed to run against (For example
-a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler.
+Note that each test case can specify a subset of dimensions it is allowed to run against (for example
+a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler).
 This means that the final parametrization of the tests is given by an intersection of the input dimensions and
 the tests specific dimensions so that all constraints are verified.
 
@@ -107,7 +107,7 @@ The following options can be used to control tests parallelism:
 * `--sequential`: by default the tests orchestrator executes a separate parallel process for each region under test.
 By specifying this option all tests are executed sequentially in a single process.
 * `-n PARALLELISM, --parallelism PARALLELISM`: allows to specify the degree of parallelism for each process. It is
-useful to limit the number of clusters that are crated concurrently in a specific region so that AWS account limits
+useful to limit the number of clusters that are created concurrently in a specific region so that AWS account limits
 can be guaranteed.
 
 ### Retry On Failures
@@ -224,13 +224,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
+@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos6", "sge")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
-`("c5.xlarge", "alinux", "awsbatch")`
+`("c4.xlarge", "centos6", "sge")`
 
 #### Default Invalid Dimensions
 
