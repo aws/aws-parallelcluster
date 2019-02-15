@@ -341,7 +341,7 @@ of the cluster stack.
 
 This parameter does not apply to awsbatch.
 
-More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
+More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_
 
 Defaults to NONE. ::
 
@@ -433,9 +433,9 @@ Note: The base_os determines the username used to log into the cluster.
 
 * CentOS 6 & 7: ``centos``
 * Ubuntu 14.04 LTS & 16.04 LTS: ``ubuntu``
-* Amazon Linux: ``ec2-user`` ::
+* Amazon Linux: ``ec2-user``
 
-Defaults to alinux.
+Defaults to alinux. ::
 
     base_os = alinux
 
@@ -813,7 +813,7 @@ performance_mode
 """"""""""""""""
 Defines the Performance Mode of the file system.
 
-Valid choices are generalPurpose or maxIO (these are case-sensitive). ::
+Valid choices are generalPurpose or maxIO (these are case-sensitive).
 
 We recommend generalPurpose performance mode for most file systems.
 
@@ -853,7 +853,7 @@ Defines the EFS file system ID for an existing file system.
 
 Specifying this option will void all other EFS options except for shared_dir.
 
-config_sanity will only support file systems without a mount target in the stack's 
+config_sanity will only support file systems without a mount target in the stack's
 availability zone *or* file systems that have an existing mount target in the stack's
 availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
 
