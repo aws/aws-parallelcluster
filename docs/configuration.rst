@@ -9,7 +9,7 @@ Please refer to the example configuration file ``site-packages/aws-parallelclust
 Layout
 ------
 
-Configuration is defined in multiple sections.  Required sections are "global" 
+Configuration is defined in multiple sections.  Required sections are "global"
 and "aws".  At least one "cluster" and "subnet" section must be provided.
 
 A section starts with the section name in brackets, followed by parameters and configuration. ::
