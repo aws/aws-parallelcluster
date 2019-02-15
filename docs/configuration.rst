@@ -231,7 +231,8 @@ See the `Spot Bid Advisor <https://aws.amazon.com/ec2/spot/bid-advisor/>`_ for a
 
 spot_bid_percentage
 """""""""""""""""""
-If awsbatch is the scheduler, this optional parameter is the on-demand bid percentage.  If unspecified, you will get the current spot market price, capped at the on-demand price. ::
+If awsbatch is the scheduler, this optional parameter is the on-demand bid percentage.
+If unspecified, you will get the current spot market price, capped at the on-demand price. ::
 
     spot_bid_percentage = 85
 
@@ -239,8 +240,7 @@ If awsbatch is the scheduler, this optional parameter is the on-demand bid perce
 
 custom_ami
 """"""""""
-ID of a Custom AMI, to use instead of default `published AMIs
-<https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI to use instead of default `published AMIs <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
@@ -332,8 +332,7 @@ deleted when the cluster is terminated.
 
 This does not apply to awsbatch.
 
-Defaults to NONE. More information on placement groups can be found `here
-<http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
+Defaults to NONE. More information on placement groups can be found `here <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/placement-groups.html>`_::
 
     placement_group = NONE
 
@@ -371,7 +370,8 @@ See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS vo
 encrypted_ephemeral
 """""""""""""""""""
 Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will
-generate an ephemeral encryption key in memory and encrypt your instance store volumes using LUKS.
+generate an ephemeral encryption key in memory and encrypt your instance store volumes
+using LUKS.
 
 Defaults to false. ::
 
@@ -403,8 +403,8 @@ Defaults to alinux.
 
 Note: The base_os determines the username used to log into the cluster.
 
-Supported operating systems by region. Please note that commercial entails all supported regions
-including us-east-1, us-west-2 etc. ::
+Supported operating systems by region. Please note that commercial entails all supported
+regions including us-east-1, us-west-2 etc. ::
 
     ============== ======  ============ ============ ============= ============
     region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
@@ -424,9 +424,9 @@ including us-east-1, us-west-2 etc. ::
 
 ec2_iam_role
 """"""""""""
-The given name of an existing EC2 IAM Role that will be attached to all instances in the cluster.
-Note that the given name of a role and its Amazon Resource Name (ARN) are different, and the
-latter can not be used as an argument to ec2_iam_role.
+The given name of an existing EC2 IAM Role that will be attached to all instances in
+the cluster.  Note that the given name of a role and its Amazon Resource Name (ARN) are
+different, and the latter can not be used as an argument to ec2_iam_role.
 
 Defaults to NONE. ::
 
@@ -443,8 +443,9 @@ Defaults to {}. ::
 additional_cfn_template
 """""""""""""""""""""""
 An additional CloudFormation template to launch along with the cluster.  This
-allows for the
-creation of resources that exist outside of the cluster but are part of the cluster's life cycle.
+allows for
+the creation of resources that exist outside of the cluster but are part of the cluster's
+life cycle.
 
 Must be a HTTP URL to a public template with all parameters provided.
 
@@ -504,8 +505,7 @@ Command line tags overwrite config tags that have the same key.
 
 Tags are JSON formatted and should never have quotes outside the curly braces.
 
-See `AWS CloudFormation Resource Tags Type
-<https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
+See `AWS CloudFormation Resource Tags Type <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
 
     tags = {"key" : "value", "key2" : "value2"}
 
@@ -589,7 +589,8 @@ Defaults to NONE. ::
 
 ebs
 ^^^
-EBS Volume configuration settings for the volumes mounted on the master node and shared via NFS to compute nodes. ::
+EBS Volume configuration settings for the volumes mounted on the master node and
+shared via NFS to compute nodes. ::
 
     [ebs custom1]
     shared_dir = vol1
@@ -607,8 +608,8 @@ EBS Volume configuration settings for the volumes mounted on the master node and
 shared_dir
 """"""""""
 Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes.
-When using one (1) EBS volume, this option will overwrite the shared_dirspecified under
-the cluster section. The example below mounts to /vol1 ::
+When using one (1) EBS volume, this option will overwrite the shared_dirspecified
+under the cluster section. The example below mounts to /vol1 ::
 
     shared_dir = vol1
 
@@ -689,11 +690,11 @@ Defaults to 10. ::
 examples
 ^^^^^^^^
 
-Suppose you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance
-type, based on your jobs resource needs.
+Suppose you want to launch a cluster with the awsbatch scheduler and let batch pick
+the optimal instance type, based on your jobs resource needs.
 
-The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs
-running for 10 minutes. ::
+The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when
+you have no jobs running for 10 minutes. ::
 
   [global]
   update_check = true
@@ -758,7 +759,8 @@ running for 10 minutes. ::
 
 EFS
 ^^^
-EFS file system configuration settings for the EFS mounted on the master node and compute nodes via nfs4. ::
+EFS file system configuration settings for the EFS mounted on the master node and compute
+nodes via nfs4. ::
 
 
     [efs customfs]
@@ -786,9 +788,10 @@ Defaults to false. ::
 
 performance_mode
 """"""""""""""""
-Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
-File systems using the maxIO performance mode can scale to higher levels of aggregate throughput and
-operations per second with a trade-off of slightly higher latencies for most file operations.
+Performance Mode of the file system. We recommend generalPurpose performance mode
+for most file systems.  File systems using the maxIO performance mode can scale to higher
+levels of aggregate throughput and operations per second with a trade-off of slightly
+higher latencies for most file operations.
 This cannot be changed after the file system has been created.
 
 Defaults to generalPurpose.  Valid choices are "generalPurpose" or "maxIO" (both are case sensitive). ::
@@ -803,8 +806,9 @@ The throughput mode for the file system to be created.  Valid options are bursti
 
 provisioned_throughput
 """"""""""""""""""""""
-The throughput, measured in MiB/s, that you want to provision for a file system that you are creating.
-The limit on throughput is 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+The throughput, measured in MiB/s, that you want to provision for a file system that
+you are creating.  The limit on throughput is 1024 MiB/s. You can get these limits increased
+by contacting AWS Support.
 
 Valid Range: Min of 0.0.  To use this option, you must set the throughput_mode to provisioned ::
 
@@ -828,12 +832,13 @@ ec2:DescribeSecurityGroups
 
 Please add these permissions to your IAM role, or set `sanity_check = false` to avoid errors.
 
-CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will
-expose the file system to NFS mounting request from anywhere in the mount target's availability zone.
-We recommend not to have a mount target in stack's availability zone and let us create the mount target.
-If you must have a mount target in stack's availability zone, consider using a custom security group
-by providing a vpc_security_group_id option under the vpc section, adding that security group
-to the mount target, and turning off config sanity to create the cluster.
+CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0
+will expose the file system to NFS mounting request from anywhere in the mount target's
+availability zone.  We recommend not to have a mount target in the stack's availability
+zone and let us create the mount target.  If you must have a mount target in stack's availability
+zone, consider using a custom security group by providing a vpc_security_group_id option
+under the vpc section, adding that security group to the mount target, and turning off
+config sanity to create the cluster.
 
 Defaults to NONE. Needs to be an available EFS file system::
 
@@ -844,8 +849,9 @@ Defaults to NONE. Needs to be an available EFS file system::
 
 RAID
 ^^^^
-RAID drive configuration settings for creating a RAID array from a number of identical EBS volumes. The RAID drive
-is mounted on the master node, and exported to compute nodes via nfs. ::
+RAID drive configuration settings for creating a RAID array from a number of identical
+EBS volumes. The RAID drive is mounted on the master node, and exported to compute nodes
+via nfs. ::
 
 
     [raid rs]
