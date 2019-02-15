@@ -49,13 +49,14 @@ Check for updates to pcluster. ::
 
 sanity_check
 """"""""""""
-Attempts to validate the existence of the resources defined in parameters. ::
+Attempt to validate the existence of the resources defined in parameters. ::
 
     sanity_check = true
 
 aws
 ^^^
 AWS credentials/region section.
+
 These settings apply to all clusters and are REQUIRED.
 
 For security purposes, AWS highly recommends using the environment, EC2 IAM Roles, or the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials
@@ -71,6 +72,7 @@ rather than storing them in the AWS ParallelCluster config file. ::
 aliases
 ^^^^^^^
 Aliases section.
+
 Customize the `ssh` command here.
 
 `CFN_USER` is set to the default username for the OS.
@@ -86,9 +88,9 @@ Customize the `ssh` command here.
 
 cluster
 ^^^^^^^
-Defines one or more clusters for different types of jobs or workloads.
+Defines one or more clusters for different job types or workloads.
 
-Each cluster can have its own individual configuration based on your needs.
+Each cluster can have its own individual configuration.
 
 The format is [cluster <clustername>]. ::
 
@@ -242,7 +244,7 @@ spot_bid_percentage
 """""""""""""""""""
 If awsbatch is the scheduler, this optional parameter is the on-demand bid percentage.
 
-If unspecified, you will get the current spot market price, capped at the on-demand price. ::
+If unspecified, the current spot market price will be selected, capped at the on-demand price. ::
 
     spot_bid_percentage = 85
 
@@ -250,7 +252,7 @@ If unspecified, you will get the current spot market price, capped at the on-dem
 
 custom_ami
 """"""""""
-ID of a Custom AMI to use instead of default `published AMIs <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI to use instead of the default `published AMIs <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
 
     custom_ami = NONE
 
@@ -304,7 +306,7 @@ post_install
 """"""""""""
 URL to a postinstall script that is executed after all of the boot_as_* scripts are run.
 
-This is only executed on the master node when using awsbatch as the scheduler.
+When using awsbatch as the scheduler, the postinstall script is only executed on the master node.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -414,8 +416,8 @@ OS type used in the cluster.
 
 Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604.
 
-Supported operating systems by region are listed in the table below.
-Please note that commercial entails all supported regions including us-east-1, us-west-2, etc.::
+Supported operating systems by region are listed in the table below.  Please note
+that commercial entails all supported regions including us-east-1, us-west-2, etc.::
 
    ============== ======  ============ ============ ============= ============
    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
@@ -439,7 +441,7 @@ Defaults to alinux.
 
 ec2_iam_role
 """"""""""""
-The given name of an existing EC2 IAM Role that will be attached to all instances in
+Defines the name of an existing EC2 IAM Role that will be attached to all instances in
 the cluster.  Note that the given name of a role and its Amazon Resource Name (ARN) are
 different, and the latter may not be used as an argument to ec2_iam_role.
 
