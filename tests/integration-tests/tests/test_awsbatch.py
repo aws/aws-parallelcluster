@@ -23,11 +23,22 @@ from time_utils import minutes, seconds
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
 @pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
-def test_simple_job_submission(region, os, instance, scheduler, pcluster_config_reader, clusters_factory, test_datadir):
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir):
+    """
+    Test all AWS Batch related features.
+
+    Grouped all tests in a single function so that cluster can be reused for all of them.
+    """
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
+    _test_simple_job_submission(remote_command_executor, test_datadir)
+    _test_array_submission(remote_command_executor)
+
+
+def _test_simple_job_submission(remote_command_executor, test_datadir):
     logging.info("Testing inline submission.")
     _test_job_submission(remote_command_executor, "awsbsub --vcpus 2 --memory 256 --timeout 60 sleep 1")
 
@@ -52,13 +63,19 @@ def test_simple_job_submission(region, os, instance, scheduler, pcluster_config_
     )
 
 
-def _test_job_submission(remote_command_executor, submit_command, additional_files=None):
+def _test_array_submission(remote_command_executor):
+    logging.info("Testing array submission.")
+    _test_job_submission(remote_command_executor, "awsbsub --vcpus 1 --memory 128 -a 4 sleep 1", children_number=4)
+
+
+def _test_job_submission(remote_command_executor, submit_command, additional_files=None, children_number=0):
     logging.debug("Submitting Batch job")
     result = remote_command_executor.run_remote_command(submit_command, additional_files=additional_files)
     job_id = _assert_job_submitted(result.stdout)
     logging.debug("Submitted Batch job id: {0}".format(job_id))
     status = _wait_job_completed(remote_command_executor, job_id)
-    assert_that(status).is_equal_to("SUCCEEDED")
+    assert_that(status).is_length(1 + children_number)
+    assert_that(status).contains_only("SUCCEEDED")
 
 
 def _assert_job_submitted(awsbsub_output):
@@ -69,10 +86,10 @@ def _assert_job_submitted(awsbsub_output):
 
 
 @retry(
-    retry_on_result=lambda result: result not in ["SUCCEEDED", "FAILED"],
-    wait_fixed=seconds(10),
+    retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
+    wait_fixed=seconds(7),
     stop_max_delay=minutes(3),
 )
 def _wait_job_completed(remote_command_executor, job_id):
-    result = remote_command_executor.run_remote_command("awsbstat {0}".format(job_id))
-    return re.search(r"status.+: (.+)", result.stdout).group(1)
+    result = remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
+    return re.findall(r"status\s+: (.+)", result.stdout)
