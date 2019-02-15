@@ -128,15 +128,13 @@ class ResourceValidator(object):
                 self.__fail(
                     "VpcId",
                     "Currently only support using FSx file system that is in the same VPC as the stack. "
-                    "The file system provided is in %s"
-                    % fs.get("VpcId")
+                    "The file system provided is in %s" % fs.get("VpcId"),
                 )
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
             network_interface_ids = fs.get("NetworkInterfaceIds")
             network_interface_responses = ec2.describe_network_interfaces(
-                NetworkInterfaceIds=network_interface_ids).get(
-                "NetworkInterfaces"
-            )
+                NetworkInterfaceIds=network_interface_ids
+            ).get("NetworkInterfaces")
             network_interfaces = []
             for response in network_interface_responses:
                 if response.get("VpcId") == stack_vpc:
@@ -172,8 +170,7 @@ class ResourceValidator(object):
                     "FSXFSId"
                     "The current security group settings on file system %s does not satisfy "
                     "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988."
-                    % resource_value[0]
+                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0]
                 )
                 sys.exit(1)
             return True
@@ -486,29 +483,34 @@ class ResourceValidator(object):
                     "Needs min of 2 volumes for RAID and max of 5 EBS volumes are currently supported.",
                 )
         # FSX FS Id check
-        elif resource_type == "FSXFSId":
+        elif resource_type == "fsx_fs_id":
             try:
                 ec2 = boto3.client(
                     "ec2",
                     region_name=self.region,
                     aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key
+                    aws_secret_access_key=self.aws_secret_access_key,
                 )
                 fsx = boto3.client(
                     "fsx",
                     region_name=self.region,
                     aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key
+                    aws_secret_access_key=self.aws_secret_access_key,
                 )
                 self.__check_fsx_fs_id(ec2, fsx, resource_value)
             except ClientError as e:
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
         # FSX capacity size check
-        elif resource_type == "FSX_size":
+        elif resource_type == "FSx_storage_capacity":
             if int(resource_value) % 3600 != 0 or int(resource_value) < 3600:
-                print(
-                    "Config sanity error: Capacity for FSx lustre filesystem, minimum of 3600 GB, increment of 3600 GB")
-                sys.exit(1)
+                self.__fail(
+                    resource_type, "Capacity for FSx lustre filesystem, minimum of 3600 GB, increment of 3600 GB"
+                )
+        # FSX file chunk size check
+        elif resource_type == "FSx_imported_file_chunk_size":
+            # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
+            if not (1 >= int(resource_value) <= 512000):
+                self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
             # Check region

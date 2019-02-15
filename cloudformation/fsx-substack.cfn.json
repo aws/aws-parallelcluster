@@ -160,6 +160,22 @@
       "Type": "AWS::FSx::FileSystem",
       "Properties": {
         "FileSystemType": "LUSTRE",
+        "KmsKeyId": {
+          "Fn::If": [
+            "UseFSXKMSKey",
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "LustreConfiguration": {
           "ImportPath": {
             "Fn::If": [
@@ -172,7 +188,9 @@
                   }
                 ]
               },
-              { "Ref": "AWS::NoValue" }
+              {
+                "Ref": "AWS::NoValue"
+              }
             ]
           },
           "WeeklyMaintenanceStartTime": {
@@ -186,7 +204,9 @@
                   }
                 ]
               },
-              { "Ref": "AWS::NoValue" }
+              {
+                "Ref": "AWS::NoValue"
+              }
             ]
           },
           "ImportedFileChunkSize": {
@@ -200,7 +220,9 @@
                   }
                 ]
               },
-              { "Ref": "AWS::NoValue" }
+              {
+                "Ref": "AWS::NoValue"
+              }
             ]
           }
         },
