@@ -9,7 +9,8 @@ Please refer to the example configuration file ``site-packages/aws-parallelclust
 Layout
 ------
 
-Configuration is defined in multiple sections.  Required sections are "global" and "aws".  At least one "cluster" and "subnet" section must be provided.
+Configuration is defined in multiple sections.  Required sections are "global" 
+and "aws".  At least one "cluster" and "subnet" section must be provided.
 
 A section starts with the section name in brackets, followed by parameters and configuration. ::
 
@@ -349,11 +350,12 @@ Defaults to /scratch. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes; provide shared_dir under
-each EBS section instead.
+Path/mountpoint for shared EBS volume. Do not use this option when using
+multiple EBS volumes; provide shared_dir under each EBS section instead.
 
-Defaults to /shared. The example below mounts the shared EBS volume at /myshared. See :ref:`EBS Section <ebs_section>` for details on working
-with multiple EBS volumes::
+Defaults to /shared.
+The example below mounts the shared EBS volume at /myshared. See :ref:`EBS Section <ebs_section>` for details
+on working with multiple EBS volumes::
 
     shared_dir = myshared
 
@@ -392,7 +394,8 @@ Defaults to alinux.
 
 Note: The base_os determines the username used to log into the cluster.
 
-Supported operating systems by region. Please note that commercial entails all supported regions including us-east-1, us-west-2 etc. ::
+Supported operating systems by region. Please note that commercial entails all
+supported regions including us-east-1, us-west-2 etc. ::
 
     ============== ======  ============ ============ ============= ============
     region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
@@ -431,7 +434,8 @@ Defaults to {}. ::
 
 additional_cfn_template
 """""""""""""""""""""""
-An additional CloudFormation template to launch along with the cluster. This allows for the creation of resources that exist
+An additional CloudFormation template to launch along with the cluster. This
+allows for the creation of resources that exist
 outside of the cluster but are part of the cluster's life cycle.
 
 Must be a HTTP URL to a public template with all parameters provided.
