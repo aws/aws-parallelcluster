@@ -249,7 +249,8 @@ s3_read_resource
 Specify an S3 resource to which AWS ParallelCluster nodes will be granted
 read-only access.
 
-For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
+For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all
+objects in the my_corporate_bucket bucket.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -324,7 +325,8 @@ Defaults to NONE. ::
 
 placement_group
 """""""""""""""
-Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name.
+Cluster placement group.  The can be one of three values: NONE, DYNAMIC or an existing 
+EC2 placement group name.
 When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
 
 This does not apply to awsbatch.
@@ -336,7 +338,7 @@ Defaults to NONE. More information on placement groups can be found `here
 
 placement
 """""""""
-Cluster placement logic. This enables the whole cluster or only the compute instances to use the placement group. 
+Cluster placement logic. This enables the whole cluster or only the compute instances to use the placement group.
 Valid options are ``cluster`` or ``compute``.
 
 This does not apply to awsbatch.
@@ -355,7 +357,8 @@ Defaults to /scratch. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes.
+Path/mountpoint for shared EBS volume. 
+Do not use this option when using multiple EBS volumes.
 Provide shared_dir under each EBS section instead.
 
 Defaults to /shared.
@@ -563,7 +566,8 @@ use_public_ips
 Define whether or not to assign public IP addresses to Compute EC2 instances.
 
 If true, an Elastic IP will be associated to the Master instance.
-If false, the Master instance will have a Public IP or not according to the value of the "Auto-assign Public IP" subnet configuration parameter.
+If false, the Master instance will have a Public IP or not according to the value of
+the "Auto-assign Public IP" subnet configuration parameter.
 
 See :ref:`networking configuration <networking>` for some examples.
 
@@ -600,7 +604,9 @@ EBS Volume configuration settings for the volumes mounted on the master node and
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes.  When using 1 ebs volume, this option will overwrite the shared_dir specified under the cluster section. The example below mounts to /vol1 ::
+Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes.
+When using one (1) EBS volume, this option will overwrite the shared_dirspecified under
+the cluster section. The example below mounts to /vol1 ::
 
     shared_dir = vol1
 
@@ -780,7 +786,7 @@ performance_mode
 """"""""""""""""
 Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
 File systems using the maxIO performance mode can scale to higher levels of aggregate throughput and
-operations per second with a trade-off of slightly higher latencies for most file operations. 
+operations per second with a trade-off of slightly higher latencies for most file operations.
 This cannot be changed after the file system has been created.
 
 Defaults to generalPurpose.  Valid choices are "generalPurpose" or "maxIO" (both are case sensitive). ::
@@ -804,9 +810,12 @@ Valid Range: Min of 0.0.  To use this option, you must set the throughput_mode t
 
 efs_fs_id
 """""""""
-File system ID for an existing file system. Specifying this option will void all other EFS options but shared_dir.
-Config sanity will only allow file systems that have no mount target in the stack's availability zone OR
-have existing mount target in the stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
+File system ID for an existing file system. Specifying this option will void all other EFS
+options but shared_dir.
+Config sanity will only allow file systems that have no mount target in the stack's availability
+zone OR
+have existing mount target in the stack's availability zone with inbound and outbound NFS traffic
+allowed from 0.0.0.0/0.
 
 Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the
 following actions: efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
