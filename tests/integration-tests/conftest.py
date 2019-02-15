@@ -223,7 +223,13 @@ def cfn_stacks_factory():
 @pytest.fixture(scope="session", autouse=True)
 def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
-    public_subnet = SubnetConfig()
+    public_subnet = SubnetConfig(
+        name="PublicSubnet",
+        cidr="10.0.0.0/24",
+        map_public_ip_on_launch=True,
+        has_nat_gateway=True,
+        default_gateway=Gateways.INTERNET_GATEWAY,
+    )
     private_subnet = SubnetConfig(
         name="PrivateSubnet",
         cidr="10.0.1.0/24",
