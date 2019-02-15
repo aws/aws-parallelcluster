@@ -9,8 +9,8 @@ Please refer to the example configuration file ``site-packages/aws-parallelclust
 Layout
 ------
 
-Configuration is defined in multiple sections.  Required sections are "global" and "aws".  At least one "cluster" and "subnet" section must be provided.
-
+Configuration is defined in multiple sections.  Required sections are "global" and "aws".
+At least one "cluster" and "subnet" section must be provided.
 A section starts with the section name in brackets, followed by parameters and configuration. ::
 
     [global]
@@ -52,7 +52,8 @@ aws
 ^^^
 AWS credentials/region section.  These settings apply to all clusters and are REQUIRED.
 
-For security purposes, AWS highly recommends using the environment, EC2 IAM Roles, or the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials rather than storing them in the AWS ParallelCluster config file. ::
+For security purposes, AWS highly recommends using the environment, EC2 IAM Roles, or the `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials
+rather than storing them in the AWS ParallelCluster config file. ::
 
     [aws]
     aws_access_key_id = #your_aws_access_key_id
@@ -106,7 +107,8 @@ compute_instance_type
 """""""""""""""""""""
 The EC2 instance type used for the cluster compute nodes.
 
-If you are using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI for the list of supported instance types.
+If you are using awsbatch, please refer to the Compute Environments creation in the AWS Batch UI
+for the list of supported instance types.
 
 Defaults to t2.micro, ``optimal``  when scheduler is awsbatch ::
 
@@ -146,19 +148,18 @@ Defaults to 10. ::
 
 maintain_initial_size
 """""""""""""""""""""
-<<<<<<< HEAD
 Boolean flag to maintain initial size of the Auto Scaling group for
 traditional schedulers.
-=======
 Boolean flag to maintain initial size of the Auto Scaling group for traditional schedulers.
->>>>>>> parent of c4d1879... Unified spacing between periods and made some other small phrasing changes.
+Unified spacing between periods and made some other small phrasing changes.
 
 If the scheduler is awsbatch, use :ref:`desired_vcpus <desired_vcpus>`.
 
-If set to true, the Auto Scaling group will never have fewer members than the value of initial_queue_size.  The cluster can still scale up to the value of max_queue_size.
+If set to true, the Auto Scaling group will never have fewer members than the value
+of initial_queue_size.  The cluster can still scale up to the value of max_queue_size.
 
-If set to false, the Auto Scaling group can scale down to 0 members to prevent resources from sitting idle when they
-are not needed.
+If set to false, the Auto Scaling group can scale down to 0 members to prevent resources from
+sitting idle when they are not needed.
 
 Defaults to false. ::
 
@@ -214,7 +215,11 @@ Defaults to ondemand. ::
 
 spot_price
 """"""""""
-If cluster_type is set to spot, you can optionally set the maximum spot price for the ComputeFleet on traditional schedulers.  If you do not specify a value, you are charged the Spot price, capped at the On-Demand price.
+If cluster_type is set to spot, you can optionally set the maximum spot price
+for the
+ComputeFleet on traditional schedulers.  If you do not specify a value,
+you are charged the
+Spot price, capped at the On-Demand price.
 
 If the scheduler is awsbatch, use :ref:`spot_bid_percentage <spot_bid_percentage>`.
 
@@ -241,7 +246,8 @@ ID of a Custom AMI, to use instead of default `published AMIs
 
 s3_read_resource
 """"""""""""""""
-Specify an S3 resource to which AWS ParallelCluster nodes will be granted read-only access.
+Specify an S3 resource to which AWS ParallelCluster nodes will be granted
+read-only access.
 
 For example, 'arn:aws:s3:::my_corporate_bucket/\*' would provide read-only access to all objects in the my_corporate_bucket bucket.
 
@@ -255,13 +261,14 @@ s3_read_write_resource
 """"""""""""""""""""""
 Specify S3 resource for which AWS ParallelCluster nodes will be granted read-write access
 
-<<<<<<< HEAD
 For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide
 read-write access to all objects in the Development folder of the
 my_corporate_bucket bucket.
-=======
-For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide read-write access to all objects in the Development folder of the my_corporate_bucket bucket.
->>>>>>> parent of c4d1879... Unified spacing between periods and made some other small phrasing changes.
+
+For example, 'arn:aws:s3:::my_corporate_bucket/Development/\*' would provide
+read-write access to all objects in the Development folder of the
+my_corporate_bucket bucket.
+Unified spacing between periods and made some other small phrasing changes.
 
 See :doc:`working with S3 <s3_resources>` for details on format.
 
@@ -271,7 +278,8 @@ Defaults to NONE. ::
 
 pre_install
 """""""""""
-URL to a preinstall script that is executed before any of the boot_as_* scripts are run.  When using awsbatch as the scheduler, the preinstall script is only executed on the master node.
+URL to a preinstall script that is executed before any of the boot_as_* scripts are run.
+When using awsbatch as the scheduler, the preinstall script is only executed on the master node.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -289,7 +297,8 @@ Defaults to NONE. ::
 
 post_install
 """"""""""""
-URL to a postinstall script that is executed after all of the boot_as_* scripts are run.  This is only executed on the master node when using awsbatch as the scheduler.
+URL to a postinstall script that is executed after all of the boot_as_* scripts are run.
+This is only executed on the master node when using awsbatch as the scheduler.
 
 Can be specified in "http://hostname/path/to/script.sh" or "s3://bucketname/path/to/script.sh" format.
 
@@ -315,7 +324,8 @@ Defaults to NONE. ::
 
 placement_group
 """""""""""""""
-Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name.  When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
+Cluster placement group. The can be one of three values: NONE, DYNAMIC and an existing placement group name.
+When DYNAMIC is set, a unique placement group will be created as part of the cluster and deleted when the cluster is deleted.
 
 This does not apply to awsbatch.
 
@@ -326,7 +336,8 @@ Defaults to NONE. More information on placement groups can be found `here
 
 placement
 """""""""
-Cluster placement logic. This enables the whole cluster or only the compute instances to use the placement group.  Valid options are ``cluster`` or ``compute``.
+Cluster placement logic. This enables the whole cluster or only the compute instances to use the placement group. 
+Valid options are ``cluster`` or ``compute``.
 
 This does not apply to awsbatch.
 
@@ -344,8 +355,8 @@ Defaults to /scratch. ::
 
 shared_dir
 """"""""""
-Path/mountpoint for shared EBS volume. Do not use this option when using
-multiple EBS volumes; provide shared_dir under each EBS section instead.
+Path/mountpoint for shared EBS volume. Do not use this option when using multiple EBS volumes.
+Provide shared_dir under each EBS section instead.
 
 Defaults to /shared.
 The example below mounts the shared EBS volume at /myshared. See :ref:`EBS Section <ebs_section>` for details on working with multiple EBS volumes::
@@ -354,7 +365,8 @@ The example below mounts the shared EBS volume at /myshared. See :ref:`EBS Secti
 
 encrypted_ephemeral
 """""""""""""""""""
-Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will generate an ephemeral encryption key in memory and encrypt your instance store volumes using LUKS.
+Encrypted ephemeral drives. In-memory keys, non-recoverable. If true, AWS ParallelCluster will
+generate an ephemeral encryption key in memory and encrypt your instance store volumes using LUKS.
 
 Defaults to false. ::
 
@@ -386,7 +398,8 @@ Defaults to alinux.
 
 Note: The base_os determines the username used to log into the cluster.
 
-Supported operating systems by region. Please note that commercial entails all supported regions including us-east-1, us-west-2 etc. ::
+Supported operating systems by region. Please note that commercial entails all supported regions
+including us-east-1, us-west-2 etc. ::
 
     ============== ======  ============ ============ ============= ============
     region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
@@ -406,7 +419,9 @@ Supported operating systems by region. Please note that commercial entails all s
 
 ec2_iam_role
 """"""""""""
-The given name of an existing EC2 IAM Role that will be attached to all instances in the cluster.  Note that the given name of a role and its Amazon Resource Name (ARN) are different, and the latter can not be used as an argument to ec2_iam_role.
+The given name of an existing EC2 IAM Role that will be attached to all instances in the cluster.
+Note that the given name of a role and its Amazon Resource Name (ARN) are different, and the
+latter can not be used as an argument to ec2_iam_role.
 
 Defaults to NONE. ::
 
@@ -423,7 +438,8 @@ Defaults to {}. ::
 additional_cfn_template
 """""""""""""""""""""""
 An additional CloudFormation template to launch along with the cluster.  This
-allows for the creation of resources that exist outside of the cluster but are part of the cluster's life cycle.
+allows for the
+creation of resources that exist outside of the cluster but are part of the cluster's life cycle.
 
 Must be a HTTP URL to a public template with all parameters provided.
 
@@ -442,7 +458,8 @@ See :ref:`VPC Section <vpc_section>`. ::
 
 ebs_settings
 """"""""""""
-Settings section relating to EBS volume mounted on the master.  When using multiple EBS volumes, enter multiple settings as a comma separated list. Up to 5 EBS volumes are supported.
+Settings section relating to EBS volume mounted on the master.  When using multiple EBS volumes,
+enter multiple settings as a comma separated list. Up to 5 EBS volumes are supported.
 
 See :ref:`EBS Section <ebs_section>`. ::
 
@@ -627,7 +644,8 @@ Defaults to false. ::
 
 ebs_kms_key_id
 """"""""""""""
-Use a custom KMS Key for encryption. This must be used in conjunction with ``encrypted = true`` and needs to have a custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+Use a custom KMS Key for encryption. This must be used in conjunction with ``encrypted = true`` and needs
+to have a custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
 
     ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
@@ -663,9 +681,11 @@ Defaults to 10. ::
 examples
 ^^^^^^^^
 
-Suppose you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based on your jobs resource needs.
+Suppose you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance
+type, based on your jobs resource needs.
 
-The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs running for 10 minutes. ::
+The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs
+running for 10 minutes. ::
 
   [global]
   update_check = true
@@ -742,15 +762,9 @@ shared_dir
 """"""""""
 Shared directory that the file system will be mounted to on the master and compute nodes.
 
-<<<<<<< HEAD
-This parameter is REQUIRED, the EFS section will only be used if this
-parameter is specified.
+This parameter is REQUIRED, the EFS section will only be used if this parameter is specified.
 The below example mounts to /efs.
 Do not use NONE or /NONE as the shared directory.::
-=======
-This parameter is REQUIRED, the EFS section will only be used if this parameter is specified.
-The below example mounts to /efs. Do not use NONE or /NONE as the shared directory.::
->>>>>>> parent of c4d1879... Unified spacing between periods and made some other small phrasing changes.
 
     shared_dir = efs
 
@@ -764,21 +778,25 @@ Defaults to false. ::
 
 performance_mode
 """"""""""""""""
-Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.  File systems using the maxIO performance mode can scale to higher levels of aggregate throughput and operations per second with a trade-off of slightly higher latencies for most file operations.  This cannot be changed after the file system has been created.
+Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
+File systems using the maxIO performance mode can scale to higher levels of aggregate throughput and
+operations per second with a trade-off of slightly higher latencies for most file operations. 
+This cannot be changed after the file system has been created.
 
-Defaults generalPurpose. Valid Values are generalPurpose | maxIO (case sensitive). ::
+Defaults to generalPurpose.  Valid choices are "generalPurpose" or "maxIO" (both are case sensitive). ::
 
     performance_mode = generalPurpose
 
 throughput_mode
 """""""""""""""
-The throughput mode for the file system to be created.  There are two throughput modes to choose from for your file system: bursting and provisioned.
+The throughput mode for the file system to be created.  Valid options are bursting and provisioned.
 
     throughput_mode = provisioned
 
 provisioned_throughput
 """"""""""""""""""""""
-The throughput, measured in MiB/s, that you want to provision for a file system that you are creating.  The limit on throughput is 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+The throughput, measured in MiB/s, that you want to provision for a file system that you are creating.
+The limit on throughput is 1024 MiB/s. You can get these limits increased by contacting AWS Support.
 
 Valid Range: Min of 0.0.  To use this option, you must set the throughput_mode to provisioned ::
 
@@ -786,13 +804,21 @@ Valid Range: Min of 0.0.  To use this option, you must set the throughput_mode t
 
 efs_fs_id
 """""""""
-File system ID for an existing file system. Specifying this option will void all other EFS options but shared_dir.  Config sanity will only allow file systems that: have no mount target in the stack's availability zone OR have existing mount target in stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
+File system ID for an existing file system. Specifying this option will void all other EFS options but shared_dir.
+Config sanity will only allow file systems that have no mount target in the stack's availability zone OR
+have existing mount target in the stack's availability zone with inbound and outbound NFS traffic allowed from 0.0.0.0/0.
 
-Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the following actions: efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
+Note: sanity check for validating efs_fs_id requires the IAM role to have permission for the
+following actions: efs:DescribeMountTargets, efs:DescribeMountTargetSecurityGroups, ec2:DescribeSubnets, ec2:DescribeSecurityGroups.
 
 Please add these permissions to your IAM role, or set `sanity_check = false` to avoid errors.
 
-CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will expose the file system to NFS mounting request from anywhere in the mount target's availability zone.  We recommend not to have a mount target in stack's availability zone and let us create the mount target.  If you must have a mount target in stack's availability zone, consider using a custom security group by providing a vpc_security_group_id option under the vpc section, adding that security group to the mount target, and turning off config sanity to create the cluster.
+CAUTION: having mount target with inbound and outbound NFS traffic allowed from 0.0.0.0/0 will
+expose the file system to NFS mounting request from anywhere in the mount target's availability zone.
+We recommend not to have a mount target in stack's availability zone and let us create the mount target.
+If you must have a mount target in stack's availability zone, consider using a custom security group
+by providing a vpc_security_group_id option under the vpc section, adding that security group
+to the mount target, and turning off config sanity to create the cluster.
 
 Defaults to NONE. Needs to be an available EFS file system::
 
@@ -824,7 +850,8 @@ The below example mounts to /raid. Do not use NONE or /NONE as the shared direct
 
 raid_type
 """""""""
-RAID type for the RAID array. Currently only support RAID 0 or RAID 1. For more information on RAID types, see: `RAID info <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
+RAID type for the RAID array. Currently only support RAID 0 or RAID 1.
+For more information on RAID types, see: `RAID info <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
 
 This parameter is REQUIRED, the RAID drive will only be created if this parameter is specified.
 The below example will create a RAID 0 array::
@@ -872,6 +899,9 @@ Defaults to false. ::
 
 ebs_kms_key_id
 """"""""""""""
-Use a custom KMS Key for encryption.  This must be used in conjunction with ``encrypted = true`` and needs to have a custom ``ec2_iam_role``. See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+Use a custom KMS Key for encryption.
+
+This must be used in conjunction with ``encrypted = true`` and needs to have a custom ``ec2_iam_role``.
+See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
 
     ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
