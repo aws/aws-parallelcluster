@@ -167,7 +167,7 @@ Defaults to false. ::
 
 min_vcpus
 """""""""
-If the scheduler is awsbatch, the compute environment will not have fewer than min_vcpus.
+If the scheduler is awsbatch, the compute environment will never have fewer than min_vcpus.
 
 Defaults to 0. ::
 
@@ -490,7 +490,7 @@ If command line tags are specified via `--tags`, they will be merged with config
 
 Command line tags overwrite config tags that have the same key.
 
-Tags are JSON formatted and should not have quotes outside the curly braces.
+Tags are JSON formatted and should never have quotes outside the curly braces.
 
 See `AWS CloudFormation Resource Tags Type
 <https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-resource-tags.html>`_. ::
@@ -677,7 +677,7 @@ Defaults to 10. ::
 examples
 ^^^^^^^^
 
-Let's say you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based
+Suppose you want to launch a cluster with the awsbatch scheduler and let batch pick the optimal instance type, based
 on your jobs resource needs.
 
 The following allows a maximum of 40 concurrent vCPUs, and scales down to zero when you have no jobs running for 10
@@ -776,7 +776,7 @@ performance_mode
 Performance Mode of the file system. We recommend generalPurpose performance mode for most file systems.
 File systems using the maxIO performance mode can scale to higher levels of aggregate throughput
 and operations per second with a trade-off of slightly higher latencies for most file operations.
-This can't be changed after the file system has been created.
+This cannot be changed after the file system has been created.
 
 Defaults generalPurpose. Valid Values are generalPurpose | maxIO (case sensitive). ::
 
