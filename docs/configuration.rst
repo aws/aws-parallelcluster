@@ -608,7 +608,7 @@ shared via NFS to compute nodes. ::
 shared_dir
 """"""""""
 Path/mountpoint for shared EBS volume. Required when using multiple EBS volumes.
-When using one (1) EBS volume, this option will overwrite the shared_dirspecified
+When using one (1) EBS volume, this option will overwrite the shared_dir specified
 under the cluster section. The example below mounts to /vol1 ::
 
     shared_dir = vol1
