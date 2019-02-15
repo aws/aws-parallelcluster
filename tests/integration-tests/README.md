@@ -170,6 +170,26 @@ test_case_1[eu-west-1-c4.xlarge-alinux-slurm]
 test_case_1[eu-west-1-c4.xlarge-ubuntu1604-slurm]
 ```
 
+If you don't need to reference the parametrized arguments in your test case you can simply replace the
+function arguments with this annotation: `@pytest.mark.usefixtures("region", "os", "instance", "scheduler")`
+
+```python
+@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.instances(["c5.xlarge", "t2.large"])
+@pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+def test_case_2():
+```
+
+If you want to add another level of parametrization which only applies to a single or a subset of
+test cases then you can do it in the following way:
+
+```python
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
+@pytest.mark.parametrized("cluster_max_size", [5, 10])
+def test_case_2(cluster_max_size):
+```
+
 ### Restrict Test Cases Dimensions
 
 It is possible to restrict the dimensions each test is compatible with by using some custom markers.
@@ -211,17 +231,6 @@ is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
 `("c5.xlarge", "alinux", "awsbatch")`
-
-If you don't need to reference the parametrized arguments in your test case you can simply replace the
-function arguments with this annotation: `@pytest.mark.usefixtures("region", "os", "instance", "scheduler")`
-
-```python
-@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge", "t2.large"])
-@pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_case_3():
-```
 
 #### Default Invalid Dimensions
 
