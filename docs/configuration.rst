@@ -417,7 +417,7 @@ OS type used in the cluster.
 Available options are: alinux, centos6, centos7, ubuntu1404 and ubuntu1604.
 
 Supported operating systems by region are listed in the table below.  Please note
-that commercial entails all supported regions including us-east-1, us-west-2, etc.
+that commercial entails all supported regions including us-east-1, us-west-2, etc.::
 
    ============== ======  ============ ============ ============= ============
    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
