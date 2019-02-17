@@ -20,8 +20,8 @@ from shutil import copyfile
 
 import pytest
 
-from cfn_stacks_factory import CfnStacksFactory
-from clusters_factory import ClustersFactory
+from cfn_stacks_factory import CfnStack, CfnStacksFactory
+from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
     DIMENSIONS_MARKER_ARGS,
     add_default_markers,
@@ -150,19 +150,30 @@ def clusters_factory(request):
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
-    factory = ClustersFactory(test_name=request.node.name, ssh_key=request.config.getoption("key_path"))
+    factory = ClustersFactory()
 
     def _cluster_factory(cluster_config):
-        out_dir = request.config.getoption("output_dir")
-        os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
-        cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-            out_dir=out_dir, test_name=request.node.nodeid
+        cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
+        cluster = Cluster(
+            name="integ-tests-" + random_alphanumeric(),
+            config_file=cluster_config,
+            ssh_key=request.config.getoption("key_path"),
         )
-        copyfile(cluster_config, cluster_config_dst)
-        return factory.create_cluster(cluster_config_dst)
+        factory.create_cluster(cluster)
+        return cluster
 
     yield _cluster_factory
     factory.destroy_all_clusters()
+
+
+def _write_cluster_config_to_outdir(request, cluster_config):
+    out_dir = request.config.getoption("output_dir")
+    os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
+    cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
+        out_dir=out_dir, test_name=request.node.nodeid
+    )
+    copyfile(cluster_config, cluster_config_dst)
+    return cluster_config_dst
 
 
 @pytest.fixture()
@@ -248,9 +259,8 @@ def vpc_stacks(cfn_stacks_factory, request):
     regions = request.config.getoption("regions")
     vpc_stacks = {}
     for region in regions:
-        stack = cfn_stacks_factory.create_stack(
-            name="parallelcluster-integ-tests-vpc-" + random_alphanumeric(8), region=region, template=template.to_json()
-        )
+        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
         vpc_stacks[region] = stack
 
     return vpc_stacks

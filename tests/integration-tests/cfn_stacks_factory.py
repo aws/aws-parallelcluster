@@ -14,7 +14,7 @@ import boto3
 from botocore.exceptions import ClientError
 from retrying import retry
 
-from utils import random_alphanumeric, retrieve_cfn_outputs
+from utils import retrieve_cfn_outputs
 
 
 class CfnStack:
@@ -43,26 +43,24 @@ class CfnStacksFactory:
     def __init__(self):
         self.__created_stacks = {}
 
-    def create_stack(self, region, template, name=None):
+    def create_stack(self, stack):
         """
         Create a cfn stack with a given template.
-        :param template: template to use for stack creation.
-        :param name: name of the stack. If not specified it defaults to "integ-tests-" + random_alphanumeric()
+        :param stack: stack to create.
         :return:
         """
-        if not name:
-            name = "integ-tests-" + random_alphanumeric()
-
-        if self.__get_stack_internal_id(name, region) in self.__created_stacks:
+        name = stack.name
+        region = stack.region
+        id = self.__get_stack_internal_id(name, region)
+        if id in self.__created_stacks:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
         # create the cluster
         logging.info("Creating stack {0} in region {1}".format(name, region))
-        id = self.__get_stack_internal_id(name, region)
-        self.__created_stacks[id] = CfnStack(name, region, template)
+        self.__created_stacks[id] = stack
         try:
             cfn_client = boto3.client("cloudformation", region_name=region)
-            cfn_client.create_stack(StackName=name, TemplateBody=template)
+            cfn_client.create_stack(StackName=name, TemplateBody=stack.template)
             final_status = self.__wait_for_stack_creation(name, cfn_client)
             self.__assert_stack_status(final_status, "CREATE_COMPLETE")
         except Exception as e:
@@ -70,7 +68,6 @@ class CfnStacksFactory:
             raise
 
         logging.info("Cluster {0} created successfully in region {1}".format(name, region))
-        return self.__created_stacks[id]
 
     @retry(
         stop_max_attempt_number=10,

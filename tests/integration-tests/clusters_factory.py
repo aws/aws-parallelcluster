@@ -14,7 +14,7 @@ import logging
 import configparser
 from retrying import retry
 
-from utils import random_alphanumeric, retrieve_cfn_outputs, retry_if_subprocess_error, run_command
+from utils import retrieve_cfn_outputs, retry_if_subprocess_error, run_command
 
 
 class Cluster:
@@ -63,34 +63,28 @@ class Cluster:
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
 
-    def __init__(self, ssh_key, test_name=None):
-        self.__test_name = test_name
-        self.__ssh_key = ssh_key
+    def __init__(self):
         self.__created_clusters = {}
 
-    def create_cluster(self, config, name=None):
+    def create_cluster(self, cluster):
         """
         Create a cluster with a given config.
-        :param config: config file to use for cluster creation.
-        :param name: name of the cluster. If not specified it defaults to "integ-tests-" + random_alphanumeric()
-        :return:
+        :param cluster: cluster to create.
         """
-        if not name:
-            name = "integ-tests-" + random_alphanumeric()
-
+        name = cluster.name
+        config = cluster.config_file
         if name in self.__created_clusters:
             raise ValueError("Cluster {0} already exists".format(name))
 
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
-        self.__created_clusters[name] = Cluster(name, config, self.__ssh_key)
+        self.__created_clusters[name] = cluster
         result = run_command(["pcluster", "create", "--config", config, name])
         if "CREATE_COMPLETE" not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} created successfully".format(name))
-        return self.__created_clusters[name]
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name):
