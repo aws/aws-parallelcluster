@@ -124,6 +124,19 @@ not marked with `@pytest.mark.advanced` are executed.
 It is a good practice to mark test cases with a series of markers that allow to identify the feature under test.
 Every test is marked by default with a marker matching its filename with the `test_` prefix or `_test` suffix removed.
 
+### Custom Templates And Packages
+
+To use custom templates or packages URLs the following options are available:
+* `--custom-node-url`: URL to a custom node package.
+* `--custom-cookbook-url`: URL to a custom cookbook package.
+* `--custom-template-url`: URL to a custom cfn template.
+* `--custom-awsbatch-template-url`: URL to a custom awsbatch cfn template.
+* `--custom-awsbatchcli-url`: URL to a custom awsbatch cli package.
+
+The configuration for the custom templates and packages are automatically injected into
+all cluster configs when these are rendered. In case any of these parameters is already set
+in the cluster config then the value in the config is used.
+
 ## Write Integration Tests
 
 All integration tests are defined in the `integration-tests/tests` directory.

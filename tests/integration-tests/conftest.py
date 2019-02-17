@@ -13,11 +13,13 @@
 # This file has a special meaning for pytest. See https://docs.pytest.org/en/2.7.3/plugins.html for
 # additional details.
 
+import json
 import logging
 import os
 import re
 from shutil import copyfile
 
+import configparser
 import pytest
 
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
@@ -42,12 +44,14 @@ def pytest_addoption(parser):
     parser.addoption("--oss", help="OSs under test", default=["alinux"], nargs="+")
     parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
     parser.addoption("--tests-log-file", help="file used to write test logs", default="pytest.log")
-    parser.addoption("--custom-node-url", help="url to a custom node package")
-    parser.addoption("--custom-cookbook-url", help="url to a custom cookbook package")
-    parser.addoption("--custom-template-url", help="url to a custom cfn template")
     parser.addoption("--output-dir", help="output dir for tests artifacts")
     parser.addoption("--key-name", help="key to use for EC2 instances", type=str, required=True)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
+    parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
+    parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
+    parser.addoption("--template-url", help="url to a custom cfn template")
+    parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
+    parser.addoption("--custom-node-package", help="url to a custom node package")
 
 
 def pytest_generate_tests(metafunc):
@@ -202,20 +206,47 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
     The current renderer already replaces placeholders for current keys:
         {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
+    The current renderer injects options for custom templates and packages in case these
+    are passed to the cli and not present already in the cluster config.
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
     config_file = "pcluster.config.ini"
 
     def _config_renderer(**kwargs):
+        config_file_path = test_datadir / config_file
+        _add_custom_packages_configs(config_file_path, request)
         default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
-        (test_datadir / config_file).write_text(rendered_template)
-        return test_datadir / config_file
+        config_file_path.write_text(rendered_template)
+        return config_file_path
 
     return _config_renderer
+
+
+def _add_custom_packages_configs(cluster_config, request):
+    config = configparser.ConfigParser()
+    config.read(cluster_config)
+    cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
+
+    for custom_option in ["template_url", "custom_awsbatch_template_url", "custom_chef_cookbook"]:
+        if request.config.getoption(custom_option) and custom_option not in config[cluster_template]:
+            config[cluster_template][custom_option] = request.config.getoption(custom_option)
+
+    extra_json = json.loads(config.get(cluster_template, "extra_json", fallback="{}"))
+    for extra_json_custom_option in ["custom_awsbatchcli_package", "custom_node_package"]:
+        if request.config.getoption(extra_json_custom_option):
+            cluster = extra_json.get("cluster", {})
+            if extra_json_custom_option not in cluster:
+                cluster[extra_json_custom_option] = request.config.getoption(extra_json_custom_option)
+                extra_json["cluster"] = cluster
+    if extra_json:
+        config[cluster_template]["extra_json"] = json.dumps(extra_json)
+
+    with cluster_config.open(mode="w") as f:
+        config.write(f)
 
 
 def _get_default_template_values(vpc_stacks, region, request):
