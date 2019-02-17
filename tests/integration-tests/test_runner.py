@@ -53,13 +53,15 @@ TEST_DEFAULTS = {
     "oss": ["alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"],
     "schedulers": ["sge", "slurm", "torque", "awsbatch"],
     "instances": ["c4.xlarge", "c5.xlarge"],
-    "custom_node_url": None,
-    "custom_cookbook_url": None,
-    "custom_template_url": None,
     "dry_run": False,
     "reports": [],
     "sequential": False,
     "output_dir": "tests_outputs",
+    "custom_node_url": None,
+    "custom_cookbook_url": None,
+    "custom_template_url": None,
+    "custom_awsbatch_template_url": None,
+    "custom_awsbatchcli_url": None,
 }
 
 
@@ -95,17 +97,6 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("retry_on_failures"),
     )
     parser.add_argument(
-        "--custom-node-url", help="URL to a custom node package.", default=TEST_DEFAULTS.get("custom_node_url")
-    )
-    parser.add_argument(
-        "--custom-cookbook-url",
-        help="URL to a custom cookbook package.",
-        default=TEST_DEFAULTS.get("custom_cookbook_url"),
-    )
-    parser.add_argument(
-        "--custom-template-url", help="URL to a custom cfn template.", default=TEST_DEFAULTS.get("custom_template_url")
-    )
-    parser.add_argument(
         "--dry-run",
         help="Only show the list of tests that would run with specified options.",
         action="store_true",
@@ -135,6 +126,27 @@ def _init_argparser():
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
     parser.add_argument(
         "--output-dir", help="Directory where tests outputs are generated", default=TEST_DEFAULTS.get("output_dir")
+    )
+    parser.add_argument(
+        "--custom-node-url", help="URL to a custom node package.", default=TEST_DEFAULTS.get("custom_node_url")
+    )
+    parser.add_argument(
+        "--custom-cookbook-url",
+        help="URL to a custom cookbook package.",
+        default=TEST_DEFAULTS.get("custom_cookbook_url"),
+    )
+    parser.add_argument(
+        "--custom-template-url", help="URL to a custom cfn template.", default=TEST_DEFAULTS.get("custom_template_url")
+    )
+    parser.add_argument(
+        "--custom-awsbatch-template-url",
+        help="URL to a custom awsbatch cfn template.",
+        default=TEST_DEFAULTS.get("custom_awsbatch_template_url"),
+    )
+    parser.add_argument(
+        "--custom-awsbatchcli-url",
+        help="URL to a custom awsbatch cli package.",
+        default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
     )
 
     return parser
@@ -166,15 +178,6 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
 
-    if args.custom_node_url:
-        pytest_args.extend(["--custom-node-url", args.custom_node_url])
-
-    if args.custom_cookbook_url:
-        pytest_args.extend(["--custom-cookbook-url", args.custom_cookbook_url])
-
-    if args.custom_template_url:
-        pytest_args.extend(["--custom-template-url", args.custom_template_url])
-
     if args.retry_on_failures:
         # Rerun tests on failures for one more time after 60 seconds delay
         pytest_args.extend(["--reruns", "1", "--reruns-delay", "60"])
@@ -191,7 +194,26 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     if "html" in args.reports:
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
+    _set_custom_packages_args(args, pytest_args)
+
     return pytest_args
+
+
+def _set_custom_packages_args(args, pytest_args):
+    if args.custom_node_url:
+        pytest_args.extend(["--custom-node-package", args.custom_node_url])
+
+    if args.custom_cookbook_url:
+        pytest_args.extend(["--custom-chef-cookbook", args.custom_cookbook_url])
+
+    if args.custom_template_url:
+        pytest_args.extend(["--template-url", args.custom_template_url])
+
+    if args.custom_awsbatch_template_url:
+        pytest_args.extend(["--custom-awsbatch-template-url", args.custom_awsbatch_template_url])
+
+    if args.custom_awsbatchcli_url:
+        pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
 
 
 def _get_pytest_regionalized_args(region, args):
