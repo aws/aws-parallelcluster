@@ -129,7 +129,7 @@ If the bucket does not have public-read permissions, use ``s3`` as the URL schem
 
 
 4. Launch the cluster.
-   ::
+::
 
 ``pcluster create mycluster``
 
