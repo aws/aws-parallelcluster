@@ -134,3 +134,4 @@ If the bucket does not have public-read permissions, use ``s3`` as the URL schem
 
 .. spelling::
    postinstall
+   preinstall
