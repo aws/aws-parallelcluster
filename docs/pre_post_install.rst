@@ -3,30 +3,31 @@
 Custom Bootstrap Actions
 ========================
 
-AWS ParallelCluster can execute arbitrary code either before(pre) or after(post) the main bootstrap action during
-cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will
-be executed as root and can be in any script language supported by the cluster OS, typically `bash` or `python`.
+AWS ParallelCluster can execute arbitrary code either before (pre-install) or after (post-install)
+the main bootstrap process.  These scripts are typically stored in S3 and accessed via HTTPS.
+They are executed as root and can be written in any scriptiing language supported by the
+cluster operating system, typically `bash` or `python`.
 
-pre-install actions are called before any cluster deployment bootstrap such as configuring NAT, EBS and the scheduler.
-Typical pre-install actions may include modifying storage, adding extra users or packages.
+Typical pre-install actions may include modifying storage, adding extra users, or installing
+additional software packages before any cluster deployment bootstrap processes are initiated
+such as configuring NAT, EBS, and the scheduler.
 
-post-install actions are called after cluster bootstrap is complete, as the last action before an instance is
-considered complete. Typical post-install actions may include changing scheduler settings, modifying storage or
-packages.
+Typical post-install actions may include changing scheduler settings, mounting additional storage,
+or installing extra software packages.  post-install actions are called after the cluster bootstrap
+is complete as the last action before an instance is considered complete and ready for service.
 
-Arguments can be passed to scripts by specifying them in the config. These will be passed double-quoted to the
-pre/post-install actions.
+Arguments can be passed to the scripts by specifying them in the config.  These will be passed
+double-quoted to the pre/post-install actions.
 
-If a pre/post-install actions fails, then the instance bootstrap will be considered failed and it will not continue.
-Success is signalled with an exit code of 0, any other exit code will be considered a fail.
+If a pre/post-install actions fails, the instance bootstrap will be considered to have failed
+and will not continue.  Success is signalled with an exit code of 0.  Any other exit code
+is considered to indicate failure.
 
 Configuration
 -------------
 
-The following config settings are used to define pre/post-install actions and arguments. All options are optional and
-are not required for basic cluster install.
-
-::
+The following config settings are used to define pre/post-install actions and arguments.
+These options are optional and are not required for basic cluster install. ::
 
     # URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
     # (defaults to NONE)
@@ -43,41 +44,38 @@ are not required for basic cluster install.
 
 Arguments
 ---------
-The first two arguments ``$0`` and ``$1`` are reserved for the script name and url.
-
-::
+The first two arguments ``$0`` and ``$1`` are reserved for the script name and url. ::
 
     $0 => the script name
     $1 => s3 url
     $n => args set by pre/post_install_args
 
-Example
--------
+Example #1
+----------
 
-The following are some steps to create a simple post install script that installs the R packages in a cluster.
+This example creates a post-install script that will install 'R' on a cluster:
 
-1. Create a script. For the R example, see below
-
+1. Create a postinstall script to install R.  If a postinstall script already exists,
+append this code snippet without the shebang:
 ::
 
     #!/bin/bash
 
     yum -y install --enablerepo=epel R
 
-2. Upload the script with the correct permissions to S3
+2. Upload the script with the correct permissions to S3.
+::
 
 ``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
 
-3. Update AWS ParallelCluster config to include the new post install action.
-
+3. Update the AWS ParallelCluster configuration file to include the new post-install action.
 ::
 
     [cluster default]
     ...
     post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
 
-If the bucket does not have public-read permission use ``s3`` as URL scheme.
-
+If the bucket does not have public-read permission use ``s3`` as the URL scheme.
 ::
 
     [cluster default]
@@ -85,6 +83,53 @@ If the bucket does not have public-read permission use ``s3`` as URL scheme.
     post_install = s3://<bucket-name>/myscript.sh
 
 
-4. Launch a cluster
+4. Launch the cluster.
+::
 
 ``pcluster create mycluster``
+
+
+Example #2
+----------
+This example will apply tags to any EBS volume associated with the cluster's master and compute instances:
+
+1. Append the following code snippet to the postinstall script.  If a postinstall script
+already exists, append this code snippet without the shebang:
+::
+
+    #!/bin/bash
+    #
+    # Parse the InstanceId and RootDiskId from EC2 instance metadata.
+    # Apply some tags to any EBS volumes that belong to the cluster stack.
+    #
+    AWS_INSTANCE_ID=$(ec2-metadata -i | awk '{print $2}')
+    AWS_PCLUSTER_NAME=$(cat /etc/parallelcluster/cfnconfig | grep stack_name | sed -e "s/stack_name=parallelcluster-//g")
+    AWS_REGION=$(ec2-metadata -z | awk '{print $2}' | sed 's/.$//')
+    ROOT_DISK_ID=$(aws --region ${AWS_REGION} ec2 describe-volumes --filter "Name=attachment.instance-id,Values=${AWS_INSTANCE_ID}" --query "Volumes[].VolumeId" --out text)
+    aws --region ${AWS_REGION} ec2 create-tags --resources ${ROOT_DISK_ID} --tags Key=ClusterStackName,Value=$AWS_PCLUSTER_NAME Key=MountedByInstance,Value=${AWS_INSTANCE_ID}
+
+2. Upload the script with the correct permissions to S3.
+::
+
+``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
+
+3. Update the AWS ParallelCluster configuration file to include the new post-install action.
+::
+
+    [cluster default]
+    ...
+    post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
+
+If the bucket does not have public-read permissions, use ``s3`` as the URL scheme.
+::
+
+    [cluster default]
+    ...
+    post_install = s3://<bucket-name>/myscript.sh
+
+
+4. Launch the cluster.
+   ::
+
+``pcluster create mycluster``
+

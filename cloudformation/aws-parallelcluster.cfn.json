@@ -1568,11 +1568,14 @@
             {
               "Sid": "EC2",
               "Action": [
-                "ec2:DescribeVolumes",
                 "ec2:AttachVolume",
+                "ec2:CreateTags",
+                "ec2:DeleteTags",
+                "ec2:DescribeInstances",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeInstances"
+                "ec2:DescribeTags",
+                "ec2:DescribeVolumes"
               ],
               "Effect": "Allow",
               "Resource": [

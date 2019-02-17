@@ -114,8 +114,8 @@ def _get_parser():
     """
     parser = argparse.ArgumentParser(
         description="pcluster is the AWS ParallelCluster CLI and permits "
-        "to launch and manage HPC clusters in the AWS cloud.",
-        epilog='For command specific flags run "pcluster [command] --help"',
+        "launching and management of HPC clusters in the AWS cloud.",
+        epilog='For command specific flags, please run: "pcluster [command] --help"',
     )
     subparsers = parser.add_subparsers()
     subparsers.required = True
@@ -123,8 +123,9 @@ def _get_parser():
 
     # create command subparser
     create_example = textwrap.dedent(
-        """When the command is called and it starts polling for status of that call
-it is safe to "Ctrl-C" out. You can always return to that status by calling "pcluster status mycluster".
+        """When the command is called and begins polling for status of that call
+, it is safe to use 'Ctrl-C' to exit.  You can return to viewing the current
+status by calling "pcluster status mycluster".
 
 Examples::
 
@@ -139,7 +140,7 @@ Examples::
     )
     pcreate.add_argument(
         "cluster_name",
-        help="name for the cluster. The CloudFormation Stack name will be " "parallelcluster-[cluster_name]",
+        help="Defines the name of the cluster. The CloudFormation stack name will be " "parallelcluster-[cluster_name]",
     )
     _addarg_config(pcreate)
     _addarg_region(pcreate)
@@ -150,17 +151,17 @@ Examples::
     pcreate.add_argument(
         "-u",
         "--template-url",
-        help="specify URL for the custom CloudFormation template, " "if it has been used at creation time",
+        help="specify a URL for the custom CloudFormation template, " "if it was used at creation time",
     )
     pcreate.add_argument("-t", "--cluster-template", help="cluster template to use")
     pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="add extra parameters to stack create")
-    pcreate.add_argument("-g", "--tags", type=json.loads, help="tags to be added to the stack")
+    pcreate.add_argument("-g", "--tags", type=json.loads, help="additional tags to be added to the stack")
     pcreate.set_defaults(func=create)
 
     # update command subparser
     pupdate = subparsers.add_parser(
         "update",
-        help="Updates a running cluster by using the values in the config " "file or a TEMPLATE_URL provided.",
+        help="Updates a running cluster using the values in the config " "file or a TEMPLATE_URL provided.",
         epilog="When the command is called and it starts polling for status of that call "
         'it is safe to "Ctrl-C" out. You can always return to that status by '
         'calling "pcluster status mycluster"',
@@ -170,7 +171,7 @@ Examples::
     _addarg_region(pupdate)
     _addarg_nowait(pupdate)
     pupdate.add_argument(
-        "-nr", "--norollback", action="store_true", default=False, help="disable CloudFormation Stack rollback on error"
+        "-nr", "--norollback", action="store_true", default=False, help="disable CloudFormation stack rollback on error"
     )
     pupdate.add_argument("-u", "--template-url", help="URL for a custom CloudFormation template")
     pupdate.add_argument("-t", "--cluster-template", help="specific cluster template to use")
@@ -237,7 +238,7 @@ Examples::
     plist = subparsers.add_parser(
         "list",
         help="Displays a list of stacks associated with AWS ParallelCluster.",
-        epilog="Lists the Stack Name of the CloudFormation stacks named parallelcluster-*",
+        epilog="Lists the name of any CloudFormation stacks named parallelcluster-*",
     )
     _addarg_config(plist)
     _addarg_region(plist)
@@ -256,11 +257,11 @@ Examples::
 
   $ pcluster ssh mycluster -i ~/.ssh/id_rsa
 
-results in an ssh command with username and IP address pre-filled::
+Returns an ssh command with the cluster username and IP address pre-populated::
 
   $ ssh ec2-user@1.1.1.1 -i ~/.ssh/id_rsa
 
-SSH command is defined in the global config file, under the aliases section and can be customized::
+SSH command is defined in the global config file under the aliases section and can be customized::
 
   [aliases]
   ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
@@ -273,8 +274,8 @@ Variables substituted::
     )
     pssh = subparsers.add_parser(
         "ssh",
-        help="Connect to the master server using SSH.",
-        description="Run ssh command with username and IP address pre-filled. "
+        help="Connect to the master instance using SSH.",
+        description="Run ssh command with the cluster username and IP address pre-populated. "
         "Arbitrary arguments are appended to the end of the ssh command. "
         "This command may be customized in the aliases "
         "section of the config file.",
@@ -299,7 +300,7 @@ Variables substituted::
         "--os",
         dest="base_ami_os",
         required=True,
-        help="specify the OS of the base AMI. " "Valid values are alinux, ubuntu1404, ubuntu1604, centos6 or centos7",
+        help="specify the OS of the base AMI. " "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7",
     )
     pami.add_argument(
         "-ap",
@@ -325,7 +326,7 @@ Variables substituted::
     pconfigure.set_defaults(func=configure)
 
     # version command subparser
-    pversion = subparsers.add_parser("version", help="Display version of AWS ParallelCluster.")
+    pversion = subparsers.add_parser("version", help="Display the version of AWS ParallelCluster.")
     pversion.set_defaults(func=version)
 
     return parser
