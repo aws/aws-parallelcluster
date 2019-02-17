@@ -124,7 +124,8 @@ def _get_parser():
     # create command subparser
     create_example = textwrap.dedent(
         """When the command is called and begins polling for status of that call
-, it is safe to use 'Ctrl-C' to exit.  You can always return to viewing the current status by calling "pcluster status mycluster".
+, it is safe to use 'Ctrl-C' to exit.  You can return to viewing the current
+status by calling "pcluster status mycluster".
 
 Examples::
 
