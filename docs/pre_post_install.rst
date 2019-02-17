@@ -20,7 +20,7 @@ Arguments can be passed to the scripts by specifying them in the config.  These 
 double-quoted to the pre/post-install actions.
 
 If a pre/post-install actions fails, the instance bootstrap will be considered to have failed
-and will not continue.  Success is signalled with an exit code of 0.  Any other exit code 
+and will not continue.  Success is signalled with an exit code of 0.  Any other exit code
 is considered to indicate failure.
 
 Configuration
@@ -56,13 +56,15 @@ Example #1
 This example creates a post-install script that will install 'R' on a cluster:
 
 1. Create a postinstall script to install R.  If a postinstall script already exists,
-append this code snippet instead: ::
+append this code snippet instead:
+::
 
     #!/bin/bash
 
     yum -y install --enablerepo=epel R
 
-2. Upload the script with the correct permissions to S3.::
+2. Upload the script with the correct permissions to S3.
+::
 
 ``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
 
@@ -81,7 +83,8 @@ If the bucket does not have public-read permission use ``s3`` as the URL scheme.
     post_install = s3://<bucket-name>/myscript.sh
 
 
-4. Launch the cluster.::
+4. Launch the cluster.
+::
 
 ``pcluster create mycluster``
 
@@ -100,27 +103,35 @@ This example will apply tags to any EBS volume associated with the cluster's mas
 AWS_INSTANCE_ID=$(ec2-metadata -i | awk '{print $2}')
 AWS_PCLUSTER_NAME=$(cat /etc/parallelcluster/cfnconfig | grep stack_name | sed -e "s/stack_name=parallelcluster-//g")
 AWS_REGION=$(ec2-metadata -z | awk '{print $2}' | sed 's/.$//')
-ROOT_DISK_ID=$(aws --region ${AWS_REGION} ec2 describe-volumes --filter "Name=attachment.instance-id,Values=${AWS_INSTANCE_ID}" --query "Volumes[].VolumeId" --out text)
-aws --region ${AWS_REGION} ec2 create-tags --resources ${ROOT_DISK_ID} --tags Key=ClusterStackName,Value=$AWS_PCLUSTER_NAME Key=MountedByInstance,Value=${AWS_INSTANCE_ID}
+ROOT_DISK_ID=$(aws --region ${AWS_REGION} ec2 describe-volumes --filter
+"Name=attachment.instance-id,Values=${AWS_INSTANCE_ID}" --query
+"Volumes[].VolumeId" --out text)
+aws --region ${AWS_REGION} ec2 create-tags --resources ${ROOT_DISK_ID}
+--tags Key=ClusterStackName,Value=$AWS_PCLUSTER_NAME
+Key=MountedByInstance,Value=${AWS_INSTANCE_ID}
 
-2. Upload the script with the correct permissions to S3. ::
+2. Upload the script with the correct permissions to S3.
+::
 
 ``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
 
-3. Update the AWS ParallelCluster configuration file to include the new post-install action. ::
+3. Update the AWS ParallelCluster configuration file to include the new post-install action.
+::
 
     [cluster default]
     ...
     post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
 
-If the bucket does not have public-read permissions, use ``s3`` as the URL scheme. ::
+If the bucket does not have public-read permissions, use ``s3`` as the URL scheme.
+::
 
     [cluster default]
     ...
     post_install = s3://<bucket-name>/myscript.sh
 
 
-4. Launch the cluster. ::
+4. Launch the cluster.
+   ::
 
 ``pcluster create mycluster``
 
