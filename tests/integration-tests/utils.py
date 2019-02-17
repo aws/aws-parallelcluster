@@ -36,7 +36,9 @@ def run_command(command, capture_output=True, log_error=True):
     except subprocess.CalledProcessError:
         if log_error:
             logging.error(
-                "Command {0} failed with error:\n{1}\nand output:\n{2}".format(" ".join(command), result.stderr, result.stdout)
+                "Command {0} failed with error:\n{1}\nand output:\n{2}".format(
+                    " ".join(command), result.stderr, result.stdout
+                )
             )
         raise
 

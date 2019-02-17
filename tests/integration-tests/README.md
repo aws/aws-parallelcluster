@@ -438,7 +438,7 @@ A default logger is configured to write both to the stdout and to the log file d
 process. When running in `--sequential` mode a single log file is created otherwise a
 separate logfile is generated for each region.
 
-### Create CloudFromation Templates
+### Create CloudFormation Templates
 
 If additional AWS resources are needed by the integration tests you can use a session scoped fixture,
 `cfn_stacks_factory`, which takes care of automatically manage creation and deletion of CFN stacks that live
@@ -453,8 +453,7 @@ An example is given by this piece of code that handles the creation of a test VP
 def vpc(cfn_stacks_factory):
     # ... lines removed
     template = VPCTemplateBuilder(vpc_config).build()
-    stack = cfn_stacks_factory.create_stack(
-            name="parallelcluster-integ-tests-vpc", region=region, template=template.to_json()
-        )
-    return vpc_stacks
+    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+    cfn_stacks_factory.create_stack(stack)
+    return stack
 ```
