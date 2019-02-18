@@ -647,15 +647,46 @@ class ParallelClusterConfig(object):
 
         self.__validate_resource("AWSBatch_Parameters", self.parameters)
 
-    def __init_efs_parameters(self):  # noqa: C901 FIXME!!!
-        # Determine if EFS settings are defined and set section
+    def __get_section_name(self, parameter_name, section):
+        """
+        Validate a section referenced in the cluster section exists, and returns the name of section.
+
+        :param parameter_name: name of the parameter that references the section, i.e. "fsx_settings"
+        :param section: name of the section, i.e. "fsx"
+        :return: Full name of the section, if it exists, else None
+        """
         try:
-            self.__efs_settings = self.__config.get(self.__cluster_section, "efs_settings")
-            if not self.__efs_settings:
-                self.__fail("efs_settings defined but not set in [%s] section" % self.__cluster_section)
-            self.__efs_section = "efs %s" % self.__efs_settings
+            section_name = self.__config.get(self.__cluster_section, parameter_name)
+            if not section_name:
+                self.__fail("%s defined but not set in [%s] section" % (parameter_name, self.__cluster_section))
+            subsection = "%s %s" % (section, section_name)
+            if self.__config.has_section(subsection):
+                return subsection
+            else:
+                self.__fail("%s = %s defined but no [%s] section found" % (parameter_name, section_name, subsection))
         except configparser.NoOptionError:
             pass
+
+        return None
+
+    def __get_option_in_section(self, section, key):
+        """
+        Get an option in a section, if not present return None.
+
+        :param section: name of section, i.e. "fsx fs"
+        :param key: name of option, i.e. "shared_dir"
+        :return: value if set, otherwise None
+        """
+        try:
+            value = self.__config.get(section, key)
+            if not value:
+                self.__fail("%s defined but not set in [%s] section" % (key, section))
+            return value
+        except configparser.NoOptionError:
+            return None
+
+    def __init_efs_parameters(self):  # noqa: C901 FIXME!!!
+        efs_section = self.__get_section_name("efs_settings", "efs")
 
         # Dictionary list of all EFS options
         self.__efs_options = OrderedDict(
@@ -673,11 +704,11 @@ class ParallelClusterConfig(object):
         __throughput_mode = None
         __provisioned_throughput = None
         try:
-            if self.__efs_section:
+            if efs_section:
                 __temp_efs_options = []
                 for key in self.__efs_options:
                     try:
-                        __temp__ = self.__config.get(self.__efs_section, key)
+                        __temp__ = self.__config.get(efs_section, key)
                         if not __temp__:
                             self.__fail("%s defined but not set in [%s] section" % (key, self.__efs_section))
                         if key == "provisioned_throughput":
@@ -706,14 +737,7 @@ class ParallelClusterConfig(object):
             pass
 
     def __init_raid_parameters(self):  # noqa: C901 FIXME!!!
-        # Determine if RAID settings are defined and set section
-        try:
-            self.__raid_settings = self.__config.get(self.__cluster_section, "raid_settings")
-            if not self.__raid_settings:
-                self.__fail("raid_settings defined by not set in [%s] section" % self.__cluster_section)
-            self.__raid_section = "raid %s" % self.__raid_settings
-        except configparser.NoOptionError:
-            pass
+        raid_settings = self.__get_section_name("raid_settings", "raid")
 
         # Dictionary list of all RAID options
         self.__raid_options = OrderedDict(
@@ -730,7 +754,7 @@ class ParallelClusterConfig(object):
         )
 
         try:
-            if self.__raid_section:
+            if raid_settings:
                 __temp_raid_options = []
                 __raid_shared_dir = None
                 __raid_vol_size = None
@@ -738,7 +762,7 @@ class ParallelClusterConfig(object):
                 __raid_type = None
                 for key in self.__raid_options:
                     try:
-                        __temp__ = self.__config.get(self.__raid_section, key)
+                        __temp__ = self.__config.get(raid_settings, key)
                         if not __temp__:
                             self.__fail("%s defined but not set in [%s] section" % (key, self.__raid_section))
                         if key == "volume_size":
@@ -770,51 +794,41 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
-    def __init_fsx_parameters(self):  # noqa: C901 FIXME!!!
+    def __init_fsx_parameters(self):
         # Determine if FSx settings are defined and set section
-        try:
-            self.__fsx_settings = self.__config.get(self.__cluster_section, "fsx_settings")
-            if not self.__fsx_settings:
-                print("ERROR: fsx_settings defined but not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            self.__fsx_section = "fsx %s" % self.__fsx_settings
-        except configparser.NoOptionError:
-            pass
+        fsx_section = self.__get_section_name("fsx_settings", "fsx")
+
+        # If they don't use fsx_settings, then return
+        if not fsx_section:
+            return
 
         # Dictionary list of all FSx options
-        self.__fsx_options = OrderedDict(
+        fsx_options = OrderedDict(
             [
                 ("shared_dir", ("FSXShared_dir", None)),
                 ("fsx_fs_id", ("FSXFileSystemId", "fsx_fs_id")),
                 ("storage_capacity", ("FSXCapacity", "FSx_storage_capacity")),
                 ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
                 ("imported_file_chunk_size", ("ImportedFileChunkSize", "FSx_imported_file_chunk_size")),
+                ("export_path", ("ExportPath", None)),
                 ("import_path", ("ImportPath", None)),
                 ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", None)),
             ]
         )
 
-        try:
-            if self.__fsx_section:
-                __temp_fsx_options = []
-                for key in self.__fsx_options:
-                    try:
-                        __temp__ = self.__config.get(self.__fsx_section, key)
-                        if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__fsx_section))
-                            sys.exit(1)
-                        # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
-                        if self.__sanity_check and self.__fsx_options.get(key)[1] == "fsx_fs_id":
-                            self.__validate_resource("fsx_fs_id", (__temp__, self.__master_subnet))
-                        elif self.__sanity_check and self.__fsx_options.get(key)[1] is not None:
-                            self.__validate_resource(self.__fsx_options.get(key)[1], __temp__)
-                        __temp_fsx_options.append(__temp__)
-                    except configparser.NoOptionError:
-                        __temp_fsx_options.append("NONE")
-                        pass
-                self.parameters["FSXOptions"] = ",".join(__temp_fsx_options)
-        except AttributeError:
-            pass
+        temp_fsx_options = []
+        for key in fsx_options:
+            value = self.__get_option_in_section(fsx_section, key)
+            if not value:
+                temp_fsx_options.append("NONE")
+            else:
+                # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                if self.__sanity_check and fsx_options.get(key)[1] == "fsx_fs_id":
+                    self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
+                elif self.__sanity_check and fsx_options.get(key)[1] is not None:
+                    self.__validate_resource(fsx_options.get(key)[1], value)
+                temp_fsx_options.append(value)
+        self.parameters["FSXOptions"] = ",".join(temp_fsx_options)
 
     def __ebs_determine_shared_dir(self):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
@@ -920,3 +934,13 @@ class ParallelClusterConfig(object):
 
         except AttributeError:
             pass
+
+    @staticmethod
+    def __fail(message):
+        """
+        Print an error and exit.
+
+        :param message: the message to print
+        """
+        print("ERROR: %s" % message)
+        sys.exit(1)

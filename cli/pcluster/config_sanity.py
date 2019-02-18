@@ -172,7 +172,6 @@ class ResourceValidator(object):
                     "mounting requirement. The file system must be associated to a security group that allows "
                     "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0]
                 )
-                sys.exit(1)
             return True
         except ClientError as e:
             self.__fail("FSXFSId", e.response.get("Error").get("Message"))
@@ -509,7 +508,7 @@ class ResourceValidator(object):
         # FSX file chunk size check
         elif resource_type == "FSx_imported_file_chunk_size":
             # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
-            if not (1 >= int(resource_value) <= 512000):
+            if not (1 <= int(resource_value) <= 512000):
                 self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
