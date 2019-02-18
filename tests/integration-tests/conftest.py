@@ -45,7 +45,8 @@ def pytest_addoption(parser):
     parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
     parser.addoption("--tests-log-file", help="file used to write test logs", default="pytest.log")
     parser.addoption("--output-dir", help="output dir for tests artifacts")
-    parser.addoption("--key-name", help="key to use for EC2 instances", type=str, required=True)
+    # Can't mark fields as required due to: https://github.com/pytest-dev/pytest/issues/2026
+    parser.addoption("--key-name", help="key to use for EC2 instances", type=str)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
