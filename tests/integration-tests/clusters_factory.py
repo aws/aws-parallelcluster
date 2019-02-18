@@ -56,9 +56,8 @@ class Cluster:
         Return the CloudFormation stack outputs for the cluster.
         Outputs are retrieved only once and then cached.
         """
-        if self.__cfn_outputs:
-            return self.__cfn_outputs
-        self.__cfn_outputs = self.__retrieve_cfn_outputs()
+        if not self.__cfn_outputs:
+            self.__cfn_outputs = self.__retrieve_cfn_outputs()
         return self.__cfn_outputs
 
     @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
