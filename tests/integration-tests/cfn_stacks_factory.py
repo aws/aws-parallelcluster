@@ -24,6 +24,7 @@ class CfnStack:
         self.name = name
         self.region = region
         self.template = template
+        self.cfn_stack_id = None
         self.__cfn_outputs = None
 
     @property
@@ -60,8 +61,9 @@ class CfnStacksFactory:
         self.__created_stacks[id] = stack
         try:
             cfn_client = boto3.client("cloudformation", region_name=region)
-            cfn_client.create_stack(StackName=name, TemplateBody=stack.template)
-            final_status = self.__wait_for_stack_creation(name, cfn_client)
+            result = cfn_client.create_stack(StackName=name, TemplateBody=stack.template)
+            stack.cfn_stack_id = result["StackId"]
+            final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
             self.__assert_stack_status(final_status, "CREATE_COMPLETE")
         except Exception as e:
             logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
@@ -83,7 +85,7 @@ class CfnStacksFactory:
                 stack = self.__created_stacks[id]
                 cfn_client = boto3.client("cloudformation", region_name=stack.region)
                 cfn_client.delete_stack(StackName=stack.name)
-                final_status = self.__wait_for_stack_deletion(name, cfn_client)
+                final_status = self.__wait_for_stack_deletion(stack.cfn_stack_id, cfn_client)
                 self.__assert_stack_status(final_status, "DELETE_COMPLETE")
             except Exception as e:
                 logging.error("Deletion of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
