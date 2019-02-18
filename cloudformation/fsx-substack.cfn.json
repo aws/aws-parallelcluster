@@ -85,7 +85,7 @@
         }
       ]
     },
-    "UseImportPath": {
+    "UseExportPath": {
       "Fn::Not": [
         {
           "Fn::Equals": [
@@ -102,13 +102,30 @@
         }
       ]
     },
-    "UseWeeklyMaintenanceStartTime": {
+    "UseImportPath": {
       "Fn::Not": [
         {
           "Fn::Equals": [
             {
               "Fn::Select": [
                 "6",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseWeeklyMaintenanceStartTime": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "7",
                 {
                   "Ref": "FSXOptions"
                 }
@@ -147,7 +164,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of efs related options, 4 parameters in total",
+      "Description": "Comma separated list of fsx related options, 7 parameters in total",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {
@@ -177,28 +194,12 @@
           ]
         },
         "LustreConfiguration": {
-          "ImportPath": {
+          "ExportPath": {
             "Fn::If": [
-              "UseImportPath",
+              "UseExportPath",
               {
                 "Fn::Select": [
                   "5",
-                  {
-                    "Ref": "FSXOptions"
-                  }
-                ]
-              },
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          },
-          "WeeklyMaintenanceStartTime": {
-            "Fn::If": [
-              "UseWeeklyMaintenanceStartTime",
-              {
-                "Fn::Select": [
-                  "6",
                   {
                     "Ref": "FSXOptions"
                   }
@@ -224,6 +225,38 @@
                 "Ref": "AWS::NoValue"
               }
             ]
+          },
+          "ImportPath": {
+            "Fn::If": [
+              "UseImportPath",
+              {
+                "Fn::Select": [
+                  "6",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "WeeklyMaintenanceStartTime": {
+            "Fn::If": [
+              "UseWeeklyMaintenanceStartTime",
+              {
+                "Fn::Select": [
+                  "7",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
           }
         },
         "StorageCapacity": {
@@ -237,7 +270,9 @@
                 }
               ]
             },
-            3600
+            {
+              "Ref": "AWS::NoValue"
+            }
           ]
         },
         "SubnetIds": [
