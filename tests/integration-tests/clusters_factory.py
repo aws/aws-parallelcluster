@@ -80,7 +80,7 @@ class ClustersFactory:
         logging.info("Creating cluster {0} with config {1}".format(name, config))
         self.__created_clusters[name] = cluster
         result = run_command(["pcluster", "create", "--config", config, name])
-        if "CREATE_COMPLETE" not in result.stdout:
+        if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)
             raise Exception(error)
