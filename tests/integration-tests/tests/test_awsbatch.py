@@ -37,6 +37,7 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir):
     _test_simple_job_submission(remote_command_executor, test_datadir)
     _test_array_submission(remote_command_executor)
     _test_mnp_submission(remote_command_executor, test_datadir)
+    _test_job_kill(remote_command_executor)
 
 
 def _test_simple_job_submission(remote_command_executor, test_datadir):
@@ -77,6 +78,19 @@ def _test_mnp_submission(remote_command_executor, test_datadir):
         additional_files=[str(test_datadir / "test_mpi_job.sh")],
         children_number=4,
     )
+
+
+def _test_job_kill(remote_command_executor):
+    logging.info("Testing job kill.")
+    result = remote_command_executor.run_remote_command("awsbsub --vcpus 2 --memory 256 --timeout 60 sleep 300")
+    job_id = _assert_job_submitted(result.stdout)
+
+    remote_command_executor.run_remote_command("awsbkill {0}".format(job_id))
+    status = _wait_job_completed(remote_command_executor, job_id)
+
+    assert_that(status).contains_only("FAILED")
+    result = remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
+    assert_that(result.stdout).matches(r"statusReason\s+: Terminated by the user")
 
 
 def _test_job_submission(remote_command_executor, submit_command, additional_files=None, children_number=0):
