@@ -32,38 +32,6 @@ from botocore.exceptions import ClientError
 from pcluster.config_sanity import ResourceValidator
 
 
-def get_stack_template(region, aws_access_key_id, aws_secret_access_key, cluster_name):
-    """
-    Get stack template corresponding to the given cluster name.
-
-    :param region: AWS Region
-    :param aws_access_key_id: AWS access key
-    :param aws_secret_access_key: AWS secret access key
-    :param cluster_name: The cluster name to search for
-    :return: the corresponding stack template
-    """
-    cfn = boto3.client(
-        "cloudformation",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-    stack_name = "parallelcluster-" + cluster_name
-
-    try:
-        stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-    except ClientError as e:
-        print(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-
-    cli_template = [p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"][
-        0
-    ]
-
-    return cli_template
-
-
 class ParallelClusterConfig(object):
     """Manage ParallelCluster Config."""
 
@@ -201,6 +169,32 @@ class ParallelClusterConfig(object):
         self.aws_access_key_id = self._get_config_value("aws", "aws_access_key_id")
         self.aws_secret_access_key = self._get_config_value("aws", "aws_secret_access_key")
 
+    def __get_stack_name(self):
+        """Return stack name"""
+        return "parallelcluster-" + self.args.cluster_name
+
+    def __get_stack_template(self):
+        """Get stack template."""
+        cfn = boto3.client(
+            "cloudformation",
+            region_name=self.region,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+        )
+
+        try:
+            stack = cfn.describe_stacks(StackName=self.__get_stack_name()).get("Stacks")[0]
+        except ClientError as e:
+            print(e.response.get("Error").get("Message"))
+            sys.stdout.flush()
+            sys.exit(1)
+
+        cli_template = [
+            p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"
+        ][0]
+
+        return cli_template
+
     def __get_cluster_template(self):
         """
         Determine which cluster template will be used and return it.
@@ -213,18 +207,14 @@ class ParallelClusterConfig(object):
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
             # parameter. We always get the template to use from CloudFormation.
-            cluster_template = get_stack_template(
-                self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
-            )
+            cluster_template = self.__get_stack_template()
         else:
             try:
                 try:
                     if self.args.cluster_template is not None:
                         cluster_template = self.args.cluster_template
                     elif args_func == "update":
-                        cluster_template = get_stack_template(
-                            self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
-                        )
+                        cluster_template = self.__get_stack_template()
                     else:
                         cluster_template = self.__config.get("global", "cluster_template")
                 except AttributeError:
