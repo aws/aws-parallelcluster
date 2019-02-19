@@ -2418,7 +2418,7 @@
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
                     },
-                    "cfn_fsx": {
+                    "cfn_fsx_fs_id": {
                       "Fn::If": [
                         "CreateFSXSubstack",
                         {
@@ -2430,7 +2430,7 @@
                         ""
                       ]
                     },
-                    "cfn_fsx_shared_dir": {
+                    "cfn_fsx_options": {
                       "Ref": "FSXOptions"
                     },
                     "cfn_volume": {
@@ -3242,7 +3242,7 @@
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
                     },
-                    "cfn_fsx": {
+                    "cfn_fsx_fs_id": {
                       "Fn::If": [
                         "CreateFSXSubstack",
                         {
@@ -3254,7 +3254,7 @@
                         ""
                       ]
                     },
-                    "cfn_fsx_shared_dir": {
+                    "cfn_fsx_options": {
                       "Ref": "FSXOptions"
                     },
                     "cfn_scheduler": {
@@ -3925,7 +3925,7 @@
                     "cfn_efs_shared_dir": {
                       "Ref": "EFSOptions"
                     },
-                    "cfn_fsx": {
+                    "cfn_fsx_fs_id": {
                       "Fn::If": [
                         "CreateFSXSubstack",
                         {
@@ -3937,7 +3937,7 @@
                         ""
                       ]
                     },
-                    "cfn_fsx_shared_dir": {
+                    "cfn_fsx_options": {
                       "Ref": "FSXOptions"
                     },
                     "cfn_scheduler": {
