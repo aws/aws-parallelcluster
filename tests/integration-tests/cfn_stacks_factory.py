@@ -32,9 +32,8 @@ class CfnStack:
         Return the CloudFormation stack outputs for the stack.
         Outputs are retrieved only once and then cached.
         """
-        if self.__cfn_outputs:
-            return self.__cfn_outputs
-        self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
+        if not self.__cfn_outputs:
+            self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         return self.__cfn_outputs
 
 
