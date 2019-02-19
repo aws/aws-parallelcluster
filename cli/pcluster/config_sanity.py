@@ -501,9 +501,9 @@ class ResourceValidator(object):
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
         # FSX capacity size check
         elif resource_type == "FSx_storage_capacity":
-            if int(resource_value) % 3600 != 0 or int(resource_value) < 3600:
+            if int(resource_value) % 3600 != 0 or int(resource_value) < 0:
                 self.__fail(
-                    resource_type, "Capacity for FSx lustre filesystem, minimum of 3600 GB, increment of 3600 GB"
+                    resource_type, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"
                 )
         # FSX file chunk size check
         elif resource_type == "FSx_imported_file_chunk_size":
