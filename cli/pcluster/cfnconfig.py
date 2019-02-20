@@ -30,6 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
+from pcluster.utils import get_vcpus_from_pricing_file
 
 
 class ParallelClusterConfig(object):
@@ -74,6 +75,10 @@ class ParallelClusterConfig(object):
 
         # Initialize parameters related to the cluster configuration
         self.__init_cluster_parameters()
+
+        # Verify Account limits
+        if self.__sanity_check:
+            self.__check_account_capacity()
 
         # Initialize ExtraJson parameter
         self.__init_extra_json_parameter()
@@ -343,6 +348,87 @@ class ParallelClusterConfig(object):
                 self.__fail(
                     "VPC section [%s] used in [%s] section is not defined" % (vpc_section, self.__cluster_section)
                 )
+
+    def __check_account_capacity(self):
+        """Try to launch the requested number of instances to verify Account limits."""
+        test_ami_id = self.__get_latest_alinux_ami_id()
+
+        instance_type = self.parameters.get("ComputeInstanceType")
+        if instance_type == "optimal":
+            return
+
+        max_size = self.__get_max_number_of_instances()
+        try:
+            # Check for insufficient Account capacity
+            ec2 = boto3.client("ec2", region_name=self.region)
+
+            subnet_id = self.parameters.get("ComputeSubnetId")
+            if subnet_id:
+                ec2.run_instances(
+                    InstanceType=instance_type,
+                    MinCount=max_size,
+                    MaxCount=max_size,
+                    ImageId=test_ami_id,
+                    SubnetId=subnet_id,
+                    DryRun=True,
+                )
+            else:
+                ec2.run_instances(
+                    InstanceType=instance_type, MinCount=max_size, MaxCount=max_size, ImageId=test_ami_id, DryRun=True
+                )
+        except ClientError as e:
+            code = e.response.get("Error").get("Code")
+            message = e.response.get("Error").get("Message")
+            if code == "DryRunOperation":
+                pass
+            elif code == "InstanceLimitExceeded":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the AWS Account limit "
+                    "in the {1} region.\n{2}".format(max_size, self.region, message)
+                )
+            elif code == "InsufficientInstanceCapacity":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the On-Demand capacity on AWS.\n{1}".format(
+                        max_size, message
+                    )
+                )
+            elif code == "InsufficientFreeAddressesInSubnet":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the number of free private IP addresses "
+                    "available in the Compute subnet.\n{1}".format(max_size, message)
+                )
+            else:
+                self.__fail(
+                    "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
+                )
+
+    def __get_max_number_of_instances(self):
+        """
+        Get the maximum number of requestable instances according to the scheduler type and other configuration params.
+
+        :return: the max number of instances requestable by the user
+        """
+        try:
+            max_size = int(self.parameters.get("MaxSize"))
+            if self.parameters.get("Scheduler") == "awsbatch":
+                vcpus = get_vcpus_from_pricing_file(self.region, self.parameters.get("ComputeInstanceType"))
+                max_size = -(-max_size // vcpus)
+        except ValueError:
+            self.__fail("Unable to convert max size parameter to an integer")
+        return max_size
+
+    def __get_latest_alinux_ami_id(self):
+        try:
+            # get latest alinux ami id to use as test image
+            ssm = boto3.client("ssm", region_name=self.region)
+            test_ami_id = (
+                ssm.get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
+                .get("Parameters")[0]
+                .get("Value")
+            )
+        except ClientError as e:
+            self.__fail("Unable to check AWS Account limits.\n%s" % e.response.get("Error").get("Message"))
+        return test_ami_id
 
     def __init_scheduler_parameters(self):
         """Validate scheduler related configuration settings and initialize corresponding parameters."""
