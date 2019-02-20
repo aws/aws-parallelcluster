@@ -3,65 +3,67 @@ import argparse
 import troposphere.ec2 as ec2
 from troposphere import And, Condition, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
 
+from troposphere.fsx import FileSystem, LustreConfiguration
 
 def main(args):
     t = Template()
 
-    # [0 shared_dir, 1 efs_fs_id, 2 performance_mode, 3 efs_kms_key_id,
-    # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_mt]
+    # ================= Parameters =================
+    #      0            1           2              3                    4                  5           6              7
+    # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]
     fsx_options = t.add_parameter(
         Parameter(
             "FSXOptions",
             Type="CommaDelimitedList",
-            Description="Comma separated list of efs related options, 4 parameters in total",
+            Description="Comma separated list of fsx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
         )
     )
+
     compute_security_group = t.add_parameter(
         Parameter("ComputeSecurityGroup", Type="String", Description="SecurityGroup for FSx filesystem")
     )
+
     subnet_id = t.add_parameter(Parameter("SubnetId", Type="String", Description="SubnetId for FSx filesystem"))
+
+    # ================= Conditions =================
     create_fsx = t.add_condition(
         "CreateFSX",
         And(Not(Equals(Select(str(0), Ref(fsx_options)), "NONE")), Equals(Select(str(1), Ref(fsx_options)), "NONE")),
     )
+
     use_storage_capacity = t.add_condition("UseStorageCap", Not(Equals(Select(str(2), Ref(fsx_options)), "NONE")))
     use_fsx_kms_key = t.add_condition("UseFSXKMSKey", Not(Equals(Select(str(3), Ref(fsx_options)), "NONE")))
+    use_imported_file_chunk_size = t.add_condition("UseImportedFileChunkSize", Not(Equals(Select(str(4), Ref(fsx_options)), "NONE")))
+    use_export_path = t.add_condition("UseExportPath", Not(Equals(Select(str(5), Ref(fsx_options)), "NONE")))
+    use_import_path = t.add_condition("UseImportPath", Not(Equals(Select(str(6), Ref(fsx_options)), "NONE")))
+    use_weekly_mainenance_start_time = t.add_condition("UseWeeklyMaintenanceStartTime", Not(Equals(Select(str(7), Ref(fsx_options)), "NONE")))
 
-    # Follow similar template when official FSx CFN resource is released
-    # fs = t.add_resource(
-    #     FSXFileSystem(
-    #         "FSXFS",
-    #         FileSystemType="LUSTRE",
-    #         StorageCapacity=If(use_storage_capacity, Select(str(2), Ref(fsx_options)), 3600),
-    #         SubnetIds=Ref(subnet_id),
-    #         SecurityGroupIds=Ref(compute_security_group),
-    #         KmsKeyId=If(use_fsx_kms_key, Select(str(3), Ref(fsx_options)), NoValue),
-    #         Condition=create_fsx,
-    #     )
-    # )
-    #
-    # t.add_output(
-    #     Output(
-    #         "FileSystemId",
-    #         Description="ID of the FileSystem",
-    #         Value=If(create_fsx, Ref(fs), Select("1", Ref(fsx_options))),
-    #     )
-    # )
-
-    t.add_resource(
-        ec2.Volume(
-            "fakeVolume",
-            AvailabilityZone="us-east-2a",
-            VolumeType="gp2",
-            Size="20",
-            SnapshotId=NoValue,
-            Iops=NoValue,
-            Encrypted=NoValue,
-            KmsKeyId=NoValue,
+    # ================= Resources =================
+    fs = t.add_resource(
+        FileSystem(
+            FileSystemType="LUSTRE",
+            SubnetIds=Ref(subnet_id),
+            SecurityGroupIds=Ref(compute_security_group),
+            KmsKeyId=If(use_fsx_kms_key, Select(str(3), Ref(fsx_options)), NoValue),
+            StorageCapacity=If(use_storage_capacity, Select(str(2), Ref(fsx_options)), NoValue),
+            LustreConfiguration=LustreConfiguration(
+                ImportedFileChunkSize=If(use_imported_file_chunk_size, Select(str(4), Ref(fsx_options)), NoValue),
+                ExportPath=If(use_export_path, Select(str(5), Ref(fsx_options)), NoValue),
+                ImportPath=If(use_import_path, Select(str(6), Ref(fsx_options)), NoValue),
+                WeeklyMaintenanceStartTime=If(use_weekly_mainenance_start_time, Select(str(7), Ref(fsx_options)), NoValue),
+            ),
+            Condition=create_fsx
         )
     )
 
-    t.add_output(Output("FileSystemId", Description="ID of the FileSystem", Value=Select("1", Ref(fsx_options))))
+    # ================= Outputs =================
+    t.add_output(
+        Output(
+            "FileSystemId",
+            Description="ID of the FileSystem",
+            Value=If(create_fsx, Ref(fs), Select("1", Ref(fsx_options))),
+        )
+    )
 
     # Specify output file path
     json_file_path = args.target_path
