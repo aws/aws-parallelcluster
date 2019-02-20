@@ -420,6 +420,14 @@ In case you are using SGE, Slurm or Torque as a scheduler:
               ],
               "Effect": "Allow",
               "Resource": "*"
+          },
+          {
+              "Sid": "SSMDescribe",
+              "Action": [
+                  "ssm:GetParametersByPath"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
           }
       ]
   }
