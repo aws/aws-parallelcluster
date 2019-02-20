@@ -33,7 +33,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
-from utils import random_alphanumeric, to_snake_case
+from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
 from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
@@ -296,3 +296,29 @@ def vpc_stacks(cfn_stacks_factory, request):
         vpc_stacks[region] = stack
 
     return vpc_stacks
+
+
+@pytest.fixture(scope="function")
+def s3_bucket_factory(region):
+    """
+    Define a fixture to create S3 buckets.
+    :param region: region where the test is running
+    :return: a function to create buckets.
+    """
+    created_buckets = []
+
+    def _create_bucket():
+        bucket_name = "integ-tests-" + random_alphanumeric()
+        logging.info("Creating S3 bucket {0}".format(bucket_name))
+        create_s3_bucket(bucket_name, region)
+        created_buckets.append((bucket_name, region))
+        return bucket_name
+
+    yield _create_bucket
+
+    for bucket in created_buckets:
+        logging.info("Deleting S3 bucket {0}".format(bucket[0]))
+        try:
+            delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
+        except Exception as e:
+            logging.error("Failed deleting bucket {0} with exception: {1}".format(bucket[0], e))
