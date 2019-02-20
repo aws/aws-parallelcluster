@@ -1,14 +1,14 @@
-.. _encrypted_ebs:
+.. _tutorials_encrypted_kms_fs:
 
 .. toctree::
    :maxdepth: 2
 
-###################################
-Encrypted EBS with a Custom KMS Key
-###################################
+#####################################
+Disk Encryption with a Custom KMS Key
+#####################################
 
-AWS ParallelCluster supports the configuration option ``ebs_kms_key_id``, which allows you to provide a custom KMS key
-for EBS Disk encryption, to use it you'll need to specify a ``ec2_iam_role``.
+AWS ParallelCluster supports the configuration options ``ebs_kms_key_id`` and ``fsx_kms_key_id``, which allow you to
+provide a custom KMS key for EBS Disk encryption or FSx Lustre. To use them you'll need to specify a ``ec2_iam_role``.
 
 In order for the cluster to create, the KMS key needs to know the name of the cluster's role. This prevents you from
 using the role created on cluster create, requiring a custom ``ec2_iam_role``.
@@ -42,7 +42,7 @@ Click "Add User" and search for the `ParallelClusterInstanceRole`` you just crea
 Creating the Cluster
 ====================
 
-Now create a cluster, here's an example of a cluster with encrypted Raid 0 drives: ::
+Now create a cluster, here's an example of a cluster with encrypted ``Raid 0`` drives: ::
 
    [cluster default]
    ...
@@ -56,3 +56,21 @@ Now create a cluster, here's an example of a cluster with encrypted Raid 0 drive
    volume_size = 100
    encrypted = true
    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+Here's an example with FSx Lustre file system: ::
+
+   [cluster default]
+   ...
+   fsx_settings = fs
+   ec2_iam_role = ParallelClusterInstanceRole
+
+   [fsx fs]
+   shared_dir = /fsx
+   storage_capacity = 3600
+   imported_file_chunk_size = 1024
+   export_path = s3://bucket/folder
+   import_path = s3://bucket
+   weekly_maintenance_start_time = 1:00:00
+   fsx_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+Similar configuration applies for EBS and FSx based file systems.

@@ -512,6 +512,14 @@ See :ref:`RAID Section <raid_section>`. ::
 
   raid_settings = rs
 
+fsx_settings
+""""""""""""
+Settings section relating to FSx Lustre configuration.
+
+See :ref:`FSx Section <fsx_section>`. ::
+
+  fsx_settings = fs
+
 tags
 """"
 Defines tags to be used by CloudFormation.
@@ -679,7 +687,7 @@ Use a custom KMS Key for encryption.
 This parameter must be used in conjunction with ``encrypted = true`` and needs to
 have a custom ``ec2_iam_role``.
 
-See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+See :ref:`Disk Encryption with a Custom KMS Key <tutorials_encrypted_kms_fs>`. ::
 
     ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
@@ -910,7 +918,8 @@ Defines the RAID type for the RAID array.
 
 Valid options are RAID 0 or RAID 1.
 
-For more information on RAID types, see: `RAID info <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
+For more information on RAID types, see: `RAID info
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/raid-config.html>`_
 
 The RAID drive will only be created if this parameter is specified.
 
@@ -968,6 +977,113 @@ Use a custom KMS Key for encryption.
 
 This must be used in conjunction with ``encrypted = true`` and must have a custom ``ec2_iam_role``.
 
-See `Encrypted EBS with a Custom KMS Key <_encrypted_ebs>`. ::
+See :ref:`Disk Encryption with a Custom KMS Key <tutorials_encrypted_kms_fs>`. ::
 
     ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+
+.. _fsx_section:
+
+FSx
+^^^
+Configuration for an attached FSx Lustre file system. See `FSx CreateFileSystem
+<https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateFileSystem.html>`_ for more information.
+
+Use an existing FSx file system by specifying ``fsx_fs_id``. ::
+
+    [fsx fs]
+    shared_dir = /fsx
+    fsx_fs_id = fs-073c3803dca3e28a6
+
+Or create and configure a new file system, with the following parameters ::
+
+    [fsx fs]
+    shared_dir = /fsx
+    storage_capacity = 3600
+    fsx_kms_key_id = 9e8a129c-0e85-459-865b-3a5be974a22b
+    imported_file_chunk_size = 1024
+    export_path = s3://bucket/folder
+    import_path = s3://bucket
+    weekly_maintenance_start_time = 1:00:00
+
+shared_dir
+""""""""""
+**Required** Defines the mount point for the Lustre File system on the master and compute nodes.
+
+The example below will mount the filesystem at /fsx.
+
+Do not use NONE or /NONE as the shared directory.::
+
+    shared_dir = /fsx
+
+fsx_fs_id
+"""""""""
+**Optional** Attach an existing FSx File System.
+
+If this option is specified, all following FSx parameters, such as ``storage_capacity`` are ignored. ::
+
+    fsx_fs_id = fs-073c3803dca3e28a6
+
+storage_capacity
+""""""""""""""""
+**Optional** The storage capacity of the file system in GiB.
+
+The storage capacity has a minimum of 3,600 GiB and is provisioned in increments of 3,600 GiB.
+
+Defaults to 3,600 GiB. ::
+
+    storage_capacity = 3600
+
+fsx_kms_key_id
+""""""""""""""
+**Optional** The ID of your AWS Key Management Service (AWS KMS) key.
+
+This ID is used to encrypt the data in your file system at rest.
+
+This must be used with a custom ``ec2_iam_role``. See
+:ref:`Disk Encryption with a Custom KMS Key <tutorials_encrypted_kms_fs>`. ::
+
+    fsx_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+imported_file_chunk_size
+""""""""""""""""""""""""
+**Optional** For files imported from a data repository (using ``import_path``), this value determines the stripe count
+and maximum amount of data per file (in MiB) stored on a single physical disk. The maximum number of disks that a single
+file can be striped across is limited by the total number of disks that make up the file system.
+
+The chunk size default is 1,024 MiB (1 GiB) and can go as high as 512,000 MiB (500 GiB).
+Amazon S3 objects have a maximum size of 5 TB. ::
+
+    imported_file_chunk_size = 1024
+
+export_path
+"""""""""""
+
+**Optional** The S3 path where the root of your file system is exported. The path **must** be in the same S3 bucket as
+the ``import_path`` parameter.
+
+Defaults to ``s3://import-bucket/FSxLustre[creation-timestamp]`` where ``import-bucket`` is the bucket provided in
+``import_path`` parameter. ::
+
+    export_path = s3://bucket/folder
+
+import_path
+"""""""""""
+***Optional** S3 Bucket to load data from into the file system. Also serves as the export bucket. See ``export_path``.
+
+Import occurs on cluster creation, see `Importing Data from your Amazon S3 Bucket
+<https://docs.aws.amazon.com/fsx/latest/LustreGuide/fsx-data-repositories.html#import-data-repository>`_
+
+If not provided, file system will be empty. ::
+
+    import_path =  s3://bucket
+
+weekly_maintenance_start_time
+"""""""""""""""""""""""""""""
+***Optional** Preferred time to perform weekly maintenance, in UTC time zone.
+
+Format is [day of week]:[hour of day]:[minute of hour]. For example, Monday at Midnight is: ::
+
+    weekly_maintenance_start_time = 1:00:00
+
+
