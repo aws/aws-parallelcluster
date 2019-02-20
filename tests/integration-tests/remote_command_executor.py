@@ -58,7 +58,7 @@ class RemoteCommandExecutor:
             # Catch all exceptions if we fail to close the clients
             logging.warning("Exception raised when closing remote clients: {0}".format(e))
 
-    def run_remote_command(self, command, log_error=True, additional_files=None):
+    def run_remote_command(self, command, log_error=True, additional_files=None, raise_on_error=True):
         """
         Execute remote command on the cluster master node.
 
@@ -77,7 +77,7 @@ class RemoteCommandExecutor:
             stdout="\n".join(stdout.read().decode().splitlines()),
             stderr="\n".join(stderr.read().decode().splitlines()),
         )
-        if result.return_code != 0:
+        if result.return_code != 0 and raise_on_error:
             if log_error:
                 logging.error(
                     "Command {0} failed with error:\n{1}\nand output:\n{2}".format(

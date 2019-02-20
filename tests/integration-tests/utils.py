@@ -70,3 +70,33 @@ def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
+
+
+def create_s3_bucket(bucket_name, region):
+    """
+    Create a new S3 bucket.
+
+    :param bucket_name: name of the S3 bucket to create
+    :param region: region where the bucket is created
+    """
+    s3_client = boto3.client("s3", region_name=region)
+    if region != "us-east-1":
+        s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
+    else:
+        s3_client.create_bucket(Bucket=bucket_name)
+
+
+@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=3)
+def delete_s3_bucket(bucket_name, region):
+    """
+    Delete an S3 bucket together with all stored objects.
+
+    :param bucket_name: name of the S3 bucket to delete
+    :param region: region of the bucket
+    """
+    try:
+        bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+        bucket.objects.all().delete()
+        bucket.delete()
+    except boto3.client("s3").exceptions.NoSuchBucket:
+        pass
