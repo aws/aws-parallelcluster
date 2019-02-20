@@ -590,9 +590,9 @@
       "Default": "1"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of FSx related options, 7 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
+      "Description": "Comma separated list of FSx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
@@ -1472,7 +1472,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/seaam-pcluster/templates/fsx-substack-${version}.cfn.json",
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
             {
               "s3_domain": {
                 "Fn::If": [

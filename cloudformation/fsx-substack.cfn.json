@@ -164,7 +164,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of fsx related options, 7 parameters in total",
+      "Description": "Comma separated list of fsx related options, 8 parameters in total",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {
