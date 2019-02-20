@@ -934,13 +934,3 @@ class ParallelClusterConfig(object):
 
         except AttributeError:
             pass
-
-    @staticmethod
-    def __fail(message):
-        """
-        Print an error and exit.
-
-        :param message: the message to print
-        """
-        print("ERROR: %s" % message)
-        sys.exit(1)
