@@ -58,3 +58,7 @@ DescribeMountTargetSecurityGroups
 DescribeSubnets
 DescribeSecurityGroups
 num
+FSx
+fsx
+Lustre
+GiB
