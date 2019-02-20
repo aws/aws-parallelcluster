@@ -34,13 +34,13 @@
         }
       ]
     },
-    "UseStorageCap": {
+    "UseExportPath": {
       "Fn::Not": [
         {
           "Fn::Equals": [
             {
               "Fn::Select": [
-                "2",
+                "5",
                 {
                   "Ref": "FSXOptions"
                 }
@@ -68,6 +68,23 @@
         }
       ]
     },
+    "UseImportPath": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "6",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
     "UseImportedFileChunkSize": {
       "Fn::Not": [
         {
@@ -85,30 +102,13 @@
         }
       ]
     },
-    "UseExportPath": {
+    "UseStorageCap": {
       "Fn::Not": [
         {
           "Fn::Equals": [
             {
               "Fn::Select": [
-                "5",
-                {
-                  "Ref": "FSXOptions"
-                }
-              ]
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
-    "UseImportPath": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Fn::Select": [
-                "6",
+                "2",
                 {
                   "Ref": "FSXOptions"
                 }
@@ -164,7 +164,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of fsx related options, 8 parameters in total",
+      "Description": "Comma separated list of fsx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {
@@ -174,7 +174,7 @@
   },
   "Resources": {
     "FileSystem": {
-      "Type": "AWS::FSx::FileSystem",
+      "Condition": "CreateFSX",
       "Properties": {
         "FileSystemType": "LUSTRE",
         "KmsKeyId": {
@@ -210,12 +210,12 @@
               }
             ]
           },
-          "ImportedFileChunkSize": {
+          "ImportPath": {
             "Fn::If": [
-              "UseImportedFileChunkSize",
+              "UseImportPath",
               {
                 "Fn::Select": [
-                  "4",
+                  "6",
                   {
                     "Ref": "FSXOptions"
                   }
@@ -226,12 +226,12 @@
               }
             ]
           },
-          "ImportPath": {
+          "ImportedFileChunkSize": {
             "Fn::If": [
-              "UseImportPath",
+              "UseImportedFileChunkSize",
               {
                 "Fn::Select": [
-                  "6",
+                  "4",
                   {
                     "Ref": "FSXOptions"
                   }
@@ -259,6 +259,11 @@
             ]
           }
         },
+        "SecurityGroupIds": [
+          {
+            "Ref": "ComputeSecurityGroup"
+          }
+        ],
         "StorageCapacity": {
           "Fn::If": [
             "UseStorageCap",
@@ -279,14 +284,9 @@
           {
             "Ref": "SubnetId"
           }
-        ],
-        "SecurityGroupIds": [
-          {
-            "Ref": "ComputeSecurityGroup"
-          }
         ]
       },
-      "Condition": "CreateFSX"
+      "Type": "AWS::FSx::FileSystem"
     }
   }
 }

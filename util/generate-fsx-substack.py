@@ -1,9 +1,8 @@
 import argparse
 
-import troposphere.ec2 as ec2
 from troposphere import And, Condition, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
-
 from troposphere.fsx import FileSystem, LustreConfiguration
+
 
 def main(args):
     t = Template()
@@ -33,26 +32,33 @@ def main(args):
 
     use_storage_capacity = t.add_condition("UseStorageCap", Not(Equals(Select(str(2), Ref(fsx_options)), "NONE")))
     use_fsx_kms_key = t.add_condition("UseFSXKMSKey", Not(Equals(Select(str(3), Ref(fsx_options)), "NONE")))
-    use_imported_file_chunk_size = t.add_condition("UseImportedFileChunkSize", Not(Equals(Select(str(4), Ref(fsx_options)), "NONE")))
+    use_imported_file_chunk_size = t.add_condition(
+        "UseImportedFileChunkSize", Not(Equals(Select(str(4), Ref(fsx_options)), "NONE"))
+    )
     use_export_path = t.add_condition("UseExportPath", Not(Equals(Select(str(5), Ref(fsx_options)), "NONE")))
     use_import_path = t.add_condition("UseImportPath", Not(Equals(Select(str(6), Ref(fsx_options)), "NONE")))
-    use_weekly_mainenance_start_time = t.add_condition("UseWeeklyMaintenanceStartTime", Not(Equals(Select(str(7), Ref(fsx_options)), "NONE")))
+    use_weekly_mainenance_start_time = t.add_condition(
+        "UseWeeklyMaintenanceStartTime", Not(Equals(Select(str(7), Ref(fsx_options)), "NONE"))
+    )
 
     # ================= Resources =================
     fs = t.add_resource(
         FileSystem(
+            "FileSystem",
             FileSystemType="LUSTRE",
-            SubnetIds=Ref(subnet_id),
-            SecurityGroupIds=Ref(compute_security_group),
+            SubnetIds=[Ref(subnet_id)],
+            SecurityGroupIds=[Ref(compute_security_group)],
             KmsKeyId=If(use_fsx_kms_key, Select(str(3), Ref(fsx_options)), NoValue),
             StorageCapacity=If(use_storage_capacity, Select(str(2), Ref(fsx_options)), NoValue),
             LustreConfiguration=LustreConfiguration(
                 ImportedFileChunkSize=If(use_imported_file_chunk_size, Select(str(4), Ref(fsx_options)), NoValue),
                 ExportPath=If(use_export_path, Select(str(5), Ref(fsx_options)), NoValue),
                 ImportPath=If(use_import_path, Select(str(6), Ref(fsx_options)), NoValue),
-                WeeklyMaintenanceStartTime=If(use_weekly_mainenance_start_time, Select(str(7), Ref(fsx_options)), NoValue),
+                WeeklyMaintenanceStartTime=If(
+                    use_weekly_mainenance_start_time, Select(str(7), Ref(fsx_options)), NoValue
+                ),
             ),
-            Condition=create_fsx
+            Condition=create_fsx,
         )
     )
 
