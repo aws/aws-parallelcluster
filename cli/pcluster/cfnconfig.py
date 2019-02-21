@@ -353,11 +353,11 @@ class ParallelClusterConfig(object):
         """Try to launch the requested number of instances to verify Account limits."""
         test_ami_id = self.__get_latest_alinux_ami_id()
 
-        instance_type = self.parameters.get("ComputeInstanceType")
+        instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
         if instance_type == "optimal":
             return
 
-        max_size = self.__get_max_number_of_instances()
+        max_size = self.__get_max_number_of_instances(instance_type)
         try:
             # Check for insufficient Account capacity
             ec2 = boto3.client("ec2", region_name=self.region)
@@ -402,16 +402,17 @@ class ParallelClusterConfig(object):
                     "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
                 )
 
-    def __get_max_number_of_instances(self):
+    def __get_max_number_of_instances(self, instance_type):
         """
         Get the maximum number of requestable instances according to the scheduler type and other configuration params.
 
+        :param instance_type The instance type to use in the awsbatch case
         :return: the max number of instances requestable by the user
         """
         try:
             max_size = int(self.parameters.get("MaxSize"))
             if self.parameters.get("Scheduler") == "awsbatch":
-                vcpus = get_vcpus_from_pricing_file(self.region, self.parameters.get("ComputeInstanceType"))
+                vcpus = get_vcpus_from_pricing_file(self.region, instance_type)
                 max_size = -(-max_size // vcpus)
         except ValueError:
             self.__fail("Unable to convert max size parameter to an integer")
