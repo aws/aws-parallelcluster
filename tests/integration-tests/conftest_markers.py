@@ -14,7 +14,14 @@ import logging
 import pytest
 
 DIMENSIONS_MARKER_ARGS = ["region", "instance", "os", "scheduler"]
-UNSUPPORTED_DIMENSIONS = [("eu-north-1", "c4.xlarge", "*", "*"), ("eu-west-3", "c4.xlarge", "*", "*")]
+UNSUPPORTED_DIMENSIONS = [
+    ("eu-north-1", "c4.xlarge", "*", "*"),
+    ("eu-west-3", "c4.xlarge", "*", "*"),
+    ("*", "*", "centos6", "awsbatch"),
+    ("*", "*", "centos7", "awsbatch"),
+    ("*", "*", "ubuntu1604", "awsbatch"),
+    ("*", "*", "ubuntu1404", "awsbatch"),
+]
 
 
 class InvalidMarkerError(Exception):
