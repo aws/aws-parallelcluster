@@ -216,12 +216,12 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
 
     def _config_renderer(**kwargs):
         config_file_path = test_datadir / config_file
-        _add_custom_packages_configs(config_file_path, request)
         default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
+        _add_custom_packages_configs(config_file_path, request)
         return config_file_path
 
     return _config_renderer
