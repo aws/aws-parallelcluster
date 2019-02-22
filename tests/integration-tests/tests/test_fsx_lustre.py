@@ -53,7 +53,7 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir):
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     assert_that(result.stdout).matches(
-        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com:/fsx {mount_dir} lustre defaults,_netdev 0 0".format(
+        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/fsx {mount_dir} lustre defaults,_netdev 0 0".format(
             mount_dir=mount_dir
         )
     )
