@@ -30,38 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-
-
-def get_stack_template(region, aws_access_key_id, aws_secret_access_key, cluster_name):
-    """
-    Get stack template corresponding to the given cluster name.
-
-    :param region: AWS Region
-    :param aws_access_key_id: AWS access key
-    :param aws_secret_access_key: AWS secret access key
-    :param cluster_name: The cluster name to search for
-    :return: the corresponding stack template
-    """
-    cfn = boto3.client(
-        "cloudformation",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-    stack_name = "parallelcluster-" + cluster_name
-
-    try:
-        stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
-    except ClientError as e:
-        print(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-
-    cli_template = [p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"][
-        0
-    ]
-
-    return cli_template
+from pcluster.utils import get_vcpus_from_pricing_file
 
 
 class ParallelClusterConfig(object):
@@ -107,6 +76,10 @@ class ParallelClusterConfig(object):
         # Initialize parameters related to the cluster configuration
         self.__init_cluster_parameters()
 
+        # Verify Account limits
+        if self.__sanity_check:
+            self.__check_account_capacity()
+
         # Initialize ExtraJson parameter
         self.__init_extra_json_parameter()
 
@@ -122,6 +95,9 @@ class ParallelClusterConfig(object):
         # Initialize RAID related parameters
         self.__init_raid_parameters()
 
+        # Initialize FSx related parameters
+        self.__init_fsx_parameters()
+
         # Initialize scaling related parameters
         self.__init_scaling_parameters()
 
@@ -134,6 +110,12 @@ class ParallelClusterConfig(object):
                 self.parameters.update(dict(self.args.extra_parameters))
         except AttributeError:
             pass
+
+    @staticmethod
+    def __fail(message):
+        """Print an error message and exit."""
+        print("ERROR: {0}".format(message))
+        sys.exit(1)
 
     def __init_config(self):
         """
@@ -151,19 +133,15 @@ class ParallelClusterConfig(object):
 
         if not os.path.isfile(config_file):
             if default_config:
-                print("Default config %s not found" % config_file)
-                print(
-                    "You can copy a template from here: %s%sexamples%sconfig"
-                    % (
+                self.__fail(
+                    "Default config {0} not found.\nYou can copy a template from here: {1}{2}examples{2}config".format(
+                        config_file,
                         os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))),
-                        os.path.sep,
                         os.path.sep,
                     )
                 )
-                sys.exit(1)
             else:
-                print("Config file %s not found" % config_file)
-                sys.exit(1)
+                self.__fail("Config file %s not found" % config_file)
 
         config = configparser.ConfigParser()
         config.read(config_file)
@@ -201,6 +179,30 @@ class ParallelClusterConfig(object):
         self.aws_access_key_id = self._get_config_value("aws", "aws_access_key_id")
         self.aws_secret_access_key = self._get_config_value("aws", "aws_secret_access_key")
 
+    def __get_stack_name(self):
+        """Return stack name."""
+        return "parallelcluster-" + self.args.cluster_name
+
+    def __get_stack_template(self):
+        """Get stack template."""
+        cfn = boto3.client(
+            "cloudformation",
+            region_name=self.region,
+            aws_access_key_id=self.aws_access_key_id,
+            aws_secret_access_key=self.aws_secret_access_key,
+        )
+
+        try:
+            stack = cfn.describe_stacks(StackName=self.__get_stack_name()).get("Stacks")[0]
+        except ClientError as e:
+            self.__fail(e.response.get("Error").get("Message"))
+
+        cli_template = [
+            p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"
+        ][0]
+
+        return cli_template
+
     def __get_cluster_template(self):
         """
         Determine which cluster template will be used and return it.
@@ -213,25 +215,20 @@ class ParallelClusterConfig(object):
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
             # parameter. We always get the template to use from CloudFormation.
-            cluster_template = get_stack_template(
-                self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
-            )
+            cluster_template = self.__get_stack_template()
         else:
             try:
                 try:
                     if self.args.cluster_template is not None:
                         cluster_template = self.args.cluster_template
                     elif args_func == "update":
-                        cluster_template = get_stack_template(
-                            self.region, self.aws_access_key_id, self.aws_secret_access_key, self.args.cluster_name
-                        )
+                        cluster_template = self.__get_stack_template()
                     else:
                         cluster_template = self.__config.get("global", "cluster_template")
                 except AttributeError:
                     cluster_template = self.__config.get("global", "cluster_template")
             except configparser.NoOptionError:
-                print("ERROR: Missing 'cluster_template' option in [global] section.")
-                sys.exit(1)
+                self.__fail("Missing 'cluster_template' option in [global] section.")
 
         return cluster_template
 
@@ -288,12 +285,10 @@ class ParallelClusterConfig(object):
         try:
             self.key_name = self.__config.get(self.__cluster_section, "key_name")
             if not self.key_name:
-                print("ERROR: key_name set in [%s] section but not defined." % self.__cluster_section)
-                sys.exit(1)
+                self.__fail("key_name set in [%s] section but not defined." % self.__cluster_section)
             self.__validate_resource("EC2KeyPair", self.key_name)
         except configparser.NoOptionError:
-            print("ERROR: Missing key_name option in [%s] section." % self.__cluster_section)
-            sys.exit(1)
+            self.__fail("Missing key_name option in [%s] section." % self.__cluster_section)
 
         self.parameters["KeyName"] = self.key_name
 
@@ -310,8 +305,7 @@ class ParallelClusterConfig(object):
                 try:
                     self.template_url = self.__config.get(self.__cluster_section, "template_url")
                     if not self.template_url:
-                        print("ERROR: template_url set in [%s] section but not defined." % self.__cluster_section)
-                        sys.exit(1)
+                        self.__fail("template_url set in [%s] section but not defined." % self.__cluster_section)
                     self.__validate_resource("URL", self.template_url)
                 except configparser.NoOptionError:
                     s3_suffix = ".cn" if self.region.startswith("cn") else ""
@@ -347,19 +341,98 @@ class ParallelClusterConfig(object):
             try:
                 __temp__ = self.__config.get(vpc_section, key)
                 if not __temp__:
-                    print("ERROR: %s defined but not set in [%s] section" % (key, vpc_section))
-                    sys.exit(1)
+                    self.__fail("%s defined but not set in [%s] section" % (key, vpc_section))
                 if vpc_options.get(key)[1] is not None:
                     self.__validate_resource(vpc_options.get(key)[1], __temp__)
                 self.parameters[vpc_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
             except configparser.NoSectionError:
-                print(
-                    "ERROR: VPC section [%s] used in [%s] section is not defined"
-                    % (vpc_section, self.__cluster_section)
+                self.__fail(
+                    "VPC section [%s] used in [%s] section is not defined" % (vpc_section, self.__cluster_section)
                 )
-                sys.exit(1)
+
+    def __check_account_capacity(self):
+        """Try to launch the requested number of instances to verify Account limits."""
+        test_ami_id = self.__get_latest_alinux_ami_id()
+
+        instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
+        if instance_type == "optimal":
+            return
+
+        max_size = self.__get_max_number_of_instances(instance_type)
+        try:
+            # Check for insufficient Account capacity
+            ec2 = boto3.client("ec2", region_name=self.region)
+
+            subnet_id = self.parameters.get("ComputeSubnetId")
+            if subnet_id:
+                ec2.run_instances(
+                    InstanceType=instance_type,
+                    MinCount=max_size,
+                    MaxCount=max_size,
+                    ImageId=test_ami_id,
+                    SubnetId=subnet_id,
+                    DryRun=True,
+                )
+            else:
+                ec2.run_instances(
+                    InstanceType=instance_type, MinCount=max_size, MaxCount=max_size, ImageId=test_ami_id, DryRun=True
+                )
+        except ClientError as e:
+            code = e.response.get("Error").get("Code")
+            message = e.response.get("Error").get("Message")
+            if code == "DryRunOperation":
+                pass
+            elif code == "InstanceLimitExceeded":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the AWS Account limit "
+                    "in the {1} region.\n{2}".format(max_size, self.region, message)
+                )
+            elif code == "InsufficientInstanceCapacity":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the On-Demand capacity on AWS.\n{1}".format(
+                        max_size, message
+                    )
+                )
+            elif code == "InsufficientFreeAddressesInSubnet":
+                self.__fail(
+                    "The configured max size parameter {0} exceeds the number of free private IP addresses "
+                    "available in the Compute subnet.\n{1}".format(max_size, message)
+                )
+            else:
+                self.__fail(
+                    "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
+                )
+
+    def __get_max_number_of_instances(self, instance_type):
+        """
+        Get the maximum number of requestable instances according to the scheduler type and other configuration params.
+
+        :param instance_type The instance type to use in the awsbatch case
+        :return: the max number of instances requestable by the user
+        """
+        try:
+            max_size = int(self.parameters.get("MaxSize"))
+            if self.parameters.get("Scheduler") == "awsbatch":
+                vcpus = get_vcpus_from_pricing_file(self.region, instance_type)
+                max_size = -(-max_size // vcpus)
+        except ValueError:
+            self.__fail("Unable to convert max size parameter to an integer")
+        return max_size
+
+    def __get_latest_alinux_ami_id(self):
+        try:
+            # get latest alinux ami id to use as test image
+            ssm = boto3.client("ssm", region_name=self.region)
+            test_ami_id = (
+                ssm.get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
+                .get("Parameters")[0]
+                .get("Value")
+            )
+        except ClientError as e:
+            self.__fail("Unable to check AWS Account limits.\n%s" % e.response.get("Error").get("Message"))
+        return test_ami_id
 
     def __init_scheduler_parameters(self):
         """Validate scheduler related configuration settings and initialize corresponding parameters."""
@@ -391,8 +464,7 @@ class ParallelClusterConfig(object):
             try:
                 __temp__ = self.__config.get(self.__cluster_section, key)
                 if not __temp__:
-                    print("ERROR: %s defined but not set in [%s] section" % (key, self.__cluster_section))
-                    sys.exit(1)
+                    self.__fail("%s defined but not set in [%s] section" % (key, self.__cluster_section))
                 if key == "initial_queue_size":
                     self.parameters["DesiredSize"] = __temp__
                 elif key == "maintain_initial_size":
@@ -438,8 +510,7 @@ class ParallelClusterConfig(object):
             try:
                 __temp__ = self.__config.get(self.__cluster_section, key)
                 if not __temp__:
-                    print("ERROR: %s defined but not set in [%s] section" % (key, self.__cluster_section))
-                    sys.exit(1)
+                    self.__fail("%s defined but not set in [%s] section" % (key, self.__cluster_section))
                 if cluster_options.get(key)[1] is not None:
                     self.__validate_resource(cluster_options.get(key)[1], __temp__)
                 self.parameters[cluster_options.get(key)[0]] = __temp__
@@ -481,8 +552,7 @@ class ParallelClusterConfig(object):
         try:
             self.__scaling_settings = self.__config.get(self.__cluster_section, "scaling_settings")
             if not self.__scaling_settings:
-                print("ERROR: scaling_settings defined by not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
+                self.__fail("scaling_settings defined by not set in [%s] section" % self.__cluster_section)
             scaling_section = "scaling %s" % self.__scaling_settings
         except configparser.NoOptionError:
             scaling_section = None
@@ -494,8 +564,7 @@ class ParallelClusterConfig(object):
                 try:
                     __temp__ = self.__config.get(scaling_section, key)
                     if not __temp__:
-                        print("ERROR: %s defined but not set in [%s] section" % (key, scaling_section))
-                        sys.exit(1)
+                        self.__fail("%s defined but not set in [%s] section" % (key, scaling_section))
                     if scaling_options.get(key)[1] is not None:
                         self.__validate_resource(scaling_options.get(key)[1], __temp__)
                     self.parameters[scaling_options.get(key)[0]] = __temp__
@@ -512,15 +581,12 @@ class ParallelClusterConfig(object):
 
     def __check_option_absent_awsbatch(self, option):
         if self.__config.has_option(self.__cluster_section, option):
-            print("ERROR: option %s cannot be used with awsbatch" % option)
-            sys.exit(1)
+            self.__fail("option %s cannot be used with awsbatch" % option)
 
-    @staticmethod
-    def __validate_awsbatch_os(baseos):
+    def __validate_awsbatch_os(self, baseos):
         supported_batch_oses = ["alinux"]
         if baseos not in supported_batch_oses:
-            print("ERROR: awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
-            sys.exit(1)
+            self.__fail("awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
 
     def __init_batch_parameters(self):  # noqa: C901 FIXME!!!
         """
@@ -551,10 +617,9 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, "custom_awsbatch_template_url"):
             awsbatch_custom_url = self.__config.get(self.__cluster_section, "custom_awsbatch_template_url")
             if not awsbatch_custom_url:
-                print(
-                    "ERROR: custom_awsbatch_template_url set in [%s] section but not defined." % self.__cluster_section
+                self.__fail(
+                    "custom_awsbatch_template_url set in [%s] section but not defined." % self.__cluster_section
                 )
-                sys.exit(1)
             self.parameters["CustomAWSBatchTemplateURL"] = awsbatch_custom_url
 
         # Set batch default size parameters
@@ -570,8 +635,7 @@ class ParallelClusterConfig(object):
             try:
                 __temp__ = self.__config.get(self.__cluster_section, key)
                 if not __temp__:
-                    print("ERROR: %s defined but not set in [%s] section" % (key, self.__cluster_section))
-                    sys.exit(1)
+                    self.__fail("%s defined but not set in [%s] section" % (key, self.__cluster_section))
                 if key == "min_vcpus":
                     self.parameters["MinSize"] = __temp__
                 elif key == "desired_vcpus":
@@ -583,16 +647,46 @@ class ParallelClusterConfig(object):
 
         self.__validate_resource("AWSBatch_Parameters", self.parameters)
 
-    def __init_efs_parameters(self):  # noqa: C901 FIXME!!!
-        # Determine if EFS settings are defined and set section
+    def __get_section_name(self, parameter_name, section):
+        """
+        Validate a section referenced in the cluster section exists, and returns the name of section.
+
+        :param parameter_name: name of the parameter that references the section, i.e. "fsx_settings"
+        :param section: name of the section, i.e. "fsx"
+        :return: Full name of the section, if it exists, else None
+        """
         try:
-            self.__efs_settings = self.__config.get(self.__cluster_section, "efs_settings")
-            if not self.__efs_settings:
-                print("ERROR: efs_settings defined but not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            self.__efs_section = "efs %s" % self.__efs_settings
+            section_name = self.__config.get(self.__cluster_section, parameter_name)
+            if not section_name:
+                self.__fail("%s defined but not set in [%s] section" % (parameter_name, self.__cluster_section))
+            subsection = "%s %s" % (section, section_name)
+            if self.__config.has_section(subsection):
+                return subsection
+            else:
+                self.__fail("%s = %s defined but no [%s] section found" % (parameter_name, section_name, subsection))
         except configparser.NoOptionError:
             pass
+
+        return None
+
+    def __get_option_in_section(self, section, key):
+        """
+        Get an option in a section, if not present return None.
+
+        :param section: name of section, i.e. "fsx fs"
+        :param key: name of option, i.e. "shared_dir"
+        :return: value if set, otherwise None
+        """
+        try:
+            value = self.__config.get(section, key)
+            if not value:
+                self.__fail("%s defined but not set in [%s] section" % (key, section))
+            return value
+        except configparser.NoOptionError:
+            return None
+
+    def __init_efs_parameters(self):  # noqa: C901 FIXME!!!
+        efs_section = self.__get_section_name("efs_settings", "efs")
 
         # Dictionary list of all EFS options
         self.__efs_options = OrderedDict(
@@ -610,14 +704,13 @@ class ParallelClusterConfig(object):
         __throughput_mode = None
         __provisioned_throughput = None
         try:
-            if self.__efs_section:
+            if efs_section:
                 __temp_efs_options = []
                 for key in self.__efs_options:
                     try:
-                        __temp__ = self.__config.get(self.__efs_section, key)
+                        __temp__ = self.__config.get(efs_section, key)
                         if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__efs_section))
-                            sys.exit(1)
+                            self.__fail("%s defined but not set in [%s] section" % (key, self.__efs_section))
                         if key == "provisioned_throughput":
                             __provisioned_throughput = __temp__
                         elif key == "throughput_mode":
@@ -644,15 +737,7 @@ class ParallelClusterConfig(object):
             pass
 
     def __init_raid_parameters(self):  # noqa: C901 FIXME!!!
-        # Determine if RAID settings are defined and set section
-        try:
-            self.__raid_settings = self.__config.get(self.__cluster_section, "raid_settings")
-            if not self.__raid_settings:
-                print("ERROR: raid_settings defined by not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
-            self.__raid_section = "raid %s" % self.__raid_settings
-        except configparser.NoOptionError:
-            pass
+        raid_settings = self.__get_section_name("raid_settings", "raid")
 
         # Dictionary list of all RAID options
         self.__raid_options = OrderedDict(
@@ -669,7 +754,7 @@ class ParallelClusterConfig(object):
         )
 
         try:
-            if self.__raid_section:
+            if raid_settings:
                 __temp_raid_options = []
                 __raid_shared_dir = None
                 __raid_vol_size = None
@@ -677,10 +762,9 @@ class ParallelClusterConfig(object):
                 __raid_type = None
                 for key in self.__raid_options:
                     try:
-                        __temp__ = self.__config.get(self.__raid_section, key)
+                        __temp__ = self.__config.get(raid_settings, key)
                         if not __temp__:
-                            print("ERROR: %s defined but not set in [%s] section" % (key, self.__raid_section))
-                            sys.exit(1)
+                            self.__fail("%s defined but not set in [%s] section" % (key, self.__raid_section))
                         if key == "volume_size":
                             __raid_vol_size = __temp__
                         elif key == "volume_iops":
@@ -705,11 +789,46 @@ class ParallelClusterConfig(object):
                     else:
                         self.__validate_resource("RAIDIOPS", (__raid_iops, 20))
                 if __raid_type is None and __raid_shared_dir is not None:
-                    print("ERROR: raid_type (0 or 1) is required in order to create RAID array.")
-                    sys.exit(1)
+                    self.__fail("raid_type (0 or 1) is required in order to create RAID array.")
                 self.parameters["RAIDOptions"] = ",".join(__temp_raid_options)
         except AttributeError:
             pass
+
+    def __init_fsx_parameters(self):
+        # Determine if FSx settings are defined and set section
+        fsx_section = self.__get_section_name("fsx_settings", "fsx")
+
+        # If they don't use fsx_settings, then return
+        if not fsx_section:
+            return
+
+        # Dictionary list of all FSx options
+        fsx_options = OrderedDict(
+            [
+                ("shared_dir", ("FSXShared_dir", None)),
+                ("fsx_fs_id", ("FSXFileSystemId", "fsx_fs_id")),
+                ("storage_capacity", ("FSXCapacity", "FSx_storage_capacity")),
+                ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
+                ("imported_file_chunk_size", ("ImportedFileChunkSize", "FSx_imported_file_chunk_size")),
+                ("export_path", ("ExportPath", None)),
+                ("import_path", ("ImportPath", None)),
+                ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", None)),
+            ]
+        )
+
+        temp_fsx_options = []
+        for key in fsx_options:
+            value = self.__get_option_in_section(fsx_section, key)
+            if not value:
+                temp_fsx_options.append("NONE")
+            else:
+                # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                if self.__sanity_check and fsx_options.get(key)[1] == "fsx_fs_id":
+                    self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
+                elif self.__sanity_check and fsx_options.get(key)[1] is not None:
+                    self.__validate_resource(fsx_options.get(key)[1], value)
+                temp_fsx_options.append(value)
+        self.parameters["FSXOptions"] = ",".join(temp_fsx_options)
 
     def __ebs_determine_shared_dir(self):  # noqa: C901 FIXME!!!
         # Handle the shared_dir under EBS setting sections
@@ -720,15 +839,13 @@ class ParallelClusterConfig(object):
                     try:
                         __temp_shared_dir = self.__config.get(section, "shared_dir")
                         if not __temp_shared_dir:
-                            print("ERROR: shared_dir defined but not set in [%s] section" % section)
-                            sys.exit(1)
+                            self.__fail("shared_dir defined but not set in [%s] section" % section)
                         __temp_dir_list.append(__temp_shared_dir)
 
                     except configparser.NoOptionError:
                         pass
                     except configparser.NoSectionError:
-                        print("ERROR: [%s] section defined in ebs_settings does not exist" % section)
-                        sys.exit(1)
+                        self.__fail("[%s] section defined in ebs_settings does not exist" % section)
         except AttributeError:
             pass
 
@@ -743,22 +860,20 @@ class ParallelClusterConfig(object):
                 try:
                     __temp_shared_dir = self.__config.get(self.__cluster_section, "shared_dir")
                     if not __temp_shared_dir:
-                        print("ERROR: shared_dir defined but not set")
-                        sys.exit(1)
+                        self.__fail("shared_dir defined but not set")
                     self.parameters["SharedDir"] = __temp_shared_dir
                 except configparser.NoOptionError:
                     pass
             else:
-                print(
-                    "ERROR: not enough shared directories provided.\n"
+                self.__fail(
+                    "not enough shared directories provided.\n"
                     "When using multiple EBS Volumes, please specify a shared_dir under each [ebs] section"
                 )
-                sys.exit(1)
         except AttributeError:
             try:
                 __temp_shared_dir = self.__config.get(self.__cluster_section, "shared_dir")
                 if not __temp_shared_dir:
-                    print("ERROR: shared_dir defined but not set")
+                    print("shared_dir defined but not set")
                     sys.exit(1)
                 self.parameters["SharedDir"] = __temp_shared_dir
             except configparser.NoOptionError:
@@ -770,16 +885,14 @@ class ParallelClusterConfig(object):
             self.__ebs_settings = self.__config.get(self.__cluster_section, "ebs_settings")
 
             if not self.__ebs_settings:
-                print("ERROR: ebs_settings defined by not set in [%s] section" % self.__cluster_section)
-                sys.exit(1)
+                self.__fail("ebs_settings defined by not set in [%s] section" % self.__cluster_section)
             # Modify list
             self.__ebs_section = self.__ebs_settings.split(",")
             if len(self.__ebs_section) > self.MAX_EBS_VOLUMES:
-                print(
-                    "ERROR: number of EBS volumes requested is greater than the MAX.\n"
+                self.__fail(
+                    "number of EBS volumes requested is greater than the MAX.\n"
                     "Max number of EBS volumes supported is currently %s" % self.MAX_EBS_VOLUMES
                 )
-                sys.exit(1)
             self.parameters["NumberOfEBSVol"] = "%s" % len(self.__ebs_section)
             for i, item in enumerate(self.__ebs_section):
                 item = "ebs %s" % item.strip()
@@ -808,8 +921,7 @@ class ParallelClusterConfig(object):
                         try:
                             __temp__ = self.__config.get(section, key)
                             if not __temp__:
-                                print("ERROR: %s defined but not set in [%s] section" % (key, section))
-                                sys.exit(1)
+                                self.__fail("%s defined but not set in [%s] section" % (key, section))
                             if self.__ebs_options.get(key)[1] is not None:
                                 self.__validate_resource(self.__ebs_options.get(key)[1], __temp__)
                             __temp_parameter_list.append(__temp__)
