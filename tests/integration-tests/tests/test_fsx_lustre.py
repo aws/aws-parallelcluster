@@ -10,15 +10,13 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import re
 
 import boto3
 import pytest
-from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from time_utils import minutes, seconds
+from tests.common.schedulers_common import SgeCommands
 
 
 @pytest.mark.regions(["us-east-1", "eu-west-1"])
@@ -67,17 +65,17 @@ def _test_import_path(remote_command_executor, mount_dir):
 
 def _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir):
     logging.info("Testing fsx lustre correctly mounted on compute nodes")
+    sge_commands = SgeCommands(remote_command_executor)
     remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
     job_command = (
         "cat {mount_dir}/s3_test_file "
         "&& cat {mount_dir}/test_file "
         "&& touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
     )
-    result = remote_command_executor.run_remote_command("echo '{0}' | qsub".format(job_command))
-    job_id = _assert_job_submitted(result.stdout)
-    _wait_job_completed(remote_command_executor, job_id)
-    status = _get_job_exit_status(remote_command_executor, job_id)
-    assert_that(status).is_equal_to("0")
+    result = sge_commands.submit_command(job_command)
+    job_id = sge_commands.assert_job_submitted(result.stdout)
+    sge_commands.wait_job_completed(job_id)
+    sge_commands.assert_job_succeeded(job_id)
     remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
 
 
@@ -94,23 +92,3 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
     )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
-
-
-def _assert_job_submitted(qsub_output):
-    __tracebackhide__ = True
-    match = re.search(r"Your job ([0-9]+) \(.+\) has been submitted", qsub_output)
-    assert_that(match).is_not_none()
-    return match.group(1)
-
-
-@retry(retry_on_result=lambda result: result != 0, wait_fixed=seconds(7), stop_max_delay=minutes(5))
-def _wait_job_completed(remote_command_executor, job_id):
-    result = remote_command_executor.run_remote_command("qacct -j {0}".format(job_id), raise_on_error=False)
-    return result.return_code
-
-
-def _get_job_exit_status(remote_command_executor, job_id):
-    result = remote_command_executor.run_remote_command("qacct -j {0}".format(job_id))
-    match = re.search(r"exit_status\s+([0-9]+)", result.stdout)
-    assert_that(match).is_not_none()
-    return match.group(1)

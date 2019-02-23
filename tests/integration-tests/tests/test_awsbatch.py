@@ -10,14 +10,12 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
-import re
 
 import pytest
-from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from time_utils import minutes, seconds
+from tests.common.schedulers_common import AWSBatchCommands
 
 
 @pytest.mark.regions(["us-east-1", "eu-west-1"])
@@ -82,11 +80,12 @@ def _test_mnp_submission(remote_command_executor, test_datadir):
 
 def _test_job_kill(remote_command_executor):
     logging.info("Testing job kill.")
+    awsbatch_commands = AWSBatchCommands(remote_command_executor)
     result = remote_command_executor.run_remote_command("awsbsub --vcpus 2 --memory 256 --timeout 60 sleep 300")
-    job_id = _assert_job_submitted(result.stdout)
+    job_id = awsbatch_commands.assert_job_submitted(result.stdout)
 
     remote_command_executor.run_remote_command("awsbkill {0}".format(job_id))
-    status = _wait_job_completed(remote_command_executor, job_id)
+    status = awsbatch_commands.wait_job_completed(job_id)
 
     assert_that(status).contains_only("FAILED")
     result = remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
@@ -95,26 +94,9 @@ def _test_job_kill(remote_command_executor):
 
 def _test_job_submission(remote_command_executor, submit_command, additional_files=None, children_number=0):
     logging.debug("Submitting Batch job")
+    awsbatch_commands = AWSBatchCommands(remote_command_executor)
     result = remote_command_executor.run_remote_command(submit_command, additional_files=additional_files)
-    job_id = _assert_job_submitted(result.stdout)
+    job_id = awsbatch_commands.assert_job_submitted(result.stdout)
     logging.debug("Submitted Batch job id: {0}".format(job_id))
-    status = _wait_job_completed(remote_command_executor, job_id)
-    assert_that(status).is_length(1 + children_number)
-    assert_that(status).contains_only("SUCCEEDED")
-
-
-def _assert_job_submitted(awsbsub_output):
-    __tracebackhide__ = True
-    match = re.match(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
-    assert_that(match).is_not_none()
-    return match.group(1)
-
-
-@retry(
-    retry_on_result=lambda result: "FAILED" not in result and any(status != "SUCCEEDED" for status in result),
-    wait_fixed=seconds(7),
-    stop_max_delay=minutes(15),
-)
-def _wait_job_completed(remote_command_executor, job_id):
-    result = remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
-    return re.findall(r"status\s+: (.+)", result.stdout)
+    awsbatch_commands.wait_job_completed(job_id)
+    awsbatch_commands.assert_job_succeeded(job_id, children_number)
