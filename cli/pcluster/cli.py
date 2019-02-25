@@ -18,6 +18,7 @@ import sys
 import textwrap
 
 import argparse
+from botocore.exceptions import NoCredentialsError
 
 from pcluster import easyconfig, pcluster
 
@@ -341,11 +342,16 @@ def main():
     parser = _get_parser()
     args, extra_args = parser.parse_known_args()
     logger.debug(args)
-    if args.func.__name__ == "command":
-        args.func(args, extra_args)
-    else:
-        if extra_args:
-            parser.print_usage()
-            print("Invalid arguments %s..." % extra_args)
-            sys.exit(1)
-        args.func(args)
+
+    try:
+        if args.func.__name__ == "command":
+            args.func(args, extra_args)
+        else:
+            if extra_args:
+                parser.print_usage()
+                print("Invalid arguments %s..." % extra_args)
+                sys.exit(1)
+            args.func(args)
+    except NoCredentialsError:
+        logger.error("AWS Credentials not found.")
+        sys.exit(1)
