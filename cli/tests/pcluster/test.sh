@@ -1,7 +1,7 @@
 #!/bin/bash
 # Very basic first tests
 
-set -x
+set -ex
 echo $PATH
 which pcluster
 pcluster version
