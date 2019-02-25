@@ -64,8 +64,8 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
 
 
 def version(args):
-    config = cfnconfig.ParallelClusterConfig(args)
-    LOGGER.info(config.version)
+    pcluster_version = pkg_resources.get_distribution("aws-parallelcluster").version
+    LOGGER.info(pcluster_version)
 
 
 def create(args):  # noqa: C901 FIXME!!!
