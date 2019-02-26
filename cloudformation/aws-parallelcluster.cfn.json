@@ -1325,14 +1325,14 @@
         "ubuntu1604": "ami-055279b0b09d12a71"
       },
       "us-gov-east-1": {
-        "alinux": "ami-022f96b137a63c9ff",
-        "ubuntu1404": "ami-09274e2587c4154f2",
-        "ubuntu1604": "ami-0b664ce8c427b77eb"
+        "alinux": "ami-02d038891e6085cd6",
+        "ubuntu1404": "ami-097ae6e4676174a1c",
+        "ubuntu1604": "ami-0338f217493e5430c"
       },
       "us-gov-west-1": {
-        "alinux": "ami-fefb989f",
-        "ubuntu1404": "ami-6cf0930d",
-        "ubuntu1604": "ami-5ef6953f"
+        "alinux": "ami-ab771fca",
+        "ubuntu1404": "ami-0d48206c",
+        "ubuntu1604": "ami-c94c24a8"
       },
       "us-west-1": {
         "alinux": "ami-09686d4090e35a702",
