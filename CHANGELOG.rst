@@ -2,6 +2,46 @@
 CHANGELOG
 =========
 
+2.2.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for FSx Lustre in Centos 7. In case of custom AMI, FSx Lustre is
+  only supported with Centos 7.5 and Centos 7.6.
+* Check AWS EC2 instance account limits before starting cluster creation
+* Allow users to force job deletion with ``SGE`` scheduler
+
+**CHANGES**
+
+* Set default value to ``compute`` for ``placement_group`` option
+* ``pcluster ssh``: use private IP when the public one is not available
+* ``pcluster ssh``: now works also when stack is not completed as long as the master IP is available
+* Remove unused dependency on ``awscli`` from ParallelCluster package
+
+**BUG FIXES**
+
+* ``awsbsub``: fix file upload with absolute path
+* ``pcluster ssh``: fix issue that was preventing the command from working correctly when stack status is
+  ``UPDATE_ROLLBACK_COMPLETE``
+* Fix block device conversion to correctly attach EBS nvme volumes
+* Wait for Torque scheduler initialization before completing master node setup
+* ``pcluster version``: now works also when no ParallelCluster config is present
+* Improve ``nodewatcher`` daemon logic to detect if a SGE compute node has running jobs
+
+**DOCS**
+
+* Add documentation on how to use FSx Lustre
+* Add tutorial for encrypted EBS with a Custom KMS Key
+* Add ``ebs_kms_key_id`` to Configuration section
+
+**TESTING**
+
+* Define a new framework to write and run ParallelCluster integration tests
+* Improve scaling integration tests to detect over-scaling
+* Implement integration tests for awsbatch scheduler
+* Implement integration tests for FSx Lustre file system
+
 2.1.1
 =====
 * Add China regions `cn-north-1` and `cn-northwest-1`
