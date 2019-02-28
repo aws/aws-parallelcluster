@@ -20,7 +20,7 @@ from remote_command_executor import RemoteCommandExecutor
 from time_utils import minutes, seconds
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.regions(["us-east-1", "eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
 @pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")

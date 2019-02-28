@@ -21,6 +21,10 @@ UNSUPPORTED_DIMENSIONS = [
     ("*", "*", "centos7", "awsbatch"),
     ("*", "*", "ubuntu1604", "awsbatch"),
     ("*", "*", "ubuntu1404", "awsbatch"),
+    ("cn-north-1", "*", "*", "awsbatch"),
+    ("cn-northwest-1", "*", "*", "awsbatch"),
+    ("us-gov-west-1", "*", "*", "awsbatch"),
+    ("us-gov-east-1", "*", "*", "awsbatch"),
 ]
 
 
