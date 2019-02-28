@@ -18,10 +18,10 @@
 #
 # usage: ./upload-instance-slot-map.py --partition <partition> [--instance-details <instance-details.json>]
 
-import argparse
 import json
 import sys
 
+import argparse
 import boto3
 from botocore.exceptions import ClientError
 

@@ -10,6 +10,7 @@
 # limitations under the License.
 from __future__ import absolute_import, print_function
 
+import json
 import os
 import zipfile
 from io import BytesIO
@@ -111,3 +112,37 @@ def upload_resources_artifacts(bucket_name, root, aws_client_config):
             bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/artifacts.zip" % res)
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), res)
+
+
+def get_instances_from_pricing_file(region):
+    """
+    Get pricing file and get supported instances.
+
+    :param region: AWS Region
+    :return: a json object representing the pricing file content.
+    :raises ClientError if unable to download the pricing file.
+    """
+    s3 = boto3.resource("s3", region_name=region)
+    bucket_name = "%s-aws-parallelcluster" % region
+    file_name = "instances/instances.json"
+
+    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+    return json.loads(file_contents)
+
+
+def get_vcpus_from_pricing_file(region, instance_type):
+    """
+    Read instances json object (fetching it if None) and get number of vcpus for the given instance type.
+
+    :param region: AWS Region
+    :param instance_type: the instance type to search for.
+    :return: the number of vcpus or -1 if the instance type cannot be found
+    :raises ClientError if unable to download the pricing file.
+    """
+    try:
+        instances = get_instances_from_pricing_file(region)
+        vcpus = int(instances[instance_type]["vcpus"])
+    except KeyError:
+        vcpus = -1
+
+    return vcpus

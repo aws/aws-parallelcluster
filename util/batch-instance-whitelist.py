@@ -18,11 +18,11 @@
 #
 # usage: ./batch-instance-whitelist.py --regions <'all' or comma seperated list> --bucket <bucket_name, defaults to [region-aws-parallelcluster]>
 
-import argparse
 import json
 import re
 import sys
 
+import argparse
 import boto3
 from botocore.exceptions import ClientError
 

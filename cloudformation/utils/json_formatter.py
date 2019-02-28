@@ -1,7 +1,8 @@
-import argparse
 import json
 from collections import OrderedDict
 from glob import glob
+
+import argparse
 
 
 def _parse_args():

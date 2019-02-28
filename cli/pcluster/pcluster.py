@@ -64,8 +64,8 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
 
 
 def version(args):
-    config = cfnconfig.ParallelClusterConfig(args)
-    LOGGER.info(config.version)
+    pcluster_version = pkg_resources.get_distribution("aws-parallelcluster").version
+    LOGGER.info(pcluster_version)
 
 
 def create(args):  # noqa: C901 FIXME!!!
@@ -577,7 +577,59 @@ def instances(args):
         LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
 
-def command(args, extra_args):
+def _get_master_server_ip(stack_name, config):
+    """
+    Get the IP Address of the MasterServer.
+
+    :param stack_name: The name of the cloudformation stack
+    :param config: Config object
+    :return private/public ip address
+    """
+    ec2 = boto3.client(
+        "ec2",
+        region_name=config.region,
+        aws_access_key_id=config.aws_access_key_id,
+        aws_secret_access_key=config.aws_secret_access_key,
+    )
+
+    master_id = get_master_server_id(stack_name, config)
+    if master_id is []:
+        LOGGER.info("MasterServer not running. Can't SSH")
+        sys.exit(1)
+    instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
+    ip_address = instance.get("PublicIpAddress")
+    if ip_address is None:
+        ip_address = instance.get("PrivateIpAddress")
+    state = instance.get("State").get("Name")
+    if state != "running" or ip_address is None:
+        LOGGER.info("MasterServer: %s\nCannot get ip address.", state.upper())
+        sys.exit(1)
+    return ip_address
+
+
+def _get_output_value(outputs, key_name):
+    """
+    Get output value from Cloudformation Stack Output.
+
+    :param outputs: Cloudformation Stack Outputs
+    :param key_name: Output Key
+    :return: OutputValue if that output exists, otherwise None
+    """
+    return next((o.get("OutputValue") for o in outputs if o.get("OutputKey") == key_name), None)
+
+
+def _get_param_value(params, key_name):
+    """
+    Get parameter value from Cloudformation Stack Parameters.
+
+    :param outputs: Cloudformation Stack Parameters
+    :param key_name: Parameter Key
+    :return: ParameterValue if that parameter exists, otherwise None
+    """
+    return next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), None)
+
+
+def command(args, extra_args):  # noqa: C901 FIXME!!!
     stack = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
     if args.command in config.aliases:
@@ -594,13 +646,35 @@ def command(args, extra_args):
     try:
         stack_result = cfn.describe_stacks(StackName=stack).get("Stacks")[0]
         status = stack_result.get("StackStatus")
-        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE"]
-        if status not in valid_status:
-            LOGGER.info("Stack status: %s. Stack needs to be in %s", status, " or ".join(valid_status))
+        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
+        invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
+
+        if status in invalid_status:
+            LOGGER.info("Stack status: %s. Cannot SSH while in %s", status, " or ".join(invalid_status))
             sys.exit(1)
-        outputs = stack_result.get("Outputs")
-        username = [o.get("OutputValue") for o in outputs if o.get("OutputKey") == "ClusterUser"][0]
-        ip = [o.get("OutputValue") for o in outputs if o.get("OutputKey") == "MasterPublicIP"][0]
+        elif status in valid_status:
+            outputs = stack_result.get("Outputs")
+            username = _get_output_value(outputs, "ClusterUser")
+            ip = (
+                _get_output_value(outputs, "MasterPublicIP")
+                if _get_output_value(outputs, "MasterPublicIP")
+                else _get_output_value(outputs, "MasterPrivateIP")
+            )
+
+            if not username:
+                LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
+                sys.exit(1)
+
+            if not ip:
+                LOGGER.info("Failed to get cluster %s ip.", args.cluster_name)
+                sys.exit(1)
+        else:
+            # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
+            ip = _get_master_server_ip(stack, config)
+            template = cfn.get_template(StackName=stack)
+            mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
+            base_os = _get_param_value(stack_result.get("Parameters"), "BaseOS")
+            username = mappings.get(base_os).get("User")
 
         try:
             from shlex import quote as cmd_quote
@@ -730,7 +804,7 @@ def delete(args):
             sys.stdout.write("\n")
             sys.stdout.flush()
         if status == "DELETE_FAILED":
-            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", stack)
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("does not exist"):
             if saw_update:
