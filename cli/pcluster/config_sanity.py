@@ -201,10 +201,14 @@ class ResourceValidator(object):
                 self.__fail(
                     resource_type, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"
                 )
+        # Check to see if import_path is specified with imported_file_chunk_size and export_path
+        elif resource_type in ["FSx_imported_file_chunk_size", "FSx_export_path"]:
+            if resource_value[1] is None:
+                self.__fail(resource_type, "import_path must be specified.")
         # FSX file chunk size check
         elif resource_type == "FSx_imported_file_chunk_size":
             # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
-            if not (1 <= int(resource_value) <= 512000):
+            if not (1 <= int(resource_value[0]) <= 512000):
                 self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
 
     def validate(self, resource_type, resource_value):  # noqa: C901 FIXME
@@ -513,7 +517,7 @@ class ResourceValidator(object):
                     "Needs min of 2 volumes for RAID and max of 5 EBS volumes are currently supported.",
                 )
         # FSX FS Id check
-        elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size"]:
+        elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size", "FSx_export_path"]:
             self.__validate_fsx_parameters(resource_type, resource_value)
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
