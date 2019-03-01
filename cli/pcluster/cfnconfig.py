@@ -580,10 +580,15 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, option):
             self.__fail("option %s cannot be used with awsbatch" % option)
 
-    def __validate_awsbatch_os(self, baseos):
-        supported_batch_oses = ["alinux"]
-        if baseos not in supported_batch_oses:
-            self.__fail("awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
+    def __get_os(self):
+        base_os = "alinux"
+        if self.__config.has_option(self.__cluster_section, "base_os"):
+            base_os = self.__config.get(self.__cluster_section, "base_os")
+        return base_os
+
+    def __validate_os(self, service, baseos, supported_oses):
+        if baseos not in supported_oses:
+            self.__fail("%s supports following OSes: %s" % (service, supported_oses))
 
     def __init_batch_parameters(self):  # noqa: C901 FIXME!!!
         """
@@ -596,8 +601,7 @@ class ParallelClusterConfig(object):
         self.__check_option_absent_awsbatch("max_queue_size")
         self.__check_option_absent_awsbatch("spot_price")
 
-        if self.__config.has_option(self.__cluster_section, "base_os"):
-            self.__validate_awsbatch_os(self.__config.get(self.__cluster_section, "base_os"))
+        self.__validate_os("awsbatch", self.__get_os(), ["alinux"])
 
         if self.__config.has_option(self.__cluster_section, "compute_instance_type"):
             compute_instance_type = self.__config.get(self.__cluster_section, "compute_instance_type")
@@ -799,6 +803,9 @@ class ParallelClusterConfig(object):
         if not fsx_section:
             return
 
+        # Check that the base_os is supported
+        self.__validate_os("FSx", self.__get_os(), ["centos7"])
+
         # Dictionary list of all FSx options
         fsx_options = OrderedDict(
             [
@@ -807,7 +814,7 @@ class ParallelClusterConfig(object):
                 ("storage_capacity", ("FSXCapacity", "FSx_storage_capacity")),
                 ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
                 ("imported_file_chunk_size", ("ImportedFileChunkSize", "FSx_imported_file_chunk_size")),
-                ("export_path", ("ExportPath", None)),
+                ("export_path", ("ExportPath", "FSx_export_path")),
                 ("import_path", ("ImportPath", None)),
                 ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", None)),
             ]
@@ -819,11 +826,16 @@ class ParallelClusterConfig(object):
             if not value:
                 temp_fsx_options.append("NONE")
             else:
-                # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
-                if self.__sanity_check and fsx_options.get(key)[1] == "fsx_fs_id":
-                    self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
-                elif self.__sanity_check and fsx_options.get(key)[1] is not None:
-                    self.__validate_resource(fsx_options.get(key)[1], value)
+                if self.__sanity_check:
+                    # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                    if fsx_options.get(key)[1] == "fsx_fs_id":
+                        self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
+                    elif fsx_options.get(key)[1] in ["FSx_imported_file_chunk_size", "FSx_export_path"]:
+                        self.__validate_resource(
+                            fsx_options.get(key)[1], (value, self.__get_option_in_section(fsx_section, "import_path"))
+                        )
+                    elif fsx_options.get(key)[1] is not None:
+                        self.__validate_resource(fsx_options.get(key)[1], value)
                 temp_fsx_options.append(value)
         self.parameters["FSXOptions"] = ",".join(temp_fsx_options)
 

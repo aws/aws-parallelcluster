@@ -989,6 +989,12 @@ FSx
 Configuration for an attached FSx Lustre file system. See `FSx CreateFileSystem
 <https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateFileSystem.html>`_ for more information.
 
+FSx Lustre is only supported when ``base_os = centos7``.
+
+If using an existing file system, it must be associated to a security group that allows inbound and outbound
+TCP traffic from ``0.0.0.0/0`` through port ``988``. This is done by automatically when not using
+``vpc_security_group_id``.
+
 Use an existing FSx file system by specifying ``fsx_fs_id``. ::
 
     [fsx fs]
