@@ -2,9 +2,9 @@ argparse
 assertpy
 aws-parallelcluster
 boto3
+fabric
 jinja2
 junitparser
-paramiko
 pytest
 pytest-datadir
 pytest-html
