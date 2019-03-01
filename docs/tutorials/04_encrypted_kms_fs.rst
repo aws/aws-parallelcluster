@@ -7,8 +7,8 @@
 Disk Encryption with a Custom KMS Key
 #####################################
 
-AWS ParallelCluster supports the configuration options ``ebs_kms_key_id`` and ``fsx_kms_key_id``, which allow you to
-provide a custom KMS key for EBS Disk encryption or FSx Lustre. To use them you'll need to specify a ``ec2_iam_role``.
+AWS ParallelCluster supports the configuration options ``ebs_kms_key_id``, which allows you to
+provide a custom KMS key for EBS Disk encryption. To use it you'll need to specify a ``ec2_iam_role``.
 
 In order for the cluster to create, the KMS key needs to know the name of the cluster's role. This prevents you from
 using the role created on cluster create, requiring a custom ``ec2_iam_role``.
@@ -57,20 +57,15 @@ Now create a cluster, here's an example of a cluster with encrypted ``Raid 0`` d
    encrypted = true
    ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
-Here's an example with FSx Lustre file system: ::
+Here's an example with EBS: ::
 
    [cluster default]
    ...
-   fsx_settings = fs
+   ebs_settings = custom1
    ec2_iam_role = ParallelClusterInstanceRole
 
-   [fsx fs]
-   shared_dir = /fsx
-   storage_capacity = 3600
-   imported_file_chunk_size = 1024
-   export_path = s3://bucket/folder
-   import_path = s3://bucket
-   weekly_maintenance_start_time = 1:00:00
-   fsx_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-
-Similar configuration applies for EBS and FSx based file systems.
+   [ebs custom1]
+   shared_dir = vol1
+   ebs_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+   volume_type = io1
+   volume_iops = 200
