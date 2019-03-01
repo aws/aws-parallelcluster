@@ -167,10 +167,10 @@ class ResourceValidator(object):
             nfs_access = self.__check_nfs_access(ec2, network_interfaces)
             if not nfs_access:
                 self.__fail(
-                    "FSXFSId"
+                    "FSXFSId",
                     "The current security group settings on file system %s does not satisfy "
                     "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0]
+                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0],
                 )
             return True
         except ClientError as e:
