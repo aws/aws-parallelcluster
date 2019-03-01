@@ -1000,10 +1000,9 @@ Or create and configure a new file system, with the following parameters ::
     [fsx fs]
     shared_dir = /fsx
     storage_capacity = 3600
-    fsx_kms_key_id = 9e8a129c-0e85-459-865b-3a5be974a22b
+    import_path = s3://bucket
     imported_file_chunk_size = 1024
     export_path = s3://bucket/folder
-    import_path = s3://bucket
     weekly_maintenance_start_time = 1:00:00
 
 shared_dir
@@ -1034,16 +1033,16 @@ Defaults to 3,600 GiB. ::
 
     storage_capacity = 3600
 
-fsx_kms_key_id
-""""""""""""""
-**Optional** The ID of your AWS Key Management Service (AWS KMS) key.
+import_path
+"""""""""""
+**Optional** S3 Bucket to load data from into the file system. Also serves as the export bucket. See ``export_path``.
 
-This ID is used to encrypt the data in your file system at rest.
+Import occurs on cluster creation, see `Importing Data from your Amazon S3 Bucket
+<https://docs.aws.amazon.com/fsx/latest/LustreGuide/fsx-data-repositories.html#import-data-repository>`_
 
-This must be used with a custom ``ec2_iam_role``. See
-:ref:`Disk Encryption with a Custom KMS Key <tutorials_encrypted_kms_fs>`. ::
+If not provided, file system will be empty. ::
 
-    fsx_kms_key_id = xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    import_path =  s3://bucket
 
 imported_file_chunk_size
 """"""""""""""""""""""""
@@ -1052,31 +1051,23 @@ and maximum amount of data per file (in MiB) stored on a single physical disk. T
 file can be striped across is limited by the total number of disks that make up the file system.
 
 The chunk size default is 1,024 MiB (1 GiB) and can go as high as 512,000 MiB (500 GiB).
-Amazon S3 objects have a maximum size of 5 TB. ::
+Amazon S3 objects have a maximum size of 5 TB.
+
+Valid only when using ``import_path``. ::
 
     imported_file_chunk_size = 1024
 
 export_path
 """""""""""
-
 **Optional** The S3 path where the root of your file system is exported. The path **must** be in the same S3 bucket as
 the ``import_path`` parameter.
 
 Defaults to ``s3://import-bucket/FSxLustre[creation-timestamp]`` where ``import-bucket`` is the bucket provided in
-``import_path`` parameter. ::
+``import_path`` parameter.
+
+Valid only when using ``import_path``. ::
 
     export_path = s3://bucket/folder
-
-import_path
-"""""""""""
-***Optional** S3 Bucket to load data from into the file system. Also serves as the export bucket. See ``export_path``.
-
-Import occurs on cluster creation, see `Importing Data from your Amazon S3 Bucket
-<https://docs.aws.amazon.com/fsx/latest/LustreGuide/fsx-data-repositories.html#import-data-repository>`_
-
-If not provided, file system will be empty. ::
-
-    import_path =  s3://bucket
 
 weekly_maintenance_start_time
 """""""""""""""""""""""""""""
