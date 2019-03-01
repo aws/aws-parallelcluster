@@ -217,18 +217,17 @@ class ParallelClusterConfig(object):
             # parameter. We always get the template to use from CloudFormation.
             cluster_template = self.__get_stack_template()
         else:
-            try:
-                try:
-                    if self.args.cluster_template is not None:
-                        cluster_template = self.args.cluster_template
-                    elif args_func == "update":
-                        cluster_template = self.__get_stack_template()
-                    else:
-                        cluster_template = self.__config.get("global", "cluster_template")
-                except AttributeError:
-                    cluster_template = self.__config.get("global", "cluster_template")
-            except configparser.NoOptionError:
-                self.__fail("Missing 'cluster_template' option in [global] section.")
+            if "cluster_template" in self.args and self.args.cluster_template is not None:
+                cluster_template = self.args.cluster_template
+            elif args_func == "update":
+                cluster_template = self.__get_stack_template()
+            else:
+                if not self.__config.has_option("global", "cluster_template"):
+                    self.__fail("Missing 'cluster_template' option in [global] section.")
+                cluster_template = self.__config.get("global", "cluster_template")
+
+        if not self.__config.has_section("cluster %s" % cluster_template):
+            self.__fail("Missing [cluster %s] section." % cluster_template)
 
         return cluster_template
 
