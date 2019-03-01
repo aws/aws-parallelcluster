@@ -355,3 +355,6 @@ def main():
     except NoCredentialsError:
         logger.error("AWS Credentials not found.")
         sys.exit(1)
+    except Exception as e:
+        logger.error("Unexpected error of type %s: %s", type(e).__name__, e)
+        sys.exit(1)
