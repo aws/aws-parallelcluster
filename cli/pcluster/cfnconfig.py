@@ -230,6 +230,9 @@ class ParallelClusterConfig(object):
             except configparser.NoOptionError:
                 self.__fail("Missing 'cluster_template' option in [global] section.")
 
+        if not self.__config.has_section("cluster %s" % cluster_template):
+            self.__fail("Missing [cluster %s] section." % cluster_template)
+
         return cluster_template
 
     def __check_for_updates(self):
