@@ -25,6 +25,7 @@ UNSUPPORTED_DIMENSIONS = [
     ("cn-northwest-1", "*", "*", "awsbatch"),
     ("us-gov-west-1", "*", "*", "awsbatch"),
     ("us-gov-east-1", "*", "*", "awsbatch"),
+    ("us-gov-east-1", "*", "c4.xlarge", "*"),
 ]
 
 
