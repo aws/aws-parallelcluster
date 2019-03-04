@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import time
 
 import configparser
 from retrying import retry
@@ -85,6 +86,11 @@ class ClustersFactory:
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} created successfully".format(name))
+
+        # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
+        # job submission right after creation. We need to investigate this further.
+        logging.info("Sleeping for 60 seconds in case cluster is not ready yet")
+        time.sleep(60)
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name):
