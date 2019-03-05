@@ -19,7 +19,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
