@@ -365,19 +365,17 @@ class ParallelClusterConfig(object):
             ec2 = boto3.client("ec2", region_name=self.region)
 
             subnet_id = self.parameters.get("ComputeSubnetId")
-            if subnet_id:
-                ec2.run_instances(
-                    InstanceType=instance_type,
-                    MinCount=max_size,
-                    MaxCount=max_size,
-                    ImageId=test_ami_id,
-                    SubnetId=subnet_id,
-                    DryRun=True,
-                )
-            else:
-                ec2.run_instances(
-                    InstanceType=instance_type, MinCount=max_size, MaxCount=max_size, ImageId=test_ami_id, DryRun=True
-                )
+            if not subnet_id:
+                subnet_id = self.parameters.get("MasterSubnetId")
+
+            ec2.run_instances(
+                InstanceType=instance_type,
+                MinCount=max_size,
+                MaxCount=max_size,
+                ImageId=test_ami_id,
+                SubnetId=subnet_id,
+                DryRun=True,
+            )
         except ClientError as e:
             code = e.response.get("Error").get("Code")
             message = e.response.get("Error").get("Message")
