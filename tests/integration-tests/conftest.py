@@ -173,7 +173,10 @@ def clusters_factory(request):
 
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
-    os.makedirs("{0}/clusters_configs".format(out_dir), exist_ok=True)
+    os.makedirs(
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
+        exist_ok=True,
+    )
     cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
         out_dir=out_dir, test_name=request.node.nodeid
     )
