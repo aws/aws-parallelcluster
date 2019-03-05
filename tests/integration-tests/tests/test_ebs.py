@@ -16,6 +16,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.storage.storage_common import verify_directory_correctly_shared
 
 
 @pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
@@ -51,6 +52,21 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
+@pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.usefixtures("region", "os", "instance")
+def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    mount_dir = "/shared"
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
+    _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+
 def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
     logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
     result = remote_command_executor.run_remote_command(
@@ -66,11 +82,9 @@ def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size)
 
 def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
     logging.info("Testing ebs correctly mounted on compute nodes")
-    remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
-    job_command = "cat {mount_dir}/test_file " "&& touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
+    verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
-    result = scheduler_commands.submit_command(job_command)
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
+
+def _test_home_correctly_shared(remote_command_executor, scheduler_commands):
+    logging.info("Testing home dir correctly mounted on compute nodes")
+    verify_directory_correctly_shared(remote_command_executor, "/home", scheduler_commands)
