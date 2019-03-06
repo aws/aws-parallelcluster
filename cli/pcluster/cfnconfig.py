@@ -804,7 +804,14 @@ class ParallelClusterConfig(object):
             return
 
         # Check that the base_os is supported
-        self.__validate_os("FSx", self.__get_os(), ["centos7"])
+        self.__validate_os("FSx", self.__get_os(), ["centos7", "alinux"])
+
+        # Validate scheduler is not awsbatch
+        if self.parameters.get("Scheduler") == "awsbatch":
+            self.__fail(
+                "FSx isn't supported with awsbatch as the scheduler, please submit a feature request"
+                " if you need it: https://github.com/aws/aws-parallelcluster/issues/new"
+            )
 
         # Dictionary list of all FSx options
         fsx_options = OrderedDict(
