@@ -144,7 +144,7 @@ def _setup_custom_logger(log_file):
 def _add_properties_to_report(item):
     for dimension in DIMENSIONS_MARKER_ARGS:
         value = item.funcargs.get(dimension)
-        if value:
+        if value and (dimension, value) not in item.user_properties:
             item.user_properties.append((dimension, value))
 
 
