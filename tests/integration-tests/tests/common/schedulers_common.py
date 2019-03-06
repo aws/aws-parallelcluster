@@ -75,6 +75,11 @@ class SchedulerCommands(metaclass=ABCMeta):
         """
         pass
 
+    @abstractmethod
+    def compute_nodes_count(self):
+        """Retrieve the number of compute nodes attached to the scheduler."""
+        pass
+
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -109,6 +114,9 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(status).is_length(1 + children_number)
         assert_that(status).contains_only("SUCCEEDED")
 
+    def compute_nodes_count(self):  # noqa: D102
+        raise NotImplementedError
+
 
 class SgeCommands(SchedulerCommands):
     """Implement commands for sge scheduler."""
@@ -141,7 +149,73 @@ class SgeCommands(SchedulerCommands):
         status = self.get_job_exit_status(job_id)
         assert_that(status).is_equal_to("0")
 
+    def compute_nodes_count(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("qhost | grep -o ip- | wc -l")
+        # split()[-1] to extract last line and trim whitespaces
+        return int(result.stdout.split()[-1])
+
+
+class SlurmCommands(SchedulerCommands):
+    """Implement commands for slurm scheduler."""
+
+    def __init__(self, remote_command_executor):
+        super().__init__(remote_command_executor)
+
+    def wait_job_completed(self, job_id):  # noqa: D102
+        raise NotImplementedError
+
+    def get_job_exit_status(self, job_id):  # noqa: D102
+        raise NotImplementedError
+
+    def assert_job_submitted(self, qsub_output):  # noqa: D102
+        raise NotImplementedError
+
+    def submit_command(self, command):  # noqa: D102
+        raise NotImplementedError
+
+    def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
+        raise NotImplementedError
+
+    def compute_nodes_count(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("sinfo --Node --noheader | grep compute | wc -l")
+        # split()[-1] to extract last line and trim whitespaces
+        return int(result.stdout.split()[-1])
+
+
+class TorqueCommands(SchedulerCommands):
+    """Implement commands for torque scheduler."""
+
+    def __init__(self, remote_command_executor):
+        super().__init__(remote_command_executor)
+
+    def wait_job_completed(self, job_id):  # noqa: D102
+        raise NotImplementedError
+
+    def get_job_exit_status(self, job_id):  # noqa: D102
+        raise NotImplementedError
+
+    def assert_job_submitted(self, qsub_output):  # noqa: D102
+        raise NotImplementedError
+
+    def submit_command(self, command):  # noqa: D102
+        raise NotImplementedError
+
+    def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
+        raise NotImplementedError
+
+    def compute_nodes_count(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command(
+            "echo $(( $(/opt/torque/bin/pbsnodes -l all | wc -l) - 1))"
+        )
+        # split()[-1] to extract last line and trim whitespaces
+        return int(result.stdout.split()[-1])
+
 
 def get_scheduler_commands(scheduler, remote_command_executor):
-    scheduler_commands = {"awsbatch": AWSBatchCommands, "sge": SgeCommands}
+    scheduler_commands = {
+        "awsbatch": AWSBatchCommands,
+        "sge": SgeCommands,
+        "slurm": SlurmCommands,
+        "torque": TorqueCommands,
+    }
     return scheduler_commands[scheduler](remote_command_executor)
