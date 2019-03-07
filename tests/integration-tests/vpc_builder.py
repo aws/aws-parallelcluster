@@ -10,7 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 from enum import Enum, auto
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 
 from troposphere import GetAtt, Output, Ref, Sub, Tags, Template
 from troposphere.ec2 import (
@@ -42,6 +42,7 @@ class SubnetConfig(NamedTuple):
     map_public_ip_on_launch: bool = True
     has_nat_gateway: bool = True
     default_gateway: Gateways = Gateways.INTERNET_GATEWAY
+    availability_zone: Optional[str] = None
 
     def tags(self):
         """Get the tags for the subnet"""
@@ -112,15 +113,16 @@ class VPCTemplateBuilder:
         return internet_gateway
 
     def __build_subnet(self, subnet_config: SubnetConfig, vpc: VPC):
-        subnet = self.__template.add_resource(
-            Subnet(
-                subnet_config.name,
-                CidrBlock=subnet_config.cidr,
-                VpcId=Ref(vpc),
-                MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
-                Tags=subnet_config.tags(),
-            )
+        subnet = Subnet(
+            subnet_config.name,
+            CidrBlock=subnet_config.cidr,
+            VpcId=Ref(vpc),
+            MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
+            Tags=subnet_config.tags(),
         )
+        if subnet_config.availability_zone:
+            subnet.AvailabilityZone = subnet_config.availability_zone
+        self.__template.add_resource(subnet)
         self.__template.add_output(Output(subnet_config.name + "Id", Value=Ref(subnet)))
         return subnet
 
