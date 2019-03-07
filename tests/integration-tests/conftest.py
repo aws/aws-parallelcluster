@@ -16,6 +16,7 @@
 import json
 import logging
 import os
+import random
 import re
 from shutil import copyfile
 
@@ -271,29 +272,44 @@ def cfn_stacks_factory():
     factory.delete_all_stacks()
 
 
+# FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
+# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
+_AVAILABILITY_ZONE_OVERRIDES = {
+    # c5.xlarge is not supported in us-east-1e
+    # FSx Lustre file system creation is currently not supported for us-east-1e
+    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
+    # c4.xlarge is not supported in us-west-2d
+    "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
+    # c5.xlarge is not supported in ap-southeast-2a
+    "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
+}
+
+
 @pytest.fixture(scope="session", autouse=True)
 def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
-    public_subnet = SubnetConfig(
-        name="PublicSubnet",
-        cidr="10.0.0.0/24",
-        map_public_ip_on_launch=True,
-        has_nat_gateway=True,
-        default_gateway=Gateways.INTERNET_GATEWAY,
-    )
-    private_subnet = SubnetConfig(
-        name="PrivateSubnet",
-        cidr="10.0.1.0/24",
-        map_public_ip_on_launch=False,
-        has_nat_gateway=False,
-        default_gateway=Gateways.NAT_GATEWAY,
-    )
-    vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-    template = VPCTemplateBuilder(vpc_config).build()
-
     regions = request.config.getoption("regions")
     vpc_stacks = {}
     for region in regions:
+        # defining subnets per region to allow AZs override
+        public_subnet = SubnetConfig(
+            name="PublicSubnet",
+            cidr="10.0.0.0/24",
+            map_public_ip_on_launch=True,
+            has_nat_gateway=True,
+            default_gateway=Gateways.INTERNET_GATEWAY,
+            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+        )
+        private_subnet = SubnetConfig(
+            name="PrivateSubnet",
+            cidr="10.0.1.0/24",
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            default_gateway=Gateways.NAT_GATEWAY,
+            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+        )
+        vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
+        template = VPCTemplateBuilder(vpc_config).build()
         stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
         cfn_stacks_factory.create_stack(stack)
         vpc_stacks[region] = stack
