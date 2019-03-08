@@ -124,14 +124,17 @@ not marked with `@pytest.mark.advanced` are executed.
 It is a good practice to mark test cases with a series of markers that allow to identify the feature under test.
 Every test is marked by default with a marker matching its filename with the `test_` prefix or `_test` suffix removed.
 
-### Custom Templates And Packages
+### Custom Templates, Packages and AMI
 
-To use custom templates or packages URLs the following options are available:
+To use custom templates or packages URLs or to run tests against a given custom AMI
+use the following options:
 * `--custom-node-url`: URL to a custom node package.
 * `--custom-cookbook-url`: URL to a custom cookbook package.
 * `--custom-template-url`: URL to a custom cfn template.
 * `--custom-awsbatch-template-url`: URL to a custom awsbatch cfn template.
 * `--custom-awsbatchcli-url`: URL to a custom awsbatch cli package.
+* `--custom-ami`: custom AMI to use for all tests. Note that this custom AMI will be used
+  for all tests, no matter the region.
 
 The configuration for the custom templates and packages are automatically injected into
 all cluster configs when these are rendered. In case any of these parameters is already set
