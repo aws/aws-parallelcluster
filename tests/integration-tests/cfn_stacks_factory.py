@@ -56,7 +56,6 @@ class CfnStacksFactory:
         if id in self.__created_stacks:
             raise ValueError("Stack {0} already exists in region {1}".format(name, region))
 
-        # create the cluster
         logging.info("Creating stack {0} in region {1}".format(name, region))
         self.__created_stacks[id] = stack
         try:
@@ -69,7 +68,7 @@ class CfnStacksFactory:
             logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
             raise
 
-        logging.info("Cluster {0} created successfully in region {1}".format(name, region))
+        logging.info("Stack {0} created successfully in region {1}".format(name, region))
 
     @retry(
         stop_max_attempt_number=10,
@@ -91,9 +90,9 @@ class CfnStacksFactory:
                 logging.error("Deletion of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
                 raise
             del self.__created_stacks[id]
-            logging.info("Cluster {0} deleted successfully in region {1}".format(name, region))
+            logging.info("Stack {0} deleted successfully in region {1}".format(name, region))
         else:
-            logging.warning("Couldn't find cluster with name {0} in region. Skipping deletion.".format(name, region))
+            logging.warning("Couldn't find stack with name {0} in region. Skipping deletion.".format(name, region))
 
     def delete_all_stacks(self):
         """Destroy all created stacks."""
