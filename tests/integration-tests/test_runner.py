@@ -62,6 +62,7 @@ TEST_DEFAULTS = {
     "custom_template_url": None,
     "custom_awsbatch_template_url": None,
     "custom_awsbatchcli_url": None,
+    "custom_ami": None,
 }
 
 
@@ -148,6 +149,9 @@ def _init_argparser():
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
     )
+    parser.add_argument(
+        "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
+    )
 
     return parser
 
@@ -214,6 +218,9 @@ def _set_custom_packages_args(args, pytest_args):
 
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
+
+    if args.custom_ami:
+        pytest_args.extend(["--custom-ami", args.custom_ami])
 
 
 def _get_pytest_regionalized_args(region, args):

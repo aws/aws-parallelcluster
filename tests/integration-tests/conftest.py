@@ -54,6 +54,7 @@ def pytest_addoption(parser):
     parser.addoption("--template-url", help="url to a custom cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
+    parser.addoption("--custom-ami", help="custom AMI to use in the tests")
 
 
 def pytest_generate_tests(metafunc):
@@ -236,7 +237,7 @@ def _add_custom_packages_configs(cluster_config, request):
     config.read(cluster_config)
     cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
 
-    for custom_option in ["template_url", "custom_awsbatch_template_url", "custom_chef_cookbook"]:
+    for custom_option in ["template_url", "custom_awsbatch_template_url", "custom_chef_cookbook", "custom_ami"]:
         if request.config.getoption(custom_option) and custom_option not in config[cluster_template]:
             config[cluster_template][custom_option] = request.config.getoption(custom_option)
 
