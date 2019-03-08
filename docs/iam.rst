@@ -207,6 +207,17 @@ ParallelClusterUserPolicy
 
 In case you are using SGE, Slurm or Torque as a scheduler:
 
+Note, if you use a custom role, ``ec2_iam_role = role_name``, you'll need to change the IAM resource to include
+the name of that role.
+
+From: ::
+
+  "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/parallelcluster-*"
+
+To: ::
+
+  "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<role_name>"
+
 ::
 
   {
@@ -390,7 +401,7 @@ In case you are using SGE, Slurm or Torque as a scheduler:
                   "iam:SimulatePrincipalPolicy"
               ],
               "Effect": "Allow",
-              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/<PARALLELCLUSTER EC2 ROLE NAME>"
+              "Resource": "arn:aws:iam::<AWS ACCOUNT ID>:role/parallelcluster-*"
           },
           {
               "Sid": "IAMCreateInstanceProfile",
@@ -416,7 +427,7 @@ In case you are using SGE, Slurm or Torque as a scheduler:
               "Sid": "EFSDescribe",
               "Action": [
                   "efs:DescribeMountTargets",
-                  "efs:DescribeMountTargetSecurityGroups",
+                  "efs:DescribeMountTargetSecurityGroups"
               ],
               "Effect": "Allow",
               "Resource": "*"
