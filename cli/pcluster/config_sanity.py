@@ -532,25 +532,6 @@ class ResourceValidator(object):
             ]:
                 self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
 
-            # Check compute instance types
-            if "ComputeInstanceType" in resource_value:
-                try:
-                    s3 = boto3.resource("s3", region_name=self.region)
-                    bucket_name = "%s-aws-parallelcluster" % self.region
-                    file_name = "instances/batch_instances.json"
-                    try:
-                        file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-                        supported_instances = json.loads(file_contents)
-                        for instance in resource_value["ComputeInstanceType"].split(","):
-                            if not instance.strip() in supported_instances:
-                                self.__fail(
-                                    resource_type, "Instance type %s not supported by batch in this region" % instance
-                                )
-                    except ClientError as e:
-                        self.__fail(resource_type, e.response.get("Error").get("Message"))
-                except ClientError as e:
-                    self.__fail(resource_type, e.response.get("Error").get("Message"))
-
             # Check spot bid percentage
             if "SpotPrice" in resource_value:
                 spot_price = int(resource_value["SpotPrice"])
@@ -578,6 +559,25 @@ class ResourceValidator(object):
 
             if max_size < min_size:
                 self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
+
+            # Check compute instance types
+            if "ComputeInstanceType" in resource_value:
+                try:
+                    s3 = boto3.resource("s3", region_name=self.region)
+                    bucket_name = "%s-aws-parallelcluster" % self.region
+                    file_name = "instances/batch_instances.json"
+                    try:
+                        file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+                        supported_instances = json.loads(file_contents)
+                        for instance in resource_value["ComputeInstanceType"].split(","):
+                            if not instance.strip() in supported_instances:
+                                self.__fail(
+                                    resource_type, "Instance type %s not supported by batch in this region" % instance
+                                )
+                    except ClientError as e:
+                        self.__fail(resource_type, e.response.get("Error").get("Message"))
+                except ClientError as e:
+                    self.__fail(resource_type, e.response.get("Error").get("Message"))
 
             # Check custom batch url
             if "CustomAWSBatchTemplateURL" in resource_value:
