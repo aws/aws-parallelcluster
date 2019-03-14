@@ -359,6 +359,9 @@ class ParallelClusterConfig(object):
         if instance_type == "optimal":
             return
 
+        if self.parameters.get("ClusterType", "ondemand") == "spot":
+            return
+
         max_size = self.__get_max_number_of_instances(instance_type)
         try:
             # Check for insufficient Account capacity
