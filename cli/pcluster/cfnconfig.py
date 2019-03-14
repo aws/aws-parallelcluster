@@ -353,15 +353,10 @@ class ParallelClusterConfig(object):
 
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
-        test_ami_id = self.__get_latest_alinux_ami_id()
+        if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
+            return
 
         instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
-        if instance_type == "optimal":
-            return
-
-        if self.parameters.get("ClusterType", "ondemand") == "spot":
-            return
-
         max_size = self.__get_max_number_of_instances(instance_type)
         try:
             # Check for insufficient Account capacity
@@ -370,6 +365,8 @@ class ParallelClusterConfig(object):
             subnet_id = self.parameters.get("ComputeSubnetId")
             if not subnet_id:
                 subnet_id = self.parameters.get("MasterSubnetId")
+
+            test_ami_id = self.__get_latest_alinux_ami_id()
 
             ec2.run_instances(
                 InstanceType=instance_type,
