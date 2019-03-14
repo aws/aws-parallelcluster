@@ -126,8 +126,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "--unsupportedregions", type=str, help="Unsupported regions, comma separated", default="", required=False
     )
+    parser.add_argument(
+        "--version",
+        type=str,
+        help="If not specified it's retrieved from the package version",
+        default="",
+        required=False,
+    )
     args = parser.parse_args()
-    args.version = pkg_resources.get_distribution("aws-parallelcluster").version
+    if not args.version:
+        args.version = pkg_resources.get_distribution("aws-parallelcluster").version
 
     if args.regions == "all":
         args.regions = get_all_aws_regions(args.partition)
