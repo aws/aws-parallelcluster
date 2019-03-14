@@ -553,21 +553,31 @@ class ResourceValidator(object):
 
             # Check spot bid percentage
             if "SpotPrice" in resource_value:
-                if int(resource_value["SpotPrice"]) > 100 or int(resource_value["SpotPrice"]) < 0:
+                spot_price = int(resource_value["SpotPrice"])
+                if spot_price > 100 or spot_price < 0:
                     self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
 
             # Check sanity on desired, min and max vcpus
-            if "DesiredSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["DesiredSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
+            if (
+                "DesiredSize" not in resource_value
+                or "MinSize" not in resource_value
+                or "MaxSize" not in resource_value
+            ):
+                # this should never occur
+                self.__fail(resource_type, "Both min, desired and max vcpus parameters must be set")
 
-            if "DesiredSize" in resource_value and "MaxSize" in resource_value:
-                if int(resource_value["DesiredSize"]) > int(resource_value["MaxSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
+            min_size = int(resource_value["MinSize"])
+            desired_size = int(resource_value["DesiredSize"])
+            max_size = int(resource_value["MaxSize"])
 
-            if "MaxSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["MaxSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
+            if desired_size < min_size:
+                self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
+
+            if desired_size > max_size:
+                self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
+
+            if max_size < min_size:
+                self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
 
             # Check custom batch url
             if "CustomAWSBatchTemplateURL" in resource_value:
