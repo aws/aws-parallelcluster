@@ -539,15 +539,6 @@ class ResourceValidator(object):
                 if spot_price > 100 or spot_price < 0:
                     self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
 
-            # Check sanity on desired, min and max vcpus
-            if (
-                "DesiredSize" not in resource_value
-                or "MinSize" not in resource_value
-                or "MaxSize" not in resource_value
-            ):
-                # this should never occur
-                self.__fail(resource_type, "Both min, desired and max vcpus parameters must be set")
-
             min_size = int(resource_value["MinSize"])
             desired_size = int(resource_value["DesiredSize"])
             max_size = int(resource_value["MaxSize"])
