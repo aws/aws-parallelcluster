@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_vcpus_from_pricing_file
+from pcluster.utils import get_instance_vcpus
 
 
 class ParallelClusterConfig(object):
@@ -110,6 +110,11 @@ class ParallelClusterConfig(object):
                 self.parameters.update(dict(self.args.extra_parameters))
         except AttributeError:
             pass
+
+    @staticmethod
+    def __warn(message):
+        """Print a warning message."""
+        print("WARNING: {0}".format(message))
 
     @staticmethod
     def __fail(message):
@@ -358,6 +363,10 @@ class ParallelClusterConfig(object):
 
         instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
         max_size = self.__get_max_number_of_instances(instance_type)
+        if max_size < 0:
+            self.__warn("Unable to check AWS account capacity. Skipping limits validation")
+            return
+
         try:
             # Check for insufficient Account capacity
             ec2 = boto3.client("ec2", region_name=self.region)
@@ -412,7 +421,7 @@ class ParallelClusterConfig(object):
         try:
             max_size = int(self.parameters.get("MaxSize"))
             if self.parameters.get("Scheduler") == "awsbatch":
-                vcpus = get_vcpus_from_pricing_file(self.region, instance_type)
+                vcpus = get_instance_vcpus(self.region, instance_type)
                 max_size = -(-max_size // vcpus)
         except ValueError:
             self.__fail("Unable to convert max size parameter to an integer")
