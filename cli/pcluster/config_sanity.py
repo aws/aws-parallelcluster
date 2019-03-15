@@ -14,7 +14,6 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
-import json
 import sys
 import urllib.error
 import urllib.parse
@@ -24,7 +23,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import get_vcpus_from_pricing_file
+from pcluster.utils import get_instance_vcpus, get_supported_batch_instances
 
 
 class ResourceValidator(object):
@@ -566,12 +565,7 @@ class ResourceValidator(object):
             if "ComputeInstanceType" in resource_value:
                 compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
-                    s3 = boto3.resource("s3", region_name=self.region)
-                    bucket_name = "%s-aws-parallelcluster" % self.region
-                    file_name = "instances/batch_instances.json"
-
-                    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-                    supported_instances = json.loads(file_contents)
+                    supported_instances = get_supported_batch_instances(self.region)
                     for instance in compute_instance_type.split(","):
                         if not instance.strip() in supported_instances:
                             self.__fail(
@@ -581,7 +575,7 @@ class ResourceValidator(object):
                     if "," not in compute_instance_type and "." in compute_instance_type:
                         # if the type is not a list, and contains dot (nor optimal, nor a family)
                         # validate instance type against max_vcpus limit
-                        vcpus = get_vcpus_from_pricing_file(self.region, compute_instance_type)
+                        vcpus = get_instance_vcpus(self.region, compute_instance_type)
                         if max_size < vcpus:
                             self.__fail(
                                 resource_type,

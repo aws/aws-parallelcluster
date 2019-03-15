@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_vcpus_from_pricing_file
+from pcluster.utils import get_instance_vcpus
 
 
 class ParallelClusterConfig(object):
@@ -412,7 +412,7 @@ class ParallelClusterConfig(object):
         try:
             max_size = int(self.parameters.get("MaxSize"))
             if self.parameters.get("Scheduler") == "awsbatch":
-                vcpus = get_vcpus_from_pricing_file(self.region, instance_type)
+                vcpus = get_instance_vcpus(self.region, instance_type)
                 max_size = -(-max_size // vcpus)
         except ValueError:
             self.__fail("Unable to convert max size parameter to an integer")
