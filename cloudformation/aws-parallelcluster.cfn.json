@@ -2159,7 +2159,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -2170,7 +2170,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3000,7 +3000,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -3011,7 +3011,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3682,7 +3682,7 @@
                       "_none_"
                     ]
                   },
-                  "\" >> /etc/yum.conf' ]\n",
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                   " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                   {
                     "Fn::If": [
@@ -3693,7 +3693,7 @@
                       "false"
                     ]
                   },
-                  "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                   "--==BOUNDARY==\n",
                   "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
