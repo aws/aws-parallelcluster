@@ -566,16 +566,14 @@ class ResourceValidator(object):
                     s3 = boto3.resource("s3", region_name=self.region)
                     bucket_name = "%s-aws-parallelcluster" % self.region
                     file_name = "instances/batch_instances.json"
-                    try:
-                        file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-                        supported_instances = json.loads(file_contents)
-                        for instance in resource_value["ComputeInstanceType"].split(","):
-                            if not instance.strip() in supported_instances:
-                                self.__fail(
-                                    resource_type, "Instance type %s not supported by batch in this region" % instance
-                                )
-                    except ClientError as e:
-                        self.__fail(resource_type, e.response.get("Error").get("Message"))
+
+                    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+                    supported_instances = json.loads(file_contents)
+                    for instance in resource_value["ComputeInstanceType"].split(","):
+                        if not instance.strip() in supported_instances:
+                            self.__fail(
+                                resource_type, "Instance type %s not supported by batch in this region" % instance
+                            )
                 except ClientError as e:
                     self.__fail(resource_type, e.response.get("Error").get("Message"))
 
