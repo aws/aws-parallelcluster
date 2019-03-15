@@ -112,6 +112,11 @@ class ParallelClusterConfig(object):
             pass
 
     @staticmethod
+    def __warn(message):
+        """Print a warning message."""
+        print("WARNING: {0}".format(message))
+
+    @staticmethod
     def __fail(message):
         """Print an error message and exit."""
         print("ERROR: {0}".format(message))
@@ -358,6 +363,10 @@ class ParallelClusterConfig(object):
 
         instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
         max_size = self.__get_max_number_of_instances(instance_type)
+        if max_size < 0:
+            self.__warn("Unable to check AWS account capacity. Skipping limits validation")
+            return
+
         try:
             # Check for insufficient Account capacity
             ec2 = boto3.client("ec2", region_name=self.region)

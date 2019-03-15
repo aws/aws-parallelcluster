@@ -566,30 +566,50 @@ class ResourceValidator(object):
                 compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
                     supported_instances = get_supported_batch_instances(self.region)
-                    for instance in compute_instance_type.split(","):
-                        if not instance.strip() in supported_instances:
-                            self.__fail(
-                                resource_type, "Instance type %s not supported by batch in this region" % instance
-                            )
+                    if supported_instances:
+                        for instance in compute_instance_type.split(","):
+                            if not instance.strip() in supported_instances:
+                                self.__fail(
+                                    resource_type, "Instance type %s not supported by batch in this region" % instance
+                                )
+                    else:
+                        self.__warn(
+                            "Unable to get instance types supported by Batch. Skipping instance type validation"
+                        )
 
                     if "," not in compute_instance_type and "." in compute_instance_type:
                         # if the type is not a list, and contains dot (nor optimal, nor a family)
                         # validate instance type against max_vcpus limit
                         vcpus = get_instance_vcpus(self.region, compute_instance_type)
-                        if max_size < vcpus:
-                            self.__fail(
-                                resource_type,
-                                "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
-                                "available for the {1} that you selected as compute instance type".format(
-                                    vcpus, compute_instance_type
-                                ),
+                        if vcpus <= 0:
+                            self.__warn(
+                                "Unable to get the number of vcpus for the {0} instance type. "
+                                "Skipping instance type against max_vcpus validation".format(compute_instance_type)
                             )
+                        else:
+                            if max_size < vcpus:
+                                self.__fail(
+                                    resource_type,
+                                    "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                                    "available for the {1} that you selected as compute instance type".format(
+                                        vcpus, compute_instance_type
+                                    ),
+                                )
                 except ClientError as e:
                     self.__fail(resource_type, e.response.get("Error").get("Message"))
 
             # Check custom batch url
             if "CustomAWSBatchTemplateURL" in resource_value:
                 self.validate("URL", resource_value["CustomAWSBatchTemplateURL"])
+
+    @staticmethod
+    def __warn(message):
+        """
+        Print a warning message.
+
+        :param message: the message to print
+        """
+        print("WARNING: {0}".format(message))
 
     @staticmethod
     def __fail(resource_type, message):
