@@ -24,6 +24,8 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
+from pcluster.utils import get_vcpus_from_pricing_file
+
 
 class ResourceValidator(object):
     """Utility class to check resource sanity."""
@@ -562,6 +564,7 @@ class ResourceValidator(object):
 
             # Check compute instance types
             if "ComputeInstanceType" in resource_value:
+                compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
                     s3 = boto3.resource("s3", region_name=self.region)
                     bucket_name = "%s-aws-parallelcluster" % self.region
@@ -569,10 +572,23 @@ class ResourceValidator(object):
 
                     file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
                     supported_instances = json.loads(file_contents)
-                    for instance in resource_value["ComputeInstanceType"].split(","):
+                    for instance in compute_instance_type.split(","):
                         if not instance.strip() in supported_instances:
                             self.__fail(
                                 resource_type, "Instance type %s not supported by batch in this region" % instance
+                            )
+
+                    if "," not in compute_instance_type and "." in compute_instance_type:
+                        # if the type is not a list, and contains dot (nor optimal, nor a family)
+                        # validate instance type against max_vcpus limit
+                        vcpus = get_vcpus_from_pricing_file(self.region, compute_instance_type)
+                        if max_size < vcpus:
+                            self.__fail(
+                                resource_type,
+                                "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                                "available for the {1} that you selected as compute instance type".format(
+                                    vcpus, compute_instance_type
+                                ),
                             )
                 except ClientError as e:
                     self.__fail(resource_type, e.response.get("Error").get("Message"))
