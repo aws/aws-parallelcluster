@@ -25,8 +25,8 @@ Success is signalled with an exit code of 0.  Any other exit code will be consid
 Configuration
 -------------
 
-The following config settings are used to define pre/post-install actions and arguments.  All parameters are optional and
-are *not* required for basic cluster install.
+The following config settings are used to define pre/post-install actions and arguments.  All parameters are optional
+and are *not* required for a basic cluster installation.
 
 ::
 
