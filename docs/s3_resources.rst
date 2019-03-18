@@ -26,7 +26,8 @@ This example provides read access to any object in the bucket `my_corporate_buck
 
   s3_read_resource = arn:aws:s3:::my_corporate_bucket/*
 
-This example provides read access to the bucket `my_corporate_bucket`.  This does **not** provide read access to objects stored in the bucket.
+This example provides read access to the bucket `my_corporate_bucket`.  Please note that this does **not**
+provide read access to any objects stored in the bucket.
 
 ::
 

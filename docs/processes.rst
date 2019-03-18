@@ -48,7 +48,8 @@ online or are terminated, so they can be added or removed from the queue accordi
 
 nodewatcher
 -----------
-nodewatcher runs on each node in the compute fleet.  After the user defined ``scaledown_idletime`` period, the instance is terminated.
+nodewatcher runs on each node in the compute fleet.  After the user-defined ``scaledown_idletime`` period has
+elapsed, the instance will be terminated.
 
 .. image:: images/nodewatcher.svg
     :align: center

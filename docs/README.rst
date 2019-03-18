@@ -23,7 +23,7 @@ the directory containing the AWS ParallelCluster source code documentation:
 
 .. code-block:: sh
 
-    $ cd ~/src/aws-parallelcluster/docs
+    $ cd docs
     $ make html
 
 When the build process concludes, the finalized documentation will be available in the :code:`build/html` folder.
@@ -33,13 +33,14 @@ tox
 ===
 
 tox is a generic virtualenv management and test command line tool used for checking package installations against
-different Python versions and interpreters, testing in each of these environments, and avoiding boilerplate and platform-specific build-step hacks.
+different Python versions and interpreters, testing in each of these environments, and avoiding boilerplate
+and platform-specific build-step hacks.
 
 To build the AWS ParallelCluster documentation with tox:
 
 .. code-block:: sh
 
-    $ cd ~/src/aws-parallelcluster/cli
+    $ cd cli
     $ tox -e docs
     $ tox -e serve-docs
 

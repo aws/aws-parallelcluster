@@ -7,23 +7,8 @@
 Getting started with AWS ParallelCluster
 ########################################
 
-AWS ParallelCluster is an AWS-supported Open Source cluster management tool that makes it easy to deploy and
-manage High Performance Computing (HPC) clusters in the AWS cloud.
+.. include:: detailed_description.rst
 
-AWS ParallelCluster supports the following features:
-
-- Multiple Linux flavors including Amazon Linux, CentOS, and Ubuntu.
-- Configurable autoscaling of compute resources.
-- Custom AMIs.
-- Shared file systems built from EBS, EFS, and FSxL (Lustre) volumes.
-- EBS RAID functionality.
-- Private subnet deployments.
-- Multiple HPC schedulers including AWS Batch, Grid Engine, Torque, and Slurm.
-
-AWS ParallelCluster facilitates both quick start proof-of-concepts (POCs) and massive production deployments.
-It can be used to orchestrate higher level workflow use cases such as automated DNA sequencing pipelines, 
-global weather forecasting, cryptography, fluid dynamics simulations, jet engine design, credit card fraud
-detection, insurance risk modeling, and protein-ligand docking analysis.
 
 Installing AWS ParallelCluster
 ==============================
@@ -65,7 +50,7 @@ To upgrade an older version of AWS ParallelCluster:
 
   $ sudo pip install --upgrade aws-parallelcluster
 
-**Please remember to check that the existing configuration is compatible with the version of ParallelCluster being installed.**
+**Verify compatibility of the existing configuration with the new version of ParallelCluster being installed!**
 
 .. _getting_started_configuring_parallelcluster:
 
@@ -113,7 +98,7 @@ A list of valid AWS region identifiers will then be provided.  Choose the region
             sa-east-1
         AWS Region ID []:
 
-Choose a descriptive name for your VPC.  Typically, this will be something like :code:`production`, :code:`test`, or :code:`dev`.
+Choose a descriptive name for the VPC. Typically, this will be :code:`production`, :code:`test`, or :code:`dev`.
 
 ::
 
@@ -151,20 +136,26 @@ Choose the subnet into which the master server will be created:
         Master Subnet ID []:
 
 
-The cluster will launch from a VPC and use an existing subnet which supports public IP's i.e. the route table
-for the subnet is :code:`0.0.0.0/0 => igw-xxxxxx`.
-The VPC must have :code:`DNS Resolution = yes` and :code:`DNS Hostnames = yes`.
-It should also have DHCP options with the correct :code:`domain-name` for the region, as defined in the documentation: `VPC DHCP
-Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_.
+The cluster will launch from a VPC and use an existing subnet that supports public IP's i.e. the route table for the
+subnet is :code:`0.0.0.0/0 => igw-xxxxxx`.
+The VPC must also have :code:`DNS Resolution = yes`, :code:`DNS Hostnames = yes`, and DHCP options set to the
+correct :code:`domain-name` for the region.
+Please refer to the `VPC DHCP Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_
+documentation for further guidance.
 
-Once all of these settings contain valid values, the cluster can be launched by running the create command:
+Once these paraeters contain valid values, the cluster can be launched by running the create command:
 
 ::
 
     $ pcluster create mycluster
 
-Once the cluster reaches the "CREATE_COMPLETE" status, connect using your normal SSH client/settings.
-For more details on connecting to EC2 instances, check the `EC2 User Guide
+Once the cluster reaches the "CREATE_COMPLETE" status, connect using the pcluster ssh command:
+
+::
+
+    $ pcluster ssh mycluster
+
+For more details on connecting to EC2 instances, please refer to the `EC2 User Guide
 <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html#ec2-connect-to-instance-linux>`_.
 
 
@@ -198,15 +189,15 @@ CfnCluster from a `Python Virtual Environment <https://docs.python.org/3/tutoria
 
 |
 
-**Distinct IAM Custom Policies**
+**Custom IAM policies are no longer supported**
 
 Custom IAM Policies cannot be used with AWS ParallelCluster.
-If your environment requires custom IAM policies, you must create the new ones by following the :ref:`IAM in AWS ParallelCluster <iam>`
-guide.
+If your environment requires custom IAM policies, please create them by following the guidelines detailed in
+the :ref:`IAM in AWS ParallelCluster <iam>` guide.
 
 |
 
-**Different configuration files**
+**ParallelCluster uses different configuration files**
 
 The AWS ParallelCluster configuration file resides in the :code:`~/.parallelcluster` folder, unlike the CfnCluster one,
 which was created in the :code:`~/.cfncluster` folder.
@@ -224,7 +215,7 @@ has been changed to
 
 |
 
-**Ganglia disabled by default**
+**Ganglia is disabled by default**
 
 Ganglia is disabled by default in ParallelCluster.
 You can enable it by setting the :code:`extra_json` parameter as described below:

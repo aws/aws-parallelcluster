@@ -12,9 +12,9 @@ The pre-install script is executed before any cluster deployment bootstrap actio
 building EBS volumes, and enabling the chosen scheduler.
 Typical pre-install actions may include modifying storage, adding extra users, or installing additional packages.
 
-post-install actions are invoked after the cluster bootstrap process is complete as the last action before an instance is
-considered complete. Typical post-install actions may include changing scheduler settings, modifying shared storage,
-or installing addiitonal packages.
+post-install actions are invoked after the cluster bootstrap process is complete as the last action before an
+instance is considered complete. Typical post-install actions may include changing scheduler settings, modifying
+shared storage, or installing addiitonal packages.
 
 Arguments can be passed to scripts by specifying them in the config.  They must be passed double-quoted to the
 pre/post-install actions.

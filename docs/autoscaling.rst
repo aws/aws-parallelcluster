@@ -22,9 +22,10 @@ Scaling Up
 
 Every minute, a process called jobwatcher_ runs on the master instance and evaluates the current number of instances
 required by the pending jobs in the queue.
-If the total number of busy nodes and requested nodes is greater than the current desired value in the ASG, more instances
-are added.
-If additional jobs are submitted, the queue will be re-evaluated and the ASG will be updated up to the ``max_queue_size``.
+If the total number of busy nodes and requested nodes is greater than the current desired value in the ASG,
+more instances will be added.
+If additional jobs are submitted, the queue will be re-evaluated by jobwatcher_ and the ASG will be increased
+up to the ``max_queue_size``.
 
 With Grid Engine, each job requires a number of slots to run (one slot corresponds to one processing unit, e.g. a vCPU).
 When evaluating the number of instances required to serve currently pending jobs that are queued, the jobwatcher divides

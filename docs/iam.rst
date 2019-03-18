@@ -3,8 +3,8 @@
 IAM in AWS ParallelCluster
 ==========================
 
-AWS ParallelCluster utilizes multiple AWS services to deploy and operate HPC clusters.  The services used are listed in the
-:ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
+AWS ParallelCluster utilizes multiple AWS services to deploy and operate HPC clusters.  The services used are
+listed in the :ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
 
 AWS ParallelCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of
 the cluster. By default, the EC2 IAM role is created as part of the cluster creation process by CloudFormation.
@@ -138,7 +138,7 @@ When using SGE, Slurm or Torque as a scheduler:
       ]
   }
 
-When using awsbatch as a scheduler, you must include the same policies as those assigned to the BatchUserRole
+When using AWS Batch as a scheduler, you must include the same policies as those assigned to the BatchUserRole
 defined in the Batch CloudFormation nested stack.
 The BatchUserRole ARN is provided as a stack output.  Here is an overview of the required permissions:
 

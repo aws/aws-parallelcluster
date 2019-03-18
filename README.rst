@@ -10,23 +10,13 @@ AWS ParallelCluster - HPC for the Cloud
 .. |Version| image:: https://badge.fury.io/py/aws-parallelcluster.png
     :target: https://badge.fury.io/py/aws-parallelcluster
 
-AWS ParallelCluster is an AWS-supported Open Source cluster management tool that makes it easy to deploy and
-manage High Performance Computing (HPC) clusters in the AWS cloud.
-
-AWS ParallelCluster supports the following features:
-
-- Multiple Linux flavors including Amazon Linux, CentOS, and Ubuntu.
-- Configurable autoscaling of compute resources.
-- Custom AMIs.
-- Shared file systems built from EBS, EFS, and FSxL (Lustre) volumes.
-- EBS RAID functionality.
-- Private subnet deployments.
-- Multiple HPC schedulers including AWS Batch, Grid Engine, Torque, and Slurm.
-
-AWS ParallelCluster facilitates both quick start proof-of-concepts (POCs) and massive production deployments.
-It can be used to orchestrate higher level workflow use cases such as automated DNA sequencing pipelines,
-global weather forecasting, cryptography, fluid dynamics simulations, jet engine design, credit card fraud
-detection, insurance risk modeling, and protein-ligand docking analysis.
+AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
+manage High Performance Computing (HPC) clusters in the AWS cloud. Built on the Open Source CfnCluster project,
+AWS ParallelCluster enables you to quickly build an HPC compute environment in AWS.  It automatically sets up the
+required compute resources and a shared filesystem and offers a variety of batch schedulers such as AWS Batch, SGE,
+Torque, and Slurm.  AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production
+deployments.  You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing
+workflow, on top of AWS ParallelCluster.
 
 -----------
 Quick Start
@@ -128,7 +118,7 @@ Changes
 
 CfnCluster 1.6 IAM Change
 =========================
-Between CfnCluster 1.5.4 and 1.6.0, we made a change to the CfnClusterInstancePolicy that adds “s3:GetObject” permissions
+Between CfnCluster 1.5.4 and 1.6.0, we made a change to the CfnClusterInstancePolicy that adds "s3:GetObject" permissions
 on objects in <REGION>-cfncluster bucket, "autoscaling:SetDesiredCapacity", "autoscaling:DescribeTags" permissions, and
 "cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*.
 
@@ -137,7 +127,7 @@ For more detailed information, please visit: https://aws-parallelcluster.readthe
 
 CfnCluster 1.5 IAM Change
 =========================
-Between CfnCluster 1.4.2 and 1.5.0, we made a change to the CfnClusterInstancePolicy that adds “ec2:DescribeVolumes” permissions. If you are using a custom policy (e.g. "ec2_iam_role" is specified in your config), please be sure it includes this new permission.
+Between CfnCluster 1.4.2 and 1.5.0, we made a change to the CfnClusterInstancePolicy that adds "ec2:DescribeVolumes" permissions. If you are using a custom policy (e.g. "ec2_iam_role" is specified in your config), please be sure it includes this new permission.
 For more detailed information, please visit: https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
 
 CfnCluster 1.2 and Earlier
