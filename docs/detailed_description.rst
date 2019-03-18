@@ -20,3 +20,6 @@ It can be used to orchestrate higher level workflow use cases such as automated 
 global weather forecasting, cryptography, fluid dynamics simulations, jet engine design, credit card fraud
 detection, insurance risk modeling, and protein-ligand docking analysis.
 
+.. spelling::
+   FSxL
+   Boto

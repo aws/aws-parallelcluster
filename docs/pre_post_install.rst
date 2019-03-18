@@ -14,7 +14,7 @@ Typical pre-install actions may include modifying storage, adding extra users, o
 
 post-install actions are invoked after the cluster bootstrap process is complete as the last action before an
 instance is considered complete. Typical post-install actions may include changing scheduler settings, modifying
-shared storage, or installing addiitonal packages.
+shared storage, or installing additional packages.
 
 Arguments can be passed to scripts by specifying them in the config.  They must be passed double-quoted to the
 pre/post-install actions.

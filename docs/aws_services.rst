@@ -18,7 +18,7 @@ The following AWS services are used in AWS ParallelCluster:
 * AWS CodeBuild
 * AWS Lambda
 * Amazon Elastic Container Registry (ECR)
-* Amazon Cloudwatch
+* Amazon CloudWatch
 
 .. _aws_services_cloudformation:
 
@@ -37,7 +37,7 @@ AWS Identity and Access Management (IAM)
 ----------------------------------------
 
 AWS IAM is used within AWS ParallelCluster to provide a least privileged Amazon EC2 IAM Role for the instances
-that is specific to each invividual cluster.  AWS ParallelCluster instances are given access only to the
+that is specific to each individual cluster.  AWS ParallelCluster instances are given access only to the
 specific API calls that are required to deploy and manage the cluster.
 
 With AWS Batch clusters, IAM Roles are also created for the components involved with the Docker image building process
@@ -61,7 +61,7 @@ For more details about Amazon SNS, please visit: http://aws.amazon.com/sns/
 Amazon Simple Queuing Service (SQS)
 -----------------------------------
 
-Amazon SQS is used to hold notifications (messages) from Auto Scaling evnts sent through Amazon SNS and notifications
+Amazon SQS is used to hold notifications (messages) from Auto Scaling events sent through Amazon SNS and notifications
 from the ComputeFleet instances.  This decouples the sending of notifications from the receiving and allows the Master
 to handle them through polling.  The MasterServer runs Amazon SQSwatcher and polls the queue. AutoScaling and the
 ComputeFleet instances post messages to the queue.
@@ -163,3 +163,6 @@ Amazon CloudWatch is used to log Docker image build steps and the standard outpu
 The service is only used with AWS Batch clusters.
 
 For more details, please visit: https://aws.amazon.com/cloudwatch/
+
+.. spelling::
+   CloudWatch
