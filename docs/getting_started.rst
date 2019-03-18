@@ -7,22 +7,30 @@
 Getting started with AWS ParallelCluster
 ########################################
 
-AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
+AWS ParallelCluster is an AWS-supported Open Source cluster management tool that makes it easy to deploy and
 manage High Performance Computing (HPC) clusters in the AWS cloud.
-Built on the Open Source CfnCluster project, AWS ParallelCluster enables you to quickly build an HPC compute
-environment in AWS.
-It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch
-schedulers such as AWS Batch, SGE, Torque, and Slurm.
-AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
-You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on
-top of AWS ParallelCluster.
+
+AWS ParallelCluster supports the following features:
+
+- Multiple Linux flavors including Amazon Linux, CentOS, and Ubuntu.
+- Configurable autoscaling of compute resources.
+- Custom AMIs.
+- Shared file systems built from EBS, EFS, and FSxL (Lustre) volumes.
+- EBS RAID functionality.
+- Private subnet deployments.
+- Multiple HPC schedulers including AWS Batch, Grid Engine, Torque, and Slurm.
+
+AWS ParallelCluster facilitates both quick start proof-of-concepts (POCs) and massive production deployments.
+It can be used to orchestrate higher level workflow use cases such as automated DNA sequencing pipelines, 
+global weather forecasting, cryptography, fluid dynamics simulations, jet engine design, credit card fraud
+detection, insurance risk modeling, and protein-ligand docking analysis.
 
 Installing AWS ParallelCluster
 ==============================
 
-The current working version is aws-parallelcluster-|version|. The CLI is written in Python and uses BOTO for AWS
-actions.
-You can install the CLI with the following commands, depending on your OS.
+The current working version is aws-parallelcluster-|version|. The CLI is written in Python and uses the Boto library
+to perform AWS actions.
+The CLI can be installed with the following commands:
 
 Linux/OSX
 ---------
@@ -32,17 +40,17 @@ Linux/OSX
 
 Windows
 -------
-Windows support is experimental!!
+NOTE - Windows support is experimental!!
 
 Install the following packages:
 
 * Python3.6 - https://www.python.org/download/
 * pip - https://pip.pypa.io/en/stable/installing/
 
-Once installed, you should update the Environment Variables to have the Python install directory and Python Scripts
+Once installed, update the Environment Variables to have the Python install directory and Python Scripts
 directory in the PATH, for example: ``C:\Python36-32;C:\Python36-32\Scripts``
 
-Now it should be possible to run the following within a command prompt window:
+It should now be possible to run the following within a command prompt window:
 
 ::
 
@@ -51,45 +59,42 @@ Now it should be possible to run the following within a command prompt window:
 Upgrading
 ---------
 
-To upgrade an older version of AWS ParallelCluster, you can use either of the following commands, depending on how it
-was originally installed:
+To upgrade an older version of AWS ParallelCluster:
 
 ::
 
   $ sudo pip install --upgrade aws-parallelcluster
 
-**Remember when upgrading to check that the existing config is compatible with the latest version installed.**
+**Please remember to check that the existing configuration is compatible with the version of ParallelCluster being installed.**
 
 .. _getting_started_configuring_parallelcluster:
 
 Configuring AWS ParallelCluster
 ===============================
 
-Once installed you will need to setup some initial config. The easiest way to do this is below:
+Once installed, you will need to perform some initial configuration steps.  The easiest way to do this is:
 
 ::
 
     $ pcluster configure
 
-This configure wizard will prompt you for everything you need to create your cluster.
-You will first be prompted for your cluster template name, which is the logical name of the template you will create a
-cluster from.
+The pcluster configure wizard will prompt for all information required to create your cluster.
+
+You must first provide the name of the cluster template:
 
 ::
 
         Cluster Template [mycluster]:
 
-Next, you will be prompted for your AWS Access & Secret Keys. Enter the keys for an IAM user with administrative
-privileges.
-These can also be read from your environment variables or the AWS CLI config.
+You will then be prompted to provide AWS Access and Secret Keys.  Enter the keys for an IAM user with administrative
+privileges.  These can also be read from your environment variables or the AWS CLI config:
 
 ::
 
         AWS Access Key ID []:
         AWS Secret Access Key ID []:
 
-Now, you will be presented with a list of valid AWS region identifiers. Choose the region in which you'd like your
-cluster to run.
+A list of valid AWS region identifiers will then be provided.  Choose the region that the cluster will deployed into:
 
 ::
 
@@ -108,15 +113,15 @@ cluster to run.
             sa-east-1
         AWS Region ID []:
 
-Choose a descriptive name for your VPC. Typically, this will be something like :code:`production` or :code:`test`.
+Choose a descriptive name for your VPC.  Typically, this will be something like :code:`production`, :code:`test`, or :code:`dev`.
 
 ::
 
         VPC Name [myvpc]:
 
-Next, you will need to choose a key pair that already exists in EC2 in order to log into your master instance.
-If you do not already have a key pair, refer to the EC2 documentation on `EC2 Key Pairs
-<http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html>`_.
+Now choose a key pair that already exists in EC2 in order to log into your master instance.
+If you do not already have a key pair, please refer to the EC2 documentation on `EC2 Key Pairs
+<http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html>`_ for additional guidance.
 
 ::
 
@@ -126,7 +131,7 @@ If you do not already have a key pair, refer to the EC2 documentation on `EC2 Ke
             production-key
         Key Name []:
 
-Choose the VPC ID into which you'd like your cluster launched.
+Choose the VPC ID that the cluster will be launched from:
 
 ::
 
@@ -135,7 +140,7 @@ Choose the VPC ID into which you'd like your cluster launched.
             vpc-blk4982d
         VPC ID []:
 
-Finally, choose the subnet in which you'd like your master server to run.
+Choose the subnet into which the master server will be created:
 
 ::
 
@@ -146,19 +151,19 @@ Finally, choose the subnet in which you'd like your master server to run.
         Master Subnet ID []:
 
 
-Next, a simple cluster launches into a VPC and uses an existing subnet which supports public IP's i.e. the route table
+The cluster will launch from a VPC and use an existing subnet which supports public IP's i.e. the route table
 for the subnet is :code:`0.0.0.0/0 => igw-xxxxxx`.
 The VPC must have :code:`DNS Resolution = yes` and :code:`DNS Hostnames = yes`.
-It should also have DHCP options with the correct :code:`domain-name` for the region, as defined in the docs: `VPC DHCP
+It should also have DHCP options with the correct :code:`domain-name` for the region, as defined in the documentation: `VPC DHCP
 Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_.
 
-Once all of those settings contain valid values, you can launch the cluster by running the create command:
+Once all of these settings contain valid values, the cluster can be launched by running the create command:
 
 ::
 
     $ pcluster create mycluster
 
-Once the cluster reaches the "CREATE_COMPLETE" status, you can connect using your normal SSH client/settings.
+Once the cluster reaches the "CREATE_COMPLETE" status, connect using your normal SSH client/settings.
 For more details on connecting to EC2 instances, check the `EC2 User Guide
 <https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/EC2_GetStarted.html#ec2-connect-to-instance-linux>`_.
 
@@ -168,11 +173,11 @@ Moving from CfnCluster to AWS ParallelCluster
 
 AWS ParallelCluster is an enhanced and productized version of CfnCluster.
 
-If you are a previous CfnCluster user, we encourage you to start using and creating new clusters only with AWS
-ParallelCluster.
+If you are a previous CfnCluster user, we encourage you to start using and creating new clusters using only
+AWS ParallelCluster.
 Although you can still use CfnCluster, it will no longer be developed.
 
-The main differences between CfnCluster and AWS ParallelCluster are listed below.
+The primary differences between CfnCluster and AWS ParallelCluster are described below.
 
 |
 
@@ -186,30 +191,30 @@ The following commands will no longer work on clusters created by CfnCluster::
      pcluster start cluster_name
      pcluster status cluster_name
 
-You need to use the :code:`cfncluster` CLI to manage your old clusters.
+You must use the :code:`cfncluster` CLI to manage your old clusters.
 
-If you need an old CfnCluster package to manage your old clusters, we recommend you install and use it
-from a `Python Virtual Environment <https://docs.python.org/3/tutorial/venv.html>`_.
+If an old CfnCluster package is still required to manage your legacy clusters, we recommend installing and using
+CfnCluster from a `Python Virtual Environment <https://docs.python.org/3/tutorial/venv.html>`_.
 
 |
 
 **Distinct IAM Custom Policies**
 
-Custom IAM Policies, previously used for CfnCluster cluster creation, cannot be used with AWS ParallelCluster.
-If you require custom policies you need to create the new ones by following :ref:`IAM in AWS ParallelCluster <iam>`
+Custom IAM Policies cannot be used with AWS ParallelCluster.
+If your environment requires custom IAM policies, you must create the new ones by following the :ref:`IAM in AWS ParallelCluster <iam>`
 guide.
 
 |
 
 **Different configuration files**
 
-The AWS ParallelCluster configuration file resides in the :code:`~/.parallelcluster` folder, unlike the CfnCluster one
-that was created in the :code:`~/.cfncluster` folder.
+The AWS ParallelCluster configuration file resides in the :code:`~/.parallelcluster` folder, unlike the CfnCluster one,
+which was created in the :code:`~/.cfncluster` folder.
 
-You can still use your existing configuration file but this needs to be moved from :code:`~/.cfncluster/config` to
+You can still use your existing configuration file by moving or copying from :code:`~/.cfncluster/config` to
 :code:`~/.parallelcluster/config`.
 
-If you use the :code:`extra_json` configuration parameter, it must be changed as described below:
+The :code:`extra_json` configuration parameter must be changed as described below:
 
 :code:`extra_json = { "cfncluster" : { } }`
 
@@ -221,16 +226,15 @@ has been changed to
 
 **Ganglia disabled by default**
 
-Ganglia is disabled by default.
+Ganglia is disabled by default in ParallelCluster.
 You can enable it by setting the :code:`extra_json` parameter as described below:
 
 :code:`extra_json = { "cluster" : { "ganglia_enabled" : "yes" } }`
 
-and changing the Master SG to allow connections to port 80.
-The :code:`parallelcluster-<CLUSTER_NAME>-MasterSecurityGroup-<xxx>` Security Group has to be modified by
+The :code:`parallelcluster-<CLUSTER_NAME>-MasterSecurityGroup-<xxx>` Security Group must also be modified by
 `adding a new Security Group Rule
 <https://docs.aws.amazon.com/en_us/AWSEC2/latest/UserGuide/using-network-security.html#adding-security-group-rule>`_
-to allow Inbound connection to the port 80 from your Public IP.
+to allow Inbound connection to port 80 from the "public" IP block that needs to access Ganglia.
 
 .. spelling::
    aws

@@ -1,8 +1,9 @@
+boto3
+configparser
+future
+doc8
 sphinx>=1.8.0
 sphinx-argparse
-tabulate
-boto3
-future
-configparser
 sphinxcontrib-spelling
-doc8
+tabulate
+tox

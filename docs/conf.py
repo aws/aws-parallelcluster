@@ -44,7 +44,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'AWS ParallelCluster'
-copyright = u'2014-2018, Amazon Web Services'
+copyright = u'2014-2019, Amazon Web Services'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -299,7 +299,7 @@ texinfo_documents = [
 epub_title = u'AWS ParallelCluster'
 epub_author = u'Amazon Web Services'
 epub_publisher = u'Amazon Web Services'
-epub_copyright = u'2014-2018, Amazon Web Services'
+epub_copyright = u'2014-2019, Amazon Web Services'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'aws-parallelcluster'

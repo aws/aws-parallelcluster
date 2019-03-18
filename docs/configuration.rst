@@ -14,7 +14,7 @@ Configuration is defined in multiple sections.
 
 Required sections are "global" and "aws".
 
-At least one "cluster" and one "subnet" section must be included.
+At least one "cluster" and one "subnet" section must also be included.
 
 A section starts with the section name in brackets, followed by parameters and configuration. ::
 

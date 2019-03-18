@@ -3,28 +3,30 @@
 Custom Bootstrap Actions
 ========================
 
-AWS ParallelCluster can execute arbitrary code either before(pre) or after(post) the main bootstrap action during
-cluster creation. This code is typically stored in S3 and accessed via HTTP(S) during cluster creation. The code will
-be executed as root and can be in any script language supported by the cluster OS, typically `bash` or `python`.
+AWS ParallelCluster can execute arbitrary code from an S3 bucket either before (pre) or after (post) the main
+bootstrap action during cluster creation.  The pre- and post-install scripts will be executed as root and
+can be written in any script language supported by the cluster operating system.
+This is typically `bash` or `python`.
 
-pre-install actions are called before any cluster deployment bootstrap such as configuring NAT, EBS and the scheduler.
-Typical pre-install actions may include modifying storage, adding extra users or packages.
+The pre-install script is executed before any cluster deployment bootstrap action such as configuring NAT,
+building EBS volumes, and enabling the chosen scheduler.
+Typical pre-install actions may include modifying storage, adding extra users, or installing additional packages.
 
-post-install actions are called after cluster bootstrap is complete, as the last action before an instance is
-considered complete. Typical post-install actions may include changing scheduler settings, modifying storage or
-packages.
+post-install actions are invoked after the cluster bootstrap process is complete as the last action before an instance is
+considered complete. Typical post-install actions may include changing scheduler settings, modifying shared storage,
+or installing addiitonal packages.
 
-Arguments can be passed to scripts by specifying them in the config. These will be passed double-quoted to the
+Arguments can be passed to scripts by specifying them in the config.  They must be passed double-quoted to the
 pre/post-install actions.
 
-If a pre/post-install actions fails, then the instance bootstrap will be considered failed and it will not continue.
-Success is signalled with an exit code of 0, any other exit code will be considered a fail.
+If a pre/post-install actions fails, the instance bootstrap will be considered failed and will not continue.
+Success is signalled with an exit code of 0.  Any other exit code will be considered a failure.
 
 Configuration
 -------------
 
-The following config settings are used to define pre/post-install actions and arguments. All options are optional and
-are not required for basic cluster install.
+The following config settings are used to define pre/post-install actions and arguments.  All parameters are optional and
+are *not* required for basic cluster install.
 
 ::
 
@@ -54,9 +56,9 @@ The first two arguments ``$0`` and ``$1`` are reserved for the script name and u
 Example
 -------
 
-The following are some steps to create a simple post install script that installs the R packages in a cluster.
+Here is an example of how to create a simple post-install script to install some R packages on a cluster.
 
-1. Create a script. For the R example, see below
+1. Create a script. For the R example, see below:
 
 ::
 
@@ -64,11 +66,14 @@ The following are some steps to create a simple post install script that install
 
     yum -y install --enablerepo=epel R
 
-2. Upload the script with the correct permissions to S3
+2. Upload the script with the correct permissions to S3:
 
-``aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh``
+::
 
-3. Update AWS ParallelCluster config to include the new post install action.
+$ chmod 0755 myscript.sh
+$ aws s3 cp --acl public-read /path/to/myscript.sh s3://<bucket-name>/myscript.sh
+
+3. Update the AWS ParallelCluster configuration file to include the new post install action:
 
 ::
 
@@ -76,7 +81,7 @@ The following are some steps to create a simple post install script that install
     ...
     post_install = https://<bucket-name>.s3.amazonaws.com/myscript.sh
 
-If the bucket does not have public-read permission use ``s3`` as URL scheme.
+If the bucket does not have public-read permission, use ``s3`` as the URL scheme.
 
 ::
 
@@ -85,6 +90,6 @@ If the bucket does not have public-read permission use ``s3`` as URL scheme.
     post_install = s3://<bucket-name>/myscript.sh
 
 
-4. Launch a cluster
+4. Launch a new cluster stack:
 
 ``pcluster create mycluster``

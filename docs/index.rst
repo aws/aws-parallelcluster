@@ -8,15 +8,23 @@
 AWS ParallelCluster
 ###################
 
-AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
+AWS ParallelCluster is an AWS-supported Open Source cluster management tool that makes it easy to deploy and
 manage High Performance Computing (HPC) clusters in the AWS cloud.
-Built on the Open Source CfnCluster project, AWS ParallelCluster enables you to quickly build an HPC compute
-environment in AWS.
-It automatically sets up the required compute resources and a shared filesystem and offers a variety of batch
-schedulers such as AWS Batch, SGE, Torque, and Slurm.
-AWS ParallelCluster facilitates both quick start proof of concepts (POCs) and production deployments.
-You can build higher level workflows, such as a Genomics portal that automates the entire DNA sequencing workflow, on
-top of AWS ParallelCluster.
+
+AWS ParallelCluster supports the following features:
+
+- Multiple Linux flavors including Amazon Linux, CentOS, and Ubuntu.
+- Configurable autoscaling of compute resources.
+- Custom AMIs.
+- Shared file systems built from EBS, EFS, and FSxL (Lustre) volumes.
+- EBS RAID functionality.
+- Private subnet deployments.
+- Multiple HPC schedulers including AWS Batch, Grid Engine, Torque, and Slurm.
+
+AWS ParallelCluster facilitates both quick start proof-of-concepts (POCs) and massive production deployments.
+It can be used to orchestrate higher level workflow use cases such as automated DNA sequencing pipelines,
+global weather forecasting, cryptography, fluid dynamics simulations, jet engine design, credit card fraud
+detection, insurance risk modeling, and protein-ligand docking analysis.
 
 .. toctree::
     :maxdepth: 2
@@ -31,8 +39,8 @@ top of AWS ParallelCluster.
 Getting Started
 ---------------
 
-If you've never used ``AWS ParallelCluster`` before, you should read the :doc:`Getting Started with AWS ParallelCluster
-<getting_started>` guide to get familiar with ``pcluster`` & its usage.
+If you have never used ``AWS ParallelCluster`` before, please read the :doc:`Getting Started with AWS ParallelCluster
+<getting_started>` guide to get familiar with ``pcluster`` and its usage.
 
 Additional Docs
 ---------------

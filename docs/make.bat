@@ -1,6 +1,6 @@
 @ECHO OFF
 
-REM Command file for Sphinx documentation
+REM Command file for building AWS ParallelCluster documentation with Sphinx
 
 if "%SPHINXBUILD%" == "" (
 	set SPHINXBUILD=sphinx-build

@@ -3,35 +3,35 @@
 IAM in AWS ParallelCluster
 ==========================
 
-AWS ParallelCluster utilizes multiple AWS services to deploy and operate a cluster. The services used are listed in the
+AWS ParallelCluster utilizes multiple AWS services to deploy and operate HPC clusters.  The services used are listed in the
 :ref:`AWS Services used in AWS ParallelCluster <aws_services>` section of the documentation.
 
 AWS ParallelCluster uses EC2 IAM roles to enable instances access to AWS services for the deployment and operation of
-the cluster. By default the EC2 IAM role is created as part of the cluster creation by CloudFormation. This means that
-the user creating the cluster must have the appropriate level of permissions
+the cluster. By default, the EC2 IAM role is created as part of the cluster creation process by CloudFormation.
+This requires the user creating the cluster to have the appropriate level of permissions.
 
 Defaults
 --------
 
-When using defaults, during cluster launch an EC2 IAM Role is created by the cluster, as well as all the resources
-required to launch the cluster. The user calling the create call must have the right level of permissions to create all
-the resources including an EC2 IAM Role. This level of permissions is typically an IAM user with the
+When using defaults, an EC2 IAM Role will be created along with all other resources required to launch the cluster.
+The user performing the stack creation must have the right level of permissions to create all
+necessary resources, including an EC2 IAM Role. This level of permissions is typically provided to IAM users with the
 `AdministratorAccess` managed policy. More details on managed policies can be found here:
 http://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_managed-vs-inline.html#aws-managed-policies
 
 Using an existing EC2 IAM role
 ------------------------------
 
-When using AWS ParallelCluster with an existing EC2 IAM role, you must first define the IAM policy and role before
-attempting to launch the cluster. Typically the reason for using an existing EC2 IAM role within AWS ParallelCluster is
-to reduce the permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 IAM role
-and the AWS ParallelCluster IAM user. You should create both as individual policies in IAM and then attach to the
-appropriate resources. In both policies, you should replace REGION and AWS ACCOUNT ID with the appropriate values.
+When using AWS ParallelCluster with an existing EC2 IAM role, the IAM policy and role must be already defined before
+attempting to launch the cluster. Typically, the reason for using an existing EC2 IAM role within AWS ParallelCluster is
+to reduce permissions granted to users launching clusters. Below is an example IAM policy for both the EC2 IAM role
+and the AWS ParallelCluster IAM user.  You should create both as individual policies in IAM and then attach to the
+appropriate resources, replacing REGION and AWS ACCOUNT ID with the appropriate values.
 
 ParallelClusterInstancePolicy
 -----------------------------
 
-In case you are using SGE, Slurm or Torque as a scheduler:
+When using SGE, Slurm or Torque as a scheduler:
 
 ::
 
@@ -138,10 +138,9 @@ In case you are using SGE, Slurm or Torque as a scheduler:
       ]
   }
 
-In case you are using awsbatch as a scheduler, you need to include the same policies
-as the ones assigned to the BatchUserRole that is defined in the Batch CloudFormation nested stack.
-The BatchUserRole ARN is provided as a stack output.
-Here is an overview of the required permissions:
+When using awsbatch as a scheduler, you must include the same policies as those assigned to the BatchUserRole
+defined in the Batch CloudFormation nested stack.
+The BatchUserRole ARN is provided as a stack output.  Here is an overview of the required permissions:
 
 ::
 
@@ -205,10 +204,10 @@ Here is an overview of the required permissions:
 ParallelClusterUserPolicy
 -------------------------
 
-In case you are using SGE, Slurm or Torque as a scheduler:
+Note: if you use a custom role, ``ec2_iam_role = role_name``, the IAM resource must be changed to include
+the name of this custom role.
 
-Note, if you use a custom role, ``ec2_iam_role = role_name``, you'll need to change the IAM resource to include
-the name of that role.
+When using SGE, Slurm or Torque as a scheduler:
 
 From: ::
 
@@ -443,7 +442,7 @@ To: ::
       ]
   }
 
-In case you are using awsbatch as a scheduler:
+When using awsbatch as a scheduler:
 
 ::
 
@@ -655,4 +654,3 @@ In case you are using awsbatch as a scheduler:
       }
     ]
   }
-
