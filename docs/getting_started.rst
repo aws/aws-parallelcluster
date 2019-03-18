@@ -143,7 +143,7 @@ correct :code:`domain-name` for the region.
 Please refer to the `VPC DHCP Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_
 documentation for further guidance.
 
-Once these paraeters contain valid values, the cluster can be launched by running the create command:
+Once these parameters contain valid values, the cluster can be launched by running the create command:
 
 ::
 
