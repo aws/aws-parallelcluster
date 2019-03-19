@@ -188,8 +188,8 @@ class ParallelClusterConfig(object):
         """Return stack name."""
         return "parallelcluster-" + self.args.cluster_name
 
-    def __get_stack_template(self):
-        """Get stack template."""
+    def __get_stack_parameter(self, parameter):
+        """Get a parameter from stack."""
         cfn = boto3.client(
             "cloudformation",
             region_name=self.region,
@@ -202,11 +202,9 @@ class ParallelClusterConfig(object):
         except ClientError as e:
             self.__fail(e.response.get("Error").get("Message"))
 
-        cli_template = [
-            p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"
-        ][0]
-
-        return cli_template
+        return next(
+            (i.get("ParameterValue") for i in stack.get("Parameters") if i.get("ParameterKey") == parameter), None
+        )
 
     def __get_cluster_template(self):
         """
@@ -220,12 +218,12 @@ class ParallelClusterConfig(object):
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
             # parameter. We always get the template to use from CloudFormation.
-            cluster_template = self.__get_stack_template()
+            cluster_template = self.__get_stack_parameter("CLITemplate")
         else:
             if "cluster_template" in self.args and self.args.cluster_template is not None:
                 cluster_template = self.args.cluster_template
             elif args_func == "update":
-                cluster_template = self.__get_stack_template()
+                cluster_template = self.__get_stack_parameter("CLITemplate")
             else:
                 if not self.__config.has_option("global", "cluster_template"):
                     self.__fail("Missing 'cluster_template' option in [global] section.")
@@ -804,6 +802,22 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
+    def __check_fsx_updates(self, fsx_section, fsx_keys):
+        """
+        Check FSx Parameters for updates.
+
+        :param fsx_section: name of FSx Section
+        :param fsx_keys: ordered list of options in config
+        """
+        new_values = [self.__get_option_in_section(fsx_section, option) or "NONE" for option in fsx_keys]
+        old_values = self.__get_stack_parameter("FSXOptions").split(",")
+
+        if new_values != old_values:
+            self.__fail(
+                "Updating FSx Filesystem is not supported, please submit a feature request"
+                " if you need it: https://github.com/aws/aws-parallelcluster/issues/new"
+            )
+
     def __init_fsx_parameters(self):
         # Determine if FSx settings are defined and set section
         fsx_section = self.__get_section_name("fsx_settings", "fsx")
@@ -835,6 +849,11 @@ class ParallelClusterConfig(object):
                 ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", None)),
             ]
         )
+
+        # FSx parameters can't be updated without creating a new resource
+        # to avoid having customers delete their Filesystem we're disabling updates
+        if self.args.func.__name__ == "update":
+            self.__check_fsx_updates(fsx_section, fsx_options.keys())
 
         temp_fsx_options = []
         for key in fsx_options:
