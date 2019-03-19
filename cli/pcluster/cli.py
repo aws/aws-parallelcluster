@@ -243,7 +243,7 @@ Examples::
     plist = subparsers.add_parser(
         "list",
         help="Displays a list of stacks associated with AWS ParallelCluster.",
-        epilog="This comamnd lists the names of any CloudFormation stacks named parallelcluster-*",
+        epilog="This command lists the names of any CloudFormation stacks named parallelcluster-*",
     )
     _addarg_config(plist)
     _addarg_region(plist)

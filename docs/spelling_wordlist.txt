@@ -15,7 +15,6 @@ awsbqueues
 awsbstat
 awsbsub
 berks
-command
 config
 createami
 dir
