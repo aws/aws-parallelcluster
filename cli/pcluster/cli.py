@@ -172,7 +172,11 @@ Examples::
     _addarg_region(pupdate)
     _addarg_nowait(pupdate)
     pupdate.add_argument(
-        "-nr", "--norollback", action="store_true", default=False, help="Disable CloudFormation stack rollback on error."
+        "-nr",
+        "--norollback",
+        action="store_true",
+        default=False,
+        help="Disable CloudFormation stack rollback on error.",
     )
     pupdate.add_argument("-u", "--template-url", help="Specifies the URL for a custom CloudFormation template.")
     pupdate.add_argument("-t", "--cluster-template", help="Indicates which cluster template to use.")
@@ -288,7 +292,9 @@ Variables substituted::
     pssh.set_defaults(func=command)
 
     # createami command subparser
-    pami = subparsers.add_parser("createami", help="(Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster.")
+    pami = subparsers.add_parser(
+        "createami", help="(Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster."
+    )
     pami.add_argument(
         "-ai",
         "--ami-id",
@@ -301,7 +307,8 @@ Variables substituted::
         "--os",
         dest="base_ami_os",
         required=True,
-        help="Specifies the OS of the base AMI. " "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
+        help="Specifies the OS of the base AMI. "
+        "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
     )
     pami.add_argument(
         "-ap",
