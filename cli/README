@@ -13,20 +13,20 @@ You can build higher level workflows, such as a Genomics portal that automates t
 
     positional arguments:
       {create,update,delete,start,stop,status,list,instances,ssh,configure,version,createami}
-        create              creates a cluster
-        update              update a running cluster
-        delete              delete a cluster
-        start               start the compute fleet that has been stopped
-        stop                stop the compute fleet, but leave the master server running for debugging/development
-        status              pull the current status of the cluster
-        list                display a list of stacks associated with AWS ParallelCluster
-        instances           display a list of all instances in a cluster
-        ssh                 connect to the master server using SSH
-        configure           creating initial AWS ParallelCluster configuration
-        version             display version of AWS ParallelCluster
-        createami           (Linux/OSX) create a custom AMI to use with AWS ParallelCluster
+        create              Creates a cluster.
+        update              Updates a running cluster.
+        delete              Deletes a cluster.
+        start               Starts the compute fleet that has been stopped.
+        stop                Stops the compute fleet, but leave the master server running for debugging/development.
+        status              Pulls the current status of the cluster.
+        list                Displays a list of stacks associated with AWS ParallelCluster.
+        instances           Displays a list of all instances in a cluster.
+        ssh                 Connects to the master server using SSH.
+        configure           Starts the AWS ParallelCluster configuration.
+        version             Displays version of AWS ParallelCluster.
+        createami           (Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster.
 
     optional arguments:
-      -h, --help            show this help message and exit
+      -h, --help            Shows this help message and exits.
 
     For command specific flags run pcluster [command] --help
