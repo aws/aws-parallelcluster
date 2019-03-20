@@ -21,7 +21,7 @@ from tests.common.schedulers_common import SgeCommands
 
 @pytest.mark.regions(["us-east-1", "eu-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.oss(["centos7"])
+@pytest.mark.oss(["centos7", "alinux"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir):
