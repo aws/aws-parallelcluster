@@ -1560,10 +1560,7 @@
             "KeyType": "HASH"
           }
         ],
-        "ProvisionedThroughput": {
-          "ReadCapacityUnits": 5,
-          "WriteCapacityUnits": 5
-        }
+        "BillingMode": "PAY_PER_REQUEST"
       }
     },
     "RootRole": {
@@ -2159,7 +2156,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -2170,7 +2167,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -2187,6 +2184,16 @@
                 },
                 "\n",
                 "  exit 1\n",
+                "}\n",
+                "function vendor_cookbook\n",
+                "{\n",
+                "  mkdir /tmp/cookbooks\n",
+                "  cd /tmp/cookbooks\n",
+                "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "  HOME_BAK=\"${HOME}\"\n",
+                "  export HOME=\"/tmp\"\n",
+                "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                "  export HOME=\"${HOME_BAK}\"\n",
                 "}\n",
                 "function bootstrap_instance\n",
                 "{\n",
@@ -2206,6 +2213,7 @@
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  vendor_cookbook\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -2314,10 +2322,10 @@
                 "else\n",
                 "  bootstrap_instance\n",
                 "fi\n",
-                "mkdir /tmp/cookbooks\n",
-                "cd /tmp/cookbooks\n",
-                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "  vendor_cookbook\n",
+                "fi\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -2351,7 +2359,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -2534,35 +2541,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },
@@ -3000,7 +2978,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -3011,7 +2989,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3028,6 +3006,16 @@
                 },
                 "\n",
                 "  exit 1\n",
+                "}\n",
+                "function vendor_cookbook\n",
+                "{\n",
+                "  mkdir /tmp/cookbooks\n",
+                "  cd /tmp/cookbooks\n",
+                "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "  HOME_BAK=${HOME}\n",
+                "  export HOME=\"/tmp\"\n",
+                "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                "  export HOME=${HOME_BAK}\n",
                 "}\n",
                 "function bootstrap_instance\n",
                 "{\n",
@@ -3047,6 +3035,7 @@
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  vendor_cookbook\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -3155,10 +3144,10 @@
                 "else\n",
                 "  bootstrap_instance\n",
                 "fi\n",
-                "mkdir /tmp/cookbooks\n",
-                "cd /tmp/cookbooks\n",
-                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "  vendor_cookbook\n",
+                "fi\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -3192,7 +3181,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -3350,35 +3338,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },
@@ -3682,7 +3641,7 @@
                       "_none_"
                     ]
                   },
-                  "\" >> /etc/yum.conf' ]\n",
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                   " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                   {
                     "Fn::If": [
@@ -3693,7 +3652,7 @@
                       "false"
                     ]
                   },
-                  "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                   "--==BOUNDARY==\n",
                   "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
@@ -3710,6 +3669,16 @@
                   },
                   "\n",
                   "  exit 1\n",
+                  "}\n",
+                  "function vendor_cookbook\n",
+                  "{\n",
+                  "  mkdir /tmp/cookbooks\n",
+                  "  cd /tmp/cookbooks\n",
+                  "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                  "  HOME_BAK=${HOME}\n",
+                  "  export HOME=\"/tmp\"\n",
+                  "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                  "  export HOME=${HOME_BAK}\n",
                   "}\n",
                   "function bootstrap_instance\n",
                   "{\n",
@@ -3729,6 +3698,7 @@
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  vendor_cookbook\n",
                   "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
                   "proxy=",
@@ -3837,10 +3807,10 @@
                   "else\n",
                   "  bootstrap_instance\n",
                   "fi\n",
-                  "mkdir /tmp/cookbooks\n",
-                  "cd /tmp/cookbooks\n",
-                  "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                  "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "  vendor_cookbook\n",
+                  "fi\n",
                   "cd /tmp\n",
                   "# Call CloudFormation\n",
                   "cfn-init ${proxy_args} -s ",
@@ -3876,7 +3846,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -4034,35 +4003,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },

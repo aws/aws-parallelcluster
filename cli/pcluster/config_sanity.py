@@ -14,7 +14,6 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
-import json
 import sys
 import urllib.error
 import urllib.parse
@@ -23,6 +22,8 @@ from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
+
+from pcluster.utils import get_instance_vcpus, get_supported_batch_instances
 
 
 class ResourceValidator(object):
@@ -532,46 +533,74 @@ class ResourceValidator(object):
             ]:
                 self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
 
+            # Check spot bid percentage
+            if "SpotPrice" in resource_value:
+                spot_price = int(resource_value["SpotPrice"])
+                if spot_price > 100 or spot_price < 0:
+                    self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
+
+            min_size = int(resource_value["MinSize"])
+            desired_size = int(resource_value["DesiredSize"])
+            max_size = int(resource_value["MaxSize"])
+
+            if desired_size < min_size:
+                self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
+
+            if desired_size > max_size:
+                self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
+
+            if max_size < min_size:
+                self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
+
             # Check compute instance types
             if "ComputeInstanceType" in resource_value:
+                compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
-                    s3 = boto3.resource("s3", region_name=self.region)
-                    bucket_name = "%s-aws-parallelcluster" % self.region
-                    file_name = "instances/batch_instances.json"
-                    try:
-                        file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-                        supported_instances = json.loads(file_contents)
-                        for instance in resource_value["ComputeInstanceType"].split(","):
+                    supported_instances = get_supported_batch_instances(self.region)
+                    if supported_instances:
+                        for instance in compute_instance_type.split(","):
                             if not instance.strip() in supported_instances:
                                 self.__fail(
                                     resource_type, "Instance type %s not supported by batch in this region" % instance
                                 )
-                    except ClientError as e:
-                        self.__fail(resource_type, e.response.get("Error").get("Message"))
+                    else:
+                        self.__warn(
+                            "Unable to get instance types supported by Batch. Skipping instance type validation"
+                        )
+
+                    if "," not in compute_instance_type and "." in compute_instance_type:
+                        # if the type is not a list, and contains dot (nor optimal, nor a family)
+                        # validate instance type against max_vcpus limit
+                        vcpus = get_instance_vcpus(self.region, compute_instance_type)
+                        if vcpus <= 0:
+                            self.__warn(
+                                "Unable to get the number of vcpus for the {0} instance type. "
+                                "Skipping instance type against max_vcpus validation".format(compute_instance_type)
+                            )
+                        else:
+                            if max_size < vcpus:
+                                self.__fail(
+                                    resource_type,
+                                    "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                                    "available for the {1} that you selected as compute instance type".format(
+                                        vcpus, compute_instance_type
+                                    ),
+                                )
                 except ClientError as e:
                     self.__fail(resource_type, e.response.get("Error").get("Message"))
-
-            # Check spot bid percentage
-            if "SpotPrice" in resource_value:
-                if int(resource_value["SpotPrice"]) > 100 or int(resource_value["SpotPrice"]) < 0:
-                    self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
-
-            # Check sanity on desired, min and max vcpus
-            if "DesiredSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["DesiredSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
-
-            if "DesiredSize" in resource_value and "MaxSize" in resource_value:
-                if int(resource_value["DesiredSize"]) > int(resource_value["MaxSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
-
-            if "MaxSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["MaxSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
 
             # Check custom batch url
             if "CustomAWSBatchTemplateURL" in resource_value:
                 self.validate("URL", resource_value["CustomAWSBatchTemplateURL"])
+
+    @staticmethod
+    def __warn(message):
+        """
+        Print a warning message.
+
+        :param message: the message to print
+        """
+        print("WARNING: {0}".format(message))
 
     @staticmethod
     def __fail(resource_type, message):
