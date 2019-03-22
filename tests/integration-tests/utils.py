@@ -66,6 +66,22 @@ def retrieve_cfn_outputs(stack_name, region):
         raise
 
 
+@retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
+def retrieve_cfn_resources(stack_name, region):
+    """Retrieve CloudFormation Stack Resources from a given stack."""
+    logging.debug("Retrieving stack resources for stack {}".format(stack_name))
+    try:
+        cfn = boto3.client("cloudformation", region_name=region)
+        stack_resources = cfn.list_stack_resources(StackName=stack_name)["StackResourceSummaries"]
+        resources = {}
+        for resource in stack_resources:
+            resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+        return resources
+    except Exception as e:
+        logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+
+
 def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
