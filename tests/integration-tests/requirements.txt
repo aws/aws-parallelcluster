@@ -9,6 +9,7 @@ pytest
 pytest-datadir
 pytest-html
 pytest-rerunfailures
+pytest-sugar
 pytest-xdist
 retrying
 troposphere
