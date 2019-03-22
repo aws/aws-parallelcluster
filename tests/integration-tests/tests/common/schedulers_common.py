@@ -56,7 +56,7 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit_command(self, command):
+    def submit_command(self, command, nodes=1):
         """
         Submit a job to the scheduler.
 
@@ -105,8 +105,8 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command):  # noqa: D102
-        return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub'.format(command))
+    def submit_command(self, command, nodes=1):  # noqa: D102
+        return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -141,8 +141,8 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command).format(command))
+    def submit_command(self, command, nodes=1):  # noqa: D102
+        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub -l nodes={1}".format(command, nodes))
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -161,20 +161,29 @@ class SlurmCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
+    @retry(retry_on_result=lambda result: result == "Unknown", wait_fixed=seconds(7), stop_max_delay=minutes(5))
     def wait_job_completed(self, job_id):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"EndTime=(.+?) ", result.stdout)
+        return match.group(1)
 
     def get_job_exit_status(self, job_id):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        match = re.search(r"ExitCode=(.+?) ", result.stdout)
+        return match.group(1)
 
-    def assert_job_submitted(self, qsub_output):  # noqa: D102
-        raise NotImplementedError
+    def assert_job_submitted(self, sbatch_output):  # noqa: D102
+        __tracebackhide__ = True
+        match = re.search(r"Submitted batch job ([0-9]+)", sbatch_output)
+        assert_that(match).is_not_none()
+        return match.group(1)
 
-    def submit_command(self, command):  # noqa: D102
-        raise NotImplementedError
+    def submit_command(self, command, nodes=1):  # noqa: D102
+        return self._remote_command_executor.run_remote_command("sbatch -N {0} --wrap='{1}'".format(nodes, command))
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
+        return "JobState=COMPLETED" in result.stdout
 
     def compute_nodes_count(self):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("sinfo --Node --noheader | grep compute | wc -l")
