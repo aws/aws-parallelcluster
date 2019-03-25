@@ -10,6 +10,7 @@
 # limitations under the License.
 from __future__ import absolute_import, print_function
 
+import json
 import os
 import zipfile
 from io import BytesIO
@@ -111,3 +112,55 @@ def upload_resources_artifacts(bucket_name, root, aws_client_config):
             bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/artifacts.zip" % res)
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), res)
+
+
+def _get_json_from_s3(region, file_name):
+    """
+    Get pricing file (if none) and parse content as json.
+
+    :param region: AWS Region
+    :param file_name the object name to get
+    :return: a json object representing the file content
+    :raises ClientError if unable to download the file
+    :raises ValueError if unable to decode the file content
+    """
+    s3 = boto3.resource("s3", region_name=region)
+    bucket_name = "{0}-aws-parallelcluster".format(region)
+
+    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+    return json.loads(file_contents)
+
+
+def get_supported_batch_instances(region):
+    """
+    Get a json object containing the instances supported by batch.
+
+    :param region: AWS Region
+    :param instance_type: the instance type to search for.
+    :return: json object containing the instances supported by batch
+    or an empty object if unable to parse/get the instance list file
+    """
+    try:
+        instances = _get_json_from_s3(region, "instances/batch_instances.json")
+    except (ValueError, ClientError):
+        instances = ""
+
+    return instances
+
+
+def get_instance_vcpus(region, instance_type):
+    """
+    Get number of vcpus for the given instance type.
+
+    :param region: AWS Region
+    :param instance_type: the instance type to search for.
+    :return: the number of vcpus or -1 if the instance type cannot be found
+    or the pricing file cannot be retrieved/parsed
+    """
+    try:
+        instances = _get_json_from_s3(region, "instances/instances.json")
+        vcpus = int(instances[instance_type]["vcpus"])
+    except (KeyError, ValueError, ClientError):
+        vcpus = -1
+
+    return vcpus

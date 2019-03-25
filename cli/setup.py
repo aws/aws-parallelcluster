@@ -21,13 +21,8 @@ def readme():
         return f.read()
 
 
-VERSION = "2.1.1"
-REQUIRES = [
-    "boto3>=1.9.48,<=1.9.85",
-    "awscli>=1.11.175,<=1.16.95",
-    "future>=0.16.0,<=0.17.1",
-    "tabulate>=0.8.2,<=0.8.3",
-]
+VERSION = "2.2.1"
+REQUIRES = ["boto3>=1.9.54", "future>=0.16.0,<=0.17.1", "tabulate>=0.8.2,<=0.8.3"]
 
 if sys.version_info[:2] == (2, 6):
     # For python2.6 we have to require argparse since it

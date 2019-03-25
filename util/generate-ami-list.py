@@ -14,7 +14,7 @@
 # governing permissions and limitations under the License.
 #
 #
-# Search for AWS ParallelCluster public AMIs and generate a list in json and txt format
+# Search for AWS ParallelCluster AMIs and generate a list in json and txt format
 #
 # usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
 
@@ -37,15 +37,23 @@ distros = OrderedDict(
 )
 
 
-def get_ami_list(regions, date, version, owner):
+def get_ami_list(regions, date, cookbook_git_ref, node_git_ref, version, owner):
     amis_json = {}
 
     for region_name in regions:
         try:
+            filters = []
+            if version and date:
+                filters.append({"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]})
+            elif cookbook_git_ref and node_git_ref:
+                filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
+                filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
+            else:
+                print("Error: you can search for version and date or cookbook and node git reference")
+                exit(1)
+
             ec2 = boto3.client("ec2", region_name=region_name)
-            images = ec2.describe_images(
-                Owners=[owner], Filters=[{"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]}]
-            )
+            images = ec2.describe_images(Owners=[owner], Filters=filters)
 
             amis = {}
             for image in images.get("Images"):
@@ -108,11 +116,13 @@ def update_amis_txt(amis_txt_file, amis):
 
 if __name__ == "__main__":
     # parse inputs
-    parser = argparse.ArgumentParser(
-        description="Get public AWS ParallelCluster instances and generate a json and txt file"
-    )
-    parser.add_argument("--version", type=str, help="release version", required=True)
-    parser.add_argument("--date", type=str, help="release date [timestamp] (e.g. 201801112350)", required=True)
+    parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
+    group1 = parser.add_argument_group("Search by version and date")
+    group1.add_argument("--version", type=str, help="release version", required=False)
+    group1.add_argument("--date", type=str, help="release date [timestamp] (e.g. 201801112350)", required=False)
+    group2 = parser.add_argument_group("Search by cookbook and node git reference")
+    group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
+    group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
     parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
@@ -139,7 +149,14 @@ if __name__ == "__main__":
 
     regions = get_all_aws_regions(region)
 
-    amis_dict = get_ami_list(regions=regions, date=args.date, version=args.version, owner=account_id)
+    amis_dict = get_ami_list(
+        regions=regions,
+        date=args.date,
+        cookbook_git_ref=args.cookbook_git_ref,
+        node_git_ref=args.node_git_ref,
+        version=args.version,
+        owner=account_id,
+    )
 
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
 
