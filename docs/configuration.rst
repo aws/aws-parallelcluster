@@ -398,17 +398,17 @@ master_root_volume_size
 """""""""""""""""""""""
 MasterServer root volume size in GB.  The AMI must support growroot.
 
-Defaults to 15. ::
+Defaults to 17, min value 17. ::
 
-    master_root_volume_size = 15
+    master_root_volume_size = 17
 
 compute_root_volume_size
 """"""""""""""""""""""""
 ComputeFleet root volume size in GB.  The AMI must support growroot.
 
-Defaults to 15. ::
+Defaults to 17, min value 17. ::
 
-    compute_root_volume_size = 15
+    compute_root_volume_size = 17
 
 base_os
 """""""
