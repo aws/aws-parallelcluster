@@ -593,7 +593,7 @@ def _get_master_server_ip(stack_name, config):
     )
 
     master_id = get_master_server_id(stack_name, config)
-    if master_id is []:
+    if not master_id:
         LOGGER.info("MasterServer not running. Can't SSH")
         sys.exit(1)
     instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
