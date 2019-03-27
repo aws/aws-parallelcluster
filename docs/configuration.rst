@@ -992,7 +992,7 @@ Configuration for an attached FSx Lustre file system. See `FSx CreateFileSystem
 FSx Lustre is supported when ``base_os = centos7 | alinux``.
 
 When using an Amazon Linux ``custom_ami``, the kernel must be >= ``4.14.104-78.84.amzn1.x86_64``.
-See [Installing the Lustre Client](https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html)
+See `Installing the Lustre Client <https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html>`_
 for instructions.
 
 Note FSx is not currently supported when using ``awsbatch`` as a scheduler.
