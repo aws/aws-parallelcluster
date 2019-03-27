@@ -2,6 +2,37 @@
 CHANGELOG
 =========
 
+2.3.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for FSx Lustre with Amazon Linux. In case of custom AMI,
+  The kernel will need to be ``>= 4.14.104-78.84.amzn1.x86_64``
+* Slurm
+   * set compute nodes to DRAIN state before removing them from cluster. This prevents the scheduler from submitting a job to a node that is being terminated.
+   * dynamically adjust max cluster size based on ASG settings
+   * dynamically change the number of configured FUTURE nodes based on the actual nodes that join the cluster. The max size of the cluster seen by the scheduler always matches the max capacity of the ASG.
+   * process nodes added to or removed from the cluster in batches. This speeds up cluster scaling which is able to react with a delay of less than 1 minute to variations in the ASG capacity.
+   * add support for job dependencies and pending reasons. The cluster won't scale up if the job cannot start due to an unsatisfied dependency.
+   * set ``ReturnToService=1`` in scheduler config in order to recover instances that were initially marked as down due to a transient issue.
+* Validate FSx parameters. Fixes `#896 <https://github.com/aws/aws-parallelcluster/issues/896>`_ .
+
+**CHANGES**
+
+* Slurm - Upgrade version to 18.08.6.2
+* NVIDIA - update drivers to version 418.56
+* CUDA - update toolkit to version 10.0
+* Increase default EBS volume size from 15GB to 17GB
+* Disabled updates to FSx File Systems, updates to most parameters would cause the filesystem, and all it's data, to be deleted
+
+**BUG FIXES**
+* Cookbook wasn't fetched when `custom_ami` parameter specified in the config
+* Cfn-init is now fetched from us-east-1, this bug effected non-alinux custom ami's in regions other than us-east-1.
+* Account limit check not done for SPOT or AWS Batch Clusters
+* Account limit check fall back to master subnet. Fixes `#910 <https://github.com/aws/aws-parallelcluster/issues/910>`_ .
+* Boto3 upperbound removed
+
 2.2.1
 =====
 
