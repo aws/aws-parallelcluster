@@ -100,6 +100,7 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
 
     jobs_execution_time = 1
     estimated_scaleup_time = 5
+    estimated_scaledown_time = 20
     asg_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
         scheduler_commands=slurm_commands,
         region=region,
@@ -107,7 +108,7 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
         max_monitoring_time=minutes(jobs_execution_time)
         + minutes(scaledown_idletime)
         + minutes(estimated_scaleup_time)
-        + minutes(10),
+        + minutes(estimated_scaledown_time),
     )
     assert_that(max(asg_capacity_time_series)).is_equal_to(1)
     assert_that(max(compute_nodes_time_series)).is_equal_to(1)
