@@ -12,15 +12,12 @@ python:
 matrix:
   include:
   - name: Code Checks
-    python: 3.6
     stage: linters
     env: TOXENV=code-linters
   - name: CloudFormation Templates Checks
-    python: 3.6
     stage: linters
     env: TOXENV=cfn-format-check,cfn-lint
   - name: Docs Checks
-    python: 3.6
     stage: linters
     env: TOXENV=docs-linters
     before_install:
