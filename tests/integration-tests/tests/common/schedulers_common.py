@@ -142,7 +142,8 @@ class SgeCommands(SchedulerCommands):
         return match.group(1)
 
     def submit_command(self, command, nodes=1):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub -l nodes={1}".format(command, nodes))
+        # TODO add support for multiple nodes
+        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command))
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
