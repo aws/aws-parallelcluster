@@ -1261,12 +1261,14 @@
         "ubuntu1604": "ami-0f1d5196d9bb069aa"
       },
       "cn-north-1": {
-        "alinux": "ami-053a5a11a4ac83842",
-        "ubuntu1404": "ami-0e90250aa31ac4a12",
-        "ubuntu1604": "ami-0b89a3058ea57b76f"
+        "alinux": "ami-0bf65d6c570626503",
+        "ubuntu1404": "ami-0c66f909b116a470e",
+        "ubuntu1604": "ami-0b6977b5b9b0be03a"
       },
       "cn-northwest-1": {
-        "alinux": "ami-0c5a99564e44467e7"
+        "alinux": "ami-0b5dda1cf98fba68c",
+        "ubuntu1404": "ami-07a05958983c1467a",
+        "ubuntu1604": "ami-048e93ae1745b0e16"
       },
       "eu-central-1": {
         "alinux": "ami-064c98790d24b5eb9",
