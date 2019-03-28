@@ -630,19 +630,21 @@ def main():
         depends_on = _get_depends_on(args)
 
         # select submission (standard vs MNP)
-        if args.nodes:
+        if args.nodes and args.nodes > 1:
             if not hasattr(config, "job_definition_mnp"):
                 fail("Current cluster does not support MNP jobs submission")
             job_definition = config.job_definition_mnp
+            nodes = args.nodes
         else:
             job_definition = config.job_definition
+            nodes = None
 
         AWSBsubCommand(log, boto3_factory).run(
             job_definition=job_definition,
             job_name=job_name,
             job_queue=config.job_queue,
             command=command,
-            nodes=args.nodes,
+            nodes=nodes,
             vcpus=args.vcpus,
             memory=args.memory,
             array_size=args.array_size,
