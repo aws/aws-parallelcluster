@@ -1560,7 +1560,23 @@
             "KeyType": "HASH"
           }
         ],
-        "BillingMode": "PAY_PER_REQUEST"
+        "BillingMode": {
+          "Fn::If": [
+            "GovCloudRegion",
+            "PROVISIONED",
+            "PAY_PER_REQUEST"
+          ]
+        },
+        "ProvisionedThroughput": {
+          "Fn::If": [
+            "GovCloudRegion",
+            {
+              "ReadCapacityUnits": 5,
+              "WriteCapacityUnits": 5
+            },
+            { "Ref": "AWS::NoValue" }
+          ]
+        }
       }
     },
     "RootRole": {
