@@ -1574,7 +1574,9 @@
               "ReadCapacityUnits": 5,
               "WriteCapacityUnits": 5
             },
-            { "Ref": "AWS::NoValue" }
+            {
+              "Ref": "AWS::NoValue"
+            }
           ]
         }
       }
