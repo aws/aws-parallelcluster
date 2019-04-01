@@ -2,7 +2,7 @@
 CHANGELOG
 =========
 
-2.3.0
+2.3.1
 =====
 
 **ENHANCEMENTS**
@@ -27,6 +27,7 @@ CHANGELOG
 * Disabled updates to FSx File Systems, updates to most parameters would cause the filesystem, and all it's data, to be deleted
 
 **BUG FIXES**
+
 * Cookbook wasn't fetched when `custom_ami` parameter specified in the config
 * Cfn-init is now fetched from us-east-1, this bug effected non-alinux custom ami's in regions other than us-east-1.
 * Account limit check not done for SPOT or AWS Batch Clusters
