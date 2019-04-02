@@ -26,7 +26,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     mount_dir = "ebs_mount_dir"
     cluster_config = pcluster_config_reader(mount_dir=mount_dir)
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
@@ -43,7 +43,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
     cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -58,7 +58,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/shared"

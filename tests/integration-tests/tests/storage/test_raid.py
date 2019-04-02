@@ -25,7 +25,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -41,7 +41,7 @@ def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_facto
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)

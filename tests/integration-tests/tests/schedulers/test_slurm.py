@@ -35,7 +35,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 5
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_slurm_version(remote_command_executor)
