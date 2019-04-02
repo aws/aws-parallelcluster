@@ -1563,7 +1563,9 @@
         "BillingMode": {
           "Fn::If": [
             "GovCloudRegion",
-            "PROVISIONED",
+            {
+              "Ref": "AWS::NoValue"
+            },
             "PAY_PER_REQUEST"
           ]
         },
@@ -1574,7 +1576,9 @@
               "ReadCapacityUnits": 5,
               "WriteCapacityUnits": 5
             },
-            { "Ref": "AWS::NoValue" }
+            {
+              "Ref": "AWS::NoValue"
+            }
           ]
         }
       }
