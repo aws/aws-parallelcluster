@@ -35,7 +35,7 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     cluster_config = pcluster_config_reader(bucket_name=bucket_name, mount_dir=mount_dir)
-    cluster = clusters_factory(cluster_config)
+    cluster, _ = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir)
