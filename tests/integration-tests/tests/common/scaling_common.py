@@ -71,6 +71,39 @@ def get_compute_nodes_allocation(scheduler_commands, region, stack_name, max_mon
     return asg_capacity_time_series, compute_nodes_time_series, timestamps
 
 
+def watch_compute_nodes(scheduler_commands, max_monitoring_time, number_of_nodes):
+    """Watch periodically the number of nodes seen by the scheduler."""
+    compute_nodes_time_series = []
+    timestamps = []
+
+    @retry(
+        # Retry until the given number_of_nodes is equal to the number of compute nodes
+        retry_on_result=lambda _: compute_nodes_time_series[-1] != number_of_nodes,
+        wait_fixed=seconds(20),
+        stop_max_delay=max_monitoring_time,
+    )
+    def _watch_compute_nodes_allocation():
+        compute_nodes = scheduler_commands.compute_nodes_count()
+        timestamp = time.time()
+
+        # add values only if there is a transition.
+        if len(compute_nodes_time_series) == 0 or compute_nodes_time_series[-1] != compute_nodes:
+            compute_nodes_time_series.append(compute_nodes)
+            timestamps.append(timestamp)
+
+    try:
+        _watch_compute_nodes_allocation()
+    except RetryError:
+        # ignoring this error in order to perform assertions on the collected data.
+        pass
+
+    logging.info(
+        "Monitoring completed: %s, %s",
+        "compute_nodes_time_series [" + " ".join(map(str, compute_nodes_time_series)) + "]",
+        "timestamps [" + " ".join(map(str, timestamps)) + "]",
+    )
+
+
 def _get_asg(region, stack_name):
     """Retrieve the autoscaling group for a specific cluster."""
     asg_conn = boto3.client("autoscaling", region_name=region)
