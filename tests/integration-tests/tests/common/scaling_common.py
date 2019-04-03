@@ -71,10 +71,20 @@ def get_compute_nodes_allocation(scheduler_commands, region, stack_name, max_mon
     return asg_capacity_time_series, compute_nodes_time_series, timestamps
 
 
-def _get_desired_asg_capacity(region, stack_name):
-    """Retrieve the desired capacity of the autoscaling group for a specific cluster."""
+def _get_asg(region, stack_name):
+    """Retrieve the autoscaling group for a specific cluster."""
     asg_conn = boto3.client("autoscaling", region_name=region)
     tags = asg_conn.describe_tags(Filters=[{"Name": "value", "Values": [stack_name]}])
     asg_name = tags.get("Tags")[0].get("ResourceId")
     response = asg_conn.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-    return response["AutoScalingGroups"][0]["DesiredCapacity"]
+    return response["AutoScalingGroups"][0]
+
+
+def _get_desired_asg_capacity(region, stack_name):
+    """Retrieve the desired capacity of the autoscaling group for a specific cluster."""
+    return _get_asg(region, stack_name)["DesiredCapacity"]
+
+
+def get_max_asg_capacity(region, stack_name):
+    """Retrieve the max capacity of the autoscaling group for a specific cluster."""
+    return _get_asg(region, stack_name)["MaxSize"]
