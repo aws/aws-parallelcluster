@@ -11,23 +11,16 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import os
-from typing import NamedTuple
+import shlex
 
-from paramiko import AutoAddPolicy, SSHClient
-
-
-class RemoteCommandResult(NamedTuple):
-    """Wrap the results from a remote command execution."""
-
-    return_code: int = 0
-    stdout: str = ""
-    stderr: str = ""
+from fabric import Connection
 
 
 class RemoteCommandExecutionError(Exception):
     """Signal a failure in remote command execution."""
 
-    pass
+    def __init__(self, result):
+        self.result = result
 
 
 class RemoteCommandExecutor:
@@ -42,49 +35,50 @@ class RemoteCommandExecutor:
     }
 
     def __init__(self, cluster):
-        self.__ssh_client = SSHClient()
-        self.__ssh_client.load_system_host_keys()
-        self.__ssh_client.set_missing_host_key_policy(AutoAddPolicy())
-        self.__ssh_client.connect(
-            hostname=cluster.master_ip, username=self.USERNAMES[cluster.os], key_filename=cluster.ssh_key
+        self.__connection = Connection(
+            host=cluster.master_ip,
+            user=self.USERNAMES[cluster.os],
+            forward_agent=True,
+            connect_kwargs={"key_filename": cluster.ssh_key},
         )
-        self.__sftp_client = self.__ssh_client.open_sftp()
         self.__user_at_hostname = "{0}@{1}".format(self.USERNAMES[cluster.os], cluster.master_ip)
 
     def __del__(self):
         try:
-            self.__ssh_client.close()
+            self.__connection.close()
         except Exception as e:
             # Catch all exceptions if we fail to close the clients
-            logging.warning("Exception raised when closing remote clients: {0}".format(e))
+            logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
 
-    def run_remote_command(self, command, log_error=True, additional_files=None, raise_on_error=True):
+    def run_remote_command(self, command, log_error=True, additional_files=None, raise_on_error=True, login_shell=True):
         """
         Execute remote command on the cluster master node.
 
         :param command: command to execute.
         :param log_error: log errors.
         :param additional_files: additional files to copy before executing script.
+        :param raise_on_error: if True raises a RemoteCommandExecutionError on failures
+        :param login_shell: if True prepends /bin/bash --login -c to the given command
         :return: result of the execution.
         """
         if isinstance(command, list):
             command = " ".join(command)
         self._copy_additional_files(additional_files)
         logging.info("Executing remote command command on {0}: {1}".format(self.__user_at_hostname, command))
-        stdin, stdout, stderr = self.__ssh_client.exec_command(command, get_pty=True)
-        result = RemoteCommandResult(
-            return_code=stdout.channel.recv_exit_status(),
-            stdout="\n".join(stdout.read().decode().splitlines()),
-            stderr="\n".join(stderr.read().decode().splitlines()),
-        )
-        if result.return_code != 0 and raise_on_error:
+        if login_shell:
+            command = "/bin/bash --login -c {0}".format(shlex.quote(command))
+
+        result = self.__connection.run(command, warn=True, pty=True, hide=False)
+        result.stdout = "\n".join(result.stdout.splitlines())
+        result.stderr = "\n".join(result.stderr.splitlines())
+        if result.failed and raise_on_error:
             if log_error:
                 logging.error(
                     "Command {0} failed with error:\n{1}\nand output:\n{2}".format(
                         command, result.stderr, result.stdout
                     )
                 )
-            raise RemoteCommandExecutionError
+            raise RemoteCommandExecutionError(result)
         return result
 
     def run_remote_script(self, script_file, args=None, log_error=True, additional_files=None):
@@ -99,7 +93,7 @@ class RemoteCommandExecutor:
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
-        self.__sftp_client.put(script_file, script_name)
+        self.__connection.put(script_file, script_name)
         if not args:
             args = []
         return self.run_remote_command(
@@ -108,4 +102,4 @@ class RemoteCommandExecutor:
 
     def _copy_additional_files(self, files):
         for file in files or []:
-            self.__sftp_client.put(file, os.path.basename(file))
+            self.__connection.put(file, os.path.basename(file))

@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_vcpus_from_pricing_file
+from pcluster.utils import get_instance_vcpus
 
 
 class ParallelClusterConfig(object):
@@ -112,6 +112,11 @@ class ParallelClusterConfig(object):
             pass
 
     @staticmethod
+    def __warn(message):
+        """Print a warning message."""
+        print("WARNING: {0}".format(message))
+
+    @staticmethod
     def __fail(message):
         """Print an error message and exit."""
         print("ERROR: {0}".format(message))
@@ -183,8 +188,8 @@ class ParallelClusterConfig(object):
         """Return stack name."""
         return "parallelcluster-" + self.args.cluster_name
 
-    def __get_stack_template(self):
-        """Get stack template."""
+    def __get_stack_parameter(self, parameter):
+        """Get a parameter from stack."""
         cfn = boto3.client(
             "cloudformation",
             region_name=self.region,
@@ -197,11 +202,9 @@ class ParallelClusterConfig(object):
         except ClientError as e:
             self.__fail(e.response.get("Error").get("Message"))
 
-        cli_template = [
-            p.get("ParameterValue") for p in stack.get("Parameters") if p.get("ParameterKey") == "CLITemplate"
-        ][0]
-
-        return cli_template
+        return next(
+            (i.get("ParameterValue") for i in stack.get("Parameters") if i.get("ParameterKey") == parameter), None
+        )
 
     def __get_cluster_template(self):
         """
@@ -215,20 +218,19 @@ class ParallelClusterConfig(object):
             # customer from inadvertently using a different template than what
             # the cluster was created with, so we do not support the -t
             # parameter. We always get the template to use from CloudFormation.
-            cluster_template = self.__get_stack_template()
+            cluster_template = self.__get_stack_parameter("CLITemplate")
         else:
-            try:
-                try:
-                    if self.args.cluster_template is not None:
-                        cluster_template = self.args.cluster_template
-                    elif args_func == "update":
-                        cluster_template = self.__get_stack_template()
-                    else:
-                        cluster_template = self.__config.get("global", "cluster_template")
-                except AttributeError:
-                    cluster_template = self.__config.get("global", "cluster_template")
-            except configparser.NoOptionError:
-                self.__fail("Missing 'cluster_template' option in [global] section.")
+            if "cluster_template" in self.args and self.args.cluster_template is not None:
+                cluster_template = self.args.cluster_template
+            elif args_func == "update":
+                cluster_template = self.__get_stack_parameter("CLITemplate")
+            else:
+                if not self.__config.has_option("global", "cluster_template"):
+                    self.__fail("Missing 'cluster_template' option in [global] section.")
+                cluster_template = self.__config.get("global", "cluster_template")
+
+        if not self.__config.has_section("cluster %s" % cluster_template):
+            self.__fail("Missing [cluster %s] section." % cluster_template)
 
         return cluster_template
 
@@ -354,31 +356,33 @@ class ParallelClusterConfig(object):
 
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
-        test_ami_id = self.__get_latest_alinux_ami_id()
-
-        instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
-        if instance_type == "optimal":
+        if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
             return
 
+        instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
         max_size = self.__get_max_number_of_instances(instance_type)
+        if max_size < 0:
+            self.__warn("Unable to check AWS account capacity. Skipping limits validation")
+            return
+
         try:
             # Check for insufficient Account capacity
             ec2 = boto3.client("ec2", region_name=self.region)
 
             subnet_id = self.parameters.get("ComputeSubnetId")
-            if subnet_id:
-                ec2.run_instances(
-                    InstanceType=instance_type,
-                    MinCount=max_size,
-                    MaxCount=max_size,
-                    ImageId=test_ami_id,
-                    SubnetId=subnet_id,
-                    DryRun=True,
-                )
-            else:
-                ec2.run_instances(
-                    InstanceType=instance_type, MinCount=max_size, MaxCount=max_size, ImageId=test_ami_id, DryRun=True
-                )
+            if not subnet_id:
+                subnet_id = self.parameters.get("MasterSubnetId")
+
+            test_ami_id = self.__get_latest_alinux_ami_id()
+
+            ec2.run_instances(
+                InstanceType=instance_type,
+                MinCount=max_size,
+                MaxCount=max_size,
+                ImageId=test_ami_id,
+                SubnetId=subnet_id,
+                DryRun=True,
+            )
         except ClientError as e:
             code = e.response.get("Error").get("Code")
             message = e.response.get("Error").get("Message")
@@ -415,7 +419,7 @@ class ParallelClusterConfig(object):
         try:
             max_size = int(self.parameters.get("MaxSize"))
             if self.parameters.get("Scheduler") == "awsbatch":
-                vcpus = get_vcpus_from_pricing_file(self.region, instance_type)
+                vcpus = get_instance_vcpus(self.region, instance_type)
                 max_size = -(-max_size // vcpus)
         except ValueError:
             self.__fail("Unable to convert max size parameter to an integer")
@@ -583,10 +587,15 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, option):
             self.__fail("option %s cannot be used with awsbatch" % option)
 
-    def __validate_awsbatch_os(self, baseos):
-        supported_batch_oses = ["alinux"]
-        if baseos not in supported_batch_oses:
-            self.__fail("awsbatch scheduler supports following OSes: %s" % supported_batch_oses)
+    def __get_os(self):
+        base_os = "alinux"
+        if self.__config.has_option(self.__cluster_section, "base_os"):
+            base_os = self.__config.get(self.__cluster_section, "base_os")
+        return base_os
+
+    def __validate_os(self, service, baseos, supported_oses):
+        if baseos not in supported_oses:
+            self.__fail("%s supports following OSes: %s" % (service, supported_oses))
 
     def __init_batch_parameters(self):  # noqa: C901 FIXME!!!
         """
@@ -599,8 +608,7 @@ class ParallelClusterConfig(object):
         self.__check_option_absent_awsbatch("max_queue_size")
         self.__check_option_absent_awsbatch("spot_price")
 
-        if self.__config.has_option(self.__cluster_section, "base_os"):
-            self.__validate_awsbatch_os(self.__config.get(self.__cluster_section, "base_os"))
+        self.__validate_os("awsbatch", self.__get_os(), ["alinux"])
 
         if self.__config.has_option(self.__cluster_section, "compute_instance_type"):
             compute_instance_type = self.__config.get(self.__cluster_section, "compute_instance_type")
@@ -794,6 +802,22 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
+    def __check_fsx_updates(self, fsx_section, fsx_keys):
+        """
+        Check FSx Parameters for updates.
+
+        :param fsx_section: name of FSx Section
+        :param fsx_keys: ordered list of options in config
+        """
+        new_values = [self.__get_option_in_section(fsx_section, option) or "NONE" for option in fsx_keys]
+        old_values = self.__get_stack_parameter("FSXOptions").split(",")
+
+        if new_values != old_values:
+            self.__fail(
+                "Updating FSx Filesystem is not supported, please submit a feature request"
+                " if you need it: https://github.com/aws/aws-parallelcluster/issues/new"
+            )
+
     def __init_fsx_parameters(self):
         # Determine if FSx settings are defined and set section
         fsx_section = self.__get_section_name("fsx_settings", "fsx")
@@ -801,6 +825,16 @@ class ParallelClusterConfig(object):
         # If they don't use fsx_settings, then return
         if not fsx_section:
             return
+
+        # Check that the base_os is supported
+        self.__validate_os("FSx", self.__get_os(), ["centos7", "alinux"])
+
+        # Validate scheduler is not awsbatch
+        if self.parameters.get("Scheduler") == "awsbatch":
+            self.__fail(
+                "FSx isn't supported with awsbatch as the scheduler, please submit a feature request"
+                " if you need it: https://github.com/aws/aws-parallelcluster/issues/new"
+            )
 
         # Dictionary list of all FSx options
         fsx_options = OrderedDict(
@@ -810,11 +844,16 @@ class ParallelClusterConfig(object):
                 ("storage_capacity", ("FSXCapacity", "FSx_storage_capacity")),
                 ("fsx_kms_key_id", ("FSXKMSKeyId", None)),
                 ("imported_file_chunk_size", ("ImportedFileChunkSize", "FSx_imported_file_chunk_size")),
-                ("export_path", ("ExportPath", None)),
+                ("export_path", ("ExportPath", "FSx_export_path")),
                 ("import_path", ("ImportPath", None)),
                 ("weekly_maintenance_start_time", ("WeeklyMaintenanceStartTime", None)),
             ]
         )
+
+        # FSx parameters can't be updated without creating a new resource
+        # to avoid having customers delete their Filesystem we're disabling updates
+        if self.args.func.__name__ == "update":
+            self.__check_fsx_updates(fsx_section, fsx_options.keys())
 
         temp_fsx_options = []
         for key in fsx_options:
@@ -822,11 +861,16 @@ class ParallelClusterConfig(object):
             if not value:
                 temp_fsx_options.append("NONE")
             else:
-                # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
-                if self.__sanity_check and fsx_options.get(key)[1] == "fsx_fs_id":
-                    self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
-                elif self.__sanity_check and fsx_options.get(key)[1] is not None:
-                    self.__validate_resource(fsx_options.get(key)[1], value)
+                if self.__sanity_check:
+                    # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id
+                    if fsx_options.get(key)[1] == "fsx_fs_id":
+                        self.__validate_resource("fsx_fs_id", (value, self.__master_subnet))
+                    elif fsx_options.get(key)[1] in ["FSx_imported_file_chunk_size", "FSx_export_path"]:
+                        self.__validate_resource(
+                            fsx_options.get(key)[1], (value, self.__get_option_in_section(fsx_section, "import_path"))
+                        )
+                    elif fsx_options.get(key)[1] is not None:
+                        self.__validate_resource(fsx_options.get(key)[1], value)
                 temp_fsx_options.append(value)
         self.parameters["FSXOptions"] = ",".join(temp_fsx_options)
 

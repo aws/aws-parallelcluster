@@ -19,5 +19,5 @@ Any other context about the problem. E.g.:
  - configuration file without any credentials or personal data.
  - pre/post-install scripts, if any
  - screenshots, if useful
- - if the cluster fails creation, please re-execute `create` action using `--norollback` option and attach `/var/cfn-init.log`, `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log` files from the Master node
+ - if the cluster fails creation, please re-execute `create` action using `--norollback` option and attach `/var/log/cfn-init.log`, `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log` files from the Master node
  - if you encounter scaling problems please attach `/var/log/nodewatcher` from the Compute node and `/var/log/jobwatcher` and `/var/log/sqswatcher` from the Master node

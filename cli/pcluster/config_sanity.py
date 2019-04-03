@@ -14,7 +14,6 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
-import json
 import sys
 import urllib.error
 import urllib.parse
@@ -23,6 +22,8 @@ from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
+
+from pcluster.utils import get_instance_vcpus, get_supported_batch_instances
 
 
 class ResourceValidator(object):
@@ -167,10 +168,10 @@ class ResourceValidator(object):
             nfs_access = self.__check_nfs_access(ec2, network_interfaces)
             if not nfs_access:
                 self.__fail(
-                    "FSXFSId"
+                    "FSXFSId",
                     "The current security group settings on file system %s does not satisfy "
                     "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0]
+                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0],
                 )
             return True
         except ClientError as e:
@@ -201,10 +202,14 @@ class ResourceValidator(object):
                 self.__fail(
                     resource_type, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"
                 )
+        # Check to see if import_path is specified with imported_file_chunk_size and export_path
+        elif resource_type in ["FSx_imported_file_chunk_size", "FSx_export_path"]:
+            if resource_value[1] is None:
+                self.__fail(resource_type, "import_path must be specified.")
         # FSX file chunk size check
         elif resource_type == "FSx_imported_file_chunk_size":
             # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
-            if not (1 <= int(resource_value) <= 512000):
+            if not (1 <= int(resource_value[0]) <= 512000):
                 self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
 
     def validate(self, resource_type, resource_value):  # noqa: C901 FIXME
@@ -513,7 +518,7 @@ class ResourceValidator(object):
                     "Needs min of 2 volumes for RAID and max of 5 EBS volumes are currently supported.",
                 )
         # FSX FS Id check
-        elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size"]:
+        elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size", "FSx_export_path"]:
             self.__validate_fsx_parameters(resource_type, resource_value)
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
@@ -528,46 +533,74 @@ class ResourceValidator(object):
             ]:
                 self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
 
+            # Check spot bid percentage
+            if "SpotPrice" in resource_value:
+                spot_price = int(resource_value["SpotPrice"])
+                if spot_price > 100 or spot_price < 0:
+                    self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
+
+            min_size = int(resource_value["MinSize"])
+            desired_size = int(resource_value["DesiredSize"])
+            max_size = int(resource_value["MaxSize"])
+
+            if desired_size < min_size:
+                self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
+
+            if desired_size > max_size:
+                self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
+
+            if max_size < min_size:
+                self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
+
             # Check compute instance types
             if "ComputeInstanceType" in resource_value:
+                compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
-                    s3 = boto3.resource("s3", region_name=self.region)
-                    bucket_name = "%s-aws-parallelcluster" % self.region
-                    file_name = "instances/batch_instances.json"
-                    try:
-                        file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-                        supported_instances = json.loads(file_contents)
-                        for instance in resource_value["ComputeInstanceType"].split(","):
+                    supported_instances = get_supported_batch_instances(self.region)
+                    if supported_instances:
+                        for instance in compute_instance_type.split(","):
                             if not instance.strip() in supported_instances:
                                 self.__fail(
                                     resource_type, "Instance type %s not supported by batch in this region" % instance
                                 )
-                    except ClientError as e:
-                        self.__fail(resource_type, e.response.get("Error").get("Message"))
+                    else:
+                        self.__warn(
+                            "Unable to get instance types supported by Batch. Skipping instance type validation"
+                        )
+
+                    if "," not in compute_instance_type and "." in compute_instance_type:
+                        # if the type is not a list, and contains dot (nor optimal, nor a family)
+                        # validate instance type against max_vcpus limit
+                        vcpus = get_instance_vcpus(self.region, compute_instance_type)
+                        if vcpus <= 0:
+                            self.__warn(
+                                "Unable to get the number of vcpus for the {0} instance type. "
+                                "Skipping instance type against max_vcpus validation".format(compute_instance_type)
+                            )
+                        else:
+                            if max_size < vcpus:
+                                self.__fail(
+                                    resource_type,
+                                    "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                                    "available for the {1} that you selected as compute instance type".format(
+                                        vcpus, compute_instance_type
+                                    ),
+                                )
                 except ClientError as e:
                     self.__fail(resource_type, e.response.get("Error").get("Message"))
-
-            # Check spot bid percentage
-            if "SpotPrice" in resource_value:
-                if int(resource_value["SpotPrice"]) > 100 or int(resource_value["SpotPrice"]) < 0:
-                    self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
-
-            # Check sanity on desired, min and max vcpus
-            if "DesiredSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["DesiredSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
-
-            if "DesiredSize" in resource_value and "MaxSize" in resource_value:
-                if int(resource_value["DesiredSize"]) > int(resource_value["MaxSize"]):
-                    self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
-
-            if "MaxSize" in resource_value and "MinSize" in resource_value:
-                if int(resource_value["MaxSize"]) < int(resource_value["MinSize"]):
-                    self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
 
             # Check custom batch url
             if "CustomAWSBatchTemplateURL" in resource_value:
                 self.validate("URL", resource_value["CustomAWSBatchTemplateURL"])
+
+    @staticmethod
+    def __warn(message):
+        """
+        Print a warning message.
+
+        :param message: the message to print
+        """
+        print("WARNING: {0}".format(message))
 
     @staticmethod
     def __fail(resource_type, message):

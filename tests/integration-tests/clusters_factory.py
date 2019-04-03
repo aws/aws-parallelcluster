@@ -10,11 +10,12 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import time
 
 import configparser
 from retrying import retry
 
-from utils import retrieve_cfn_outputs, retry_if_subprocess_error, run_command
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
 
 
 class Cluster:
@@ -27,6 +28,7 @@ class Cluster:
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
         self.__cfn_outputs = None
+        self.__cfn_resources = None
 
     @property
     def cfn_name(self):
@@ -50,6 +52,11 @@ class Cluster:
         return self.config.get("cluster {0}".format(cluster_template), "base_os", fallback="alinux")
 
     @property
+    def asg(self):
+        """Return the asg name for the ComputeFleet."""
+        return self.cfn_resources["ComputeFleet"]
+
+    @property
     def cfn_outputs(self):
         """
         Return the CloudFormation stack outputs for the cluster.
@@ -58,6 +65,16 @@ class Cluster:
         if not self.__cfn_outputs:
             self.__cfn_outputs = retrieve_cfn_outputs(self.cfn_name, self.region)
         return self.__cfn_outputs
+
+    @property
+    def cfn_resources(self):
+        """
+        Return the CloudFormation stack resources for the cluster.
+        Resources are retrieved only once and then cached.
+        """
+        if not self.__cfn_resources:
+            self.__cfn_resources = retrieve_cfn_resources(self.cfn_name, self.region)
+        return self.__cfn_resources
 
 
 class ClustersFactory:
@@ -85,6 +102,11 @@ class ClustersFactory:
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} created successfully".format(name))
+
+        # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
+        # job submission right after creation. We need to investigate this further.
+        logging.info("Sleeping for 60 seconds in case cluster is not ready yet")
+        time.sleep(60)
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name):

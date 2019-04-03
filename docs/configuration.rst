@@ -398,17 +398,17 @@ master_root_volume_size
 """""""""""""""""""""""
 MasterServer root volume size in GB.  The AMI must support growroot.
 
-Defaults to 15. ::
+Defaults to 17, min value 17. ::
 
-    master_root_volume_size = 15
+    master_root_volume_size = 17
 
 compute_root_volume_size
 """"""""""""""""""""""""
 ComputeFleet root volume size in GB.  The AMI must support growroot.
 
-Defaults to 15. ::
+Defaults to 17, min value 17. ::
 
-    compute_root_volume_size = 15
+    compute_root_volume_size = 17
 
 base_os
 """""""
@@ -988,6 +988,18 @@ FSx
 ^^^
 Configuration for an attached FSx Lustre file system. See `FSx CreateFileSystem
 <https://docs.aws.amazon.com/fsx/latest/APIReference/API_CreateFileSystem.html>`_ for more information.
+
+FSx Lustre is supported when ``base_os = centos7 | alinux``.
+
+When using an Amazon Linux ``custom_ami``, the kernel must be >= ``4.14.104-78.84.amzn1.x86_64``.
+See `Installing the Lustre Client <https://docs.aws.amazon.com/fsx/latest/LustreGuide/install-lustre-client.html>`_
+for instructions.
+
+Note FSx is not currently supported when using ``awsbatch`` as a scheduler.
+
+If using an existing file system, it must be associated to a security group that allows inbound and outbound
+TCP traffic from ``0.0.0.0/0`` through port ``988``. This is done by automatically when not using
+``vpc_security_group_id``.
 
 Use an existing FSx file system by specifying ``fsx_fs_id``. ::
 

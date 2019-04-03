@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.2.1",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.3.1",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -537,14 +537,14 @@
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
       "Type": "Number",
-      "Default": "15",
-      "MinValue": "15"
+      "Default": "17",
+      "MinValue": "17"
     },
     "ComputeRootVolumeSize": {
       "Description": "Size of ComputeFleet EBS root volume in GB",
       "Type": "Number",
-      "Default": "15",
-      "MinValue": "15"
+      "Default": "17",
+      "MinValue": "17"
     },
     "EC2IAMRoleName": {
       "Description": "Existing EC2 IAM role name",
@@ -1212,141 +1212,141 @@
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-northeast-1": {
-        "alinux": "ami-01e7e307e734daa9b",
-        "centos6": "ami-09c0d7b7eba653962",
-        "centos7": "ami-0307ad022fdd9bd50",
-        "ubuntu1404": "ami-0141f9239dd88f7eb",
-        "ubuntu1604": "ami-00bacec2848062b6b"
+        "alinux": "ami-0af8c1a29f58c3b91",
+        "centos6": "ami-0476984f547d1f4f2",
+        "centos7": "ami-0f13f45e966236e46",
+        "ubuntu1404": "ami-0ce1c5516c087ef8d",
+        "ubuntu1604": "ami-041f6050eff86f024"
       },
       "ap-northeast-2": {
-        "alinux": "ami-096da9252851971b7",
-        "centos6": "ami-04bb0577f1425f61f",
-        "centos7": "ami-01610b2d147974908",
-        "ubuntu1404": "ami-069d8e1e9b74ee48d",
-        "ubuntu1604": "ami-0a6edfea96ed6c9db"
+        "alinux": "ami-036c289fda8701f9d",
+        "centos6": "ami-06ecb1e81881cd450",
+        "centos7": "ami-016c726d8902d133c",
+        "ubuntu1404": "ami-0744c53e9582abcd4",
+        "ubuntu1604": "ami-0df4c1dafbfee5031"
       },
       "ap-northeast-3": {
-        "alinux": "ami-0fde1cce0915721ec",
-        "centos6": "ami-092c70a47ecb4f730",
-        "centos7": "ami-04dd95194c8990d40",
-        "ubuntu1404": "ami-07853be3b108fb14c",
-        "ubuntu1604": "ami-09eeb02948489e793"
+        "alinux": "ami-000902aa3082732ce",
+        "centos6": "ami-04d195b55ddf56228",
+        "centos7": "ami-037c3a13cd142c8f8",
+        "ubuntu1404": "ami-0d0faa548bcca5fac",
+        "ubuntu1604": "ami-08d3ef362e1d06e56"
       },
       "ap-south-1": {
-        "alinux": "ami-0856113449f34cfde",
-        "centos6": "ami-0b6b4a5c5952ba214",
-        "centos7": "ami-0d848603d9bf30b76",
-        "ubuntu1404": "ami-02744b942f4094210",
-        "ubuntu1604": "ami-0dcc47340ec3a0e45"
+        "alinux": "ami-00ff6216daa4b0a69",
+        "centos6": "ami-0b1abd2bf8810487c",
+        "centos7": "ami-06b7212503b9d9637",
+        "ubuntu1404": "ami-00721e9f7f8235dba",
+        "ubuntu1604": "ami-0ef148f6ae69767d7"
       },
       "ap-southeast-1": {
-        "alinux": "ami-019762c344b80574a",
-        "centos6": "ami-0d8fee73833faed87",
-        "centos7": "ami-084b71a47f7c857b7",
-        "ubuntu1404": "ami-070fef5acc9fd3de2",
-        "ubuntu1604": "ami-0771cf73e73259040"
+        "alinux": "ami-03b015a13daa9ff8d",
+        "centos6": "ami-0576b4b2db8272abf",
+        "centos7": "ami-0c39937e9ae643ecd",
+        "ubuntu1404": "ami-03df9d0a89a448c63",
+        "ubuntu1604": "ami-0b63a13236ce5b8d9"
       },
       "ap-southeast-2": {
-        "alinux": "ami-09ddff457fb3815ea",
-        "centos6": "ami-03e0e45d59cf130b3",
-        "centos7": "ami-0b06de8c266942eff",
-        "ubuntu1404": "ami-097c066ff342e12fa",
-        "ubuntu1604": "ami-0252c6d83fa35183c"
+        "alinux": "ami-0c2528255cc7c4cec",
+        "centos6": "ami-09a18baab0a142123",
+        "centos7": "ami-0164dbfb6b7b938f5",
+        "ubuntu1404": "ami-06116e2159f6ba6bf",
+        "ubuntu1604": "ami-0f5a3072f23556b07"
       },
       "ca-central-1": {
-        "alinux": "ami-0ef3d34adf231688a",
-        "centos6": "ami-0f5cabbce86422cc0",
-        "centos7": "ami-0a2b442fa56fe5db0",
-        "ubuntu1404": "ami-075be3409c2c2738d",
-        "ubuntu1604": "ami-090b3ee62a0b5412b"
+        "alinux": "ami-05bad5df22b9502e5",
+        "centos6": "ami-0aa03a3f1b737c651",
+        "centos7": "ami-0ee7cb4d2673e78de",
+        "ubuntu1404": "ami-0d180013cf3d07fc9",
+        "ubuntu1604": "ami-0c88262f6fd2738fc"
       },
       "cn-north-1": {
-        "alinux": "ami-053a5a11a4ac83842",
-        "ubuntu1404": "ami-0e90250aa31ac4a12",
-        "ubuntu1604": "ami-0b89a3058ea57b76f"
+        "alinux": "ami-0227bedfc6798cba1",
+        "ubuntu1404": "ami-0ef85bbc4ba66c301",
+        "ubuntu1604": "ami-017ea2a40c48f9af4"
       },
       "cn-northwest-1": {
-        "alinux": "ami-0c5a99564e44467e7"
+        "alinux": "ami-08143603c5f390f20"
       },
       "eu-central-1": {
-        "alinux": "ami-01d7252afc45b0d8b",
-        "centos6": "ami-0c47523135cb69662",
-        "centos7": "ami-089c27327ed56f33c",
-        "ubuntu1404": "ami-093d2529752e5e2f2",
-        "ubuntu1604": "ami-0c7ccc7ec89bd0d75"
+        "alinux": "ami-003262ea853b26050",
+        "centos6": "ami-092bd9c46746d940b",
+        "centos7": "ami-0bcced571d9cc0142",
+        "ubuntu1404": "ami-04b116ae9a44c861f",
+        "ubuntu1604": "ami-06a21b6e0815065a4"
       },
       "eu-north-1": {
-        "alinux": "ami-02224ba7786413561",
-        "centos6": "ami-064af23ad3c8bac88",
-        "centos7": "ami-016fe6e29bff94e38",
-        "ubuntu1404": "ami-01ea61e8b26299de1",
-        "ubuntu1604": "ami-0675d81a659cb530e"
+        "alinux": "ami-06cac8aed0729f14c",
+        "centos6": "ami-07b83433077d8345b",
+        "centos7": "ami-00255a59ce6bd8147",
+        "ubuntu1404": "ami-0de1c666987bbdb1f",
+        "ubuntu1604": "ami-0418320f06192d788"
       },
       "eu-west-1": {
-        "alinux": "ami-0a32ae196621ce1cd",
-        "centos6": "ami-048edb0ed06f91ef8",
-        "centos7": "ami-00e9df6764697605f",
-        "ubuntu1404": "ami-0d1cb938a6d6b693c",
-        "ubuntu1604": "ami-010af7d7788dac778"
+        "alinux": "ami-0691d6d6d4d209e09",
+        "centos6": "ami-09880c7e25df69af8",
+        "centos7": "ami-00c07933e0ea22f7d",
+        "ubuntu1404": "ami-01b114f6a268d6a42",
+        "ubuntu1604": "ami-0809bc00666e41cfa"
       },
       "eu-west-2": {
-        "alinux": "ami-0e8d810df84d61f8b",
-        "centos6": "ami-098b95acdef72fd6c",
-        "centos7": "ami-00884b56887c9585a",
-        "ubuntu1404": "ami-0487ce94890b5869b",
-        "ubuntu1604": "ami-01290e9a5298ae134"
+        "alinux": "ami-0d241a5c57ee3421d",
+        "centos6": "ami-0eba961d9f30431b2",
+        "centos7": "ami-09aa34259643c50eb",
+        "ubuntu1404": "ami-0f9ad3c001b80325a",
+        "ubuntu1604": "ami-04d8578267aaa2ac4"
       },
       "eu-west-3": {
-        "alinux": "ami-09a1847f7683c6351",
-        "centos6": "ami-0e25f1a2ef5f8d237",
-        "centos7": "ami-0252465d6dff43cfb",
-        "ubuntu1404": "ami-01a321e226dbf081a",
-        "ubuntu1604": "ami-0996ed0efb2b8cc4a"
+        "alinux": "ami-0e59dd1d2794a857c",
+        "centos6": "ami-0d0b243ac76765544",
+        "centos7": "ami-04ce6f74e1070a795",
+        "ubuntu1404": "ami-0f921986737ab8306",
+        "ubuntu1604": "ami-02de781189ccb9f92"
       },
       "sa-east-1": {
-        "alinux": "ami-03c4f6e67dcea925d",
-        "centos6": "ami-07bcda88df87d3db2",
-        "centos7": "ami-02f4e6da1e0de2347",
-        "ubuntu1404": "ami-02366044e8d7372fa",
-        "ubuntu1604": "ami-0a3ef670136cc81ee"
+        "alinux": "ami-07b044055a13cf93e",
+        "centos6": "ami-0dfdc6ab8bf7935ea",
+        "centos7": "ami-0a625e9dcf563db57",
+        "ubuntu1404": "ami-0d1d30ad051235185",
+        "ubuntu1604": "ami-088d6a838e8dc6b11"
       },
       "us-east-1": {
-        "alinux": "ami-096b5898281e68ea3",
-        "centos6": "ami-0fd0ae64eb509cc23",
-        "centos7": "ami-08b43bfe7a0d16eeb",
-        "ubuntu1404": "ami-00f8fb8ed06007c1f",
-        "ubuntu1604": "ami-05f79ab77fc13e20a"
+        "alinux": "ami-0f8b01b1377483305",
+        "centos6": "ami-00f71e3be938f3077",
+        "centos7": "ami-0658a809b3e89b0c9",
+        "ubuntu1404": "ami-0422aa8ec2e452870",
+        "ubuntu1604": "ami-0a8c4ea1bd1ff7651"
       },
       "us-east-2": {
-        "alinux": "ami-0c8b41c511db3c17c",
-        "centos6": "ami-09c42f6a076482eeb",
-        "centos7": "ami-0c71e12e95cc937ef",
-        "ubuntu1404": "ami-0e23f662335e169a6",
-        "ubuntu1604": "ami-08a675767416c627a"
+        "alinux": "ami-049afa5b53a7880d8",
+        "centos6": "ami-0b29637d31cf774aa",
+        "centos7": "ami-07cef254f8886ea4e",
+        "ubuntu1404": "ami-02447e477105886bd",
+        "ubuntu1604": "ami-04d5c390495e0509f"
       },
       "us-gov-east-1": {
-        "alinux": "ami-08cff3f9ef830bdfb",
-        "ubuntu1404": "ami-0a34c5de0403642d2",
-        "ubuntu1604": "ami-08b15aaa28124fac1"
+        "alinux": "ami-02ee5c66a10526bd1",
+        "ubuntu1404": "ami-03538e53996b83762",
+        "ubuntu1604": "ami-0bfb76fbbbb68030d"
       },
       "us-gov-west-1": {
-        "alinux": "ami-afa0c8ce",
-        "ubuntu1404": "ami-e4a3cb85",
-        "ubuntu1604": "ami-eba3cb8a"
+        "alinux": "ami-7da7d01c",
+        "ubuntu1404": "ami-90a2d5f1",
+        "ubuntu1604": "ami-eeaed98f"
       },
       "us-west-1": {
-        "alinux": "ami-08e9806b160f9aa44",
-        "centos6": "ami-060bcf74fb6278986",
-        "centos7": "ami-0f925f166f349eaa4",
-        "ubuntu1404": "ami-021201edbaab31f29",
-        "ubuntu1604": "ami-059b8cd1b0041071a"
+        "alinux": "ami-02c87842ea944292e",
+        "centos6": "ami-08dc392067bcf9807",
+        "centos7": "ami-0454b933360a077e4",
+        "ubuntu1404": "ami-0f4a99f972b9b4882",
+        "ubuntu1604": "ami-0a33d79d5f920cc2c"
       },
       "us-west-2": {
-        "alinux": "ami-04eba5b9de0d94ec6",
-        "centos6": "ami-009c08111f57a2d4c",
-        "centos7": "ami-05f6a646767bf0c87",
-        "ubuntu1404": "ami-085bb9cfafd2e3b3a",
-        "ubuntu1604": "ami-034bffb8da06d6951"
+        "alinux": "ami-09b457d5cba24514a",
+        "centos6": "ami-0fa309858f6ce66ee",
+        "centos7": "ami-03b7e311ae2f4aacb",
+        "ubuntu1404": "ami-04caeb57df33aba89",
+        "ubuntu1604": "ami-00050b3048393bc12"
       }
     },
     "OSFeatures": {
@@ -1384,8 +1384,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.2.1",
-        "cookbook": "aws-parallelcluster-cookbook-2.2.1",
+        "parallelcluster": "2.3.1",
+        "cookbook": "aws-parallelcluster-cookbook-2.3.1",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
@@ -1560,9 +1560,26 @@
             "KeyType": "HASH"
           }
         ],
+        "BillingMode": {
+          "Fn::If": [
+            "GovCloudRegion",
+            {
+              "Ref": "AWS::NoValue"
+            },
+            "PAY_PER_REQUEST"
+          ]
+        },
         "ProvisionedThroughput": {
-          "ReadCapacityUnits": 5,
-          "WriteCapacityUnits": 5
+          "Fn::If": [
+            "GovCloudRegion",
+            {
+              "ReadCapacityUnits": 5,
+              "WriteCapacityUnits": 5
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
         }
       }
     },
@@ -2159,7 +2176,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -2170,7 +2187,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -2188,6 +2205,16 @@
                 "\n",
                 "  exit 1\n",
                 "}\n",
+                "function vendor_cookbook\n",
+                "{\n",
+                "  mkdir /tmp/cookbooks\n",
+                "  cd /tmp/cookbooks\n",
+                "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "  HOME_BAK=\"${HOME}\"\n",
+                "  export HOME=\"/tmp\"\n",
+                "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                "  export HOME=\"${HOME_BAK}\"\n",
+                "}\n",
                 "function bootstrap_instance\n",
                 "{\n",
                 "  which yum 2>/dev/null; yum=$?\n",
@@ -2198,13 +2225,15 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  vendor_cookbook\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -2313,10 +2342,10 @@
                 "else\n",
                 "  bootstrap_instance\n",
                 "fi\n",
-                "mkdir /tmp/cookbooks\n",
-                "cd /tmp/cookbooks\n",
-                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "  vendor_cookbook\n",
+                "fi\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -2350,7 +2379,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -2533,35 +2561,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },
@@ -2999,7 +2998,7 @@
                     "_none_"
                   ]
                 },
-                "\" >> /etc/yum.conf' ]\n",
+                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                 " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                 {
                   "Fn::If": [
@@ -3010,7 +3009,7 @@
                     "false"
                   ]
                 },
-                "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                 "--==BOUNDARY==\n",
                 "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                 "MIME-Version: 1.0\n\n",
@@ -3028,6 +3027,16 @@
                 "\n",
                 "  exit 1\n",
                 "}\n",
+                "function vendor_cookbook\n",
+                "{\n",
+                "  mkdir /tmp/cookbooks\n",
+                "  cd /tmp/cookbooks\n",
+                "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "  HOME_BAK=${HOME}\n",
+                "  export HOME=\"/tmp\"\n",
+                "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                "  export HOME=${HOME_BAK}\n",
+                "}\n",
                 "function bootstrap_instance\n",
                 "{\n",
                 "  which yum 2>/dev/null; yum=$?\n",
@@ -3038,13 +3047,15 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                 "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                 "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                "  vendor_cookbook\n",
                 "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                 "}\n",
                 "proxy=",
@@ -3153,10 +3164,10 @@
                 "else\n",
                 "  bootstrap_instance\n",
                 "fi\n",
-                "mkdir /tmp/cookbooks\n",
-                "cd /tmp/cookbooks\n",
-                "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                "  vendor_cookbook\n",
+                "fi\n",
                 "cd /tmp\n",
                 "# Call CloudFormation\n",
                 "cfn-init ${proxy_args} -s ",
@@ -3190,7 +3201,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -3348,35 +3358,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },
@@ -3680,7 +3661,7 @@
                       "_none_"
                     ]
                   },
-                  "\" >> /etc/yum.conf' ]\n",
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
                   " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
                   {
                     "Fn::If": [
@@ -3691,7 +3672,7 @@
                       "false"
                     ]
                   },
-                  "\\\";\" >> /etc/apt/apt.conf' ]\n",
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
                   "--==BOUNDARY==\n",
                   "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
@@ -3709,6 +3690,16 @@
                   "\n",
                   "  exit 1\n",
                   "}\n",
+                  "function vendor_cookbook\n",
+                  "{\n",
+                  "  mkdir /tmp/cookbooks\n",
+                  "  cd /tmp/cookbooks\n",
+                  "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                  "  HOME_BAK=${HOME}\n",
+                  "  export HOME=\"/tmp\"\n",
+                  "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                  "  export HOME=${HOME_BAK}\n",
+                  "}\n",
                   "function bootstrap_instance\n",
                   "{\n",
                   "  which yum 2>/dev/null; yum=$?\n",
@@ -3719,13 +3710,15 @@
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
                   "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                   "  fi\n",
-                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${_region}.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
                   "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  vendor_cookbook\n",
                   "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
                   "proxy=",
@@ -3834,10 +3827,10 @@
                   "else\n",
                   "  bootstrap_instance\n",
                   "fi\n",
-                  "mkdir /tmp/cookbooks\n",
-                  "cd /tmp/cookbooks\n",
-                  "curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                  "tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "  vendor_cookbook\n",
+                  "fi\n",
                   "cd /tmp\n",
                   "# Call CloudFormation\n",
                   "cfn-init ${proxy_args} -s ",
@@ -3873,7 +3866,6 @@
           "configSets": {
             "default": [
               "deployConfigFiles",
-              "getCookbooks",
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
@@ -4031,35 +4023,6 @@
               },
               "jq": {
                 "command": "jq --argfile f1 /tmp/dna.json --argfile f2 /tmp/extra.json -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json || ( echo \"jq not installed\"; cp /tmp/dna.json /etc/chef/dna.json )"
-              }
-            }
-          },
-          "getCookbooks": {
-            "commands": {
-              "berk": {
-                "command": "if [ ! -f /opt/parallelcluster/.bootstrapped -o \"$(cat /opt/parallelcluster/.bootstrapped)\" != \"$parallelcluster_version\" -o \"$custom_cookbook\" != \"NONE\" ]; then . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done; fi",
-                "cwd": "/tmp/cookbooks",
-                "env": {
-                  "HOME": "/tmp",
-                  "custom_cookbook": {
-                    "Ref": "CustomChefCookbook"
-                  },
-                  "parallelcluster_version": {
-                    "Fn::Join": [
-                      "",
-                      [
-                        "aws-parallelcluster-",
-                        {
-                          "Fn::FindInMap": [
-                            "PackagesVersions",
-                            "default",
-                            "parallelcluster"
-                          ]
-                        }
-                      ]
-                    ]
-                  }
-                }
               }
             }
           },
