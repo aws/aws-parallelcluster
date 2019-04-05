@@ -9,6 +9,8 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+from collections import namedtuple
+
 import boto3
 import pytest
 
@@ -17,6 +19,8 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.scaling_common import get_max_asg_capacity, watch_compute_nodes
 from tests.common.schedulers_common import SlurmCommands
 from time_utils import minutes
+
+PclusterConfig = namedtuple("PclusterConfig", ["max_queue_size", "compute_instance"])
 
 
 @pytest.mark.regions(["us-west-1"])
@@ -29,30 +33,43 @@ def test_update(region, pcluster_config_reader, clusters_factory):
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    max_queue_size = 5
-    compute_instance = "c5.xlarge"
+    init_config = PclusterConfig(max_queue_size=5, compute_instance="c5.xlarge")
+    cluster, factory = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
 
-    cluster_config = pcluster_config_reader(max_queue_size=max_queue_size, compute_instance=compute_instance)
+    updated_config = PclusterConfig(max_queue_size=10, compute_instance="c4.xlarge")
+    _update_cluster(cluster, factory, updated_config)
+
+    # test update
+    _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
+    _test_update_compute_instance_type(cluster, updated_config.compute_instance)
+
+
+def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
+    # read configuration and create cluster
+    cluster_config = pcluster_config_reader(
+        max_queue_size=config.max_queue_size, compute_instance=config.compute_instance
+    )
     cluster, factory = clusters_factory(cluster_config)
+
     # Verify initial settings
-    _test_max_queue(region, cluster.cfn_name, max_queue_size)
-    _test_compute_instance_type(cluster.cfn_name, compute_instance)
+    _test_max_queue(region, cluster.cfn_name, config.max_queue_size)
+    _test_compute_instance_type(cluster.cfn_name, config.compute_instance)
 
-    # Configuration parameters for the update test
-    new_max_queue_size = 10
-    new_compute_instance = "c4.xlarge"
+    return cluster, factory
 
+
+def _update_cluster(cluster, factory, config):
     # change config settings
-    _update_cluster_property(cluster, "max_queue_size", str(new_max_queue_size))
-    _update_cluster_property(cluster, "compute_instance_type", new_compute_instance)
+    _update_cluster_property(cluster, "max_queue_size", str(config.max_queue_size))
+    _update_cluster_property(cluster, "compute_instance_type", config.compute_instance)
     # update configuration file
     cluster.update()
     # update cluster
     factory.update_cluster(cluster)
 
-    # test update
-    _test_max_queue(region, cluster.cfn_name, new_max_queue_size)
-    _test_update_compute_instance_type(cluster, new_compute_instance)
+
+def _update_cluster_property(cluster, property_name, property_value):
+    cluster.config.set("cluster default", property_name, property_value)
 
 
 def _test_max_queue(region, stack_name, queue_size):
@@ -86,7 +103,3 @@ def _test_compute_instance_type(stack_name, compute_instance_type):
         instance_types.append(instance.instance_type)
 
     assert_that(instance_types).contains(compute_instance_type)
-
-
-def _update_cluster_property(cluster, property_name, property_value):
-    cluster.config.set("cluster default", property_name, property_value)
