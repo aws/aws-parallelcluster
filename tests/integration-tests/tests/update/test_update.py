@@ -26,7 +26,7 @@ PclusterConfig = namedtuple("PclusterConfig", ["max_queue_size", "compute_instan
 @pytest.mark.regions(["us-west-1"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux"])
-@pytest.mark.usefixtures("os", "scheduler")
+@pytest.mark.usefixtures("region", "os", "scheduler")
 def test_update(region, pcluster_config_reader, clusters_factory):
     """
     Test 'pcluster update' command.
