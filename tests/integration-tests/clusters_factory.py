@@ -30,6 +30,11 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def update(self):
+        """Rewrite the configuration file starting from the self.config object."""
+        with open(self.config_file, "w") as configfile:
+            self.config.write(configfile)
+
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
@@ -107,6 +112,33 @@ class ClustersFactory:
         # job submission right after creation. We need to investigate this further.
         logging.info("Sleeping for 60 seconds in case cluster is not ready yet")
         time.sleep(60)
+
+    def update_cluster(self, cluster, reset_desired=False, extra_params=None):
+        """
+        Create a cluster with a given config.
+        :param cluster: cluster to update.
+        :param reset_desired: reset the current ASG desired capacity to initial config values
+        :param extra_params: extra parameters to pass to stack update
+        """
+        name = cluster.name
+        config = cluster.config_file
+
+        # update the cluster
+        logging.info("Updating cluster {0} with config {1}".format(name, config))
+        self.__created_clusters[name] = cluster
+
+        command = ["pcluster", "update", "--config", config]
+        if reset_desired:
+            command.append("--reset-desired")
+        if extra_params:
+            command.extend(["--extra-parameters", extra_params])
+        command.append(name)
+        result = run_command(command)
+        if "Status: {0} - UPDATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
+            error = "Cluster update failed for {0} with output: {1}".format(name, result.stdout)
+            logging.error(error)
+            raise Exception(error)
+        logging.info("Cluster {0} updated successfully".format(name))
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name):

@@ -37,7 +37,21 @@ distros = OrderedDict(
 )
 
 
-def get_ami_list(regions, date, cookbook_git_ref, node_git_ref, version, owner):
+def get_ami_list_from_file(regions, cfn_template_file):
+    amis_json = {}
+
+    with open(cfn_template_file) as cfn_file:
+        # object_pairs_hook=OrderedDict allows to preserve input order
+        cfn_data = json.load(cfn_file, object_pairs_hook=OrderedDict)
+
+    current_amis = cfn_data.get("Mappings").get("AWSRegionOS2AMI")
+
+    for region_name in regions:
+        amis_json[region_name] = OrderedDict(sorted(current_amis.get(region_name).items()))
+    return amis_json
+
+
+def get_ami_list_from_ec2(regions, date, cookbook_git_ref, node_git_ref, version, owner):
     amis_json = {}
 
     for region_name in regions:
@@ -83,7 +97,20 @@ def convert_json_to_txt(amis_json):
     return amis_txt
 
 
-def get_all_aws_regions(region):
+def get_aws_regions_from_file(region_file):
+    # Region file format
+    # {
+    #    "regions": [
+    #        "cn-north-1",
+    #        "cn-northwest-1"
+    #    ]
+    # }
+    with open(region_file) as r_file:
+        region_data = json.load(r_file)
+    return sorted(r for r in region_data.get("regions"))
+
+
+def get_all_aws_regions_from_ec2(region):
     ec2 = boto3.client("ec2", region_name=region)
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
@@ -117,18 +144,23 @@ def update_amis_txt(amis_txt_file, amis):
 if __name__ == "__main__":
     # parse inputs
     parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
-    group1 = parser.add_argument_group("Search by version and date")
+    group1 = parser.add_argument_group("Retrieve instances from EC2 searching by version and date")
     group1.add_argument("--version", type=str, help="release version", required=False)
     group1.add_argument("--date", type=str, help="release date [timestamp] (e.g. 201801112350)", required=False)
-    group2 = parser.add_argument_group("Search by cookbook and node git reference")
+    group2 = parser.add_argument_group("Retrieve instances from EC2 searching by cookbook and node git reference")
     group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
     group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
+    group3 = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
+    group3.add_argument("--json-template", type=str, help="path to input json cloudformation template", required=False)
+    group3.add_argument(
+        "--json-regions", type=str, help="path to input json file containing the regions", required=False
+    )
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
     parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--cloudformation-template",
         type=str,
-        help="path to cloudfomation template",
+        help="path to output cloudfomation template",
         required=False,
         default="cloudformation/aws-parallelcluster.cfn.json",
     )
@@ -147,17 +179,19 @@ if __name__ == "__main__":
         print("Unsupported partition %s" % args.partition)
         sys.exit(1)
 
-    regions = get_all_aws_regions(region)
-
-    amis_dict = get_ami_list(
-        regions=regions,
-        date=args.date,
-        cookbook_git_ref=args.cookbook_git_ref,
-        node_git_ref=args.node_git_ref,
-        version=args.version,
-        owner=account_id,
-    )
+    if (args.version and args.date) or (args.cookbook_git_ref and args.node_git_ref):
+        regions = get_all_aws_regions_from_ec2(region)
+        amis_dict = get_ami_list_from_ec2(
+            regions=regions,
+            date=args.date,
+            cookbook_git_ref=args.cookbook_git_ref,
+            node_git_ref=args.node_git_ref,
+            version=args.version,
+            owner=account_id,
+        )
+    else:
+        regions = get_aws_regions_from_file(args.json_regions)
+        amis_dict = get_ami_list_from_file(regions, args.json_template)
 
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
-
     update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
