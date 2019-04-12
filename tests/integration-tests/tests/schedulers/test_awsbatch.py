@@ -18,7 +18,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import AWSBatchCommands
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1"])
+@pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "t2.large"])
 @pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
