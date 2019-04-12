@@ -167,7 +167,7 @@ def clusters_factory(request):
             ssh_key=request.config.getoption("key_path"),
         )
         factory.create_cluster(cluster)
-        return cluster, factory
+        return cluster
 
     yield _cluster_factory
     factory.destroy_all_clusters()

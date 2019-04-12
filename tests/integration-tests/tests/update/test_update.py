@@ -35,10 +35,10 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory):
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     init_config = PclusterConfig(max_queue_size=5, compute_instance=instance)
-    cluster, factory = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
+    cluster = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
 
     updated_config = PclusterConfig(max_queue_size=10, compute_instance="c4.xlarge")
-    _update_cluster(cluster, factory, updated_config)
+    _update_cluster(cluster, updated_config)
 
     # test update
     _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
@@ -50,23 +50,24 @@ def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
     cluster_config = pcluster_config_reader(
         max_queue_size=config.max_queue_size, compute_instance=config.compute_instance
     )
-    cluster, factory = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config)
 
     # Verify initial settings
     _test_max_queue(region, cluster.cfn_name, config.max_queue_size)
     _test_compute_instance_type(region, cluster.cfn_name, config.compute_instance)
 
-    return cluster, factory
+    return cluster
 
 
-def _update_cluster(cluster, factory, config):
-    # change config settings
+def _update_cluster(cluster, config):
+    # change cluster.config settings
     _update_cluster_property(cluster, "max_queue_size", str(config.max_queue_size))
     _update_cluster_property(cluster, "compute_instance_type", config.compute_instance)
-    # update configuration file
-    cluster.update()
+    # rewrite configuration file starting from the updated cluster.config object
+    with open(cluster.config_file, "w") as configfile:
+        cluster.config.write(configfile)
     # update cluster
-    factory.update_cluster(cluster)
+    cluster.update()
 
 
 def _update_cluster_property(cluster, property_name, property_value):

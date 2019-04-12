@@ -29,7 +29,7 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir):
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     cluster_config = pcluster_config_reader()
-    cluster, _ = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_simple_job_submission(remote_command_executor, test_datadir)
