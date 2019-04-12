@@ -23,17 +23,18 @@ from time_utils import minutes
 PclusterConfig = namedtuple("PclusterConfig", ["max_queue_size", "compute_instance"])
 
 
-@pytest.mark.regions(["us-west-1"])
+@pytest.mark.regions(["eu-west-1"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux"])
-@pytest.mark.usefixtures("region", "os", "scheduler")
-def test_update(region, pcluster_config_reader, clusters_factory):
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.usefixtures("os", "scheduler")
+def test_update(instance, region, pcluster_config_reader, clusters_factory):
     """
     Test 'pcluster update' command.
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    init_config = PclusterConfig(max_queue_size=5, compute_instance="c5.xlarge")
+    init_config = PclusterConfig(max_queue_size=5, compute_instance=instance)
     cluster, factory = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
 
     updated_config = PclusterConfig(max_queue_size=10, compute_instance="c4.xlarge")
@@ -41,7 +42,7 @@ def test_update(region, pcluster_config_reader, clusters_factory):
 
     # test update
     _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
-    _test_update_compute_instance_type(cluster, updated_config.compute_instance)
+    _test_update_compute_instance_type(region, cluster, updated_config.compute_instance)
 
 
 def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
@@ -53,7 +54,7 @@ def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
 
     # Verify initial settings
     _test_max_queue(region, cluster.cfn_name, config.max_queue_size)
-    _test_compute_instance_type(cluster.cfn_name, config.compute_instance)
+    _test_compute_instance_type(region, cluster.cfn_name, config.compute_instance)
 
     return cluster, factory
 
@@ -77,7 +78,7 @@ def _test_max_queue(region, stack_name, queue_size):
     assert_that(asg_max_size).is_equal_to(queue_size)
 
 
-def _test_update_compute_instance_type(cluster, new_compute_instance):
+def _test_update_compute_instance_type(region, cluster, new_compute_instance):
     # submit a job to perform a scaling up action and have a new instance
     number_of_nodes = 2
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -91,11 +92,11 @@ def _test_update_compute_instance_type(cluster, new_compute_instance):
         max_monitoring_time=minutes(estimated_scaleup_time),
         number_of_nodes=number_of_nodes,
     )
-    _test_compute_instance_type(cluster.cfn_name, new_compute_instance)
+    _test_compute_instance_type(region, cluster.cfn_name, new_compute_instance)
 
 
-def _test_compute_instance_type(stack_name, compute_instance_type):
-    ec2_client = boto3.resource("ec2")
+def _test_compute_instance_type(region, stack_name, compute_instance_type):
+    ec2_client = boto3.resource("ec2", region_name=region)
     instance_ids = []
     instance_types = []
     for instance in ec2_client.instances.filter(Filters=[{"Name": "tag:Application", "Values": [stack_name]}]):
