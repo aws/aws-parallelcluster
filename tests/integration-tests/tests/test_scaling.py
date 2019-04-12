@@ -29,7 +29,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     max_jobs_execution_time = 9
 
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
-    cluster, _ = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
