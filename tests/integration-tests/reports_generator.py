@@ -58,6 +58,8 @@ def generate_json_report(test_results_dir):
     _record_results(results, root, "./testcase[error]/properties/property", "errors")
     _record_results(results, root, "./testcase/properties/property", "total")
 
+    _record_succeeded_results(results)
+
     with open("{0}/test_report.json".format(test_results_dir), "w") as out_f:
         out_f.write(json.dumps(results, indent=4))
 
@@ -65,16 +67,23 @@ def generate_json_report(test_results_dir):
 
 
 def _record_results(results_dict, results_xml_root, xpath_exp, label):
-    for skipped in results_xml_root.findall(xpath_exp):
-        if not skipped.get("name") in results_dict:
-            results_dict[skipped.get("name")] = {}
-        if not skipped.get("value") in results_dict[skipped.get("name")]:
-            results_dict[skipped.get("name")].update({skipped.get("value"): _empty_results_dict()})
-        results_dict[skipped.get("name")][skipped.get("value")][label] += 1
+    for match in results_xml_root.findall(xpath_exp):
+        if not match.get("name") in results_dict:
+            results_dict[match.get("name")] = {}
+        if not match.get("value") in results_dict[match.get("name")]:
+            results_dict[match.get("name")].update({match.get("value"): _empty_results_dict()})
+        results_dict[match.get("name")][match.get("value")][label] += 1
 
 
 def _empty_results_dict():
     return {"total": 0, "skipped": 0, "failures": 0, "errors": 0}
 
 
-# generate_tabular_report("1549489575.329696.out", None, None, None, None)
+def _record_succeeded_results(results):
+    results["all"]["succeeded"] = (
+        results["all"]["total"] - results["all"]["skipped"] - results["all"]["failures"] - results["all"]["errors"]
+    )
+    for dimension in results:
+        if dimension != "all":
+            for result in results[dimension].values():
+                result["succeeded"] = result["total"] - result["skipped"] - result["failures"] - result["errors"]

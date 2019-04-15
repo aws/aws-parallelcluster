@@ -41,7 +41,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
     _test_slurm_version(remote_command_executor)
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg)
     _test_cluster_limits(remote_command_executor, max_queue_size, region, cluster.asg)
-    _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
+    _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
     _test_dynamic_dummy_nodes(remote_command_executor, max_queue_size)
 
 
@@ -82,7 +82,7 @@ def _test_dynamic_dummy_nodes(remote_command_executor, max_queue_size):
     _assert_dummy_nodes(remote_command_executor, max_queue_size - 1)
 
 
-def _test_job_dependencies(remote_command_executor, region, stack_name, scaledown_idletime):
+def _test_job_dependencies(remote_command_executor, region, stack_name, scaledown_idletime, max_queue_size):
     logging.info("Testing cluster doesn't scale when job dependencies are not satisfied")
     slurm_commands = SlurmCommands(remote_command_executor)
     result = slurm_commands.submit_command("sleep 60", nodes=1)
@@ -100,7 +100,7 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
 
     jobs_execution_time = 1
     estimated_scaleup_time = 5
-    estimated_scaledown_time = 20
+    max_scaledown_time = 10
     asg_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
         scheduler_commands=slurm_commands,
         region=region,
@@ -108,12 +108,14 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
         max_monitoring_time=minutes(jobs_execution_time)
         + minutes(scaledown_idletime)
         + minutes(estimated_scaleup_time)
-        + minutes(estimated_scaledown_time),
+        + minutes(max_scaledown_time),
     )
     assert_that(max(asg_capacity_time_series)).is_equal_to(1)
     assert_that(max(compute_nodes_time_series)).is_equal_to(1)
     assert_that(asg_capacity_time_series[-1]).is_equal_to(0)
     assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
+    _assert_dummy_nodes(remote_command_executor, max_queue_size)
+    assert_that(_retrieve_slurm_nodes_from_config(remote_command_executor)).is_empty()
 
 
 def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_name):
@@ -134,6 +136,11 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
 
 def _retrieve_slurm_dummy_nodes_from_config(remote_command_executor):
     retrieve_dummy_nodes_command = "sudo cat /opt/slurm/etc/slurm_parallelcluster_nodes.conf | head -n 1"
+    return remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout
+
+
+def _retrieve_slurm_nodes_from_config(remote_command_executor):
+    retrieve_dummy_nodes_command = "sudo tail -n +2 /opt/slurm/etc/slurm_parallelcluster_nodes.conf"
     return remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout
 
 

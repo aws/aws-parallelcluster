@@ -19,7 +19,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.regions(["us-west-2", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
@@ -35,7 +35,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
@@ -52,7 +52,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.regions(["eu-west-2", "cn-northwest-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
