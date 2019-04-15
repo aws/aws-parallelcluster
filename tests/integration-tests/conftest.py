@@ -167,7 +167,7 @@ def clusters_factory(request):
             ssh_key=request.config.getoption("key_path"),
         )
         factory.create_cluster(cluster)
-        return cluster, factory
+        return cluster
 
     yield _cluster_factory
     factory.destroy_all_clusters()
@@ -176,11 +176,11 @@ def clusters_factory(request):
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.name)),
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
         exist_ok=True,
     )
     cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.name
+        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst

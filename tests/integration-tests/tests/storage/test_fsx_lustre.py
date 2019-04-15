@@ -19,7 +19,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import SgeCommands
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1"])
+@pytest.mark.regions(["eu-central-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.oss(["centos7", "alinux"])
 @pytest.mark.schedulers(["sge"])
@@ -35,7 +35,7 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
     cluster_config = pcluster_config_reader(bucket_name=bucket_name, mount_dir=mount_dir)
-    cluster, _ = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir)
