@@ -20,13 +20,10 @@ from tests.common.scaling_common import get_max_asg_capacity, watch_compute_node
 from tests.common.schedulers_common import SlurmCommands
 from time_utils import minutes
 
-PclusterConfig = namedtuple("PclusterConfig", ["max_queue_size", "compute_instance"])
+PClusterConfig = namedtuple("PClusterConfig", ["max_queue_size", "compute_instance"])
 
 
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["alinux"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "slurm")
 @pytest.mark.usefixtures("os", "scheduler")
 def test_update(instance, region, pcluster_config_reader, clusters_factory):
     """
@@ -34,10 +31,10 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory):
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    init_config = PclusterConfig(max_queue_size=5, compute_instance=instance)
+    init_config = PClusterConfig(max_queue_size=5, compute_instance=instance)
     cluster = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
 
-    updated_config = PclusterConfig(max_queue_size=10, compute_instance="c4.xlarge")
+    updated_config = PClusterConfig(max_queue_size=10, compute_instance="c4.xlarge")
     _update_cluster(cluster, updated_config)
 
     # test update
@@ -98,10 +95,8 @@ def _test_update_compute_instance_type(region, cluster, new_compute_instance):
 
 def _test_compute_instance_type(region, stack_name, compute_instance_type):
     ec2_client = boto3.resource("ec2", region_name=region)
-    instance_ids = []
     instance_types = []
     for instance in ec2_client.instances.filter(Filters=[{"Name": "tag:Application", "Values": [stack_name]}]):
-        instance_ids.append(instance.instance_id)
         instance_types.append(instance.instance_type)
 
     assert_that(instance_types).contains(compute_instance_type)
