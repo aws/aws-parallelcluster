@@ -22,6 +22,7 @@ from shutil import copyfile
 
 import configparser
 import pytest
+from retrying import retry
 
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -311,11 +312,18 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-        cfn_stacks_factory.create_stack(stack)
-        vpc_stacks[region] = stack
+        vpc_stacks[region] = _create_vpc_stack(template, region)
 
     return vpc_stacks
+
+
+# If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
+# not available in randomly picked AZs.
+@retry(stop_max_attempt_number=2, wait_fixed=5000)
+def _create_vpc_stack(template, region):
+    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+    cfn_stacks_factory.create_stack(stack)
+    return stack
 
 
 @pytest.fixture(scope="function")
