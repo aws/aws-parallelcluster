@@ -21,6 +21,8 @@ from time_utils import minutes
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
+@pytest.mark.skip_dimensions("cn-northwest-1", "*", "ubuntu1404", "*")  # aws-cfn-bootstrap missing in Ningxia region
+@pytest.mark.skip_dimensions("cn-northwest-1", "*", "ubuntu1604", "*")  # aws-cfn-bootstrap missing in Ningxia region
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     scaledown_idletime = 4
