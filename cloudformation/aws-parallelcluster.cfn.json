@@ -1150,14 +1150,7 @@
     "CreateLaunchConfig": {
       "Fn::And": [
         {
-          "Fn::Or": [
-            {
-              "Condition": "ChinaRegion"
-            },
-            {
-              "Condition": "GovCloudRegion"
-            }
-          ]
+          "Condition": "ChinaRegion"
         },
         {
           "Condition": "CreateComputeFleet"
