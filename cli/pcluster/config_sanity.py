@@ -49,26 +49,25 @@ class ResourceValidator(object):
     @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):
         """
-        Verify if the security group rule accepts connections to the given port.
+        Verify if the security group rule accepts connections on the given port.
 
         :param rule: The rule to check
         :param port_to_check: The port to check
         :return: True if the rule accepts connection, False otherwise
         """
-        port = rule.get("FromPort")
-        ip_rules = rule.get("IpRanges")
-        group = rule.get("UserIdGroupPairs")
+        from_port = rule.get("FromPort")
+        to_port = rule.get("ToPort")
+        ip_protocol = rule.get("IpProtocol")
 
-        is_valid = False
-        for ip_rule in ip_rules:
-            ip = ip_rule.get("CidrIp")
-            # An existing rule is valid for EFS if, it allows all traffic(0.0.0.0/0)
-            # from all ports or the given port, and does not have a security group restriction
-            if (not port or port == port_to_check) and ip == "0.0.0.0/0" and not group:
-                is_valid = True
-                break
+        # if ip_protocol is -1, all ports are allowed
+        if ip_protocol == "-1":
+            return True
+        # tcp == protocol 6,
+        # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
+        if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+            return True
 
-        return is_valid
+        return False
 
     def __check_efs_fs_id(self, ec2, efs, resource_value):  # noqa: C901 FIXME!!!
         try:
@@ -112,8 +111,8 @@ class ResourceValidator(object):
                     self.__fail(
                         "EFSFSId",
                         "There is an existing Mount Target %s in the Availability Zone %s for EFS %s, "
-                        "and it does not have a security group with inbound and outbound rules that support NFS. "
-                        "Please modify the Mount Target's security group, or delete the Mount Target."
+                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                        "Please modify the Mount Target's security group, to allow traffic on port 2049."
                         % (mt_id, availability_zone, resource_value[0]),
                     )
         except ClientError as e:
@@ -171,7 +170,7 @@ class ResourceValidator(object):
                     "FSXFSId",
                     "The current security group settings on file system %s does not satisfy "
                     "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0],
+                    "inbound and outbound TCP traffic through port 988." % resource_value[0],
                 )
             return True
         except ClientError as e:
