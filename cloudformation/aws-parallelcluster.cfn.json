@@ -1266,9 +1266,7 @@
         "ubuntu1604": "ami-05d35ef899afade2f"
       },
       "cn-northwest-1": {
-        "alinux": "ami-090c0f959ead7a813",
-        "ubuntu1404": "ami-0dc4a48b191a663d1",
-        "ubuntu1604": "ami-0b05d343cc4707a84"
+        "alinux": "ami-090c0f959ead7a813"
       },
       "eu-central-1": {
         "alinux": "ami-0f188f96685b31355",
