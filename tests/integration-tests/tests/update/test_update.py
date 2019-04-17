@@ -114,9 +114,9 @@ def _test_update_compute_instance_type(region, cluster, new_compute_instance):
 
 
 def _test_compute_instance_type(region, stack_name, compute_instance_type):
-    ec2_client = boto3.resource("ec2", region_name=region)
+    ec2_resource = boto3.resource("ec2", region_name=region)
     instance_types = []
-    for instance in ec2_client.instances.filter(Filters=[{"Name": "tag:Application", "Values": [stack_name]}]):
+    for instance in ec2_resource.instances.filter(Filters=[{"Name": "tag:Application", "Values": [stack_name]}]):
         instance_types.append(instance.instance_type)
 
     assert_that(instance_types).contains(compute_instance_type)
