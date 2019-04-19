@@ -1118,26 +1118,16 @@
         "aws-us-gov"
       ]
     },
-    "ChinaRegion": {
-      "Fn::Equals": [
-        {
-          "Ref": "AWS::Partition"
-        },
-        "aws-cn"
-      ]
-    },
     "CreateLaunchTemplate": {
       "Fn::And": [
         {
           "Fn::Not": [
             {
-              "Fn::Or": [
+              "Fn::Equals": [
                 {
-                  "Condition": "ChinaRegion"
+                  "Ref": "AWS::Region"
                 },
-                {
-                  "Condition": "GovCloudRegion"
-                }
+                "us-gov-east-1"
               ]
             }
           ]
@@ -1150,13 +1140,11 @@
     "CreateLaunchConfig": {
       "Fn::And": [
         {
-          "Fn::Or": [
+          "Fn::Equals": [
             {
-              "Condition": "ChinaRegion"
+              "Ref": "AWS::Region"
             },
-            {
-              "Condition": "GovCloudRegion"
-            }
+            "us-gov-east-1"
           ]
         },
         {
