@@ -152,7 +152,11 @@ def _retrieve_slurm_dummy_nodes(remote_command_executor):
 def _assert_dummy_nodes(remote_command_executor, count):
     __tracebackhide__ = True
     dummy_nodes_config = _retrieve_slurm_dummy_nodes_from_config(remote_command_executor)
-    assert_that(dummy_nodes_config).is_equal_to("NodeName=dummy-compute[1-{0}] CPUs=2048 State=FUTURE".format(count))
+    # For the moment the test is enabled only on c5.xlarge, hence hardcoding slots for simplicity
+    slots = 4
+    assert_that(dummy_nodes_config).is_equal_to(
+        "NodeName=dummy-compute[1-{0}] CPUs={1} State=FUTURE".format(count, slots)
+    )
     dummy_nodes_count = _retrieve_slurm_dummy_nodes(remote_command_executor)
     assert_that(dummy_nodes_count).is_equal_to(count)
 
