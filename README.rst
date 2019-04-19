@@ -41,8 +41,6 @@ Then, run pcluster configure:
 
   $ pcluster configure
   Cluster Template [default]:
-  AWS Access Key ID []:
-  AWS Secret Access Key ID []:
   Acceptable Values for AWS Region ID:
       ap-south-1
       ...
