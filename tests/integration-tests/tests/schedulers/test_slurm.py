@@ -122,10 +122,19 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
     logging.info("Testing cluster doesn't scale when job requires a capacity that is higher than the max available")
     slurm_commands = SlurmCommands(remote_command_executor)
     result = slurm_commands.submit_command("sleep 1", nodes=max_queue_size + 1)
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
+    max_nodes_job_id = slurm_commands.assert_job_submitted(result.stdout)
+    result = remote_command_executor.run_remote_command("sbatch -N 1 --wrap='sleep 1' --cpus-per-task 5")
+    max_cpu_job_id = slurm_commands.assert_job_submitted(result.stdout)
+
     # Wait for reason to be computed
     time.sleep(3)
-    assert_that(_get_job_info(remote_command_executor, job_id)).contains("JobState=PENDING Reason=PartitionNodeLimit")
+    assert_that(_get_job_info(remote_command_executor, max_nodes_job_id)).contains(
+        "JobState=PENDING Reason=PartitionNodeLimit"
+    )
+    assert_that(_get_job_info(remote_command_executor, max_cpu_job_id)).contains(
+        "JobState=PENDING Reason=Nodes_required_for_job_are_DOWN,_DRAINED"
+        "_or_reserved_for_jobs_in_higher_priority_partitions"
+    )
 
     # Check we are not scaling
     time.sleep(60)
