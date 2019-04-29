@@ -40,6 +40,7 @@ def handle_client_exception(func):
         except (BotoCoreError, ClientError) as e:
             print("Failed with error: %s" % e)
             print("Hint: please check your AWS credentials.")
+            print("Run `aws configure` or set the credentials as environment variables.")
             sys.exit(1)
 
     return wrapper
@@ -80,7 +81,8 @@ def get_regions():
     return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
 
 
-def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
+@handle_client_exception
+def ec2_conn(aws_region_name):
     if aws_region_name:
         region = aws_region_name
     elif os.environ.get("AWS_DEFAULT_REGION"):
@@ -88,15 +90,13 @@ def ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name):
     else:
         region = "us-east-1"
 
-    ec2 = boto3.client(
-        "ec2", region_name=region, aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key
-    )
+    ec2 = boto3.client("ec2", region_name=region)
     return ec2
 
 
 @handle_client_exception
-def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
-    conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
+def list_keys(aws_region_name):
+    conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
     keynames = []
     for key in keypairs.get("KeyPairs"):
@@ -111,8 +111,8 @@ def list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name):
 
 
 @handle_client_exception
-def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
-    conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
+def list_vpcs(aws_region_name):
+    conn = ec2_conn(aws_region_name)
     vpcs = conn.describe_vpcs()
     vpcids = []
     for vpc in vpcs.get("Vpcs"):
@@ -127,8 +127,8 @@ def list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name):
 
 
 @handle_client_exception
-def list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id):
-    conn = ec2_conn(aws_access_key_id, aws_secret_access_key, aws_region_name)
+def list_subnets(aws_region_name, vpc_id):
+    conn = ec2_conn(aws_region_name)
     subnets = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}])
     subnetids = []
     for subnet in subnets.get("Subnets"):
@@ -161,22 +161,6 @@ def configure(args):  # noqa: C901 FIXME!!!
         "Cluster Template",
         config.get("global", "cluster_template") if config.has_option("global", "cluster_template") else "default",
     )
-    aws_access_key_id = prompt(
-        "AWS Access Key ID",
-        config.get("aws", "aws_access_key_id") if config.has_option("aws", "aws_access_key_id") else None,
-        True,
-    )
-    aws_secret_access_key = prompt(
-        "AWS Secret Access Key ID",
-        config.get("aws", "aws_secret_access_key") if config.has_option("aws", "aws_secret_access_key") else None,
-        True,
-    )
-    if not aws_access_key_id or not aws_secret_access_key:
-        print(
-            "You chose not to configure aws credentials in parallelcluster config file.\n"
-            "Please make sure you export a valid AWS_PROFILE or you have them exported in "
-            "the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables."
-        )
 
     # Use built in boto regions as an available option
     aws_region_name = prompt(
@@ -198,13 +182,13 @@ def configure(args):  # noqa: C901 FIXME!!!
         config.get("cluster " + cluster_template, "key_name")
         if config.has_option("cluster " + cluster_template, "key_name")
         else None,
-        options=list_keys(aws_access_key_id, aws_secret_access_key, aws_region_name),
+        options=list_keys(aws_region_name),
         check_validity=True,
     )
     vpc_id = prompt(
         "VPC ID",
         config.get("vpc " + vpcname, "vpc_id") if config.has_option("vpc " + vpcname, "vpc_id") else None,
-        options=list_vpcs(aws_access_key_id, aws_secret_access_key, aws_region_name),
+        options=list_vpcs(aws_region_name),
         check_validity=True,
     )
     master_subnet_id = prompt(
@@ -212,7 +196,7 @@ def configure(args):  # noqa: C901 FIXME!!!
         config.get("vpc " + vpcname, "master_subnet_id")
         if config.has_option("vpc " + vpcname, "master_subnet_id")
         else None,
-        options=list_subnets(aws_access_key_id, aws_secret_access_key, aws_region_name, vpc_id),
+        options=list_subnets(aws_region_name, vpc_id),
         check_validity=True,
     )
 
@@ -223,12 +207,7 @@ def configure(args):  # noqa: C901 FIXME!!!
         "update_check": "true",
         "sanity_check": "true",
     }
-    s_aws = {
-        "__name__": "aws",
-        "aws_access_key_id": aws_access_key_id,
-        "aws_secret_access_key": aws_secret_access_key,
-        "aws_region_name": aws_region_name,
-    }
+    s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
     s_aliases = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
     s_cluster = {"__name__": "cluster " + cluster_template, "key_name": key_name, "vpc_settings": vpcname}
     s_vpc = {"__name__": "vpc " + vpcname, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
