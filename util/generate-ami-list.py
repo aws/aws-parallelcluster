@@ -62,6 +62,7 @@ def get_ami_list_from_ec2(regions, date, cookbook_git_ref, node_git_ref, version
             elif cookbook_git_ref and node_git_ref:
                 filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
                 filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
+                filters.append({"Name": "name", "Values": ["aws-parallelcluster-*"]})
             else:
                 print("Error: you can search for version and date or cookbook and node git reference")
                 exit(1)
