@@ -460,10 +460,13 @@ class ParallelClusterConfig(object):
         self.parameters["MaxSize"] = "10"
 
         size_parameters = OrderedDict(
-            initial_queue_size=("InitialQueueSize", None),
-            maintain_initial_size=("MaintainInitialSize", None),
-            max_queue_size=("MaxQueueSize", None),
+            [
+                ("initial_queue_size", ("InitialQueueSize", None)),
+                ("maintain_initial_size", ("MaintainInitialSize", None)),
+                ("max_queue_size", ("MaxQueueSize", None)),
+            ]
         )
+
         for key in size_parameters:
             try:
                 __temp__ = self.__config.get(self.__cluster_section, key)

@@ -26,6 +26,8 @@ UNSUPPORTED_DIMENSIONS = [
     ("us-gov-west-1", "*", "*", "awsbatch"),
     ("us-gov-east-1", "*", "*", "awsbatch"),
     ("us-gov-east-1", "*", "c4.xlarge", "*"),
+    ("cn-northwest-1", "*", "ubuntu1404", "*"),  # aws-cfn-bootstrap missing in Ningxia region
+    ("cn-northwest-1", "*", "ubuntu1604", "*"),  # aws-cfn-bootstrap missing in Ningxia region
 ]
 
 

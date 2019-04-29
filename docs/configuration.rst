@@ -55,16 +55,10 @@ Attempt to validate the existence of the resources defined in parameters. ::
 
 aws
 ^^^
-AWS credentials/region section.
+AWS Region section.
 
-These settings apply to all clusters and are REQUIRED.
-
-For security purposes, AWS highly recommends using the environment, EC2 IAM Roles, or the
-`AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials rather than saving into the AWS ParallelCluster config file. ::
-
-    [aws]
-    aws_access_key_id = #your_aws_access_key_id
-    aws_secret_access_key = #your_secret_access_key
+To store credentials, you can use environment variables, IAM roles, or the preferred way, the
+`AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ ::
 
     # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region

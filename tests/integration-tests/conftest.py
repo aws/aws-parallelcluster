@@ -22,6 +22,7 @@ from shutil import copyfile
 
 import configparser
 import pytest
+from retrying import retry
 
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -167,7 +168,7 @@ def clusters_factory(request):
             ssh_key=request.config.getoption("key_path"),
         )
         factory.create_cluster(cluster)
-        return cluster, factory
+        return cluster
 
     yield _cluster_factory
     factory.destroy_all_clusters()
@@ -176,11 +177,11 @@ def clusters_factory(request):
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.name)),
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
         exist_ok=True,
     )
     cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.name
+        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst
@@ -311,11 +312,18 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-        cfn_stacks_factory.create_stack(stack)
-        vpc_stacks[region] = stack
+        vpc_stacks[region] = _create_vpc_stack(template, region, cfn_stacks_factory)
 
     return vpc_stacks
+
+
+# If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
+# not available in randomly picked AZs.
+@retry(stop_max_attempt_number=2, wait_fixed=5000)
+def _create_vpc_stack(template, region, cfn_stacks_factory):
+    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+    cfn_stacks_factory.create_stack(stack)
+    return stack
 
 
 @pytest.fixture(scope="function")
