@@ -2370,7 +2370,8 @@
               "chefPrepEnv",
               "shellRunPreInstall",
               "chefConfig",
-              "shellRunPostInstall"
+              "shellRunPostInstall",
+              "chefFinalize"
             ]
           },
           "deployConfigFiles": {
@@ -2579,6 +2580,14 @@
             "commands": {
               "runpostinstall": {
                 "command": "/opt/parallelcluster/scripts/fetch_and_run -postinstall"
+              }
+            }
+          },
+          "chefFinalize": {
+            "commands": {
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize",
+                "cwd": "/etc/chef"
               }
             }
           }
@@ -3193,7 +3202,7 @@
               "shellRunPreInstall",
               "chefConfig",
               "shellRunPostInstall",
-              "signalComputeReady"
+              "chefFinalize"
             ]
           },
           "deployConfigFiles": {
@@ -3379,10 +3388,11 @@
               }
             }
           },
-          "signalComputeReady": {
+          "chefFinalize": {
             "commands": {
-              "compute_ready": {
-                "command": "/opt/parallelcluster/scripts/compute_ready"
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize",
+                "cwd": "/etc/chef"
               }
             }
           }
@@ -3858,7 +3868,7 @@
               "shellRunPreInstall",
               "chefConfig",
               "shellRunPostInstall",
-              "signalComputeReady"
+              "chefFinalize"
             ]
           },
           "deployConfigFiles": {
@@ -4044,10 +4054,11 @@
               }
             }
           },
-          "signalComputeReady": {
+          "chefFinalize": {
             "commands": {
-              "compute_ready": {
-                "command": "/opt/parallelcluster/scripts/compute_ready"
+              "chef": {
+                "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize",
+                "cwd": "/etc/chef"
               }
             }
           }
