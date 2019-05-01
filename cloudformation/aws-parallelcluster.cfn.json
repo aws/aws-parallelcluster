@@ -1695,7 +1695,8 @@
                 "autoscaling:TerminateInstanceInAutoScalingGroup",
                 "autoscaling:SetDesiredCapacity",
                 "autoscaling:UpdateAutoScalingGroup",
-                "autoscaling:DescribeTags"
+                "autoscaling:DescribeTags",
+                "autoscaling:SetInstanceHealth"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -3004,15 +3005,22 @@
                 "#!/bin/bash -x\n\n",
                 "function error_exit\n",
                 "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " --resource=ComputeFleet --region=",
+                "  region=",
                 {
                   "Ref": "AWS::Region"
                 },
                 "\n",
+                "  instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-id)\n",
+                "  log_dir=/home/logs/compute\n",
+                "  mkdir -p ${log_dir}\n",
+                "  echo \"Reporting instance as unhealthy and dumping logs to ${log_dir}/${instance_id}.tar.gz\"\n",
+                "  tar -czf ${log_dir}/${instance_id}.tar.gz /var/log\n",
+                "  aws --region ${region} autoscaling set-instance-health --instance-id ${instance_id} --health-status Unhealthy\n",
+                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                {
+                  "Ref": "AWS::StackName"
+                },
+                " --resource=ComputeFleet --region=${region}\n",
                 "  exit 1\n",
                 "}\n",
                 "function vendor_cookbook\n",
@@ -3167,7 +3175,7 @@
                   "Ref": "AWS::Region"
                 },
                 " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"ComputeServer setup complete\" --stack=",
                 {
                   "Ref": "AWS::StackName"
                 },
@@ -3667,15 +3675,22 @@
                   "#!/bin/bash -x\n\n",
                   "function error_exit\n",
                   "{\n",
-                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                  {
-                    "Ref": "AWS::StackName"
-                  },
-                  " --resource=ComputeFleet --region=",
+                  "  region=",
                   {
                     "Ref": "AWS::Region"
                   },
                   "\n",
+                  "  instance_id=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/instance-id)\n",
+                  "  log_dir=/home/logs/compute\n",
+                  "  mkdir -p ${log_dir}\n",
+                  "  echo \"Reporting instance as unhealthy and dumping logs to ${log_dir}/${instance_id}.tar.gz\"\n",
+                  "  tar -czf ${log_dir}/${instance_id}.tar.gz /var/log\n",
+                  "  aws --region ${region} autoscaling set-instance-health --instance-id ${instance_id} --health-status Unhealthy\n",
+                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --resource=ComputeFleet --region=${region}\n",
                   "  exit 1\n",
                   "}\n",
                   "function vendor_cookbook\n",
@@ -3830,7 +3845,7 @@
                     "Ref": "AWS::Region"
                   },
                   " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"ComputeServer setup complete\" --stack=",
                   {
                     "Ref": "AWS::StackName"
                   },
