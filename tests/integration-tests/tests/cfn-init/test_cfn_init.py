@@ -12,12 +12,12 @@
 
 import boto3
 import pytest
-from retrying import retry
 
 from assertpy import assert_that
-from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from remote_command_executor import RemoteCommandExecutor
+from tests.common.compute_logs_common import wait_compute_log
+from tests.common.scaling_common import assert_instance_replaced_or_terminating
 from tests.common.schedulers_common import SlurmCommands
-from time_utils import minutes, seconds
 
 
 @pytest.mark.regions(["eu-central-1"])
@@ -40,9 +40,16 @@ def test_replace_compute_on_failure(region, pcluster_config_reader, clusters_fac
     # submit a job to spin up a compute node that will fail due to post_install script
     sge_commands = SlurmCommands(remote_command_executor)
     sge_commands.submit_command("sleep 1")
-    instance_id = _wait_compute_log(remote_command_executor)
+    instance_id = wait_compute_log(remote_command_executor)
 
     # extract logs and check one of them
+    _assert_compute_logs(remote_command_executor, instance_id)
+
+    # check that instance got already replaced or is marked as Unhealthy
+    assert_instance_replaced_or_terminating(instance_id, region)
+
+
+def _assert_compute_logs(remote_command_executor, instance_id):
     remote_command_executor.run_remote_command(
         "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
     )
@@ -51,24 +58,3 @@ def test_replace_compute_on_failure(region, pcluster_config_reader, clusters_fac
     assert_that(messages_log).contains(
         "Reporting instance as unhealthy and dumping logs to /home/logs/compute/{0}.tar.gz".format(instance_id)
     )
-
-    # check that instance got already replaced or is marked as Unhealthy
-    response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
-        InstanceIds=[instance_id]
-    )
-    assert_that(
-        not response["AutoScalingInstances"] or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-    ).is_true()
-
-
-@retry(
-    retry_on_exception=lambda exception: isinstance(exception, RemoteCommandExecutionError),
-    wait_fixed=seconds(30),
-    stop_max_delay=minutes(10),
-)
-def _wait_compute_log(remote_command_executor):
-    remote_command_executor.run_remote_command("test -d /home/logs/compute", log_error=False)
-    # return instance-id
-    return remote_command_executor.run_remote_command(
-        "find /home/logs/compute/ -type f -printf '%f\n' -quit  | head -1 | cut -d. -f1", log_error=False
-    ).stdout

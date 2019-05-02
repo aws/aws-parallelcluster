@@ -14,6 +14,7 @@ import time
 import boto3
 from retrying import RetryError, retry
 
+from assertpy import assert_that
 from time_utils import seconds
 
 
@@ -43,7 +44,7 @@ def get_compute_nodes_allocation(scheduler_commands, region, stack_name, max_mon
     )
     def _watch_compute_nodes_allocation():
         compute_nodes = scheduler_commands.compute_nodes_count()
-        asg_capacity = _get_desired_asg_capacity(region, stack_name)
+        asg_capacity = get_desired_asg_capacity(region, stack_name)
         timestamp = time.time()
 
         # add values only if there is a transition.
@@ -113,7 +114,7 @@ def _get_asg(region, stack_name):
     return response["AutoScalingGroups"][0]
 
 
-def _get_desired_asg_capacity(region, stack_name):
+def get_desired_asg_capacity(region, stack_name):
     """Retrieve the desired capacity of the autoscaling group for a specific cluster."""
     return _get_asg(region, stack_name)["DesiredCapacity"]
 
@@ -121,3 +122,13 @@ def _get_desired_asg_capacity(region, stack_name):
 def get_max_asg_capacity(region, stack_name):
     """Retrieve the max capacity of the autoscaling group for a specific cluster."""
     return _get_asg(region, stack_name)["MaxSize"]
+
+
+def assert_instance_replaced_or_terminating(instance_id, region):
+    """Assert that a given instance got replaced or is marked as Unhealthy."""
+    response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
+        InstanceIds=[instance_id]
+    )
+    assert_that(
+        not response["AutoScalingInstances"] or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
+    ).is_true()
