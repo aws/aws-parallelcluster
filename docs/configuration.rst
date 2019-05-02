@@ -100,6 +100,8 @@ template_url
 """"""""""""
 Defines the path to the CloudFormation template used to create the cluster.
 
+Updates use the template the stack was created with.
+
 Defaults to
 ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
 
