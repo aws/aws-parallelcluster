@@ -50,7 +50,9 @@ class RemoteCommandExecutor:
             # Catch all exceptions if we fail to close the clients
             logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
 
-    def run_remote_command(self, command, log_error=True, additional_files=None, raise_on_error=True, login_shell=True):
+    def run_remote_command(
+        self, command, log_error=True, additional_files=None, raise_on_error=True, login_shell=True, hide=False
+    ):
         """
         Execute remote command on the cluster master node.
 
@@ -59,6 +61,7 @@ class RemoteCommandExecutor:
         :param additional_files: additional files to copy before executing script.
         :param raise_on_error: if True raises a RemoteCommandExecutionError on failures
         :param login_shell: if True prepends /bin/bash --login -c to the given command
+        :param hide: do not print command output to the local stdout
         :return: result of the execution.
         """
         if isinstance(command, list):
@@ -68,7 +71,7 @@ class RemoteCommandExecutor:
         if login_shell:
             command = "/bin/bash --login -c {0}".format(shlex.quote(command))
 
-        result = self.__connection.run(command, warn=True, pty=True, hide=False)
+        result = self.__connection.run(command, warn=True, pty=True, hide=hide)
         result.stdout = "\n".join(result.stdout.splitlines())
         result.stderr = "\n".join(result.stderr.splitlines())
         if result.failed and raise_on_error:
