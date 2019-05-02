@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import re
 from abc import ABCMeta, abstractmethod
 
@@ -66,6 +66,16 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def submit_script(self, script, nodes=1):
+        """
+        Submit a job to the scheduler by using a script file.
+
+        :param script: script to submit.
+        :return: result from remote command execution.
+        """
+        pass
+
+    @abstractmethod
     def assert_job_succeeded(self, job_id, children_number=0):
         """
         Assert that the job succeeded.
@@ -108,6 +118,9 @@ class AWSBatchCommands(SchedulerCommands):
     def submit_command(self, command, nodes=1):  # noqa: D102
         return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
 
+    def submit_script(self, script, nodes=1):  # noqa: D102
+        raise NotImplementedError
+
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
         status = self.get_job_exit_status(job_id)
@@ -144,6 +157,9 @@ class SgeCommands(SchedulerCommands):
     def submit_command(self, command, nodes=1):  # noqa: D102
         # TODO add support for multiple nodes
         return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command))
+
+    def submit_script(self, script, nodes=1):  # noqa: D102
+        raise NotImplementedError
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -182,6 +198,12 @@ class SlurmCommands(SchedulerCommands):
     def submit_command(self, command, nodes=1):  # noqa: D102
         return self._remote_command_executor.run_remote_command("sbatch -N {0} --wrap='{1}'".format(nodes, command))
 
+    def submit_script(self, script, nodes=1):  # noqa: D102
+        script_name = os.path.basename(script)
+        return self._remote_command_executor.run_remote_command(
+            "sbatch -N {0} {1}".format(nodes, script_name), additional_files=[script]
+        )
+
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         return "JobState=COMPLETED" in result.stdout
@@ -208,6 +230,9 @@ class TorqueCommands(SchedulerCommands):
         raise NotImplementedError
 
     def submit_command(self, command):  # noqa: D102
+        raise NotImplementedError
+
+    def submit_script(self, script, nodes=1):  # noqa: D102
         raise NotImplementedError
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102

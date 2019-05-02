@@ -15,7 +15,12 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.scaling_common import get_compute_nodes_allocation
+from tests.common.compute_logs_common import wait_compute_log
+from tests.common.scaling_common import (
+    assert_instance_replaced_or_terminating,
+    get_compute_nodes_allocation,
+    get_desired_asg_capacity,
+)
 from tests.common.schedulers_common import get_scheduler_commands
 from time_utils import minutes
 
@@ -54,6 +59,37 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
         expected_asg_capacity=(0, 3),
         expected_compute_nodes=(0, 3),
     )
+
+
+@pytest.mark.regions(["sa-east-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.nodewatcher
+def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    # submit a job that kills the slurm daemon so that the node enters a failing state
+    scheduler_commands.submit_script(str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)))
+    instance_id = wait_compute_log(remote_command_executor)
+
+    _assert_compute_logs(remote_command_executor, instance_id)
+    assert_instance_replaced_or_terminating(instance_id, region)
+    # verify that desired capacity is still 1
+    assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(1)
+
+
+def _assert_compute_logs(remote_command_executor, instance_id):
+    remote_command_executor.run_remote_command(
+        "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
+    )
+    remote_command_executor.run_remote_command("test -f /tmp/var/log/nodewatcher")
+    messages_log = remote_command_executor.run_remote_command("cat /tmp/var/log/nodewatcher", hide=True).stdout
+    assert_that(messages_log).contains("Node is marked as down by scheduler or not attached correctly. Terminating...")
+    assert_that(messages_log).contains("Dumping logs to /home/logs/compute/{0}.tar.gz".format(instance_id))
 
 
 def _assert_scaling_works(
