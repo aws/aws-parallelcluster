@@ -379,8 +379,7 @@ def get_version(stack):
     :param stack: stack object
     :return: version or empty string
     """
-    tags = filter(lambda x: x.get("Key") == "Version", stack.get("Tags"))
-    return list(tags)[0].get("Value") if len(list(tags)) > 0 else ""
+    return next((tag.get("Value") for tag in stack.get("Tags") if tag.get("Key") == "Version"), "")
 
 
 def colorize(stack_status, args):
