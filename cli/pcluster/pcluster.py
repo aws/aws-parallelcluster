@@ -372,14 +372,31 @@ def stop(args):
         set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
 
 
-def get_version(stack):
+def get_version(stack, cfn_client):
     """
-    Get the version of the stack if tagged.
+    Get the version of the stack.
 
     :param stack: stack object
+    :param cfn_client: cfn boto3 client
     :return: version or empty string
     """
-    return next((tag.get("Value") for tag in stack.get("Tags") if tag.get("Key") == "Version"), "")
+    template_version = next((tag.get("Value") for tag in stack.get("Tags") if tag.get("Key") == "Version"), None)
+    if not template_version:
+        # pre 2.3.2
+        packages_default_version = (
+            cfn_client.get_template(StackName=stack.get("StackName"))
+            .get("TemplateBody")
+            .get("Mappings")
+            .get("PackagesVersions")
+            .get("default")
+        )
+        template_version = packages_default_version.get("parallelcluster", None)
+
+        if not template_version:
+            # pre 2.0.2
+            template_version = packages_default_version.get("cfncluster", "")
+
+    return template_version
 
 
 def colorize(stack_status, args):
@@ -411,7 +428,7 @@ def list_stacks(args):
         result = []
         for stack in stacks:
             if stack.get("ParentId") is None and stack.get("StackName").startswith("parallelcluster-"):
-                pcluster_version = get_version(stack)
+                pcluster_version = get_version(stack, cfn)
                 result.append(
                     [
                         stack.get("StackName")[len("parallelcluster-") :],  # noqa: E203
