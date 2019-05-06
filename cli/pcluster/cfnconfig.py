@@ -518,6 +518,7 @@ class ParallelClusterConfig(object):
             custom_chef_runlist=("CustomChefRunList", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
+            enable_efa=("EFA", None),
         )
         for key in cluster_options:
             try:
