@@ -104,6 +104,9 @@ class ParallelClusterConfig(object):
         # Initialize aliases public attributes
         self.__init_aliases()
 
+        # efa checks
+        self.__init_efa_parameters()
+
         # Handle extra parameters supplied on command-line
         try:
             if self.args.extra_parameters is not None:
@@ -518,7 +521,6 @@ class ParallelClusterConfig(object):
             custom_chef_runlist=("CustomChefRunList", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
-            enable_efa=("EFA", None),
         )
         for key in cluster_options:
             try:
@@ -530,6 +532,19 @@ class ParallelClusterConfig(object):
                 self.parameters[cluster_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
+
+    def __init_efa_parameters(self):
+        try:
+            __temp__ = self.__config.get(self.__cluster_section, "enable_efa")
+            if __temp__ != "compute":
+                self.__fail("valid values for enable_efa = compute")
+
+            self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7"])
+            self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
+            self.__validate_resource("EFA", self.parameters)
+            self.parameters["EFA"] = __temp__
+        except configparser.NoOptionError:
+            pass
 
     def __init_extra_json_parameter(self):
         """Check for extra_json = { "cluster" : ... } configuration parameters and map to "cfncluster"."""
@@ -597,11 +612,21 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, option):
             self.__fail("option %s cannot be used with awsbatch" % option)
 
+    def __get_scheduler(self):
+        scheduler = "sge"
+        if self.__config.has_option(self.__cluster_section, "scheduler"):
+            scheduler = self.__config.get(self.__cluster_section, "scheduler")
+        return scheduler
+
     def __get_os(self):
         base_os = "alinux"
         if self.__config.has_option(self.__cluster_section, "base_os"):
             base_os = self.__config.get(self.__cluster_section, "base_os")
         return base_os
+
+    def __validate_scheduler(self, service, scheduler, supported_schedulers):
+        if scheduler not in supported_schedulers:
+            self.__fail("%s supports following Schedulers: %s" % (service, supported_schedulers))
 
     def __validate_os(self, service, baseos, supported_oses):
         if baseos not in supported_oses:

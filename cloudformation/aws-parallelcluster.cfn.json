@@ -1202,11 +1202,15 @@
       ]
     },
     "EnableEFA": {
-      "Fn::Equals": [
+      "Fn::Not": [
         {
-          "Ref": "EFA"
-        },
-        "compute"
+          "Fn::Equals": [
+            {
+              "Ref": "EFA"
+            },
+            "NONE"
+          ]
+        }
       ]
     }
   },
@@ -3431,7 +3435,7 @@
               "InterfaceType": {
                 "Fn::If": [
                   "EnableEFA",
-                  "EFA",
+                  "efa",
                   {
                     "Ref": "AWS::NoValue"
                   }
@@ -4222,6 +4226,34 @@
             "ToPort": 65535
           }
         ]
+      },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "DestinationSecurityGroupId": {
+          "Ref": "ComputeSecurityGroup"
+        },
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
+      },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupNormalEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
       },
       "Condition": "CreateSecurityGroups"
     },
