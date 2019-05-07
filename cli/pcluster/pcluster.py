@@ -328,8 +328,9 @@ def start(args):
             if config.parameters.get("MinSize") and int(config.parameters.get("MinSize")) > 0
             else 0
         )
+        ce_name = get_batch_ce(stack_name, config)
         start_batch_ce(
-            ce_name=stack_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus
+            ce_name=ce_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus
         )
     else:
         LOGGER.info("Starting compute fleet : %s", args.cluster_name)
@@ -364,12 +365,36 @@ def stop(args):
 
     if config.parameters.get("Scheduler") == "awsbatch":
         LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
-        stop_batch_ce(ce_name=stack_name, config=config)
+        ce_name = get_batch_ce(stack_name, config)
+        stop_batch_ce(ce_name=ce_name, config=config)
     else:
         LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
         # Set Resource limits
         asg_name = get_asg_name(stack_name=stack_name, config=config)
         set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
+
+
+def get_batch_ce(stack_name, config):
+    """
+    Get name of the AWS Batch Compute Environment.
+
+    :param stack_name: name of the master stack
+    :param config: config
+    :return: ce_name or exit if not found
+    """
+    cfn = boto3.client(
+        "cloudformation",
+        region_name=config.region,
+        aws_access_key_id=config.aws_access_key_id,
+        aws_secret_access_key=config.aws_secret_access_key,
+    )
+
+    try:
+        outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Outputs")
+        return _get_output_value(outputs, "BatchComputeEnvironmentArn")
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.exit(1)
 
 
 def get_version(stack):
