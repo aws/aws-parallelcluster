@@ -53,7 +53,7 @@ def _assert_compute_logs(remote_command_executor, instance_id):
     remote_command_executor.run_remote_command(
         "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
     )
-    remote_command_executor.run_remote_command("test -f /tmp/var/log/nodewatcher")
+    remote_command_executor.run_remote_command("test -f /tmp/var/log/cfn-init.log")
     messages_log = remote_command_executor.run_remote_command("cat /tmp/var/log/messages", hide=True).stdout
     assert_that(messages_log).contains(
         "Reporting instance as unhealthy and dumping logs to /home/logs/compute/{0}.tar.gz".format(instance_id)
