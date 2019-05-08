@@ -127,6 +127,12 @@ def _get_parser():
         help="The number of nodes to reserve for the job. It enables Multi-Node Parallel submission",
         type=int,
     )
+    parser.add_argument(
+        "-g",
+        "--gpus",
+        help="The number of gpus to attach to the container. GPU jobs will only run p2 or p3 instance families.",
+        type=int,
+    )
     # array parameters
     parser.add_argument(
         "-a",
@@ -438,9 +444,11 @@ class AWSBsubCommand(object):
         job_definition,
         job_name,
         job_queue,
+        compute_environment,
         command,
         nodes=None,
         vcpus=None,
+        gpus=None,
         memory=None,
         array_size=None,
         retry_attempts=1,
@@ -465,6 +473,9 @@ class AWSBsubCommand(object):
                 container_overrides.update(vcpus=vcpus)
             if memory:
                 container_overrides.update(memory=memory)
+            if gpus:
+                self.__validate_gpu_instances(compute_environment)
+                container_overrides.update({"resourceRequirements": [{"type": "GPU", "value": str(gpus)}]})
             # populate environment variables
             environment = []
             for env_var in env:
@@ -507,6 +518,27 @@ class AWSBsubCommand(object):
             print("Job %s (%s) has been submitted." % (response["jobId"], response["jobName"]))
         except Exception as e:
             fail("Error submitting job to AWS Batch. Failed with exception: %s" % e)
+
+    def __validate_gpu_instances(self, compute_environment):
+        """
+        Get Instance Type to confirm it works with GPU jobs.
+
+        :return: True for supported gpu instances
+        """
+        ce = self.batch_client.describe_compute_environments(computeEnvironments=[compute_environment]).get(
+            "computeEnvironments"
+        )[0]
+
+        instances = ce.get("computeResources").get("instanceTypes")
+
+        for instance in instances:
+            if str(instance).startswith("p"):
+                return True
+
+        fail(
+            "Parameters validation error: --gpus parameter can only be used with p2 or p3 instance families.\n"
+            "Instance(s) %s are not supported for GPU jobs." % instances
+        )
 
     def __get_mnp_job_definition_version(self, base_job_definition_arn, nodes):
         """
@@ -643,10 +675,12 @@ def main():
             job_definition=job_definition,
             job_name=job_name,
             job_queue=config.job_queue,
+            compute_environment=config.compute_environment,
             command=command,
             nodes=nodes,
             vcpus=args.vcpus,
             memory=args.memory,
+            gpus=args.gpus,
             array_size=args.array_size,
             dependencies=depends_on,
             retry_attempts=args.retry_attempts,

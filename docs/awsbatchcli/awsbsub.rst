@@ -17,3 +17,4 @@ awsbsub
     startedAt
     subfolder
     utf
+    gpus
