@@ -23,5 +23,5 @@ def wait_compute_log(remote_command_executor):
     remote_command_executor.run_remote_command("test -d /home/logs/compute", log_error=False)
     # return instance-id
     return remote_command_executor.run_remote_command(
-        "find /home/logs/compute/ -type f -printf '%f\n' -quit  | head -1 | cut -d. -f1", log_error=False
+        "find /home/logs/compute/ -type f -printf '%f\\n' -quit  | head -1 | cut -d. -f1", log_error=False
     ).stdout

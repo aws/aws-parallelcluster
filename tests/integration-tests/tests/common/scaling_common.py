@@ -130,5 +130,7 @@ def assert_instance_replaced_or_terminating(instance_id, region):
         InstanceIds=[instance_id]
     )
     assert_that(
-        not response["AutoScalingInstances"] or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
+        not response["AutoScalingInstances"]
+        or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
+        or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
     ).is_true()
