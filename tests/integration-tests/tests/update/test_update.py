@@ -21,7 +21,7 @@ from tests.common.schedulers_common import SlurmCommands
 from time_utils import minutes
 
 PClusterConfig = namedtuple(
-    "PClusterConfig", ["max_queue_size", "compute_instance", "s3_read_resource", "s3_read_write_resource"]
+    "PClusterConfig", ["max_queue_size", "compute_instance_type", "s3_read_resource", "s3_read_write_resource"]
 )
 
 
@@ -35,14 +35,14 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory):
     """
     s3_arn = "arn:aws:s3:::fake_bucket/*"
     init_config = PClusterConfig(
-        max_queue_size=5, compute_instance=instance, s3_read_resource=s3_arn, s3_read_write_resource=s3_arn
+        max_queue_size=5, compute_instance_type=instance, s3_read_resource=s3_arn, s3_read_write_resource=s3_arn
     )
     cluster = _init_cluster(region, clusters_factory, pcluster_config_reader, init_config)
 
     s3_arn_updated = "arn:aws:s3:::fake_bucket/fake_folder/*"
     updated_config = PClusterConfig(
         max_queue_size=10,
-        compute_instance="c4.xlarge",
+        compute_instance_type="c4.xlarge",
         s3_read_resource=s3_arn_updated,
         s3_read_write_resource=s3_arn_updated,
     )
@@ -50,7 +50,7 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory):
 
     # test update
     _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
-    _test_update_compute_instance_type(region, cluster, updated_config.compute_instance)
+    _test_update_compute_instance_type(region, cluster, updated_config.compute_instance_type)
     _test_s3_read_resource(region, cluster, updated_config.s3_read_resource)
     _test_s3_read_write_resource(region, cluster, updated_config.s3_read_write_resource)
 
@@ -59,7 +59,7 @@ def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
     # read configuration and create cluster
     cluster_config = pcluster_config_reader(
         max_queue_size=config.max_queue_size,
-        compute_instance=config.compute_instance,
+        compute_instance_type=config.compute_instance_type,
         s3_read_resource=config.s3_read_resource,
         s3_read_write_resource=config.s3_read_write_resource,
     )
@@ -67,7 +67,7 @@ def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
 
     # Verify initial settings
     _test_max_queue(region, cluster.cfn_name, config.max_queue_size)
-    _test_compute_instance_type(region, cluster.cfn_name, config.compute_instance)
+    _test_compute_instance_type(region, cluster.cfn_name, config.compute_instance_type)
     _test_s3_read_resource(region, cluster, config.s3_read_resource)
     _test_s3_read_write_resource(region, cluster, config.s3_read_write_resource)
 
@@ -77,7 +77,7 @@ def _init_cluster(region, clusters_factory, pcluster_config_reader, config):
 def _update_cluster(cluster, config):
     # change cluster.config settings
     _update_cluster_property(cluster, "max_queue_size", str(config.max_queue_size))
-    _update_cluster_property(cluster, "compute_instance_type", config.compute_instance)
+    _update_cluster_property(cluster, "compute_instance_type", config.compute_instance_type)
     _update_cluster_property(cluster, "s3_read_resource", config.s3_read_resource)
     _update_cluster_property(cluster, "s3_read_write_resource", config.s3_read_write_resource)
     # rewrite configuration file starting from the updated cluster.config object
