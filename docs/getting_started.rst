@@ -65,10 +65,11 @@ was originally installed:
 Configuring AWS ParallelCluster
 ===============================
 
-First you'll need to setup your IAM credentials, see `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html>`_.
+First you'll need to setup your IAM credentials, see `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html>`_
 for more information.
 
 ::
+
     $ aws configure
     AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
     AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
