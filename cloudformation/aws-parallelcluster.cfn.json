@@ -1535,6 +1535,7 @@
     },
     "DynamoDBTable": {
       "Type": "AWS::DynamoDB::Table",
+      "UpdateReplacePolicy": "Retain",
       "Properties": {
         "AttributeDefinitions": [
           {
