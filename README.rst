@@ -105,5 +105,6 @@ Changes
 
 CfnCluster to AWS ParallelCluster
 =================================
-In Version `2.0.0`, we changed the name of CfnCluster to AWS ParallelCluster. With that name change we released several new features, which you can read about here: https://aws.amazon.com/blogs/opensource/aws-parallelcluster/
+In Version `2.0.0`, we changed the name of CfnCluster to AWS ParallelCluster. With that name change we released several new features, which you can read about in the `Change Log`_.
 
+.. _`Change Log`: https://github.com/aws/aws-parallelcluster/blob/develop/CHANGELOG.rst#200
