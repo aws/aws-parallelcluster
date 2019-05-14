@@ -8,17 +8,23 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import, print_function
+# fmt: off
+from __future__ import absolute_import, print_function  # isort:skip
+from future import standard_library  # isort:skip
+standard_library.install_aliases()
+# fmt: on
 
 import json
 import logging
 import os
 import sys
 import time
+import urllib.request
 import zipfile
 from io import BytesIO
 
 import boto3
+import pkg_resources
 from botocore.exceptions import ClientError
 
 LOGGER = logging.getLogger("pcluster.pcluster")
@@ -260,3 +266,20 @@ def get_templates_bucket_path(aws_region_name):
     return "https://s3.{REGION}.amazonaws.com{S3_SUFFIX}/{REGION}-aws-parallelcluster/templates/".format(
         REGION=aws_region_name, S3_SUFFIX=s3_suffix
     )
+
+
+def get_installed_version():
+    """Get the version of the installed aws-parallelcluster package."""
+    return pkg_resources.get_distribution("aws-parallelcluster").version
+
+
+def check_if_latest_version():
+    """Check if the current package version is the latest one."""
+    try:
+        latest = json.loads(urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read())[
+            "info"
+        ]["version"]
+        if get_installed_version() < latest:
+            print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
+    except Exception:
+        pass
