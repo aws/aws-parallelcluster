@@ -18,19 +18,21 @@ import inspect
 import json
 import os
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
 from builtins import object
 from collections import OrderedDict
 
 import boto3
 import configparser
-import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_instance_vcpus, get_supported_features, get_templates_bucket_path
+from pcluster.utils import (
+    check_if_latest_version,
+    get_installed_version,
+    get_instance_vcpus,
+    get_supported_features,
+    get_templates_bucket_path,
+)
 
 
 class ParallelClusterConfig(object):
@@ -41,7 +43,7 @@ class ParallelClusterConfig(object):
     def __init__(self, args):
         self.args = args
         self.parameters = {}
-        self.version = pkg_resources.get_distribution("aws-parallelcluster").version
+        self.version = get_installed_version()
 
         # Initialize configuration attribute by parsing config file
         self.__config = self.__init_config()
@@ -242,21 +244,16 @@ class ParallelClusterConfig(object):
 
     def __check_for_updates(self):
         """Check for updates, if required."""
-        # verify if package updates should be checked
-        try:
-            update_check = self.__config.getboolean("global", "update_check")
-        except configparser.NoOptionError:
-            update_check = True
-
-        if update_check is True:
+        args_func = self.args.func.__name__
+        if args_func == "create":
+            # verify if package updates should be checked
             try:
-                latest = json.loads(
-                    urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read()
-                )["info"]["version"]
-                if self.version < latest:
-                    print("warning: There is a newer version %s of AWS ParallelCluster available." % latest)
-            except Exception:
-                pass
+                update_check = self.__config.getboolean("global", "update_check")
+            except configparser.NoOptionError:
+                update_check = True
+
+            if update_check is True:
+                check_if_latest_version()
 
     def __init_sanity_check(self):
         """
