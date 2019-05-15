@@ -60,6 +60,9 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
         expected_compute_nodes=(0, 3),
     )
 
+    logging.info("Verifying no error in logs")
+    _assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
 
 @pytest.mark.regions(["sa-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
@@ -153,3 +156,11 @@ def _assert_test_jobs_completed(remote_command_executor, max_jobs_exec_time):
     jobs_execution_time = jobs_completion_time - jobs_start_time
     logging.info("Test jobs completed in %d seconds", jobs_execution_time)
     assert_that(jobs_execution_time).is_less_than(max_jobs_exec_time)
+
+
+def _assert_no_errors_in_logs(remote_command_executor, log_files):
+    __tracebackhide__ = True
+    for log_file in log_files:
+        log = remote_command_executor.run_remote_command("cat {0}".format(log_file), hide=True).stdout
+        for error_level in ["CRITICAL", "ERROR"]:
+            assert_that(log).does_not_contain(error_level)
