@@ -47,6 +47,12 @@ Check for updates to pcluster. ::
 
     update_check = true
 
+limits_check
+""""""""""""
+Check if AWS limits are able to satisfy the configured ``max_queue_size`` value. ::
+
+    limits_check = true
+
 sanity_check
 """"""""""""
 Attempt to validate the existence of the resources defined in parameters. ::

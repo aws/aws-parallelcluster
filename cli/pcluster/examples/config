@@ -4,6 +4,8 @@
 cluster_template = default
 # Check for updates
 update_check = true
+# Check for limits
+limits_check = true
 # Check config sanity. (Attempts to validate resources defined in parameters, actually exist)
 sanity_check = true
 

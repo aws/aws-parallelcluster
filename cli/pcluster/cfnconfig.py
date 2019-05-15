@@ -356,7 +356,17 @@ class ParallelClusterConfig(object):
 
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
-        if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
+        # verify if limits should be checked
+        try:
+            limits_check = self.__config.getboolean("global", "limits_check")
+        except configparser.NoOptionError:
+            limits_check = True
+
+        if (
+            self.parameters.get("Scheduler") == "awsbatch"
+            or self.parameters.get("ClusterType", "ondemand") == "spot"
+            or limits_check is False
+        ):
             return
 
         instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")

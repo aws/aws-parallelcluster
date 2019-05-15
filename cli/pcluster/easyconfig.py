@@ -205,6 +205,7 @@ def configure(args):  # noqa: C901 FIXME!!!
         "__name__": "global",
         "cluster_template": cluster_template,
         "update_check": "true",
+        "limits_check": "true",
         "sanity_check": "true",
     }
     s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
