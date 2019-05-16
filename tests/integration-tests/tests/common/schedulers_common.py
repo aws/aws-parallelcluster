@@ -201,14 +201,19 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("sbatch -N {0} --wrap='{1}'".format(nodes, command))
+    def submit_command(self, command, nodes=1, host=None):  # noqa: D102
+        submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
+        if host:
+            submission_command += " --nodelist={0}".format(host)
+        return self._remote_command_executor.run_remote_command(submission_command)
 
-    def submit_script(self, script, nodes=1):  # noqa: D102
+    def submit_script(self, script, nodes=1, host=None):  # noqa: D102
         script_name = os.path.basename(script)
-        return self._remote_command_executor.run_remote_command(
-            "sbatch -N {0} {1}".format(nodes, script_name), additional_files=[script]
-        )
+        submission_command = "sbatch"
+        if host:
+            submission_command += " --nodelist={0}".format(host)
+        submission_command += " -N {0} {1}".format(nodes, script_name)
+        return self._remote_command_executor.run_remote_command(submission_command, additional_files=[script])
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
