@@ -57,7 +57,7 @@ The configuration to use an existing private network requires the following sett
   master_subnet_id = subnet-<public>
   compute_subnet_id = subnet-<private>
 
-Both these configuration require to have a `NAT Gateway
+Note that this second configuration require to have a `NAT Gateway
 <https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
 or an internal PROXY to enable web access for compute instances.
 
