@@ -130,6 +130,9 @@ class AWSBatchCommands(SchedulerCommands):
     def compute_nodes_count(self):  # noqa: D102
         raise NotImplementedError
 
+    def get_compute_nodes(self):  # noqa: D102
+        raise NotImplementedError
+
 
 class SgeCommands(SchedulerCommands):
     """Implement commands for sge scheduler."""
@@ -170,6 +173,9 @@ class SgeCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command("qhost | grep -o ip- | wc -l")
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
+
+    def get_compute_nodes(self):  # noqa: D102
+        raise NotImplementedError
 
 
 class SlurmCommands(SchedulerCommands):
@@ -213,6 +219,12 @@ class SlurmCommands(SchedulerCommands):
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
 
+    def get_compute_nodes(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command(
+            "sinfo --Node --noheader | grep compute | awk '{print $1}'"
+        )
+        return result.stdout.splitlines()
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
@@ -244,6 +256,9 @@ class TorqueCommands(SchedulerCommands):
         )
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
+
+    def get_compute_nodes(self):  # noqa: D102
+        raise NotImplementedError
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):
