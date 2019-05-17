@@ -593,6 +593,9 @@ If true, an Elastic IP will be associated to the Master instance.
 If false, the Master instance will have a Public IP (or not) according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
 
+.. note::
+    This parameter can't be set to false if :code:`compute_subnet_cidr` is specified.
+
 See :ref:`networking configuration <networking>` for some examples.
 
 Defaults to true. ::
