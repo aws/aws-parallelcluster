@@ -81,10 +81,6 @@ def create(args):  # noqa: C901 FIXME!!!
         aws_secret_access_key=config.aws_secret_access_key,
     )
 
-    # Set the ComputeWaitConditionCount parameter to match DesiredSize
-    if "DesiredSize" in config.parameters:
-        config.parameters["ComputeWaitConditionCount"] = config.parameters["DesiredSize"]
-
     # Get the MasterSubnetId and use it to determine AvailabilityZone
     if "MasterSubnetId" in config.parameters:
         master_subnet_id = config.parameters["MasterSubnetId"]

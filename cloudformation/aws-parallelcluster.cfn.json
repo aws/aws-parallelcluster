@@ -55,7 +55,6 @@
             "MinSize",
             "DesiredSize",
             "MaxSize",
-            "ComputeWaitConditionCount",
             "SpotPrice",
             "ClusterType",
             "ProxyServer",
@@ -244,9 +243,6 @@
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
         },
-        "ComputeWaitConditionCount": {
-          "default": "WAIT COUNT"
-        },
         "AvailabilityZone": {
           "default": "AVAILABILITY ZONE"
         },
@@ -387,11 +383,6 @@
       "Description": "Postinstall script URL. This is run before any host configuration.",
       "Type": "String",
       "Default": "NONE"
-    },
-    "ComputeWaitConditionCount": {
-      "Description": "Specific number of instances to wait for while creating the cluster",
-      "Type": "Number",
-      "Default": "2"
     },
     "S3ReadResource": {
       "Description": "S3 resource with read access from AWS ParallelCluster nodes",
@@ -2692,7 +2683,7 @@
         "ResourceSignal": {
           "Timeout": "PT30M",
           "Count": {
-            "Ref": "ComputeWaitConditionCount"
+            "Ref": "DesiredSize"
           }
         }
       },
