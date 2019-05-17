@@ -74,7 +74,6 @@
             "CustomChefRunList",
             "CustomChefCookbook",
             "ExtraJson",
-            "Tenancy",
             "MasterRootVolumeSize",
             "ComputeRootVolumeSize",
             "EC2IAMRoleName"
@@ -203,9 +202,6 @@
         },
         "SharedDir": {
           "default": "shared_dir"
-        },
-        "Tenancy": {
-          "default": "tenancy"
         },
         "MasterRootVolumeSize": {
           "default": "master_root_volume_size"
@@ -519,15 +515,6 @@
       "Description": "Extra json to be added to Chef dna.json",
       "Type": "String",
       "Default": "{}"
-    },
-    "Tenancy": {
-      "Description": "Type of placement requird in AWS ParallelCluster, it can either be cluster or compute.",
-      "Type": "String",
-      "Default": "default",
-      "AllowedValues": [
-        "default",
-        "dedicated"
-      ]
     },
     "EBSKMSKeyId": {
       "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
@@ -1038,14 +1025,6 @@
             "NONE"
           ]
         }
-      ]
-    },
-    "UseDedicatedTenancy": {
-      "Fn::Equals": [
-        {
-          "Ref": "Tenancy"
-        },
-        "dedicated"
       ]
     },
     "UseEC2IAMRole": {
@@ -2174,9 +2153,6 @@
             }
           ]
         },
-        "Tenancy": {
-          "Ref": "Tenancy"
-        },
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
@@ -3012,17 +2988,6 @@
             }
           }
         ],
-        "PlacementTenancy": {
-          "Fn::If": [
-            "UseDedicatedTenancy",
-            {
-              "Ref": "Tenancy"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
@@ -3708,19 +3673,6 @@
               }
             }
           ],
-          "Placement": {
-            "Fn::If": [
-              "UseDedicatedTenancy",
-              {
-                "Tenancy": {
-                  "Ref": "Tenancy"
-                }
-              },
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          },
           "UserData": {
             "Fn::Base64": {
               "Fn::Join": [
