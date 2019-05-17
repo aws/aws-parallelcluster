@@ -47,6 +47,17 @@ class ResourceValidator(object):
         return "aws"
 
     @staticmethod
+    def validate_vpc_coherence(cidr_value, public_ip):
+        """
+        Check that cidr_value and public_ip parameters are not conflicting.
+
+        :param cidr_value: the value of compute_subnet_cidr set by the user (default should be None)
+        :param public_ip: the value of use_public_ips set by the user (default should be True)
+        """
+        if cidr_value and public_ip is False:
+            ResourceValidator.__fail("VPC COHERENCE", "compute_subnet_cidr needs use_public_ips to be true")
+
+    @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):
         """
         Verify if the security group rule accepts connections on the given port.
