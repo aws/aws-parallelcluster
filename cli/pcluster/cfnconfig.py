@@ -508,7 +508,6 @@ class ParallelClusterConfig(object):
             ec2_iam_role=("EC2IAMRoleName", "EC2IAMRoleName"),
             extra_json=("ExtraJson", None),
             custom_chef_cookbook=("CustomChefCookbook", None),
-            custom_chef_runlist=("CustomChefRunList", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
         )
