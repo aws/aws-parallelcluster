@@ -502,7 +502,6 @@ class ParallelClusterConfig(object):
             post_install_args=("PostInstallArgs", None),
             s3_read_resource=("S3ReadResource", None),
             s3_read_write_resource=("S3ReadWriteResource", None),
-            tenancy=("Tenancy", None),
             master_root_volume_size=("MasterRootVolumeSize", None),
             compute_root_volume_size=("ComputeRootVolumeSize", None),
             base_os=("BaseOS", None),
