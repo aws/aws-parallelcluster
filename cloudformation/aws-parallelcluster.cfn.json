@@ -71,7 +71,6 @@
             "EncryptedEphemeral",
             "EphemeralDir",
             "SharedDir",
-            "CustomChefRunList",
             "CustomChefCookbook",
             "ExtraJson",
             "MasterRootVolumeSize",
@@ -220,9 +219,6 @@
         },
         "CustomChefCookbook": {
           "default": "custom_chef_cookbook"
-        },
-        "CustomChefRunList": {
-          "default": "custom_chef_runlist"
         },
         "EBSSnapshotId": {
           "default": "ebs_snapshot_id"
@@ -500,11 +496,6 @@
       "Type": "String",
       "Default": "NONE",
       "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
-    },
-    "CustomChefRunList": {
-      "Description": "Custom run list, which will override the default",
-      "Type": "String",
-      "Default": "NONE"
     },
     "CustomChefCookbook": {
       "Description": "URL of custom cookbook that will override the default. This will be unpacked and then dependencies resolved with Berkshelf.",
@@ -885,18 +876,6 @@
           "Fn::Equals": [
             {
               "Ref": "ComputeSubnetCidr"
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
-    "UseCustomRunList": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "CustomChefRunList"
             },
             "NONE"
           ]
@@ -2510,26 +2489,6 @@
                         "QueueName"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
@@ -3341,26 +3300,6 @@
                         "User"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
@@ -4028,26 +3967,6 @@
                         "User"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
