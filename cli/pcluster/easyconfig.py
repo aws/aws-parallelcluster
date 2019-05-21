@@ -208,7 +208,12 @@ def configure(args):  # noqa: C901 FIXME!!!
         "sanity_check": "true",
     }
     s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
-    s_aliases = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
+    s_aliases = {
+        "__name__": "aliases",
+        "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}",
+        "put": "scp {ARGS} {CFN_USER}@{MASTER_IP}:~/",
+        "get": "scp {CFN_USER}@{MASTER_IP}:{ARGS} .",
+    }
     s_cluster = {"__name__": "cluster " + cluster_template, "key_name": key_name, "vpc_settings": vpcname}
     s_vpc = {"__name__": "vpc " + vpcname, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
 

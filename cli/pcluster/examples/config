@@ -16,6 +16,8 @@ sanity_check = true
 # This is the aliases section, you can configure
 # ssh alias here
 ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+put = scp {ARGS} {CFN_USER}@{MASTER_IP}:~/
+get = scp {CFN_USER}@{MASTER_IP}:{ARGS} .
 
 ## AWS ParallelCluster templates
 [cluster default]

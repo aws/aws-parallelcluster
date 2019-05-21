@@ -694,10 +694,16 @@ def _get_param_value(params, key_name):
 def command(args, extra_args):  # noqa: C901 FIXME!!!
     stack = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
+    commands = {
+        "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}",
+        "put": "scp {ARGS} {CFN_USER}@{MASTER_IP}:~/",
+        "get": "scp {CFN_USER}@{MASTER_IP}:{ARGS} .",
+    }
+
     if args.command in config.aliases:
         config_command = config.aliases[args.command]
     else:
-        config_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
+        config_command = commands[args.command]
 
     cfn = boto3.client(
         "cloudformation",

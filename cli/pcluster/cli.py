@@ -294,6 +294,52 @@ Variables substituted::
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
     pssh.set_defaults(func=command)
 
+    # put command subparser
+    put_example = textwrap.dedent(
+        """
+For example:
+
+In `pcluster put` file name and flags may be passed after the cluster name:
+
+    pcluster put mycluster -r dir/
+
+This command copies the contents of directory dir/ recursively onto the master instance."""
+    )
+
+    pput = subparsers.add_parser(
+        "put",
+        help="Copy a file to the home directory on the master instance.",
+        description="This command may be customized in the aliases " "section of the config file.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=put_example,
+    )
+    pput.add_argument("cluster_name", help="name of the cluster to connect to")
+    pput.add_argument("-d", "--dryrun", action="store_true", default=False, help="print command and exit")
+    pput.set_defaults(func=command)
+
+    # put command subparser
+    get_example = textwrap.dedent(
+        """
+For example:
+
+To grab the contents of that directory back from the home dir, escape the ~ and *:
+
+    pcluster get mycluster \~/dir/\*
+
+This recursively copies the contents of directory dir/ into the local directory."""  # noqa: W605
+    )
+
+    pget = subparsers.add_parser(
+        "get",
+        help="Grab a file from the master instance and copy it to the local directory.",
+        description="This command may be customized in the aliases section of the config file.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=get_example,
+    )
+    pget.add_argument("cluster_name", help="name of the cluster to connect to")
+    pget.add_argument("-d", "--dryrun", action="store_true", default=False, help="print command and exit")
+    pget.set_defaults(func=command)
+
     # createami command subparser
     pami = subparsers.add_parser(
         "createami", help="(Linux/macOS) Creates a custom AMI to use with AWS ParallelCluster."
