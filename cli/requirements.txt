@@ -1,1 +1,7 @@
 boto3>=1.9.54
+future>=0.16.0
+tabulate>=0.8.2
+ipaddress>=1.0.22
+enum34>=1.1.6
+configparser>=3.5.0
+PyYAML>=5.1.2

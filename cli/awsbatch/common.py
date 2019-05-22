@@ -26,6 +26,12 @@ from tabulate import tabulate
 
 from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
 
+PCLUSTER_STACK_PREFIX = "parallelcluster-"
+
+
+def _get_stack_name(cluster_name):
+    return PCLUSTER_STACK_PREFIX + cluster_name
+
 
 class Output(object):
     """Generic Output object."""
@@ -240,7 +246,7 @@ class AWSBatchCliConfig(object):
                 pass
 
             try:
-                self.stack_name = "parallelcluster-" + cluster_name
+                self.stack_name = _get_stack_name(cluster_name)
                 log.info("Stack name is (%s)" % self.stack_name)
                 # if region is set for the current stack, override the region from the AWS ParallelCluster config file
                 # or the region from the [main] section
@@ -276,7 +282,7 @@ class AWSBatchCliConfig(object):
         :param log: log
         """
         try:
-            self.stack_name = "parallelcluster-" + cluster
+            self.stack_name = _get_stack_name(cluster)
             log.info("Describing stack (%s)" % self.stack_name)
             # get required values from the output of the describe-stack command
             # don't use proxy because we are in the client and use default region

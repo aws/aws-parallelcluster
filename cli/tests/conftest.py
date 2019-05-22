@@ -5,9 +5,13 @@ It's very useful for fixtures that need to be shared among all tests.
 """
 from __future__ import print_function
 
+import os
+
 import boto3
 import pytest
 from botocore.stub import Stubber
+
+from jinja2 import Environment, FileSystemLoader
 
 
 @pytest.fixture
@@ -61,7 +65,7 @@ def convert_to_date_mock(request, mocker):
 
 
 @pytest.fixture()
-def boto3_stubber(request, mocker):
+def boto3_stubber(mocker, boto3_stubber_path):
     """
     Create a function to easily mock boto3 clients.
 
@@ -71,20 +75,20 @@ def boto3_stubber(request, mocker):
 
     The function makes use of botocore.Stubber to mock the boto3 API calls.
     Multiple boto3 services can be mocked as part of the same test.
+
+    :param boto3_stubber_path is the path of the boto3 import to mock. (e.g. pcluster.config.validators.boto3)
     """
     __tracebackhide__ = True
     created_stubbers = []
     mocked_clients = {}
-    region = "us-east-1"
-    # Mock Boto3ClientFactory in the module under test.
-    # Use a side_effect to allow mocking multiple clients in the same test function.
-    module_under_test = request.module.__name__.replace("test_", "")
-    mocked_client_factory = mocker.patch("awsbatch." + module_under_test + ".Boto3ClientFactory", autospec=True)
-    mocked_client_factory.return_value.get_client.side_effect = lambda x: mocked_clients[x]
-    mocked_client_factory.return_value.region = region
+
+    mocked_client_factory = mocker.patch(boto3_stubber_path, autospec=True)
+    # use **kwargs to skip parameters passed to the boto3.client other than the "service"
+    # e.g. boto3.client("ec2", region_name=region, ...) --> x = ec2
+    mocked_client_factory.client.side_effect = lambda x, **kwargs: mocked_clients[x]
 
     def _boto3_stubber(service, mocked_requests):
-        client = boto3.client(service, region)
+        client = boto3.client(service)
         stubber = Stubber(client)
         # Save a ref to the stubber so that we can deactivate it at the end of the test.
         created_stubbers.append(stubber)
@@ -130,3 +134,34 @@ def awsbatchcliconfig_mock(request, mocker):
     for key, value in DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG.items():
         setattr(mock.return_value, key, value)
     return mock
+
+
+@pytest.fixture()
+def pcluster_config_reader(test_datadir):
+    """
+    Define a fixture to render pcluster config templates associated to the running test.
+
+    The config for a given test is a pcluster.config.ini file stored in the configs_datadir folder.
+    The config can be written by using Jinja2 template engine.
+    The current renderer already replaces placeholders for current keys:
+        {{ region }}, {{ os }}, {{ instance }}, {{ scheduler}}, {{ key_name }},
+        {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
+    The current renderer injects options for custom templates and packages in case these
+    are passed to the cli and not present already in the cluster config.
+    Also sanity_check is set to true by default unless explicitly set in config.
+
+    :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
+    """
+    config_file = "pcluster.config.ini"
+
+    def _config_renderer(**kwargs):
+        config_file_path = os.path.join(str(test_datadir), config_file)
+        # default_values = _get_default_template_values(vpc_stacks, region, request)
+        file_loader = FileSystemLoader(str(test_datadir))
+        env = Environment(loader=file_loader)
+        rendered_template = env.get_template(config_file).render(**kwargs)
+        with open(config_file_path, "w") as f:
+            f.write(rendered_template)
+        return config_file_path
+
+    return _config_renderer

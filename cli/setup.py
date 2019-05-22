@@ -22,7 +22,14 @@ def readme():
 
 
 VERSION = "2.4.1"
-REQUIRES = ["boto3>=1.9.54", "future>=0.16.0,<=0.17.1", "tabulate>=0.8.2,<=0.8.3", "ipaddress>=1.0.22", "enum34>=1.1.6"]
+REQUIRES = [
+    "boto3>=1.9.54",
+    "future>=0.16.0,<=0.17.1",
+    "tabulate>=0.8.2,<=0.8.3",
+    "ipaddress>=1.0.22",
+    "enum34>=1.1.6",
+    "PyYAML>=5.1.2",
+]
 
 if sys.version_info[0] == 2:
     REQUIRES.append("configparser>=3.5.0,<=3.8.1")

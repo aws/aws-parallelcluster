@@ -15,9 +15,7 @@ ignore =
 # D400 First line should end with a period
 # D401 First line should be in imperative mood
 per-file-ignores =
-    pcluster/config_sanity.py: E402, D103
-    pcluster/easyconfig.py: E402
-    pcluster/cfnconfig.py: E402
+    pcluster/configure/easyconfig.py: E402
     pcluster/utils.py: E402
     tests/pcluster/pcluster-unittest.py: D101, D102
     tests/pcluster/configure/test_*.py: D101, D102

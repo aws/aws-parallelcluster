@@ -107,6 +107,9 @@ key_name = mykey
 # Existing EC2 IAM role to be associated with the EC2 instances
 # (defaults to NONE)
 #ec2_iam_role = NONE
+# Existing EC2 IAM policies to be associated with the EC2 instances
+# (defaults to NONE)
+#additional_iam_policies = NONE
 # Extra Json to be merged with the dna.json used by Chef
 # (defaults to {})
 #extra_json = {}
@@ -126,35 +129,35 @@ vpc_settings = public
 ## VPC Settings
 [vpc public]
 # ID of the VPC you want to provision cluster into.
-vpc_id = vpc-
+vpc_id = vpc-12345678
 # ID of the Subnet you want to provision the Master server into
-master_subnet_id = subnet-
+master_subnet_id = subnet-12345678
 # SSH from CIDR
 # This is only used when AWS ParallelCluster creates the security group
 # (defaults to 0.0.0.0/0)
 #ssh_from = 0.0.0.0/0
 # Additional VPC security group Id for all instances
 # (defaults to NONE)
-#additional_sg = sg-
+#additional_sg = sg-12345678
 # Existing EC2 security group to be assosiated with the EC2 instances
 # (defaults to NONE)
-#vpc_security_group_id = sg-
+#vpc_security_group_id = sg-23456789
 
 #[vpc private-new]
 # ID of the VPC you want to provision cluster into.
-#vpc_id = vpc-
+#vpc_id = vpc-12345678
 # ID of the Subnet you want to provision the Master server into
-#master_subnet_id = subnet-
+#master_subnet_id = subnet-12345678
 # CIDR for new backend subnet i.e. 10.0.100.0/24
 #compute_subnet_cidr = 10.0.100.0/24
 
 #[vpc private-existing]
 # ID of the VPC you want to provision cluster into.
-#vpc_id =
+#vpc_id = vpc-12345678
 # ID of the Subnet you want to provision the Master server into
-#master_subnet_id = subnet-
+#master_subnet_id = subnet-12345678
 # CIDR for new backend subnet i.e. 10.0.100.0/24
-#compute_subnet_id = subnet-
+#compute_subnet_id = subnet-23456789
 
 ## First EBS Settings
 #[ebs custom1]
@@ -162,7 +165,7 @@ master_subnet_id = subnet-
 #shared_dir = vol1
 # Id of EBS snapshot if using snapshot as source for volume
 # (defaults to NONE)
-#ebs_snapshot_id = snap-
+#ebs_snapshot_id = snap-12345678
 # Type of volume to create either new or from snapshot
 # (defaults to gp2)
 #volume_type = io1
@@ -215,7 +218,7 @@ master_subnet_id = subnet-
 # File system ID of an existing EFS file system to use. Specifying this option will void all EFS options but shared_dir
 # Requires the given file system to: not have a mount target in the stack's availability zone OR have a mount target with inbound and outbound permissions for NFS traffic from 0.0.0.0/0
 # (defaults to NONE)
-#efs_fs_id = fs-12faea3
+#efs_fs_id = fs-12345678
 
 ## RAID Settings
 #[raid rs]
