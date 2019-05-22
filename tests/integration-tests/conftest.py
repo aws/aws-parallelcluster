@@ -288,6 +288,8 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
     # c5.xlarge is not supported in ap-southeast-1c
     "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
+    # c4.xlarge is not supported in ap-south-1c
+    "ap-south-1": ["ap-south-1a", "ap-south-1b"],
 }
 
 
