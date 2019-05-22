@@ -20,14 +20,14 @@ import textwrap
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-from pcluster import commands
-from pcluster.configure import easyconfig
+import pcluster.commands as pcluster
+import pcluster.configure.easyconfig as easyconfig
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster.cli")
 
 
 def create(args):
-    commands.create(args)
+    pcluster.create(args)
 
 
 def configure(args):
@@ -35,54 +35,52 @@ def configure(args):
 
 
 def command(args, extra_args):
-    commands.command(args, extra_args)
+    pcluster.command(args, extra_args)
 
 
 def status(args):
-    commands.status(args)
+    pcluster.status(args)
 
 
 def list_stacks(args):
-    commands.list_stacks(args)
+    pcluster.list_stacks(args)
 
 
 def delete(args):
-    commands.delete(args)
+    pcluster.delete(args)
 
 
 def instances(args):
-    commands.instances(args)
+    pcluster.instances(args)
 
 
 def update(args):
-    commands.update(args)
+    pcluster.update(args)
 
 
 def version(args):
-    version = commands.version()
-    LOGGER.info(version)
+    print(pcluster.version())
 
 
 def start(args):
-    commands.start(args)
+    pcluster.start(args)
 
 
 def stop(args):
-    commands.stop(args)
+    pcluster.stop(args)
 
 
 def create_ami(args):
-    commands.create_ami(args)
+    pcluster.create_ami(args)
 
 
 def config_logger():
-    logger = logging.getLogger("pcluster.pcluster")
-    logger.setLevel(logging.DEBUG)
+    LOGGER.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler(sys.stdout)
     ch.setLevel(logging.INFO)
     ch.setFormatter(logging.Formatter("%(message)s"))
-    logger.addHandler(ch)
+    LOGGER.addHandler(ch)
 
     logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
     try:
@@ -94,7 +92,7 @@ def config_logger():
     fh = logging.FileHandler(logfile)
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
-    logger.addHandler(fh)
+    LOGGER.addHandler(fh)
 
 
 def _addarg_config(subparser):
@@ -128,14 +126,13 @@ def _get_parser():
 
     # create command subparser
     create_example = textwrap.dedent(
-        """When the command is called and begins polling for status of that call
-, it is safe to use 'Ctrl-C' to exit.  You can return to viewing the current
+        """When the command is called and begins polling for status of that call,
+it is safe to use 'Ctrl-C' to exit. You can return to viewing the current
 status by calling "pcluster status mycluster".
 
 Examples::
 
-  $ pcluster create mycluster
-  $ pcluster create mycluster --tags \'{ "Key1" : "Value1" , "Key2" : "Value2" }\'"""
+  $ pcluster create mycluster"""
     )
     pcreate = subparsers.add_parser(
         "create",
@@ -163,8 +160,20 @@ Examples::
         "--cluster-template",
         help="Indicates which section of the configuration file to use for cluster creation.",
     )
-    pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
-    pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
+    pcreate.add_argument(
+        "-p",
+        "--extra-parameters",
+        type=json.loads,
+        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
+        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
+    )
+    pcreate.add_argument(
+        "-g",
+        "--tags",
+        type=json.loads,
+        help="Specifies additional tags to be added to the stack.\n"
+        'They must be in the form: {"Key1": "Value1", "Key2": "Value2"}',
+    )
     pcreate.set_defaults(func=create)
 
     # update command subparser
@@ -189,7 +198,13 @@ Examples::
     pupdate.add_argument(
         "-t", "--cluster-template", help="Indicates which section of the configuration file to use for cluster update."
     )
-    pupdate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack update.")
+    pupdate.add_argument(
+        "-p",
+        "--extra-parameters",
+        type=json.loads,
+        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
+        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
+    )
     pupdate.add_argument(
         "-rd",
         "--reset-desired",
@@ -369,14 +384,18 @@ Variables substituted::
 def main():
     config_logger()
 
-    logger = logging.getLogger("pcluster.pcluster")
-    logger.debug("pcluster CLI starting")
+    # TODO remove logger
+    LOGGER.debug("pcluster CLI starting")
 
     parser = _get_parser()
     args, extra_args = parser.parse_known_args()
-    logger.debug(args)
+    LOGGER.debug(args)
 
     try:
+        # set region in the environment to make it available to all the boto3 calls
+        if "region" in args and args.region:
+            os.environ["AWS_DEFAULT_REGION"] = args.region
+
         if args.func.__name__ == "command":
             args.func(args, extra_args)
         else:
@@ -386,13 +405,13 @@ def main():
                 sys.exit(1)
             args.func(args)
     except NoCredentialsError:
-        logger.error("AWS Credentials not found.")
+        LOGGER.error("AWS Credentials not found.")
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("Exiting...")
+        LOGGER.info("Exiting...")
         sys.exit(1)
     except Exception as e:
-        logger.error("Unexpected error of type %s: %s", type(e).__name__, e)
+        LOGGER.error("Unexpected error of type %s: %s", type(e).__name__, e)
         sys.exit(1)
 
 

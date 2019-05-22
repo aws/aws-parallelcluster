@@ -49,7 +49,7 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
         print("Allowed values for {0}:".format(message))
         for item in options_to_print:
             print(item)
-    user_prompt = "{0} [{1}]: ".format(message, default_value or "")
+    user_prompt = "{0} [{1}]: ".format(message, default_value if default_value is not None else "")
 
     valid_user_input = False
     result = default_value

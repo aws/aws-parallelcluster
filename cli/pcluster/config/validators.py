@@ -1,4 +1,4 @@
-# Copyright 2013-2014 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You may not use this file except in compliance
 # with the License. A copy of the License is located at
@@ -8,680 +8,653 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
-from future import standard_library  # isort:skip
-standard_library.install_aliases()
-# fmt: on
-
 import re
-import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import get_instance_vcpus, get_partition, get_supported_features
+from pcluster.utils import (
+    get_efs_mount_target_id,
+    get_instance_vcpus,
+    get_partition,
+    get_region,
+    get_supported_features,
+    list_ec2_instance_types,
+)
 
 
-class ResourceValidator(object):
-    """Utility class to check resource sanity."""
+def _get_sts_endpoint():
+    """Get regionalized STS endpoint."""
+    region = get_region()
+    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
 
-    def __init__(self, region, aws_access_key_id, aws_secret_access_key):
-        """
-        Initialize a ResourceValidator object.
 
-        :param region: AWS Region
-        :param aws_access_key_id: AWS access key
-        :param aws_secret_access_key: AWS secret access key
-        """
-        self.region = region
-        self.aws_access_key_id = aws_access_key_id
-        self.aws_secret_access_key = aws_secret_access_key
+def _check_sg_rules_for_port(rule, port_to_check):
+    """
+    Verify if the security group rule accepts connections on the given port.
 
-    def __get_sts_endpoint(self):
-        return "https://sts.{0}.{1}".format(
-            self.region, "amazonaws.com.cn" if self.region.startswith("cn-") else "amazonaws.com"
-        )
+    :param rule: The rule to check
+    :param port_to_check: The port to check
+    :return: True if the rule accepts connection, False otherwise
+    """
+    from_port = rule.get("FromPort")
+    to_port = rule.get("ToPort")
+    ip_protocol = rule.get("IpProtocol")
 
-    @staticmethod
-    def __check_sg_rules_for_port(rule, port_to_check):
-        """
-        Verify if the security group rule accepts connections on the given port.
+    # if ip_protocol is -1, all ports are allowed
+    if ip_protocol == "-1":
+        return True
+    # tcp == protocol 6,
+    # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
+    if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+        return True
 
-        :param rule: The rule to check
-        :param port_to_check: The port to check
-        :return: True if the rule accepts connection, False otherwise
-        """
-        from_port = rule.get("FromPort")
-        to_port = rule.get("ToPort")
-        ip_protocol = rule.get("IpProtocol")
+    return False
 
-        # if ip_protocol is -1, all ports are allowed
-        if ip_protocol == "-1":
-            return True
-        # tcp == protocol 6,
-        # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
-        if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
-            return True
 
-        return False
-
-    def __check_efs_fs_id(self, ec2, efs, resource_value):  # noqa: C901 FIXME!!!
-        try:
-            # Check to see if there is any existing mt on the fs
-            mt = efs.describe_mount_targets(FileSystemId=resource_value[0])
-            # Get the availability zone of the stack
-            availability_zone = (
-                ec2.describe_subnets(SubnetIds=[resource_value[1]]).get("Subnets")[0].get("AvailabilityZone")
+def efs_id_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        # Get master availability zone
+        master_avail_zone = pcluster_config.get_master_availability_zone()
+        mount_target_id = get_efs_mount_target_id(efs_fs_id=param_value, avail_zone=master_avail_zone)
+        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+        if mount_target_id:
+            # Get list of security group IDs of the mount target
+            sg_ids = (
+                boto3.client("efs")
+                .describe_mount_target_security_groups(MountTargetId=mount_target_id)
+                .get("SecurityGroups")
             )
-            mt_id = None
-            for item in mt.get("MountTargets"):
-                # Check to see if there is an existing mt in the az of the stack
-                mt_subnet = item.get("SubnetId")
-                if availability_zone == ec2.describe_subnets(SubnetIds=[mt_subnet]).get("Subnets")[0].get(
-                    "AvailabilityZone"
-                ):
-                    mt_id = item.get("MountTargetId")
-            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-            if mt_id:
-                nfs_access = False
-                in_access = False
-                out_access = False
-                # Get list of security group IDs of the mount target
-                sg_ids = efs.describe_mount_target_security_groups(MountTargetId=mt_id).get("SecurityGroups")
-                for sg in ec2.describe_security_groups(GroupIds=sg_ids).get("SecurityGroups"):
-                    # Check all inbound rules
-                    in_rules = sg.get("IpPermissions")
-                    for rule in in_rules:
-                        if self.__check_sg_rules_for_port(rule, 2049):
-                            in_access = True
-                            break
-                    out_rules = sg.get("IpPermissionsEgress")
-                    for rule in out_rules:
-                        if self.__check_sg_rules_for_port(rule, 2049):
-                            out_access = True
-                            break
-                    if in_access and out_access:
-                        nfs_access = True
-                        break
-                if not nfs_access:
-                    self.__fail(
-                        "EFSFSId",
-                        "There is an existing Mount Target %s in the Availability Zone %s for EFS %s, "
-                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
-                        "Please modify the Mount Target's security group, to allow traffic on port 2049."
-                        % (mt_id, availability_zone, resource_value[0]),
+            if not _check_in_out_access(sg_ids, port=2049):
+                warnings.append(
+                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
+                    "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                    "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
+                        mount_target_id, master_avail_zone, param_value
                     )
-        except ClientError as e:
-            self.__fail("EFSFSId", e.response.get("Error").get("Message"))
+                )
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
 
-    def __check_nfs_access(self, ec2, network_interfaces):
-        nfs_access = False
+    return errors, warnings
+
+
+def _check_in_out_access(security_groups_ids, port):
+    """
+    Verify given list of security groups to check if they allow in and out access on the given port.
+
+    :param security_groups_ids: list of security groups to verify
+    :param port: port to verify
+    :return true if
+    :raise: ClientError if a given security group doesn't exist
+    """
+    in_out_access = False
+    in_access = False
+    out_access = False
+
+    for sec_group in boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups"):
+
+        # Check all inbound rules
+        for rule in sec_group.get("IpPermissions"):
+            if _check_sg_rules_for_port(rule, port):
+                in_access = True
+                break
+
+        # Check all outbound rules
+        for rule in sec_group.get("IpPermissionsEgress"):
+            if _check_sg_rules_for_port(rule, port):
+                out_access = True
+                break
+
+        if in_access and out_access:
+            in_out_access = True
+            break
+
+    return in_out_access
+
+
+def fsx_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section(section_key, section_label)
+    fsx_import_path = fsx_section.get_param_value("import_path")
+
+    fsx_imported_file_chunk_size = fsx_section.get_param_value("imported_file_chunk_size")
+    if fsx_imported_file_chunk_size and not fsx_import_path:
+        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
+
+    fsx_export_path = fsx_section.get_param_value("export_path")
+    if fsx_export_path and not fsx_import_path:
+        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
+
+    return errors, warnings
+
+
+def fsx_id_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        ec2 = boto3.client("ec2")
+
+        # Check to see if there is any existing mt on the fs
+        file_system = boto3.client("fsx").describe_file_systems(FileSystemIds=[param_value]).get("FileSystems")[0]
+
+        subnet_id = pcluster_config.get_section("vpc").get_param_value("master_subnet_id")
+        vpc_id = ec2.describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("VpcId")
+
+        # Check to see if fs is in the same VPC as the stack
+        if file_system.get("VpcId") != vpc_id:
+            errors.append(
+                "Currently only support using FSx file system that is in the same VPC as the stack. "
+                "The file system provided is in {0}".format(file_system.get("VpcId"))
+            )
+        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+        network_interface_ids = file_system.get("NetworkInterfaceIds")
+        network_interface_responses = ec2.describe_network_interfaces(NetworkInterfaceIds=network_interface_ids).get(
+            "NetworkInterfaces"
+        )
+        fs_access = False
+        network_interfaces = [i for i in network_interface_responses if i.get("VpcId") == vpc_id]
         for network_interface in network_interfaces:
-            in_access = False
-            out_access = False
             # Get list of security group IDs
             sg_ids = [i.get("GroupId") for i in network_interface.get("Groups")]
-            # Check each sg to see if the rules are valid
-            for sg in ec2.describe_security_groups(GroupIds=sg_ids).get("SecurityGroups"):
-                # Check all inbound rules
-                in_rules = sg.get("IpPermissions")
-                for rule in in_rules:
-                    if self.__check_sg_rules_for_port(rule, 988):
-                        in_access = True
-                        break
-                out_rules = sg.get("IpPermissionsEgress")
-                for rule in out_rules:
-                    if self.__check_sg_rules_for_port(rule, 988):
-                        out_access = True
-                        break
-                if in_access and out_access:
-                    nfs_access = True
-                    break
-            if nfs_access:
-                return True
-
-        return nfs_access
-
-    def __check_fsx_fs_id(self, ec2, fsx, resource_value):
-        try:
-            # Check to see if there is any existing mt on the fs
-            fs = fsx.describe_file_systems(FileSystemIds=[resource_value[0]]).get("FileSystems")[0]
-            stack_vpc = ec2.describe_subnets(SubnetIds=[resource_value[1]]).get("Subnets")[0].get("VpcId")
-            # Check to see if fs is in the same VPC as the stack
-            if fs.get("VpcId") != stack_vpc:
-                self.__fail(
-                    "VpcId",
-                    "Currently only support using FSx file system that is in the same VPC as the stack. "
-                    "The file system provided is in %s" % fs.get("VpcId"),
-                )
-            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-            network_interface_ids = fs.get("NetworkInterfaceIds")
-            network_interface_responses = ec2.describe_network_interfaces(
-                NetworkInterfaceIds=network_interface_ids
-            ).get("NetworkInterfaces")
-            network_interfaces = [i for i in network_interface_responses if i.get("VpcId") == stack_vpc]
-            nfs_access = self.__check_nfs_access(ec2, network_interfaces)
-            if not nfs_access:
-                self.__fail(
-                    "FSXFSId",
-                    "The current security group settings on file system %s does not satisfy "
-                    "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic through port 988." % resource_value[0],
-                )
-            return True
-        except ClientError as e:
-            self.__fail("FSXFSId", e.response.get("Error").get("Message"))
-
-    def __validate_fsx_parameters(self, resource_type, resource_value):
-        # FSX FS Id check
-        if resource_type == "fsx_fs_id":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                fsx = boto3.client(
-                    "fsx",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                self.__check_fsx_fs_id(ec2, fsx, resource_value)
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # FSX capacity size check
-        elif resource_type == "FSx_storage_capacity":
-            if int(resource_value) % 3600 != 0 or int(resource_value) < 0:
-                self.__fail(
-                    resource_type, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"
-                )
-        # Check to see if import_path is specified with imported_file_chunk_size and export_path
-        elif resource_type in ["FSx_imported_file_chunk_size", "FSx_export_path"]:
-            if resource_value[1] is None:
-                self.__fail(resource_type, "import_path must be specified.")
-        # FSX file chunk size check
-        elif resource_type == "FSx_imported_file_chunk_size":
-            # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
-            if not (1 <= int(resource_value[0]) <= 512000):
-                self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
-
-    def __validate_efa_sg(self, resource_type, sg_id):
-        try:
-            ec2 = boto3.client(
-                "ec2",
-                region_name=self.region,
-                aws_access_key_id=self.aws_access_key_id,
-                aws_secret_access_key=self.aws_secret_access_key,
+            if _check_in_out_access(sg_ids, port=988):
+                fs_access = True
+                break
+        if not fs_access:
+            errors.append(
+                "The current security group settings on file system %s does not satisfy "
+                "mounting requirement. The file system must be associated to a security group that allows "
+                "inbound and outbound TCP traffic through port 988." % param_value
             )
-            sg = ec2.describe_security_groups(GroupIds=[sg_id]).get("SecurityGroups")[0]
-            in_rules = sg.get("IpPermissions")
-            out_rules = sg.get("IpPermissionsEgress")
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
 
+    return errors, warnings
+
+
+def fsx_storage_capacity_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if int(param_value) % 3600 != 0 or int(param_value) < 0:
+        errors.append("Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB")
+
+    return errors, warnings
+
+
+def fsx_imported_file_chunk_size_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if not 1 <= int(param_value) <= 512000:
+        errors.append("'{0}' has a minimum size of 1 MiB, and max size of 512,000 MiB".format(param_key))
+
+    return errors, warnings
+
+
+def efa_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_section = pcluster_config.get_section("cluster")
+    supported_features = get_supported_features(pcluster_config.region, "efa")
+    allowed_instances = supported_features.get("instances")
+    if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
+        errors.append(
+            "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
+            "to one of the following values : {1}".format(param_value, allowed_instances)
+        )
+
+    allowed_oses = ["alinux", "centos7", "ubuntu1604"]
+    if cluster_section.get_param_value("base_os") not in allowed_oses:
+        errors.append(
+            "When using 'enable_efa = {0}' it is required to set the 'base_os' parameter "
+            "to one of the following values : {1}".format(param_value, allowed_oses)
+        )
+
+    allowed_schedulers = ["sge", "slurm", "torque"]
+    if cluster_section.get_param_value("scheduler") not in allowed_schedulers:
+        errors.append(
+            "When using 'enable_efa = {0}' it is required to set the 'scheduler' parameter "
+            "to one of the following values : {1}".format(param_value, allowed_schedulers)
+        )
+
+    if cluster_section.get_param_value("placement_group") is None:
+        errors.append(
+            "When using 'enable_efa = {0}' it is required to set the 'placement_group' parameter "
+            "to DYNAMIC or to an existing EC2 cluster placement group name".format(param_value)
+        )
+
+    _validate_efa_sg(pcluster_config, errors)
+
+    return errors, warnings
+
+
+def _validate_efa_sg(pcluster_config, errors):
+    vpc_security_group_id = pcluster_config.get_section("vpc").get_param_value("vpc_security_group_id")
+    if vpc_security_group_id:
+        try:
+            sg = boto3.client("ec2").describe_security_groups(GroupIds=[vpc_security_group_id]).get("SecurityGroups")[0]
             allowed_in = False
             allowed_out = False
-            for rule in in_rules:
+
+            # check inbound rules
+            for rule in sg.get("IpPermissions"):
                 # UserIdGroupPairs is always of length 1, so grabbing 0th object is ok
                 if (
                     rule.get("IpProtocol") == "-1"
-                    and len(rule.get("UserIdGroupPairs")) > 0
-                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == sg_id
+                    and rule.get("UserIdGroupPairs")
+                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == vpc_security_group_id
                 ):
                     allowed_in = True
                     break
-            for rule in out_rules:
+
+            # check outbound rules
+            for rule in sg.get("IpPermissionsEgress"):
                 if (
                     rule.get("IpProtocol") == "-1"
-                    and len(rule.get("UserIdGroupPairs")) > 0
-                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == sg_id
+                    and rule.get("UserIdGroupPairs")
+                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == vpc_security_group_id
                 ):
                     allowed_out = True
                     break
+
             if not (allowed_in and allowed_out):
-                self.__fail(
-                    resource_type,
-                    "VPC Security Group %s must allow all traffic in and out from itself. "
-                    "See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security" % sg_id,
+                errors.append(
+                    "The VPC Security Group '{0}' set in the vpc_security_group_id parameter "
+                    "must allow all traffic in and out from itself. "
+                    "See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security".format(
+                        vpc_security_group_id
+                    )
                 )
         except ClientError as e:
-            self.__fail(resource_type, e.response.get("Error").get("Message"))
+            errors.append(e.response.get("Error").get("Message"))
 
-    def __validate_efa_parameters(self, resource_type, resource_value):
-        if resource_value.get("PlacementGroup", "NONE") == "NONE":
-            self.__fail(resource_type, "Placement group is required, set placement_group.")
-        if "VPCSecurityGroupId" in resource_value:
-            sg_id = resource_value.get("VPCSecurityGroupId")
-            self.__validate_efa_sg(resource_type, sg_id)
 
-    def validate(self, resource_type, resource_value):  # noqa: C901 FIXME
-        """
-        Validate the given resource. Print an error and exit in case of error.
+def ec2_key_pair_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        boto3.client("ec2").describe_key_pairs(KeyNames=[param_value])
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
 
-        :param resource_type: Resource type
-        :param resource_value: Resource value
-        """
-        # Loop over all supported resource checks
-        if resource_type == "EC2KeyPair":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                ec2.describe_key_pairs(KeyNames=[resource_value])
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        if resource_type == "EC2IAMRoleName":
-            try:
-                iam = boto3.client(
-                    "iam",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
+    return errors, warnings
 
-                arn = iam.get_role(RoleName=resource_value).get("Role").get("Arn")
-                account_id = (
-                    boto3.client(
-                        "sts",
-                        region_name=self.region,
-                        endpoint_url=self.__get_sts_endpoint(),
-                        aws_access_key_id=self.aws_access_key_id,
-                        aws_secret_access_key=self.aws_secret_access_key,
-                    )
-                    .get_caller_identity()
-                    .get("Account")
-                )
 
-                partition = get_partition(self.region)
+def ec2_iam_role_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        iam = boto3.client("iam")
+        arn = iam.get_role(RoleName=param_value).get("Role").get("Arn")
+        account_id = boto3.client("sts", endpoint_url=_get_sts_endpoint()).get_caller_identity().get("Account")
 
-                iam_policy = [
-                    (
-                        [
-                            "ec2:DescribeVolumes",
-                            "ec2:AttachVolume",
-                            "ec2:DescribeInstanceAttribute",
-                            "ec2:DescribeInstanceStatus",
-                            "ec2:DescribeInstances",
-                        ],
-                        "*",
-                    ),
-                    (["dynamodb:ListTables"], "*"),
-                    (
-                        [
-                            "sqs:SendMessage",
-                            "sqs:ReceiveMessage",
-                            "sqs:ChangeMessageVisibility",
-                            "sqs:DeleteMessage",
-                            "sqs:GetQueueUrl",
-                        ],
-                        "arn:%s:sqs:%s:%s:parallelcluster-*" % (partition, self.region, account_id),
-                    ),
-                    (
-                        [
-                            "autoscaling:DescribeAutoScalingGroups",
-                            "autoscaling:TerminateInstanceInAutoScalingGroup",
-                            "autoscaling:SetDesiredCapacity",
-                            "autoscaling:DescribeTags",
-                            "autoScaling:UpdateAutoScalingGroup",
-                            "autoScaling:SetInstanceHealth",
-                        ],
-                        "*",
-                    ),
-                    (
-                        [
-                            "dynamodb:PutItem",
-                            "dynamodb:Query",
-                            "dynamodb:GetItem",
-                            "dynamodb:DeleteItem",
-                            "dynamodb:DescribeTable",
-                        ],
-                        "arn:%s:dynamodb:%s:%s:table/parallelcluster-*" % (partition, self.region, account_id),
-                    ),
-                    (
-                        ["cloudformation:DescribeStacks", "cloudformation:DescribeStackResource"],
-                        "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*/*" % (partition, self.region, account_id),
-                    ),
-                    (["s3:GetObject"], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, self.region)),
-                    (["sqs:ListQueues"], "*"),
-                ]
+        iam_policy = _get_pcluster_user_policy(get_partition(), get_region(), account_id)
 
-                for actions, resource_arn in iam_policy:
-                    response = iam.simulate_principal_policy(
-                        PolicySourceArn=arn, ActionNames=actions, ResourceArns=[resource_arn]
-                    )
-                    for decision in response.get("EvaluationResults"):
-                        if decision.get("EvalDecision") != "allowed":
-                            print(
-                                "IAM role error on user provided role %s: action %s is %s"
-                                % (resource_value, decision.get("EvalActionName"), decision.get("EvalDecision"))
-                            )
-                            print("See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html")
-                            sys.exit(1)
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        if resource_type == "EC2IAMPolicies":
-            try:
-                iam = boto3.client(
-                    "iam",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                for iam_policy in resource_value:
-                    iam.get_policy(PolicyArn=iam_policy.strip())
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # VPC Id
-        elif resource_type == "VPC":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                ec2.describe_vpcs(VpcIds=[resource_value])
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-            # Check for DNS support in the VPC
-            if (
-                not ec2.describe_vpc_attribute(VpcId=resource_value, Attribute="enableDnsSupport")
-                .get("EnableDnsSupport")
-                .get("Value")
-            ):
-                self.__fail(resource_type, "DNS Support is not enabled in %s" % resource_value)
-            if (
-                not ec2.describe_vpc_attribute(VpcId=resource_value, Attribute="enableDnsHostnames")
-                .get("EnableDnsHostnames")
-                .get("Value")
-            ):
-                self.__fail(resource_type, "DNS Hostnames not enabled in %s" % resource_value)
-        # VPC Subnet Id
-        elif resource_type == "VPCSubnet":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                ec2.describe_subnets(SubnetIds=[resource_value])
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # VPC Security Group
-        elif resource_type == "VPCSecurityGroup":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                ec2.describe_security_groups(GroupIds=[resource_value])
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # EC2 AMI Id
-        elif resource_type == "EC2Ami":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                ec2.describe_images(ImageIds=[resource_value])
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # EC2 Placement Group
-        elif resource_type == "EC2PlacementGroup":
-            if resource_value == "DYNAMIC" or resource_value == "NONE":
-                pass
-            else:
-                try:
-                    ec2 = boto3.client(
-                        "ec2",
-                        region_name=self.region,
-                        aws_access_key_id=self.aws_access_key_id,
-                        aws_secret_access_key=self.aws_secret_access_key,
-                    )
-                    ec2.describe_placement_groups(GroupNames=[resource_value])
-                except ClientError as e:
-                    self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # URL
-        elif resource_type == "URL":
-            scheme = urlparse(resource_value).scheme
-            if scheme == "s3":
-                try:
-                    s3 = boto3.client(
-                        "s3",
-                        region_name=self.region,
-                        aws_access_key_id=self.aws_access_key_id,
-                        aws_secret_access_key=self.aws_secret_access_key,
-                    )
-                    m = re.match(r"s3://(.*?)/(.*)", resource_value)
-                    if not m or len(m.groups()) < 2:
-                        self.__fail(resource_type, "S3 url {0} is invalid.".format(resource_value))
-                    bucket, key = m.group(1), m.group(2)
-                    s3.head_object(Bucket=bucket, Key=key)
-                except ClientError:
-                    self.__fail(
-                        resource_type,
-                        "S3 object {0} does not exist or you do not have access to it.".format(resource_value),
-                    )
-            else:
-                try:
-                    urllib.request.urlopen(resource_value)
-                except urllib.error.HTTPError as e:
-                    self.__fail(resource_type, "%s %s %s" % (resource_value, e.code, e.reason))
-                except urllib.error.URLError as e:
-                    self.__fail(resource_type, "%s %s" % (resource_value, e.reason))
-        # EC2 EBS Snapshot Id
-        elif resource_type == "EC2Snapshot":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                test = ec2.describe_snapshots(SnapshotIds=[resource_value]).get("Snapshots")[0]
-                if test.get("State") != "completed":
-                    self.__fail(
-                        resource_type,
-                        "Snapshot %s is in state '%s' not 'completed'" % (resource_value, test.get("State")),
-                    )
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # EC2 EBS Volume Id
-        elif resource_type == "EC2Volume":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                test = ec2.describe_volumes(VolumeIds=[resource_value]).get("Volumes")[0]
-                if test.get("State") != "available":
-                    self.__fail(
-                        resource_type,
-                        "Volume %s is in state '%s' not 'available'" % (resource_value, test.get("State")),
-                    )
-            except ClientError as e:
-                if (
-                    e.response.get("Error")
-                    .get("Message")
-                    .endswith("parameter volumes is invalid. Expected: 'vol-...'.")
-                ):
-                    self.__fail(resource_type, "Volume %s does not exist." % resource_value)
-
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # EFS file system Id
-        elif resource_type == "EFSFSId":
-            try:
-                ec2 = boto3.client(
-                    "ec2",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                efs = boto3.client(
-                    "efs",
-                    region_name=self.region,
-                    aws_access_key_id=self.aws_access_key_id,
-                    aws_secret_access_key=self.aws_secret_access_key,
-                )
-                self.__check_efs_fs_id(ec2, efs, resource_value)
-            except ClientError as e:
-                self.__fail(resource_type, e.response.get("Error").get("Message"))
-        # EFS Performance Mode check
-        elif resource_type == "EFSPerfMode":
-            if resource_value != "generalPurpose" and resource_value != "maxIO":
-                self.__fail(
-                    resource_type,
-                    "Invalid value for 'performance_mode'! "
-                    "Acceptable values for 'performance_mode' are generalPurpose and maxIO",
-                )
-        # EFS Throughput check
-        elif resource_type == "EFSThroughput":
-            throughput_mode = resource_value[0]
-            provisioned_throughput = resource_value[1]
-            if throughput_mode and (throughput_mode != "provisioned" and throughput_mode != "bursting"):
-                self.__fail(
-                    resource_type,
-                    "Invalid value for 'throughput_mode'! "
-                    "Acceptable values for 'throughput_mode' are bursting and provisioned",
-                )
-            if provisioned_throughput is not None:
-                if throughput_mode != "provisioned":
-                    self.__fail(
-                        resource_type,
-                        "When specifying 'provisioned_throughput', the 'throughput_mode' must be set to provisioned",
-                    )
-            else:
-                if throughput_mode == "provisioned":
-                    self.__fail(
-                        resource_type,
-                        "When specifying 'throughput_mode' to provisioned, "
-                        "the 'provisioned_throughput' option must be specified",
-                    )
-        # RAID EBS IOPS
-        elif resource_type == "RAIDIOPS":
-            raid_iops = float(resource_value[0])
-            raid_vol_size = float(resource_value[1])
-            if raid_iops > raid_vol_size * 50:
-                self.__fail(
-                    resource_type,
-                    "IOPS to volume size ratio of %s is too high; maximum is 50." % (raid_iops / raid_vol_size),
-                )
-        # RAID Array Type
-        elif resource_type == "RAIDType":
-            if resource_value != "0" and resource_value != "1":
-                self.__fail(resource_type, "Invalid raid_type, only RAID 0 and RAID 1 are currently supported.")
-        # Number of RAID Volumes Requested
-        elif resource_type == "RAIDNumVol":
-            if int(resource_value) > 5 or int(resource_value) < 2:
-                self.__fail(
-                    resource_type,
-                    "Invalid num_of_raid_volumes. "
-                    "Needs min of 2 volumes for RAID and max of 5 EBS volumes are currently supported.",
-                )
-        # FSX FS Id check
-        elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size", "FSx_export_path"]:
-            self.__validate_fsx_parameters(resource_type, resource_value)
-        elif resource_type == "EFA":
-            self.__validate_efa_parameters(resource_type, resource_value)
-
-        # Batch Parameters
-        elif resource_type == "AWSBatch_Parameters":
-            # Check region
-            if self.region in ["ap-northeast-3", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]:
-                self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
-
-            # Check spot bid percentage
-            if "SpotPrice" in resource_value:
-                spot_price = int(resource_value["SpotPrice"])
-                if spot_price > 100 or spot_price < 0:
-                    self.__fail(resource_type, "Spot bid percentage needs to be between 0 and 100")
-
-            min_size = int(resource_value["MinSize"])
-            desired_size = int(resource_value["DesiredSize"])
-            max_size = int(resource_value["MaxSize"])
-
-            if desired_size < min_size:
-                self.__fail(resource_type, "Desired vcpus must be greater than or equal to min vcpus")
-
-            if desired_size > max_size:
-                self.__fail(resource_type, "Desired vcpus must be fewer than or equal to max vcpus")
-
-            if max_size < min_size:
-                self.__fail(resource_type, "Max vcpus must be greater than or equal to min vcpus")
-
-            # Check compute instance types
-            if "ComputeInstanceType" in resource_value:
-                compute_instance_type = resource_value["ComputeInstanceType"]
-                try:
-                    supported_instances = get_supported_features(self.region, "batch").get("instances")
-                    if supported_instances:
-                        for instance in compute_instance_type.split(","):
-                            if not instance.strip() in supported_instances:
-                                self.__fail(
-                                    resource_type, "Instance type %s not supported by batch in this region" % instance
-                                )
-                    else:
-                        self.__warn(
-                            "Unable to get instance types supported by Batch. Skipping instance type validation"
+        for actions, resource_arn in iam_policy:
+            response = iam.simulate_principal_policy(
+                PolicySourceArn=arn, ActionNames=actions, ResourceArns=[resource_arn]
+            )
+            for decision in response.get("EvaluationResults"):
+                if decision.get("EvalDecision") != "allowed":
+                    errors.append(
+                        "IAM role error on user provided role {0}: action {1} is {2}.\n"
+                        "See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html".format(
+                            param_value, decision.get("EvalActionName"), decision.get("EvalDecision")
                         )
+                    )
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
 
-                    if "," not in compute_instance_type and "." in compute_instance_type:
-                        # if the type is not a list, and contains dot (nor optimal, nor a family)
-                        # validate instance type against max_vcpus limit
-                        vcpus = get_instance_vcpus(self.region, compute_instance_type)
-                        if vcpus <= 0:
-                            self.__warn(
-                                "Unable to get the number of vcpus for the {0} instance type. "
-                                "Skipping instance type against max_vcpus validation".format(compute_instance_type)
+    return errors, warnings
+
+
+def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        if param_value:
+            iam = boto3.client("iam")
+            for iam_policy in param_value:
+                iam.get_policy(PolicyArn=iam_policy.strip())
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def _get_pcluster_user_policy(partition, region, account_id):
+    return [
+        (
+            [
+                "ec2:DescribeVolumes",
+                "ec2:AttachVolume",
+                "ec2:DescribeInstanceAttribute",
+                "ec2:DescribeInstanceStatus",
+                "ec2:DescribeInstances",
+            ],
+            "*",
+        ),
+        (["dynamodb:ListTables"], "*"),
+        (
+            [
+                "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl",
+            ],
+            "arn:%s:sqs:%s:%s:parallelcluster-*" % (partition, region, account_id),
+        ),
+        (
+            [
+                "autoscaling:DescribeAutoScalingGroups",
+                "autoscaling:TerminateInstanceInAutoScalingGroup",
+                "autoscaling:SetDesiredCapacity",
+                "autoscaling:DescribeTags",
+                "autoScaling:UpdateAutoScalingGroup",
+                "autoScaling:SetInstanceHealth",
+            ],
+            "*",
+        ),
+        (
+            ["dynamodb:PutItem", "dynamodb:Query", "dynamodb:GetItem", "dynamodb:DeleteItem", "dynamodb:DescribeTable"],
+            "arn:%s:dynamodb:%s:%s:table/parallelcluster-*" % (partition, region, account_id),
+        ),
+        (
+            ["cloudformation:DescribeStacks", "cloudformation:DescribeStackResource"],
+            "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*/*" % (partition, region, account_id),
+        ),
+        (["s3:GetObject"], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, region)),
+        (["sqs:ListQueues"], "*"),
+    ]
+
+
+def ec2_instance_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        if param_value not in list_ec2_instance_types():
+            errors.append(
+                "The instance type '{0}' used for the '{1}' parameter is not supported by EC2.".format(
+                    param_value, param_key
+                )
+            )
+
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_vpc_id_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        ec2 = boto3.client("ec2")
+        ec2.describe_vpcs(VpcIds=[param_value])
+
+        # Check for DNS support in the VPC
+        if (
+            not ec2.describe_vpc_attribute(VpcId=param_value, Attribute="enableDnsSupport")
+            .get("EnableDnsSupport")
+            .get("Value")
+        ):
+            errors.append("DNS Support is not enabled in the VPC %s" % param_value)
+        if (
+            not ec2.describe_vpc_attribute(VpcId=param_value, Attribute="enableDnsHostnames")
+            .get("EnableDnsHostnames")
+            .get("Value")
+        ):
+            errors.append("DNS Hostnames not enabled in the VPC %s" % param_value)
+
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_subnet_id_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        boto3.client("ec2").describe_subnets(SubnetIds=[param_value])
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_security_group_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        boto3.client("ec2").describe_security_groups(GroupIds=[param_value])
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_ami_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        boto3.client("ec2").describe_images(ImageIds=[param_value])
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_placement_group_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value == "DYNAMIC":
+        pass
+    else:
+        try:
+            boto3.client("ec2").describe_placement_groups(GroupNames=[param_value])
+        except ClientError as e:
+            errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def url_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if urlparse(param_value).scheme == "s3":
+        try:
+            match = re.match(r"s3://(.*?)/(.*)", param_value)
+            if not match or len(match.groups()) < 2:
+                errors.append("S3 url is invalid.")
+            bucket, key = match.group(1), match.group(2)
+            boto3.client("s3").head_object(Bucket=bucket, Key=key)
+        except ClientError:
+            warnings.append("The S3 object does not exist or you do not have access to it.")
+    else:
+        try:
+            urllib.request.urlopen(param_value)
+        except urllib.error.HTTPError as e:
+            warnings.append("{0} {1} {2}".format(param_value, e.code, e.reason))
+        except urllib.error.URLError as e:
+            warnings.append("{0} {1}".format(param_value, e.reason))
+        except ValueError:
+            errors.append(
+                "The value '{0}' used for the parameter '{1}' is not a valid URL".format(param_value, param_key)
+            )
+
+    return errors, warnings
+
+
+def ec2_ebs_snapshot_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        test = boto3.client("ec2").describe_snapshots(SnapshotIds=[param_value]).get("Snapshots")[0]
+        if test.get("State") != "completed":
+            warnings.append("Snapshot {0} is in state '{1}' not 'completed'".format(param_value, test.get("State")))
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def ec2_volume_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+    try:
+        test = boto3.client("ec2").describe_volumes(VolumeIds=[param_value]).get("Volumes")[0]
+        if test.get("State") != "available":
+            warnings.append("Volume {0} is in state '{1}' not 'available'".format(param_value, test.get("State")))
+    except ClientError as e:
+        if e.response.get("Error").get("Message").endswith("parameter volumes is invalid. Expected: 'vol-...'."):
+            errors.append("Volume {0} does not exist".format(param_value))
+        else:
+            errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
+def efs_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    throughput_mode = section.get_param_value("throughput_mode")
+    provisioned_throughput = section.get_param_value("provisioned_throughput")
+
+    if throughput_mode != "provisioned" and provisioned_throughput:
+        errors.append("When specifying 'provisioned_throughput', the 'throughput_mode' must be set to 'provisioned'")
+
+    if throughput_mode == "provisioned" and not provisioned_throughput:
+        errors.append(
+            "When specifying 'throughput_mode' to 'provisioned', the 'provisioned_throughput' option must be specified"
+        )
+
+    return errors, warnings
+
+
+def raid_volume_iops_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    raid_iops = float(param_value)
+    raid_vol_size = float(pcluster_config.get_section("raid").get_param_value("volume_size"))
+    if raid_iops > raid_vol_size * 50:
+        errors.append("IOPS to volume size ratio of {0} is too high; maximum is 50.".format(raid_iops / raid_vol_size))
+
+    return errors, warnings
+
+
+def scheduler_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value == "awsbatch":
+        if pcluster_config.region in [
+            "ap-northeast-3",
+            "eu-north-1",
+            "cn-north-1",
+            "cn-northwest-1",
+            "us-gov-east-1",
+            "us-gov-west-1",
+        ]:
+            errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
+
+    return errors, warnings
+
+
+def cluster_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    if section.get_param_value("scheduler") == "awsbatch":
+        min_size = section.get_param_value("min_vcpus")
+        desired_size = section.get_param_value("desired_vcpus")
+        max_size = section.get_param_value("max_vcpus")
+
+        if desired_size < min_size:
+            errors.append("desired_vcpus must be greater than or equal to min_vcpus")
+
+        if desired_size > max_size:
+            errors.append("desired_vcpus must be fewer than or equal to max_vcpus")
+
+        if max_size < min_size:
+            errors.append("max_vcpus must be greater than or equal to min_vcpus")
+    else:
+        min_size = (
+            section.get_param_value("initial_queue_size") if section.get_param_value("maintain_initial_size") else 0
+        )
+        desired_size = section.get_param_value("initial_queue_size")
+        max_size = section.get_param_value("max_queue_size")
+
+        if desired_size > max_size:
+            errors.append("initial_queue_size must be fewer than or equal to max_queue_size")
+
+        if max_size < min_size:
+            errors.append("max_queue_size must be greater than or equal to initial_queue_size")
+
+    return errors, warnings
+
+
+def compute_instance_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_config = pcluster_config.get_section("cluster")
+    if cluster_config.get_param_value("scheduler") == "awsbatch":
+
+        try:
+            supported_instances = get_supported_features(pcluster_config.region, "batch").get("instances")
+            if supported_instances:
+                for instance in param_value.split(","):
+                    if not instance.strip() in supported_instances:
+                        errors.append(
+                            "compute_instance_type '{0}' is not supported by awsbatch in region '{1}'".format(
+                                instance, pcluster_config.region
                             )
-                        else:
-                            if max_size < vcpus:
-                                self.__fail(
-                                    resource_type,
-                                    "Max vcpus must be greater than or equal to {0}, that is the number of vcpus "
-                                    "available for the {1} that you selected as compute instance type".format(
-                                        vcpus, compute_instance_type
-                                    ),
-                                )
-                except ClientError as e:
-                    self.__fail(resource_type, e.response.get("Error").get("Message"))
+                        )
+            else:
+                warnings.append(
+                    "Unable to get instance types supported by awsbatch. Skipping compute_instance_type validation"
+                )
 
-            # Check custom batch url
-            if "CustomAWSBatchTemplateURL" in resource_value:
-                self.validate("URL", resource_value["CustomAWSBatchTemplateURL"])
+            if "," not in param_value and "." in param_value:
+                # if the type is not a list, and contains dot (nor optimal, nor a family)
+                # validate instance type against max_vcpus limit
+                vcpus = get_instance_vcpus(pcluster_config.region, param_value)
+                if vcpus <= 0:
+                    warnings.append(
+                        "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
+                        "Skipping instance type against max_vcpus validation".format(param_value)
+                    )
+                else:
+                    if cluster_config.get_param_value("max_queue_size") < vcpus:
+                        errors.append(
+                            "max_vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                            "available for the {1} that you selected as compute_instance_type".format(
+                                vcpus, param_value
+                            )
+                        )
+        except ClientError as e:
+            errors.append(e.response.get("Error").get("Message"))
 
-    @staticmethod
-    def __warn(message):
-        """
-        Print a warning message.
+    else:
+        errors, warnings = ec2_instance_type_validator(param_key, param_value, pcluster_config)
 
-        :param message: the message to print
-        """
-        print("WARNING: {0}".format(message))
-
-    @staticmethod
-    def __fail(resource_type, message):
-        """
-        Print an error and exit.
-
-        :param resource_type: Resource on which the config sanity check failed
-        :param message: the message to print
-        """
-        print("Config sanity error on resource %s: %s" % (resource_type, message))
-        sys.exit(1)
+    return errors, warnings

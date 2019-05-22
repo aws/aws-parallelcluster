@@ -1,257 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.4.1",
-  "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "Network - Basic Settings"
-          },
-          "Parameters": [
-            "VPCId",
-            "MasterSubnetId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Cluster - Basic Setting"
-          },
-          "Parameters": [
-            "KeyName",
-            "AvailabilityZone",
-            "MasterInstanceType",
-            "ComputeInstanceType",
-            "BaseOS",
-            "Scheduler"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EBS - Basic Settings"
-          },
-          "Parameters": [
-            "VolumeSize"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Network - Advanced Settings"
-          },
-          "Parameters": [
-            "AccessFrom",
-            "ComputeSubnetId",
-            "ComputeSubnetCidr",
-            "UsePublicIps",
-            "AdditionalSG",
-            "VPCSecurityGroupId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Cluster - Advanced Setting"
-          },
-          "Parameters": [
-            "MinSize",
-            "DesiredSize",
-            "MaxSize",
-            "SpotPrice",
-            "ClusterType",
-            "ProxyServer",
-            "CustomAMI",
-            "PreInstallScript",
-            "PreInstallArgs",
-            "PostInstallArgs",
-            "PostInstallScript",
-            "S3ReadResource",
-            "S3ReadWriteResource",
-            "Placement",
-            "PlacementGroup",
-            "EncryptedEphemeral",
-            "EphemeralDir",
-            "SharedDir",
-            "CustomChefCookbook",
-            "ExtraJson",
-            "MasterRootVolumeSize",
-            "ComputeRootVolumeSize",
-            "EC2IAMRoleName"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EBS - Advanced Settings"
-          },
-          "Parameters": [
-            "VolumeType",
-            "EBSSnapshotId",
-            "VolumeIOPS",
-            "EBSEncryption",
-            "EBSKMSKeyId",
-            "EBSVolumeId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Scaling Settings"
-          },
-          "Parameters": [
-            "ScaleDownIdleTime"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Additonal Settings"
-          },
-          "Parameters": [
-            "CLITemplate"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-        "KeyName": {
-          "default": "key_name"
-        },
-        "AccessFrom": {
-          "default": "access_from",
-          "AccessFrom": {
-            "default": "access_from"
-          }
-        },
-        "VPCId": {
-          "default": "vpc_id"
-        },
-        "MasterSubnetId": {
-          "default": "master_subnet_id"
-        },
-        "ComputeSubnetId": {
-          "default": "compute_subnet_id"
-        },
-        "ComputeSubnetCidr": {
-          "default": "compute_subnet_cidr"
-        },
-        "UsePublicIps": {
-          "default": "use_public_ips"
-        },
-        "AdditionalSG": {
-          "default": "additional_sg"
-        },
-        "VPCSecurityGroupId": {
-          "default": "vpc_security_group_id"
-        },
-        "ComputeInstanceType": {
-          "default": "compute_instance_type"
-        },
-        "MasterInstanceType": {
-          "default": "master_instance_type"
-        },
-        "MinSize": {
-          "default": "initial_queue_size"
-        },
-        "DesiredSize": {
-          "default": "desired_size"
-        },
-        "MaxSize": {
-          "default": "max_queue_size"
-        },
-        "Scheduler": {
-          "default": "scheduler"
-        },
-        "ClusterType": {
-          "default": "cluster_type"
-        },
-        "EphemeralDir": {
-          "default": "ephemeral_dir"
-        },
-        "SpotPrice": {
-          "default": "spot_price"
-        },
-        "CustomAMI": {
-          "default": "custom_ami"
-        },
-        "PreInstallScript": {
-          "default": "pre_install"
-        },
-        "PostInstallScript": {
-          "default": "post_install"
-        },
-        "PreInstallArgs": {
-          "default": "pre_install_args"
-        },
-        "PostInstallArgs": {
-          "default": "post_install_args"
-        },
-        "S3ReadResource": {
-          "default": "s3_read_resource"
-        },
-        "S3ReadWriteResource": {
-          "default": "s3_read_write_resource"
-        },
-        "ProxyServer": {
-          "default": "proxy_server"
-        },
-        "Placement": {
-          "default": "placement"
-        },
-        "PlacementGroup": {
-          "default": "placement_group"
-        },
-        "EncryptedEphemeral": {
-          "default": "encrypted_ephemeral"
-        },
-        "SharedDir": {
-          "default": "shared_dir"
-        },
-        "MasterRootVolumeSize": {
-          "default": "master_root_volume_size"
-        },
-        "ComputeRootVolumeSize": {
-          "default": "compute_volume_size"
-        },
-        "BaseOS": {
-          "default": "base_os"
-        },
-        "EC2IAMRoleName": {
-          "default": "ec2_iam_role"
-        },
-        "ExtraJson": {
-          "default": "extra_json"
-        },
-        "CustomChefCookbook": {
-          "default": "custom_chef_cookbook"
-        },
-        "EBSSnapshotId": {
-          "default": "ebs_snapshot_id"
-        },
-        "VolumeType": {
-          "default": "volume_type"
-        },
-        "VolumeSize": {
-          "default": "volume_size"
-        },
-        "EBSKMSKeyId": {
-          "default": "ebs_kms_key_id"
-        },
-        "VolumeIOPS": {
-          "default": "volume_iops"
-        },
-        "EBSEncryption": {
-          "default": "ebs_encryption"
-        },
-        "EBSVolumeId": {
-          "default": "ebs_volume_id"
-        },
-        "ScaleDownIdleTime": {
-          "default": "scaledown_idletime"
-        },
-        "AvailabilityZone": {
-          "default": "AVAILABILITY ZONE"
-        },
-        "CLITemplate": {
-          "default": "CLI TEMPLATE"
-        }
-      }
-    }
-  },
   "Parameters": {
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
@@ -290,7 +39,7 @@
     "SpotPrice": {
       "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\". When awsbatch is the scheduler, this is spot bid percentage.",
       "Type": "Number",
-      "Default": "0.00"
+      "Default": "0.0"
     },
     "ClusterType": {
       "Description": "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
@@ -310,12 +59,12 @@
     "VolumeSize": {
       "Description": "Comma delimited list of size of EBS volume in GB, if creating a new one",
       "Type": "String",
-      "Default": "20, 20, 20, 20, 20"
+      "Default": "20,20,20,20,20"
     },
     "VolumeType": {
       "Description": "Comma delimited list of type of volume to create either new or from snapshot",
       "Type": "String",
-      "Default": "gp2, gp2, gp2, gp2, gp2",
+      "Default": "gp2,gp2,gp2,gp2,gp2",
       "ConstraintDescription": "must be a supported volume type: standard, io1, gp2, st1, sc1",
       "AllowedPattern": "^(NONE|standard|io1|gp2|st1|sc1)((,|, )(NONE|standard|io1|gp2|st1|sc1)){4}$"
     },
@@ -330,7 +79,7 @@
     "EBSSnapshotId": {
       "Description": "Comma delimited list of Id of EBS snapshot if using snapshot as source for volume",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "Default": "NONE,NONE,NONE,NONE,NONE",
       "AllowedPattern": "^(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})((,|, )(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})){4}$"
     },
     "CustomAMI": {
@@ -372,7 +121,7 @@
     "VolumeIOPS": {
       "Description": "Comma delimited list of number of IOPS for volume type io1. Not used for other volume types.",
       "Type": "String",
-      "Default": "100, 100, 100, 100, 100"
+      "Default": "100,100,100,100,100"
     },
     "PreInstallScript": {
       "Description": "Preinstall script URL. This is run before any host configuration.",
@@ -431,7 +180,7 @@
     "EBSEncryption": {
       "Description": "Comma delimited list of boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
       "Type": "String",
-      "Default": "false, false, false, false, false",
+      "Default": "false,false,false,false,false",
       "ConstraintDescription": "true/false",
       "AllowedPattern": "^(NONE|true|false)((,|, )(NONE|true|false)){4}$"
     },
@@ -467,9 +216,7 @@
         "sge",
         "torque",
         "slurm",
-        "custom",
-        "awsbatch",
-        "test"
+        "awsbatch"
       ]
     },
     "SharedDir": {
@@ -501,7 +248,7 @@
     "EBSKMSKeyId": {
       "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE"
     },
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
@@ -534,7 +281,7 @@
     "EBSVolumeId": {
       "Description": "Comma delimited list of existing EBS volume Id",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "Default": "NONE,NONE,NONE,NONE,NONE",
       "AllowedPattern": "^(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})((,|, )(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})){4}$"
     },
     "AdditionalCfnTemplate": {
@@ -566,12 +313,12 @@
     "FSXOptions": {
       "Description": "Comma separated list of FSx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFA": {
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",
@@ -829,7 +576,7 @@
             {
               "Ref": "SpotPrice"
             },
-            "0.00"
+            "0"
           ]
         }
       ]
