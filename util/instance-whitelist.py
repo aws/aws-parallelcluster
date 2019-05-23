@@ -47,7 +47,7 @@ def get_all_aws_regions(partition):
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))) - UNSUPPORTED_REGIONS
 
 
-def get_instance_whitelist(args, region):
+def get_batch_instance_whitelist(args, region):
 
     # try to create a dummy compute environmment
     batch_client = boto3.client("batch", region_name=region)
@@ -78,12 +78,11 @@ def get_instance_whitelist(args, region):
     return instances
 
 
-def upload_to_s3(args, region, instances):
+def upload_to_s3(args, region, instances, key):
 
     s3_client = boto3.resource("s3", region_name=region)
 
     bucket = args.bucket if args.bucket else "%s-aws-parallelcluster" % region
-    key = "instances/batch_instances.json"
 
     if args.dryrun == "true":
         print(instances)
@@ -106,13 +105,18 @@ def upload_to_s3(args, region, instances):
 def main(args):
     # For all regions
     for region in args.regions:
-        instances = get_instance_whitelist(args, region)
-        response = upload_to_s3(args, region, instances)
+        batch_instances = get_batch_instance_whitelist(args, region)
+        if args.efa:
+            efa_instances = args.efa.split(",")
+            instances = {"Features": {"efa": {"instances": efa_instances}, "awsbatch": {"instances": batch_instances}}}
+            upload_to_s3(args, region, instances, "features/feature_whitelist.json")
+        else:
+            upload_to_s3(args, region, batch_instances, "instances/batch_instances.json")
 
 
 if __name__ == "__main__":
     # parse inputs
-    parser = argparse.ArgumentParser(description="Generate a whitelist of batch instance types.")
+    parser = argparse.ArgumentParser(description="Generate a whitelist of instance types per region.")
     parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--regions",
@@ -123,6 +127,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--bucket", type=str, help="Bucket to upload too, defaults to [region]-aws-parallelcluster", required=False
     )
+    parser.add_argument("--efa", type=str, help="Comma separated list of instances supported by EFA", required=False)
     parser.add_argument("--dryrun", type=str, help="Doesn't push anything to S3, just outputs", required=True)
     args = parser.parse_args()
 
