@@ -528,6 +528,14 @@ See `AWS CloudFormation Resource Tags Type <https://docs.aws.amazon.com/AWSCloud
 
     tags = {"key" : "value", "key2" : "value2"}
 
+notification_arns
+"""""""""""""""""
+Defines SNS ARNs to be used by CloudFormation to send events notifications.
+
+Tags are JSON formatted
+
+    notification_arns = [ "notification_arn_1", "notification_arn_2" ]
+
 .. _vpc_section:
 
 vpc

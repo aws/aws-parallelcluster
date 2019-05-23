@@ -126,6 +126,7 @@ def create(args):  # noqa: C901 FIXME!!!
             Capabilities=capabilities,
             DisableRollback=args.norollback,
             Tags=tags,
+            NotificationARNs=config.notification_arns,
         )
         LOGGER.debug("StackId: %s", stack.get("StackId"))
 
