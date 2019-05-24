@@ -641,7 +641,7 @@
   "Parameters": {
     "AvailabilityZone": {
       "Description": "Availability Zone the cluster will launch into. THIS IS REQUIRED",
-      "Type": "String"
+      "Type": "AWS::EC2::AvailabilityZone::Name"
     },
     "RAIDOptions": {
       "Description": "Comma separated list of RAID related options, 8 parameters in total, [0 shared_dir,1 raid_type,2 num_of_vols,3 vol_type,4 vol_size,5 vol_IOPS,6 encrypted, 7 ebs_kms_key]",
