@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+2.4.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for Ubuntu in China region `cn-northwest-1`
+
 2.3.1
 =====
 

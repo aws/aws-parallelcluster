@@ -419,10 +419,8 @@ that commercial entails all supported regions including us-east-1, us-west-2, et
    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
    ============== ======  ============ ============ ============= ============
    commercial      True     True          True          True        True
-   us-gov-west-1   True     False         False         True        True
-   us-gov-east-1   True     False         False         True        True
-   cn-north-1      True     False         False         True        True
-   cn-northwest-1  True     False         False         False       False
+   govcloud        True     False         False         True        True
+   china           True     False         False         True        True
    ============== ======  ============ ============ ============= ============
 
 Note: The base_os determines the username used to log into the cluster.
