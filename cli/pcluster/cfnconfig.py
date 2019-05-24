@@ -357,7 +357,8 @@ class ParallelClusterConfig(object):
         # Check that cidr and public ips are not both set
         cidr_value = self.__config.get(vpc_section, "compute_subnet_cidr", fallback=None)
         public_ips = self.__config.getboolean(vpc_section, "use_public_ips", fallback=True)
-        ResourceValidator.validate_vpc_coherence(cidr_value, public_ips)
+        if self.__sanity_check:
+            ResourceValidator.validate_vpc_coherence(cidr_value, public_ips)
 
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
