@@ -1373,7 +1373,7 @@
     "PackagesVersions": {
       "default": {
         "parallelcluster": "2.4.0",
-        "cookbook": "aws-parallelcluster-cookbook-2.3.2",
+        "cookbook": "aws-parallelcluster-cookbook-2.4.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
