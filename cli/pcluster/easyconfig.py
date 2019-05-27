@@ -27,6 +27,7 @@ import configparser
 from botocore.exceptions import BotoCoreError, ClientError
 
 from . import cfnconfig
+from pcluster.utils import get_supported_schedulers
 
 logger = logging.getLogger("pcluster.pcluster")
 unsupported_regions = ["ap-northeast-3"]
@@ -56,7 +57,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None, check_validit
         else:
             user_prompt = user_prompt + "]: "
 
-    if isinstance(options, list):
+    if isinstance(options, (list,tuple)):
         print("Acceptable Values for %s: " % prompt)
         for o in options:
             print("    %s" % o)
@@ -169,6 +170,15 @@ def configure(args):  # noqa: C901 FIXME!!!
         options=get_regions(),
         check_validity=True,
     )
+
+    scheduler = prompt(
+        "Scheduler",
+        config.get("cluster " + cluster_template, "scheduler") if config.has_option("cluster " + cluster_template,
+                                                                                    "scheduler") else "sge",
+        options=get_supported_schedulers(),
+        check_validity=True,
+    )
+
     vpcname = prompt(
         "VPC Name",
         config.get("cluster " + cluster_template, "vpc_settings")
@@ -209,7 +219,8 @@ def configure(args):  # noqa: C901 FIXME!!!
     }
     s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
     s_aliases = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
-    s_cluster = {"__name__": "cluster " + cluster_template, "key_name": key_name, "vpc_settings": vpcname}
+    s_cluster = {"__name__": "cluster " + cluster_template, "key_name": key_name, "vpc_settings": vpcname,
+                 "scheduler": scheduler}
     s_vpc = {"__name__": "vpc " + vpcname, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
 
     sections = [s_aws, s_cluster, s_vpc, s_global, s_aliases]
