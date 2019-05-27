@@ -11,6 +11,7 @@
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
 from future import standard_library  # isort:skip
+
 standard_library.install_aliases()
 # fmt: on
 
@@ -60,7 +61,7 @@ def prompt(prompt, default_value=None, hidden=False, options=None, check_validit
         else:
             user_prompt = user_prompt + "]: "
 
-    if isinstance(options, (list,tuple)):
+    if isinstance(options, (list, tuple)):
         print("Acceptable Values for %s: " % prompt)
         for o in options:
             print("    %s" % o)
@@ -319,7 +320,7 @@ def general_scheduler_handler(config, cluster_template):
     scheduler_dict = {}
 
     # We first remove unnecessary parameters from the past configurations
-    batch_parameters = "max_vcpus", "desired_vcpus", "min_vcpus"
+    batch_parameters = "max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type"
     for par in batch_parameters:
         config.remove_option("cluster " + cluster_template, par)
 
@@ -335,9 +336,21 @@ def general_scheduler_handler(config, cluster_template):
         "Max Queue Size",
         get_parameter(config, "cluster " + cluster_template, "max_queue_size", "10")
     )
-
     scheduler_dict["max_queue_size"] = max_queue_size
     scheduler_dict["initial_queue_size"] = "1"
+
+    master_instance_type = prompt(
+        "Master instance type",
+        get_parameter(config, "cluster " + cluster_template, "master_instance_type", "t2.micro"),
+    )
+    scheduler_dict["master_instance_type"] = master_instance_type
+
+    compute_instance_type = prompt(
+        "Compute instance type",
+        get_parameter(config, "cluster " + cluster_template, "compute_instance_type", "t2.micro"),
+    )
+    scheduler_dict["compute_instance_type"] = compute_instance_type
+
     return scheduler_dict
 
 
@@ -348,10 +361,10 @@ def aws_batch_handler(config, cluster_template):
     :param cluster_template the name of the cluster
     :return: a dictionary with the updated values
     """
-    batch_dict = {"base_os": "alinux", "desired_vcpus": "1"}
+    batch_dict = {"base_os": "alinux", "desired_vcpus": "1", "compute_instance_type": "optimal"}
 
     # We first remove unnecessary parameters from the past configurations
-    non_batch_parameters = "max_queue_size", "initial_queue_size", "maintain_initial_size"
+    non_batch_parameters = "max_queue_size", "initial_queue_size", "maintain_initial_size", "compute_instance_type"
     for par in non_batch_parameters:
         config.remove_option("cluster " + cluster_template, par)
     # Ask the users for max_vcpus
@@ -359,8 +372,13 @@ def aws_batch_handler(config, cluster_template):
         "Max Queue Size",
         get_parameter(config, "cluster " + cluster_template, "max_vcpus", "10")
     )
-
     batch_dict["max_vcpus"] = max_vcpus
+
+    master_instance_type = prompt(
+        "Master instance type",
+        get_parameter(config, "cluster " + cluster_template, "master_instance_type", "t2.micro"),
+    )
+    batch_dict["master_instance_type"] = master_instance_type
     return batch_dict
 
 
