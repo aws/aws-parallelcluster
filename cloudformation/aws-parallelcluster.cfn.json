@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.3.2a1",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.4.0",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -1372,8 +1372,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.3.2a1",
-        "cookbook": "aws-parallelcluster-cookbook-2.3.2",
+        "parallelcluster": "2.4.0",
+        "cookbook": "aws-parallelcluster-cookbook-2.4.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
