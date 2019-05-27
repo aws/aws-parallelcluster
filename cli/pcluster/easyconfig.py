@@ -29,10 +29,12 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from . import cfnconfig
 from pcluster.utils import get_supported_schedulers
+from pcluster.utils import get_supported_os
 
 logger = logging.getLogger("pcluster.pcluster")
 unsupported_regions = ["ap-northeast-3"]
 default_region = "us-east-1"
+
 
 def handle_client_exception(func):
     @functools.wraps(func)
@@ -185,6 +187,18 @@ def configure(args):  # noqa: C901 FIXME!!!
         options=get_supported_schedulers(),
         check_validity=True,
     )
+    is_batch = _is_aws_batch(scheduler)
+
+    if is_batch:
+        operating_system = "alinux"
+    else:
+        operating_system = prompt(
+            "Operating System",
+            config.get("cluster " + cluster_template, "base_os") if config.has_option("cluster " + cluster_template,
+                                                                                      "base_os") else "alinux",
+            options=get_supported_os(),
+            check_validity=True,
+        )
 
     vpcname = prompt(
         "VPC Name",
@@ -290,3 +304,14 @@ def _is_config_valid(args, config):
         if is_file_ok:
             return True
         return False
+
+
+def _is_aws_batch(scheduler):
+    """
+    Return true if the scheduler is awsbatch
+    :param scheduler: the scheduler to check
+    :return: true if the scheduler is awsbatch
+    """
+    if scheduler == "awsbatch":
+        return True
+    return False
