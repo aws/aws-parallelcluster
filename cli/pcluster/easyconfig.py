@@ -84,20 +84,26 @@ def get_regions():
 
 
 @handle_client_exception
-def ec2_conn(aws_region_name):
+def ec2_get_region(aws_region_name):
     if aws_region_name:
         region = aws_region_name
     elif os.environ.get("AWS_DEFAULT_REGION"):
         region = os.environ.get("AWS_DEFAULT_REGION")
     else:
         region = "us-east-1"
+    return region
 
+
+@handle_client_exception
+def ec2_conn(aws_region_name):
+    region = ec2_get_region(aws_region_name)
     ec2 = boto3.client("ec2", region_name=region)
     return ec2
 
 
 @handle_client_exception
 def list_keys(aws_region_name):
+    aws_region_name = ec2_get_region(aws_region_name)  # we get the default if not present
     conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
     keynames = []
