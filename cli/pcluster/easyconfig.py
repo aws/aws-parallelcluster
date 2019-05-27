@@ -24,6 +24,7 @@ from builtins import input
 
 import boto3
 import configparser
+import tempfile
 from botocore.exceptions import BotoCoreError, ClientError
 
 from . import cfnconfig
@@ -220,7 +221,7 @@ def configure(args):  # noqa: C901 FIXME!!!
     s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
     s_aliases = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
     s_cluster = {"__name__": "cluster " + cluster_template, "key_name": key_name, "vpc_settings": vpcname,
-                 "scheduler": scheduler}
+                 "scheduler": scheduler, "base_os": operating_system}
     s_vpc = {"__name__": "vpc " + vpcname, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
 
     sections = [s_aws, s_cluster, s_vpc, s_global, s_aliases]
@@ -244,11 +245,41 @@ def configure(args):  # noqa: C901 FIXME!!!
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
+    if not _is_config_valid(args, config):
+        sys.exit(1)
+
+    # If we are here, than the file it's correct and we can override it.
     # Write configuration to disk
     open(config_file, "a").close()
     os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
     with open(config_file, "w") as cf:
         config.write(cf)
 
+
+def _is_config_valid(args, config):
+    """
+    Validate the configuration of the pcluster configure.
+    :param args: the arguments passed with the command line
+    :param config: the configParser
+    :return True if the configuration is valid, false otherwise
+    """
+    # We create a temp_file to validate before overriding the original config
+    path = os.path.join(tempfile.gettempdir(), "temp_config")
+    temp_file = path
+    temp_args = args
+    temp_args.config_file = path
+    open(temp_file, "a").close()
+    os.chmod(temp_file, stat.S_IRUSR | stat.S_IWUSR)
+    with open(temp_file, "w") as cf:
+        config.write(cf)
     # Verify the configuration
-    cfnconfig.ParallelClusterConfig(args)
+    is_file_ok = True
+    try:
+        cfnconfig.ParallelClusterConfig(temp_args)
+    except SystemExit as e:
+        is_file_ok = False
+    finally:
+        os.remove(path)
+        if is_file_ok:
+            return True
+        return False
