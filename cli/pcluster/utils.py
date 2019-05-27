@@ -180,3 +180,11 @@ def get_instance_vcpus(region, instance_type):
         vcpus = -1
 
     return vcpus
+
+
+def get_supported_schedulers():
+    """
+    Return a tuple of the scheduler supported by parallelcluster.
+    :return: a tuple of strings of the supported scheduler
+    """
+    return "sge", "torque", "slurm", "awsbatch"
