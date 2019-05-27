@@ -32,7 +32,7 @@ from pcluster.utils import get_supported_schedulers
 
 logger = logging.getLogger("pcluster.pcluster")
 unsupported_regions = ["ap-northeast-3"]
-
+default_region = "us-east-1"
 
 def handle_client_exception(func):
     @functools.wraps(func)
@@ -90,7 +90,7 @@ def ec2_get_region(aws_region_name):
     elif os.environ.get("AWS_DEFAULT_REGION"):
         region = os.environ.get("AWS_DEFAULT_REGION")
     else:
-        region = "us-east-1"
+        region = default_region
     return region
 
 
@@ -173,7 +173,7 @@ def configure(args):  # noqa: C901 FIXME!!!
     # Use built in boto regions as an available option
     aws_region_name = prompt(
         "AWS Region ID",
-        config.get("aws", "aws_region_name") if config.has_option("aws", "aws_region_name") else None,
+        config.get("aws", "aws_region_name") if config.has_option("aws", "aws_region_name") else default_region,
         options=get_regions(),
         check_validity=True,
     )
@@ -193,13 +193,14 @@ def configure(args):  # noqa: C901 FIXME!!!
         else "public",
     )
 
+    keys = list_keys(aws_region_name)
     # Query EC2 for available keys as options
     key_name = prompt(
         "Key Name",
         config.get("cluster " + cluster_template, "key_name")
         if config.has_option("cluster " + cluster_template, "key_name")
-        else None,
-        options=list_keys(aws_region_name),
+        else keys[0],  # it will always have at least one value, otherwise an exception before has been thrown
+        options=keys,
         check_validity=True,
     )
     vpc_id = prompt(
