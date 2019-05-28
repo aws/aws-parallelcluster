@@ -56,6 +56,16 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
+    def submit_interactive_command(self, command, nodes=1):
+        """
+        Submit a interactive command to the scheduler.
+
+        :param command: command to submit.
+        :return: result from remote command execution.
+        """
+        pass
+
+    @abstractmethod
     def submit_command(self, command, nodes=1):
         """
         Submit a job to the scheduler.
@@ -66,7 +76,7 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit_script(self, script, nodes=1):
+    def submit_script(self, script, nodes=1, additional_files=None):
         """
         Submit a job to the scheduler by using a script file.
 
@@ -115,10 +125,13 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
+    def submit_interactive_command(self, command, nodes=1):  # noqa: D102
+        raise NotImplementedError
+
     def submit_command(self, command, nodes=1):  # noqa: D102
         return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
 
-    def submit_script(self, script, nodes=1):  # noqa: D102
+    def submit_script(self, script, nodes=1, additional_files=None):  # noqa: D102
         raise NotImplementedError
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -161,6 +174,16 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
+    def submit_interactive_command(self, command, nodes=1, slots=None):  # noqa: D102
+        flags = ""
+        if nodes != 1:
+            raise Exception("SGE does not support nodes option")
+        if slots:
+            flags += "-pe mpi {0} ".format(slots)
+        return self._remote_command_executor.run_remote_command(
+            "echo '{0}' | qrsh {1}".format(command, flags), raise_on_error=False
+        )
+
     def submit_command(self, command, nodes=1, slots=None, hold=False):  # noqa: D102
         flags = ""
         if nodes != 1:
@@ -173,10 +196,13 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(self, script, nodes=1):  # noqa: D102
+    def submit_script(self, script, nodes=1, additional_files=None):  # noqa: D102
+        if not additional_files:
+            additional_files = []
+        additional_files.append(script)
         script_name = os.path.basename(script)
         return self._remote_command_executor.run_remote_command(
-            "qsub {0}".format(script_name), additional_files=[script]
+            "qsub {0}".format(script_name), additional_files=additional_files
         )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -217,19 +243,28 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
+    def submit_interactive_command(self, command, nodes=1, host=None):  # noqa: D102
+        submission_command = "srun -N {0} --wrap='{1}'".format(nodes, command)
+        if host:
+            submission_command += " --nodelist={0}".format(host)
+        return self._remote_command_executor.run_remote_command(submission_command)
+
     def submit_command(self, command, nodes=1, host=None):  # noqa: D102
         submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
         if host:
             submission_command += " --nodelist={0}".format(host)
         return self._remote_command_executor.run_remote_command(submission_command)
 
-    def submit_script(self, script, nodes=1, host=None):  # noqa: D102
+    def submit_script(self, script, nodes=1, host=None, additional_files=None):  # noqa: D102
+        if not additional_files:
+            additional_files = []
+        additional_files.append(script)
         script_name = os.path.basename(script)
         submission_command = "sbatch"
         if host:
             submission_command += " --nodelist={0}".format(host)
         submission_command += " -N {0} {1}".format(nodes, script_name)
-        return self._remote_command_executor.run_remote_command(submission_command, additional_files=[script])
+        return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -260,6 +295,9 @@ class TorqueCommands(SchedulerCommands):
         raise NotImplementedError
 
     def assert_job_submitted(self, qsub_output):  # noqa: D102
+        raise NotImplementedError
+
+    def submit_interactive_command(self, command, nodes=1):  # noqa: D102
         raise NotImplementedError
 
     def submit_command(self, command):  # noqa: D102
