@@ -66,7 +66,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 
 @pytest.mark.regions(["sa-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm"])
+@pytest.mark.schedulers(["slurm", "sge"])
 @pytest.mark.usefixtures("region", "os", "instance")
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
