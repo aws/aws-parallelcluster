@@ -182,17 +182,20 @@ def get_instance_vcpus(region, instance_type):
     return vcpus
 
 
-def get_supported_os():
+def get_supported_os(scheduler):
     """
-    Return a tuple of the os supported by parallelcluster.
+    Return a tuple of the os supported by parallelcluster for the specific scheduler.
+
+    :param scheduler: the scheduler for which we want to know the supported os
     :return: a tuple of strings of the supported os
     """
-    return "alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"
+    return "alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"
 
 
 def get_supported_schedulers():
     """
     Return a tuple of the scheduler supported by parallelcluster.
+
     :return: a tuple of strings of the supported scheduler
     """
     return "sge", "torque", "slurm", "awsbatch"
