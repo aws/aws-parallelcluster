@@ -21,7 +21,7 @@ Steps
 
 #. Upload the cookbook, changing ``[your_bucket]`` to a bucket you own ::
 
-        $ cd aws-parallelcluster-cookbook/utils
+        $ cd aws-parallelcluster-cookbook
         $ /bin/bash util/uploadCookbook.sh --bucket [your_bucket] --srcdir .
 
 #. From the output above, add the following variable to the AWS ParallelCluster config file, under the ``[cluster ...]`` section ::
