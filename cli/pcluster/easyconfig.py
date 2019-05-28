@@ -15,26 +15,38 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
+import copy
 import errno
 import functools
 import logging
 import os
 import stat
 import sys
+import tempfile
 from builtins import input
 
 import boto3
 import configparser
-import tempfile
 from botocore.exceptions import BotoCoreError, ClientError
 
+from pcluster.utils import get_supported_os, get_supported_schedulers
+
 from . import cfnconfig
-from pcluster.utils import get_supported_schedulers
-from pcluster.utils import get_supported_os
 
 logger = logging.getLogger("pcluster.pcluster")
 unsupported_regions = ["ap-northeast-3"]
-default_region = "us-east-1"
+DEFAULT_VALUES = {
+    "cluster_template": "default",
+    "aws_region_name": "us-east-1",
+    "scheduler": "sge",
+    "os": "alinux",
+    "max_queue_size": "10",
+    "master_instance_type": "t2.micro",
+    "compute_instance_type": "t2.micro",
+    "vpc_name": "public",
+    "initial_size": "1",
+}
+FORCED_BATCH_VALUES = {"os": "alinux", "compute_instance_type": "optimal"}
 
 
 def handle_client_exception(func):
@@ -51,18 +63,18 @@ def handle_client_exception(func):
     return wrapper
 
 
-def prompt(prompt, default_value=None, hidden=False, options=None, check_validity=False):
+def prompt(message, default_value=None, hidden=False, options=None, check_validity=False):
     if hidden and default_value is not None:
-        user_prompt = prompt + " [*******" + default_value[-4:] + "]: "
+        user_prompt = message + " [*******" + default_value[-4:] + "]: "
     else:
-        user_prompt = prompt + " ["
+        user_prompt = message + " ["
         if default_value is not None:
             user_prompt = user_prompt + default_value + "]: "
         else:
             user_prompt = user_prompt + "]: "
 
     if isinstance(options, (list, tuple)):
-        print("Acceptable Values for %s: " % prompt)
+        print("Acceptable Values for %s: " % message)
         for o in options:
             print("    %s" % o)
 
@@ -86,27 +98,25 @@ def get_regions():
     return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
 
 
-@handle_client_exception
-def ec2_get_region(aws_region_name):
+def _evaluate_aws_region(aws_region_name):
     if aws_region_name:
         region = aws_region_name
     elif os.environ.get("AWS_DEFAULT_REGION"):
         region = os.environ.get("AWS_DEFAULT_REGION")
     else:
-        region = default_region
+        region = DEFAULT_VALUES["aws_region_name"]
     return region
 
 
 @handle_client_exception
 def ec2_conn(aws_region_name):
-    region = ec2_get_region(aws_region_name)
+    region = _evaluate_aws_region(aws_region_name)
     ec2 = boto3.client("ec2", region_name=region)
     return ec2
 
 
 @handle_client_exception
 def list_keys(aws_region_name):
-    aws_region_name = ec2_get_region(aws_region_name)  # we get the default if not present
     conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
     keynames = []
@@ -154,91 +164,138 @@ def list_subnets(aws_region_name, vpc_id):
 
 
 def configure(args):  # noqa: C901 FIXME!!!
-
     # Determine config file name based on args or default
-    if args.config_file is not None:
-        config_file = args.config_file
-    else:
-        config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+    config_file = (
+        args.config_file if args.config_file else os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+    )
 
     config = configparser.ConfigParser()
     # Check if configuration file exists
     if os.path.isfile(config_file):
         config.read(config_file)
 
-    s_cluster = {}
-
     # Prompt for required values, using existing as defaults
     cluster_template = prompt(
-        "Cluster template",
-        get_parameter(config, "global", "cluster_template", "default"),
+        "Cluster configuration label",
+        get_config_parameter(
+            config,
+            section="global",
+            parameter_name="cluster_template",
+            default_value=DEFAULT_VALUES["cluster_template"],
+        ),
     )
-    s_cluster["__name__"] = "cluster " + cluster_template
+    cluster_label = "cluster " + cluster_template
 
     # Use built in boto regions as an available option
     aws_region_name = prompt(
         "AWS Region ID",
-        get_parameter(config, "aws", "aws_region_name", default_region),
+        get_config_parameter(
+            config, section="aws", parameter_name="aws_region_name", default_value=DEFAULT_VALUES["aws_region_name"]
+        ),
         options=get_regions(),
         check_validity=True,
     )
 
     scheduler = prompt(
         "Scheduler",
-        get_parameter(config, "cluster " + cluster_template, "scheduler", "sge"),
+        get_config_parameter(
+            config, section=cluster_label, parameter_name="scheduler", default_value=DEFAULT_VALUES["scheduler"]
+        ),
         options=get_supported_schedulers(),
         check_validity=True,
     )
-    s_cluster["scheduler"] = scheduler
+    scheduler_info = scheduler_handler(scheduler)
+    is_aws_batch = scheduler == "awsbatch"
 
-    if _is_aws_batch(scheduler):
-        s_cluster.update(aws_batch_handler(config, cluster_template))
+    if is_aws_batch:
+        operating_system = FORCED_BATCH_VALUES["os"]
     else:
-        s_cluster.update(general_scheduler_handler(config, cluster_template))
+        operating_system = prompt(
+            "Operating System",
+            get_config_parameter(
+                config, section=cluster_label, parameter_name="base_os", default_value=DEFAULT_VALUES["os"]
+            ),
+            options=get_supported_os(scheduler),
+            check_validity=True,
+        )
 
-    vpcname = prompt(
-        "VPC Name",
-        get_parameter(config, "cluster " + cluster_template, "vpc_settings", "public"),
+    max_queue_size = prompt(
+        "Max Queue Size",
+        get_config_parameter(config, cluster_label, scheduler_info["max_size"], DEFAULT_VALUES["max_queue_size"]),
     )
-    s_cluster["vpc_settings"] = vpcname
+
+    master_instance_type = prompt(
+        "Master instance type",
+        get_config_parameter(
+            config,
+            section=cluster_label,
+            parameter_name="master_instance_type",
+            default_value=DEFAULT_VALUES["master_instance_type"],
+        ),
+    )
+
+    if is_aws_batch:
+        compute_instance_type = FORCED_BATCH_VALUES["compute_instance_type"]
+    else:
+        compute_instance_type = prompt(
+            message="Compute instance type", default_value=DEFAULT_VALUES["compute_instance_type"]
+        )
+
+    vpc_name = prompt(
+        "VPC configuration label",
+        get_config_parameter(
+            config, section=cluster_label, parameter_name="vpc_settings", default_value=DEFAULT_VALUES["vpc_name"]
+        ),
+    )
+    vpc_label = "vpc " + vpc_name
 
     keys = list_keys(aws_region_name)
-    # Query EC2 for available keys as options
     key_name = prompt(
         "Key Name",
-        get_parameter(config, "cluster " + cluster_template, "key_name", keys[0]),
+        get_config_parameter(config, section=cluster_label, parameter_name="key_name", default_value=keys[0]),
         options=keys,
         check_validity=True,
     )
-    s_cluster["key_name"] = key_name
 
     vpc_id = prompt(
         "VPC ID",
-        get_parameter(config, "vpc " + vpcname, "vpc_id", None),
+        get_config_parameter(config, section=vpc_label, parameter_name="vpc_id", default_value=None),
         options=list_vpcs(aws_region_name),
         check_validity=True,
     )
 
     master_subnet_id = prompt(
         "Master Subnet ID",
-        get_parameter(config, "vpc " + vpcname, "master_subnet_id", None),
+        get_config_parameter(config, section=vpc_label, parameter_name="master_subnet_id", default_value=None),
         options=list_subnets(aws_region_name, vpc_id),
         check_validity=True,
     )
 
-    # Dictionary of values we want to set
-    s_global = {
+    global_parameters = {
         "__name__": "global",
         "cluster_template": cluster_template,
         "update_check": "true",
         "sanity_check": "true",
     }
-    s_aws = {"__name__": "aws", "aws_region_name": aws_region_name}
-    s_aliases = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
-    s_vpc = {"__name__": "vpc " + vpcname, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
+    aws_parameters = {"__name__": "aws", "aws_region_name": aws_region_name}
+    cluster_parameters = {
+        "__name__": cluster_label,
+        "key_name": key_name,
+        "vpc_settings": vpc_name,
+        "scheduler": scheduler,
+        "base_os": operating_system,
+        "compute_instance_type": compute_instance_type,
+        "master_instance_type": master_instance_type,
+        scheduler_info["max_size"]: max_queue_size,
+        scheduler_info["initial_size"]: DEFAULT_VALUES["initial_size"],
+    }
+    aliases_parameters = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
+    vpc_parameters = {"__name__": vpc_label, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
+    sections = [aws_parameters, cluster_parameters, vpc_parameters, global_parameters, aliases_parameters]
 
-    sections = [s_aws, s_cluster, s_vpc, s_global, s_aliases]
-
+    # We first remove unnecessary parameters from the past configurations
+    for par in scheduler_info["parameters_to_remove"]:
+        config.remove_option(cluster_label, par)
     # Loop through the configuration sections we care about
     for section in sections:
         try:
@@ -272,122 +329,61 @@ def configure(args):  # noqa: C901 FIXME!!!
 def _is_config_valid(args, config):
     """
     Validate the configuration of the pcluster configure.
+
     :param args: the arguments passed with the command line
     :param config: the configParser
     :return True if the configuration is valid, false otherwise
     """
-    # We create a temp_file to validate before overriding the original config
-    path = os.path.join(tempfile.gettempdir(), "temp_config")
-    temp_file = path
-    temp_args = args
-    temp_args.config_file = path
-    open(temp_file, "a").close()
-    os.chmod(temp_file, stat.S_IRUSR | stat.S_IWUSR)
-    with open(temp_file, "w") as cf:
+    # We create a temp_file_path to validate before overriding the original config
+    temp_file_path = os.path.join(tempfile.gettempdir(), "temp_config")
+    temp_args = copy.copy(args)  # Defensive copy is needed because we change config_file
+
+    temp_args.config_file = temp_file_path
+    with open(temp_file_path, "w+") as cf:
         config.write(cf)
     # Verify the configuration
-    is_file_ok = True
+    is_valid = True
     try:
         cfnconfig.ParallelClusterConfig(temp_args)
-    except SystemExit as e:
-        is_file_ok = False
+    except SystemExit:
+        is_valid = False
     finally:
-        os.remove(path)
-        if is_file_ok:
-            return True
-        return False
+        os.remove(temp_file_path)
+        return is_valid
 
 
-def get_parameter(config, section, parameter_name, default_value):
+def get_config_parameter(config, section, parameter_name, default_value):
     """
-    Prompt the user to ask question without validation
+    Get the parameter if present in the configuration otherwise returns default value.
+
     :param config the configuration parser
     :param section the name of the section
     :param parameter_name: the name of the parameter
-    :param default_value: the default string to ask the user
+    :param default_value: the default to propose the user
     :return:
     """
     return config.get(section, parameter_name) if config.has_option(section, parameter_name) else default_value
 
 
-def general_scheduler_handler(config, cluster_template):
+def scheduler_handler(scheduler):
     """
-    Return a dictionary containing the values asked to the user for a generic scheduler non aws_batch
-    :param config the configuration parser
-    :param cluster_template the name of the cluster
-    :return: a dictionary with the updated values
+    Return a dictionary containing information based on the scheduler.
+
+    :param scheduler the target scheduler
+    :return: a dictionary with containing the information
     """
-    scheduler_dict = {}
-
-    # We first remove unnecessary parameters from the past configurations
-    batch_parameters = "max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type"
-    for par in batch_parameters:
-        config.remove_option("cluster " + cluster_template, par)
-
-    operating_system = prompt(
-        "Operating System",
-        get_parameter(config, "cluster " + cluster_template, "base_os", "alinux"),
-        options=get_supported_os(),
-        check_validity=True,
-    )
-    scheduler_dict["base_os"] = operating_system
-
-    max_queue_size = prompt(
-        "Max Queue Size",
-        get_parameter(config, "cluster " + cluster_template, "max_queue_size", "10")
-    )
-    scheduler_dict["max_queue_size"] = max_queue_size
-    scheduler_dict["initial_queue_size"] = "1"
-
-    master_instance_type = prompt(
-        "Master instance type",
-        get_parameter(config, "cluster " + cluster_template, "master_instance_type", "t2.micro"),
-    )
-    scheduler_dict["master_instance_type"] = master_instance_type
-
-    compute_instance_type = prompt(
-        "Compute instance type",
-        get_parameter(config, "cluster " + cluster_template, "compute_instance_type", "t2.micro"),
-    )
-    scheduler_dict["compute_instance_type"] = compute_instance_type
-
-    return scheduler_dict
-
-
-def aws_batch_handler(config, cluster_template):
-    """
-    Return a dictionary containing the values asked to the user for aws_batch
-    :param config the configuration parser
-    :param cluster_template the name of the cluster
-    :return: a dictionary with the updated values
-    """
-    batch_dict = {"base_os": "alinux", "desired_vcpus": "1", "compute_instance_type": "optimal"}
-
-    # We first remove unnecessary parameters from the past configurations
-    non_batch_parameters = "max_queue_size", "initial_queue_size", "maintain_initial_size", "compute_instance_type"
-    for par in non_batch_parameters:
-        config.remove_option("cluster " + cluster_template, par)
-    # Ask the users for max_vcpus
-    max_vcpus = prompt(
-        "Max Queue Size",
-        get_parameter(config, "cluster " + cluster_template, "max_vcpus", "10")
-    )
-    batch_dict["max_vcpus"] = max_vcpus
-
-    master_instance_type = prompt(
-        "Master instance type",
-        get_parameter(config, "cluster " + cluster_template, "master_instance_type", "t2.micro"),
-    )
-    batch_dict["master_instance_type"] = master_instance_type
-    return batch_dict
-
-
-def _is_aws_batch(scheduler):
-    """
-    Return true if the scheduler is awsbatch
-    :param scheduler: the scheduler to check
-    :return: true if the scheduler is awsbatch
-    """
+    scheduler_info = {}
     if scheduler == "awsbatch":
-        return True
-    return False
+        scheduler_info["parameters_to_remove"] = (
+            "max_queue_size",
+            "initial_queue_size",
+            "maintain_initial_size",
+            "compute_instance_type",
+        )
+        scheduler_info["max_size"] = "max_vcpus"
+        scheduler_info["initial_size"] = "desired_vcpus"
+    else:
+        scheduler_info["parameters_to_remove"] = "max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type"
+        scheduler_info["max_size"] = "max_queue_size"
+        scheduler_info["initial_size"] = "initial_queue_size"
+    return scheduler_info
