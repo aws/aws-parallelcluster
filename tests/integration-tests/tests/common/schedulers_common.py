@@ -162,7 +162,10 @@ class SgeCommands(SchedulerCommands):
         return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command))
 
     def submit_script(self, script, nodes=1):  # noqa: D102
-        raise NotImplementedError
+        script_name = os.path.basename(script)
+        return self._remote_command_executor.run_remote_command(
+            "qsub {0}".format(script_name), additional_files=[script]
+        )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
