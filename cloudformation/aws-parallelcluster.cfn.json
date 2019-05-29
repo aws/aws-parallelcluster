@@ -598,6 +598,11 @@
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+    },
+    "EFA": {
+      "Description": "Enable EFA on the compute nodes, enable_efa = compute",
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {
@@ -1190,6 +1195,18 @@
           "Fn::Equals": [
             {
               "Ref": "ResourcesS3Bucket"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "EnableEFA": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "EFA"
             },
             "NONE"
           ]
@@ -3415,6 +3432,15 @@
           "NetworkInterfaces": [
             {
               "DeviceIndex": 0,
+              "InterfaceType": {
+                "Fn::If": [
+                  "EnableEFA",
+                  "efa",
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              },
               "Groups": [
                 {
                   "Fn::If": [
@@ -4200,6 +4226,34 @@
             "ToPort": 65535
           }
         ]
+      },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "DestinationSecurityGroupId": {
+          "Ref": "ComputeSecurityGroup"
+        },
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
+      },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupNormalEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
       },
       "Condition": "CreateSecurityGroups"
     },
