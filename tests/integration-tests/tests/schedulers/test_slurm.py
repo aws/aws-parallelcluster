@@ -17,6 +17,7 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from tests.common.assertions import assert_asg_desired_capacity
 from tests.common.scaling_common import get_compute_nodes_allocation
 from tests.common.schedulers_common import SlurmCommands
 from time_utils import minutes
@@ -114,20 +115,25 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     assert_that(max(compute_nodes_time_series)).is_equal_to(1)
     assert_that(asg_capacity_time_series[-1]).is_equal_to(0)
     assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
+    # Assert scheduler configuration is correct
     _assert_dummy_nodes(remote_command_executor, max_queue_size)
     assert_that(_retrieve_slurm_nodes_from_config(remote_command_executor)).is_empty()
+    # Assert jobs were completed
+    slurm_commands.assert_job_succeeded(job_id)
+    slurm_commands.assert_job_succeeded(dependent_job_id)
 
 
 def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_name):
     logging.info("Testing cluster doesn't scale when job requires a capacity that is higher than the max available")
     slurm_commands = SlurmCommands(remote_command_executor)
-    result = slurm_commands.submit_command("sleep 1", nodes=max_queue_size + 1)
+    result = slurm_commands.submit_command("sleep 1000", nodes=max_queue_size + 1)
     max_nodes_job_id = slurm_commands.assert_job_submitted(result.stdout)
     result = remote_command_executor.run_remote_command("sbatch -N 1 --wrap='sleep 1' --cpus-per-task 5")
     max_cpu_job_id = slurm_commands.assert_job_submitted(result.stdout)
 
-    # Wait for reason to be computed
-    time.sleep(3)
+    # Check we are not scaling
+    time.sleep(60)
+    assert_asg_desired_capacity(region, asg_name, expected=0)
     assert_that(_get_job_info(remote_command_executor, max_nodes_job_id)).contains(
         "JobState=PENDING Reason=PartitionNodeLimit"
     )
@@ -135,12 +141,6 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
         "JobState=PENDING Reason=Nodes_required_for_job_are_DOWN,_DRAINED"
         "_or_reserved_for_jobs_in_higher_priority_partitions"
     )
-
-    # Check we are not scaling
-    time.sleep(60)
-    asg_client = boto3.client("autoscaling", region_name=region)
-    asg = asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
-    assert_that(asg.get("DesiredCapacity")).is_equal_to(0)
 
 
 def _retrieve_slurm_dummy_nodes_from_config(remote_command_executor):
