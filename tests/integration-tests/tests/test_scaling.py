@@ -15,12 +15,9 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from tests.common.assertions import assert_instance_replaced_or_terminating
 from tests.common.compute_logs_common import wait_compute_log
-from tests.common.scaling_common import (
-    assert_instance_replaced_or_terminating,
-    get_compute_nodes_allocation,
-    get_desired_asg_capacity,
-)
+from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
 from time_utils import minutes
 
