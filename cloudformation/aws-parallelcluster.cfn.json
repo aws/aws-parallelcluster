@@ -2404,6 +2404,9 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "enable_efa": {
+                      "Ref": "EFA"
+                    },
                     "cfn_raid_vol_ids": {
                       "Fn::If": [
                         "CreateRAIDSubstack",
@@ -3242,6 +3245,9 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "enable_efa": {
+                      "Ref": "EFA"
+                    },
                     "cfn_raid_parameters": {
                       "Ref": "RAIDOptions"
                     },
@@ -3923,6 +3929,9 @@
                   "cfncluster": {
                     "stack_name": {
                       "Ref": "AWS::StackName"
+                    },
+                    "enable_efa": {
+                      "Ref": "EFA"
                     },
                     "cfn_raid_parameters": {
                       "Ref": "RAIDOptions"

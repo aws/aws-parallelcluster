@@ -263,10 +263,6 @@ class ResourceValidator(object):
             self.__fail(resource_type, e.response.get("Error").get("Message"))
 
     def __validate_efa_parameters(self, resource_type, resource_value):
-        supported_features = get_supported_features(self.region, "efa")
-        valid_instances = supported_features.get("instances")
-        if resource_value.get("ComputeInstanceType", None) not in valid_instances:
-            self.__fail(resource_type, "Compute Instance needs to be one of %s" % valid_instances)
         if resource_value.get("PlacementGroup", "NONE") == "NONE":
             self.__fail(resource_type, "Placement group is required, set placement_group.")
         if "VPCSecurityGroupId" in resource_value:
