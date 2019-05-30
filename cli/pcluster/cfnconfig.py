@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_instance_vcpus
+from pcluster.utils import get_instance_vcpus, get_supported_features
 
 
 class ParallelClusterConfig(object):
@@ -539,6 +539,10 @@ class ParallelClusterConfig(object):
             if __temp__ != "compute":
                 self.__fail("valid values for enable_efa = compute")
 
+            supported_features = get_supported_features(self.region, "efa")
+            valid_instances = supported_features.get("instances")
+
+            self.__validate_instance("EFA", self.parameters.get("ComputeInstanceType"), valid_instances)
             self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7"])
             self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
             self.__validate_resource("EFA", self.parameters)
@@ -623,6 +627,10 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, "base_os"):
             base_os = self.__config.get(self.__cluster_section, "base_os")
         return base_os
+
+    def __validate_instance(self, service, instance, valid_instances):
+        if instance not in valid_instances:
+            self.__fail("%s can only be used with the following instances: %s" % (service, valid_instances))
 
     def __validate_scheduler(self, service, scheduler, supported_schedulers):
         if scheduler not in supported_schedulers:
