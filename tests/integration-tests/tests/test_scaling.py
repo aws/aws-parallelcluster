@@ -12,14 +12,15 @@
 import logging
 
 import pytest
+from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.assertions import assert_instance_replaced_or_terminating
+from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
 from tests.common.compute_logs_common import wait_compute_log
 from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
-from time_utils import minutes
+from time_utils import minutes, seconds
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
@@ -58,7 +59,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     )
 
     logging.info("Verifying no error in logs")
-    _assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
 
 @pytest.mark.regions(["sa-east-1"])
@@ -72,6 +73,8 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
+    compute_nodes = scheduler_commands.get_compute_nodes()
+
     # submit a job that kills the slurm daemon so that the node enters a failing state
     scheduler_commands.submit_script(str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)))
     instance_id = wait_compute_log(remote_command_executor)
@@ -80,6 +83,14 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     assert_instance_replaced_or_terminating(instance_id, region)
     # verify that desired capacity is still 1
     assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(1)
+    _assert_nodes_removed_from_scheduler(scheduler_commands, compute_nodes)
+
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
+    assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
 
 
 def _assert_compute_logs(remote_command_executor, instance_id):
@@ -153,11 +164,3 @@ def _assert_test_jobs_completed(remote_command_executor, max_jobs_exec_time):
     jobs_execution_time = jobs_completion_time - jobs_start_time
     logging.info("Test jobs completed in %d seconds", jobs_execution_time)
     assert_that(jobs_execution_time).is_less_than(max_jobs_exec_time)
-
-
-def _assert_no_errors_in_logs(remote_command_executor, log_files):
-    __tracebackhide__ = True
-    for log_file in log_files:
-        log = remote_command_executor.run_remote_command("cat {0}".format(log_file), hide=True).stdout
-        for error_level in ["CRITICAL", "ERROR"]:
-            assert_that(log).does_not_contain(error_level)
