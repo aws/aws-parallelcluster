@@ -16,11 +16,9 @@ import boto3
 import pytest
 
 from assertpy import assert_that
-from remote_command_executor import RemoteCommandExecutor
-from tests.common.assertions import assert_asg_desired_capacity
-from tests.common.scaling_common import get_compute_nodes_allocation
+from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import SlurmCommands
-from time_utils import minutes
 
 
 @pytest.mark.regions(["us-west-1"])
@@ -43,7 +41,10 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg)
     _test_cluster_limits(remote_command_executor, max_queue_size, region, cluster.asg)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
+    _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
     _test_dynamic_dummy_nodes(remote_command_executor, max_queue_size)
+
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
 
 def _test_slurm_version(remote_command_executor):
@@ -99,28 +100,13 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     )
     assert_that(_get_job_info(remote_command_executor, dependent_job_id)).contains("JobState=PENDING Reason=Dependency")
 
-    jobs_execution_time = 1
-    estimated_scaleup_time = 5
-    max_scaledown_time = 10
-    asg_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
-        scheduler_commands=slurm_commands,
-        region=region,
-        stack_name=stack_name,
-        max_monitoring_time=minutes(jobs_execution_time)
-        + minutes(scaledown_idletime)
-        + minutes(estimated_scaleup_time)
-        + minutes(max_scaledown_time),
-    )
-    assert_that(max(asg_capacity_time_series)).is_equal_to(1)
-    assert_that(max(compute_nodes_time_series)).is_equal_to(1)
-    assert_that(asg_capacity_time_series[-1]).is_equal_to(0)
-    assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
+    assert_scaling_worked(slurm_commands, region, stack_name, scaledown_idletime, expected_max=1, expected_final=0)
     # Assert scheduler configuration is correct
     _assert_dummy_nodes(remote_command_executor, max_queue_size)
     assert_that(_retrieve_slurm_nodes_from_config(remote_command_executor)).is_empty()
     # Assert jobs were completed
-    slurm_commands.assert_job_succeeded(job_id)
-    slurm_commands.assert_job_succeeded(dependent_job_id)
+    _assert_job_completed(remote_command_executor, job_id)
+    _assert_job_completed(remote_command_executor, dependent_job_id)
 
 
 def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_name):
@@ -141,6 +127,23 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
         "JobState=PENDING Reason=Nodes_required_for_job_are_DOWN,_DRAINED"
         "_or_reserved_for_jobs_in_higher_priority_partitions"
     )
+
+
+def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_name, scaledown_idletime):
+    logging.info("Testing cluster scales correctly with array jobs and parallel jobs")
+    slurm_commands = SlurmCommands(remote_command_executor)
+
+    result = remote_command_executor.run_remote_command("sbatch --wrap 'sleep 1' -a 1-5")
+    array_job_id = slurm_commands.assert_job_submitted(result.stdout)
+
+    result = remote_command_executor.run_remote_command("sbatch --wrap 'sleep 1' -c 3 -n 2")
+    parallel_job_id = slurm_commands.assert_job_submitted(result.stdout)
+
+    # Assert scaling worked as expected
+    assert_scaling_worked(slurm_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0)
+    # Assert jobs were completed
+    _assert_job_completed(remote_command_executor, array_job_id)
+    _assert_job_completed(remote_command_executor, parallel_job_id)
 
 
 def _retrieve_slurm_dummy_nodes_from_config(remote_command_executor):
@@ -172,3 +175,12 @@ def _assert_dummy_nodes(remote_command_executor, count):
 
 def _get_job_info(remote_command_executor, job_id):
     return remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+
+
+def _assert_job_completed(remote_command_executor, job_id):
+    try:
+        result = remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id), log_error=False)
+        return "JobState=COMPLETED" in result.stdout
+    except RemoteCommandExecutionError as e:
+        # Handle the case when job is deleted from history
+        assert_that(e.result.stdout).contains("slurm_load_jobs error: Invalid job id specified")

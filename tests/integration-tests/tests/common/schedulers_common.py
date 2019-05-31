@@ -151,9 +151,13 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def assert_job_submitted(self, qsub_output):  # noqa: D102
+    def assert_job_submitted(self, qsub_output, is_array=False):  # noqa: D102
         __tracebackhide__ = True
-        match = re.search(r"Your job ([0-9]+) \(.+\) has been submitted", qsub_output)
+        if is_array:
+            regex = r"Your job-array ([0-9]+)\.[0-9\-:]+ \(.+\) has been submitted"
+        else:
+            regex = r"Your job ([0-9]+) \(.+\) has been submitted"
+        match = re.search(regex, qsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
@@ -186,7 +190,8 @@ class SgeCommands(SchedulerCommands):
         return int(result.stdout.split()[-1])
 
     def get_compute_nodes(self):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command("qhost | grep ip- | awk '{print $1}'")
+        return result.stdout.splitlines()
 
 
 class SlurmCommands(SchedulerCommands):

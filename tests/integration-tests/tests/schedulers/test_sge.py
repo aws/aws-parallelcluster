@@ -11,16 +11,13 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import re
-import time
 
 import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from tests.common.assertions import assert_asg_desired_capacity
-from tests.common.scaling_common import get_compute_nodes_allocation
+from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import SgeCommands
-from time_utils import minutes
 
 
 @pytest.mark.regions(["ap-southeast-1"])
@@ -43,6 +40,9 @@ def test_sge(region, pcluster_config_reader, clusters_factory):
     _test_sge_version(remote_command_executor)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
+    _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
+
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
 
 def _test_sge_version(remote_command_executor):
@@ -52,6 +52,7 @@ def _test_sge_version(remote_command_executor):
 
 
 def _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime):
+    logging.info("Testing jobs that violate scheduling requirements")
     sge_commands = SgeCommands(remote_command_executor)
 
     # Make sure the cluster has at least 1 node in the queue so that we can verify cluster scales down correctly
@@ -72,17 +73,8 @@ def _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, 
     assert_that(_get_job_state(remote_command_executor, hold_job_id)).is_equal_to("hqw")
 
     logging.info("Testing cluster scales down when pending jobs cannot be submitted")
-    _, compute_nodes_time_series, _ = get_compute_nodes_allocation(
-        scheduler_commands=sge_commands,
-        region=region,
-        stack_name=cluster.cfn_name,
-        max_monitoring_time=minutes(scaledown_idletime) + minutes(5),
-    )
-    assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
-
-    # Check we are not scaling up again
-    time.sleep(60)
-    assert_asg_desired_capacity(region, cluster.asg, expected=0)
+    assert_scaling_worked(sge_commands, region, cluster.cfn_name, scaledown_idletime, expected_max=1, expected_final=0)
+    # Assert jobs are still pending
     pending_jobs = remote_command_executor.run_remote_command("qstat -s p | tail -n +3 | awk '{ print $1 }'").stdout
     pending_jobs = pending_jobs.splitlines()
     assert_that(pending_jobs).contains(max_slots_job_id, hold_job_id)
@@ -101,25 +93,27 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     assert_that(_get_job_state(remote_command_executor, dependent_job_id)).is_equal_to("hqw")
 
     # Assert scaling worked as expected
-    jobs_execution_time = 1
-    estimated_scaleup_time = 5
-    max_scaledown_time = 10
-    asg_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
-        scheduler_commands=sge_commands,
-        region=region,
-        stack_name=stack_name,
-        max_monitoring_time=minutes(jobs_execution_time)
-        + minutes(scaledown_idletime)
-        + minutes(estimated_scaleup_time)
-        + minutes(max_scaledown_time),
-    )
-    assert_that(max(asg_capacity_time_series)).is_equal_to(1)
-    assert_that(max(compute_nodes_time_series)).is_equal_to(1)
-    assert_that(asg_capacity_time_series[-1]).is_equal_to(0)
-    assert_that(compute_nodes_time_series[-1]).is_equal_to(0)
+    assert_scaling_worked(sge_commands, region, stack_name, scaledown_idletime, expected_max=1, expected_final=0)
     # Assert jobs were completed
     sge_commands.assert_job_succeeded(job_id)
     sge_commands.assert_job_succeeded(dependent_job_id)
+
+
+def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_name, scaledown_idletime):
+    logging.info("Testing cluster scales correctly with array jobs and parallel jobs")
+    sge_commands = SgeCommands(remote_command_executor)
+
+    result = remote_command_executor.run_remote_command("echo 'sleep 1' | qsub -t 1-5", raise_on_error=False)
+    array_job_id = sge_commands.assert_job_submitted(result.stdout, is_array=True)
+
+    result = remote_command_executor.run_remote_command("echo 'sleep 1' | qsub -pe mpi 4", raise_on_error=False)
+    parallel_job_id = sge_commands.assert_job_submitted(result.stdout)
+
+    # Assert scaling worked as expected
+    assert_scaling_worked(sge_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0)
+    # Assert jobs were completed
+    sge_commands.assert_job_succeeded(array_job_id)
+    sge_commands.assert_job_succeeded(parallel_job_id)
 
 
 def _get_job_state(remote_command_executor, job_id):
