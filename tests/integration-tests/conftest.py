@@ -61,6 +61,8 @@ def pytest_addoption(parser):
     parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
+    parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
+    parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
 
 
 def pytest_generate_tests(metafunc):

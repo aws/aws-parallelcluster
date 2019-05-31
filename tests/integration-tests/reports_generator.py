@@ -125,7 +125,7 @@ def _put_metrics(cw_client, namespace, metrics, dimensions, timestamp):
         time.sleep(put_metric_sleep_interval)
 
     failures_errors = metrics["failures"] + metrics["errors"]
-    failure_rate = float(failures_errors) / metrics["total"] * 100
+    failure_rate = float(failures_errors) / metrics["total"] * 100 if metrics["total"] > 0 else 0
     additional_metrics = [
         {"name": "failures_errors", "value": failures_errors, "unit": "Count"},
         {"name": "failure_rate", "value": failure_rate, "unit": "Percent"},
