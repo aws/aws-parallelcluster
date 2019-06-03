@@ -47,13 +47,12 @@ DEFAULT_VALUES = {
     "cluster_template": "default",
     "scheduler": "sge",
     "os": "alinux",
-    "max_queue_size": "10",
+    "max_size": "10",
     "master_instance_type": "t2.micro",
     "compute_instance_type": "t2.micro",
     "vpc_name": "public",
     "min_size": "0",
 }
-FORCED_BATCH_VALUES = {"os": "alinux", "compute_instance_type": "optimal"}
 VPC_PARAMETERS_TO_REMOVE = "vpc-id", "master_subnet_id", "compute_subnet_id", "use_public_ips", "compute_subnet_cidr"
 
 
@@ -165,35 +164,11 @@ def configure(args):  # noqa: C901 FIXME!!!
             config, section=cluster_label, parameter_name="scheduler", default_value=DEFAULT_VALUES["scheduler"]
         ),
     )
-    scheduler_info = scheduler_handler(scheduler)
-    is_aws_batch = scheduler == "awsbatch"
 
-    if is_aws_batch:
-        operating_system = FORCED_BATCH_VALUES["os"]
-    else:
-        operating_system = _prompt_a_list(
-            "Operating System",
-            get_supported_os(scheduler),
-            default_value=get_config_parameter(
-                config, section=cluster_label, parameter_name="base_os", default_value=DEFAULT_VALUES["os"]
-            ),
-        )
+    scheduler_handler = SchedulerHandler(config, cluster_label, scheduler)
 
-    min_queue_size = prompt(
-        "Minimum cluster size ({0})".format(scheduler_info["instance_size_name"]),
-        validator=lambda x: x.isdigit(),
-        default_value=get_config_parameter(
-            config, cluster_label, scheduler_info["min_size"], DEFAULT_VALUES["min_size"]
-        ),
-    )
-
-    max_queue_size = prompt(
-        "Maximum cluster size ({0})".format(scheduler_info["instance_size_name"]),
-        validator=lambda x: x.isdigit() and int(x) >= int(min_queue_size),
-        default_value=get_config_parameter(
-            config, cluster_label, scheduler_info["max_size"], DEFAULT_VALUES["max_queue_size"]
-        ),
-    )
+    scheduler_handler.prompt_os()
+    scheduler_handler.prompt_min_max()
 
     master_instance_type = prompt(
         "Master instance type",
@@ -206,20 +181,13 @@ def configure(args):  # noqa: C901 FIXME!!!
         ),
     )
 
-    if is_aws_batch:
-        compute_instance_type = FORCED_BATCH_VALUES["compute_instance_type"]
-    else:
-        compute_instance_type = prompt(
-            "Compute instance type",
-            lambda x: x in _list_instances(),
-            default_value=DEFAULT_VALUES["compute_instance_type"],
-        )
+    scheduler_handler.prompt_compute_sizes()
 
     key_name = _prompt_a_list("EC2 Key Pair Name", _list_keys(aws_region_name))
     automate_vpc = prompt("Automate VPC creation? (y/n)", lambda x: x == "y" or x == "n", default_value="n") == "y"
 
     vpc_parameters = _create_vpc_parameters(
-        vpc_label, aws_region_name, scheduler, max_queue_size, automatized_vpc=automate_vpc
+        vpc_label, aws_region_name, scheduler, scheduler_handler.max_queue_size, automatized_vpc=automate_vpc
     )
     global_parameters = {
         "__name__": "global",
@@ -233,22 +201,15 @@ def configure(args):  # noqa: C901 FIXME!!!
         "key_name": key_name,
         "vpc_settings": cluster_template,
         "scheduler": scheduler,
-        "base_os": operating_system,
-        "compute_instance_type": compute_instance_type,
         "master_instance_type": master_instance_type,
-        scheduler_info["max_size"]: max_queue_size,
-        scheduler_info["min_size"]: min_queue_size,
     }
-    if scheduler_info["value_for_initial_size"] == "min_size":
-        cluster_parameters[scheduler_info["initial_size_parameter_name"]] = min_queue_size
-    else:
-        cluster_parameters[scheduler_info["initial_size_parameter_name"]] = scheduler_info["value_for_initial_size"]
+    cluster_parameters.update(scheduler_handler.get_scheduler_parameters())
 
     aliases_parameters = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
     sections = [aws_parameters, cluster_parameters, vpc_parameters, global_parameters, aliases_parameters]
 
     # We first remove unnecessary parameters from the past configurations
-    _remove_parameter_from_past_configuration(cluster_label, config, scheduler_info["parameters_to_remove"])
+    _remove_parameter_from_past_configuration(cluster_label, config, scheduler_handler.get_parameters_to_remove())
     _remove_parameter_from_past_configuration(vpc_label, config, VPC_PARAMETERS_TO_REMOVE)
 
     # Loop through the configuration sections we care about
@@ -374,31 +335,83 @@ def get_config_parameter(config, section, parameter_name, default_value):
     return config.get(section, parameter_name) if config.has_option(section, parameter_name) else default_value
 
 
-def scheduler_handler(scheduler):
-    """
-    Return a dictionary containing information based on the scheduler.
+class SchedulerHandler:
+    """Handle question scheduler related."""
 
-    :param scheduler the target scheduler
-    :return: a dictionary with containing the information
-    """
-    scheduler_info = {}
-    if scheduler == "awsbatch":
-        scheduler_info["parameters_to_remove"] = (
-            "max_queue_size",
-            "initial_queue_size",
-            "maintain_initial_size",
-            "compute_instance_type",
+    def __init__(self, config, cluster_label, scheduler):
+        self.scheduler = scheduler
+        self.config = config
+        self.cluster_label = cluster_label
+
+        self.is_aws_batch = True if scheduler == "awsbatch" else False
+
+        self.instance_size_name = "vcpus" if self.is_aws_batch else "instances"
+        self.max_size_name = "max_vcpus" if self.is_aws_batch else "max_queue_size"
+        self.min_size_name = "min_vcpus" if self.is_aws_batch else "initial_queue_size"
+
+        self.base_os = "alinux"
+        self.compute_instance_type = "optimal"
+        self.max_queue_size = DEFAULT_VALUES["max_size"]
+        self.min_queue_size = DEFAULT_VALUES["min_size"]
+
+    def prompt_os(self):
+        """Ask for os, if necessary."""
+        if not self.is_aws_batch:
+            self.base_os = _prompt_a_list(
+                "Operating System",
+                get_supported_os(self.scheduler),
+                default_value=get_config_parameter(
+                    self.config,
+                    section=self.cluster_label,
+                    parameter_name="base_os",
+                    default_value=DEFAULT_VALUES["os"],
+                ),
+            )
+
+    def prompt_compute_sizes(self):
+        """Ask for compute_instance_type, if necessary."""
+        if not self.is_aws_batch:
+            self.compute_instance_type = prompt(
+                "Compute instance type",
+                lambda x: x in _list_instances(),
+                default_value=DEFAULT_VALUES["compute_instance_type"],
+            )
+
+    def prompt_min_max(self):
+        """Ask for max and min instances / vcpus."""
+        self.min_queue_size = prompt(
+            "Minimum cluster size ({0})".format(self.instance_size_name),
+            validator=lambda x: x.isdigit(),
+            default_value=get_config_parameter(
+                self.config, self.cluster_label, self.min_size_name, DEFAULT_VALUES["min_size"]
+            ),
         )
-        scheduler_info["max_size"] = "max_vcpus"
-        scheduler_info["min_size"] = "min_vcpus"
-        scheduler_info["initial_size_parameter_name"] = "desired_vcpus"
-        scheduler_info["value_for_initial_size"] = "min_size"
-        scheduler_info["instance_size_name"] = "vcpus"
-    else:
-        scheduler_info["parameters_to_remove"] = ("max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type")
-        scheduler_info["max_size"] = "max_queue_size"
-        scheduler_info["min_size"] = "initial_queue_size"
-        scheduler_info["initial_size_parameter_name"] = "maintain_initial_size"
-        scheduler_info["value_for_initial_size"] = "true"
-        scheduler_info["instance_size_name"] = "instances"
-    return scheduler_info
+
+        self.max_queue_size = prompt(
+            "Maximum cluster size ({0})".format(self.instance_size_name),
+            validator=lambda x: x.isdigit() and int(x) >= int(self.min_queue_size),
+            default_value=get_config_parameter(
+                self.config, self.cluster_label, self.max_size_name, DEFAULT_VALUES["max_size"]
+            ),
+        )
+
+    def get_scheduler_parameters(self):
+        """Return a dict containing the value obtained that are dependent on the scheduler."""
+        scheduler_parameters = {
+            "base_os": self.base_os,
+            "compute_instance_type": self.compute_instance_type,
+            self.max_size_name: self.max_queue_size,
+            self.min_size_name: self.min_queue_size,
+        }
+        if self.is_aws_batch:
+            scheduler_parameters["desired_vcpus"] = self.min_queue_size
+        else:
+            scheduler_parameters["maintain_initial_size"] = "true"
+        return scheduler_parameters
+
+    def get_parameters_to_remove(self):
+        """Return a list of parameter that needs to be removed from the configuration."""
+        if self.is_aws_batch:
+            return "max_queue_size", "initial_queue_size", "maintain_initial_size", "compute_instance_type"
+        else:
+            return "max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type"

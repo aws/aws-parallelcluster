@@ -76,6 +76,4 @@ def test_get_subnet_cidr():
             max_queue_size=100,
         )
     ).is_equal_to("10.0.56.0/21")
-    assert_that(
-        get_subnet_cidr("10.0.0.0/16", ["10.0.0.0/24"], 256)
-    ).is_equal_to("10.0.16.0/20")
+    assert_that(get_subnet_cidr("10.0.0.0/16", ["10.0.0.0/24"], 256)).is_equal_to("10.0.16.0/20")
