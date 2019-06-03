@@ -1,0 +1,18 @@
+[aws]
+aws_region_name = eu-west-1
+
+[cluster fdsgdsa]
+key_name = test-euwest1-key
+vpc_settings = gfdgfd
+
+[vpc gfdgfd]
+vpc_id = vpc-03c69bdea85428d46
+master_subnet_id = subnet-08a405e8c17eb79af
+
+[global]
+cluster_template = fdsgdsa
+update_check = true
+sanity_check = true
+
+[aliases]
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
