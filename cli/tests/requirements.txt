@@ -3,4 +3,5 @@ pytest-cov
 pytest-datadir
 pytest-html
 pytest-mock
+assertpy
 discover # Needed for Python 2.6 compatibility
