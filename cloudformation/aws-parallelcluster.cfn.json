@@ -4264,6 +4264,7 @@
           "Ref": "ComputeSecurityGroup"
         }
       },
+      "DependsOn": "ComputeSecurityGroupEgress",
       "Condition": "CreateSecurityGroups"
     },
     "ComputeSecurityGroupIngress": {
