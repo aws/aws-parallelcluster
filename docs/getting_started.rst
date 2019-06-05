@@ -65,6 +65,17 @@ was originally installed:
 Configuring AWS ParallelCluster
 ===============================
 
+First you'll need to setup your IAM credentials, see `AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html>`_
+for more information.
+
+::
+
+    $ aws configure
+    AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
+    AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+    Default region name [us-east-1]: us-east-1
+    Default output format [None]:
+
 Once installed you will need to setup some initial config. The easiest way to do this is below:
 
 ::
@@ -78,15 +89,6 @@ cluster from.
 ::
 
         Cluster Template [mycluster]:
-
-Next, you will be prompted for your AWS Access & Secret Keys. Enter the keys for an IAM user with administrative
-privileges.
-These can also be read from your environment variables or the AWS CLI config.
-
-::
-
-        AWS Access Key ID []:
-        AWS Secret Access Key ID []:
 
 Now, you will be presented with a list of valid AWS region identifiers. Choose the region in which you'd like your
 cluster to run.
@@ -234,3 +236,6 @@ to allow Inbound connection to the port 80 from your Public IP.
 
 .. spelling::
    aws
+   wJalrXUtnFEMI
+   MDENG
+   bPxRfiCYEXAMPLEKEY

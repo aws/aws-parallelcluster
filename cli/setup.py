@@ -21,7 +21,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.3.1"
+VERSION = "2.4.0"
 REQUIRES = ["boto3>=1.9.54", "future>=0.16.0,<=0.17.1", "tabulate>=0.8.2,<=0.8.3"]
 
 if sys.version_info[:2] == (2, 6):

@@ -22,6 +22,7 @@ from shutil import copyfile
 
 import configparser
 import pytest
+from retrying import retry
 
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -180,7 +181,7 @@ def _write_cluster_config_to_outdir(request, cluster_config):
         exist_ok=True,
     )
     cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.nodeid
+        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst
@@ -283,6 +284,12 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
     # c5.xlarge is not supported in ap-southeast-2a
     "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
+    # c4.xlarge is not supported in ap-northeast-2b
+    "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
+    # c5.xlarge is not supported in ap-southeast-1c
+    "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
+    # c4.xlarge is not supported in ap-south-1c
+    "ap-south-1": ["ap-south-1a", "ap-south-1b"],
 }
 
 
@@ -311,11 +318,18 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-        cfn_stacks_factory.create_stack(stack)
-        vpc_stacks[region] = stack
+        vpc_stacks[region] = _create_vpc_stack(template, region, cfn_stacks_factory)
 
     return vpc_stacks
+
+
+# If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
+# not available in randomly picked AZs.
+@retry(stop_max_attempt_number=2, wait_fixed=5000)
+def _create_vpc_stack(template, region, cfn_stacks_factory):
+    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+    cfn_stacks_factory.create_stack(stack)
+    return stack
 
 
 @pytest.fixture(scope="function")

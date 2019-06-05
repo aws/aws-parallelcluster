@@ -34,6 +34,7 @@ from tempfile import mkdtemp, mkstemp
 import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
+from tabulate import tabulate
 
 from . import cfnconfig, utils
 
@@ -63,9 +64,9 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
     return s3_bucket_name
 
 
-def version(args):
+def version():
     pcluster_version = pkg_resources.get_distribution("aws-parallelcluster").version
-    LOGGER.info(pcluster_version)
+    return pcluster_version
 
 
 def create(args):  # noqa: C901 FIXME!!!
@@ -116,6 +117,7 @@ def create(args):  # noqa: C901 FIXME!!!
 
         cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in config.parameters.items()]
         tags = [{"Key": t, "Value": config.tags[t]} for t in config.tags]
+        tags.append({"Key": "Version", "Value": version()})
 
         stack = cfn.create_stack(
             StackName=stack_name,
@@ -275,12 +277,12 @@ def update(args):  # noqa: C901 FIXME!!!
         config.parameters["AvailabilityZone"] = availability_zone
 
     try:
-        LOGGER.debug((config.template_url, config.parameters))
+        LOGGER.debug(config.parameters)
 
         cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in config.parameters.items()]
         LOGGER.info("Calling update_stack")
         cfn.update_stack(
-            StackName=stack_name, TemplateURL=config.template_url, Parameters=cfn_params, Capabilities=capabilities
+            StackName=stack_name, UsePreviousTemplate=True, Parameters=cfn_params, Capabilities=capabilities
         )
         status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
         if not args.nowait:
@@ -326,8 +328,9 @@ def start(args):
             if config.parameters.get("MinSize") and int(config.parameters.get("MinSize")) > 0
             else 0
         )
+        ce_name = get_batch_ce(stack_name, config)
         start_batch_ce(
-            ce_name=stack_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus
+            ce_name=ce_name, config=config, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus
         )
     else:
         LOGGER.info("Starting compute fleet : %s", args.cluster_name)
@@ -362,12 +365,62 @@ def stop(args):
 
     if config.parameters.get("Scheduler") == "awsbatch":
         LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
-        stop_batch_ce(ce_name=stack_name, config=config)
+        ce_name = get_batch_ce(stack_name, config)
+        stop_batch_ce(ce_name=ce_name, config=config)
     else:
         LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
         # Set Resource limits
         asg_name = get_asg_name(stack_name=stack_name, config=config)
         set_asg_limits(asg_name=asg_name, config=config, min=0, max=0, desired=0)
+
+
+def get_batch_ce(stack_name, config):
+    """
+    Get name of the AWS Batch Compute Environment.
+
+    :param stack_name: name of the master stack
+    :param config: config
+    :return: ce_name or exit if not found
+    """
+    cfn = boto3.client(
+        "cloudformation",
+        region_name=config.region,
+        aws_access_key_id=config.aws_access_key_id,
+        aws_secret_access_key=config.aws_secret_access_key,
+    )
+
+    try:
+        outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Outputs")
+        return _get_output_value(outputs, "BatchComputeEnvironmentArn")
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.exit(1)
+
+
+def get_version(stack):
+    """
+    Get the version of the stack if tagged.
+
+    :param stack: stack object
+    :return: version or empty string
+    """
+    return next((tag.get("Value") for tag in stack.get("Tags") if tag.get("Key") == "Version"), "")
+
+
+def colorize(stack_status, args):
+    """
+    Color the output, COMPLETE = green, FAILED = red, IN_PROGRESS = yellow.
+
+    :param status: stack status
+    :return: colorized status string
+    """
+    if not args.color:
+        return stack_status
+    end = "0m"
+    status_to_color = {"COMPLETE": "0;32m", "FAILED": "0;31m", "IN_PROGRESS": "10;33m"}
+    for status in status_to_color:
+        if status in stack_status:
+            return "\033[%s%s\033[%s" % (status_to_color[status], stack_status, end)
 
 
 def list_stacks(args):
@@ -380,9 +433,18 @@ def list_stacks(args):
     )
     try:
         stacks = cfn.describe_stacks().get("Stacks")
+        result = []
         for stack in stacks:
             if stack.get("ParentId") is None and stack.get("StackName").startswith("parallelcluster-"):
-                LOGGER.info("%s", stack.get("StackName")[len("parallelcluster-") :])  # noqa: E203
+                pcluster_version = get_version(stack)
+                result.append(
+                    [
+                        stack.get("StackName")[len("parallelcluster-") :],  # noqa: E203
+                        colorize(stack.get("StackStatus"), args),
+                        pcluster_version,
+                    ]
+                )
+        LOGGER.info(tabulate(result, tablefmt="plain"))
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)

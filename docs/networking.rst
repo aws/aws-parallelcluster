@@ -47,6 +47,7 @@ The configuration to create a new private subnet for compute instances requires 
   vpc_id = vpc-xxxxxx
   master_subnet_id = subnet-<public>
   compute_subnet_cidr = 10.0.1.0/24
+  use_public_ips = true
 
 The configuration to use an existing private network requires the following settings:
 
@@ -57,9 +58,10 @@ The configuration to use an existing private network requires the following sett
   master_subnet_id = subnet-<public>
   compute_subnet_id = subnet-<private>
 
-Both these configuration require to have a `NAT Gateway
-<https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
-or an internal PROXY to enable web access for compute instances.
+.. note::
+    This second configuration requires a `NAT Gateway
+    <https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html>`_
+    or an internal PROXY to enable web access for compute instances.
 
 AWS ParallelCluster in a single private subnet connected using Direct Connect
 -----------------------------------------------------------------------------

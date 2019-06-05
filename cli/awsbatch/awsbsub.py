@@ -24,7 +24,7 @@ import time
 import argparse
 
 from awsbatch.common import AWSBatchCliConfig, Boto3ClientFactory, config_logger
-from awsbatch.utils import S3Uploader, fail, get_job_definition_name_by_arn, shell_join
+from awsbatch.utils import S3Uploader, fail, shell_join
 
 
 def _get_parser():
@@ -480,16 +480,13 @@ class AWSBsubCommand(object):
             }
 
             if nodes:
-                # Multi Node parallel submission
-                job_definition_version = self.__get_mnp_job_definition_version(
-                    base_job_definition_arn=job_definition, nodes=nodes
-                )
-                submission_args.update({"jobDefinition": job_definition_version})
+                submission_args.update({"jobDefinition": job_definition})
 
-                target_nodes = "0:%d" % (nodes - 1)
+                target_nodes = "0:"
                 # populate node overrides
                 node_overrides = {
-                    "nodePropertyOverrides": [{"targetNodes": target_nodes, "containerOverrides": container_overrides}]
+                    "numNodes": nodes,
+                    "nodePropertyOverrides": [{"targetNodes": target_nodes, "containerOverrides": container_overrides}],
                 }
                 submission_args.update({"nodeOverrides": node_overrides})
                 if timeout:
@@ -507,89 +504,6 @@ class AWSBsubCommand(object):
             print("Job %s (%s) has been submitted." % (response["jobId"], response["jobName"]))
         except Exception as e:
             fail("Error submitting job to AWS Batch. Failed with exception: %s" % e)
-
-    def __get_mnp_job_definition_version(self, base_job_definition_arn, nodes):
-        """
-        Get (and create if required) job definition version to use for the submission.
-
-        :return: job definition arn
-        """
-        # Check if there is already a job definition for the given number of nodes
-        job_definition_found = self.__search_for_job_definition(base_job_definition_arn, nodes)
-        if job_definition_found:
-            job_definition_arn = job_definition_found["jobDefinitionArn"]
-            self.log.info("Found existing Job definition (%s) with (%i) nodes" % (job_definition_arn, nodes))
-        else:
-            self.log.info("Creating new Job definition with (%i) nodes" % nodes)
-            # create a new job definition revision
-            job_definition_arn = self.__register_new_job_definition(base_job_definition_arn, nodes)
-
-        self.log.info("Job definition to use is (%s)" % job_definition_arn)
-        return job_definition_arn
-
-    def __search_for_job_definition(self, base_job_definition, nodes):
-        """
-        Search for existing job definition with the same name of the base_job_definition and the same number of nodes.
-
-        :param base_job_definition: job definition arn
-        :param nodes: number of nodes
-        :return: the found jobDefinition object or None
-        """
-        job_definition_found = None
-        base_job_definition_name = get_job_definition_name_by_arn(base_job_definition)
-        try:
-            next_token = ""
-            while next_token is not None:
-                response = self.batch_client.describe_job_definitions(
-                    jobDefinitionName=base_job_definition_name, status="ACTIVE", nextToken=next_token
-                )
-                for job_definition in response["jobDefinitions"]:
-                    if job_definition["nodeProperties"]["numNodes"] == nodes:
-                        job_definition_found = job_definition
-                        break
-                next_token = response.get("nextToken")
-        except Exception as e:
-            fail("Error listing job definition. Failed with exception: %s" % e)
-
-        return job_definition_found
-
-    def __register_new_job_definition(self, base_job_definition_arn, nodes):
-        """
-        Register a new job definition.
-
-        It uses the base_job_definition_arn as starting point for the nodeRangeProperties.
-
-        :param base_job_definition_arn: job definition arn to use as starting point
-        :param nodes: nuber of nodes to set in the job definition
-        :return: the ARN of the created job definition
-        """
-        try:
-            # get base job definition and reuse its nodeRangeProperties
-            response = self.batch_client.describe_job_definitions(
-                jobDefinitions=[base_job_definition_arn], status="ACTIVE"
-            )
-            job_definition = response["jobDefinitions"][0]
-
-            # create new job definition
-            response = self.batch_client.register_job_definition(
-                jobDefinitionName=job_definition["jobDefinitionName"],
-                type="multinode",
-                nodeProperties={
-                    "numNodes": nodes,
-                    "mainNode": 0,
-                    "nodeRangeProperties": [
-                        {
-                            "targetNodes": "0:%d" % (nodes - 1),
-                            "container": job_definition["nodeProperties"]["nodeRangeProperties"][0]["container"],
-                        }
-                    ],
-                },
-            )
-            job_definition_arn = response["jobDefinitionArn"]
-        except Exception as e:
-            fail("Error listing job definition. Failed with exception: %s" % e)
-
-        return job_definition_arn
 
 
 def main():

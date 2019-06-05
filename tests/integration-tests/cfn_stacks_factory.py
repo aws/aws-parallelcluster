@@ -47,8 +47,8 @@ class CfnStacksFactory:
     def create_stack(self, stack):
         """
         Create a cfn stack with a given template.
+
         :param stack: stack to create.
-        :return:
         """
         name = stack.name
         region = stack.region

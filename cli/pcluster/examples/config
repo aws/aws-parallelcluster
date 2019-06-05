@@ -8,13 +8,6 @@ update_check = true
 sanity_check = true
 
 [aws]
-# This is the AWS credentials section (required).
-# These settings apply to all clusters
-# replace these with your AWS keys
-# If not defined, boto will attempt to use a) environment
-# or b) EC2 IAM role.
-#aws_access_key_id = #your_aws_access_key_id
-#aws_secret_access_key = #your_secret_access_key
 # Uncomment to specify a different Amazon AWS region  (OPTIONAL)
 # (Defaults to us-east-1 if not defined in environment or below)
 #aws_region_name = #region

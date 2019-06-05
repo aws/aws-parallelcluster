@@ -31,3 +31,9 @@ This next example gives you read access to the bucket. This does **not** let you
 ::
 
   s3_read_resource = arn:aws:s3:::my_corporate_bucket
+
+This last example gives you read access to the bucket and to the items stored in the bucket.
+
+::
+
+  s3_read_resource = arn:aws:s3:::my_corporate_bucket*

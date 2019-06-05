@@ -30,6 +30,31 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def update(self, reset_desired=False, extra_params=None):
+        """
+        Update a cluster with an already updated config.
+        :param reset_desired: reset the current ASG desired capacity to initial config values
+        :param extra_params: extra parameters to pass to stack update
+        """
+        # update the cluster
+        logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
+        command = ["pcluster", "update", "--config", self.config_file]
+        if reset_desired:
+            command.append("--reset-desired")
+        if extra_params:
+            command.extend(["--extra-parameters", extra_params])
+        command.append(self.name)
+        result = run_command(command)
+        if "Status: {0} - UPDATE_COMPLETE".format(self.cfn_name) not in result.stdout:
+            error = "Cluster update failed for {0} with output: {1}".format(self.name, result.stdout)
+            logging.error(error)
+            raise Exception(error)
+        logging.info("Cluster {0} updated successfully".format(self.name))
+
+        # reset cached properties
+        self.__cfn_outputs = None
+        self.__cfn_resources = None
+
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""

@@ -12,12 +12,15 @@
 import logging
 
 import pytest
+from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.scaling_common import get_compute_nodes_allocation
+from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
+from tests.common.compute_logs_common import wait_compute_log
+from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
-from time_utils import minutes
+from time_utils import minutes, seconds
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
@@ -54,6 +57,50 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
         expected_asg_capacity=(0, 3),
         expected_compute_nodes=(0, 3),
     )
+
+    logging.info("Verifying no error in logs")
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
+
+@pytest.mark.regions(["sa-east-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.nodewatcher
+def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    compute_nodes = scheduler_commands.get_compute_nodes()
+
+    # submit a job that kills the slurm daemon so that the node enters a failing state
+    scheduler_commands.submit_script(str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)))
+    instance_id = wait_compute_log(remote_command_executor)
+
+    _assert_compute_logs(remote_command_executor, instance_id)
+    assert_instance_replaced_or_terminating(instance_id, region)
+    # verify that desired capacity is still 1
+    assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(1)
+    _assert_nodes_removed_from_scheduler(scheduler_commands, compute_nodes)
+
+    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
+    assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
+
+
+def _assert_compute_logs(remote_command_executor, instance_id):
+    remote_command_executor.run_remote_command(
+        "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
+    )
+    remote_command_executor.run_remote_command("test -f /tmp/var/log/nodewatcher")
+    messages_log = remote_command_executor.run_remote_command("cat /tmp/var/log/nodewatcher", hide=True).stdout
+    assert_that(messages_log).contains("Node is marked as down by scheduler or not attached correctly. Terminating...")
+    assert_that(messages_log).contains("Dumping logs to /home/logs/compute/{0}.tar.gz".format(instance_id))
 
 
 def _assert_scaling_works(

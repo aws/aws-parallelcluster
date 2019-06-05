@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import get_instance_vcpus, get_supported_batch_instances
+from pcluster.utils import get_instance_vcpus, get_supported_features
 
 
 class ResourceValidator(object):
@@ -47,28 +47,38 @@ class ResourceValidator(object):
         return "aws"
 
     @staticmethod
+    def validate_vpc_coherence(cidr_value, public_ip):
+        """
+        Check that cidr_value and public_ip parameters are not conflicting.
+
+        :param cidr_value: the value of compute_subnet_cidr set by the user (default should be None)
+        :param public_ip: the value of use_public_ips set by the user (default should be True)
+        """
+        if cidr_value and public_ip is False:
+            ResourceValidator.__fail("VPC COHERENCE", "compute_subnet_cidr needs use_public_ips to be true")
+
+    @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):
         """
-        Verify if the security group rule accepts connections to the given port.
+        Verify if the security group rule accepts connections on the given port.
 
         :param rule: The rule to check
         :param port_to_check: The port to check
         :return: True if the rule accepts connection, False otherwise
         """
-        port = rule.get("FromPort")
-        ip_rules = rule.get("IpRanges")
-        group = rule.get("UserIdGroupPairs")
+        from_port = rule.get("FromPort")
+        to_port = rule.get("ToPort")
+        ip_protocol = rule.get("IpProtocol")
 
-        is_valid = False
-        for ip_rule in ip_rules:
-            ip = ip_rule.get("CidrIp")
-            # An existing rule is valid for EFS if, it allows all traffic(0.0.0.0/0)
-            # from all ports or the given port, and does not have a security group restriction
-            if (not port or port == port_to_check) and ip == "0.0.0.0/0" and not group:
-                is_valid = True
-                break
+        # if ip_protocol is -1, all ports are allowed
+        if ip_protocol == "-1":
+            return True
+        # tcp == protocol 6,
+        # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
+        if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+            return True
 
-        return is_valid
+        return False
 
     def __check_efs_fs_id(self, ec2, efs, resource_value):  # noqa: C901 FIXME!!!
         try:
@@ -112,8 +122,8 @@ class ResourceValidator(object):
                     self.__fail(
                         "EFSFSId",
                         "There is an existing Mount Target %s in the Availability Zone %s for EFS %s, "
-                        "and it does not have a security group with inbound and outbound rules that support NFS. "
-                        "Please modify the Mount Target's security group, or delete the Mount Target."
+                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                        "Please modify the Mount Target's security group, to allow traffic on port 2049."
                         % (mt_id, availability_zone, resource_value[0]),
                     )
         except ClientError as e:
@@ -171,7 +181,7 @@ class ResourceValidator(object):
                     "FSXFSId",
                     "The current security group settings on file system %s does not satisfy "
                     "mounting requirement. The file system must be associated to a security group that allows "
-                    "inbound and outbound TCP traffic from 0.0.0.0/0 through port 988." % resource_value[0],
+                    "inbound and outbound TCP traffic through port 988." % resource_value[0],
                 )
             return True
         except ClientError as e:
@@ -211,6 +221,53 @@ class ResourceValidator(object):
             # 1,024 MiB (1 GiB) and can go as high as 512,000 MiB
             if not (1 <= int(resource_value[0]) <= 512000):
                 self.__fail(resource_type, "has a minimum size of 1 MiB, and max size of 512,000 MiB")
+
+    def __validate_efa_sg(self, resource_type, sg_id):
+        try:
+            ec2 = boto3.client(
+                "ec2",
+                region_name=self.region,
+                aws_access_key_id=self.aws_access_key_id,
+                aws_secret_access_key=self.aws_secret_access_key,
+            )
+            sg = ec2.describe_security_groups(GroupIds=[sg_id]).get("SecurityGroups")[0]
+            in_rules = sg.get("IpPermissions")
+            out_rules = sg.get("IpPermissionsEgress")
+
+            allowed_in = False
+            allowed_out = False
+            for rule in in_rules:
+                # UserIdGroupPairs is always of length 1, so grabbing 0th object is ok
+                if (
+                    rule.get("IpProtocol") == "-1"
+                    and len(rule.get("UserIdGroupPairs")) > 0
+                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == sg_id
+                ):
+                    allowed_in = True
+                    break
+            for rule in out_rules:
+                if (
+                    rule.get("IpProtocol") == "-1"
+                    and len(rule.get("UserIdGroupPairs")) > 0
+                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == sg_id
+                ):
+                    allowed_out = True
+                    break
+            if not (allowed_in and allowed_out):
+                self.__fail(
+                    resource_type,
+                    "VPC Security Group %s must allow all traffic in and out from itself. "
+                    "See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security" % sg_id,
+                )
+        except ClientError as e:
+            self.__fail(resource_type, e.response.get("Error").get("Message"))
+
+    def __validate_efa_parameters(self, resource_type, resource_value):
+        if resource_value.get("PlacementGroup", "NONE") == "NONE":
+            self.__fail(resource_type, "Placement group is required, set placement_group.")
+        if "VPCSecurityGroupId" in resource_value:
+            sg_id = resource_value.get("VPCSecurityGroupId")
+            self.__validate_efa_sg(resource_type, sg_id)
 
     def validate(self, resource_type, resource_value):  # noqa: C901 FIXME
         """
@@ -520,6 +577,9 @@ class ResourceValidator(object):
         # FSX FS Id check
         elif resource_type in ["fsx_fs_id", "FSx_storage_capacity", "FSx_imported_file_chunk_size", "FSx_export_path"]:
             self.__validate_fsx_parameters(resource_type, resource_value)
+        elif resource_type == "EFA":
+            self.__validate_efa_parameters(resource_type, resource_value)
+
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
             # Check region
@@ -556,7 +616,7 @@ class ResourceValidator(object):
             if "ComputeInstanceType" in resource_value:
                 compute_instance_type = resource_value["ComputeInstanceType"]
                 try:
-                    supported_instances = get_supported_batch_instances(self.region)
+                    supported_instances = get_supported_features(self.region, "batch").get("instances")
                     if supported_instances:
                         for instance in compute_instance_type.split(","):
                             if not instance.strip() in supported_instances:

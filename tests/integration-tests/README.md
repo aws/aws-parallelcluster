@@ -11,6 +11,8 @@ config generation.
 
 ## Run Integration Tests
 
+To run the integration tests you have to use Python 3.7.
+
 Before executing integration tests it is required to install all the python dependencies required by the framework.
 In order to do that simply run the following command:
 ```bash

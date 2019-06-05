@@ -22,6 +22,8 @@ from botocore.exceptions import NoCredentialsError
 
 from pcluster import easyconfig, pcluster
 
+LOGGER = logging.getLogger("pcluster.pcluster")
+
 
 def create(args):
     pcluster.create(args)
@@ -56,7 +58,8 @@ def update(args):
 
 
 def version(args):
-    pcluster.version(args)
+    version = pcluster.version()
+    LOGGER.info(version)
 
 
 def start(args):
@@ -154,7 +157,7 @@ Examples::
         "--template-url",
         help="Specifies the URL for a custom CloudFormation template, " "if it was used at creation time.",
     )
-    pcreate.add_argument("-t", "--cluster-template", help="Indicates which cluster template to use.")
+    pcreate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
     pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
     pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
     pcreate.set_defaults(func=create)
@@ -162,7 +165,7 @@ Examples::
     # update command subparser
     pupdate = subparsers.add_parser(
         "update",
-        help="Updates a running cluster using the values in the config " "file or in a TEMPLATE_URL provided.",
+        help="Updates a running cluster using the values in the config file.",
         epilog="When the command is called and it begins polling for the status of that call, "
         'it is safe to "Ctrl-C" out. You can always return to that status by '
         'calling "pcluster status mycluster".',
@@ -178,8 +181,7 @@ Examples::
         default=False,
         help="Disable CloudFormation stack rollback on error.",
     )
-    pupdate.add_argument("-u", "--template-url", help="Specifies the URL for a custom CloudFormation template.")
-    pupdate.add_argument("-t", "--cluster-template", help="Indicates which cluster template to use.")
+    pupdate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
     pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
     pupdate.add_argument(
         "-rd",
@@ -245,6 +247,7 @@ Examples::
         help="Displays a list of stacks associated with AWS ParallelCluster.",
         epilog="This command lists the names of any CloudFormation stacks named parallelcluster-*",
     )
+    plist.add_argument("--color", action="store_true", default=False, help="Display the cluster status in color.")
     _addarg_config(plist)
     _addarg_region(plist)
     plist.set_defaults(func=list_stacks)

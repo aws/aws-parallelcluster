@@ -57,16 +57,10 @@ Attempt to validate the existence of the resources defined in parameters. ::
 
 aws
 ^^^
-AWS credentials/region section.
+AWS Region section.
 
-These settings apply to all clusters and are REQUIRED.
-
-For security purposes, AWS highly recommends using the environment, EC2 IAM Roles, or the
-`AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ to store credentials rather than saving into the AWS ParallelCluster config file. ::
-
-    [aws]
-    aws_access_key_id = #your_aws_access_key_id
-    aws_secret_access_key = #your_secret_access_key
+To store credentials, you can use environment variables, IAM roles, or the preferred way, the
+`AWS CLI <https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html>`_ ::
 
     # Defaults to us-east-1 if not defined in environment or below
     aws_region_name = #region
@@ -107,6 +101,8 @@ Name of an existing EC2 KeyPair to enable SSH access to the instances. ::
 template_url
 """"""""""""
 Defines the path to the CloudFormation template used to create the cluster.
+
+Updates use the template the stack was created with.
 
 Defaults to
 ``https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json``. ::
@@ -425,10 +421,8 @@ that commercial entails all supported regions including us-east-1, us-west-2, et
    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
    ============== ======  ============ ============ ============= ============
    commercial      True     True          True          True        True
-   us-gov-west-1   True     False         False         True        True
-   us-gov-east-1   True     False         False         True        True
-   cn-north-1      True     False         False         True        True
-   cn-northwest-1  True     False         False         False       False
+   govcloud        True     False         False         True        True
+   china           True     False         False         True        True
    ============== ======  ============ ============ ============= ============
 
 Note: The base_os determines the username used to log into the cluster.
@@ -598,6 +592,9 @@ If true, an Elastic IP will be associated to the Master instance.
 
 If false, the Master instance will have a Public IP (or not) according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
+
+.. note::
+    This parameter can't be set to false if :code:`compute_subnet_cidr` is specified.
 
 See :ref:`networking configuration <networking>` for some examples.
 
