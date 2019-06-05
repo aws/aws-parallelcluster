@@ -23,8 +23,8 @@ tutorial will guide you through the process.
 How to customize the AWS ParallelCluster AMI
 ============================================
 
-There are three ways to use a custom AWS ParallelCluster AMI, two of them require to build a new AMI that will be
-available under your AWS account and one does not require to build anything in advance. Feel free to select the
+There are three alternative ways to use a custom AWS ParallelCluster AMI, two of them require to build a new AMI that
+will be available under your AWS account and one does not require to build anything in advance. Feel free to select the
 appropriate method based on your needs.
 
 Modify an AWS ParallelCluster AMI
@@ -35,10 +35,13 @@ the components required for AWS ParallelCluster to function installed and config
 base.
 
     #. Find the AMI which corresponds to the region you will be utilizing from the AMI list.
-       The AMI list to use must match the version of the product e.g.
+        .. warning::
+            The AMI list to use must match the version of AWS ParallelCluster, for example:
 
-       - for ParallelCluster 2.0.2 -> https://github.com/aws/aws-parallelcluster/blob/v2.0.2/amis.txt
-       - for CfnCluster 1.6.1 -> https://github.com/aws/aws-parallelcluster/blob/v1.6.1/amis.txt
+            - for AWS ParallelCluster 2.3.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.3.1/amis.txt
+            - for AWS ParallelCluster 2.2.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.2.1/amis.txt
+            - for AWS ParallelCluster 2.1.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.1.1/amis.txt
+            - for CfnCluster 1.6.1 -> https://github.com/aws/aws-parallelcluster/blob/v1.6.1/amis.txt
 
     #. Within the EC2 Console, choose "Launch Instance".
     #. Navigate to "Community AMIs", and enter the AMI id for your region into the search box.
@@ -76,6 +79,9 @@ Now you can use the command 'createami' of the AWS ParallelCluster CLI in order 
 starting from the one you provide as base::
 
         pcluster createami --ami-id <BASE AMI> --os <BASE OS AMI>
+
+.. warning::
+    You cannot use a ParalleCluster AMI as <BASE AMI> for the create command or the create will fail.
 
 For other parameters, please consult the command help::
 
