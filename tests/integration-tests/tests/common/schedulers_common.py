@@ -151,15 +151,27 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def assert_job_submitted(self, qsub_output):  # noqa: D102
+    def assert_job_submitted(self, qsub_output, is_array=False):  # noqa: D102
         __tracebackhide__ = True
-        match = re.search(r"Your job ([0-9]+) \(.+\) has been submitted", qsub_output)
+        if is_array:
+            regex = r"Your job-array ([0-9]+)\.[0-9\-:]+ \(.+\) has been submitted"
+        else:
+            regex = r"Your job ([0-9]+) \(.+\) has been submitted"
+        match = re.search(regex, qsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1):  # noqa: D102
-        # TODO add support for multiple nodes
-        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command))
+    def submit_command(self, command, nodes=1, slots=None, hold=False):  # noqa: D102
+        flags = ""
+        if nodes != 1:
+            raise Exception("SGE does not support nodes option")
+        if slots:
+            flags += "-pe mpi {0} ".format(slots)
+        if hold:
+            flags += "-h "
+        return self._remote_command_executor.run_remote_command(
+            "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
+        )
 
     def submit_script(self, script, nodes=1):  # noqa: D102
         script_name = os.path.basename(script)
@@ -178,7 +190,8 @@ class SgeCommands(SchedulerCommands):
         return int(result.stdout.split()[-1])
 
     def get_compute_nodes(self):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command("qhost | grep ip- | awk '{print $1}'")
+        return result.stdout.splitlines()
 
 
 class SlurmCommands(SchedulerCommands):
