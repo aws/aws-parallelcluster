@@ -128,9 +128,12 @@ class ParallelClusterConfig(object):
 
         :return: configuration object
         """
-        # Determine config file name based on args or default
+        # Determine config file name based on args, env or default
         if hasattr(self.args, "config_file") and self.args.config_file is not None:
             config_file = self.args.config_file
+            default_config = False
+        elif "AWS_PARALLELCLUSTER_CONFIG_FILE" in os.environ:
+            config_file = os.environ["AWS_PARALLELCLUSTER_CONFIG_FILE"]
             default_config = False
         else:
             config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
