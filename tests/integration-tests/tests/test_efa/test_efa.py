@@ -20,7 +20,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-@pytest.mark.oss(["alinux", "centos7"])
+@pytest.mark.oss(["alinux", "centos7", "ubuntu1604"])
 @pytest.mark.schedulers(["sge", "slurm"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_efa(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
@@ -29,13 +29,11 @@ def test_efa(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    scaledown_idletime = 3
-    max_queue_size = 5
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
+    cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_efa_installed(remote_command_executor)
+    _test_efa_installed(remote_command_executor, scheduler)
     _test_efa_mpi(remote_command_executor, scheduler, test_datadir)
 
 
@@ -62,3 +60,20 @@ def _test_efa_mpi(remote_command_executor, scheduler, test_datadir):
     result = scheduler_commands.submit_script(str(test_datadir / "{0}_submit.sh".format(scheduler)))
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+
+
+def _test_osu_benchmarks(remote_command_executor, scheduler, test_datadir):
+    logging.info("Testing EFA Installed")
+    # Compile mpi script
+    result = remote_command_executor.run_remote_command(
+        "/bin/bash osu_benchmarks.sh", additional_files=[str(test_datadir / "osu_benchmarks.sh")]
+    ).stdout
+
+    # submit script using additional files
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+
+    result = scheduler_commands.submit_script(str(test_datadir / "{0}_submit_osu_benchmarks.sh".format(scheduler)))
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
