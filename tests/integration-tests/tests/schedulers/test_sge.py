@@ -41,6 +41,7 @@ def test_sge(region, pcluster_config_reader, clusters_factory):
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
     _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
+    # TODO: _test_dynamic_max_cluster_size
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
