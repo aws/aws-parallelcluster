@@ -65,12 +65,14 @@ def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name):
     # Change ASG value and check dummy-nodes settings
     new_max_size = 1
     asg_client.update_auto_scaling_group(AutoScalingGroupName=asg_name, MaxSize=new_max_size)
-    time.sleep(40)
+    # sleeping for 200 seconds since daemons fetch this data every 3 minutes
+    time.sleep(200)
     _assert_dummy_nodes(remote_command_executor, new_max_size)
 
     # Restore initial cluster size
     asg_client.update_auto_scaling_group(AutoScalingGroupName=asg_name, MaxSize=current_max_size)
-    time.sleep(40)
+    # sleeping for 200 seconds since daemons fetch this data every 3 minutes
+    time.sleep(200)
     _assert_dummy_nodes(remote_command_executor, current_max_size)
 
 
