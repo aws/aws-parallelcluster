@@ -60,8 +60,8 @@ def pytest_addoption(parser):
 
 def pytest_generate_tests(metafunc):
     """Generate (multiple) parametrized calls to a test function."""
-    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "region", "regions")
+    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "os", "oss")
     _parametrize_from_option(metafunc, "scheduler", "schedulers")
 
@@ -90,24 +90,24 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
-    add_default_markers(item)
-
-    check_marker_list(item, "instances", "instance")
-    check_marker_list(item, "regions", "region")
-    check_marker_list(item, "oss", "os")
-    check_marker_list(item, "schedulers", "scheduler")
-    check_marker_skip_list(item, "skip_instances", "instance")
-    check_marker_skip_list(item, "skip_regions", "region")
-    check_marker_skip_list(item, "skip_oss", "os")
-    check_marker_skip_list(item, "skip_schedulers", "scheduler")
-    check_marker_dimensions(item)
-    check_marker_skip_dimensions(item)
-
     logging.info("Running test " + item.name)
 
 
 def pytest_collection_modifyitems(items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
+    add_default_markers(items)
+
+    check_marker_list(items, "instances", "instance")
+    check_marker_list(items, "regions", "region")
+    check_marker_list(items, "oss", "os")
+    check_marker_list(items, "schedulers", "scheduler")
+    check_marker_skip_list(items, "skip_instances", "instance")
+    check_marker_skip_list(items, "skip_regions", "region")
+    check_marker_skip_list(items, "skip_oss", "os")
+    check_marker_skip_list(items, "skip_schedulers", "scheduler")
+    check_marker_dimensions(items)
+    check_marker_skip_dimensions(items)
+
     _add_filename_markers(items)
 
 
