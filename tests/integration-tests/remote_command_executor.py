@@ -84,7 +84,7 @@ class RemoteCommandExecutor:
             raise RemoteCommandExecutionError(result)
         return result
 
-    def run_remote_script(self, script_file, args=None, log_error=True, additional_files=None):
+    def run_remote_script(self, script_file, args=None, log_error=True, additional_files=None, hide=False):
         """
         Execute a script remotely on the cluster master node.
 
@@ -93,6 +93,7 @@ class RemoteCommandExecutor:
         :param args: args to pass to the script when invoked.
         :param log_error: log errors.
         :param additional_files: additional files to copy before executing script.
+        :param hide: do not print command output to the local stdout
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
@@ -100,7 +101,10 @@ class RemoteCommandExecutor:
         if not args:
             args = []
         return self.run_remote_command(
-            ["/bin/bash", "--login", script_name] + args, log_error=log_error, additional_files=additional_files
+            ["/bin/bash", "--login", script_name] + args,
+            log_error=log_error,
+            additional_files=additional_files,
+            hide=hide,
         )
 
     def _copy_additional_files(self, files):

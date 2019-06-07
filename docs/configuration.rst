@@ -3,6 +3,8 @@ Configuration
 .. toctree::
 
 ParallelCluster uses the file ``~/.parallelcluster/config`` by default for all configuration parameters.
+You can change the location of the config file via the ``--config`` command option or by setting the
+AWS_PARALLELCLUSTER_CONFIG_FILE environment variable.
 
 An example configuration file can be found at ``site-packages/aws-parallelcluster/examples/config``.
 
