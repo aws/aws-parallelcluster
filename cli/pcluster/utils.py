@@ -10,6 +10,7 @@
 # limitations under the License.
 from __future__ import absolute_import, print_function
 
+import collections
 import json
 import os
 import zipfile
@@ -199,3 +200,41 @@ def get_supported_schedulers():
     :return: a tuple of strings of the supported scheduler
     """
     return "sge", "torque", "slurm", "awsbatch"
+
+
+class NumberedList:
+    """
+    This class associates numbers to a list or a tuple of items.
+
+    It can be used to help a user decide an option faster.
+    """
+
+    def __init__(self, items):
+        """
+        Initialize the object with the list of object in which you want to add number.
+
+        :param items: the list of object in which number will be added
+        """
+        self.numbered_items = collections.OrderedDict()
+        for index, item in enumerate(items, start=1):
+            self.numbered_items[index] = item
+
+    def get(self):
+        """
+        Return an ordered dict of the items with the numbers added.
+
+        :return: the ordered dict
+        """
+        return self.numbered_items.copy()
+
+    def get_item_by_index(self, index):
+        """
+        Return the string associated with the number.
+
+        :param index: the number
+        :return: the associate string
+        :raise ValueError: If the number is not present or it is not a number
+        """
+        if index not in self.numbered_items:
+            raise ValueError
+        return self.numbered_items[index]
