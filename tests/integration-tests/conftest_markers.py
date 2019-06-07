@@ -183,14 +183,15 @@ def check_marker_dimensions(items):
         for dimension in DIMENSIONS_MARKER_ARGS:
             test_args_value.append(item.callspec.params.get(dimension))
         allowed_values = []
+        dimensions_match = False
         for marker in item.iter_markers(name=marker_name):
             _validate_marker(marker_name, DIMENSIONS_MARKER_ARGS, len(marker.args))
             allowed_values.append(marker.args)
             dimensions_match = _compare_dimension_lists(test_args_value, marker.args)
             if dimensions_match:
-                continue
+                break
 
-        if allowed_values:
+        if not dimensions_match and allowed_values:
             skip_message = (
                 "Skipping test {test_name} because dimensions {test_args_value} do not match any marker {marker}"
                 " values: {allowed_values}".format(
