@@ -63,6 +63,9 @@ TEST_DEFAULTS = {
     "custom_awsbatch_template_url": None,
     "custom_awsbatchcli_url": None,
     "custom_ami": None,
+    "vpc_stack": None,
+    "cluster": None,
+    "no_delete": False,
 }
 
 
@@ -152,6 +155,16 @@ def _init_argparser():
     parser.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
+    parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
+    parser.add_argument(
+        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
+    )
+    parser.add_argument(
+        "--no-delete",
+        action="store_true",
+        help="Don't delete stacks after tests are complete.",
+        default=TEST_DEFAULTS.get("no_delete"),
+    )
 
     return parser
 
@@ -199,6 +212,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
     _set_custom_packages_args(args, pytest_args)
+    _set_custom_stack_args(args, pytest_args)
 
     return pytest_args
 
@@ -221,6 +235,17 @@ def _set_custom_packages_args(args, pytest_args):
 
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
+
+
+def _set_custom_stack_args(args, pytest_args):
+    if args.vpc_stack:
+        pytest_args.extend(["--vpc-stack", args.vpc_stack])
+
+    if args.cluster:
+        pytest_args.extend(["--cluster", args.cluster])
+
+    if args.no_delete:
+        pytest_args.append("--no-delete")
 
 
 def _get_pytest_regionalized_args(region, args):

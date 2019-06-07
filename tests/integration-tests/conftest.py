@@ -56,6 +56,11 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
+    parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
+    parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
+    parser.addoption(
+        "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -161,17 +166,21 @@ def clusters_factory(request):
     factory = ClustersFactory()
 
     def _cluster_factory(cluster_config):
-        cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
-        cluster = Cluster(
-            name="integ-tests-" + random_alphanumeric(),
-            config_file=cluster_config,
-            ssh_key=request.config.getoption("key_path"),
-        )
-        factory.create_cluster(cluster)
+        if request.config.getoption("cluster"):
+            cluster = Cluster(name=request.config.getoption("cluster"), ssh_key=request.config.getoption("key_path"))
+        else:
+            cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
+            cluster = Cluster(
+                name="integ-tests-" + random_alphanumeric(),
+                config_file=cluster_config,
+                ssh_key=request.config.getoption("key_path"),
+            )
+            factory.create_cluster(cluster)
         return cluster
 
     yield _cluster_factory
-    factory.destroy_all_clusters()
+    if not request.config.getoption("no_delete"):
+        factory.destroy_all_clusters()
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -267,11 +276,12 @@ def _get_default_template_values(vpc_stacks, region, request):
 
 
 @pytest.fixture(scope="session")
-def cfn_stacks_factory():
+def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory()
     yield factory
-    factory.delete_all_stacks()
+    if not request.config.getoption("no_delete"):
+        factory.delete_all_stacks()
 
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
@@ -318,7 +328,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        vpc_stacks[region] = _create_vpc_stack(template, region, cfn_stacks_factory)
+        vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
 
@@ -326,9 +336,12 @@ def vpc_stacks(cfn_stacks_factory, request):
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
 # not available in randomly picked AZs.
 @retry(stop_max_attempt_number=2, wait_fixed=5000)
-def _create_vpc_stack(template, region, cfn_stacks_factory):
-    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-    cfn_stacks_factory.create_stack(stack)
+def _create_vpc_stack(request, template, region, cfn_stacks_factory):
+    if request.config.getoption("vpc_stack"):
+        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region)
+    else:
+        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
     return stack
 
 
