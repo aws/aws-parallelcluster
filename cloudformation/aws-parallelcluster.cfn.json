@@ -2081,7 +2081,7 @@
             "Key": "aws-parallelcluster-filesystem",
             "Value": {
               "Fn::Sub": [
-                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
+                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}, fsx=${fsx}",
                 {
                   "efs": {
                     "Fn::If": [
@@ -2093,6 +2093,13 @@
                   "raid": {
                     "Fn::If": [
                       "CreateRAIDSubstack",
+                      "1",
+                      "0"
+                    ]
+                  },
+                  "fsx": {
+                    "Fn::If": [
+                      "CreateFSXSubstack",
                       "1",
                       "0"
                     ]
