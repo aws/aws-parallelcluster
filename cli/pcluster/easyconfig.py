@@ -63,32 +63,38 @@ def handle_client_exception(func):
     return wrapper
 
 
-def prompt(message, default_value=None, hidden=False, options=None, check_validity=False):
-    if hidden and default_value is not None:
-        user_prompt = message + " [*******" + default_value[-4:] + "]: "
-    else:
-        user_prompt = message + " ["
-        if default_value is not None:
-            user_prompt = user_prompt + default_value + "]: "
+def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, default_value=None, options_to_print=None):
+    """
+    Prompt the user a message with optionally some options.
+
+    :param message: the message to show to the user
+    :param validator: a function that predicates if the input is correct
+    :param input_to_option: a function that given the input transforms it in something else
+    :param default_value: the value to return as the default if the user doesn't insert anything
+    :param options_to_print: the options to print if necessary
+    :return: the value inserted by the user validated
+    """
+    if options_to_print:
+        print("Allowed values for {0}:".format(message))
+        for item in options_to_print:
+            print(item)
+    user_prompt = "{0} [{1}]: ".format(message, default_value or "")
+
+    valid_user_input = False
+    result = default_value
+    # We give the user the possibility to try again if wrong
+    while not valid_user_input:
+        user_input = input(user_prompt).strip()
+        if user_input == "":
+            result = default_value
+            valid_user_input = True
         else:
-            user_prompt = user_prompt + "]: "
-
-    if isinstance(options, (list, tuple)):
-        print("Acceptable Values for %s: " % message)
-        for o in options:
-            print("    %s" % o)
-
-    var = input(user_prompt).strip()
-
-    if var == "":
-        return default_value
-    else:
-        if check_validity and options is not None and var not in options:
-            print("ERROR: The value (%s) is not valid " % var)
-            print("Please select one of the Acceptable Values listed above.")
-            sys.exit(1)
-        else:
-            return var
+            result = input_to_option(user_input)
+            if validator(result):
+                valid_user_input = True
+            else:
+                print("ERROR: {0} is not an acceptable value for {1}".format(user_input, message))
+    return result
 
 
 @handle_client_exception
@@ -115,52 +121,50 @@ def ec2_conn(aws_region_name):
     return ec2
 
 
+def extract_tag_from_resource(resource, tag_name):
+    tags = resource.get("Tags", [])
+    return next((item.get("Value") for item in tags if item.get("Key") == tag_name), None)
+
+
+def _list_resources(resources, resource_name, resource_id_name):
+    """Return a list of tuple containing the id of the resource and the name of it."""
+    resource_options = []
+    for resource in resources.get(resource_name):
+        keyid = resource.get(resource_id_name)
+        name = extract_tag_from_resource(resource, tag_name="Name")
+        resource_options.append((keyid, name)) if name else resource_options.append((keyid,))
+
+    return resource_options
+
+
 @handle_client_exception
-def list_keys(aws_region_name):
+def _list_keys(aws_region_name):
+    """Return a list of keys as a list of tuple of type (key-name,)."""
     conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
-    keynames = []
-    for key in keypairs.get("KeyPairs"):
-        keynames.append(key.get("KeyName"))
-
-    if not keynames:
-        print("ERROR: No Key Pairs found in region " + aws_region_name)
-        print("Please create an EC2 Key Pair before continuing")
-        sys.exit(1)
-
-    return keynames
+    return _list_resources(keypairs, "KeyPairs", "KeyName")
 
 
 @handle_client_exception
-def list_vpcs(aws_region_name):
+def _list_vpcs(aws_region_name):
+    """Return a list of vpcs as a list of tuple of type (vpc-id, vpc-name (if present))."""
     conn = ec2_conn(aws_region_name)
     vpcs = conn.describe_vpcs()
-    vpcids = []
-    for vpc in vpcs.get("Vpcs"):
-        vpcids.append(vpc.get("VpcId"))
-
-    if not vpcids:
-        print("ERROR: No VPCs found in region " + aws_region_name)
-        print("Please create a VPC before continuing")
-        sys.exit(1)
-
-    return vpcids
+    return _list_resources(vpcs, "Vpcs", "VpcId")
 
 
 @handle_client_exception
-def list_subnets(aws_region_name, vpc_id):
+def _list_subnets(aws_region_name, vpc_id):
+    """Return a list of subnet as a list of tuple of type (subnet-id, subnet-name (if present))."""
     conn = ec2_conn(aws_region_name)
     subnets = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}])
-    subnetids = []
-    for subnet in subnets.get("Subnets"):
-        subnetids.append(subnet.get("SubnetId"))
+    return _list_resources(subnets, "Subnets", "SubnetId")
 
-    if not subnetids:
-        print("ERROR: No Subnets found in region " + aws_region_name)
-        print("Please create a VPC Subnet before continuing")
-        sys.exit(1)
 
-    return subnetids
+@handle_client_exception
+def _list_instances():  # Specifying the region does not make any difference
+    """Return a list of all the supported instance at the moment by aws, independent by the region."""
+    return ec2_conn(DEFAULT_VALUES["aws_region_name"]).meta.service_model.shape_for("InstanceType").enum
 
 
 def configure(args):  # noqa: C901 FIXME!!!
@@ -177,7 +181,7 @@ def configure(args):  # noqa: C901 FIXME!!!
     # Prompt for required values, using existing as defaults
     cluster_template = prompt(
         "Cluster configuration label",
-        get_config_parameter(
+        default_value=get_config_parameter(
             config,
             section="global",
             parameter_name="cluster_template",
@@ -187,22 +191,20 @@ def configure(args):  # noqa: C901 FIXME!!!
     cluster_label = "cluster " + cluster_template
 
     # Use built in boto regions as an available option
-    aws_region_name = prompt(
+    aws_region_name = _prompt_a_list(
         "AWS Region ID",
-        get_config_parameter(
+        get_regions(),
+        default_value=get_config_parameter(
             config, section="aws", parameter_name="aws_region_name", default_value=DEFAULT_VALUES["aws_region_name"]
         ),
-        options=get_regions(),
-        check_validity=True,
     )
 
-    scheduler = prompt(
+    scheduler = _prompt_a_list(
         "Scheduler",
-        get_config_parameter(
+        get_supported_schedulers(),
+        default_value=get_config_parameter(
             config, section=cluster_label, parameter_name="scheduler", default_value=DEFAULT_VALUES["scheduler"]
         ),
-        options=get_supported_schedulers(),
-        check_validity=True,
     )
     scheduler_info = scheduler_handler(scheduler)
     is_aws_batch = scheduler == "awsbatch"
@@ -210,23 +212,26 @@ def configure(args):  # noqa: C901 FIXME!!!
     if is_aws_batch:
         operating_system = FORCED_BATCH_VALUES["os"]
     else:
-        operating_system = prompt(
+        operating_system = _prompt_a_list(
             "Operating System",
-            get_config_parameter(
+            get_supported_os(scheduler),
+            default_value=get_config_parameter(
                 config, section=cluster_label, parameter_name="base_os", default_value=DEFAULT_VALUES["os"]
             ),
-            options=get_supported_os(scheduler),
-            check_validity=True,
         )
 
     max_queue_size = prompt(
         "Max Queue Size",
-        get_config_parameter(config, cluster_label, scheduler_info["max_size"], DEFAULT_VALUES["max_queue_size"]),
+        validator=lambda x: x.isdigit(),
+        default_value=get_config_parameter(
+            config, cluster_label, scheduler_info["max_size"], DEFAULT_VALUES["max_queue_size"]
+        ),
     )
 
     master_instance_type = prompt(
         "Master instance type",
-        get_config_parameter(
+        lambda x: x in _list_instances(),
+        default_value=get_config_parameter(
             config,
             section=cluster_label,
             parameter_name="master_instance_type",
@@ -238,38 +243,22 @@ def configure(args):  # noqa: C901 FIXME!!!
         compute_instance_type = FORCED_BATCH_VALUES["compute_instance_type"]
     else:
         compute_instance_type = prompt(
-            message="Compute instance type", default_value=DEFAULT_VALUES["compute_instance_type"]
+            "Compute instance type",
+            lambda x: x in _list_instances(),
+            default_value=DEFAULT_VALUES["compute_instance_type"],
         )
 
     vpc_name = prompt(
         "VPC configuration label",
-        get_config_parameter(
+        default_value=get_config_parameter(
             config, section=cluster_label, parameter_name="vpc_settings", default_value=DEFAULT_VALUES["vpc_name"]
         ),
     )
     vpc_label = "vpc " + vpc_name
 
-    keys = list_keys(aws_region_name)
-    key_name = prompt(
-        "Key Name",
-        get_config_parameter(config, section=cluster_label, parameter_name="key_name", default_value=keys[0]),
-        options=keys,
-        check_validity=True,
-    )
-
-    vpc_id = prompt(
-        "VPC ID",
-        get_config_parameter(config, section=vpc_label, parameter_name="vpc_id", default_value=None),
-        options=list_vpcs(aws_region_name),
-        check_validity=True,
-    )
-
-    master_subnet_id = prompt(
-        "Master Subnet ID",
-        get_config_parameter(config, section=vpc_label, parameter_name="master_subnet_id", default_value=None),
-        options=list_subnets(aws_region_name, vpc_id),
-        check_validity=True,
-    )
+    key_name = _prompt_a_list_of_tuple("Key Name", _list_keys(aws_region_name))
+    vpc_id = _prompt_a_list_of_tuple("VPC ID", _list_vpcs(aws_region_name))
+    master_subnet_id = _prompt_a_list_of_tuple("Master Subnet ID", _list_subnets(aws_region_name, vpc_id))
 
     global_parameters = {
         "__name__": "global",
@@ -294,8 +283,10 @@ def configure(args):  # noqa: C901 FIXME!!!
     sections = [aws_parameters, cluster_parameters, vpc_parameters, global_parameters, aliases_parameters]
 
     # We first remove unnecessary parameters from the past configurations
-    for par in scheduler_info["parameters_to_remove"]:
-        config.remove_option(cluster_label, par)
+    if config.has_section(cluster_label):
+        for par in scheduler_info["parameters_to_remove"]:
+            config.remove_option(cluster_label, par)
+
     # Loop through the configuration sections we care about
     for section in sections:
         try:
@@ -383,7 +374,82 @@ def scheduler_handler(scheduler):
         scheduler_info["max_size"] = "max_vcpus"
         scheduler_info["initial_size"] = "desired_vcpus"
     else:
-        scheduler_info["parameters_to_remove"] = "max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type"
+        scheduler_info["parameters_to_remove"] = ("max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type")
         scheduler_info["max_size"] = "max_queue_size"
         scheduler_info["initial_size"] = "initial_queue_size"
     return scheduler_info
+
+
+def _prompt_a_list(message, options, default_value=None):
+    """
+    Wrap prompt to use it for list.
+
+    :param message: the message to show the user
+    :param options: the list of item to show the user
+    :param default_value: the default value
+    :return: the validate value
+    """
+    if not options:
+        print("ERROR: No options found for {0}".format(message))
+        sys.exit(1)
+    if not default_value:
+        default_value = options[0]
+
+    def input_to_parameter(to_transform):
+        try:
+            item = options[int(to_transform) - 1]
+        except ValueError:
+            item = to_transform
+        return item
+
+    return prompt(
+        message,
+        validator=lambda x: x in options,
+        input_to_option=lambda x: input_to_parameter(x),
+        default_value=default_value,
+        options_to_print=_to_printable_list(options),
+    )
+
+
+def _prompt_a_list_of_tuple(message, options, default_value=None):
+    """
+    Wrap prompt to use it over a list of tuple.
+
+    The correct item will be the first element of each tuple.
+    :param message: the message to show to the user
+    :param options: the list of tuple
+    :param default_value: the default value
+    :return: the validated value
+    """
+    if not options:
+        print("ERROR: No options found for {0}".format(message))
+        sys.exit(1)
+    if not default_value:
+        default_value = options[0][0]
+
+    def input_to_parameter(to_transform):
+        try:
+            item = options[int(to_transform) - 1][0]
+        except ValueError:
+            item = to_transform
+        return item
+
+    valid_options = [item[0] for item in options]
+
+    return prompt(
+        message,
+        validator=lambda x: x in valid_options,
+        input_to_option=lambda x: input_to_parameter(x),
+        default_value=default_value,
+        options_to_print=_to_printable_list(options),
+    )
+
+
+def _to_printable_list(items):
+    output = []
+    for iterator, item in enumerate(items, start=1):
+        if isinstance(item, (list, tuple)):
+            output.append("{0}. {1}".format(iterator, " | ".join(item)))
+        else:
+            output.append("{0}. {1}".format(iterator, item))
+    return output
