@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 cd /shared
 wget http://mvapich.cse.ohio-state.edu/download/mvapich/osu-micro-benchmarks-5.4.tar.gz
