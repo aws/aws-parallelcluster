@@ -159,6 +159,7 @@ def check_marker_skip_dimensions(items):
                 )
                 logging.info(skip_message)
                 items.remove(item)
+                break
 
 
 def check_marker_dimensions(items):
