@@ -20,7 +20,7 @@ from utils import retrieve_cfn_outputs
 class CfnStack:
     """Identify a CloudFormation stack."""
 
-    def __init__(self, name, region, template=None):
+    def __init__(self, name, region, template):
         self.name = name
         self.region = region
         self.template = template

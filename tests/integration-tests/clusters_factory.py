@@ -21,7 +21,7 @@ from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subproc
 class Cluster:
     """Contain all static and dynamic data related to a cluster instance."""
 
-    def __init__(self, name, ssh_key, config_file=None):
+    def __init__(self, name, ssh_key, config_file):
         self.name = name
         self.config_file = config_file
         self.ssh_key = ssh_key
@@ -121,7 +121,7 @@ class ClustersFactory:
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
         self.__created_clusters[name] = cluster
-        result = run_command(["pcluster", "create", "--no-rollback", "--config", config, name])
+        result = run_command(["pcluster", "create", "--norollback", "--config", config, name])
         if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)

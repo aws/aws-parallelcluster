@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
 
 import pytest
 
@@ -20,7 +21,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 INSTANCES_TO_SLOTS_MAP = {"c5n.18xlarge": 72, "p3dn.24xlarge": 96, "i3en.24xlarge": 96}
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1"])
+@pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
 @pytest.mark.oss(["alinux", "centos7", "ubuntu1604"])
 @pytest.mark.schedulers(["sge", "slurm"])
@@ -47,7 +48,7 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
     # Output contains:
     # 00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0
     logging.info("Testing EFA installed")
-    result = scheduler_commands.submit_command("/sbin/lspci > /shared/lspci.out")
+    result = scheduler_commands.submit_command("lspci > /shared/lspci.out")
 
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
@@ -58,7 +59,7 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
     assert_that(result.stdout).contains("00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0")
 
     # Check EFA interface not present on master
-    result = remote_command_executor.run_remote_command("/sbin/lspci")
+    result = remote_command_executor.run_remote_command("lspci")
     assert_that(result.stdout).does_not_contain("00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0")
 
 
@@ -91,5 +92,6 @@ def _test_osu_benchmarks(remote_command_executor, scheduler_commands, test_datad
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
-    # TODO: perform assertions on benchmarks results
-    remote_command_executor.run_remote_command("cat /shared/osu.out")
+    output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
+    latency = re.search(r"0\s+(\d\d)\.", output).group(1)
+    assert_that(int(latency)).is_less_than(20)
