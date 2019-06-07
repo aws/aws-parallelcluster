@@ -178,7 +178,7 @@ def check_marker_dimensions(items):
     :param items: pytest Item objects annotated with markers.
     """
     marker_name = "dimensions"
-    for item in items:
+    for item in list(items):
         test_args_value = []
         for dimension in DIMENSIONS_MARKER_ARGS:
             test_args_value.append(item.callspec.params.get(dimension))
