@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_instance_vcpus
+from pcluster.utils import get_instance_vcpus, get_supported_features
 
 
 class ParallelClusterConfig(object):
@@ -104,6 +104,9 @@ class ParallelClusterConfig(object):
         # Initialize aliases public attributes
         self.__init_aliases()
 
+        # efa checks
+        self.__init_efa_parameters()
+
         # Handle extra parameters supplied on command-line
         try:
             if self.args.extra_parameters is not None:
@@ -128,9 +131,12 @@ class ParallelClusterConfig(object):
 
         :return: configuration object
         """
-        # Determine config file name based on args or default
+        # Determine config file name based on args, env or default
         if hasattr(self.args, "config_file") and self.args.config_file is not None:
             config_file = self.args.config_file
+            default_config = False
+        elif "AWS_PCLUSTER_CONFIG_FILE" in os.environ:
+            config_file = os.environ["AWS_PCLUSTER_CONFIG_FILE"]
             default_config = False
         else:
             config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
@@ -354,6 +360,12 @@ class ParallelClusterConfig(object):
                     "VPC section [%s] used in [%s] section is not defined" % (vpc_section, self.__cluster_section)
                 )
 
+        # Check that cidr and public ips are not both set
+        cidr_value = self.__config.get(vpc_section, "compute_subnet_cidr", fallback=None)
+        public_ips = self.__config.getboolean(vpc_section, "use_public_ips", fallback=True)
+        if self.__sanity_check:
+            ResourceValidator.validate_vpc_coherence(cidr_value, public_ips)
+
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
         if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
@@ -522,6 +534,23 @@ class ParallelClusterConfig(object):
             except configparser.NoOptionError:
                 pass
 
+    def __init_efa_parameters(self):
+        try:
+            __temp__ = self.__config.get(self.__cluster_section, "enable_efa")
+            if __temp__ != "compute":
+                self.__fail("valid values for enable_efa = compute")
+
+            supported_features = get_supported_features(self.region, "efa")
+            valid_instances = supported_features.get("instances")
+
+            self.__validate_instance("EFA", self.parameters.get("ComputeInstanceType"), valid_instances)
+            self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7", "ubuntu1604"])
+            self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
+            self.__validate_resource("EFA", self.parameters)
+            self.parameters["EFA"] = __temp__
+        except configparser.NoOptionError:
+            pass
+
     def __init_extra_json_parameter(self):
         """Check for extra_json = { "cluster" : ... } configuration parameters and map to "cfncluster"."""
         extra_json = self.parameters.get("ExtraJson")
@@ -588,11 +617,25 @@ class ParallelClusterConfig(object):
         if self.__config.has_option(self.__cluster_section, option):
             self.__fail("option %s cannot be used with awsbatch" % option)
 
+    def __get_scheduler(self):
+        scheduler = "sge"
+        if self.__config.has_option(self.__cluster_section, "scheduler"):
+            scheduler = self.__config.get(self.__cluster_section, "scheduler")
+        return scheduler
+
     def __get_os(self):
         base_os = "alinux"
         if self.__config.has_option(self.__cluster_section, "base_os"):
             base_os = self.__config.get(self.__cluster_section, "base_os")
         return base_os
+
+    def __validate_instance(self, service, instance, valid_instances):
+        if instance not in valid_instances:
+            self.__fail("%s can only be used with the following instances: %s" % (service, valid_instances))
+
+    def __validate_scheduler(self, service, scheduler, supported_schedulers):
+        if scheduler not in supported_schedulers:
+            self.__fail("%s supports following Schedulers: %s" % (service, supported_schedulers))
 
     def __validate_os(self, service, baseos, supported_oses):
         if baseos not in supported_oses:

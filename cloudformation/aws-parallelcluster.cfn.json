@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.3.2a1",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.4.0",
   "Metadata": {
     "AWS::CloudFormation::Interface": {
       "ParameterGroups": [
@@ -567,6 +567,11 @@
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
       "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+    },
+    "EFA": {
+      "Description": "Enable EFA on the compute nodes, enable_efa = compute",
+      "Type": "String",
+      "Default": "NONE"
     }
   },
   "Conditions": {
@@ -1144,6 +1149,18 @@
           ]
         }
       ]
+    },
+    "EnableEFA": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "EFA"
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Mappings": {
@@ -1321,8 +1338,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.3.2a1",
-        "cookbook": "aws-parallelcluster-cookbook-2.3.2",
+        "parallelcluster": "2.4.0",
+        "cookbook": "aws-parallelcluster-cookbook-2.4.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
@@ -2013,7 +2030,7 @@
             "Key": "aws-parallelcluster-filesystem",
             "Value": {
               "Fn::Sub": [
-                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}",
+                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}, fsx=${fsx}",
                 {
                   "efs": {
                     "Fn::If": [
@@ -2025,6 +2042,13 @@
                   "raid": {
                     "Fn::If": [
                       "CreateRAIDSubstack",
+                      "1",
+                      "0"
+                    ]
+                  },
+                  "fsx": {
+                    "Fn::If": [
+                      "CreateFSXSubstack",
                       "1",
                       "0"
                     ]
@@ -2161,7 +2185,7 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                 "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
@@ -2332,6 +2356,9 @@
                   "cfncluster": {
                     "stack_name": {
                       "Ref": "AWS::StackName"
+                    },
+                    "enable_efa": {
+                      "Ref": "EFA"
                     },
                     "cfn_raid_vol_ids": {
                       "Fn::If": [
@@ -2968,7 +2995,7 @@
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
                 "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                 "  fi\n",
-                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                 "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                 "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                 "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
@@ -3140,6 +3167,9 @@
                     "stack_name": {
                       "Ref": "AWS::StackName"
                     },
+                    "enable_efa": {
+                      "Ref": "EFA"
+                    },
                     "cfn_raid_parameters": {
                       "Ref": "RAIDOptions"
                     },
@@ -3310,6 +3340,15 @@
           "NetworkInterfaces": [
             {
               "DeviceIndex": 0,
+              "InterfaceType": {
+                "Fn::If": [
+                  "EnableEFA",
+                  "efa",
+                  {
+                    "Ref": "AWS::NoValue"
+                  }
+                ]
+              },
               "Groups": [
                 {
                   "Fn::If": [
@@ -3606,7 +3645,7 @@
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
                   "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
                   "  fi\n",
-                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn\"",
+                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                   "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
@@ -3779,6 +3818,9 @@
                   "cfncluster": {
                     "stack_name": {
                       "Ref": "AWS::StackName"
+                    },
+                    "enable_efa": {
+                      "Ref": "EFA"
                     },
                     "cfn_raid_parameters": {
                       "Ref": "RAIDOptions"
@@ -4063,6 +4105,35 @@
           }
         ]
       },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "DestinationSecurityGroupId": {
+          "Ref": "ComputeSecurityGroup"
+        },
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
+      },
+      "Condition": "CreateSecurityGroups"
+    },
+    "ComputeSecurityGroupNormalEgress": {
+      "Type": "AWS::EC2::SecurityGroupEgress",
+      "Properties": {
+        "IpProtocol": "-1",
+        "FromPort": 0,
+        "ToPort": 65535,
+        "CidrIp": "0.0.0.0/0",
+        "GroupId": {
+          "Ref": "ComputeSecurityGroup"
+        }
+      },
+      "DependsOn": "ComputeSecurityGroupEgress",
       "Condition": "CreateSecurityGroups"
     },
     "ComputeSecurityGroupIngress": {

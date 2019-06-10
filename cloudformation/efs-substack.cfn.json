@@ -201,7 +201,7 @@
   "Parameters": {
     "ComputeSecurityGroup": {
       "Description": "SecurityGroup for Mount Target",
-      "Type": "String"
+      "Type": "AWS::EC2::SecurityGroup::Id"
     },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total",

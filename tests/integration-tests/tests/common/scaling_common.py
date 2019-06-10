@@ -14,7 +14,6 @@ import time
 import boto3
 from retrying import RetryError, retry
 
-from assertpy import assert_that
 from time_utils import seconds
 
 
@@ -122,15 +121,3 @@ def get_desired_asg_capacity(region, stack_name):
 def get_max_asg_capacity(region, stack_name):
     """Retrieve the max capacity of the autoscaling group for a specific cluster."""
     return _get_asg(region, stack_name)["MaxSize"]
-
-
-def assert_instance_replaced_or_terminating(instance_id, region):
-    """Assert that a given instance got replaced or is marked as Unhealthy."""
-    response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
-        InstanceIds=[instance_id]
-    )
-    assert_that(
-        not response["AutoScalingInstances"]
-        or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
-        or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-    ).is_true()

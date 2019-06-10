@@ -152,7 +152,7 @@ Next, a simple cluster launches into a VPC and uses an existing subnet which sup
 for the subnet is :code:`0.0.0.0/0 => igw-xxxxxx`.
 The VPC must have :code:`DNS Resolution = yes` and :code:`DNS Hostnames = yes`.
 It should also have DHCP options with the correct :code:`domain-name` for the region, as defined in the docs: `VPC DHCP
-Options <http://docs.aws.amazon.com/AmazonVPC/latest/UserGuide/VPC_DHCP_Options.html>`_.
+Options <https://docs.aws.amazon.com/vpc/latest/userguide/VPC_DHCP_Options.html>`_.
 
 Once all of those settings contain valid values, you can launch the cluster by running the create command:
 
