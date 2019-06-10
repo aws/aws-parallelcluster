@@ -206,11 +206,17 @@ class SlurmCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(retry_on_result=lambda result: result == "Unknown", wait_fixed=seconds(7), stop_max_delay=minutes(5))
+    @retry(
+        retry_on_result=lambda result: "JobState" not in result
+        or any(value in result for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING"]),
+        wait_fixed=seconds(7),
+        stop_max_delay=minutes(5),
+    )
     def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        match = re.search(r"EndTime=(.+?) ", result.stdout)
-        return match.group(1)
+        result = self._remote_command_executor.run_remote_command(
+            "scontrol show jobs -o {0}".format(job_id), raise_on_error=False
+        )
+        return result.stdout
 
     def get_job_exit_status(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -242,7 +248,7 @@ class SlurmCommands(SchedulerCommands):
         if slots:
             submission_command += " -n {0}".format(slots)
         if nodes > 1:
-            submission_command += " -N {0}".format(slots)
+            submission_command += " -N {0}".format(nodes)
         submission_command += " {1}".format(nodes, script_name)
         return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
