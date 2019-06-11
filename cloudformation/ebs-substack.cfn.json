@@ -1049,7 +1049,7 @@
   "Parameters": {
     "AvailabilityZone": {
       "Description": "Availability Zone the cluster will launch into. THIS IS REQUIRED",
-      "Type": "String"
+      "Type": "AWS::EC2::AvailabilityZone::Name"
     },
     "EBSEncryption": {
       "Description": "Boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",

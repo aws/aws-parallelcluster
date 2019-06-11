@@ -41,8 +41,6 @@ Then, run pcluster configure:
 
   $ pcluster configure
   Cluster Template [default]:
-  AWS Access Key ID []:
-  AWS Secret Access Key ID []:
   Acceptable Values for AWS Region ID:
       ap-south-1
       ...
@@ -105,23 +103,8 @@ HPC forum which may be helpful:https://forums.aws.amazon.com/forum.jspa?forumID=
 Changes
 -------
 
-CfnCluster 1.6 IAM Change
-=========================
-Between CfnCluster 1.5.4 and 1.6.0 we made a change to the CfnClusterInstancePolicy that adds “s3:GetObject” permissions
-on objects in <REGION>-cfncluster bucket, "autoscaling:SetDesiredCapacity", "autoscaling:DescribeTags" permissions and
-"cloudformation:DescribeStacks" permissions on <REGION>:<ACCOUNT_ID>:stack/cfncluster-*.
+CfnCluster to AWS ParallelCluster
+=================================
+In Version `2.0.0`, we changed the name of CfnCluster to AWS ParallelCluster. With that name change we released several new features, which you can read about in the `Change Log`_.
 
-If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
-
-CfnCluster 1.5 IAM Change
-=========================
-Between CfnCluster 1.4.2 and 1.5.0 we made a change to the CfnClusterInstancePolicy that adds “ec2:DescribeVolumes” permissions. If you’re using a custom policy (e.g. you specify "ec2_iam_role" in your config) be sure it includes this new permission. See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html
-
-CfnCluster 1.2 and Earlier
-==========================
-
-For various security (on our side) and maintenance reasons, CfnCluster
-1.2 and earlier have been deprecated.  AWS-side resources necessary to
-create a cluster with CfnCluster 1.2 or earlier are no longer
-available.  Existing clusters will continue to operate, but new
-clusters can not be created.
+.. _`Change Log`: https://github.com/aws/aws-parallelcluster/blob/develop/CHANGELOG.rst#200

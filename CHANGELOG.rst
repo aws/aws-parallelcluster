@@ -2,6 +2,72 @@
 CHANGELOG
 =========
 
+2.4.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for EFA on Centos 7, Amazon Linux and Ubuntu 1604
+* Add support for Ubuntu in China region ``cn-northwest-1``
+
+* SGE:
+
+  * process nodes added to or removed from the cluster in batches in order to speed up cluster scaling.
+  * scale up only if required slots/nodes can be satisfied
+  * scale down if pending jobs have unsatisfiable CPU/nodes requirements
+  * add support for jobs in hold/suspended state (this includes job dependencies)
+  * automatically terminate and replace faulty or unresponsive compute nodes
+  * add retries in case of failures when adding or removing nodes
+  * configure scheduler to handle rescheduling and cancellation of jobs running on failing or terminated nodes
+
+* Slurm:
+
+  * scale up only if required slots/nodes can be satisfied
+  * scale down if pending jobs have unsatisfiable CPU/nodes requirements
+  * automatically terminate and replace faulty or unresponsive compute nodes
+  * decrease SlurmdTimeout to 120 seconds to speed up replacement of faulty nodes
+
+* Automatically replace compute instances that fail initialization and dump logs to shared home directory.
+* Dynamically fetch compute instance type and cluster size in order to support updates in scaling daemons
+* Always use full master FQDN when mounting NFS on compute nodes. This solves some issues occurring with some networking
+  setups and custom DNS configurations
+* List the version and status during ``pcluster list``
+* Remove double quoting of the post_install args
+* ``awsbsub``: use override option to set the number of nodes rather than creating multiple JobDefinitions
+* Add support for AWS_PCLUSTER_CONFIG_FILE env variable to specify pcluster config file
+
+**CHANGES**
+
+* Update openmpi library to version 3.1.4 on Centos 7, Amazon Linux and Ubuntu 1604. This also changes the default
+  openmpi path to ``/opt/amazon/efa/bin/`` and the openmpi module name to ``openmpi/3.1.4``
+* Set soft and hard ulimit on open files to 10000 for all supported OSs
+* For a better security posture, we're removing AWS credentials from the ``parallelcluster`` config file
+  Credentials can be now setup following the canonical procedure used for the aws cli
+* When using FSx or EFS do not enforce in sanity check that the compute security group is open to 0.0.0.0/0
+* When updating an existing cluster, the same template version is now used, no matter the pcluster cli version
+* SQS messages that fail to be processed in ``sqswatcher`` are now re-queued only 3 times and not forever
+* Reset ``nodewatcher`` idletime to 0 when the host becomes essential for the cluster (because of min size of ASG or
+  because there are pending jobs in the scheduler queue)
+* SGE: a node is considered as busy when in one of the following states "u", "C", "s", "d", "D", "E", "P", "o".
+  This allows a quick replacement of the node without waiting for the ``nodewatcher`` to terminate it.
+* Do not update DynamoDB table on cluster updates in order to avoid hitting strict API limits (1 update per day).
+
+**BUG FIXES**
+
+* Fix issue that was preventing Torque from being used on Centos 7
+* Start node daemons at the end of instance initialization. The time spent for post-install script and node
+  initialization is not counted as part of node idletime anymore.
+* Fix issue which was causing an additional and invalid EBS mount point to be added in case of multiple EBS
+* Install Slurm libpmpi/libpmpi2 that is distributed in a separate package since Slurm 17
+* ``pcluster ssh`` command now works for clusters with ``use_public_ips = false``
+* Slurm: add "BeginTime", "NodeDown", "Priority" and "ReqNodeNotAvail" to the pending reasons that trigger
+  a cluster scaling
+* Add a timeout on remote commands execution so that the daemons are not stuck if the compute node is unresponsive
+* Fix an edge case that was causing the ``nodewatcher`` to hang forever in case the node had become essential to the
+  cluster during a call to ``self_terminate``.
+* Fix ``pcluster start/stop`` commands when used with an ``awsbatch`` cluster
+
+
 2.3.1
 =====
 

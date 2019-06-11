@@ -11,6 +11,8 @@ config generation.
 
 ## Run Integration Tests
 
+To run the integration tests you have to use Python 3.7.
+
 Before executing integration tests it is required to install all the python dependencies required by the framework.
 In order to do that simply run the following command:
 ```bash
@@ -139,6 +141,33 @@ use the following options:
 The configuration for the custom templates and packages are automatically injected into
 all cluster configs when these are rendered. In case any of these parameters is already set
 in the cluster config then the value in the config is used.
+
+### Re-use clusters and vpc clusters
+
+When developing integration tests, it can be helpful to re-use a cluster between tests. 
+This is easily accomplished with the use of the `--vpc-stack` and `--cluster` flags. 
+
+If you're starting from scratch, run the test with the `--no-delete` flag. 
+This preserves any stacks created for the test:
+
+```bash
+python -m test_runner \
+  ...
+  --no-delete
+```
+
+Then when you have a vpc stack and cluster, reference them when starting a test:
+
+```bash
+python -m test_runner \
+  ...
+  --vpc-stack "integ-tests-vpc-ncw7zrccsau8uh6k"
+  --cluster "efa-demo"
+  --no-delete
+```
+
+Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features 
+than what is specified in the test. This can break the tests in unexpected ways. Be mindful.
 
 ## Write Integration Tests
 

@@ -86,7 +86,8 @@ In case you are using SGE, Slurm or Torque as a scheduler:
                   "autoscaling:TerminateInstanceInAutoScalingGroup",
                   "autoscaling:SetDesiredCapacity",
                   "autoscaling:DescribeTags",
-                  "autoScaling:UpdateAutoScalingGroup"
+                  "autoScaling:UpdateAutoScalingGroup",
+                  "autoscaling:SetInstanceHealth"
               ],
               "Sid": "Autoscaling",
               "Effect": "Allow"

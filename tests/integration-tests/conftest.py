@@ -22,6 +22,7 @@ from shutil import copyfile
 
 import configparser
 import pytest
+from retrying import retry
 
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -55,12 +56,17 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
+    parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
+    parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
+    parser.addoption(
+        "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
+    )
 
 
 def pytest_generate_tests(metafunc):
     """Generate (multiple) parametrized calls to a test function."""
-    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "region", "regions")
+    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "os", "oss")
     _parametrize_from_option(metafunc, "scheduler", "schedulers")
 
@@ -89,24 +95,24 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
-    add_default_markers(item)
-
-    check_marker_list(item, "instances", "instance")
-    check_marker_list(item, "regions", "region")
-    check_marker_list(item, "oss", "os")
-    check_marker_list(item, "schedulers", "scheduler")
-    check_marker_skip_list(item, "skip_instances", "instance")
-    check_marker_skip_list(item, "skip_regions", "region")
-    check_marker_skip_list(item, "skip_oss", "os")
-    check_marker_skip_list(item, "skip_schedulers", "scheduler")
-    check_marker_dimensions(item)
-    check_marker_skip_dimensions(item)
-
     logging.info("Running test " + item.name)
 
 
 def pytest_collection_modifyitems(items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
+    add_default_markers(items)
+
+    check_marker_list(items, "instances", "instance")
+    check_marker_list(items, "regions", "region")
+    check_marker_list(items, "oss", "os")
+    check_marker_list(items, "schedulers", "scheduler")
+    check_marker_skip_list(items, "skip_instances", "instance")
+    check_marker_skip_list(items, "skip_regions", "region")
+    check_marker_skip_list(items, "skip_oss", "os")
+    check_marker_skip_list(items, "skip_schedulers", "scheduler")
+    check_marker_dimensions(items)
+    check_marker_skip_dimensions(items)
+
     _add_filename_markers(items)
 
 
@@ -162,15 +168,19 @@ def clusters_factory(request):
     def _cluster_factory(cluster_config):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
         cluster = Cluster(
-            name="integ-tests-" + random_alphanumeric(),
+            name=request.config.getoption("cluster")
+            if request.config.getoption("cluster")
+            else "integ-tests-" + random_alphanumeric(),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
         )
-        factory.create_cluster(cluster)
+        if not request.config.getoption("cluster"):
+            factory.create_cluster(cluster)
         return cluster
 
     yield _cluster_factory
-    factory.destroy_all_clusters()
+    if not request.config.getoption("no_delete"):
+        factory.destroy_all_clusters()
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -180,7 +190,7 @@ def _write_cluster_config_to_outdir(request, cluster_config):
         exist_ok=True,
     )
     cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.nodeid
+        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst
@@ -266,11 +276,12 @@ def _get_default_template_values(vpc_stacks, region, request):
 
 
 @pytest.fixture(scope="session")
-def cfn_stacks_factory():
+def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory()
     yield factory
-    factory.delete_all_stacks()
+    if not request.config.getoption("no_delete"):
+        factory.delete_all_stacks()
 
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
@@ -283,6 +294,12 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
     # c5.xlarge is not supported in ap-southeast-2a
     "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
+    # c4.xlarge is not supported in ap-northeast-2b
+    "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
+    # c5.xlarge is not supported in ap-southeast-1c
+    "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
+    # c4.xlarge is not supported in ap-south-1c
+    "ap-south-1": ["ap-south-1a", "ap-south-1b"],
 }
 
 
@@ -311,11 +328,22 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-        cfn_stacks_factory.create_stack(stack)
-        vpc_stacks[region] = stack
+        vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
+
+
+# If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
+# not available in randomly picked AZs.
+@retry(stop_max_attempt_number=2, wait_fixed=5000)
+def _create_vpc_stack(request, template, region, cfn_stacks_factory):
+    if request.config.getoption("vpc_stack"):
+        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+    else:
+        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
+    return stack
 
 
 @pytest.fixture(scope="function")

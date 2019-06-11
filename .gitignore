@@ -13,3 +13,4 @@ build/
 .coverage
 assets/
 report.html
+tests_outputs/

@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 import re
 from abc import ABCMeta, abstractmethod
 
@@ -56,11 +56,21 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit_command(self, command, nodes=1):
+    def submit_command(self, command, nodes=1, slots=None):
         """
         Submit a job to the scheduler.
 
         :param command: command to submit.
+        :return: result from remote command execution.
+        """
+        pass
+
+    @abstractmethod
+    def submit_script(self, script, nodes=1, slots=None, additional_files=None):
+        """
+        Submit a job to the scheduler by using a script file.
+
+        :param script: script to submit.
         :return: result from remote command execution.
         """
         pass
@@ -105,8 +115,11 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None):  # noqa: D102
         return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
+
+    def submit_script(self, script, nodes=1, additional_files=None, slots=None):  # noqa: D102
+        raise NotImplementedError
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -115,6 +128,9 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(status).contains_only("SUCCEEDED")
 
     def compute_nodes_count(self):  # noqa: D102
+        raise NotImplementedError
+
+    def get_compute_nodes(self):  # noqa: D102
         raise NotImplementedError
 
 
@@ -135,15 +151,39 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def assert_job_submitted(self, qsub_output):  # noqa: D102
+    def assert_job_submitted(self, qsub_output, is_array=False):  # noqa: D102
         __tracebackhide__ = True
-        match = re.search(r"Your job ([0-9]+) \(.+\) has been submitted", qsub_output)
+        if is_array:
+            regex = r"Your job-array ([0-9]+)\.[0-9\-:]+ \(.+\) has been submitted"
+        else:
+            regex = r"Your job ([0-9]+) \(.+\) has been submitted"
+        match = re.search(regex, qsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1):  # noqa: D102
-        # TODO add support for multiple nodes
-        return self._remote_command_executor.run_remote_command("echo '{0}' | qsub".format(command))
+    def submit_command(self, command, nodes=1, slots=None, hold=False):  # noqa: D102
+        flags = ""
+        if nodes != 1:
+            raise Exception("SGE does not support nodes option")
+        if slots:
+            flags += "-pe mpi {0} ".format(slots)
+        if hold:
+            flags += "-h "
+        return self._remote_command_executor.run_remote_command(
+            "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
+        )
+
+    def submit_script(self, script, nodes=1, slots=None, additional_files=None):  # noqa: D102
+        if not additional_files:
+            additional_files = []
+        additional_files.append(script)
+        flags = ""
+        if slots:
+            flags += "-pe mpi {0} ".format(slots)
+        script_name = os.path.basename(script)
+        return self._remote_command_executor.run_remote_command(
+            "qsub {0} {1}".format(flags, script_name), additional_files=additional_files
+        )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -154,6 +194,10 @@ class SgeCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command("qhost | grep -o ip- | wc -l")
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
+
+    def get_compute_nodes(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command("qhost | grep ip- | awk '{print $1}'")
+        return result.stdout.splitlines()
 
 
 class SlurmCommands(SchedulerCommands):
@@ -179,17 +223,43 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1):  # noqa: D102
-        return self._remote_command_executor.run_remote_command("sbatch -N {0} --wrap='{1}'".format(nodes, command))
+    def submit_command(self, command, nodes=1, slots=None, host=None):  # noqa: D102
+        submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
+        if host:
+            submission_command += " --nodelist={0}".format(host)
+        if slots:
+            submission_command += " -n {0}".format(slots)
+        return self._remote_command_executor.run_remote_command(submission_command)
+
+    def submit_script(self, script, nodes=1, slots=None, host=None, additional_files=None):  # noqa: D102
+        if not additional_files:
+            additional_files = []
+        additional_files.append(script)
+        script_name = os.path.basename(script)
+        submission_command = "sbatch"
+        if host:
+            submission_command += " --nodelist={0}".format(host)
+        if slots:
+            submission_command += " -n {0}".format(slots)
+        if nodes > 1:
+            submission_command += " -N {0}".format(slots)
+        submission_command += " {1}".format(nodes, script_name)
+        return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
-        return "JobState=COMPLETED" in result.stdout
+        assert_that(result.stdout).contains("JobState=COMPLETED")
 
     def compute_nodes_count(self):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("sinfo --Node --noheader | grep compute | wc -l")
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
+
+    def get_compute_nodes(self):  # noqa: D102
+        result = self._remote_command_executor.run_remote_command(
+            "sinfo --Node --noheader | grep compute | awk '{print $1}'"
+        )
+        return result.stdout.splitlines()
 
 
 class TorqueCommands(SchedulerCommands):
@@ -210,6 +280,9 @@ class TorqueCommands(SchedulerCommands):
     def submit_command(self, command):  # noqa: D102
         raise NotImplementedError
 
+    def submit_script(self, script, nodes=1):  # noqa: D102
+        raise NotImplementedError
+
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         raise NotImplementedError
 
@@ -219,6 +292,9 @@ class TorqueCommands(SchedulerCommands):
         )
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
+
+    def get_compute_nodes(self):  # noqa: D102
+        raise NotImplementedError
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):

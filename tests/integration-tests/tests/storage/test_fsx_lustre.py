@@ -19,7 +19,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import SgeCommands
 
 
-@pytest.mark.regions(["us-east-1", "eu-west-1"])
+@pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.oss(["centos7", "alinux"])
 @pytest.mark.schedulers(["sge"])
