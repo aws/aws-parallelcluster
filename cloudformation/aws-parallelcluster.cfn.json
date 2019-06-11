@@ -4854,7 +4854,8 @@
           "MasterServer",
           "PublicIp"
         ]
-      }
+      },
+      "Condition": "MasterPublicIp"
     },
     "GangliaPrivateURL": {
       "Description": "Private URL to access Ganglia (disabled by default)",
@@ -4890,7 +4891,8 @@
             "/ganglia/"
           ]
         ]
-      }
+      },
+      "Condition": "MasterPublicIp"
     },
     "ResourcesS3Bucket": {
       "Description": "S3 user bucket where AWS ParallelCluster resources are stored",
