@@ -88,10 +88,13 @@ For more information on any of these steps see the `Getting Started Guide`_.
 Documentation
 -------------
 
-Documentation is part of the project and is published to -
-https://aws-parallelcluster.readthedocs.io/. Of most interest to new users is
+Documentation is published in many languages to 
+https://docs.aws.amazon.com/parallelcluster/latest/ug/. Of most interest to new users is
 the Getting Started Guide -
-https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html.
+https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html. If you have changes you 
+would like to see in the docs, please either submit feedback using the feedback link at the bottom 
+of each page or create an issue or pull request for the project at 
+https://github.com/awsdocs/aws-parallelcluster-user-guide.
 
 Issues
 ------
