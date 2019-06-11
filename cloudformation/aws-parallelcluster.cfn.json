@@ -2080,6 +2080,12 @@
             }
           },
           {
+            "Key": "aws-parallelcluster-networking",
+            "Value": {
+              "Fn::Sub": "EFA=${EFA}"
+            }
+          },
+          {
             "Key": "aws-parallelcluster-filesystem",
             "Value": {
               "Fn::Sub": [
@@ -2732,6 +2738,13 @@
                   }
                 }
               ]
+            },
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "aws-parallelcluster-networking",
+            "Value": {
+              "Fn::Sub": "EFA=${EFA}"
             },
             "PropagateAtLaunch": true
           },
