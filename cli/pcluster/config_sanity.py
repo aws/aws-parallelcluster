@@ -47,15 +47,27 @@ class ResourceValidator(object):
         return "aws"
 
     @staticmethod
-    def validate_vpc_coherence(cidr_value, public_ip):
+    def validate_vpc_coherence(cidr_value, public_ip, master_subnet_id):
         """
-        Check that cidr_value and public_ip parameters are not conflicting.
+        Check that cidr_value and public_ip parameters are not conflicting with the subnet.
 
         :param cidr_value: the value of compute_subnet_cidr set by the user (default should be None)
         :param public_ip: the value of use_public_ips set by the user (default should be True)
+        :param master_subnet_id: the id of the master-subnet
         """
         if cidr_value and public_ip is False:
-            ResourceValidator.__fail("VPC COHERENCE", "compute_subnet_cidr needs use_public_ips to be true")
+            try:
+                response = boto3.client("ec2").describe_subnets(
+                    Filters=[{"Name": "subnet-id", "Values": [master_subnet_id]}]
+                )
+                if not response["Subnets"][0]["MapPublicIpOnLaunch"]:
+                    ResourceValidator.__fail(
+                        "VPC COHERENCE",
+                        "\ncompute_subnet_cidr needs use_public_ips to be true "
+                        "if auto assign public ip address of the subnet is set to False",
+                    )
+            except ClientError as e:
+                ResourceValidator.__fail("VPC COHERENCE", e.response.get("Error").get("Message"))
 
     @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):

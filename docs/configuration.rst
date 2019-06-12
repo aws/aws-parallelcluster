@@ -594,7 +594,8 @@ If false, the Master instance will have a Public IP (or not) according to the va
 of the "Auto-assign Public IP" subnet configuration parameter.
 
 .. note::
-    This parameter can't be set to false if :code:`compute_subnet_cidr` is specified.
+    This parameter can't be set to false if :code:`compute_subnet_cidr` is specified and the master subnet has the
+    property :code:`Auto-assign public IPv4 address` set to :code:`No`.
 
 See :ref:`networking configuration <networking>` for some examples.
 
