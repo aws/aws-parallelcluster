@@ -12,6 +12,7 @@
 import logging
 import time
 
+import boto3
 import configparser
 from retrying import retry
 
@@ -68,7 +69,13 @@ class Cluster:
     @property
     def master_ip(self):
         """Return the public ip of the cluster master node."""
-        return self.cfn_outputs["MasterPublicIP"]
+        if "MasterPublicIP" in self.cfn_outputs:
+            return self.cfn_outputs["MasterPublicIP"]
+        else:
+            ec2 = boto3.client("ec2", region_name=self.region)
+            master_server = self.cfn_resources["MasterServer"]
+            instance = ec2.describe_instances(InstanceIds=[master_server]).get("Reservations")[0].get("Instances")[0]
+            return instance.get("PublicIpAddress")
 
     @property
     def os(self):
