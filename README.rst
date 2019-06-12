@@ -83,17 +83,17 @@ You can view the running compute hosts:
 
 For more information on any of these steps see the `Getting Started Guide`_.
 
-.. _`Getting Started Guide`: https://aws-parallelcluster.readthedocs.io/en/latest/getting_started.html
+.. _`Getting Started Guide`: https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html
 
 Documentation
 -------------
 
-Documentation is published in many languages to 
-https://docs.aws.amazon.com/parallelcluster/latest/ug/. Of most interest to new users is
-the Getting Started Guide -
-https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html. If you have changes you 
-would like to see in the docs, please either submit feedback using the feedback link at the bottom 
-of each page or create an issue or pull request for the project at 
+`Documentation <https://docs.aws.amazon.com/parallelcluster/latest/ug/>`_ is published in many languages to 
+. Of most interest to new users is
+the `Getting Started Guide <https://docs.aws.amazon.com/parallelcluster/latest/ug/getting_started.html>`_. 
+
+If you have changes you would like to see in the docs, please either submit feedback using the feedback link at the bottom 
+of each page or create an issue or pull request for the project at:
 https://github.com/awsdocs/aws-parallelcluster-user-guide.
 
 Issues
@@ -101,7 +101,7 @@ Issues
 
 Please open a GitHub issue for any feedback or issues:
 https://github.com/aws/aws-parallelcluster.  There is also an active AWS
-HPC forum which may be helpful:https://forums.aws.amazon.com/forum.jspa?forumID=192.
+HPC forum which may be helpful: https://forums.aws.amazon.com/forum.jspa?forumID=192.
 
 Changes
 -------
