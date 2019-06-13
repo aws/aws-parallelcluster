@@ -53,7 +53,7 @@ with the specified values.
 The following options can be used to control test outputs and reports:
 * `--output-dir path/to/dir`: specifies the base dir where test outputs and logs will be saved.
 Defaults to tests_outputs.
-* `--reports {html,junitxml,json}`: allows to select what tests reports to generate.
+* `--reports {html,junitxml,json,cw}`: allows to select what tests reports to generate.
 * `--show-output`: when specified does not redirect stdout to file. Useful when developing the tests but not
 recommended when running parallel tests.
 
@@ -91,6 +91,11 @@ tests_outputs
     ├── test_report.json: global json report
     └── test_report.xml: global junitxml report
 ```
+
+By specifying the option `--reports cw`, the results of the tests run will be published as a series of CloudWatch
+metrics. You can use the options `--cw-region` (default `us-east-1`) and `--cw-namespace`
+(default `ParallelCluster/IntegrationTests`) to specify what region and what metric namespace
+you want to use for the published metrics.
 
 ### Specify Tests Dimensions
 The following options can be used to control the parametrization of test cases:
