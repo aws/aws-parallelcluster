@@ -19,7 +19,7 @@ import time
 import argparse
 import pytest
 
-from reports_generator import generate_json_report, generate_junitxml_merged_report
+from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -55,6 +55,8 @@ TEST_DEFAULTS = {
     "instances": ["c4.xlarge", "c5.xlarge"],
     "dry_run": False,
     "reports": [],
+    "cw_region": "us-east-1",
+    "cw_namespace": "ParallelCluster/IntegrationTests",
     "sequential": False,
     "output_dir": "tests_outputs",
     "custom_node_url": None,
@@ -121,10 +123,19 @@ def _init_argparser():
     parser.add_argument(
         "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
-        "style report file. json creates a summary with details for each dimensions",
+        "style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into "
+        "CloudWatch",
         nargs="+",
-        choices=["html", "junitxml", "json"],
+        choices=["html", "junitxml", "json", "cw"],
         default=TEST_DEFAULTS.get("reports"),
+    )
+    parser.add_argument(
+        "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
+    )
+    parser.add_argument(
+        "--cw-namespace",
+        help="CloudWatch namespace where to publish metrics",
+        default=TEST_DEFAULTS.get("cw_namespace"),
     )
     parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
@@ -205,7 +216,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     if args.dry_run:
         pytest_args.append("--collect-only")
 
-    if "junitxml" in args.reports or "json" in args.reports:
+    if any(report in ["junitxml", "json", "cw"] for report in args.reports):
         pytest_args.append("--junit-xml={0}/{1}/results.xml".format(args.output_dir, out_dir))
 
     if "html" in args.reports:
@@ -327,6 +338,10 @@ def main():
     if "json" in args.reports:
         logger.info("Generating tests report")
         generate_json_report(reports_output_dir)
+
+    if "cw" in args.reports:
+        logger.info("Publishing CloudWatch metrics")
+        generate_cw_report(reports_output_dir, args.cw_namespace, args.cw_region)
 
 
 if __name__ == "__main__":
