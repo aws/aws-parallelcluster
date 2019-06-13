@@ -241,6 +241,7 @@ To: ::
                   "ec2:DescribeAddresses",
                   "ec2:CreateTags",
                   "ec2:DescribeNetworkInterfaces",
+                  "ec2:DescribeNetworkInterfaceAttribute",
                   "ec2:DescribeAvailabilityZones"
               ],
               "Effect": "Allow",
