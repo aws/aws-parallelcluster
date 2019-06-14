@@ -120,5 +120,18 @@ def _put_metrics(cw_client, namespace, metrics, dimensions, timestamp):
                 {"MetricName": key, "Dimensions": dimensions, "Timestamp": timestamp, "Value": value, "Unit": "Count"}
             ],
         )
-        # CloudWatch PutMetric API has a TPS of 150. Sleeping for 0.05 seconds so to publish 40 metrics per second
-        time.sleep(0.05)
+    failure_rate = float(metrics["failures"] + metrics["errors"]) / metrics["total"] * 100
+    cw_client.put_metric_data(
+        Namespace=namespace,
+        MetricData=[
+            {
+                "MetricName": "failure_rate",
+                "Dimensions": dimensions,
+                "Timestamp": timestamp,
+                "Value": failure_rate,
+                "Unit": "Percent",
+            }
+        ],
+    )
+    # CloudWatch PutMetric API has a TPS of 150. Sleeping for 0.1 seconds so to publish 60 metrics per second
+    time.sleep(0.1)
