@@ -80,6 +80,11 @@
           {%- block sidebar1 %}{{ sidebar() }}{% endblock %}
           {%- block document %}
             <div class="body">
+              <div class="admonition important">
+                <p class="admonition-title">Important</p>
+                <p>New Docs are available at <a class="reference external" href="https://docs.aws.amazon.com/parallelcluster">https://docs.aws.amazon.com/parallelcluster</a></p>
+                <p>All new features, starting with 2.4.0, will be documented there.</p>
+              </div>
               {% block body %} {% endblock %}
             </div>
           {%- endblock %}
