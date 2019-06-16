@@ -108,7 +108,7 @@ def main(args):
         batch_instances = get_batch_instance_whitelist(args, region)
         if args.efa:
             efa_instances = args.efa.split(",")
-            instances = {"Features": {"efa": {"instances": efa_instances}, "awsbatch": {"instances": batch_instances}}}
+            instances = {"Features": {"efa": {"instances": efa_instances}, "batch": {"instances": batch_instances}}}
             upload_to_s3(args, region, instances, "features/feature_whitelist.json")
         else:
             upload_to_s3(args, region, batch_instances, "instances/batch_instances.json")

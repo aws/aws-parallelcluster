@@ -142,7 +142,7 @@ def get_supported_features(region, feature):
                 "baseos": ["alinux", "centos7"],
                 "schedulers": ["sge", "slurm", "torque"]
             },
-            "awsbatch": {
+            "batch": {
                 "instances": ["r3.8xlarge", ..., "m5.4xlarge"]
             }
         }
