@@ -316,6 +316,8 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
     # c4.xlarge is not supported in ap-south-1c
     "ap-south-1": ["ap-south-1a", "ap-south-1b"],
+    # NAT Gateway not available in sa-east-1b
+    "sa-east-1": ["sa-east-1a", "sa-east-1c"],
 }
 
 
