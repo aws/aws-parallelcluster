@@ -223,6 +223,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
+    Also sanity_check is set to true by default unless explicitly set in config.
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
@@ -236,6 +237,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
         _add_custom_packages_configs(config_file_path, request)
+        _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
@@ -259,6 +261,20 @@ def _add_custom_packages_configs(cluster_config, request):
                 extra_json["cluster"] = cluster
     if extra_json:
         config[cluster_template]["extra_json"] = json.dumps(extra_json)
+
+    with cluster_config.open(mode="w") as f:
+        config.write(f)
+
+
+def _enable_sanity_check_if_unset(cluster_config):
+    config = configparser.ConfigParser()
+    config.read(cluster_config)
+
+    if "global" not in config:
+        config.add_section("global")
+
+    if "sanity_check" not in config["global"]:
+        config["global"]["sanity_check"] = "true"
 
     with cluster_config.open(mode="w") as f:
         config.write(f)
