@@ -24,12 +24,7 @@ import sys
 
 import argparse
 import boto3
-from botocore.exceptions import ClientError
-
-# regions unsupported by aws batch
-UNSUPPORTED_REGIONS = set(
-    ["ap-northeast-3", "eu-north-1", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]
-)
+from botocore.exceptions import ClientError, EndpointConnectionError
 
 
 def get_all_aws_regions(partition):
@@ -44,11 +39,12 @@ def get_all_aws_regions(partition):
         sys.exit(1)
 
     ec2 = boto3.client("ec2", region_name=region)
-    return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))) - UNSUPPORTED_REGIONS
+    return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
 
 def get_batch_instance_whitelist(args, region):
 
+    instances = []
     # try to create a dummy compute environmment
     batch_client = boto3.client("batch", region_name=region)
 
@@ -74,6 +70,9 @@ def get_batch_instance_whitelist(args, region):
         else:
             print("Invalid Error message, could not determine instance whitelist: %s" % e)
             sys.exit(1)
+    except EndpointConnectionError as e:
+        print("Could not connect to the batch endpoint for region " + region)
+        pass
 
     return instances
 
@@ -85,7 +84,7 @@ def upload_to_s3(args, region, instances, key):
     bucket = args.bucket if args.bucket else "%s-aws-parallelcluster" % region
 
     if args.dryrun == "true":
-        print(instances)
+        print("S3 object content is: " + json.dumps(instances))
         print("Skipping upload to s3://%s/%s" % (bucket, key))
         return
 
