@@ -15,6 +15,7 @@ import multiprocessing
 import os
 import sys
 import time
+from tempfile import TemporaryDirectory
 
 import argparse
 import pytest
@@ -283,8 +284,10 @@ def _run_test_in_region(region, args):
         sys.stdout = open("{0}/pytest.out".format(out_dir), "w")
 
     pytest_args_regionalized = _get_pytest_regionalized_args(region, args)
-    logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
-    pytest.main(pytest_args_regionalized)
+    with TemporaryDirectory() as temp_dir:
+        pytest_args_regionalized.extend(["--basetemp", temp_dir])
+        logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
+        pytest.main(pytest_args_regionalized)
 
 
 def _make_logging_dirs(base_dir):
