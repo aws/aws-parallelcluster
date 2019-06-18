@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-import random
 import re
 from shutil import copyfile
 from traceback import format_tb
@@ -44,7 +43,7 @@ from utils import (
     to_snake_case,
     unset_credentials,
 )
-from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
+from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 
 
 def pytest_addoption(parser):
@@ -370,7 +369,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             default_gateway=Gateways.NAT_GATEWAY,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_configuration=vpc_config).build()
+        template = NetworkTemplateBuilder(vpc_configuration=vpc_config).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks

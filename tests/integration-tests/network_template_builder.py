@@ -37,7 +37,7 @@ class Gateways(Enum):
 class SubnetConfig(NamedTuple):
     """Configuration of a VPC Subnet"""
 
-    name: str = "PublicSubnet"
+    name: str = "Public"
     cidr: object = None
     map_public_ip_on_launch: bool = True
     has_nat_gateway: bool = True
@@ -60,7 +60,7 @@ class VPCConfig(NamedTuple):
     tags: Tags = Tags(Name=Ref("AWS::StackName"), Stack=Ref("AWS::StackId"))
 
 
-class VPCTemplateBuilder:
+class NetworkTemplateBuilder:
     """Build troposphere CFN templates for VPC creation."""
 
     def __init__(
@@ -73,36 +73,33 @@ class VPCTemplateBuilder:
         self.__template = Template()
         self.__template.set_version("2010-09-09")
         self.__template.set_description(description)
-        if availability_zone:
-            self.__availability_zone = availability_zone
+        self.__availability_zone = self.__get_availability_zone(availability_zone)
+        self.__vpc_config = vpc_configuration
+        self.__vpc = self.__get_vpc(existing_vpc)
+        self.__vpc_subnets = vpc_configuration.subnets
+        self.__gateway_id = self.__get_gateway_id()
+        self.__create_ig = self.__template.add_condition("CreateInternetGateway", Equals(self.__gateway_id, ""))
+        self.__existing_ig = self.__template.add_condition(  # can't negate above condition with Not()
+            "ExistingInternetGateway", Not(Equals(self.__gateway_id, ""))
+        )
+
+    def __get_vpc(self, existing_vpc):
+        if existing_vpc:
+            return self.__add_parameter(name="VpcId", description="The vpc id", expected_input_type="String")
         else:
-            self.__availability_zone = Ref(
+            return self.__build_vpc()
+
+    def __get_availability_zone(self, availability_zone):
+        if availability_zone:
+            return availability_zone
+        else:
+            return Ref(
                 self.__add_parameter(
                     name="AvailabilityZone",
                     description="(Optional) The zone in which you want to create your subnet(s)",
                     expected_input_type="String",
                 )
             )
-
-        if existing_vpc:
-            self.__vpc = self.__add_parameter(name="VpcId", description="The vpc id", expected_input_type="String")
-            self.__vpc_subnets = vpc_configuration.subnets
-
-        else:
-            self.__vpc = self.__build_vpc(vpc_configuration)
-            self.__vpc_subnets = vpc_configuration.subnets
-
-        self.__gateway_id = Ref(
-            self.__add_parameter(
-                name="InternetGatewayId",
-                description="(Optional) The id of the gateway (will be created if not specified)",
-                expected_input_type="String",
-            )
-        )
-        self.__create_ig = self.__template.add_condition("CreateInternetGateway", Equals(self.__gateway_id, ""))
-        self.__existing_ig = self.__template.add_condition(  # can't negate above condition with Not()
-            "ExistingInternetGateway", Not(Equals(self.__gateway_id, ""))
-        )
 
     def build(self):
         """Build the template."""
@@ -122,14 +119,14 @@ class VPCTemplateBuilder:
         for subnet, subnet_ref in zip(self.__vpc_subnets, subnet_refs):
             self.__build_route_table(subnet, subnet_ref, self.__vpc, internet_gateway, nat_gateway)
 
-    def __build_vpc(self, vpc_config_new):
+    def __build_vpc(self):
         vpc = self.__template.add_resource(
             VPC(
-                vpc_config_new.name,
-                CidrBlock=vpc_config_new.cidr,
-                EnableDnsSupport=vpc_config_new.enable_dns_support,
-                EnableDnsHostnames=vpc_config_new.enable_dns_hostnames,
-                Tags=vpc_config_new.tags,
+                self.__vpc_config.name,
+                CidrBlock=self.__vpc_config.cidr,
+                EnableDnsSupport=self.__vpc_config.enable_dns_support,
+                EnableDnsHostnames=self.__vpc_config.enable_dns_hostnames,
+                Tags=self.__vpc_config.tags,
             )
         )
         self.__template.add_output(Output("VpcId", Value=Ref(vpc), Description="The Vpc Id"))
@@ -151,15 +148,27 @@ class VPCTemplateBuilder:
                 Condition=self.__create_ig,
             )
         )
-        return If(self.__create_ig, Ref(internet_gateway), self.__gateway_id)
+        return Ref(internet_gateway)
+
+    def __get_gateway_id(self):
+        return Ref(
+            self.__add_parameter(
+                name="InternetGatewayId",
+                description="(Optional) The id of the gateway (will be created if not specified)",
+                expected_input_type="String",
+            )
+        )
 
     def __build_subnet(self, subnet_config: SubnetConfig, vpc: VPC):
         if not subnet_config.cidr:
             cidr = Ref(
-                self.__add_parameter(
-                    name=f"{subnet_config.name}CIDR",
-                    description=f"The CIDR of the {subnet_config.name}",
-                    expected_input_type="String",
+                self.__template.add_parameter(
+                    Parameter(
+                        f"{subnet_config.name}CIDR",
+                        Description=f"The CIDR of the {subnet_config.name}",
+                        Type="String",
+                        AllowedPattern=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/(1[6-9]|2[0-9]|3[0-2])$",
+                    )
                 )
             )
         else:
@@ -174,7 +183,7 @@ class VPCTemplateBuilder:
             AvailabilityZone=self.__availability_zone,
         )
         self.__template.add_resource(subnet)
-        self.__template.add_output(Output(subnet_config.name + "Id", Value=Ref(subnet)))
+        self.__template.add_output(Output(subnet_config.name + "SubnetId", Value=Ref(subnet)))
         return subnet
 
     def __build_nat_gateway(self, subnet_config: SubnetConfig, subnet_ref: Subnet):
@@ -190,6 +199,7 @@ class VPCTemplateBuilder:
     def __build_route_table(
         self, subnet_config: SubnetConfig, subnet_ref: Subnet, vpc: VPC, internet_gateway, nat_gateway: NatGateway
     ):
+        internet_gateway = If(self.__create_ig, internet_gateway, self.__gateway_id)
         route_table = self.__template.add_resource(
             RouteTable(
                 "RouteTable" + subnet_config.name,
