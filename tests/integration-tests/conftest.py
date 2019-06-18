@@ -16,7 +16,6 @@
 import json
 import logging
 import os
-import random
 import re
 from shutil import copyfile
 
@@ -35,7 +34,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
-from vpc_builder import Gateways, VPCTemplateBuilder, SubnetConfig, VPCConfig
+from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
 
 
@@ -325,7 +324,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             default_gateway=Gateways.NAT_GATEWAY,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_configuration=vpc_config).build()
+        template = NetworkTemplateBuilder(vpc_configuration=vpc_config).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
