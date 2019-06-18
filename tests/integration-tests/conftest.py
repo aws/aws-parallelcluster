@@ -355,14 +355,12 @@ def vpc_stacks(cfn_stacks_factory, request):
     vpc_stacks = {}
     for region in regions:
         # defining subnets per region to allow AZs override
-        availability_zone = random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         public_subnet = SubnetConfig(
             name="PublicSubnet",
             cidr="10.0.124.0/22",  # 1,022 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=availability_zone,
         )
         private_subnet = SubnetConfig(
             name="PrivateSubnet",
@@ -370,10 +368,9 @@ def vpc_stacks(cfn_stacks_factory, request):
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=availability_zone,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_config).build()
+        template = VPCTemplateBuilder(vpc_configuration=vpc_config).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
