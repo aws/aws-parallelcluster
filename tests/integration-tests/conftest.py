@@ -35,8 +35,8 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from vpc_builder import Gateways, VPCTemplateBuilder, SubnetConfig, VPCConfig
 from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
-from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
@@ -316,7 +316,6 @@ def vpc_stacks(cfn_stacks_factory, request):
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
         )
         private_subnet = SubnetConfig(
             name="PrivateSubnet",
@@ -324,10 +323,9 @@ def vpc_stacks(cfn_stacks_factory, request):
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_config).build()
+        template = VPCTemplateBuilder(vpc_configuration=vpc_config).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
