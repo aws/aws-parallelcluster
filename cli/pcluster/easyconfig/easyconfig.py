@@ -10,91 +10,51 @@
 # limitations under the License.
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
+
+
+import copy
+import errno
+import logging
+import os
+import stat
+import tempfile
+
+import boto3
+import configparser
+
+from pcluster import cfnconfig
+from pcluster.easyconfig.easyconfig_networking import (
+    _choose_network_configuration,
+    automate_creation_of_subnet,
+    automate_creation_of_vpc_and_subnet,
+    ec2_conn,
+    handle_client_exception,
+)
+from pcluster.easyconfig.easyconfig_utils import _prompt_a_list, _prompt_a_list_of_tuple, prompt
+from pcluster.utils import get_subnet_cidr, get_supported_os, get_supported_schedulers
+
 from future import standard_library  # isort:skip
+
 
 standard_library.install_aliases()
 # fmt: on
 
-import copy
-import errno
-import functools
-import logging
-import os
-import stat
-import sys
-import tempfile
-from builtins import input
 
-import boto3
-import configparser
-from botocore.exceptions import BotoCoreError, ClientError
-
-from pcluster.utils import get_supported_os, get_supported_schedulers
-
-from . import cfnconfig
-
-logger = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster.pcluster")
 unsupported_regions = ["ap-northeast-3"]
 DEFAULT_VALUES = {
-    "cluster_template": "default",
     "aws_region_name": "us-east-1",
+    "cluster_template": "default",
     "scheduler": "sge",
     "os": "alinux",
     "max_queue_size": "10",
     "master_instance_type": "t2.micro",
     "compute_instance_type": "t2.micro",
     "vpc_name": "public",
-    "initial_size": "1",
+    "min_size": "0",
 }
 FORCED_BATCH_VALUES = {"os": "alinux", "compute_instance_type": "optimal"}
-
-
-def handle_client_exception(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (BotoCoreError, ClientError) as e:
-            print("Failed with error: %s" % e)
-            print("Hint: please check your AWS credentials.")
-            print("Run `aws configure` or set the credentials as environment variables.")
-            sys.exit(1)
-
-    return wrapper
-
-
-def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, default_value=None, options_to_print=None):
-    """
-    Prompt the user a message with optionally some options.
-
-    :param message: the message to show to the user
-    :param validator: a function that predicates if the input is correct
-    :param input_to_option: a function that given the input transforms it in something else
-    :param default_value: the value to return as the default if the user doesn't insert anything
-    :param options_to_print: the options to print if necessary
-    :return: the value inserted by the user validated
-    """
-    if options_to_print:
-        print("Allowed values for {0}:".format(message))
-        for item in options_to_print:
-            print(item)
-    user_prompt = "{0} [{1}]: ".format(message, default_value or "")
-
-    valid_user_input = False
-    result = default_value
-    # We give the user the possibility to try again if wrong
-    while not valid_user_input:
-        user_input = input(user_prompt).strip()
-        if user_input == "":
-            result = default_value
-            valid_user_input = True
-        else:
-            result = input_to_option(user_input)
-            if validator(result):
-                valid_user_input = True
-            else:
-                print("ERROR: {0} is not an acceptable value for {1}".format(user_input, message))
-    return result
+VPC_PARAMETERS_TO_REMOVE = "vpc-id", "master_subnet_id", "compute_subnet_id", "use_public_ips", "compute_subnet_cidr"
 
 
 @handle_client_exception
@@ -104,61 +64,67 @@ def get_regions():
     return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
 
 
-def _evaluate_aws_region(aws_region_name):
-    if aws_region_name:
-        region = aws_region_name
-    elif os.environ.get("AWS_DEFAULT_REGION"):
-        region = os.environ.get("AWS_DEFAULT_REGION")
-    else:
-        region = DEFAULT_VALUES["aws_region_name"]
-    return region
-
-
-@handle_client_exception
-def ec2_conn(aws_region_name):
-    region = _evaluate_aws_region(aws_region_name)
-    ec2 = boto3.client("ec2", region_name=region)
-    return ec2
-
-
 def extract_tag_from_resource(resource, tag_name):
     tags = resource.get("Tags", [])
     return next((item.get("Value") for item in tags if item.get("Key") == tag_name), None)
 
 
-def _list_resources(resources, resource_name, resource_id_name):
-    """Return a list of tuple containing the id of the resource and the name of it."""
-    resource_options = []
-    for resource in resources.get(resource_name):
-        keyid = resource.get(resource_id_name)
-        name = extract_tag_from_resource(resource, tag_name="Name")
-        resource_options.append((keyid, name)) if name else resource_options.append((keyid,))
-
-    return resource_options
-
-
 @handle_client_exception
 def _list_keys(aws_region_name):
-    """Return a list of keys as a list of tuple of type (key-name,)."""
+    """Return a list of keys."""
     conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
-    return _list_resources(keypairs, "KeyPairs", "KeyName")
+    key_options = []
+    for resource in keypairs.get("KeyPairs"):
+        keyid = resource.get("KeyName")
+        key_options.append(keyid)
+
+    if not key_options:
+        print(
+            "No KeyPair found in region {0}, please create one following the guide: "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html".format(aws_region_name)
+        )
+
+    return key_options
+
+
+def extract_subnet_size(cidr):
+    return 2 ** (32 - int(cidr.split("/")[1]))
 
 
 @handle_client_exception
-def _list_vpcs(aws_region_name):
-    """Return a list of vpcs as a list of tuple of type (vpc-id, vpc-name (if present))."""
+def _list_vpcs_and_subnets(aws_region_name):
+    """
+    Return a dictionary containg a list of vpc in the given region and the associated vpcs.
+
+    Example:
+
+    {"vpc_list": list(tuple(vpc-id, name, number of subnets)) ,
+    "vpc_to_subnet" : {"vpc-id1": list(tuple(subnet-id1, name)), "vpc-id2": list(tuple(subnet-id1, name))}}
+    :param aws_region_name: the region name
+    """
     conn = ec2_conn(aws_region_name)
     vpcs = conn.describe_vpcs()
-    return _list_resources(vpcs, "Vpcs", "VpcId")
+    vpc_options = []
+    vpc_to_subnets = {}
+    for vpc in vpcs.get("Vpcs"):
+        vpc_id = vpc.get("VpcId")
+        subnet_options = []
+        subnet_list = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}]).get("Subnets")
+        for subnet in subnet_list:
+            subnet_id = subnet.get("SubnetId")
+            subnet_size_string = "Subnet size: {0}".format(extract_subnet_size(subnet.get("CidrBlock")))
+            name = extract_tag_from_resource(subnet, tag_name="Name")
+            if name:
+                subnet_options.append((subnet_id, name, subnet_size_string))
+            else:
+                subnet_options.append((subnet_id, subnet_size_string))
+        name = extract_tag_from_resource(vpc, tag_name="Name")
+        vpc_to_subnets[vpc_id] = subnet_options
+        subnets_number = "{0} subnets inside".format(len(subnet_list))
+        vpc_options.append((vpc_id, name, subnets_number)) if name else vpc_options.append((vpc_id, subnets_number))
 
-
-@handle_client_exception
-def _list_subnets(aws_region_name, vpc_id):
-    """Return a list of subnet as a list of tuple of type (subnet-id, subnet-name (if present))."""
-    conn = ec2_conn(aws_region_name)
-    subnets = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}])
-    return _list_resources(subnets, "Subnets", "SubnetId")
+    return {"vpc_list": vpc_options, "vpc_to_subnets": vpc_to_subnets}
 
 
 @handle_client_exception
@@ -179,16 +145,9 @@ def configure(args):  # noqa: C901 FIXME!!!
         config.read(config_file)
 
     # Prompt for required values, using existing as defaults
-    cluster_template = prompt(
-        "Cluster configuration label",
-        default_value=get_config_parameter(
-            config,
-            section="global",
-            parameter_name="cluster_template",
-            default_value=DEFAULT_VALUES["cluster_template"],
-        ),
-    )
+    cluster_template = DEFAULT_VALUES["cluster_template"]
     cluster_label = "cluster " + cluster_template
+    vpc_label = "vpc " + cluster_template
 
     # Use built in boto regions as an available option
     aws_region_name = _prompt_a_list(
@@ -220,9 +179,17 @@ def configure(args):  # noqa: C901 FIXME!!!
             ),
         )
 
-    max_queue_size = prompt(
-        "Max Queue Size",
+    min_queue_size = prompt(
+        "Minimum cluster size ({0})".format(scheduler_info["instance_size_name"]),
         validator=lambda x: x.isdigit(),
+        default_value=get_config_parameter(
+            config, cluster_label, scheduler_info["min_size"], DEFAULT_VALUES["min_size"]
+        ),
+    )
+
+    max_queue_size = prompt(
+        "Maximum cluster size ({0})".format(scheduler_info["instance_size_name"]),
+        validator=lambda x: x.isdigit() and int(x) >= int(min_queue_size),
         default_value=get_config_parameter(
             config, cluster_label, scheduler_info["max_size"], DEFAULT_VALUES["max_queue_size"]
         ),
@@ -248,18 +215,12 @@ def configure(args):  # noqa: C901 FIXME!!!
             default_value=DEFAULT_VALUES["compute_instance_type"],
         )
 
-    vpc_name = prompt(
-        "VPC configuration label",
-        default_value=get_config_parameter(
-            config, section=cluster_label, parameter_name="vpc_settings", default_value=DEFAULT_VALUES["vpc_name"]
-        ),
+    key_name = _prompt_a_list("EC2 Key Pair Name", _list_keys(aws_region_name))
+    automate_vpc = prompt("Automate VPC creation? (y/n)", lambda x: x == "y" or x == "n", default_value="n") == "y"
+
+    vpc_parameters = _create_vpc_parameters(
+        vpc_label, aws_region_name, scheduler, max_queue_size, automatized_vpc=automate_vpc
     )
-    vpc_label = "vpc " + vpc_name
-
-    key_name = _prompt_a_list_of_tuple("Key Name", _list_keys(aws_region_name))
-    vpc_id = _prompt_a_list_of_tuple("VPC ID", _list_vpcs(aws_region_name))
-    master_subnet_id = _prompt_a_list_of_tuple("Master Subnet ID", _list_subnets(aws_region_name, vpc_id))
-
     global_parameters = {
         "__name__": "global",
         "cluster_template": cluster_template,
@@ -270,22 +231,25 @@ def configure(args):  # noqa: C901 FIXME!!!
     cluster_parameters = {
         "__name__": cluster_label,
         "key_name": key_name,
-        "vpc_settings": vpc_name,
+        "vpc_settings": cluster_template,
         "scheduler": scheduler,
         "base_os": operating_system,
         "compute_instance_type": compute_instance_type,
         "master_instance_type": master_instance_type,
         scheduler_info["max_size"]: max_queue_size,
-        scheduler_info["initial_size"]: DEFAULT_VALUES["initial_size"],
+        scheduler_info["min_size"]: min_queue_size,
     }
+    if scheduler_info["value_for_initial_size"] == "min_size":
+        cluster_parameters[scheduler_info["initial_size_parameter_name"]] = min_queue_size
+    else:
+        cluster_parameters[scheduler_info["initial_size_parameter_name"]] = scheduler_info["value_for_initial_size"]
+
     aliases_parameters = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
-    vpc_parameters = {"__name__": vpc_label, "vpc_id": vpc_id, "master_subnet_id": master_subnet_id}
     sections = [aws_parameters, cluster_parameters, vpc_parameters, global_parameters, aliases_parameters]
 
     # We first remove unnecessary parameters from the past configurations
-    if config.has_section(cluster_label):
-        for par in scheduler_info["parameters_to_remove"]:
-            config.remove_option(cluster_label, par)
+    _remove_parameter_from_past_configuration(cluster_label, config, scheduler_info["parameters_to_remove"])
+    _remove_parameter_from_past_configuration(vpc_label, config, VPC_PARAMETERS_TO_REMOVE)
 
     # Loop through the configuration sections we care about
     for section in sections:
@@ -306,15 +270,69 @@ def configure(args):  # noqa: C901 FIXME!!!
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
-    if not _is_config_valid(args, config):
-        sys.exit(1)
-
-    # If we are here, than the file it's correct and we can override it.
     # Write configuration to disk
     open(config_file, "a").close()
     os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
     with open(config_file, "w") as cf:
         config.write(cf)
+
+    if _is_config_valid(args, config):
+        print("The configuration is valid")
+
+
+def _remove_parameter_from_past_configuration(section, config, parameters_to_remove):
+    if config.has_section(section):
+        for par in parameters_to_remove:
+            config.remove_option(section, par)
+
+
+def _create_vpc_parameters(vpc_label, aws_region_name, scheduler, max_queue_size, automatized_vpc=True):
+    vpc_parameters = {"__name__": vpc_label}
+    max_queue_size = int(max_queue_size)
+    if automatized_vpc:
+        vpc_parameters.update(
+            automate_creation_of_vpc_and_subnet(
+                aws_region_name,
+                _choose_network_configuration(scheduler),
+                max_queue_size,
+            )
+        )
+    else:
+        vpc_and_subnets = _list_vpcs_and_subnets(aws_region_name)
+        vpc_list = vpc_and_subnets["vpc_list"]
+        if not vpc_list:
+            print("There are no VPC for the given region. Starting automatic creation of vpc and subnets...")
+            vpc_parameters.update(
+                automate_creation_of_vpc_and_subnet(
+                    aws_region_name, _choose_network_configuration(scheduler), max_queue_size
+                )
+            )
+        else:
+            vpc_id = _prompt_a_list_of_tuple("VPC ID", vpc_list)
+            vpc_parameters["vpc_id"] = vpc_id
+            subnet_list = vpc_and_subnets["vpc_to_subnets"][vpc_id]
+            if not subnet_list or (
+                prompt("Automate Subnet creation? (y/n)", lambda x: x == "y" or x == "n", default_value="y") == "y"
+            ):
+                vpc_parameters.update(
+                    automate_creation_of_subnet(
+                        aws_region_name, vpc_id, _choose_network_configuration(scheduler), max_queue_size
+                    )
+                )
+            else:
+                vpc_parameters.update(_ask_for_subnets(subnet_list))
+    return vpc_parameters
+
+
+def _ask_for_subnets(subnet_list):
+    master_subnet_id = _prompt_a_list_of_tuple("Master Subnet ID", subnet_list)
+    compute_subnet_id = _prompt_a_list_of_tuple("Compute Subnet ID", subnet_list, default_value=master_subnet_id)
+    vpc_parameters = {"master_subnet_id": master_subnet_id}
+
+    if master_subnet_id != compute_subnet_id:
+        vpc_parameters["compute_subnet_id"] = compute_subnet_id
+
+    return vpc_parameters
 
 
 def _is_config_valid(args, config):
@@ -372,84 +390,15 @@ def scheduler_handler(scheduler):
             "compute_instance_type",
         )
         scheduler_info["max_size"] = "max_vcpus"
-        scheduler_info["initial_size"] = "desired_vcpus"
+        scheduler_info["min_size"] = "min_vcpus"
+        scheduler_info["initial_size_parameter_name"] = "desired_vcpus"
+        scheduler_info["value_for_initial_size"] = "min_size"
+        scheduler_info["instance_size_name"] = "vcpus"
     else:
         scheduler_info["parameters_to_remove"] = ("max_vcpus", "desired_vcpus", "min_vcpus", "compute_instance_type")
         scheduler_info["max_size"] = "max_queue_size"
-        scheduler_info["initial_size"] = "initial_queue_size"
+        scheduler_info["min_size"] = "initial_queue_size"
+        scheduler_info["initial_size_parameter_name"] = "maintain_initial_size"
+        scheduler_info["value_for_initial_size"] = "true"
+        scheduler_info["instance_size_name"] = "instances"
     return scheduler_info
-
-
-def _prompt_a_list(message, options, default_value=None):
-    """
-    Wrap prompt to use it for list.
-
-    :param message: the message to show the user
-    :param options: the list of item to show the user
-    :param default_value: the default value
-    :return: the validate value
-    """
-    if not options:
-        print("ERROR: No options found for {0}".format(message))
-        sys.exit(1)
-    if not default_value:
-        default_value = options[0]
-
-    def input_to_parameter(to_transform):
-        try:
-            item = options[int(to_transform) - 1]
-        except ValueError:
-            item = to_transform
-        return item
-
-    return prompt(
-        message,
-        validator=lambda x: x in options,
-        input_to_option=lambda x: input_to_parameter(x),
-        default_value=default_value,
-        options_to_print=_to_printable_list(options),
-    )
-
-
-def _prompt_a_list_of_tuple(message, options, default_value=None):
-    """
-    Wrap prompt to use it over a list of tuple.
-
-    The correct item will be the first element of each tuple.
-    :param message: the message to show to the user
-    :param options: the list of tuple
-    :param default_value: the default value
-    :return: the validated value
-    """
-    if not options:
-        print("ERROR: No options found for {0}".format(message))
-        sys.exit(1)
-    if not default_value:
-        default_value = options[0][0]
-
-    def input_to_parameter(to_transform):
-        try:
-            item = options[int(to_transform) - 1][0]
-        except ValueError:
-            item = to_transform
-        return item
-
-    valid_options = [item[0] for item in options]
-
-    return prompt(
-        message,
-        validator=lambda x: x in valid_options,
-        input_to_option=lambda x: input_to_parameter(x),
-        default_value=default_value,
-        options_to_print=_to_printable_list(options),
-    )
-
-
-def _to_printable_list(items):
-    output = []
-    for iterator, item in enumerate(items, start=1):
-        if isinstance(item, (list, tuple)):
-            output.append("{0}. {1}".format(iterator, " | ".join(item)))
-        else:
-            output.append("{0}. {1}".format(iterator, item))
-    return output
