@@ -12,8 +12,11 @@ from __future__ import absolute_import, print_function
 
 import json
 import os
+import socket
+import struct
 import zipfile
 from io import BytesIO
+from ipaddress import ip_address, ip_network, summarize_address_range
 
 import boto3
 from botocore.exceptions import ClientError
@@ -199,3 +202,126 @@ def get_supported_schedulers():
     :return: a tuple of strings of the supported scheduler
     """
     return "sge", "torque", "slurm", "awsbatch"
+
+
+def next_power_of_2(x):
+    """Given a number returns the following power of 2 of that number."""
+    return 1 if x == 0 else 2 ** (x - 1).bit_length()
+
+
+def get_subnet_cidr(vpc_cidr, occupied_cidr, max_queue_size):
+    """
+    Decide the parallelcluster subnet size of the compute fleet.
+    :param vpc_cidr: the vpc_cidr in which the suitable subnet should be
+    :param occupied_cidr: a list of cidr of the already occupied subnets in the vpc
+    :param max_queue_size: the max nodes / vcpus that the user has set
+    :return:
+    """
+    target_size = max(4000, 2 * max_queue_size)
+    cidr = decide_cidr(vpc_cidr, occupied_cidr, target_size)
+    while cidr is None:
+        if target_size < max_queue_size:
+            return None
+        target_size = target_size // 2
+        cidr = decide_cidr(vpc_cidr, occupied_cidr, target_size)
+    return cidr
+
+
+# This code is complex, get ready
+def decide_cidr(vpc_cidr, occupied_cidr, target_size):
+    """
+    Decide the smallest suitable CIDR for a subnet with size >= target_size.
+
+    :param vpc_cidr: the vpc_cidr in which the suitable subnet should be
+    :param occupied_cidr: a list of cidr of the already occupied subnets in the vpc
+    :param target_size: the minimum target size of the subnet
+    :return: the suitable CIDR if found, else None
+    """
+    # How the algorithm works: If we want to find a suitable CIDR inside a vpc with already some subnet inside, we first
+    # have to check wheter the size of the subnet we want to create is greater than the minimum Cidr (/16, /24, ecc...).
+    # If it is, we have to transform all the occupied_cidr into subnets that have at least the cidr of the instance we
+    # want to allocate. To do that, we use _promote_cidrs().
+    #
+    # Why doing that?
+    #
+    # Well, the function summarize_address_range() returns a iterator of all the cidr needed to encapsulate the given
+    # begin ip and the end ip strictly. So for example, from 10.0.0.0 to 10.0.1.1, the function will return[10.0.0.0/24,
+    # 10.0.1.0/31]. We therefore need to give to that function an ip range that can be compressed in just one cidr. In
+    # order to do that, we basically expand all the cidr and then eliminate all the duplicates.
+
+    # Once we have the target cidr (which is 32 - the power of 2 that is equal to subnet_size  ) to be the minimum
+    # of all the occupied_cidr, we create a list of tuple (beginip, endip) that are sorted by endip. We then compare
+    # each beginip with the endip of the previous one looking for a space greater than the one of subnet_size.
+    # If we found it, we convert it to a cidr using the summarize_address_range() function.
+    # Function cost: O(nlogn), where n is the size of occupied cidr
+    # Understanding cost: O(over9000)
+    aws_reserved_ip = 6
+    min_bitmask_length = 28
+    target_bitmask_length = min(
+        32 - ((next_power_of_2(target_size + aws_reserved_ip) - 1).bit_length()), min_bitmask_length
+    )
+    subnet_size = 2 ** (32 - target_bitmask_length)
+    vpc_begin_address_decimal, vpc_end_address_decimal = _get_cidr_limits_as_decimal(vpc_cidr)
+
+    if vpc_end_address_decimal - vpc_begin_address_decimal + 1 < subnet_size:  # if we do not have enough space
+        return None
+
+    if not occupied_cidr:  # if we have space and no occupied cidr
+        return _decimal_ip_limits_to_cidr(vpc_begin_address_decimal, vpc_begin_address_decimal + subnet_size)
+
+    occupied_cidr_max_bitmask = max([int(subnet_cidr.split("/")[1]) for subnet_cidr in occupied_cidr])
+    if occupied_cidr_max_bitmask > target_bitmask_length:
+        # This means that it's smaller, so we need to make it bigger
+        occupied_cidr = _expand_cidrs(occupied_cidr, min_size=target_bitmask_length)
+
+    # subnets_number is a list of pair(begin ip, end ip) obtained from the cidr. So for example
+    # 10.0.0.0/17 = 10.0.0.0, 10.0.127.255
+    begin_ip_index = 0
+    end_ip_index = 1
+    subnets_limits = [_get_cidr_limits_as_decimal(subnet) for subnet in occupied_cidr]
+    subnets_limits.sort(key=lambda x: x[1])  # sort by ending numbers, sorting by beginning is the same
+    # to check for space between the last occupied and the end of the vpc
+    subnets_limits.append((vpc_end_address_decimal, vpc_end_address_decimal))
+
+    if (subnets_limits[0][begin_ip_index] - vpc_begin_address_decimal) >= subnet_size:
+        return _decimal_ip_limits_to_cidr(vpc_begin_address_decimal, vpc_begin_address_decimal + subnet_size)
+
+    #  Looking at space between occupied cidrs
+    for index in range(1, len(subnets_limits)):
+        begin_number = subnets_limits[index][begin_ip_index]
+        end_previous_number = subnets_limits[index - 1][end_ip_index]
+        if begin_number - end_previous_number > subnet_size:
+            return _decimal_ip_limits_to_cidr(end_previous_number + 1, end_previous_number + subnet_size)
+    return None
+
+
+def _decimal_ip_limits_to_cidr(begin, end):
+    """Given begin and end ip (as decimals number), return the CIDR that begins with begin ip and ends with end ip."""
+    return str(
+        summarize_address_range(
+            ip_address(socket.inet_ntoa(struct.pack("!L", begin))), ip_address(socket.inet_ntoa(struct.pack("!L", end)))
+        ).__next__()
+    )
+
+
+def _get_cidr_limits_as_decimal(cidr):
+    """Given a cidr, return the begin ip and the end ip as decimal."""
+    address = ip_network(cidr)
+    return _ip_to_decimal(str(address[0])), _ip_to_decimal(str(address[-1]))
+
+
+def _ip_to_decimal(ip):
+    """Transform an ip into its decimal representantion."""
+    return int(bin(struct.unpack("!I", socket.inet_aton(ip))[0]), 2)
+
+
+def _expand_cidrs(occupied_cidrs, min_size):
+    """Given a list of cidrs, it upgrade the netmask of each one to min_size and returns the updated cidrs."""
+    new_cidrs = set()
+    for cidr in occupied_cidrs:
+        if int(cidr.split("/")[1]) > min_size:
+            ip_addr = ip_network(u"{0}".format(cidr))
+            new_cidrs.add(str(ip_addr.supernet(new_prefix=min_size)))
+        else:
+            new_cidrs.add(cidr)
+    return list(new_cidrs)
