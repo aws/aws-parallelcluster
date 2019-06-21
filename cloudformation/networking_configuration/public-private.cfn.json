@@ -109,9 +109,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Ref": "AWS::StackName"
-            }
+            "Value": "ParallelClusterIG"
           },
           {
             "Key": "Stack",
@@ -167,9 +165,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Fn::Sub": "${AWS::StackName}PrivateSubnet"
-            }
+            "Value": "ParallelClusterPrivateSubnet"
           },
           {
             "Key": "Stack",
@@ -196,9 +192,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Fn::Sub": "${AWS::StackName}PublicSubnet"
-            }
+            "Value": "ParallelClusterPublicSubnet"
           },
           {
             "Key": "Stack",
@@ -240,9 +234,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Fn::Sub": "${AWS::StackName}RouteTablePrivate"
-            }
+            "Value": "ParallelClusterRouteTablePrivate"
           },
           {
             "Key": "Stack",
@@ -262,9 +254,7 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": {
-              "Fn::Sub": "${AWS::StackName}RouteTablePublic"
-            }
+            "Value": "ParallelClusterRouteTablePublic"
           },
           {
             "Key": "Stack",
