@@ -28,18 +28,6 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    # This verifies that scaling worked
-    _test_mpi(
-        remote_command_executor,
-        slots_per_instance,
-        scheduler,
-        os,
-        region,
-        cluster.cfn_name,
-        scaledown_idletime,
-        verify_scaling=True,
-    )
-
     # This verifies that the job completes correctly
     _test_mpi(
         remote_command_executor,
@@ -50,4 +38,16 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
         cluster.cfn_name,
         scaledown_idletime,
         verify_scaling=False,
+    )
+
+    # This verifies that scaling worked
+    _test_mpi(
+        remote_command_executor,
+        slots_per_instance,
+        scheduler,
+        os,
+        region,
+        cluster.cfn_name,
+        scaledown_idletime,
+        verify_scaling=True,
     )
