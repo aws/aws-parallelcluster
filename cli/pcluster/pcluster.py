@@ -1033,7 +1033,7 @@ def create_ami(args):
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}
 
-    instance_type = "t2.large"
+    instance_type = args.instance_type
     try:
         config = cfnconfig.ParallelClusterConfig(args)
 

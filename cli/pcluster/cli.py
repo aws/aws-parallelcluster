@@ -314,6 +314,13 @@ Variables substituted::
         "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
     )
     pami.add_argument(
+        "-i",
+        "--instance-type",
+        dest="instance_type",
+        default="t2.xlarge",
+        help="Sets instance type to build the ami on. Defaults to t2.xlarge.",
+    )
+    pami.add_argument(
         "-ap",
         "--ami-name-prefix",
         dest="custom_ami_name_prefix",
