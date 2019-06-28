@@ -35,6 +35,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
@@ -43,7 +44,6 @@ from utils import (
     to_snake_case,
     unset_credentials,
 )
-from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 
 
 def pytest_addoption(parser):

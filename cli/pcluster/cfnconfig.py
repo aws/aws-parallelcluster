@@ -30,7 +30,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 from pcluster.config_sanity import ResourceValidator
-from pcluster.utils import get_instance_vcpus, get_supported_features
+from pcluster.utils import get_instance_vcpus, get_supported_features, get_templates_bucket_path
 
 
 class ParallelClusterConfig(object):
@@ -316,10 +316,8 @@ class ParallelClusterConfig(object):
                         self.__fail("template_url set in [%s] section but not defined." % self.__cluster_section)
                     self.__validate_resource("URL", self.template_url)
                 except configparser.NoOptionError:
-                    s3_suffix = ".cn" if self.region.startswith("cn") else ""
                     self.template_url = (
-                        "https://s3.%s.amazonaws.com%s/%s-aws-parallelcluster/templates/"
-                        "aws-parallelcluster-%s.cfn.json" % (self.region, s3_suffix, self.region, self.version)
+                        get_templates_bucket_path(self.region) + "aws-parallelcluster-%s.cfn.json" % self.version
                     )
         except AttributeError:
             pass

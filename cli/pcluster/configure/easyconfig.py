@@ -19,29 +19,27 @@ import os
 import stat
 import tempfile
 
-import boto3
 import configparser
 
 from pcluster import cfnconfig
-from pcluster.easyconfig.easyconfig_networking import (
-    _choose_network_configuration,
-    automate_creation_of_subnet,
-    automate_creation_of_vpc_and_subnet,
+from pcluster.configure.networking import (
+    NetworkConfiguration,
+    PublicPrivateNetworkConfig,
+    automate_subnet_creation,
+    automate_vpc_with_subnet_creation,
     ec2_conn,
-    handle_client_exception,
 )
-from pcluster.easyconfig.easyconfig_utils import _prompt_a_list, _prompt_a_list_of_tuple, prompt
-from pcluster.utils import get_subnet_cidr, get_supported_os, get_supported_schedulers
+from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
+from pcluster.utils import get_supported_os, get_supported_schedulers
 
 from future import standard_library  # isort:skip
 
 
-standard_library.install_aliases()
 # fmt: on
+standard_library.install_aliases()
 
 
 LOGGER = logging.getLogger("pcluster.pcluster")
-unsupported_regions = ["ap-northeast-3"]
 DEFAULT_VALUES = {
     "aws_region_name": "us-east-1",
     "cluster_template": "default",
@@ -57,26 +55,14 @@ VPC_PARAMETERS_TO_REMOVE = "vpc-id", "master_subnet_id", "compute_subnet_id", "u
 
 
 @handle_client_exception
-def get_regions():
-    ec2 = boto3.client("ec2")
-    regions = ec2.describe_regions().get("Regions")
-    return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
-
-
-def extract_tag_from_resource(resource, tag_name):
-    tags = resource.get("Tags", [])
-    return next((item.get("Value") for item in tags if item.get("Key") == tag_name), None)
-
-
-@handle_client_exception
-def _list_keys(aws_region_name):
+def _get_keys(aws_region_name):
     """Return a list of keys."""
     conn = ec2_conn(aws_region_name)
     keypairs = conn.describe_key_pairs()
     key_options = []
-    for resource in keypairs.get("KeyPairs"):
-        keyid = resource.get("KeyName")
-        key_options.append(keyid)
+    for key in keypairs.get("KeyPairs"):
+        key_name = key.get("KeyName")
+        key_options.append(key_name)
 
     if not key_options:
         print(
@@ -87,12 +73,12 @@ def _list_keys(aws_region_name):
     return key_options
 
 
-def extract_subnet_size(cidr):
+def _extract_subnet_size(cidr):
     return 2 ** (32 - int(cidr.split("/")[1]))
 
 
 @handle_client_exception
-def _list_vpcs_and_subnets(aws_region_name):
+def _get_vpcs_and_subnets(aws_region_name):
     """
     Return a dictionary containg a list of vpc in the given region and the associated vpcs.
 
@@ -105,25 +91,34 @@ def _list_vpcs_and_subnets(aws_region_name):
     conn = ec2_conn(aws_region_name)
     vpcs = conn.describe_vpcs()
     vpc_options = []
-    vpc_to_subnets = {}
+    vpc_subnets = {}
+
     for vpc in vpcs.get("Vpcs"):
         vpc_id = vpc.get("VpcId")
-        subnet_options = []
-        subnet_list = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}]).get("Subnets")
-        for subnet in subnet_list:
-            subnet_id = subnet.get("SubnetId")
-            subnet_size_string = "Subnet size: {0}".format(extract_subnet_size(subnet.get("CidrBlock")))
-            name = extract_tag_from_resource(subnet, tag_name="Name")
-            if name:
-                subnet_options.append((subnet_id, name, subnet_size_string))
-            else:
-                subnet_options.append((subnet_id, subnet_size_string))
-        name = extract_tag_from_resource(vpc, tag_name="Name")
-        vpc_to_subnets[vpc_id] = subnet_options
-        subnets_number = "{0} subnets inside".format(len(subnet_list))
-        vpc_options.append((vpc_id, name, subnets_number)) if name else vpc_options.append((vpc_id, subnets_number))
+        subnets = _get_subnets(conn, vpc_id)
+        vpc_name = get_resource_tag(vpc, tag_name="Name")
+        vpc_subnets[vpc_id] = subnets
+        subnets_count = "{0} subnets inside".format(len(subnets))
+        if vpc_name:
+            vpc_options.append((vpc_id, vpc_name, subnets_count))
+        else:
+            vpc_options.append((vpc_id, subnets_count))
 
-    return {"vpc_list": vpc_options, "vpc_to_subnets": vpc_to_subnets}
+    return {"vpc_list": vpc_options, "vpc_subnets": vpc_subnets}
+
+
+def _get_subnets(conn, vpc_id):
+    subnet_options = []
+    subnet_list = conn.describe_subnets(Filters=[{"Name": "vpcId", "Values": [vpc_id]}]).get("Subnets")
+    for subnet in subnet_list:
+        subnet_id = subnet.get("SubnetId")
+        subnet_size_description = "Subnet size: {0}".format(_extract_subnet_size(subnet.get("CidrBlock")))
+        name = get_resource_tag(subnet, tag_name="Name")
+        if name:
+            subnet_options.append((subnet_id, name, subnet_size_description))
+        else:
+            subnet_options.append((subnet_id, subnet_size_description))
+    return subnet_options
 
 
 @handle_client_exception
@@ -149,18 +144,18 @@ def configure(args):  # noqa: C901 FIXME!!!
     vpc_label = "vpc " + cluster_template
 
     # Use built in boto regions as an available option
-    aws_region_name = _prompt_a_list(
+    aws_region_name = prompt_iterable(
         "AWS Region ID",
         get_regions(),
-        default_value=get_config_parameter(
+        default_value=_get_config_parameter(
             config, section="aws", parameter_name="aws_region_name", default_value=DEFAULT_VALUES["aws_region_name"]
         ),
     )
 
-    scheduler = _prompt_a_list(
+    scheduler = prompt_iterable(
         "Scheduler",
         get_supported_schedulers(),
-        default_value=get_config_parameter(
+        default_value=_get_config_parameter(
             config, section=cluster_label, parameter_name="scheduler", default_value=DEFAULT_VALUES["scheduler"]
         ),
     )
@@ -168,12 +163,12 @@ def configure(args):  # noqa: C901 FIXME!!!
     scheduler_handler = SchedulerHandler(config, cluster_label, scheduler)
 
     scheduler_handler.prompt_os()
-    scheduler_handler.prompt_min_max()
+    scheduler_handler.prompt_cluster_size()
 
     master_instance_type = prompt(
         "Master instance type",
         lambda x: x in _list_instances(),
-        default_value=get_config_parameter(
+        default_value=_get_config_parameter(
             config,
             section=cluster_label,
             parameter_name="master_instance_type",
@@ -181,13 +176,13 @@ def configure(args):  # noqa: C901 FIXME!!!
         ),
     )
 
-    scheduler_handler.prompt_compute_sizes()
+    scheduler_handler.prompt_compute_instance_type()
 
-    key_name = _prompt_a_list("EC2 Key Pair Name", _list_keys(aws_region_name))
+    key_name = prompt_iterable("EC2 Key Pair Name", _get_keys(aws_region_name))
     automate_vpc = prompt("Automate VPC creation? (y/n)", lambda x: x == "y" or x == "n", default_value="n") == "y"
 
     vpc_parameters = _create_vpc_parameters(
-        vpc_label, aws_region_name, scheduler, scheduler_handler.max_queue_size, automatized_vpc=automate_vpc
+        vpc_label, aws_region_name, scheduler, scheduler_handler.max_cluster_size, automate_vpc_creation=automate_vpc
     )
     global_parameters = {
         "__name__": "global",
@@ -247,37 +242,35 @@ def _remove_parameter_from_past_configuration(section, config, parameters_to_rem
             config.remove_option(section, par)
 
 
-def _create_vpc_parameters(vpc_label, aws_region_name, scheduler, max_queue_size, automatized_vpc=True):
+def _create_vpc_parameters(vpc_label, aws_region_name, scheduler, min_subnet_size, automate_vpc_creation=True):
     vpc_parameters = {"__name__": vpc_label}
-    max_queue_size = int(max_queue_size)
-    if automatized_vpc:
+    min_subnet_size = int(min_subnet_size)
+    if automate_vpc_creation:
         vpc_parameters.update(
-            automate_creation_of_vpc_and_subnet(
-                aws_region_name,
-                _choose_network_configuration(scheduler),
-                max_queue_size,
+            automate_vpc_with_subnet_creation(
+                aws_region_name, _choose_network_configuration(scheduler), min_subnet_size
             )
         )
     else:
-        vpc_and_subnets = _list_vpcs_and_subnets(aws_region_name)
+        vpc_and_subnets = _get_vpcs_and_subnets(aws_region_name)
         vpc_list = vpc_and_subnets["vpc_list"]
         if not vpc_list:
-            print("There are no VPC for the given region. Starting automatic creation of vpc and subnets...")
+            print("There are no VPC for the given region. Starting automatic creation of VPC and subnets...")
             vpc_parameters.update(
-                automate_creation_of_vpc_and_subnet(
-                    aws_region_name, _choose_network_configuration(scheduler), max_queue_size
+                automate_vpc_with_subnet_creation(
+                    aws_region_name, _choose_network_configuration(scheduler), min_subnet_size
                 )
             )
         else:
-            vpc_id = _prompt_a_list_of_tuple("VPC ID", vpc_list)
+            vpc_id = prompt_iterable("VPC ID", vpc_list)
             vpc_parameters["vpc_id"] = vpc_id
-            subnet_list = vpc_and_subnets["vpc_to_subnets"][vpc_id]
+            subnet_list = vpc_and_subnets["vpc_subnets"][vpc_id]
             if not subnet_list or (
                 prompt("Automate Subnet creation? (y/n)", lambda x: x == "y" or x == "n", default_value="y") == "y"
             ):
                 vpc_parameters.update(
-                    automate_creation_of_subnet(
-                        aws_region_name, vpc_id, _choose_network_configuration(scheduler), max_queue_size
+                    automate_subnet_creation(
+                        aws_region_name, vpc_id, _choose_network_configuration(scheduler), min_subnet_size
                     )
                 )
             else:
@@ -286,8 +279,8 @@ def _create_vpc_parameters(vpc_label, aws_region_name, scheduler, max_queue_size
 
 
 def _ask_for_subnets(subnet_list):
-    master_subnet_id = _prompt_a_list_of_tuple("Master Subnet ID", subnet_list)
-    compute_subnet_id = _prompt_a_list_of_tuple("Compute Subnet ID", subnet_list, default_value=master_subnet_id)
+    master_subnet_id = prompt_iterable("Master Subnet ID", subnet_list)
+    compute_subnet_id = prompt_iterable("Compute Subnet ID", subnet_list, default_value=master_subnet_id)
     vpc_parameters = {"master_subnet_id": master_subnet_id}
 
     if master_subnet_id != compute_subnet_id:
@@ -322,7 +315,7 @@ def _is_config_valid(args, config):
         return is_valid
 
 
-def get_config_parameter(config, section, parameter_name, default_value):
+def _get_config_parameter(config, section, parameter_name, default_value):
     """
     Get the parameter if present in the configuration otherwise returns default value.
 
@@ -335,6 +328,20 @@ def get_config_parameter(config, section, parameter_name, default_value):
     return config.get(section, parameter_name) if config.has_option(section, parameter_name) else default_value
 
 
+def _choose_network_configuration(scheduler):
+    if scheduler == "awsbatch":
+        return PublicPrivateNetworkConfig()
+    target_type = prompt_iterable(
+        "Network Configuration",
+        options=[configuration.value.config_type for configuration in NetworkConfiguration],
+        default_value=PublicPrivateNetworkConfig().config_type,
+    )
+
+    return next(
+        configuration.value for configuration in NetworkConfiguration if configuration.value.config_type == target_type
+    )
+
+
 class SchedulerHandler:
     """Handle question scheduler related."""
 
@@ -343,7 +350,7 @@ class SchedulerHandler:
         self.config = config
         self.cluster_label = cluster_label
 
-        self.is_aws_batch = True if scheduler == "awsbatch" else False
+        self.is_aws_batch = self.scheduler == "awsbatch"
 
         self.instance_size_name = "vcpus" if self.is_aws_batch else "instances"
         self.max_size_name = "max_vcpus" if self.is_aws_batch else "max_queue_size"
@@ -351,16 +358,16 @@ class SchedulerHandler:
 
         self.base_os = "alinux"
         self.compute_instance_type = "optimal"
-        self.max_queue_size = DEFAULT_VALUES["max_size"]
-        self.min_queue_size = DEFAULT_VALUES["min_size"]
+        self.max_cluster_size = DEFAULT_VALUES["max_size"]
+        self.min_cluster_size = DEFAULT_VALUES["min_size"]
 
     def prompt_os(self):
         """Ask for os, if necessary."""
         if not self.is_aws_batch:
-            self.base_os = _prompt_a_list(
+            self.base_os = prompt_iterable(
                 "Operating System",
                 get_supported_os(self.scheduler),
-                default_value=get_config_parameter(
+                default_value=_get_config_parameter(
                     self.config,
                     section=self.cluster_label,
                     parameter_name="base_os",
@@ -368,7 +375,7 @@ class SchedulerHandler:
                 ),
             )
 
-    def prompt_compute_sizes(self):
+    def prompt_compute_instance_type(self):
         """Ask for compute_instance_type, if necessary."""
         if not self.is_aws_batch:
             self.compute_instance_type = prompt(
@@ -377,34 +384,34 @@ class SchedulerHandler:
                 default_value=DEFAULT_VALUES["compute_instance_type"],
             )
 
-    def prompt_min_max(self):
+    def prompt_cluster_size(self):
         """Ask for max and min instances / vcpus."""
-        self.min_queue_size = prompt(
+        self.min_cluster_size = prompt(
             "Minimum cluster size ({0})".format(self.instance_size_name),
             validator=lambda x: x.isdigit(),
-            default_value=get_config_parameter(
+            default_value=_get_config_parameter(
                 self.config, self.cluster_label, self.min_size_name, DEFAULT_VALUES["min_size"]
             ),
         )
 
-        self.max_queue_size = prompt(
+        self.max_cluster_size = prompt(
             "Maximum cluster size ({0})".format(self.instance_size_name),
-            validator=lambda x: x.isdigit() and int(x) >= int(self.min_queue_size),
-            default_value=get_config_parameter(
+            validator=lambda x: x.isdigit() and int(x) >= int(self.min_cluster_size),
+            default_value=_get_config_parameter(
                 self.config, self.cluster_label, self.max_size_name, DEFAULT_VALUES["max_size"]
             ),
         )
 
     def get_scheduler_parameters(self):
-        """Return a dict containing the value obtained that are dependent on the scheduler."""
+        """Return a dict containing the scheduler dependent parameters."""
         scheduler_parameters = {
             "base_os": self.base_os,
             "compute_instance_type": self.compute_instance_type,
-            self.max_size_name: self.max_queue_size,
-            self.min_size_name: self.min_queue_size,
+            self.max_size_name: self.max_cluster_size,
+            self.min_size_name: self.min_cluster_size,
         }
         if self.is_aws_batch:
-            scheduler_parameters["desired_vcpus"] = self.min_queue_size
+            scheduler_parameters["desired_vcpus"] = self.min_cluster_size
         else:
             scheduler_parameters["maintain_initial_size"] = "true"
         return scheduler_parameters

@@ -14,7 +14,7 @@ import boto3
 from botocore.exceptions import ClientError
 from retrying import retry
 
-from utils import retrieve_cfn_outputs, set_credentials, unset_credentials, retrieve_cfn_resources
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources, set_credentials, unset_credentials
 
 
 class CfnStack:
@@ -76,7 +76,9 @@ class CfnStacksFactory:
             self.__created_stacks[id] = stack
             try:
                 cfn_client = boto3.client("cloudformation", region_name=region)
-                result = cfn_client.create_stack(StackName=name, TemplateBody=stack.template, Parameters=stack.parameters)
+                result = cfn_client.create_stack(
+                    StackName=name, TemplateBody=stack.template, Parameters=stack.parameters
+                )
                 stack.cfn_stack_id = result["StackId"]
                 final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
                 self.__assert_stack_status(final_status, "CREATE_COMPLETE")
