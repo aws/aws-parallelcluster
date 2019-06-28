@@ -9,11 +9,30 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 # fmt: off
+import functools
 import logging
 import sys
 from builtins import input
 
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
+
 LOGGER = logging.getLogger("pcluster.pcluster")
+unsupported_regions = ["ap-northeast-3"]
+
+
+def handle_client_exception(func):
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except (BotoCoreError, ClientError) as e:
+            LOGGER.error("Failed with error: %s" % e)
+            LOGGER.error("Hint: please check your AWS credentials.")
+            LOGGER.error("Run `aws configure` or set the credentials as environment variables.")
+            sys.exit(1)
+
+    return wrapper
 
 
 def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, default_value=None, options_to_print=None):
@@ -35,12 +54,9 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
 
     valid_user_input = False
     result = default_value
-    # We give the user the possibility to try again if wrong
+    # Give the user the possibility to try again if wrong
     while not valid_user_input:
-        sys.stdin.flush()
-        user_input = input(user_prompt).strip()
-        if user_input == "":
-            user_input = default_value
+        user_input = input(user_prompt).strip() or default_value
         result = input_to_option(user_input)
         if validator(result):
             valid_user_input = True
@@ -49,78 +65,50 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
     return result
 
 
-def _prompt_a_list(message, options, default_value=None):
+def prompt_iterable(message, options, default_value=None):
     """
-    Wrap prompt to use it for list.
+    Wrap prompt to use it over a list or a list of tuple.
 
-    :param message: the message to show the user
-    :param options: the list of item to show the user
-    :param default_value: the default value
-    :return: the validate value
-    """
-    if not options:
-        LOGGER.error("ERROR: No options found for {0}".format(message))
-        sys.exit(1)
-    if not default_value:
-        default_value = options[0]
-
-    def input_to_parameter(to_transform):
-        try:
-            if to_transform.isdigit() and to_transform != "0":
-                item = options[int(to_transform) - 1]
-            else:
-                item = to_transform
-        except (ValueError, IndexError):
-            item = to_transform
-        return item
-
-    return prompt(
-        message,
-        validator=lambda x: x in options,
-        input_to_option=lambda x: input_to_parameter(x),
-        default_value=default_value,
-        options_to_print=_to_printable_list(options),
-    )
-
-
-def _prompt_a_list_of_tuple(message, options, default_value=None):
-    """
-    Wrap prompt to use it over a list of tuple.
-
-    The correct item will be the first element of each tuple.
+    The selected option will be the first element of the selected tuple.
     :param message: the message to show to the user
     :param options: the list of tuple
     :param default_value: the default value
     :return: the validated value
     """
+    is_tuple = isinstance(options[0], (list, tuple))
+
     if not options:
         LOGGER.error("ERROR: No options found for {0}".format(message))
         sys.exit(1)
+
     if not default_value:
-        default_value = options[0][0]
+        default_value = options[0][0] if is_tuple else options[0]
 
-    def input_to_parameter(to_transform):
+    def input_to_parameter(user_input):
         try:
-            if to_transform.isdigit() and to_transform != "0":
-                item = options[int(to_transform) - 1][0]
+            if user_input.isdigit() and user_input != "0":
+                option_value = options[int(user_input) - 1][0] if is_tuple else options[int(user_input) - 1]
             else:
-                item = to_transform
+                option_value = user_input
         except (ValueError, IndexError):
-            item = to_transform
-        return item
+            option_value = user_input
+        return option_value
 
-    valid_options = [item[0] for item in options]
+    if is_tuple:
+        valid_options = [item[0] for item in options]
+    else:
+        valid_options = options
 
     return prompt(
         message,
         validator=lambda x: x in valid_options,
         input_to_option=lambda x: input_to_parameter(x),
         default_value=default_value,
-        options_to_print=_to_printable_list(options),
+        options_to_print=generate_printable_list(options),
     )
 
 
-def _to_printable_list(items):
+def generate_printable_list(items):
     output = []
     for iterator, item in enumerate(items, start=1):
         if isinstance(item, (list, tuple)):
@@ -128,3 +116,15 @@ def _to_printable_list(items):
         else:
             output.append("{0}. {1}".format(iterator, item))
     return output
+
+
+@handle_client_exception
+def get_regions():
+    ec2 = boto3.client("ec2")
+    regions = ec2.describe_regions().get("Regions")
+    return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+
+
+def get_resource_tag(resource, tag_name):
+    tags = resource.get("Tags", [])
+    return next((item.get("Value") for item in tags if item.get("Key") == tag_name), None)

@@ -80,5 +80,13 @@ class VpcFactory:
         vpc = self.ec2.Vpc(vpc_id)
         dns_resolution = vpc.describe_attribute(Attribute="enableDnsSupport")["EnableDnsSupport"]["Value"]
         dns_hostnames = vpc.describe_attribute(Attribute="enableDnsHostnames")["EnableDnsHostnames"]["Value"]
+
+        if not dns_hostnames:
+            print("DNS Hostnames of the VPC {0} must be set to True".format(vpc_id))
+        if not dns_resolution:
+            print("DNS Resolution of the VPC {0} must be set to True".format(vpc_id))
+        if vpc.dhcp_options_id == "default":
+            print("DHCP options of the VPC {0} must be set.".format(vpc_id))
+
         # default is equal to NO dhcp options set
         return dns_resolution and dns_hostnames and vpc.dhcp_options_id != "default"

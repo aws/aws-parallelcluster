@@ -8,18 +8,21 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from __future__ import absolute_import, print_function
+from __future__ import absolute_import, print_function, unicode_literals
 
 import json
+import logging
 import os
-import socket
-import struct
+import sys
+import time
 import zipfile
 from io import BytesIO
 from ipaddress import ip_address, ip_network, summarize_address_range
 
 import boto3
 from botocore.exceptions import ClientError
+
+LOGGER = logging.getLogger("pcluster.pcluster")
 
 
 def boto3_client(service, aws_client_config):
@@ -209,119 +212,182 @@ def next_power_of_2(x):
     return 1 if x == 0 else 2 ** (x - 1).bit_length()
 
 
-def get_subnet_cidr(vpc_cidr, occupied_cidr, max_queue_size):
+def get_subnet_cidr(vpc_cidr, occupied_cidr, min_subnet_size):
     """
     Decide the parallelcluster subnet size of the compute fleet.
+
     :param vpc_cidr: the vpc_cidr in which the suitable subnet should be
     :param occupied_cidr: a list of cidr of the already occupied subnets in the vpc
-    :param max_queue_size: the max nodes / vcpus that the user has set
+    :param min_subnet_size: the minimum size of the subnet
     :return:
     """
-    target_size = max(4000, 2 * max_queue_size)
-    cidr = decide_cidr(vpc_cidr, occupied_cidr, target_size)
+    default_target_size = 4000
+    target_size = max(default_target_size, 2 * min_subnet_size)
+    cidr = evaluate_cidr(vpc_cidr, occupied_cidr, target_size)
     while cidr is None:
-        if target_size < max_queue_size:
+        if target_size < min_subnet_size:
             return None
         target_size = target_size // 2
-        cidr = decide_cidr(vpc_cidr, occupied_cidr, target_size)
+        cidr = evaluate_cidr(vpc_cidr, occupied_cidr, target_size)
     return cidr
 
 
-# This code is complex, get ready
-def decide_cidr(vpc_cidr, occupied_cidr, target_size):
+def evaluate_cidr(vpc_cidr, occupied_cidrs, target_size):
     """
-    Decide the smallest suitable CIDR for a subnet with size >= target_size.
+    Decide the first smallest suitable CIDR for a subnet with size >= target_size.
 
     :param vpc_cidr: the vpc_cidr in which the suitable subnet should be
-    :param occupied_cidr: a list of cidr of the already occupied subnets in the vpc
+    :param occupied_cidrs: a list of cidr of the already occupied subnets in the vpc
     :param target_size: the minimum target size of the subnet
     :return: the suitable CIDR if found, else None
     """
-    # How the algorithm works: If we want to find a suitable CIDR inside a vpc with already some subnet inside, we first
-    # have to check wheter the size of the subnet we want to create is greater than the minimum Cidr (/16, /24, ecc...).
-    # If it is, we have to transform all the occupied_cidr into subnets that have at least the cidr of the instance we
-    # want to allocate. To do that, we use _promote_cidrs().
-    #
-    # Why doing that?
-    #
-    # Well, the function summarize_address_range() returns a iterator of all the cidr needed to encapsulate the given
-    # begin ip and the end ip strictly. So for example, from 10.0.0.0 to 10.0.1.1, the function will return[10.0.0.0/24,
-    # 10.0.1.0/31]. We therefore need to give to that function an ip range that can be compressed in just one cidr. In
-    # order to do that, we basically expand all the cidr and then eliminate all the duplicates.
-
-    # Once we have the target cidr (which is 32 - the power of 2 that is equal to subnet_size  ) to be the minimum
-    # of all the occupied_cidr, we create a list of tuple (beginip, endip) that are sorted by endip. We then compare
-    # each beginip with the endip of the previous one looking for a space greater than the one of subnet_size.
-    # If we found it, we convert it to a cidr using the summarize_address_range() function.
-    # Function cost: O(nlogn), where n is the size of occupied cidr
-    # Understanding cost: O(over9000)
-    aws_reserved_ip = 6
-    min_bitmask_length = 28
-    target_bitmask_length = min(
-        32 - ((next_power_of_2(target_size + aws_reserved_ip) - 1).bit_length()), min_bitmask_length
-    )
-    subnet_size = 2 ** (32 - target_bitmask_length)
+    subnet_size, subnet_bitmask = _evaluate_subnet_size(target_size)
     vpc_begin_address_decimal, vpc_end_address_decimal = _get_cidr_limits_as_decimal(vpc_cidr)
 
-    if vpc_end_address_decimal - vpc_begin_address_decimal + 1 < subnet_size:  # if we do not have enough space
+    # if we do not have enough space
+    if vpc_end_address_decimal - vpc_begin_address_decimal + 1 < subnet_size:
         return None
 
-    if not occupied_cidr:  # if we have space and no occupied cidr
+    # if we have space and no occupied cidr
+    if not occupied_cidrs:
         return _decimal_ip_limits_to_cidr(vpc_begin_address_decimal, vpc_begin_address_decimal + subnet_size)
 
-    occupied_cidr_max_bitmask = max([int(subnet_cidr.split("/")[1]) for subnet_cidr in occupied_cidr])
-    if occupied_cidr_max_bitmask > target_bitmask_length:
-        # This means that it's smaller, so we need to make it bigger
-        occupied_cidr = _expand_cidrs(occupied_cidr, min_size=target_bitmask_length)
+    lower_limit_index = 0
+    upper_limit_index = 1
 
-    # subnets_number is a list of pair(begin ip, end ip) obtained from the cidr. So for example
-    # 10.0.0.0/17 = 10.0.0.0, 10.0.127.255
-    begin_ip_index = 0
-    end_ip_index = 1
-    subnets_limits = [_get_cidr_limits_as_decimal(subnet) for subnet in occupied_cidr]
-    subnets_limits.sort(key=lambda x: x[1])  # sort by ending numbers, sorting by beginning is the same
-    # to check for space between the last occupied and the end of the vpc
-    subnets_limits.append((vpc_end_address_decimal, vpc_end_address_decimal))
-
-    if (subnets_limits[0][begin_ip_index] - vpc_begin_address_decimal) >= subnet_size:
-        return _decimal_ip_limits_to_cidr(vpc_begin_address_decimal, vpc_begin_address_decimal + subnet_size)
+    # Get subnets limits
+    occupied_cidrs = _align_subnet_cidrs(occupied_cidrs, subnet_bitmask)
+    subnets_limits = [_get_cidr_limits_as_decimal(subnet) for subnet in occupied_cidrs]
+    subnets_limits.sort(key=lambda x: x[upper_limit_index])
 
     #  Looking at space between occupied cidrs
-    for index in range(1, len(subnets_limits)):
-        begin_number = subnets_limits[index][begin_ip_index]
-        end_previous_number = subnets_limits[index - 1][end_ip_index]
-        if begin_number - end_previous_number > subnet_size:
-            return _decimal_ip_limits_to_cidr(end_previous_number + 1, end_previous_number + subnet_size)
-    return None
+    resulting_cidr = None
+
+    subnets_limits.append((vpc_end_address_decimal, vpc_end_address_decimal))
+    for index in range(0, len(subnets_limits)):
+        current_lower_limit = subnets_limits[index][lower_limit_index]
+        # In the first case, vpc_begin_address is free, whereas upper_limit_index is not
+        previous_upper_limit = (
+            subnets_limits[index - 1][upper_limit_index] if index > 0 else vpc_begin_address_decimal - 1
+        )
+        if current_lower_limit - previous_upper_limit > subnet_size:
+            resulting_cidr = _decimal_ip_limits_to_cidr(previous_upper_limit + 1, previous_upper_limit + subnet_size)
+            break
+
+    return resulting_cidr
+
+
+def _align_subnet_cidrs(occupied_cidr, target_bitmask):
+    """Transform the subnet cidr that are smaller than the minimum bitmask to bigger ones."""
+    correct_cidrs = set()
+    for subnet_cidr in occupied_cidr:
+        if _get_bitmask(subnet_cidr) > target_bitmask:
+            correct_cidrs.add(expand_cidr(subnet_cidr, target_bitmask))
+        else:
+            correct_cidrs.add(subnet_cidr)
+    return list(correct_cidrs)
+
+
+def _get_bitmask(cidr):
+    return int(cidr.split("/")[1])
+
+
+def _evaluate_subnet_size(target_size):
+    aws_reserved_ip = 6
+    min_bitmask = 28
+    subnet_bitmask = min(
+        32 - ((next_power_of_2(target_size + aws_reserved_ip) - 1).bit_length()), min_bitmask
+    )
+    subnet_size = 2 ** (32 - subnet_bitmask)
+    return subnet_size, subnet_bitmask
 
 
 def _decimal_ip_limits_to_cidr(begin, end):
     """Given begin and end ip (as decimals number), return the CIDR that begins with begin ip and ends with end ip."""
-    return str(
-        summarize_address_range(
-            ip_address(socket.inet_ntoa(struct.pack("!L", begin))), ip_address(socket.inet_ntoa(struct.pack("!L", end)))
-        ).__next__()
-    )
+    return str(next(summarize_address_range(ip_address(begin), ip_address(end))))
 
 
 def _get_cidr_limits_as_decimal(cidr):
     """Given a cidr, return the begin ip and the end ip as decimal."""
-    address = ip_network(cidr)
+    address = ip_network(unicode(cidr))
     return _ip_to_decimal(str(address[0])), _ip_to_decimal(str(address[-1]))
 
 
 def _ip_to_decimal(ip):
     """Transform an ip into its decimal representantion."""
-    return int(bin(struct.unpack("!I", socket.inet_aton(ip))[0]), 2)
+    return int(ip_address(unicode(ip)))
 
 
-def _expand_cidrs(occupied_cidrs, min_size):
-    """Given a list of cidrs, it upgrade the netmask of each one to min_size and returns the updated cidrs."""
-    new_cidrs = set()
-    for cidr in occupied_cidrs:
-        if int(cidr.split("/")[1]) > min_size:
-            ip_addr = ip_network(u"{0}".format(cidr))
-            new_cidrs.add(str(ip_addr.supernet(new_prefix=min_size)))
-        else:
-            new_cidrs.add(cidr)
-    return list(new_cidrs)
+def expand_cidr(cidr, new_size):
+    """
+    Given a list of cidrs, it upgrade the netmask of each one to min_size and returns the updated cidrs.
+
+    For example, given the list of cidrs ["10.0.0.0/24", "10.0.4.0/23"] and min_size = 23, the resulting updated cidrs
+    will be ["10.0.0.0/23", "10.0.4.0/23]. Notice that any duplicate of the updated list will be removed.
+    :param cidr: the list of cidr to promote
+    :param new_size: the minimum bitmask required
+    """
+    ip_addr = ip_network(unicode(cidr))
+    return str(ip_addr.supernet(new_prefix=new_size))
+
+
+# py2.7 compatibility
+def unicode(ip):
+    return "{0}".format(ip)
+
+
+def get_stack_output_value(stack_outputs, output_key):
+    """
+    Get output value from Cloudformation Stack Output.
+
+    :param stack_outputs: Cloudformation Stack Outputs
+    :param output_key: Output Key
+    :return: OutputValue if that output exists, otherwise None
+    """
+    return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
+
+
+def verify_stack_creation(cfn_client, stack_name):
+    """
+    Wait for the stack creation to be completed and notify if the stack creation fails.
+
+    :param cfn_client: the CloudFormation client to use to verify stack status
+    :param stack_name: the stack name that we should verify
+    :return: True if the creation was successful, false otherwise.
+    """
+    status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+    resource_status = ""
+    while status == "CREATE_IN_PROGRESS":
+        status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+        resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
+            80
+        )
+        sys.stdout.write("\r%s" % resource_status)
+        sys.stdout.flush()
+        time.sleep(5)
+    # print the last status update in the logs
+    if resource_status != "":
+        LOGGER.debug(resource_status)
+    if status != "CREATE_COMPLETE":
+        LOGGER.critical("\nCluster creation failed.  Failed events:")
+        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")
+        for event in events:
+            if event.get("ResourceStatus") == "CREATE_FAILED":
+                LOGGER.info(
+                    "  - %s %s %s",
+                    event.get("ResourceType"),
+                    event.get("LogicalResourceId"),
+                    event.get("ResourceStatusReason"),
+                )
+        return False
+    return True
+
+
+def get_templates_bucket_path(aws_region_name):
+    """Return a string containing the path of bucket."""
+    s3_suffix = ".cn" if aws_region_name.startswith("cn") else ""
+    return "https://s3.{REGION}.amazonaws.com{S3_SUFFIX}/{REGION}-aws-parallelcluster/templates/".format(
+        REGION=aws_region_name,
+        S3_SUFFIX=s3_suffix,
+    )

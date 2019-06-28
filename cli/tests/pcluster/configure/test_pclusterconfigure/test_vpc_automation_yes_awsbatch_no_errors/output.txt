@@ -27,5 +27,5 @@ Allowed values for EC2 Key Pair Name:
 4. key4
 5. key5
 6. key6
-Beginning creation of vpc. Please do not leave the terminal until the process has finish
+Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 The configuration is valid

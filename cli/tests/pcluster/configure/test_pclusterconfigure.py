@@ -6,12 +6,15 @@ from configparser import ConfigParser
 
 from assertpy import assert_that
 from pcluster.configure.easyconfig import configure
+from pcluster.configure.networking import NetworkConfiguration
 
 EASYCONFIG = "pcluster.configure.easyconfig."
-NETWORKING = "pcluster.configure.easyconfig_networking."
-UTILS = "pcluster.configure.easyconfig_utils."
+NETWORKING = "pcluster.configure.networking."
+UTILS = "pcluster.configure.utils."
 
 TEMP_PATH_FOR_CONFIG = os.path.join(tempfile.gettempdir(), "test_pclusterconfigure")
+PUBLIC_PRIVATE_CONFIGURATION = NetworkConfiguration.PUBLIC_PRIVATE.value.config_type
+PUBLIC_CONFIGURATION = NetworkConfiguration.PUBLIC.value.config_type
 
 
 def _mock_input(mocker, input_in_order):
@@ -43,22 +46,22 @@ def _mock_aws_region(mocker):
 def _mock_list_keys(mocker):
     # If changed look for test_prompt_a_list
     keys = ["key1", "key2", "key3", "key4", "key5", "key6"]
-    mocker.patch(EASYCONFIG + "_list_keys", return_value=keys)
+    mocker.patch(EASYCONFIG + "_get_keys", return_value=keys)
 
 
 def _mock_list_vpcs_and_subnets(mocker, empty_region=False):
     # If changed look for test_prompt_a_list_of_tuple
     if empty_region:
-        dict = {"vpc_list": [], "vpc_to_subnets": {}}
+        mocked_response = {"vpc_list": [], "vpc_to_subnets": {}}
     else:
-        dict = {
+        mocked_response = {
             "vpc_list": [
                 ("vpc-1", "ParallelClusterVPC-20190625135738", "2 subnets inside"),
                 ("vpc-2", "ParallelClusterVPC-20190624105051", "0 subnets inside"),
                 ("vpc-3", "default", "3 subnets inside"),
                 ("vpc-4", "ParallelClusterVPC-20190626095403", "1 subnets inside"),
             ],
-            "vpc_to_subnets": {
+            "vpc_subnets": {
                 "vpc-1": [
                     ("subnet-11", "ParallelClusterPublicSubnet", "Subnet size: 256"),
                     ("subnet-12", "ParallelClusterPrivateSubnet", "Subnet size: 4096"),
@@ -72,11 +75,11 @@ def _mock_list_vpcs_and_subnets(mocker, empty_region=False):
                 "vpc-4": [("subnet-41", "ParallelClusterPublicSubnet", "Subnet size: 4096")],
             },
         }
-    mocker.patch(EASYCONFIG + "_list_vpcs_and_subnets", return_value=dict)
+    mocker.patch(EASYCONFIG + "_get_vpcs_and_subnets", return_value=mocked_response)
 
 
 def _mock_get_subnets_in_vpc(mocker):
-    mocker.patch(NETWORKING + "_get_subnets_in_vpc", return_value=[])
+    mocker.patch(NETWORKING + "get_vpc_subnets", return_value=[])
 
 
 def _mock_vpc_factory(mocker, is_a_valid_vpc):
@@ -87,12 +90,12 @@ def _mock_vpc_factory(mocker, is_a_valid_vpc):
 
 
 def _mock_ec2_conn(mocker):
-    mocker.patch(NETWORKING + "_extract_vpc_cidr", return_value="10.0.0.0/16")
-    mocker.patch(NETWORKING + "_extract_ig_id", return_value="ig-123")
+    mocker.patch(NETWORKING + "_get_vpc_cidr", return_value="10.0.0.0/16")
+    mocker.patch(NETWORKING + "_get_internet_gateway_id", return_value="ig-123")
 
 
 def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_id=None):
-    def _side_effect_function(template_name, configurer, also_private_cidr):
+    def _side_effect_function(aws_region_name, config, parameters):
         if private_subnet_id:
             return [
                 {"OutputKey": "PrivateSubnetId", "OutputValue": private_subnet_id},
@@ -101,7 +104,7 @@ def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_
         else:
             return [{"OutputKey": "PublicSubnetId", "OutputValue": public_subnet_id}]
 
-    mocker.patch(NETWORKING + "_create_network_configuration", side_effect=_side_effect_function)
+    mocker.patch(NETWORKING + "_create_network_stack", side_effect=_side_effect_function)
 
 
 def _launch_config(mocker, path, remove_path=True):
@@ -126,6 +129,8 @@ def _are_configurations_equals(path_verify, path_verified):
     for section_name, section in dict1.items():
         for key, value in section.items():
             if dict2[section_name][key] != value:
+                print("In section {0}, parameter {1} is different.".format(section_name, key))
+                print("It is {0} but it should be {1}".format(value, dict2[section_name][key]))
                 return False
     return True
 
@@ -196,10 +201,11 @@ class MockHandler:
 
 
 def get_file_path(test_datadir):
-    config = os.path.join(test_datadir, "test")
-    output = os.path.join(test_datadir, "output.txt")
-    error = os.path.join(test_datadir, "error.txt")
-    return config, error, output
+    config = test_datadir / "test"
+    output = test_datadir / "output.txt"
+    error = test_datadir / "error.txt"
+    #  str for python 2.7 compatibility
+    return str(config), str(error), str(output)
 
 
 def _verify_test(mocker, capsys, output, error, config, temp_path_for_config):
@@ -217,13 +223,13 @@ def create_new_test(mocker, capsys):
     You have to be sure that pcluster configure is correct when you use this function. You will also have to check
     output manually. Note that it does not print user_prompt passed as input, but neither does all the tests
     """
-    test_name = "test_vpc_automation_no_vpc_in_region"
+    test_name = "test_vpc_automation_no_vpc_in_region_public"
     config_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "test")
     error_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "error.txt")
     output_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "output.txt")
 
     mock_handler = MockHandler(mocker, empty_region=True)
-    mock_handler.add_subnet_automation(public_subnet_id="subnet-pu", private_subnet_id="subnet-pr")
+    mock_handler.add_subnet_automation(public_subnet_id="subnet-pu")
     input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="slurm")
     input_composer.add_first_flow(
         op_sys="centos6",
@@ -233,7 +239,7 @@ def create_new_test(mocker, capsys):
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_vpc_sub_automation_empty_region(network_configuration="1")
+    input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_CONFIGURATION)
     input_composer.finalize_config(mocker)
 
     _launch_config(mocker, config_path)
@@ -288,7 +294,9 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_sub_automation(vpc_id="vpc-2", network_configuration="1", vpc_has_subnets=False)
+    input_composer.add_sub_automation(
+        vpc_id="vpc-2", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=False
+    )
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
@@ -308,7 +316,9 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_sub_automation(vpc_id="vpc-1", network_configuration="1", vpc_has_subnets=True)
+    input_composer.add_sub_automation(
+        vpc_id="vpc-1", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
+    )
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
@@ -316,7 +326,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
 def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
-    old_config_file = test_datadir / "original_config_file"
+    old_config_file = str(test_datadir / "original_config_file")
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-pu", private_subnet_id="subnet-pr")
@@ -329,7 +339,9 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_sub_automation(vpc_id="vpc-1", network_configuration="1", vpc_has_subnets=True)
+    input_composer.add_sub_automation(
+        vpc_id="vpc-1", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
+    )
     input_composer.finalize_config(mocker)
 
     _launch_config(mocker, old_config_file, remove_path=False)
@@ -352,7 +364,7 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_vpc_sub_automation(network_configuration="1")
+    input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
@@ -367,7 +379,7 @@ def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
     input_composer.add_first_flow(
         op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
     )
-    input_composer.add_vpc_sub_automation(network_configuration="1")
+    input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
@@ -385,7 +397,7 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
         input_composer.add_first_flow(
             op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
         )
-        input_composer.add_vpc_sub_automation(network_configuration="1")
+        input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
         input_composer.finalize_config(mocker)
         _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
@@ -401,10 +413,10 @@ def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir
     input_composer.add_first_flow(
         op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
     )
-    input_composer.add_sub_automation(vpc_id="vpc-1", network_configuration="1")
+    input_composer.add_sub_automation(vpc_id="vpc-1", network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
-    assert_that("WARNING: The vpc does not have the correct parameters set." in caplog.text).is_true()
+    assert_that("WARNING: The VPC does not have the correct parameters set." in caplog.text).is_true()
 
 
 def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
@@ -421,7 +433,27 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
         compute_instance="t2.micro",
         key="key1",
     )
-    input_composer.add_vpc_sub_automation_empty_region(network_configuration="1")
+    input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
+    input_composer.finalize_config(mocker)
+
+    _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+
+
+def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
+    config, error, output = get_file_path(test_datadir)
+
+    mock_handler = MockHandler(mocker, empty_region=True)
+    mock_handler.add_subnet_automation(public_subnet_id="subnet-pu")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="slurm")
+    input_composer.add_first_flow(
+        op_sys="centos6",
+        min_size="13",
+        max_size="14",
+        master_instance="t2.nano",
+        compute_instance="t2.micro",
+        key="key1",
+    )
+    input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
