@@ -15,8 +15,7 @@ maintain_initial_size = true
 [vpc default]
 vpc_id = vpc-0
 master_subnet_id = subnet-pu
-compute_subnet_id = subnet-pr
-use_public_ips = false
+use_public_ips = true
 
 [global]
 cluster_template = default

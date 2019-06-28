@@ -25,7 +25,7 @@ from troposphere.ec2 import (
     VPCGatewayAttachment,
 )
 
-PREPENDNAME = "ParallelCluster"
+TAGS_PREFIX = "ParallelCluster"
 
 
 class Gateways(Enum):
@@ -47,7 +47,7 @@ class SubnetConfig(NamedTuple):
 
     def tags(self):
         """Get the tags for the subnet"""
-        return Tags(Name=PREPENDNAME + self.name + "Subnet", Stack=Ref("AWS::StackId"))
+        return Tags(Name=TAGS_PREFIX + self.name + "Subnet", Stack=Ref("AWS::StackId"))
 
 
 class VPCConfig(NamedTuple):
@@ -141,7 +141,7 @@ class NetworkTemplateBuilder:
         internet_gateway = self.__template.add_resource(
             InternetGateway(
                 "InternetGateway",
-                Tags=Tags(Name=PREPENDNAME + "IG", Stack=Ref("AWS::StackId")),
+                Tags=Tags(Name=TAGS_PREFIX + "IG", Stack=Ref("AWS::StackId")),
                 Condition=self.__create_ig,
             )
         )
@@ -212,7 +212,7 @@ class NetworkTemplateBuilder:
             RouteTable(
                 "RouteTable" + subnet_config.name,
                 VpcId=Ref(vpc),
-                Tags=Tags(Name=PREPENDNAME + "RouteTable" + subnet_config.name, Stack=Ref("AWS::StackId")),
+                Tags=Tags(Name=TAGS_PREFIX + "RouteTable" + subnet_config.name, Stack=Ref("AWS::StackId")),
             )
         )
         self.__template.add_resource(
