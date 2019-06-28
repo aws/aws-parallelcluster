@@ -682,7 +682,7 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
         elif status in valid_status:
             outputs = stack_result.get("Outputs")
             username = get_stack_output_value(outputs, "ClusterUser")
-            ip = get_stack_output_value(outputs, "MasterPublicIP") or get_stack_output_value(stack, config)
+            ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack, config)
 
             if not username:
                 LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
