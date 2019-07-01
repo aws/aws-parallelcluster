@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import os
 import random
 import re
 import shlex
@@ -18,6 +19,8 @@ import subprocess
 
 import boto3
 from retrying import retry
+
+from assertpy import assert_that
 
 
 def retry_if_subprocess_error(exception):
@@ -116,3 +119,71 @@ def delete_s3_bucket(bucket_name, region):
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
+
+
+def set_credentials(region, credential_arg):
+    """
+    Set credentials for boto3 clients and cli commands
+
+    :param region: region of the bucket
+    :param credential_arg: credential list
+    """
+    if credential_arg:
+        # credentials = dict { region1: (endpoint1, arn1, external_id1),
+        #                      region2: (endpoint2, arn2, external_id2),
+        #                      [...],
+        #                    }
+        credentials = {
+            region: (endpoint, arn, external_id)
+            for region, endpoint, arn, external_id in [
+                tuple(credential_tuple.strip().split(","))
+                for credential_tuple in credential_arg
+                if credential_tuple.strip()
+            ]
+        }
+
+        if region in credentials:
+            credential_endpoint, credential_arn, credential_external_id = credentials.get(region)
+            aws_credentials = _retrieve_sts_credential(
+                credential_endpoint, credential_arn, credential_external_id, region
+            )
+
+            # Set credential for all boto3 client
+            boto3.setup_default_session(
+                aws_access_key_id=aws_credentials["AccessKeyId"],
+                aws_secret_access_key=aws_credentials["SecretAccessKey"],
+                aws_session_token=aws_credentials["SessionToken"],
+            )
+
+            # Set credential for all cli command e.g. pcluster create
+            os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
+            os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
+            os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
+
+
+def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_external_id, region):
+    match = re.search(r"https://sts\.(.*?)\.", credential_endpoint)
+    endpoint_region = match.group(1)
+
+    assert_that(credential_endpoint and endpoint_region and credential_arn and credential_external_id).is_true()
+
+    sts = boto3.client("sts", region_name=endpoint_region, endpoint_url=credential_endpoint)
+    assumed_role_object = sts.assume_role(
+        RoleArn=credential_arn, ExternalId=credential_external_id, RoleSessionName=region + "_integration_tests_session"
+    )
+    aws_credentials = assumed_role_object["Credentials"]
+
+    return aws_credentials
+
+
+def unset_credentials():
+    """Unset credentials"""
+    # Unset credential for all boto3 client
+    boto3.setup_default_session()
+    # Unset credential for cli command e.g. pcluster create
+    if "AWS_ACCESS_KEY_ID" in os.environ:
+        del os.environ["AWS_ACCESS_KEY_ID"]
+    if "AWS_SECRET_ACCESS_KEY" in os.environ:
+        del os.environ["AWS_SECRET_ACCESS_KEY"]
+    if "AWS_SESSION_TOKEN" in os.environ:
+        del os.environ["AWS_SESSION_TOKEN"]

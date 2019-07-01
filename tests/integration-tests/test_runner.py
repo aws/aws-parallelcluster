@@ -91,6 +91,13 @@ def _init_argparser():
         "-r", "--regions", help="AWS region where tests are executed.", default=TEST_DEFAULTS.get("regions"), nargs="+"
     )
     parser.add_argument(
+        "--credential",
+        action="append",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
+        "Could be specified multiple times.",
+        required=False,
+    )
+    parser.add_argument(
         "-i", "--instances", help="AWS instances under test.", default=TEST_DEFAULTS.get("instances"), nargs="+"
     )
     parser.add_argument("-o", "--oss", help="OSs under test.", default=TEST_DEFAULTS.get("oss"), nargs="+")
@@ -237,6 +244,10 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
+
+    if args.credential:
+        pytest_args.append("--credential")
+        pytest_args.extend(args.credential)
 
     if args.retry_on_failures:
         # Rerun tests on failures for one more time after 60 seconds delay
