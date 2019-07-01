@@ -34,13 +34,23 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from utils import (
+    create_s3_bucket,
+    delete_s3_bucket,
+    random_alphanumeric,
+    set_credentials,
+    to_snake_case,
+    unset_credentials,
+)
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
-from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
 
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
     parser.addoption("--regions", help="aws region where tests are executed", default=["us-east-1"], nargs="+")
+    parser.addoption(
+        "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
+    )
     parser.addoption("--instances", help="aws instances under test", default=["c5.xlarge"], nargs="+")
     parser.addoption("--oss", help="OSs under test", default=["alinux"], nargs="+")
     parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
@@ -158,6 +168,7 @@ def _add_properties_to_report(item):
 
 
 @pytest.fixture(scope="class")
+@pytest.mark.usefixtures("setup_sts_credentials")
 def clusters_factory(request):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -295,7 +306,7 @@ def _get_default_template_values(vpc_stacks, region, request):
 @pytest.fixture(scope="session")
 def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
-    factory = CfnStacksFactory()
+    factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
     if not request.config.getoption("no_delete"):
         factory.delete_all_stacks()
@@ -320,6 +331,14 @@ AVAILABILITY_ZONE_OVERRIDES = {
     # NAT Gateway not available in sa-east-1b
     "sa-east-1": ["sa-east-1a", "sa-east-1c"],
 }
+
+
+@pytest.fixture(scope="class", autouse=True)
+def setup_sts_credentials(region, request):
+    """Setup environment for the integ tests"""
+    set_credentials(region, request.config.getoption("credential"))
+    yield
+    unset_credentials()
 
 
 @pytest.fixture(scope="session", autouse=True)
