@@ -71,7 +71,7 @@ true. This will cause the ComputeFleet ASG to have the same value for minimum,
 maximum and desired capacity.
 
 .. _`Auto Scaling Group`: https://docs.aws.amazon.com/autoscaling/ec2/userguide/what-is-amazon-ec2-auto-scaling.html
-.. _nodewatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/nodewatcher
-.. _jobwatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/jobwatcher
+.. _nodewatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/src/nodewatcher
+.. _jobwatcher: https://github.com/aws/aws-parallelcluster-node/tree/develop/src/jobwatcher
 .. _TerminateInstanceInAutoScalingGroup:
    http://docs.aws.amazon.com/AutoScaling/latest/APIReference/API_TerminateInstanceInAutoScalingGroup.html
