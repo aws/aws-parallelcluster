@@ -193,6 +193,27 @@ tests_outputs
             └── ...
 ```
 
+## Cross Account Integration Tests
+If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag. 
+This is useful to overcome restrictions related to account limits and be compliant with a multi-region, multi-account 
+setup.
+
+When the `--credential` flag is specified and STS assume-role call is made in order to fetch temporary credentials to 
+be used to run tests in a specific region. 
+
+The `--credential` flag is in the form `<region>,<endpoint_url>,<ARN>,<external_id>` and needs to be specified for each 
+region you want to use with an STS assumed role (that usually means for every region you want to have in a separate 
+account).
+
+ * `region` is the region you want to test with an assumed STS role (which is in the target account where you want to 
+ launch the integration tests)
+ * `endpoint_url` is the STS endpoint url of the main account to be called in order to assume the delegation role
+ * `ARN` is the ARN of the delegation role in the optin region account to be assumed by the main account
+ * `external_id` is the external ID of the delegation role  
+
+By default, the delegation role lifetime last for one hour. Mind that if you are planning to launch tests that last 
+more than one hour.
+
 ## Write Integration Tests
 
 All integration tests are defined in the `integration-tests/tests` directory.
