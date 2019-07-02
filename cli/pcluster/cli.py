@@ -335,6 +335,11 @@ Variables substituted::
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
     )
     _addarg_config(pami)
+    pami.add_argument(
+        "-t",
+        "--cluster-template",
+        help="Specifies the cluster section of the ParallelCluster configuration file to retrieve VPC settings."
+    )
     _addarg_region(pami)
     pami.set_defaults(template_url=None)
     pami.set_defaults(func=create_ami)
