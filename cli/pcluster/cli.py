@@ -156,9 +156,11 @@ Examples::
     pcreate.add_argument(
         "-u",
         "--template-url",
-        help="Specifies the URL for a custom CloudFormation template, " "if it was used at creation time.",
+        help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
     )
-    pcreate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
+    pcreate.add_argument(
+        "-t", "--cluster-template", help="Indicates the cluster section of the configuration file to use."
+    )
     pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
     pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
     pcreate.set_defaults(func=create)
@@ -182,7 +184,9 @@ Examples::
         default=False,
         help="Disable CloudFormation stack rollback on error.",
     )
-    pupdate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
+    pupdate.add_argument(
+        "-t", "--cluster-template", help="Indicates the cluster section of the configuration file to use."
+    )
     pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
     pupdate.add_argument(
         "-rd",
@@ -338,7 +342,7 @@ Variables substituted::
     pami.add_argument(
         "-t",
         "--cluster-template",
-        help="Specifies the cluster section of the ParallelCluster configuration file to retrieve VPC settings."
+        help="Specifies the cluster section of the configuration file to retrieve VPC settings.",
     )
     _addarg_region(pami)
     pami.set_defaults(template_url=None)
