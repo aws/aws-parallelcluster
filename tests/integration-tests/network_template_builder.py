@@ -94,10 +94,13 @@ class NetworkTemplateBuilder:
             return availability_zone
         else:
             return Ref(
-                self.__add_parameter(
-                    name="AvailabilityZone",
-                    description="(Optional) The zone in which you want to create your subnet(s)",
-                    expected_input_type="String",
+                self.__template.add_parameter(
+                    Parameter(
+                        "AvailabilityZone",
+                        Description="(Optional) The zone in which you want to create your subnet(s)",
+                        Type="String",
+                        Default="",
+                    )
                 )
             )
 
@@ -152,10 +155,13 @@ class NetworkTemplateBuilder:
 
     def __get_gateway_id(self):
         return Ref(
-            self.__add_parameter(
-                name="InternetGatewayId",
-                description="(Optional) The id of the gateway (will be created if not specified)",
-                expected_input_type="String",
+            self.__template.add_parameter(
+                Parameter(
+                    "InternetGatewayId",
+                    Description="(Optional) The id of the gateway (will be created if not specified)",
+                    Type="String",
+                    Default="",
+                )
             )
         )
 
