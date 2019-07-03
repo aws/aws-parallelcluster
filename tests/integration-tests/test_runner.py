@@ -213,11 +213,11 @@ def _get_pytest_args(args, regions, log_file, out_dir):
 
     if args.benchmarks:
         pytest_args.append("--ignore=./tests")
-        pytest_args.append("--root=./benchmarks")
+        pytest_args.append("--rootdir=./benchmarks")
         pytest_args.append("--benchmarks-target-capacity={0}".format(args.benchmarks_target_capacity))
         pytest_args.append("--benchmarks-max-time={0}".format(args.benchmarks_max_time))
     else:
-        pytest_args.append("--root=./tests")
+        pytest_args.append("--rootdir=./tests")
         pytest_args.append("--ignore=./benchmarks")
 
     # Show all tests durations
