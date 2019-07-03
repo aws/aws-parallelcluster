@@ -19,6 +19,7 @@
 # usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
 
 import json
+import re
 import sys
 from collections import OrderedDict
 
@@ -72,7 +73,7 @@ def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git
         if main_region == region_name:
             for credential in credentials:
                 credential_region = credential[0]
-                images = get_images_ec2_credential(filters, owner, main_region, credential)
+                images = get_images_ec2_credential(filters, main_region, credential)
                 populate_amis_json(amis_json, images, credential_region)
 
     return amis_json
@@ -91,11 +92,13 @@ def populate_amis_json(amis_json, images, region_name):
             amis_json[region_name] = OrderedDict(sorted(amis.items()))
 
 
-def get_images_ec2_credential(filters, owner, main_region, credential):
+def get_images_ec2_credential(filters, main_region, credential):
     credential_region = credential[0]
     credential_endpoint = credential[1]
     credential_arn = credential[2]
     credential_external_id = credential[3]
+    match = re.search(r"arn:aws:iam::(.*?):", credential_arn)
+    credential_owner = match.group(1)
 
     try:
         sts = boto3.client("sts", region_name=main_region, endpoint_url=credential_endpoint)
@@ -114,7 +117,7 @@ def get_images_ec2_credential(filters, owner, main_region, credential):
             aws_session_token=aws_credentials["SessionToken"],
         )
 
-        images = ec2.describe_images(Owners=[owner], Filters=filters)
+        images = ec2.describe_images(Owners=[credential_owner], Filters=filters)
         return images
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(credential_region))
