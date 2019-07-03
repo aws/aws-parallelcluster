@@ -320,7 +320,7 @@ def cfn_stacks_factory(request):
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
-_AVAILABILITY_ZONE_OVERRIDES = {
+AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
     "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
