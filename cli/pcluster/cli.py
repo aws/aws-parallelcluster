@@ -159,7 +159,9 @@ Examples::
         help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
     )
     pcreate.add_argument(
-        "-t", "--cluster-template", help="Indicates the cluster section of the configuration file to use."
+        "-t",
+        "--cluster-template",
+        help="Indicates which section of the configuration file to use for cluster creation.",
     )
     pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
     pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
@@ -185,7 +187,7 @@ Examples::
         help="Disable CloudFormation stack rollback on error.",
     )
     pupdate.add_argument(
-        "-t", "--cluster-template", help="Indicates the cluster section of the configuration file to use."
+        "-t", "--cluster-template", help="Indicates which section of the configuration file to use for cluster update."
     )
     pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
     pupdate.add_argument(
@@ -339,11 +341,15 @@ Variables substituted::
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
     )
     _addarg_config(pami)
-    pami.add_argument(
+    pami_group1 = pami.add_argument_group("Build AMI by using VPC settings from configuration file")
+    pami_group1.add_argument(
         "-t",
         "--cluster-template",
         help="Specifies the cluster section of the configuration file to retrieve VPC settings.",
     )
+    pami_group2 = pami.add_argument_group("Build AMI in a custom VPC and Subnet")
+    pami_group2.add_argument("--vpc-id", help="Specifies the VPC to use to build the AWS ParallelCluster AMI.")
+    pami_group2.add_argument("--subnet-id", help="Specifies the Subnet to use to build the AWS ParallelCluster AMI.")
     _addarg_region(pami)
     pami.set_defaults(template_url=None)
     pami.set_defaults(func=create_ami)
