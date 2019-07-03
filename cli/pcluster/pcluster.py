@@ -994,15 +994,15 @@ def create_ami(args):
     try:
         config = cfnconfig.ParallelClusterConfig(args)
 
-        vpc_id = config.parameters.get("VPCId")
-        master_subnet_id = config.parameters.get("MasterSubnetId")
+        vpc_id = args.vpc_id if args.vpc_id else config.parameters.get("VPCId")
+        subnet_id = args.subnet_id if args.subnet_id else config.parameters.get("MasterSubnetId")
 
         packer_env = {
             "CUSTOM_AMI_ID": args.base_ami_id,
             "AWS_FLAVOR_ID": instance_type,
             "AMI_NAME_PREFIX": args.custom_ami_name_prefix,
             "AWS_VPC_ID": vpc_id,
-            "AWS_SUBNET_ID": master_subnet_id,
+            "AWS_SUBNET_ID": subnet_id,
         }
 
         if config.aws_access_key_id:
@@ -1015,7 +1015,7 @@ def create_ami(args):
         LOGGER.info("Instance Type: %s", instance_type)
         LOGGER.info("Region: %s", config.region)
         LOGGER.info("VPC ID: %s", vpc_id)
-        LOGGER.info("Subnet ID: %s", master_subnet_id)
+        LOGGER.info("Subnet ID: %s", subnet_id)
 
         tmp_dir = mkdtemp()
         cookbook_dir = get_cookbook_dir(config, tmp_dir)
