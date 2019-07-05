@@ -6,17 +6,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 
 
-def get_all_aws_regions(partition):
-    if partition == "commercial":
-        region = "us-east-1"
-    elif partition == "govcloud":
-        region = "us-gov-west-1"
-    elif partition == "china":
-        region = "cn-north-1"
-    else:
-        print("Unsupported partition %s" % partition)
-        sys.exit(1)
-
+def get_all_aws_regions(region):
     ec2 = boto3.client("ec2", region_name=region)
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
 
@@ -48,8 +38,17 @@ def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
         pass
 
 
-def upload_to_s3(args, region):
-    s3_client = boto3.resource("s3", region_name=region)
+def upload_to_s3(args, region, aws_credentials=None):
+    if aws_credentials:
+        s3_client = boto3.resource(
+            "s3",
+            region_name=region,
+            aws_access_key_id=aws_credentials.get("AccessKeyId"),
+            aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
+            aws_session_token=aws_credentials.get("SessionToken"),
+        )
+    else:
+        s3_client = boto3.resource("s3", region_name=region)
 
     if args.bucket:
         buckets = args.bucket.split(",")
@@ -64,7 +63,17 @@ def upload_to_s3(args, region):
         data = open(template_name, "rb")
         for bucket in buckets:
             try:
-                s3 = boto3.client("s3", region_name=region)
+                if aws_credentials:
+                    s3 = boto3.client(
+                        "s3",
+                        region_name=region,
+                        aws_access_key_id=aws_credentials.get("AccessKeyId"),
+                        aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
+                        aws_session_token=aws_credentials.get("SessionToken"),
+                    )
+                else:
+                    s3 = boto3.client("s3", region_name=region)
+
                 s3.head_object(Bucket=bucket, Key=key)
                 print("Warning: %s already exist in bucket %s" % (key, bucket))
                 exist = True
@@ -81,10 +90,32 @@ def upload_to_s3(args, region):
                 )
 
 
-def main(args):
+def main(main_region, args):
     # For all regions
     for region in args.regions:
         upload_to_s3(args, region)
+
+        if main_region == region:
+            for credential in credentials:
+                credential_region = credential[0]
+                credential_endpoint = credential[1]
+                credential_arn = credential[2]
+                credential_external_id = credential[3]
+
+                try:
+                    sts = boto3.client("sts", region_name=main_region, endpoint_url=credential_endpoint)
+                    assumed_role_object = sts.assume_role(
+                        RoleArn=credential_arn,
+                        ExternalId=credential_external_id,
+                        RoleSessionName=credential_region + "upload_cfn_templates_sts_session",
+                    )
+                    aws_credentials = assumed_role_object["Credentials"]
+
+                    upload_to_s3(args, credential_region, aws_credentials)
+
+                except ClientError:
+                    print("Warning: non authorized in region '{0}', skipping".format(credential_region))
+                    pass
 
 
 if __name__ == "__main__":
@@ -96,6 +127,13 @@ if __name__ == "__main__":
         type=str,
         help='Valid Regions, can include "all", or comma separated list of regions',
         required=True,
+    )
+    parser.add_argument(
+        "--credential",
+        type=str,
+        action="append",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        required=False,
     )
     parser.add_argument(
         "--templates", type=str, help="Template filenames, leave out '.cfn.json', comma separated list", required=True
@@ -134,15 +172,34 @@ if __name__ == "__main__":
         required=False,
     )
     args = parser.parse_args()
+
+    if args.partition == "commercial":
+        main_region = "us-east-1"
+    elif args.partition == "govcloud":
+        main_region = "us-gov-west-1"
+    elif args.partition == "china":
+        main_region = "cn-north-1"
+    else:
+        print("Unsupported partition %s" % args.partition)
+        sys.exit(1)
+
+    credentials = []
+    if args.credential:
+        credentials = [
+            tuple(credential_tuple.strip().split(","))
+            for credential_tuple in args.credential
+            if credential_tuple.strip()
+        ]
+
     if not args.version:
         args.version = pkg_resources.get_distribution("aws-parallelcluster").version
 
     if args.regions == "all":
-        args.regions = get_all_aws_regions(args.partition)
+        args.regions = get_all_aws_regions(main_region)
     else:
         args.regions = args.regions.split(",")
     args.regions = set(args.regions) - set(args.unsupportedregions.split(","))
 
     args.templates = args.templates.split(",")
 
-    main(args)
+    main(main_region, args)
