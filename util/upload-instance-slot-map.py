@@ -51,9 +51,9 @@ def push_to_s3(region, aws_credentials=None):
             s3 = boto3.resource(
                 "s3",
                 region_name=region,
-                aws_access_key_id=aws_credentials["AccessKeyId"],
-                aws_secret_access_key=aws_credentials["SecretAccessKey"],
-                aws_session_token=aws_credentials["SessionToken"],
+                aws_access_key_id=aws_credentials.get("AccessKeyId"),
+                aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
+                aws_session_token=aws_credentials.get("SessionToken"),
             )
         else:
             s3 = boto3.resource("s3", region_name=region)

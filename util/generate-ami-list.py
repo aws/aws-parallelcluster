@@ -112,9 +112,9 @@ def get_images_ec2_credential(filters, main_region, credential):
         ec2 = boto3.client(
             "ec2",
             region_name=credential_region,
-            aws_access_key_id=aws_credentials["AccessKeyId"],
-            aws_secret_access_key=aws_credentials["SecretAccessKey"],
-            aws_session_token=aws_credentials["SessionToken"],
+            aws_access_key_id=aws_credentials.get("AccessKeyId"),
+            aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
+            aws_session_token=aws_credentials.get("SessionToken"),
         )
 
         images = ec2.describe_images(Owners=[credential_owner], Filters=filters)
