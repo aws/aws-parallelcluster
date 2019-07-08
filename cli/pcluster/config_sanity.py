@@ -427,7 +427,7 @@ class ResourceValidator(object):
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
         # EC2 Placement Group
         elif resource_type == "EC2PlacementGroup":
-            if resource_value == "DYNAMIC" or resource_value == 'NONE':
+            if resource_value == "DYNAMIC" or resource_value == "NONE":
                 pass
             else:
                 try:
