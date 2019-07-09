@@ -106,13 +106,12 @@ def test_scaling_performance(region, scheduler, os, instance, pcluster_config_re
         kwargs = {"nodes": benchmark_params["scaling_target"]}
     result = scheduler_commands.submit_command("sleep {0}".format(benchmark_params["job_duration"]), **kwargs)
     scheduler_commands.assert_job_submitted(result.stdout)
-    compute_nodes_time_series, timestamps = _publish_compute_nodes_metric(
+    compute_nodes_time_series, timestamps, end_time = _publish_compute_nodes_metric(
         scheduler_commands,
         max_monitoring_time=minutes(benchmarks_max_time),
         region=region,
         cluster_name=cluster.cfn_name,
     )
-    end_time = timestamps[-1]
 
     logging.info("Benchmark completed. Producing outputs and performing assertions.")
     benchmark_params["total_time"] = "{0}seconds".format(int((end_time - start_time).total_seconds()))
@@ -164,13 +163,16 @@ def _publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, regio
         # ignoring this error in order to perform assertions on the collected data.
         pass
 
+    end_time = datetime.datetime.utcnow()
     logging.info(
-        "Monitoring completed: %s", "compute_nodes_time_series [" + " ".join(map(str, compute_nodes_time_series)) + "]"
+        "Monitoring completed: compute_nodes_time_series [ %s ], timestamps [ %s ]",
+        " ".join(map(str, compute_nodes_time_series)),
+        " ".join(map(str, timestamps)),
     )
     logging.info("Sleeping for 3 minutes to wait for the metrics to propagate...")
     sleep(180)
 
-    return compute_nodes_time_series, timestamps
+    return compute_nodes_time_series, timestamps, end_time
 
 
 def _enable_asg_metrics(region, cluster):
