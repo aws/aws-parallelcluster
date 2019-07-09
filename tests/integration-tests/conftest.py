@@ -130,7 +130,7 @@ def pytest_collection_modifyitems(items):
 
 def pytest_exception_interact(node, call, report):
     """Called when an exception was raised which can potentially be interactively handled.."""
-    logging.error("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
+    logging.exception("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
 
 
 def _add_filename_markers(items):
