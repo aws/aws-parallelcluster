@@ -18,6 +18,7 @@ import logging
 import os
 import re
 from shutil import copyfile
+from traceback import format_tb
 
 import configparser
 import pytest
@@ -129,7 +130,9 @@ def pytest_collection_modifyitems(items):
 
 def pytest_exception_interact(node, call, report):
     """Called when an exception was raised which can potentially be interactively handled.."""
-    logging.exception("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
+    logging.error(
+        "Exception raised while executing %s: %s\n%s", node.name, call.excinfo, "".join(format_tb(call.excinfo.tb))
+    )
 
 
 def _add_filename_markers(items):
