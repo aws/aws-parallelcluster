@@ -1716,7 +1716,8 @@
                 "autoscaling:SetDesiredCapacity",
                 "autoscaling:UpdateAutoScalingGroup",
                 "autoscaling:DescribeTags",
-                "autoscaling:SetInstanceHealth"
+                "autoscaling:SetInstanceHealth",
+		"autoscaling:EnableMetricsCollection"  
               ],
               "Effect": "Allow",
               "Resource": [
@@ -2792,7 +2793,16 @@
               "Ref": "AWS::NoValue"
             }
           ]
-        }
+        },
+	"MetricsCollection": [
+	    {
+		"Granularity" : "1Minute",
+		"Metrics" : [
+		    "GroupDesiredCapacity",
+		    "GroupTotalInstances"
+		]
+	    }
+	]
       },
       "DependsOn": "MasterServer",
       "CreationPolicy": {
