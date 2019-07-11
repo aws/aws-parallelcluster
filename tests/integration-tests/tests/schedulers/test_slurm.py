@@ -105,7 +105,7 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     assert_scaling_worked(slurm_commands, region, stack_name, scaledown_idletime, expected_max=1, expected_final=0)
     # Assert scheduler configuration is correct
     _assert_dummy_nodes(remote_command_executor, max_queue_size)
-    assert_that(_retrieve_slurm_nodes_from_config(remote_command_executor)).is_empty()
+    assert_that(_retrieve_slurm_compute_nodes_from_config(remote_command_executor)).is_empty()
     # Assert jobs were completed
     _assert_job_completed(remote_command_executor, job_id)
     _assert_job_completed(remote_command_executor, dependent_job_id)
@@ -149,13 +149,18 @@ def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_na
 
 
 def _retrieve_slurm_dummy_nodes_from_config(remote_command_executor):
-    retrieve_dummy_nodes_command = "sudo cat /opt/slurm/etc/slurm_parallelcluster_nodes.conf | head -n 1"
-    return remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout
+    slurm_nodes = _retrieve_slurm_nodes_from_config(remote_command_executor)
+    return [node for node in slurm_nodes.splitlines() if "dummy-compute" in node]
+
+
+def _retrieve_slurm_compute_nodes_from_config(remote_command_executor):
+    slurm_nodes = _retrieve_slurm_nodes_from_config(remote_command_executor)
+    return [node for node in slurm_nodes.splitlines() if "dummy-compute" not in node]
 
 
 def _retrieve_slurm_nodes_from_config(remote_command_executor):
-    retrieve_dummy_nodes_command = "sudo tail -n +2 /opt/slurm/etc/slurm_parallelcluster_nodes.conf"
-    return remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout
+    retrieve_nodes_command = "sudo grep 'NodeName' /opt/slurm/etc/slurm_parallelcluster_nodes.conf"
+    return remote_command_executor.run_remote_command(retrieve_nodes_command).stdout
 
 
 def _retrieve_slurm_dummy_nodes(remote_command_executor):
@@ -168,7 +173,8 @@ def _assert_dummy_nodes(remote_command_executor, count):
     dummy_nodes_config = _retrieve_slurm_dummy_nodes_from_config(remote_command_executor)
     # For the moment the test is enabled only on c5.xlarge, hence hardcoding slots for simplicity
     slots = 4
-    assert_that(dummy_nodes_config).is_equal_to(
+    assert_that(dummy_nodes_config).is_length(1)
+    assert_that(dummy_nodes_config[0]).is_equal_to(
         "NodeName=dummy-compute[1-{0}] CPUs={1} State=FUTURE".format(count, slots)
     )
     dummy_nodes_count = _retrieve_slurm_dummy_nodes(remote_command_executor)
