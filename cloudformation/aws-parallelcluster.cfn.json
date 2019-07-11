@@ -2686,7 +2686,18 @@
               "Ref": "AWS::NoValue"
             }
           ]
-        }
+        },
+        "MetricsCollection": [
+          {
+            "Granularity": "1Minute",
+            "Metrics": [
+              "GroupDesiredCapacity",
+              "GroupInServiceInstances",
+              "GroupTerminatingInstances",
+              "GroupTotalInstances"
+            ]
+          }
+        ]
       },
       "CreationPolicy": {
         "ResourceSignal": {
