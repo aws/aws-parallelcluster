@@ -70,7 +70,8 @@ main() {
     aws ${_profile} s3api head-bucket --bucket "${_bucket}" --region "${_region}"
     if [ $? -ne 0 ]; then
         _info "Bucket ${_bucket} do not exist, trying to create it"
-        aws ${_profile} s3api create-bucket --bucket "${_bucket}" --region "${_region}"
+        aws ${_profile} s3api create-bucket --bucket "${_bucket}" --region "${_region}" \
+	    --create-bucket-configuration LocationConstraint="${_region}"
         if [ $? -ne 0 ]; then
             _error_exit "Unable to create bucket ${_bucket}"
         fi
