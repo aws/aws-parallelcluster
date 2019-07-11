@@ -41,6 +41,7 @@ setup(
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),
+    python_requires=">=2.7",
     install_requires=REQUIRES,
     entry_points={
         "console_scripts": [
