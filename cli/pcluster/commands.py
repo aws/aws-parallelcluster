@@ -36,7 +36,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from tabulate import tabulate
 
-from pcluster.utils import get_installed_version, get_stack_output_value, verify_stack_creation
+from pcluster.utils import get_installed_version, get_param_value, get_stack_output_value, verify_stack_creation
 
 from . import cfnconfig, utils
 
@@ -640,18 +640,7 @@ def _get_master_server_ip(stack_name, config):
     return ip_address
 
 
-def _get_param_value(params, key_name):
-    """
-    Get parameter value from Cloudformation Stack Parameters.
-
-    :param outputs: Cloudformation Stack Parameters
-    :param key_name: Parameter Key
-    :return: ParameterValue if that parameter exists, otherwise None
-    """
-    return next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), None)
-
-
-def command(args, extra_args):  # noqa: C901 FIXME!!!
+def command(args, extra_args, return_output=False):  # noqa: C901 FIXME!!!
     stack = "parallelcluster-" + args.cluster_name
     config = cfnconfig.ParallelClusterConfig(args)
     if args.command in config.aliases:
@@ -691,7 +680,7 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
             ip = _get_master_server_ip(stack, config)
             template = cfn.get_template(StackName=stack)
             mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
-            base_os = _get_param_value(stack_result.get("Parameters"), "BaseOS")
+            base_os = get_param_value(stack_result.get("Parameters"), "BaseOS")
             username = mappings.get(base_os).get("User")
 
         try:
@@ -706,7 +695,18 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
 
         # run command
         if not args.dryrun:
-            os.system(cmd)
+            if return_output:
+                try:
+                    return sub.check_output(cmd, shell=True, stderr=sub.STDOUT)
+                except sub.CalledProcessError as e:
+                    error = e.output.decode("utf-8")
+                    if "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh: No such file or directory" in error:
+                        LOGGER.error("The version of ParallelCluster in the machine does not support DCV")
+                    else:
+                        LOGGER.error(error)
+                    sys.exit(1)
+            else:
+                os.system(cmd)
         else:
             LOGGER.info(cmd)
     except ClientError as e:

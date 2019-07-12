@@ -30,6 +30,7 @@ from pcluster.utils import (
     check_if_latest_version,
     get_installed_version,
     get_instance_vcpus,
+    get_supported_dcv_os,
     get_supported_features,
     get_templates_bucket_path,
 )
@@ -108,6 +109,9 @@ class ParallelClusterConfig(object):
 
         # efa checks
         self.__init_efa_parameters()
+
+        # Dcv parameters
+        self.__init_dcv_parameters()
 
         # Handle extra parameters supplied on command-line
         try:
@@ -542,6 +546,26 @@ class ParallelClusterConfig(object):
             self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
             self.__validate_resource("EFA", self.parameters)
             self.parameters["EFA"] = __temp__
+        except configparser.NoOptionError:
+            pass
+
+    def __init_dcv_parameters(self):
+        try:
+            if self.__config.has_option(self.__cluster_section, "dcv_settings"):
+                dcv_section = "dcv {NAME}".format(NAME=self.__config.get(self.__cluster_section, "dcv_settings"))
+                enable_status = self.__config.get(dcv_section, "enable")
+                if enable_status == "master":
+                    # We check only on create and update because otherwise even with an ssh we can block the user from
+                    # accessing a machine only because he changed is local configuration
+                    if (
+                        self.args.func.__name__ in ["create", "update"]
+                        and self.__get_os() not in get_supported_dcv_os()
+                    ):
+                        self.__fail("NICE DCV doesn't support the configured operating system.")
+                    port = self.__config.get(dcv_section, "port", fallback="8443")
+                    access_from = self.__config.get(dcv_section, "access_from", fallback="0.0.0.0/0")
+                    self.parameters["DCVOptions"] = ",".join([enable_status, port, access_from])
+
         except configparser.NoOptionError:
             pass
 

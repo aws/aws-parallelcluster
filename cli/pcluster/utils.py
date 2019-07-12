@@ -27,7 +27,7 @@ import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger(__name__)
 
 
 def boto3_client(service, aws_client_config):
@@ -283,3 +283,19 @@ def check_if_latest_version():
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
     except Exception:
         pass
+
+
+def get_param_value(params, key_name):
+    """
+    Get parameter value from Cloudformation Stack Parameters.
+
+    :param params: Cloudformation Stack Parameters
+    :param key_name: Parameter Key
+    :return: ParameterValue if that parameter exists, otherwise None
+    """
+    return next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), None)
+
+
+def get_supported_dcv_os():
+    """Return a list of all the operating system supported by DCV."""
+    return ["centos7"]

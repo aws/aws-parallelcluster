@@ -20,7 +20,8 @@ import textwrap
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-from pcluster import pcluster
+import pcluster.commands as pcluster
+from pcluster.dcv_connect import dcv_connect
 from pcluster.configure import easyconfig
 
 LOGGER = logging.getLogger("pcluster.pcluster")
@@ -36,6 +37,10 @@ def configure(args):
 
 def command(args, extra_args):
     pcluster.command(args, extra_args)
+
+
+def dcv(args):
+    dcv_connect(args)
 
 
 def status(args):
@@ -362,6 +367,13 @@ Variables substituted::
     # version command subparser
     pversion = subparsers.add_parser("version", help="Displays the version of AWS ParallelCluster.")
     pversion.set_defaults(func=version)
+
+    pdcv = subparsers.add_parser(
+        "dcv", help="Creates an interactive session to the ParallelCluster master node, through NICE DCV"
+    )
+    pdcv.add_argument("cluster_name", help="Name of the cluster to connect to")
+    pdcv.add_argument("--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection")
+    pdcv.set_defaults(func=dcv)
 
     return parser
 
