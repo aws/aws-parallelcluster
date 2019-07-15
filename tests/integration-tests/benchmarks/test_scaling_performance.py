@@ -74,7 +74,7 @@ METRIC_WIDGET_TEMPLATE = """
     }}"""
 
 
-@pytest.mark.schedulers(["slurm", "sge"])
+@pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.benchmarks
 def test_scaling_performance(region, scheduler, os, instance, pcluster_config_reader, clusters_factory, request):
     """The test runs benchmarks for the scaling logic."""
