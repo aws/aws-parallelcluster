@@ -30,7 +30,7 @@ Next create a role:
 1. Under Roles, create a role
 2. Click ``EC2`` as the trusted entity
 3. Under Permissions, search for the ``ParallelClusterInstancePolicy`` role you just created and attach it.
-4. Name it ``ParallelClusterRole`` and click "Create Role"
+4. Name it ``ParallelClusterInstanceRole`` and click "Create Role"
 
 Give your Key Permissions
 =========================
