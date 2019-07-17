@@ -118,10 +118,11 @@ In case you are using SGE, Slurm or Torque as a scheduler:
           },
           {
               "Resource": [
-                  "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/parallelcluster-*"
+                  "arn:aws:cloudformation:<REGION>:<AWS ACCOUNT ID>:stack/parallelcluster-*/*"
               ],
               "Action": [
-                  "cloudformation:DescribeStacks"
+                  "cloudformation:DescribeStacks",
+                  "cloudformation:DescribeStackResource"
               ],
               "Sid": "CloudFormationDescribe",
               "Effect": "Allow"

@@ -31,14 +31,16 @@ CHANGELOG
 * Dynamically fetch compute instance type and cluster size in order to support updates in scaling daemons
 * Always use full master FQDN when mounting NFS on compute nodes. This solves some issues occurring with some networking
   setups and custom DNS configurations
-* Set soft and hard ulimit on open files to 10000 for all supported OSs
 * List the version and status during ``pcluster list``
-* Add option to color the output of ``pcluster list``
 * Remove double quoting of the post_install args
 * ``awsbsub``: use override option to set the number of nodes rather than creating multiple JobDefinitions
+* Add support for AWS_PCLUSTER_CONFIG_FILE env variable to specify pcluster config file
 
 **CHANGES**
 
+* Update openmpi library to version 3.1.4 on Centos 7, Amazon Linux and Ubuntu 1604. This also changes the default
+  openmpi path to ``/opt/amazon/efa/bin/`` and the openmpi module name to ``openmpi/3.1.4``
+* Set soft and hard ulimit on open files to 10000 for all supported OSs
 * For a better security posture, we're removing AWS credentials from the ``parallelcluster`` config file
   Credentials can be now setup following the canonical procedure used for the aws cli
 * When using FSx or EFS do not enforce in sanity check that the compute security group is open to 0.0.0.0/0

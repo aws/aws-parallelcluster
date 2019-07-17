@@ -713,11 +713,7 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
         elif status in valid_status:
             outputs = stack_result.get("Outputs")
             username = _get_output_value(outputs, "ClusterUser")
-            ip = (
-                _get_output_value(outputs, "MasterPublicIP")
-                if _get_output_value(outputs, "MasterPublicIP")
-                else _get_output_value(outputs, "MasterPrivateIP")
-            )
+            ip = _get_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack, config)
 
             if not username:
                 LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
@@ -1029,7 +1025,7 @@ def create_ami(args):
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}
 
-    instance_type = "t2.large"
+    instance_type = args.instance_type
     try:
         config = cfnconfig.ParallelClusterConfig(args)
 

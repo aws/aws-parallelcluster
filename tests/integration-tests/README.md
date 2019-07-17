@@ -53,7 +53,7 @@ with the specified values.
 The following options can be used to control test outputs and reports:
 * `--output-dir path/to/dir`: specifies the base dir where test outputs and logs will be saved.
 Defaults to tests_outputs.
-* `--reports {html,junitxml,json}`: allows to select what tests reports to generate.
+* `--reports {html,junitxml,json,cw}`: allows to select what tests reports to generate.
 * `--show-output`: when specified does not redirect stdout to file. Useful when developing the tests but not
 recommended when running parallel tests.
 
@@ -91,6 +91,11 @@ tests_outputs
     ├── test_report.json: global json report
     └── test_report.xml: global junitxml report
 ```
+
+By specifying the option `--reports cw`, the results of the tests run will be published as a series of CloudWatch
+metrics. You can use the options `--cw-region` (default `us-east-1`) and `--cw-namespace`
+(default `ParallelCluster/IntegrationTests`) to specify what region and what metric namespace
+you want to use for the published metrics.
 
 ### Specify Tests Dimensions
 The following options can be used to control the parametrization of test cases:
@@ -168,6 +173,46 @@ python -m test_runner \
 
 Keep in mind, the cluster you pass can have different `scheduler`, `os` or other features 
 than what is specified in the test. This can break the tests in unexpected ways. Be mindful.
+
+### Benchmark and performance tests
+
+Performance tests are disabled by default due to the high resource utilization involved with their execution.
+In order to run performance tests you can use the following options:
+* `--benchmarks`: run benchmarks tests. This disables the execution of all tests defined under the tests directory.
+* `--benchmarks-target-capacity`: set the target capacity for benchmarks tests (default: 200).
+* `--benchmarks-max-time`: set the max waiting time in minutes for benchmarks tests (default: 30).
+
+The same filters by dimensions and features can be applied to this kind of tests.
+
+The output produced by the performance tests is stored under the following directory tree:
+```
+tests_outputs
+└── $timestamp..out
+    └── benchmarks: directory storing all cluster configs used by test
+            ├── test_scaling_speed.py-test_scaling_speed[c5.xlarge-eu-west-1-centos7-slurm].png
+            └── ...
+```
+
+## Cross Account Integration Tests
+If you want to distribute integration tests across multiple accounts you can make use of the `--credential` flag. 
+This is useful to overcome restrictions related to account limits and be compliant with a multi-region, multi-account 
+setup.
+
+When the `--credential` flag is specified and STS assume-role call is made in order to fetch temporary credentials to 
+be used to run tests in a specific region. 
+
+The `--credential` flag is in the form `<region>,<endpoint_url>,<ARN>,<external_id>` and needs to be specified for each 
+region you want to use with an STS assumed role (that usually means for every region you want to have in a separate 
+account).
+
+ * `region` is the region you want to test with an assumed STS role (which is in the target account where you want to 
+ launch the integration tests)
+ * `endpoint_url` is the STS endpoint url of the main account to be called in order to assume the delegation role
+ * `ARN` is the ARN of the delegation role in the optin region account to be assumed by the main account
+ * `external_id` is the external ID of the delegation role  
+
+By default, the delegation role lifetime last for one hour. Mind that if you are planning to launch tests that last 
+more than one hour.
 
 ## Write Integration Tests
 
@@ -502,3 +547,11 @@ def vpc(cfn_stacks_factory):
     cfn_stacks_factory.create_stack(stack)
     return stack
 ```
+
+### Benchmark and performance tests
+
+Benchmark and performance tests follow the same rules described above for a normal integration test.
+The only differences are the following:
+- the tests are defined under the `benchmarks/` directory
+- they are not executed by default with the rest of the integration tests
+- they write their output to a specific benchmarks directory created in the output dir
