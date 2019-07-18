@@ -66,7 +66,7 @@ class SchedulerCommands(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def submit_script(self, script, nodes=1, slots=None, additional_files=None):
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):
         """
         Submit a job to the scheduler by using a script file.
 
@@ -88,6 +88,11 @@ class SchedulerCommands(metaclass=ABCMeta):
     @abstractmethod
     def compute_nodes_count(self):
         """Retrieve the number of compute nodes attached to the scheduler."""
+        pass
+
+    @abstractmethod
+    def get_compute_nodes(self):
+        """Retrieve the list of compute nodes attached to the scheduler."""
         pass
 
 
@@ -118,7 +123,7 @@ class AWSBatchCommands(SchedulerCommands):
     def submit_command(self, command, nodes=1, slots=None):  # noqa: D102
         return self._remote_command_executor.run_remote_command('echo "{0}" | awsbsub -n {1}'.format(command, nodes))
 
-    def submit_script(self, script, nodes=1, additional_files=None, slots=None):  # noqa: D102
+    def submit_script(self, script, script_args=None, nodes=1, additional_files=None, slots=None):  # noqa: D102
         raise NotImplementedError
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -173,7 +178,7 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(self, script, nodes=1, slots=None, additional_files=None):  # noqa: D102
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):  # noqa: D102
         if not additional_files:
             additional_files = []
         additional_files.append(script)
@@ -182,7 +187,7 @@ class SgeCommands(SchedulerCommands):
             flags += "-pe mpi {0} ".format(slots)
         script_name = os.path.basename(script)
         return self._remote_command_executor.run_remote_command(
-            "qsub {0} {1}".format(flags, script_name), additional_files=additional_files
+            "qsub {0} {1} {2}".format(flags, script_name, script_args), additional_files=additional_files
         )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -237,7 +242,9 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -n {0}".format(slots)
         return self._remote_command_executor.run_remote_command(submission_command)
 
-    def submit_script(self, script, nodes=1, slots=None, host=None, additional_files=None):  # noqa: D102
+    def submit_script(
+        self, script, script_args=None, nodes=1, slots=None, host=None, additional_files=None
+    ):  # noqa: D102
         if not additional_files:
             additional_files = []
         additional_files.append(script)
@@ -249,7 +256,7 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -n {0}".format(slots)
         if nodes > 1:
             submission_command += " -N {0}".format(nodes)
-        submission_command += " {1}".format(nodes, script_name)
+        submission_command += " {1} {2}".format(nodes, script_name, script_args)
         return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -300,8 +307,17 @@ class TorqueCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(self, script, nodes=1):  # noqa: D102
-        raise NotImplementedError
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):  # noqa: D102
+        if not additional_files:
+            additional_files = []
+        script_name = os.path.basename(script)
+        additional_files.append(script)
+        flags = "-l nodes={0}:ppn={1}".format(nodes or 1, slots or 1)
+        if script_args:
+            flags += " -F {0}".format(script_args)
+        return self._remote_command_executor.run_remote_command(
+            "qsub {0} {1}".format(flags, script_name), additional_files=additional_files
+        )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         __tracebackhide__ = True
@@ -316,7 +332,10 @@ class TorqueCommands(SchedulerCommands):
         return int(result.stdout.split()[-1])
 
     def get_compute_nodes(self):  # noqa: D102
-        raise NotImplementedError
+        result = self._remote_command_executor.run_remote_command(
+            "pbsnodes -l all | grep -v $(hostname) | awk '{print $1}'"
+        )
+        return result.stdout.splitlines()
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):
