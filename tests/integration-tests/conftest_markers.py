@@ -81,7 +81,7 @@ def check_marker_list(items, marker_name, arg_name):
                 allowed_values=allowed_values,
             )
         )
-        logging.info(skip_message)
+        logging.debug(skip_message)
         items.remove(item)
 
 
@@ -116,7 +116,7 @@ def check_marker_skip_list(items, marker_name, arg_name):
                         skip_values=skip_values,
                     )
                 )
-                logging.info(skip_message)
+                logging.debug(skip_message)
                 items.remove(item)
 
 
@@ -158,7 +158,7 @@ def check_marker_skip_dimensions(items):
                         test_name=item.name, args_values=args_values, marker=marker_name, skip_values=marker.args
                     )
                 )
-                logging.info(skip_message)
+                logging.debug(skip_message)
                 items.remove(item)
                 break
 
@@ -202,7 +202,7 @@ def check_marker_dimensions(items):
                     allowed_values=allowed_values,
                 )
             )
-            logging.info(skip_message)
+            logging.debug(skip_message)
             items.remove(item)
 
 
