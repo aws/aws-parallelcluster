@@ -145,7 +145,7 @@ class SgeCommands(SchedulerCommands):
     def __init__(self, remote_command_executor):
         super().__init__(remote_command_executor)
 
-    @retry(retry_on_result=lambda result: result != 0, wait_fixed=seconds(7), stop_max_delay=minutes(5))
+    @retry(retry_on_result=lambda result: result != 0, wait_fixed=seconds(3), stop_max_delay=minutes(7))
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qacct -j {0}".format(job_id), raise_on_error=False)
         return result.return_code
@@ -214,8 +214,8 @@ class SlurmCommands(SchedulerCommands):
     @retry(
         retry_on_result=lambda result: "JobState" not in result
         or any(value in result for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING"]),
-        wait_fixed=seconds(7),
-        stop_max_delay=minutes(5),
+        wait_fixed=seconds(3),
+        stop_max_delay=minutes(7),
     )
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command(
@@ -282,7 +282,7 @@ class TorqueCommands(SchedulerCommands):
         super().__init__(remote_command_executor)
 
     @retry(
-        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(7), stop_max_delay=minutes(5)
+        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(7)
     )
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
