@@ -9,6 +9,8 @@ lifecycle and re-usage and to perform cleanup on failures. It also offers a set 
 that implement features which are common to all tests such as remote command execution and ParallelCluster
 config generation.
 
+![integtests_small](https://user-images.githubusercontent.com/12721611/61521900-868c0500-aa11-11e9-9a98-de58eaa18752.png)
+
 ## Run Integration Tests
 
 To run the integration tests you have to use Python 3.7.
