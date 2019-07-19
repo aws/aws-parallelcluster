@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import math
 import re
 
 import pytest
@@ -40,7 +41,7 @@ def test_sge(region, pcluster_config_reader, clusters_factory):
     _test_sge_version(remote_command_executor)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
-    _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
+    _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_slots)
     # TODO: _test_dynamic_max_cluster_size
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
@@ -100,7 +101,7 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     sge_commands.assert_job_succeeded(dependent_job_id)
 
 
-def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_name, scaledown_idletime):
+def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_name, scaledown_idletime, max_slots):
     logging.info("Testing cluster scales correctly with array jobs and parallel jobs")
     sge_commands = SgeCommands(remote_command_executor)
 
@@ -111,7 +112,10 @@ def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_na
     parallel_job_id = sge_commands.assert_job_submitted(result.stdout)
 
     # Assert scaling worked as expected
-    assert_scaling_worked(sge_commands, region, stack_name, scaledown_idletime, expected_max=3, expected_final=0)
+    expected_max = math.ceil(float(5 + 4) / max_slots)
+    assert_scaling_worked(
+        sge_commands, region, stack_name, scaledown_idletime, expected_max=expected_max, expected_final=0
+    )
     # Assert jobs were completed
     sge_commands.assert_job_succeeded(array_job_id)
     sge_commands.assert_job_succeeded(parallel_job_id)
