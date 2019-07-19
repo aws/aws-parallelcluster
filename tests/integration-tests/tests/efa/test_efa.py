@@ -41,7 +41,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
 
     _test_efa_installed(scheduler_commands, remote_command_executor)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, os)
-    _test_osu_benchmarks(remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
+    _test_osu_benchmarks_openmpi(remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
@@ -65,11 +65,11 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
     assert_that(result.stdout).does_not_contain("00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0")
 
 
-def _test_osu_benchmarks(remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
+def _test_osu_benchmarks_openmpi(remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
     logging.info("Running OSU benchmarks")
-    remote_command_executor.run_remote_script(str(test_datadir / "init_osu_benchmarks.sh"), hide=True)
+    remote_command_executor.run_remote_script(str(test_datadir / "init_osu_benchmarks.sh"), args=["openmpi"], hide=True)
 
-    result = scheduler_commands.submit_script(str(test_datadir / "osu_submit.sh"), slots=2 * slots_per_instance)
+    result = scheduler_commands.submit_script(str(test_datadir / "osu_submit_openmpi.sh"), slots=2 * slots_per_instance)
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
