@@ -55,7 +55,6 @@
             "MinSize",
             "DesiredSize",
             "MaxSize",
-            "ComputeWaitConditionCount",
             "SpotPrice",
             "ClusterType",
             "ProxyServer",
@@ -71,10 +70,8 @@
             "EncryptedEphemeral",
             "EphemeralDir",
             "SharedDir",
-            "CustomChefRunList",
             "CustomChefCookbook",
             "ExtraJson",
-            "Tenancy",
             "MasterRootVolumeSize",
             "ComputeRootVolumeSize",
             "EC2IAMRoleName"
@@ -204,9 +201,6 @@
         "SharedDir": {
           "default": "shared_dir"
         },
-        "Tenancy": {
-          "default": "tenancy"
-        },
         "MasterRootVolumeSize": {
           "default": "master_root_volume_size"
         },
@@ -224,9 +218,6 @@
         },
         "CustomChefCookbook": {
           "default": "custom_chef_cookbook"
-        },
-        "CustomChefRunList": {
-          "default": "custom_chef_runlist"
         },
         "EBSSnapshotId": {
           "default": "ebs_snapshot_id"
@@ -251,9 +242,6 @@
         },
         "ScaleDownIdleTime": {
           "default": "scaledown_idletime"
-        },
-        "ComputeWaitConditionCount": {
-          "default": "WAIT COUNT"
         },
         "AvailabilityZone": {
           "default": "AVAILABILITY ZONE"
@@ -396,11 +384,6 @@
       "Type": "String",
       "Default": "NONE"
     },
-    "ComputeWaitConditionCount": {
-      "Description": "Specific number of instances to wait for while creating the cluster",
-      "Type": "Number",
-      "Default": "2"
-    },
     "S3ReadResource": {
       "Description": "S3 resource with read access from AWS ParallelCluster nodes",
       "Type": "String",
@@ -505,11 +488,6 @@
       "Default": "NONE",
       "AllowedPattern": "(NONE|^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$)"
     },
-    "CustomChefRunList": {
-      "Description": "Custom run list, which will override the default",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "CustomChefCookbook": {
       "Description": "URL of custom cookbook that will override the default. This will be unpacked and then dependencies resolved with Berkshelf.",
       "Type": "String",
@@ -519,15 +497,6 @@
       "Description": "Extra json to be added to Chef dna.json",
       "Type": "String",
       "Default": "{}"
-    },
-    "Tenancy": {
-      "Description": "Type of placement requird in AWS ParallelCluster, it can either be cluster or compute.",
-      "Type": "String",
-      "Default": "default",
-      "AllowedValues": [
-        "default",
-        "dedicated"
-      ]
     },
     "EBSKMSKeyId": {
       "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
@@ -904,18 +873,6 @@
         }
       ]
     },
-    "UseCustomRunList": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "CustomChefRunList"
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
     "UseCustomAMI": {
       "Fn::Not": [
         {
@@ -1038,14 +995,6 @@
             "NONE"
           ]
         }
-      ]
-    },
-    "UseDedicatedTenancy": {
-      "Fn::Equals": [
-        {
-          "Ref": "Tenancy"
-        },
-        "dedicated"
       ]
     },
     "UseEC2IAMRole": {
@@ -2185,9 +2134,6 @@
             }
           ]
         },
-        "Tenancy": {
-          "Ref": "Tenancy"
-        },
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
@@ -2254,10 +2200,10 @@
                 "  which yum 2>/dev/null; yum=$?\n",
                 "  which apt-get 2>/dev/null; apt=$?\n",
                 "  if [ \"${yum}\" == \"0\" ]; then\n",
-                "    yum -y groupinstall development && yum -y install curl wget jq\n",
+                "    yum -y groupinstall development && yum -y install curl wget jq awscli\n",
                 "  fi\n",
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
-                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
+                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
                 "  fi\n",
                 "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                 "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
@@ -2545,26 +2491,6 @@
                         "QueueName"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
@@ -2816,7 +2742,7 @@
         "ResourceSignal": {
           "Timeout": "PT30M",
           "Count": {
-            "Ref": "ComputeWaitConditionCount"
+            "Ref": "DesiredSize"
           }
         }
       },
@@ -3023,17 +2949,6 @@
             }
           }
         ],
-        "PlacementTenancy": {
-          "Fn::If": [
-            "UseDedicatedTenancy",
-            {
-              "Ref": "Tenancy"
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
         "UserData": {
           "Fn::Base64": {
             "Fn::Join": [
@@ -3107,10 +3022,10 @@
                 "  which yum 2>/dev/null; yum=$?\n",
                 "  which apt-get 2>/dev/null; apt=$?\n",
                 "  if [ \"${yum}\" == \"0\" ]; then\n",
-                "    yum -y groupinstall development && yum -y install curl wget jq\n",
+                "    yum -y groupinstall development && yum -y install curl wget jq awscli\n",
                 "  fi\n",
                 "  if [ \"${apt}\" == \"0\" ]; then\n",
-                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
+                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
                 "  fi\n",
                 "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                 "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
@@ -3387,26 +3302,6 @@
                         "User"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
@@ -3719,19 +3614,6 @@
               }
             }
           ],
-          "Placement": {
-            "Fn::If": [
-              "UseDedicatedTenancy",
-              {
-                "Tenancy": {
-                  "Ref": "Tenancy"
-                }
-              },
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          },
           "UserData": {
             "Fn::Base64": {
               "Fn::Join": [
@@ -3805,10 +3687,10 @@
                   "  which yum 2>/dev/null; yum=$?\n",
                   "  which apt-get 2>/dev/null; apt=$?\n",
                   "  if [ \"${yum}\" == \"0\" ]; then\n",
-                  "    yum -y groupinstall development && yum -y install curl wget jq\n",
+                  "    yum -y groupinstall development && yum -y install curl wget jq awscli\n",
                   "  fi\n",
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
-                  "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq\n",
+                  "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
                   "  fi\n",
                   "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
                   "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
@@ -4087,26 +3969,6 @@
                         "User"
                       ]
                     }
-                  },
-                  "run_list": {
-                    "Fn::If": [
-                      "UseCustomRunList",
-                      {
-                        "Ref": "CustomChefRunList"
-                      },
-                      {
-                        "Fn::Join": [
-                          "",
-                          [
-                            "recipe[aws-parallelcluster::",
-                            {
-                              "Ref": "Scheduler"
-                            },
-                            "_config]"
-                          ]
-                        ]
-                      }
-                    ]
                   }
                 }
               },
