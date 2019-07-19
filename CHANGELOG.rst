@@ -2,6 +2,11 @@
 CHANGELOG
 =========
 
+2.4.1
+=====
+* Update EFA installer to a new version, note this changes the location of ``mpicc`` and ``mpirun``. To avoid breaking existing code, we recommend you use the modulefile ``module load openmpi`` and ``which mpicc`` for anything that requires the full path.
+
+
 2.4.0
 =====
 
