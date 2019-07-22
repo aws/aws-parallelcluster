@@ -2480,6 +2480,9 @@
                         "QueueName"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
@@ -3291,6 +3294,9 @@
                         "User"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
@@ -3958,6 +3964,9 @@
                         "User"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
