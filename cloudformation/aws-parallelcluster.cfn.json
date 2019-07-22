@@ -1422,6 +1422,17 @@
               }
             ]
           },
+          "ComputeSecurityGroupIngress": {
+            "Fn::If": [
+              "CreateSecurityGroups",
+              {
+                "Ref": "ComputeSecurityGroupIngress"
+              },
+              {
+                "Ref": "VPCSecurityGroupId"
+              }
+            ]
+          },
           "SubnetId": {
             "Ref": "MasterSubnetId"
           }
@@ -2480,6 +2491,9 @@
                         "QueueName"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
@@ -3291,6 +3305,9 @@
                         "User"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
@@ -3958,6 +3975,9 @@
                         "User"
                       ]
                     }
+                  },
+                  "run_list": {
+                    "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
                   }
                 }
               },
