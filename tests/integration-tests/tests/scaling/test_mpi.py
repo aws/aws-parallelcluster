@@ -58,6 +58,18 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     )
 
 
+@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["slurm", "sge", "torque"])
+@pytest.mark.usefixtures("region", "instance")
+def test_mpirun_comms(scheduler, os, pcluster_config_reader, clusters_factory):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    _test_mpi_comms(remote_command_executor, scheduler, os)
+
+
 @timeout(5, use_signals=False, timeout_exception=RemoteCommandExecutionError)
 def _test_mpi_comms(remote_command_executor, scheduler, os):
     logging.info("Testing mpi communications")
@@ -76,15 +88,3 @@ def _test_mpi_comms(remote_command_executor, scheduler, os):
     # ip-10-0-127-71"
     assert_that(len(mpirun_out)).is_greater_than_or_equal_to(1)
     assert_that(mpirun_out[-1]).is_equal_to(remote_host)
-
-
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge", "torque"])
-@pytest.mark.oss(["alinux"])
-def test_mpirun_comms(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
-    cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
-
-    _test_mpi_comms(remote_command_executor, scheduler, os)
