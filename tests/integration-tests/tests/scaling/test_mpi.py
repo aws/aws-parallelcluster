@@ -58,21 +58,21 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     )
 
 
-@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.regions(["us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
-def test_mpirun_comms(scheduler, os, pcluster_config_reader, clusters_factory):
+def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
+
+    _test_mpi_ssh(cluster, scheduler, os)
+
+
+@timeout(10, timeout_exception=RemoteCommandExecutionError)
+def _test_mpi_ssh(cluster, scheduler, os):
+    logging.info("Testing mpi SSH")
     remote_command_executor = RemoteCommandExecutor(cluster)
-
-    _test_mpi_comms(remote_command_executor, scheduler, os)
-
-
-@timeout(5, use_signals=False, timeout_exception=RemoteCommandExecutionError)
-def _test_mpi_comms(remote_command_executor, scheduler, os):
-    logging.info("Testing mpi communications")
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -80,7 +80,7 @@ def _test_mpi_comms(remote_command_executor, scheduler, os):
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]
     mpirun_out = remote_command_executor.run_remote_command(
-        "module load {0} && mpirun --host {1} hostname".format(mpi_module, remote_host), raise_on_error=False
+        "module load {0} && mpirun --host {1} hostname".format(mpi_module, remote_host)
     ).stdout.splitlines()
 
     # mpirun_out =
