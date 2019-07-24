@@ -18,7 +18,6 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from tests.common.mpi_common import OS_TO_OPENMPI_MODULE_MAP, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import _fetch_instance_slots
-from wrapt_timeout_decorator import timeout
 
 
 @pytest.mark.regions(["us-west-2"])
@@ -58,7 +57,7 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     )
 
 
-@pytest.mark.regions(["us-gov-west-1"])
+@pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
@@ -66,12 +65,6 @@ def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
 
-    _test_mpi_ssh(cluster, scheduler, os)
-
-
-@timeout(10, timeout_exception=RemoteCommandExecutionError)
-def _test_mpi_ssh(cluster, scheduler, os):
-    logging.info("Testing mpi SSH")
     remote_command_executor = RemoteCommandExecutor(cluster)
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
 
@@ -79,8 +72,15 @@ def _test_mpi_ssh(cluster, scheduler, os):
     compute_node = scheduler_commands.get_compute_nodes()
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]
+
+    _test_mpi_ssh(remote_command_executor, mpi_module, remote_host)
+
+
+def _test_mpi_ssh(remote_command_executor, mpi_module, remote_host):
+    logging.info("Testing mpi SSH")
+
     mpirun_out = remote_command_executor.run_remote_command(
-        "module load {0} && mpirun --host {1} hostname".format(mpi_module, remote_host)
+        "module load {0} && mpirun --timeout 5 --host {1} hostname".format(mpi_module, remote_host)
     ).stdout.splitlines()
 
     # mpirun_out =
