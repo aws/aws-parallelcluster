@@ -10,15 +10,15 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import threading
 
 import pytest
 
 from assertpy import assert_that
-from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from remote_command_executor import RemoteCommandExecutor
 from tests.common.mpi_common import OS_TO_OPENMPI_MODULE_MAP, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import _fetch_instance_slots
-from wrapt_timeout_decorator import timeout
 
 
 @pytest.mark.regions(["us-west-2"])
@@ -62,23 +62,28 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
-def test_mpirun_comms(scheduler, os, pcluster_config_reader, clusters_factory):
+def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
-
-    _test_mpi_comms(remote_command_executor, scheduler, os)
-
-
-@timeout(5, use_signals=False, timeout_exception=RemoteCommandExecutionError)
-def _test_mpi_comms(remote_command_executor, scheduler, os):
-    logging.info("Testing mpi communications")
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
-
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     compute_node = scheduler_commands.get_compute_nodes()
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]
+
+    # Calls the test in a new thread and wait for its completion within a 5sec timeout
+    # Setting the thread as daemon allows the main program to exit also if daemon thread is still running
+    t = threading.Thread(target=_test_mpi_ssh, args=(remote_command_executor, mpi_module, remote_host))
+    t.daemon = True
+    t.start()
+    t.join(5.0)
+    assert_that(t.isAlive()).is_equal_to(False)
+
+
+def _test_mpi_ssh(remote_command_executor, mpi_module, remote_host):
+    logging.info("Testing mpi SSH")
+
     mpirun_out = remote_command_executor.run_remote_command(
         "module load {0} && mpirun --host {1} hostname".format(mpi_module, remote_host), raise_on_error=False
     ).stdout.splitlines()
