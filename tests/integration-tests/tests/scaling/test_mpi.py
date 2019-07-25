@@ -24,7 +24,7 @@ from tests.common.utils import _fetch_instance_slots
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "c5n.18xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
-@pytest.mark.oss(["alinux", "centos7", "centos6", "ubuntu1604", "ubuntu1804"])
+@pytest.mark.oss(["alinux", "centos7", "centos6", "ubuntu1604", "ubuntu1404"])
 def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 3

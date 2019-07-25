@@ -10,7 +10,7 @@ OS_TO_OPENMPI_MODULE_MAP = {
     "centos7": "openmpi",
     "ubuntu1604": "openmpi",
     "centos6": "openmpi-x86_64",
-    "ubuntu1404": "openmpi-x86_64",
+    "ubuntu1404": "no_module_available",
 }
 
 
@@ -28,10 +28,10 @@ def _test_mpi(
     datadir = pathlib.Path(__file__).parent / "data/mpi/"
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
     # Compile mpi script
-    remote_command_executor.run_remote_command(
-        "module load {0} && mpicc -o mpi_hello_world mpi_hello_world.c".format(mpi_module),
-        additional_files=[str(datadir / "mpi_hello_world.c")],
-    )
+    command = "mpicc -o mpi_hello_world mpi_hello_world.c"
+    if mpi_module != "no_module_available":
+        command = "module load {0} && {1}".format(mpi_module, command)
+    remote_command_executor.run_remote_command(command, additional_files=[str(datadir / "mpi_hello_world.c")])
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     # submit script using additional files
