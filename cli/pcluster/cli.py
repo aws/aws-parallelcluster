@@ -157,7 +157,7 @@ Examples::
         "--template-url",
         help="Specifies the URL for a custom CloudFormation template, " "if it was used at creation time.",
     )
-    pcreate.add_argument("-t", "--cluster-template", help="Indicates which cluster template to use.")
+    pcreate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
     pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
     pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
     pcreate.set_defaults(func=create)
@@ -181,7 +181,7 @@ Examples::
         default=False,
         help="Disable CloudFormation stack rollback on error.",
     )
-    pupdate.add_argument("-t", "--cluster-template", help="Indicates which cluster template to use.")
+    pupdate.add_argument("-t", "--cluster-template", help="Indicates which section of the cluster template to use.")
     pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
     pupdate.add_argument(
         "-rd",
@@ -358,6 +358,13 @@ This recursively copies the contents of directory dir/ into the local directory.
         required=True,
         help="Specifies the OS of the base AMI. "
         "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
+    )
+    pami.add_argument(
+        "-i",
+        "--instance-type",
+        dest="instance_type",
+        default="t2.xlarge",
+        help="Sets instance type to build the ami on. Defaults to t2.xlarge.",
     )
     pami.add_argument(
         "-ap",

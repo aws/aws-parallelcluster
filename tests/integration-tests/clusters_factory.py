@@ -12,6 +12,7 @@
 import logging
 import time
 
+import boto3
 import configparser
 from retrying import retry
 
@@ -21,7 +22,7 @@ from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subproc
 class Cluster:
     """Contain all static and dynamic data related to a cluster instance."""
 
-    def __init__(self, name, config_file, ssh_key):
+    def __init__(self, name, ssh_key, config_file):
         self.name = name
         self.config_file = config_file
         self.ssh_key = ssh_key
@@ -68,7 +69,13 @@ class Cluster:
     @property
     def master_ip(self):
         """Return the public ip of the cluster master node."""
-        return self.cfn_outputs["MasterPublicIP"]
+        if "MasterPublicIP" in self.cfn_outputs:
+            return self.cfn_outputs["MasterPublicIP"]
+        else:
+            ec2 = boto3.client("ec2", region_name=self.region)
+            master_server = self.cfn_resources["MasterServer"]
+            instance = ec2.describe_instances(InstanceIds=[master_server]).get("Reservations")[0].get("Instances")[0]
+            return instance.get("PublicIpAddress")
 
     @property
     def os(self):
@@ -121,7 +128,7 @@ class ClustersFactory:
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
         self.__created_clusters[name] = cluster
-        result = run_command(["pcluster", "create", "--config", config, name])
+        result = run_command(["pcluster", "create", "--norollback", "--config", config, name])
         if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)

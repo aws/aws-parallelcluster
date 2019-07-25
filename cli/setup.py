@@ -21,7 +21,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.3.2a1"
+VERSION = "2.4.0"
 REQUIRES = ["boto3>=1.9.54", "future>=0.16.0,<=0.17.1", "tabulate>=0.8.2,<=0.8.3"]
 
 if sys.version_info[:2] == (2, 6):
@@ -41,6 +41,7 @@ setup(
     url="https://github.com/aws/aws-parallelcluster",
     license="Apache License 2.0",
     packages=find_packages(),
+    python_requires=">=2.7",
     install_requires=REQUIRES,
     entry_points={
         "console_scripts": [

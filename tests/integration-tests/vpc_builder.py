@@ -77,7 +77,7 @@ class VPCTemplateBuilder:
 
     def __build_template(self):
         vpc = self.__build_vpc()
-        internet_gateway = self.__build_internet_gateway(vpc)
+        internet_gateway, internet_gateway_attachment = self.__build_internet_gateway(vpc)
         nat_gateway = None
         subnet_refs = []
         for subnet in self.__vpc_config.subnets:
@@ -87,7 +87,9 @@ class VPCTemplateBuilder:
                 nat_gateway = self.__build_nat_gateway(subnet, subnet_ref)
 
         for subnet, subnet_ref in zip(self.__vpc_config.subnets, subnet_refs):
-            self.__build_route_table(subnet, subnet_ref, vpc, internet_gateway, nat_gateway)
+            self.__build_route_table(
+                subnet, subnet_ref, vpc, internet_gateway, internet_gateway_attachment, nat_gateway
+            )
 
     def __build_vpc(self):
         vpc_config = self.__vpc_config
@@ -107,10 +109,10 @@ class VPCTemplateBuilder:
         internet_gateway = self.__template.add_resource(
             InternetGateway("InternetGateway", Tags=Tags(Name=Ref("AWS::StackName"), Stack=Ref("AWS::StackId")))
         )
-        self.__template.add_resource(
+        internet_gateway_attachment = self.__template.add_resource(
             VPCGatewayAttachment("VPCGatewayAttachment", VpcId=Ref(vpc), InternetGatewayId=Ref(internet_gateway))
         )
-        return internet_gateway
+        return internet_gateway, internet_gateway_attachment
 
     def __build_subnet(self, subnet_config: SubnetConfig, vpc: VPC):
         subnet = Subnet(
@@ -142,6 +144,7 @@ class VPCTemplateBuilder:
         subnet_ref: Subnet,
         vpc: VPC,
         internet_gateway: InternetGateway,
+        internet_gateway_attachment: VPCGatewayAttachment,
         nat_gateway: NatGateway,
     ):
         route_table = self.__template.add_resource(
@@ -163,6 +166,7 @@ class VPCTemplateBuilder:
                     RouteTableId=Ref(route_table),
                     DestinationCidrBlock="0.0.0.0/0",
                     GatewayId=Ref(internet_gateway),
+                    DependsOn=internet_gateway_attachment,
                 )
             )
         elif subnet_config.default_gateway == Gateways.NAT_GATEWAY:

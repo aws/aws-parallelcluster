@@ -3,6 +3,8 @@ Configuration
 .. toctree::
 
 ParallelCluster uses the file ``~/.parallelcluster/config`` by default for all configuration parameters.
+You can change the location of the config file via the ``--config`` command option or by setting the
+``AWS_PCLUSTER_CONFIG_FILE`` environment variable.
 
 An example configuration file can be found at ``site-packages/aws-parallelcluster/examples/config``.
 
@@ -419,10 +421,8 @@ that commercial entails all supported regions including us-east-1, us-west-2, et
    region         alinux    centos6       centos7     ubuntu1404   ubuntu1604
    ============== ======  ============ ============ ============= ============
    commercial      True     True          True          True        True
-   us-gov-west-1   True     False         False         True        True
-   us-gov-east-1   True     False         False         True        True
-   cn-north-1      True     False         False         True        True
-   cn-northwest-1  True     False         False         False       False
+   govcloud        True     False         False         True        True
+   china           True     False         False         True        True
    ============== ======  ============ ============ ============= ============
 
 Note: The base_os determines the username used to log into the cluster.
@@ -592,6 +592,9 @@ If true, an Elastic IP will be associated to the Master instance.
 
 If false, the Master instance will have a Public IP (or not) according to the value
 of the "Auto-assign Public IP" subnet configuration parameter.
+
+.. note::
+    This parameter can't be set to false if :code:`compute_subnet_cidr` is specified.
 
 See :ref:`networking configuration <networking>` for some examples.
 

@@ -233,7 +233,8 @@ def configure(args):  # noqa: C901 FIXME!!!
     # ensure that the directory for the config file exists (because
     # ~/.parallelcluster is likely not to exist on first usage)
     try:
-        os.makedirs(os.path.dirname(config_file))
+        config_folder = os.path.dirname(config_file) or "."
+        os.makedirs(config_folder)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...

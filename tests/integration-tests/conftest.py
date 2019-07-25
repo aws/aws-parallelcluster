@@ -19,6 +19,7 @@ import os
 import random
 import re
 from shutil import copyfile
+from traceback import format_tb
 
 import configparser
 import pytest
@@ -35,13 +36,23 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
-from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
+from utils import (
+    create_s3_bucket,
+    delete_s3_bucket,
+    random_alphanumeric,
+    set_credentials,
+    to_snake_case,
+    unset_credentials,
+)
 from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
     parser.addoption("--regions", help="aws region where tests are executed", default=["us-east-1"], nargs="+")
+    parser.addoption(
+        "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
+    )
     parser.addoption("--instances", help="aws instances under test", default=["c5.xlarge"], nargs="+")
     parser.addoption("--oss", help="OSs under test", default=["alinux"], nargs="+")
     parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
@@ -56,12 +67,19 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
+    parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
+    parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
+    parser.addoption(
+        "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
+    )
+    parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
+    parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
 
 
 def pytest_generate_tests(metafunc):
     """Generate (multiple) parametrized calls to a test function."""
-    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "region", "regions")
+    _parametrize_from_option(metafunc, "instance", "instances")
     _parametrize_from_option(metafunc, "os", "oss")
     _parametrize_from_option(metafunc, "scheduler", "schedulers")
 
@@ -90,30 +108,35 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
-    add_default_markers(item)
-
-    check_marker_list(item, "instances", "instance")
-    check_marker_list(item, "regions", "region")
-    check_marker_list(item, "oss", "os")
-    check_marker_list(item, "schedulers", "scheduler")
-    check_marker_skip_list(item, "skip_instances", "instance")
-    check_marker_skip_list(item, "skip_regions", "region")
-    check_marker_skip_list(item, "skip_oss", "os")
-    check_marker_skip_list(item, "skip_schedulers", "scheduler")
-    check_marker_dimensions(item)
-    check_marker_skip_dimensions(item)
-
     logging.info("Running test " + item.name)
 
 
 def pytest_collection_modifyitems(items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
+    add_default_markers(items)
+
+    check_marker_list(items, "instances", "instance")
+    check_marker_list(items, "regions", "region")
+    check_marker_list(items, "oss", "os")
+    check_marker_list(items, "schedulers", "scheduler")
+    check_marker_skip_list(items, "skip_instances", "instance")
+    check_marker_skip_list(items, "skip_regions", "region")
+    check_marker_skip_list(items, "skip_oss", "os")
+    check_marker_skip_list(items, "skip_schedulers", "scheduler")
+    check_marker_dimensions(items)
+    check_marker_skip_dimensions(items)
+
     _add_filename_markers(items)
 
 
 def pytest_exception_interact(node, call, report):
     """Called when an exception was raised which can potentially be interactively handled.."""
-    logging.error("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
+    logging.error(
+        "Exception raised while executing %s: %s\n%s",
+        node.name,
+        call.excinfo.value,
+        "".join(format_tb(call.excinfo.tb)),
+    )
 
 
 def _add_filename_markers(items):
@@ -152,6 +175,7 @@ def _add_properties_to_report(item):
 
 
 @pytest.fixture(scope="class")
+@pytest.mark.usefixtures("setup_sts_credentials")
 def clusters_factory(request):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -163,15 +187,19 @@ def clusters_factory(request):
     def _cluster_factory(cluster_config):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
         cluster = Cluster(
-            name="integ-tests-" + random_alphanumeric(),
+            name=request.config.getoption("cluster")
+            if request.config.getoption("cluster")
+            else "integ-tests-" + random_alphanumeric(),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
         )
-        factory.create_cluster(cluster)
+        if not request.config.getoption("cluster"):
+            factory.create_cluster(cluster)
         return cluster
 
     yield _cluster_factory
-    factory.destroy_all_clusters()
+    if not request.config.getoption("no_delete"):
+        factory.destroy_all_clusters()
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -215,6 +243,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
+    Also sanity_check is set to true by default unless explicitly set in config.
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
@@ -228,6 +257,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
         _add_custom_packages_configs(config_file_path, request)
+        _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
@@ -256,6 +286,20 @@ def _add_custom_packages_configs(cluster_config, request):
         config.write(f)
 
 
+def _enable_sanity_check_if_unset(cluster_config):
+    config = configparser.ConfigParser()
+    config.read(cluster_config)
+
+    if "global" not in config:
+        config.add_section("global")
+
+    if "sanity_check" not in config["global"]:
+        config["global"]["sanity_check"] = "true"
+
+    with cluster_config.open(mode="w") as f:
+        config.write(f)
+
+
 def _get_default_template_values(vpc_stacks, region, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
@@ -267,11 +311,12 @@ def _get_default_template_values(vpc_stacks, region, request):
 
 
 @pytest.fixture(scope="session")
-def cfn_stacks_factory():
+def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
-    factory = CfnStacksFactory()
+    factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
-    factory.delete_all_stacks()
+    if not request.config.getoption("no_delete"):
+        factory.delete_all_stacks()
 
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
@@ -288,7 +333,19 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
     # c5.xlarge is not supported in ap-southeast-1c
     "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
+    # c4.xlarge is not supported in ap-south-1c
+    "ap-south-1": ["ap-south-1a", "ap-south-1b"],
+    # NAT Gateway not available in sa-east-1b
+    "sa-east-1": ["sa-east-1a", "sa-east-1c"],
 }
+
+
+@pytest.fixture(scope="class", autouse=True)
+def setup_sts_credentials(region, request):
+    """Setup environment for the integ tests"""
+    set_credentials(region, request.config.getoption("credential"))
+    yield
+    unset_credentials()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -298,25 +355,26 @@ def vpc_stacks(cfn_stacks_factory, request):
     vpc_stacks = {}
     for region in regions:
         # defining subnets per region to allow AZs override
+        availability_zone = random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         public_subnet = SubnetConfig(
             name="PublicSubnet",
-            cidr="10.0.0.0/24",
+            cidr="10.0.124.0/22",  # 1,022 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+            availability_zone=availability_zone,
         )
         private_subnet = SubnetConfig(
             name="PrivateSubnet",
-            cidr="10.0.1.0/24",
+            cidr="10.0.128.0/17",  # 32766 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+            availability_zone=availability_zone,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()
-        vpc_stacks[region] = _create_vpc_stack(template, region, cfn_stacks_factory)
+        vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
 
@@ -324,9 +382,13 @@ def vpc_stacks(cfn_stacks_factory, request):
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
 # not available in randomly picked AZs.
 @retry(stop_max_attempt_number=2, wait_fixed=5000)
-def _create_vpc_stack(template, region, cfn_stacks_factory):
-    stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
-    cfn_stacks_factory.create_stack(stack)
+def _create_vpc_stack(request, template, region, cfn_stacks_factory):
+    if request.config.getoption("vpc_stack"):
+        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+    else:
+        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        cfn_stacks_factory.create_stack(stack)
     return stack
 
 

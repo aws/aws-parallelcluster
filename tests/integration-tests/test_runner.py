@@ -15,11 +15,12 @@ import multiprocessing
 import os
 import sys
 import time
+from tempfile import TemporaryDirectory
 
 import argparse
 import pytest
 
-from reports_generator import generate_json_report, generate_junitxml_merged_report
+from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -55,6 +56,8 @@ TEST_DEFAULTS = {
     "instances": ["c4.xlarge", "c5.xlarge"],
     "dry_run": False,
     "reports": [],
+    "cw_region": "us-east-1",
+    "cw_namespace": "ParallelCluster/IntegrationTests",
     "sequential": False,
     "output_dir": "tests_outputs",
     "custom_node_url": None,
@@ -63,6 +66,12 @@ TEST_DEFAULTS = {
     "custom_awsbatch_template_url": None,
     "custom_awsbatchcli_url": None,
     "custom_ami": None,
+    "vpc_stack": None,
+    "cluster": None,
+    "no_delete": False,
+    "benchmarks": False,
+    "benchmarks_target_capacity": 200,
+    "benchmarks_max_time": 30,
 }
 
 
@@ -80,6 +89,13 @@ def _init_argparser():
     )
     parser.add_argument(
         "-r", "--regions", help="AWS region where tests are executed.", default=TEST_DEFAULTS.get("regions"), nargs="+"
+    )
+    parser.add_argument(
+        "--credential",
+        action="append",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
+        "Could be specified multiple times.",
+        required=False,
     )
     parser.add_argument(
         "-i", "--instances", help="AWS instances under test.", default=TEST_DEFAULTS.get("instances"), nargs="+"
@@ -118,10 +134,19 @@ def _init_argparser():
     parser.add_argument(
         "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
-        "style report file. json creates a summary with details for each dimensions",
+        "style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into "
+        "CloudWatch",
         nargs="+",
-        choices=["html", "junitxml", "json"],
+        choices=["html", "junitxml", "json", "cw"],
         default=TEST_DEFAULTS.get("reports"),
+    )
+    parser.add_argument(
+        "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
+    )
+    parser.add_argument(
+        "--cw-namespace",
+        help="CloudWatch namespace where to publish metrics",
+        default=TEST_DEFAULTS.get("cw_namespace"),
     )
     parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
@@ -152,6 +177,34 @@ def _init_argparser():
     parser.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
+    parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
+    parser.add_argument(
+        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
+    )
+    parser.add_argument(
+        "--no-delete",
+        action="store_true",
+        help="Don't delete stacks after tests are complete.",
+        default=TEST_DEFAULTS.get("no_delete"),
+    )
+    parser.add_argument(
+        "--benchmarks",
+        help="run benchmarks tests. This disables the execution of all tests defined under the tests directory.",
+        action="store_true",
+        default=TEST_DEFAULTS.get("benchmarks"),
+    )
+    parser.add_argument(
+        "--benchmarks-target-capacity",
+        help="set the target capacity for benchmarks tests",
+        default=TEST_DEFAULTS.get("benchmarks_target_capacity"),
+        type=int,
+    )
+    parser.add_argument(
+        "--benchmarks-max-time",
+        help="set the max waiting time in minutes for benchmarks tests",
+        default=TEST_DEFAULTS.get("benchmarks_max_time"),
+        type=int,
+    )
 
     return parser
 
@@ -163,7 +216,17 @@ def _is_file(value):
 
 
 def _get_pytest_args(args, regions, log_file, out_dir):
-    pytest_args = ["-s", "-vv", "-l", "--rootdir=./tests"]
+    pytest_args = ["-s", "-vv", "-l"]
+
+    if args.benchmarks:
+        pytest_args.append("--ignore=./tests")
+        pytest_args.append("--rootdir=./benchmarks")
+        pytest_args.append("--benchmarks-target-capacity={0}".format(args.benchmarks_target_capacity))
+        pytest_args.append("--benchmarks-max-time={0}".format(args.benchmarks_max_time))
+    else:
+        pytest_args.append("--rootdir=./tests")
+        pytest_args.append("--ignore=./benchmarks")
+
     # Show all tests durations
     pytest_args.append("--durations=0")
     # Run only tests with the given markers
@@ -182,6 +245,10 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
 
+    if args.credential:
+        pytest_args.append("--credential")
+        pytest_args.extend(args.credential)
+
     if args.retry_on_failures:
         # Rerun tests on failures for one more time after 60 seconds delay
         pytest_args.extend(["--reruns", "1", "--reruns-delay", "60"])
@@ -192,13 +259,14 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     if args.dry_run:
         pytest_args.append("--collect-only")
 
-    if "junitxml" in args.reports or "json" in args.reports:
+    if any(report in ["junitxml", "json", "cw"] for report in args.reports):
         pytest_args.append("--junit-xml={0}/{1}/results.xml".format(args.output_dir, out_dir))
 
     if "html" in args.reports:
         pytest_args.append("--html={0}/{1}/results.html".format(args.output_dir, out_dir))
 
     _set_custom_packages_args(args, pytest_args)
+    _set_custom_stack_args(args, pytest_args)
 
     return pytest_args
 
@@ -221,6 +289,17 @@ def _set_custom_packages_args(args, pytest_args):
 
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
+
+
+def _set_custom_stack_args(args, pytest_args):
+    if args.vpc_stack:
+        pytest_args.extend(["--vpc-stack", args.vpc_stack])
+
+    if args.cluster:
+        pytest_args.extend(["--cluster", args.cluster])
+
+    if args.no_delete:
+        pytest_args.append("--no-delete")
 
 
 def _get_pytest_regionalized_args(region, args):
@@ -247,8 +326,10 @@ def _run_test_in_region(region, args):
         sys.stdout = open("{0}/pytest.out".format(out_dir), "w")
 
     pytest_args_regionalized = _get_pytest_regionalized_args(region, args)
-    logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
-    pytest.main(pytest_args_regionalized)
+    with TemporaryDirectory() as temp_dir:
+        pytest_args_regionalized.extend(["--basetemp", temp_dir])
+        logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
+        pytest.main(pytest_args_regionalized)
 
 
 def _make_logging_dirs(base_dir):
@@ -302,6 +383,10 @@ def main():
     if "json" in args.reports:
         logger.info("Generating tests report")
         generate_json_report(reports_output_dir)
+
+    if "cw" in args.reports:
+        logger.info("Publishing CloudWatch metrics")
+        generate_cw_report(reports_output_dir, args.cw_namespace, args.cw_region)
 
 
 if __name__ == "__main__":
