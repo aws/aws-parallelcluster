@@ -364,6 +364,10 @@ def _run_sequential(args):
 
 def main():
     """Entrypoint for tests executor."""
+    if sys.version_info < (3, 7):
+        logger.error("test_runner requires python >= 3.7")
+        exit(1)
+
     args = _init_argparser().parse_args()
     logger.info("Starting tests with parameters {0}".format(args))
 
