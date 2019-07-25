@@ -62,25 +62,25 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
-def test_mpirun_comms(scheduler, os, pcluster_config_reader, clusters_factory):
+def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory, test_datadir):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_mpi_comms(remote_command_executor, scheduler, os)
+    _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir)
 
 
-@timeout(5, use_signals=False, timeout_exception=RemoteCommandExecutionError)
-def _test_mpi_comms(remote_command_executor, scheduler, os):
-    logging.info("Testing mpi communications")
+@timeout(10, use_signals=False, timeout_exception=RemoteCommandExecutionError)
+def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
+    logging.info("Testing mpi SSH")
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     compute_node = scheduler_commands.get_compute_nodes()
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]
-    mpirun_out = remote_command_executor.run_remote_command(
-        "module load {0} && mpirun --host {1} hostname".format(mpi_module, remote_host), raise_on_error=False
+    mpirun_out = remote_command_executor.run_remote_script(
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host]
     ).stdout.splitlines()
 
     # mpirun_out =
