@@ -4,7 +4,50 @@ CHANGELOG
 
 2.4.1
 =====
-* Update EFA installer to a new version, note this changes the location of ``mpicc`` and ``mpirun``. To avoid breaking existing code, we recommend you use the modulefile ``module load openmpi`` and ``which mpicc`` for anything that requires the full path.
+
+**ENHANCEMENTS**
+
+* Add support for ap-east-1 region (Hong Kong)
+* Add possibility to specify instance type to use when building custom AMIs with ``pcluster createami``
+* Speed up cluster creation by having compute nodes starting together with master node
+* Enable ASG CloudWatch metrics for the ASG managing compute nodes
+* Install Intel MPI 2019u4 on Amazon Linux, Centos 7 and Ubuntu 1604
+* Upgrade Elastic Fabric Adapter (EFA) to version 1.4.1 that supports Intel MPI
+* Run all node daemons and cookbook recipes in isolated Python virtualenvs. This allows our code to always run with the
+  required Python dependencies and solves all conflicts and runtime failures that were being caused by user packages
+  installed in the system Python
+
+* Torque:
+
+  * Process nodes added to or removed from the cluster in batches in order to speed up cluster scaling
+  * Scale up only if required CPU/nodes can be satisfied
+  * Scale down if pending jobs have unsatisfiable CPU/nodes requirements
+  * Add support for jobs in hold/suspended state (this includes job dependencies)
+  * Automatically terminate and replace faulty or unresponsive compute nodes
+  * Add retries in case of failures when adding or removing nodes
+  * Add support for ncpus reservation and multi nodes resource allocation (e.g. -l nodes=2:ppn=3+3:ppn=6)
+  * Optimized Torque global configuration to faster react to the dynamic cluster scaling
+
+**CHANGES**
+
+* Update EFA installer to a new version, note this changes the location of ``mpicc`` and ``mpirun``.
+  To avoid breaking existing code, we recommend you use the modulefile ``module load openmpi`` and ``which mpicc``
+  for anything that requires the full path
+* Eliminate Launch Configuration and use Launch Templates in all the regions
+* Torque: upgrade to version 6.1.2
+* Run all ParallelCluster daemons with Python 3.6 in a virtualenv. Daemons code now supports Python >= 3.5
+
+**BUG FIXES**
+
+* Fix issue with sanity check at creation time that was preventing clusters from being created in private subnets
+* Fix pcluster configure when relative config path is used
+* Make FSx Substack depend on ComputeSecurityGroupIngress to keep FSx from trying to create prior to the SG
+  allowing traffic within itself
+* Restore correct value for ``filehandle_limit`` that was getting reset when setting ``memory_limit`` for EFA
+* Torque: fix compute nodes locking mechanism to prevent job scheduling on nodes being terminated 
+* Restore logic that was automatically adding compute nodes identity to SSH ``known_hosts`` file
+* Slurm: fix issue that was causing the ParallelCluster daemons to fail when the cluster is stopped and an empty compute nodes file
+  is imported in Slurm config
 
 
 2.4.0
