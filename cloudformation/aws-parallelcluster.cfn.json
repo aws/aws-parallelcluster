@@ -1152,13 +1152,6 @@
         "ubuntu1404": "ami-0ee26fe2d03734d6c",
         "ubuntu1604": "ami-0603f6bfdaf0520b9"
       },
-      "ap-northeast-3": {
-        "alinux": "ami-04402be7b85999df8",
-        "centos6": "ami-082ece6e5fe8f6fd1",
-        "centos7": "ami-084c0dbc04f722758",
-        "ubuntu1404": "ami-0a535e1d0bb7bc502",
-        "ubuntu1604": "ami-0c9b72bae5efc9f61"
-      },
       "ap-south-1": {
         "alinux": "ami-08d877dddd63d4f11",
         "centos6": "ami-0a19d85caae09e69b",
@@ -1186,16 +1179,6 @@
         "centos7": "ami-03f172775e62c78ef",
         "ubuntu1404": "ami-0a25d23a0f47e04df",
         "ubuntu1604": "ami-079729e8f44ea4e33"
-      },
-      "cn-north-1": {
-        "alinux": "ami-0da67c26ce2e8d111",
-        "ubuntu1404": "ami-07e16a5709c99f963",
-        "ubuntu1604": "ami-0ae967dc97d5eb57a"
-      },
-      "cn-northwest-1": {
-        "alinux": "ami-03dc8f759de9de690",
-        "ubuntu1404": "ami-05348579489ba3673",
-        "ubuntu1604": "ami-0ba0b1ed49ce7b1b1"
       },
       "eu-central-1": {
         "alinux": "ami-0ae496b08133b7003",
