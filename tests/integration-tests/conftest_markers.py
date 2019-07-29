@@ -17,6 +17,7 @@ DIMENSIONS_MARKER_ARGS = ["region", "instance", "os", "scheduler"]
 UNSUPPORTED_DIMENSIONS = [
     ("eu-north-1", "c4.xlarge", "*", "*"),
     ("eu-west-3", "c4.xlarge", "*", "*"),
+    ("ap-east-1", "c4.xlarge", "*", "*"),
     ("*", "*", "centos6", "awsbatch"),
     ("*", "*", "centos7", "awsbatch"),
     ("*", "*", "ubuntu1604", "awsbatch"),
@@ -80,7 +81,7 @@ def check_marker_list(items, marker_name, arg_name):
                 allowed_values=allowed_values,
             )
         )
-        logging.info(skip_message)
+        logging.debug(skip_message)
         items.remove(item)
 
 
@@ -115,7 +116,7 @@ def check_marker_skip_list(items, marker_name, arg_name):
                         skip_values=skip_values,
                     )
                 )
-                logging.info(skip_message)
+                logging.debug(skip_message)
                 items.remove(item)
 
 
@@ -157,7 +158,7 @@ def check_marker_skip_dimensions(items):
                         test_name=item.name, args_values=args_values, marker=marker_name, skip_values=marker.args
                     )
                 )
-                logging.info(skip_message)
+                logging.debug(skip_message)
                 items.remove(item)
                 break
 
@@ -201,7 +202,7 @@ def check_marker_dimensions(items):
                     allowed_values=allowed_values,
                 )
             )
-            logging.info(skip_message)
+            logging.debug(skip_message)
             items.remove(item)
 
 

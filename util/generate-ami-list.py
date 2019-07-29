@@ -19,6 +19,7 @@
 # usage: ./generate-ami-list.py --version <aws-parallelcluster-version> --date <release-date>
 
 import json
+import re
 import sys
 from collections import OrderedDict
 
@@ -51,40 +52,86 @@ def get_ami_list_from_file(regions, cfn_template_file):
     return amis_json
 
 
-def get_ami_list_from_ec2(regions, date, cookbook_git_ref, node_git_ref, version, owner):
+def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git_ref, version, owner, credentials):
     amis_json = {}
 
     for region_name in regions:
-        try:
-            filters = []
-            if version and date:
-                filters.append({"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]})
-            elif cookbook_git_ref and node_git_ref:
-                filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
-                filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
-                filters.append({"Name": "name", "Values": ["aws-parallelcluster-*"]})
-            else:
-                print("Error: you can search for version and date or cookbook and node git reference")
-                exit(1)
+        filters = []
+        if version and date:
+            filters.append({"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]})
+        elif cookbook_git_ref and node_git_ref:
+            filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
+            filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
+            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*"]})
+        else:
+            print("Error: you can search for version and date or cookbook and node git reference")
+            exit(1)
 
-            ec2 = boto3.client("ec2", region_name=region_name)
-            images = ec2.describe_images(Owners=[owner], Filters=filters)
+        images = get_images_ec2(filters, owner, region_name)
+        populate_amis_json(amis_json, images, region_name)
 
-            amis = {}
-            for image in images.get("Images"):
-                for key, value in distros.items():
-                    if value in image.get("Name"):
-                        amis[key] = image.get("ImageId")
-
-            if len(amis) == 0:
-                print("Warning: there are no AMIs in the selected region (%s)" % region_name)
-            else:
-                amis_json[region_name] = OrderedDict(sorted(amis.items()))
-        except ClientError:
-            # skip regions on which we are not authorized (cn-north-1)
-            pass
+        if main_region == region_name:
+            for credential in credentials:
+                credential_region = credential[0]
+                images = get_images_ec2_credential(filters, main_region, credential)
+                populate_amis_json(amis_json, images, credential_region)
 
     return amis_json
+
+
+def populate_amis_json(amis_json, images, region_name):
+    if images:
+        amis = {}
+        for image in images.get("Images"):
+            for key, value in distros.items():
+                if value in image.get("Name"):
+                    amis[key] = image.get("ImageId")
+        if len(amis) == 0:
+            print("Warning: there are no AMIs in the selected region (%s)" % region_name)
+        else:
+            amis_json[region_name] = OrderedDict(sorted(amis.items()))
+
+
+def get_images_ec2_credential(filters, main_region, credential):
+    credential_region = credential[0]
+    credential_endpoint = credential[1]
+    credential_arn = credential[2]
+    credential_external_id = credential[3]
+    match = re.search(r"arn:aws:iam::(.*?):", credential_arn)
+    credential_owner = match.group(1)
+
+    try:
+        sts = boto3.client("sts", region_name=main_region, endpoint_url=credential_endpoint)
+        assumed_role_object = sts.assume_role(
+            RoleArn=credential_arn,
+            ExternalId=credential_external_id,
+            RoleSessionName=credential_region + "generate_ami_list_sts_session",
+        )
+        aws_credentials = assumed_role_object["Credentials"]
+
+        ec2 = boto3.client(
+            "ec2",
+            region_name=credential_region,
+            aws_access_key_id=aws_credentials.get("AccessKeyId"),
+            aws_secret_access_key=aws_credentials.get("SecretAccessKey"),
+            aws_session_token=aws_credentials.get("SessionToken"),
+        )
+
+        images = ec2.describe_images(Owners=[credential_owner], Filters=filters)
+        return images
+    except ClientError:
+        print("Warning: non authorized in region '{0}', skipping".format(credential_region))
+        pass
+
+
+def get_images_ec2(filters, owner, region_name):
+    try:
+        ec2 = boto3.client("ec2", region_name=region_name)
+        images = ec2.describe_images(Owners=[owner], Filters=filters)
+        return images
+    except ClientError:
+        print("Warning: non authorized in region '{0}', skipping".format(region_name))
+        pass
 
 
 def convert_json_to_txt(amis_json):
@@ -151,6 +198,13 @@ if __name__ == "__main__":
     group2 = parser.add_argument_group("Retrieve instances from EC2 searching by cookbook and node git reference")
     group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
     group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
+    group2.add_argument(
+        "--credential",
+        type=str,
+        action="append",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        required=False,
+    )
     group3 = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
     group3.add_argument("--json-template", type=str, help="path to input json cloudformation template", required=False)
     group3.add_argument(
@@ -180,15 +234,25 @@ if __name__ == "__main__":
         print("Unsupported partition %s" % args.partition)
         sys.exit(1)
 
+    credentials = []
+    if args.credential:
+        credentials = [
+            tuple(credential_tuple.strip().split(","))
+            for credential_tuple in args.credential
+            if credential_tuple.strip()
+        ]
+
     if (args.version and args.date) or (args.cookbook_git_ref and args.node_git_ref):
         regions = get_all_aws_regions_from_ec2(region)
         amis_dict = get_ami_list_from_ec2(
+            main_region=region,
             regions=regions,
             date=args.date,
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             version=args.version,
             owner=account_id,
+            credentials=credentials,
         )
     else:
         regions = get_aws_regions_from_file(args.json_regions)

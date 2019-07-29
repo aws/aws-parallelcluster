@@ -38,7 +38,7 @@ class RemoteCommandExecutor:
         self.__connection = Connection(
             host=cluster.master_ip,
             user=self.USERNAMES[cluster.os],
-            forward_agent=True,
+            forward_agent=False,
             connect_kwargs={"key_filename": cluster.ssh_key},
         )
         self.__user_at_hostname = "{0}@{1}".format(self.USERNAMES[cluster.os], cluster.master_ip)

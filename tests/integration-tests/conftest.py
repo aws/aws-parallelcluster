@@ -19,6 +19,7 @@ import os
 import random
 import re
 from shutil import copyfile
+from traceback import format_tb
 
 import configparser
 import pytest
@@ -35,13 +36,23 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
-from utils import create_s3_bucket, delete_s3_bucket, random_alphanumeric, to_snake_case
+from utils import (
+    create_s3_bucket,
+    delete_s3_bucket,
+    random_alphanumeric,
+    set_credentials,
+    to_snake_case,
+    unset_credentials,
+)
 from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
     parser.addoption("--regions", help="aws region where tests are executed", default=["us-east-1"], nargs="+")
+    parser.addoption(
+        "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
+    )
     parser.addoption("--instances", help="aws instances under test", default=["c5.xlarge"], nargs="+")
     parser.addoption("--oss", help="OSs under test", default=["alinux"], nargs="+")
     parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
@@ -61,6 +72,8 @@ def pytest_addoption(parser):
     parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
+    parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
+    parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
 
 
 def pytest_generate_tests(metafunc):
@@ -118,7 +131,12 @@ def pytest_collection_modifyitems(items):
 
 def pytest_exception_interact(node, call, report):
     """Called when an exception was raised which can potentially be interactively handled.."""
-    logging.error("Exception raised while executing {0}: {1}".format(node.name, call.excinfo))
+    logging.error(
+        "Exception raised while executing %s: %s\n%s",
+        node.name,
+        call.excinfo.value,
+        "".join(format_tb(call.excinfo.tb)),
+    )
 
 
 def _add_filename_markers(items):
@@ -157,6 +175,7 @@ def _add_properties_to_report(item):
 
 
 @pytest.fixture(scope="class")
+@pytest.mark.usefixtures("setup_sts_credentials")
 def clusters_factory(request):
     """
     Define a fixture to manage the creation and destruction of clusters.
@@ -224,6 +243,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         {{ vpc_id }}, {{ public_subnet_id }}, {{ private_subnet_id }}
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
+    Also sanity_check is set to true by default unless explicitly set in config.
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
@@ -237,6 +257,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
         _add_custom_packages_configs(config_file_path, request)
+        _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
@@ -265,6 +286,20 @@ def _add_custom_packages_configs(cluster_config, request):
         config.write(f)
 
 
+def _enable_sanity_check_if_unset(cluster_config):
+    config = configparser.ConfigParser()
+    config.read(cluster_config)
+
+    if "global" not in config:
+        config.add_section("global")
+
+    if "sanity_check" not in config["global"]:
+        config["global"]["sanity_check"] = "true"
+
+    with cluster_config.open(mode="w") as f:
+        config.write(f)
+
+
 def _get_default_template_values(vpc_stacks, region, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
     default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
@@ -278,7 +313,7 @@ def _get_default_template_values(vpc_stacks, region, request):
 @pytest.fixture(scope="session")
 def cfn_stacks_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
-    factory = CfnStacksFactory()
+    factory = CfnStacksFactory(request.config.getoption("credential"))
     yield factory
     if not request.config.getoption("no_delete"):
         factory.delete_all_stacks()
@@ -300,7 +335,17 @@ _AVAILABILITY_ZONE_OVERRIDES = {
     "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
     # c4.xlarge is not supported in ap-south-1c
     "ap-south-1": ["ap-south-1a", "ap-south-1b"],
+    # NAT Gateway not available in sa-east-1b
+    "sa-east-1": ["sa-east-1a", "sa-east-1c"],
 }
+
+
+@pytest.fixture(scope="class", autouse=True)
+def setup_sts_credentials(region, request):
+    """Setup environment for the integ tests"""
+    set_credentials(region, request.config.getoption("credential"))
+    yield
+    unset_credentials()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -310,21 +355,22 @@ def vpc_stacks(cfn_stacks_factory, request):
     vpc_stacks = {}
     for region in regions:
         # defining subnets per region to allow AZs override
+        availability_zone = random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         public_subnet = SubnetConfig(
             name="PublicSubnet",
-            cidr="10.0.0.0/24",
+            cidr="10.0.124.0/22",  # 1,022 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+            availability_zone=availability_zone,
         )
         private_subnet = SubnetConfig(
             name="PrivateSubnet",
-            cidr="10.0.1.0/24",
+            cidr="10.0.128.0/17",  # 32766 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None])),
+            availability_zone=availability_zone,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
         template = VPCTemplateBuilder(vpc_config).build()

@@ -360,12 +360,6 @@ class ParallelClusterConfig(object):
                     "VPC section [%s] used in [%s] section is not defined" % (vpc_section, self.__cluster_section)
                 )
 
-        # Check that cidr and public ips are not both set
-        cidr_value = self.__config.get(vpc_section, "compute_subnet_cidr", fallback=None)
-        public_ips = self.__config.getboolean(vpc_section, "use_public_ips", fallback=True)
-        if self.__sanity_check:
-            ResourceValidator.validate_vpc_coherence(cidr_value, public_ips)
-
     def __check_account_capacity(self):
         """Try to launch the requested number of instances to verify Account limits."""
         if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
@@ -514,14 +508,12 @@ class ParallelClusterConfig(object):
             post_install_args=("PostInstallArgs", None),
             s3_read_resource=("S3ReadResource", None),
             s3_read_write_resource=("S3ReadWriteResource", None),
-            tenancy=("Tenancy", None),
             master_root_volume_size=("MasterRootVolumeSize", None),
             compute_root_volume_size=("ComputeRootVolumeSize", None),
             base_os=("BaseOS", None),
             ec2_iam_role=("EC2IAMRoleName", "EC2IAMRoleName"),
             extra_json=("ExtraJson", None),
             custom_chef_cookbook=("CustomChefCookbook", None),
-            custom_chef_runlist=("CustomChefRunList", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
         )

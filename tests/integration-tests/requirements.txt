@@ -13,3 +13,5 @@ pytest-sugar
 pytest-xdist
 retrying
 troposphere
+untangle
+wrapt_timeout_decorator
