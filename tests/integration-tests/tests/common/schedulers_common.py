@@ -183,13 +183,15 @@ class SgeCommands(SchedulerCommands):
     def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):  # noqa: D102
         if not additional_files:
             additional_files = []
+        if not script_args:
+            script_args = []
         additional_files.append(script)
         flags = ""
         if slots:
             flags += "-pe mpi {0} ".format(slots)
         script_name = os.path.basename(script)
         return self._remote_command_executor.run_remote_command(
-            "qsub {0} {1} {2}".format(flags, script_name, script_args), additional_files=additional_files
+            "qsub {0} {1} {2}".format(flags, script_name, " ".join(script_args)), additional_files=additional_files
         )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -251,6 +253,8 @@ class SlurmCommands(SchedulerCommands):
     ):  # noqa: D102
         if not additional_files:
             additional_files = []
+        if not script_args:
+            script_args = []
         additional_files.append(script)
         script_name = os.path.basename(script)
         submission_command = "sbatch"
@@ -260,7 +264,7 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -n {0}".format(slots)
         if nodes > 1:
             submission_command += " -N {0}".format(nodes)
-        submission_command += " {1} {2}".format(nodes, script_name, script_args)
+        submission_command += " {1} {2}".format(nodes, script_name, " ".join(script_args))
         return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -320,7 +324,7 @@ class TorqueCommands(SchedulerCommands):
         additional_files.append(script)
         flags = "-l nodes={0}:ppn={1}".format(nodes or 1, slots or 1)
         if script_args:
-            flags += " -F {0}".format(script_args)
+            flags += ' -F "{0}"'.format(" ".join(script_args))
         return self._remote_command_executor.run_remote_command(
             "qsub {0} {1}".format(flags, script_name), additional_files=additional_files
         )
