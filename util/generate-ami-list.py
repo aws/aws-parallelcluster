@@ -48,7 +48,10 @@ def get_ami_list_from_file(regions, cfn_template_file):
     current_amis = cfn_data.get("Mappings").get("AWSRegionOS2AMI")
 
     for region_name in regions:
-        amis_json[region_name] = OrderedDict(sorted(current_amis.get(region_name).items()))
+        if region_name in current_amis:
+            amis_json[region_name] = OrderedDict(sorted(current_amis.get(region_name).items()))
+        else:
+            print("Warning: there are no AMIs in the region (%s)" % region_name)
     return amis_json
 
 
