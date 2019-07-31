@@ -96,11 +96,11 @@ key_name = mykey
 # (defaults to false)
 #encrypted_ephemeral = false
 # MasterServer root volume size in GB. (AMI must support growroot)
-# (defaults to 17)
-#master_root_volume_size = 17
+# (defaults to 20)
+#master_root_volume_size = 20
 # ComputeFleet root volume size in GB. (AMI must support growroot)
-# (defaults to 17)
-#compute_root_volume_size = 17
+# (defaults to 20)
+#compute_root_volume_size = 20
 # OS type used in the cluster
 # (defaults to alinux)
 #base_os = alinux
