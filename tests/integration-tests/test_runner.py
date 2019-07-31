@@ -352,6 +352,17 @@ def _run_parallel(args):
         job.join()
 
 
+def _check_args(args):
+    # If --cluster is set only one os, scheduler, instance type and region can be provided
+    if args.cluster:
+        if len(args.oss) > 1 or len(args.schedulers) > 1 or len(args.instances) > 1 or len(args.regions) > 1:
+            logger.error(
+                "when cluster option is specified, you can have a single value for oss, regions, instances "
+                "and schedulers and you need to make sure they match the cluster specific ones"
+            )
+            exit(1)
+
+
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
@@ -369,6 +380,7 @@ def main():
         exit(1)
 
     args = _init_argparser().parse_args()
+    _check_args(args)
     logger.info("Starting tests with parameters {0}".format(args))
 
     _make_logging_dirs(args.output_dir)
