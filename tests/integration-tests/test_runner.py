@@ -363,7 +363,6 @@ def _check_args(args):
             raise Exception("Only one instance type per cluster allowed")
 
 
-
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
