@@ -166,7 +166,7 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, hold=False):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None):  # noqa: D102
         flags = ""
         if nodes != 1:
             raise Exception("SGE does not support nodes option")
@@ -174,6 +174,8 @@ class SgeCommands(SchedulerCommands):
             flags += "-pe mpi {0} ".format(slots)
         if hold:
             flags += "-h "
+        if after_ok:
+            flags += "-hold_jid {0} ".format(after_ok)
         return self._remote_command_executor.run_remote_command(
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
@@ -181,13 +183,15 @@ class SgeCommands(SchedulerCommands):
     def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):  # noqa: D102
         if not additional_files:
             additional_files = []
+        if not script_args:
+            script_args = []
         additional_files.append(script)
         flags = ""
         if slots:
             flags += "-pe mpi {0} ".format(slots)
         script_name = os.path.basename(script)
         return self._remote_command_executor.run_remote_command(
-            "qsub {0} {1} {2}".format(flags, script_name, script_args), additional_files=additional_files
+            "qsub {0} {1} {2}".format(flags, script_name, " ".join(script_args)), additional_files=additional_files
         )
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -234,12 +238,14 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, host=None):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None):  # noqa: D102
         submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
         if host:
             submission_command += " --nodelist={0}".format(host)
         if slots:
             submission_command += " -n {0}".format(slots)
+        if after_ok:
+            submission_command += " -d afterok:{0}".format(after_ok)
         return self._remote_command_executor.run_remote_command(submission_command)
 
     def submit_script(
@@ -247,6 +253,8 @@ class SlurmCommands(SchedulerCommands):
     ):  # noqa: D102
         if not additional_files:
             additional_files = []
+        if not script_args:
+            script_args = []
         additional_files.append(script)
         script_name = os.path.basename(script)
         submission_command = "sbatch"
@@ -256,7 +264,7 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -n {0}".format(slots)
         if nodes > 1:
             submission_command += " -N {0}".format(nodes)
-        submission_command += " {1} {2}".format(nodes, script_name, script_args)
+        submission_command += " {1} {2}".format(nodes, script_name, " ".join(script_args))
         return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
@@ -301,8 +309,10 @@ class TorqueCommands(SchedulerCommands):
         self._remote_command_executor.run_remote_command("qstat -f {0}".format(id))
         return id
 
-    def submit_command(self, command, nodes=1, slots=None):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None, after_ok=None):  # noqa: D102
         flags = "-l nodes={0}:ppn={1}".format(nodes or 1, slots or 1)
+        if after_ok:
+            flags += " -W depend=afterok:{0}".format(after_ok)
         return self._remote_command_executor.run_remote_command(
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
@@ -314,7 +324,7 @@ class TorqueCommands(SchedulerCommands):
         additional_files.append(script)
         flags = "-l nodes={0}:ppn={1}".format(nodes or 1, slots or 1)
         if script_args:
-            flags += " -F {0}".format(script_args)
+            flags += ' -F "{0}"'.format(" ".join(script_args))
         return self._remote_command_executor.run_remote_command(
             "qsub {0} {1}".format(flags, script_name), additional_files=additional_files
         )
