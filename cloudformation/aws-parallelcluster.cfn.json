@@ -506,14 +506,14 @@
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
       "Type": "Number",
-      "Default": "17",
-      "MinValue": "17"
+      "Default": "20",
+      "MinValue": "20"
     },
     "ComputeRootVolumeSize": {
       "Description": "Size of ComputeFleet EBS root volume in GB",
       "Type": "Number",
-      "Default": "17",
-      "MinValue": "17"
+      "Default": "20",
+      "MinValue": "20"
     },
     "EC2IAMRoleName": {
       "Description": "Existing EC2 IAM role name",

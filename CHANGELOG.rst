@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+x.x.x
+=====
+
+**CHANGES**
+
+* Increase default EBS volume size from 17GB to 20GB
+
 2.4.1
 =====
 
@@ -44,7 +51,7 @@ CHANGELOG
 * Make FSx Substack depend on ComputeSecurityGroupIngress to keep FSx from trying to create prior to the SG
   allowing traffic within itself
 * Restore correct value for ``filehandle_limit`` that was getting reset when setting ``memory_limit`` for EFA
-* Torque: fix compute nodes locking mechanism to prevent job scheduling on nodes being terminated 
+* Torque: fix compute nodes locking mechanism to prevent job scheduling on nodes being terminated
 * Restore logic that was automatically adding compute nodes identity to SSH ``known_hosts`` file
 * Slurm: fix issue that was causing the ParallelCluster daemons to fail when the cluster is stopped and an empty compute nodes file
   is imported in Slurm config
