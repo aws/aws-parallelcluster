@@ -192,6 +192,21 @@ def fsx_storage_capacity_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value:
+        # Check to see if cfn_scheduler_slots is set
+        extra_json = pcluster_config.get_param_value("extra_json")
+        if extra_json:
+            if extra_json.get("cluster"):
+                if extra_json.get("cluster").get("cfn_scheduler_slots"):
+                    errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
+
+    return errors, warnings
+
+
 def fsx_imported_file_chunk_size_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

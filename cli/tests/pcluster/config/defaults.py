@@ -116,6 +116,7 @@ DEFAULT_CLUSTER_DICT = {
     "tags": {},
     "custom_chef_cookbook": None,
     "custom_awsbatch_template_url": None,
+    "disable_hyperthreading": False,
     "scaling_settings": "default",
     "vpc_settings": "default",
     "ebs_settings": None,
@@ -146,7 +147,7 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 54
+CFN_CONFIG_NUM_OF_PARAMS = 55
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -218,6 +219,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "CustomChefCookbook": "NONE",
     "CustomAWSBatchTemplateURL": "NONE",
     "NumberOfEBSVol": "1",
+    "Cores": "-1,-1",
     # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # scaling
     "ScaleDownIdleTime": "10",

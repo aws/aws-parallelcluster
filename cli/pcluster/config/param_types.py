@@ -18,7 +18,15 @@ import re
 from configparser import NoSectionError
 
 import yaml
-from pcluster.utils import error, get_avail_zone, get_cfn_param, get_efs_mount_target_id, get_partition, warn
+from pcluster.utils import (
+    error,
+    get_avail_zone,
+    get_cfn_param,
+    get_efs_mount_target_id,
+    get_instance_vcpus,
+    get_partition,
+    warn,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -685,6 +693,55 @@ class AvailabilityZoneParam(Param):
     def to_file(self, config_parser):
         """Do nothing, because master_availability_zone it is an internal parameter, not exposed in the config file."""
         pass
+
+
+class DisableHyperThreadingParam(BoolParam):
+    """
+    Class to manage the disable_hyperthreading configuration parameter.
+
+    We need this class in order to convert the boolean disable_hyperthreading = [true/false] into Cores.
+    """
+
+    def from_cfn_params(self, cfn_params):
+        """Initialize param value by parsing the right CFN input."""
+        cfn_converter = self.definition.get("cfn_param_mapping", None)
+        if cfn_converter and cfn_params:
+            cores = get_cfn_param(cfn_params, cfn_converter)
+            if cores and cores != "NONE":
+                cores = int(cores.split(",")[0])
+                self.value = cores > 0
+
+        return self
+
+    def to_cfn(self):
+        """
+        Return a tuple (cores_master,cores_compute) if disable_hyperthreading = true.
+
+        :return: string (cores_master,cores_compute)
+        """
+
+        cfn_params = {}
+
+        cluster_config = self.pcluster_config.get_section(self.section_key)
+        if cluster_config.get_param_value("disable_hyperthreading"):
+            master_instance_type = cluster_config.get_param_value("master_instance_type")
+            compute_instance_type = cluster_config.get_param_value("compute_instance_type")
+
+            master_cores = get_instance_vcpus(self.pcluster_config.region, master_instance_type) // 2
+            compute_cores = get_instance_vcpus(self.pcluster_config.region, compute_instance_type) // 2
+
+            if master_cores < 0 or compute_cores < 0:
+                error(
+                    "For disable_hyperthreading, unable to get number of vcpus for {0} instance. Please open an issue {1}".format(
+                        master_instance_type if master_cores < 0 else compute_instance_type,
+                        "https://github.com/aws/aws-parallelcluster/issues",
+                    )
+                )
+            cfn_params.update({self.definition.get("cfn_param_mapping"): "{0},{1}".format(master_cores, compute_cores)})
+
+        else:
+            cfn_params.update({self.definition.get("cfn_param_mapping"): "-1,-1"})
+        return cfn_params
 
 
 # ---------------------- SettingsParam ---------------------- #
