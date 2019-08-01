@@ -343,8 +343,7 @@ class ResourceValidator(object):
                         "arn:%s:dynamodb:%s:%s:table/parallelcluster-*" % (partition, self.region, account_id),
                     ),
                     (
-                        ["cloudformation:DescribeStacks"],
-                        ["cloudformation:DescribeStackResource"],
+                        ["cloudformation:DescribeStacks", "cloudformation:DescribeStackResource"],
                         "arn:%s:cloudformation:%s:%s:stack/parallelcluster-*/*" % (partition, self.region, account_id),
                     ),
                     (["s3:GetObject"], "arn:%s:s3:::%s-aws-parallelcluster/*" % (partition, self.region)),
