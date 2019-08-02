@@ -360,7 +360,7 @@ class ParallelClusterConfig(object):
                     "VPC section [%s] used in [%s] section is not defined" % (vpc_section, self.__cluster_section)
                 )
 
-    def __check_account_capacity(self):
+    def __check_account_capacity(self):  # noqa: C901
         """Try to launch the requested number of instances to verify Account limits."""
         if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
             return
@@ -387,6 +387,9 @@ class ParallelClusterConfig(object):
                 MaxCount=max_size,
                 ImageId=test_ami_id,
                 SubnetId=subnet_id,
+                Placement={"GroupName": self.parameters.get("PlacementGroup")}
+                if self.parameters.get("PlacementGroup")
+                else {},
                 DryRun=True,
             )
         except ClientError as e:
@@ -410,6 +413,8 @@ class ParallelClusterConfig(object):
                     "The configured max size parameter {0} exceeds the number of free private IP addresses "
                     "available in the Compute subnet.\n{1}".format(max_size, message)
                 )
+            elif code == "InvalidParameterCombination":
+                self.__fail(message)
             else:
                 self.__fail(
                     "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
