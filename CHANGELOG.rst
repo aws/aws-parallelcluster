@@ -16,7 +16,7 @@ x.x.x
 
 * Add support for ap-east-1 region (Hong Kong)
 * Add possibility to specify instance type to use when building custom AMIs with ``pcluster createami``
-* Speed up cluster creation by having compute nodes starting together with master node
+* Speed up cluster creation by having compute nodes starting together with master node. **Note** this requires one new IAM permissions in the `ParallelClusterInstancePolicy <https://docs.aws.amazon.com/en_us/parallelcluster/latest/ug/iam.html#parallelclusterinstancepolicy>`_, ``cloudformation:DescribeStackResource``
 * Enable ASG CloudWatch metrics for the ASG managing compute nodes
 * Install Intel MPI 2019u4 on Amazon Linux, Centos 7 and Ubuntu 1604
 * Upgrade Elastic Fabric Adapter (EFA) to version 1.4.1 that supports Intel MPI
