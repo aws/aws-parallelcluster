@@ -8,7 +8,6 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
 import functools
 import logging
 import sys
@@ -17,7 +16,7 @@ from builtins import input
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger(__name__)
 unsupported_regions = ["ap-northeast-3"]
 
 

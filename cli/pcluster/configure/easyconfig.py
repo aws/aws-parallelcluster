@@ -8,16 +8,13 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
+from __future__ import absolute_import, print_function
+from future import standard_library
 
-
-import copy
 import errno
 import logging
 import os
 import stat
-import tempfile
 
 import configparser
 
@@ -32,14 +29,10 @@ from pcluster.configure.networking import (
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
 from pcluster.utils import get_supported_os, get_supported_schedulers
 
-from future import standard_library  # isort:skip
-
-
-# fmt: on
 standard_library.install_aliases()
 
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger(__name__)
 DEFAULT_VALUES = {
     "aws_region_name": "us-east-1",
     "cluster_template": "default",
@@ -48,7 +41,6 @@ DEFAULT_VALUES = {
     "max_size": "10",
     "master_instance_type": "t2.micro",
     "compute_instance_type": "t2.micro",
-    "vpc_name": "public",
     "min_size": "0",
 }
 VPC_PARAMETERS_TO_REMOVE = "vpc-id", "master_subnet_id", "compute_subnet_id", "use_public_ips", "compute_subnet_cidr"
@@ -80,7 +72,7 @@ def _extract_subnet_size(cidr):
 @handle_client_exception
 def _get_vpcs_and_subnets(aws_region_name):
     """
-    Return a dictionary containg a list of vpc in the given region and the associated vpcs.
+    Return a dictionary containing a list of vpc in the given region and the associated VPCs.
 
     Example:
 
@@ -127,7 +119,7 @@ def _list_instances():  # Specifying the region does not make any difference
     return ec2_conn(DEFAULT_VALUES["aws_region_name"]).meta.service_model.shape_for("InstanceType").enum
 
 
-def configure(args):  # noqa: C901 FIXME!!!
+def configure(args):
     # Determine config file name based on args or default
     config_file = (
         args.config_file if args.config_file else os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
@@ -138,19 +130,12 @@ def configure(args):  # noqa: C901 FIXME!!!
     if os.path.isfile(config_file):
         config.read(config_file)
 
-    # Prompt for required values, using existing as defaults
     cluster_template = DEFAULT_VALUES["cluster_template"]
     cluster_label = "cluster " + cluster_template
     vpc_label = "vpc " + cluster_template
 
     # Use built in boto regions as an available option
-    aws_region_name = prompt_iterable(
-        "AWS Region ID",
-        get_regions(),
-        default_value=_get_config_parameter(
-            config, section="aws", parameter_name="aws_region_name", default_value=DEFAULT_VALUES["aws_region_name"]
-        ),
-    )
+    aws_region_name = prompt_iterable("AWS Region ID", get_regions())
 
     scheduler = prompt_iterable(
         "Scheduler",
@@ -185,14 +170,14 @@ def configure(args):  # noqa: C901 FIXME!!!
         vpc_label, aws_region_name, scheduler, scheduler_handler.max_cluster_size, automate_vpc_creation=automate_vpc
     )
     global_parameters = {
-        "__name__": "global",
+        "name": "global",
         "cluster_template": cluster_template,
         "update_check": "true",
         "sanity_check": "true",
     }
-    aws_parameters = {"__name__": "aws", "aws_region_name": aws_region_name}
+    aws_parameters = {"name": "aws", "aws_region_name": aws_region_name}
     cluster_parameters = {
-        "__name__": cluster_label,
+        "name": cluster_label,
         "key_name": key_name,
         "vpc_settings": cluster_template,
         "scheduler": scheduler,
@@ -200,24 +185,28 @@ def configure(args):  # noqa: C901 FIXME!!!
     }
     cluster_parameters.update(scheduler_handler.get_scheduler_parameters())
 
-    aliases_parameters = {"__name__": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
+    aliases_parameters = {"name": "aliases", "ssh": "ssh {CFN_USER}@{MASTER_IP} {ARGS}"}
     sections = [aws_parameters, cluster_parameters, vpc_parameters, global_parameters, aliases_parameters]
 
-    # We first remove unnecessary parameters from the past configurations
+    # We remove parameters that may still be present from the past configuration but can conflict with the current.
     _remove_parameter_from_past_configuration(cluster_label, config, scheduler_handler.get_parameters_to_remove())
     _remove_parameter_from_past_configuration(vpc_label, config, VPC_PARAMETERS_TO_REMOVE)
 
-    # Loop through the configuration sections we care about
-    for section in sections:
-        try:
-            config.add_section(section["__name__"])
-        except configparser.DuplicateSectionError:
-            pass
-        for key, value in section.items():
-            # Only update configuration if not set
-            if value is not None and key != "__name__":
-                config.set(section["__name__"], key, value)
+    _write_config(config, sections)
+    _check_destination_directory(config_file)
 
+    # Write configuration to disk
+    with open(config_file, "w") as cf:
+        config.write(cf)
+    os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
+
+    args.config_file = config_file
+    args.cluster_template = cluster_template
+    if _is_config_valid(args):
+        print("The configuration is valid")
+
+
+def _check_destination_directory(config_file):
     # ensure that the directory for the config file exists (because
     # ~/.parallelcluster is likely not to exist on first usage)
     try:
@@ -226,14 +215,17 @@ def configure(args):  # noqa: C901 FIXME!!!
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
-    # Write configuration to disk
-    open(config_file, "a").close()
-    os.chmod(config_file, stat.S_IRUSR | stat.S_IWUSR)
-    with open(config_file, "w") as cf:
-        config.write(cf)
 
-    if _is_config_valid(args, config):
-        print("The configuration is valid")
+def _write_config(config, sections):
+    for section in sections:
+        try:
+            config.add_section(section["name"])
+        except configparser.DuplicateSectionError:
+            pass
+        for key, value in section.items():
+            # Only update configuration if not set
+            if value is not None and key != "name":
+                config.set(section["name"], key, value)
 
 
 def _remove_parameter_from_past_configuration(section, config, parameters_to_remove):
@@ -243,7 +235,7 @@ def _remove_parameter_from_past_configuration(section, config, parameters_to_rem
 
 
 def _create_vpc_parameters(vpc_label, aws_region_name, scheduler, min_subnet_size, automate_vpc_creation=True):
-    vpc_parameters = {"__name__": vpc_label}
+    vpc_parameters = {"name": vpc_label}
     min_subnet_size = int(min_subnet_size)
     if automate_vpc_creation:
         vpc_parameters.update(
@@ -289,30 +281,19 @@ def _ask_for_subnets(subnet_list):
     return vpc_parameters
 
 
-def _is_config_valid(args, config):
+def _is_config_valid(args):
     """
     Validate the configuration of the pcluster configure.
 
     :param args: the arguments passed with the command line
-    :param config: the configParser
     :return True if the configuration is valid, false otherwise
     """
-    # We create a temp_file_path to validate before overriding the original config
-    temp_file_path = os.path.join(tempfile.gettempdir(), "temp_config")
-    temp_args = copy.copy(args)  # Defensive copy is needed because we change config_file
-
-    temp_args.config_file = temp_file_path
-    with open(temp_file_path, "w+") as cf:
-        config.write(cf)
-    # Verify the configuration
     is_valid = True
     try:
-        cfnconfig.ParallelClusterConfig(temp_args)
+        cfnconfig.ParallelClusterConfig(args)
     except SystemExit:
         is_valid = False
-    finally:
-        os.remove(temp_file_path)
-        return is_valid
+    return is_valid
 
 
 def _get_config_parameter(config, section, parameter_name, default_value):

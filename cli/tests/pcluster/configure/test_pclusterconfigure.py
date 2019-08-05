@@ -107,10 +107,14 @@ def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_
     mocker.patch(NETWORKING + "_create_network_stack", side_effect=_side_effect_function)
 
 
+def _mock_parallel_cluster_config(mocker):
+    mocker.patch(EASYCONFIG + "cfnconfig.ParallelClusterConfig")
+
+
 def _launch_config(mocker, path, remove_path=True):
     if remove_path and os.path.isfile(path):
         os.remove(path)
-    args = mocker.Mock
+    args = mocker.MagicMock(autospec=True)
     args.config_file = path
     configure(args)
 
@@ -133,14 +137,6 @@ def _are_configurations_equals(path_verify, path_verified):
                 print("It is {0} but it should be {1}".format(value, dict2[section_name][key]))
                 return False
     return True
-
-
-def _write_output_and_error(capsys, error_path, output_path):
-    readouterr = capsys.readouterr()
-    with open(error_path, "w+") as file:
-        file.write(readouterr.err)
-    with open(output_path, "w+") as file:
-        file.write(readouterr.out)
 
 
 def _are_output_error_correct(capsys, output, error):
@@ -192,6 +188,7 @@ class MockHandler:
         _mock_aws_region(self.mocker)
         _mock_list_keys(self.mocker)
         _mock_list_vpcs_and_subnets(self.mocker, empty_region)
+        _mock_parallel_cluster_config(self.mocker)
 
     def add_subnet_automation(self, public_subnet_id, is_a_valid_vpc=True, private_subnet_id=None):
         _mock_vpc_factory(self.mocker, is_a_valid_vpc)
@@ -213,38 +210,6 @@ def _verify_test(mocker, capsys, output, error, config, temp_path_for_config):
     assert_that(_are_configurations_equals(temp_path_for_config, config)).is_true()
     _are_output_error_correct(capsys, output, error)
     os.remove(temp_path_for_config)
-
-
-# note that user_prompt passed to input will not be shown.
-def create_new_test(mocker, capsys):
-    """
-    Create a new test for the pcluster configure.
-
-    You have to be sure that pcluster configure is correct when you use this function. You will also have to check
-    output manually. Note that it does not print user_prompt passed as input, but neither does all the tests
-    """
-    test_name = "test_vpc_automation_no_vpc_in_region_public"
-    config_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "test")
-    error_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "error.txt")
-    output_path = os.path.join(os.getcwd(), "test_pclusterconfigure", test_name, "output.txt")
-
-    mock_handler = MockHandler(mocker, empty_region=True)
-    mock_handler.add_subnet_automation(public_subnet_id="subnet-pu")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="slurm")
-    input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
-    )
-    input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_CONFIGURATION)
-    input_composer.finalize_config(mocker)
-
-    _launch_config(mocker, config_path)
-    _write_output_and_error(capsys, error_path, output_path)
-    assert_that(True).is_true()
 
 
 def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):

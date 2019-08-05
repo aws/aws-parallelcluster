@@ -8,7 +8,6 @@
 # or in the 'LICENSE.txt' file accompanying this file. This file is distributed on an 'AS IS' BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-# fmt: off
 from future.backports import datetime
 
 import abc
@@ -22,23 +21,18 @@ import pkg_resources
 
 from pcluster.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
-from pcluster.utils import (
-    evaluate_cidr,
-    get_stack_output_value,
-    get_subnet_cidr,
-    get_templates_bucket_path,
-    verify_stack_creation,
-)
+from pcluster.subnet_computation import evaluate_cidr, get_subnet_cidr
+from pcluster.utils import get_stack_output_value, get_templates_bucket_path, verify_stack_creation
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger(__name__)
 TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
 MASTER_SUBNET_IPS = 250
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
 else:
-    ABC = abc.ABCMeta('ABC', (), {})
+    ABC = abc.ABCMeta("ABC", (), {})
 
 
 class BaseNetworkConfig(ABC):
@@ -88,7 +82,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
         super(PublicNetworkConfig, self).__init__(
             config_type="Master and compute fleet in the same public subnet",
             template_name="public",
-            stack_name_prefix="pub"
+            stack_name_prefix="pub",
         )
 
     def get_cfn_parameters(self, aws_region_name, vpc_id, internet_gateway_id, public_cidr):
@@ -97,7 +91,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
         parameters.append(super(PublicNetworkConfig, self)._build_cfn_param("PublicCIDR", public_cidr))
         return parameters
 
-    def _create(self, aws_region_name, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):  # noqa D102
+    def _create(self, aws_region_name, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):
         public_cidr = get_subnet_cidr(
             vpc_cidr=vpc_cidr, occupied_cidr=subnet_cidrs, min_subnet_size=compute_subnet_size + MASTER_SUBNET_IPS
         )
@@ -114,7 +108,7 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
         super(PublicPrivateNetworkConfig, self).__init__(
             config_type="Master in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
-            stack_name_prefix="pubpriv"
+            stack_name_prefix="pubpriv",
         )
 
     def get_cfn_parameters(self, aws_region_name, vpc_id, internet_gateway_id, public_cidr, private_cidr):
@@ -126,10 +120,10 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
         parameters.append(super(PublicPrivateNetworkConfig, self)._build_cfn_param("PrivateCIDR", private_cidr))
         return parameters
 
-    def _create(self, aws_region_name, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):  # noqa D102
-        public_cidr = evaluate_cidr(
-            vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=MASTER_SUBNET_IPS
-        )
+    def _create(
+        self, aws_region_name, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size
+    ):  # noqa D102
+        public_cidr = evaluate_cidr(vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=MASTER_SUBNET_IPS)
         _validate_cidr(public_cidr)
         subnet_cidrs.append(public_cidr)
         private_cidr = get_subnet_cidr(
@@ -164,9 +158,8 @@ def _create_network_stack(aws_region_name, configuration, parameters):
         cfn = boto3.client("cloudformation", region_name=aws_region_name)
         stack = cfn.create_stack(
             StackName=stack_name,
-            TemplateURL=get_templates_bucket_path(aws_region_name) + "networking/%s-%s.cfn.json" % (
-                configuration.template_name, version
-            ),
+            TemplateURL=get_templates_bucket_path(aws_region_name)
+            + "networking/%s-%s.cfn.json" % (configuration.template_name, version),
             Parameters=parameters,
             Capabilities=["CAPABILITY_IAM"],
         )
@@ -180,8 +173,10 @@ def _create_network_stack(aws_region_name, configuration, parameters):
         return cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]["Outputs"]
     except KeyboardInterrupt:
         print()
-        LOGGER.info("Unable to update the configuration file with the selected network configuration. "
-                    "Please manually check the status of the CloudFormation stack: {0}".format(stack_name))
+        LOGGER.info(
+            "Unable to update the configuration file with the selected network configuration. "
+            "Please manually check the status of the CloudFormation stack: {0}".format(stack_name)
+        )
     except Exception as e:  # Any exception is a problem
         print()
         LOGGER.error(
@@ -215,11 +210,7 @@ def _get_internet_gateway_id(aws_region_name, vpc_id):
     response = ec2_conn(aws_region_name).describe_internet_gateways(
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
     )
-    return (
-        response["InternetGateways"][0]["InternetGatewayId"]
-        if response["InternetGateways"]
-        else ""
-    )
+    return response["InternetGateways"][0]["InternetGatewayId"] if response["InternetGateways"] else ""
 
 
 @handle_client_exception
