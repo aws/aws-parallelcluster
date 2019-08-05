@@ -41,6 +41,11 @@ class ResourceValidator(object):
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
 
+    def __get_sts_endpoint(self):
+        return "https://sts.{0}.{1}".format(
+            self.region, "amazonaws.com.cn" if self.region.startswith("cn-") else "amazonaws.com"
+        )
+
     def __get_partition(self):
         if self.region.startswith("us-gov"):
             return "aws-us-gov"
@@ -291,6 +296,7 @@ class ResourceValidator(object):
                     boto3.client(
                         "sts",
                         region_name=self.region,
+                        endpoint_url=self.__get_sts_endpoint(),
                         aws_access_key_id=self.aws_access_key_id,
                         aws_secret_access_key=self.aws_secret_access_key,
                     )
