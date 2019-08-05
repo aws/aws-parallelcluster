@@ -36,6 +36,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
@@ -44,7 +45,6 @@ from utils import (
     to_snake_case,
     unset_credentials,
 )
-from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
@@ -321,7 +321,7 @@ def cfn_stacks_factory(request):
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
-_AVAILABILITY_ZONE_OVERRIDES = {
+AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
     "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
@@ -354,15 +354,14 @@ def vpc_stacks(cfn_stacks_factory, request):
     regions = request.config.getoption("regions")
     vpc_stacks = {}
     for region in regions:
+        availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         # defining subnets per region to allow AZs override
-        availability_zone = random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         public_subnet = SubnetConfig(
             name="PublicSubnet",
             cidr="10.0.124.0/22",  # 1,022 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=availability_zone,
         )
         private_subnet = SubnetConfig(
             name="PrivateSubnet",
@@ -370,10 +369,9 @@ def vpc_stacks(cfn_stacks_factory, request):
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=availability_zone,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_config).build()
+        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zone).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks

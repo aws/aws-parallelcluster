@@ -18,6 +18,8 @@ per-file-ignores =
     pcluster/easyconfig.py: E402, D103
     pcluster/cfnconfig.py: E402, D103
     tests/pcluster/pcluster-unittest.py: D101, D102, D103
+    tests/pcluster/configure/test_*.py: D101, D102, D103
+    tests/pcluster/test_*.py: D101, D102, D103
     tests/awsbatch/test_*.py: D101, D102
     ../tests/integration-tests/tests/*: D103
     ../tests/integration-tests/*: D205, D400, D401
