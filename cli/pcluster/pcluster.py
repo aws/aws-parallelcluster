@@ -36,6 +36,8 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from tabulate import tabulate
 
+from pcluster.utils import get_stack_output_value, verify_stack_creation
+
 from . import cfnconfig, utils
 
 if sys.version_info[0] >= 3:
@@ -125,34 +127,8 @@ def create(args):  # noqa: C901 FIXME!!!
         )
         LOGGER.debug("StackId: %s", stack.get("StackId"))
 
-        status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
-
         if not args.nowait:
-            resource_status = ""
-            while status == "CREATE_IN_PROGRESS":
-                status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
-                resource_status = (
-                    "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                ).ljust(80)
-                sys.stdout.write("\r%s" % resource_status)
-                sys.stdout.flush()
-                time.sleep(5)
-            # print the last status update in the logs
-            if resource_status != "":
-                LOGGER.debug(resource_status)
-
-            if status != "CREATE_COMPLETE":
-                LOGGER.critical("\nCluster creation failed.  Failed events:")
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")
-                for event in events:
-                    if event.get("ResourceStatus") == "CREATE_FAILED":
-                        LOGGER.info(
-                            "  - %s %s %s",
-                            event.get("ResourceType"),
-                            event.get("LogicalResourceId"),
-                            event.get("ResourceStatusReason"),
-                        )
+            verify_stack_creation(cfn, stack_name)
             LOGGER.info("")
             result_stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
             _print_stack_outputs(result_stack)
@@ -387,7 +363,7 @@ def get_batch_ce(stack_name, config):
 
     try:
         outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Outputs")
-        return _get_output_value(outputs, "BatchComputeEnvironmentArn")
+        return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.exit(1)
@@ -665,17 +641,6 @@ def _get_master_server_ip(stack_name, config):
     return ip_address
 
 
-def _get_output_value(outputs, key_name):
-    """
-    Get output value from Cloudformation Stack Output.
-
-    :param outputs: Cloudformation Stack Outputs
-    :param key_name: Output Key
-    :return: OutputValue if that output exists, otherwise None
-    """
-    return next((o.get("OutputValue") for o in outputs if o.get("OutputKey") == key_name), None)
-
-
 def _get_param_value(params, key_name):
     """
     Get parameter value from Cloudformation Stack Parameters.
@@ -712,8 +677,8 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
             sys.exit(1)
         elif status in valid_status:
             outputs = stack_result.get("Outputs")
-            username = _get_output_value(outputs, "ClusterUser")
-            ip = _get_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack, config)
+            username = get_stack_output_value(outputs, "ClusterUser")
+            ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack, config)
 
             if not username:
                 LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
