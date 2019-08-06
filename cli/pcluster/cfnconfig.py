@@ -868,7 +868,7 @@ class ParallelClusterConfig(object):
             return
 
         # Check that the base_os is supported
-        self.__validate_os("FSx", self.__get_os(), ["centos7", "alinux"])
+        self.__validate_os("FSx", self.__get_os(), ["centos7", "alinux", "ubuntu1604"])
 
         # Validate scheduler is not awsbatch
         if self.parameters.get("Scheduler") == "awsbatch":
