@@ -23,7 +23,7 @@ from utils import random_alphanumeric
 @pytest.fixture()
 def networking_stack_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
-    factory = CfnStacksFactory()
+    factory = CfnStacksFactory(request.config.getoption("credential"))
 
     def _create_network(region, template_path, parameters):
         file_content = extract_template(template_path)
