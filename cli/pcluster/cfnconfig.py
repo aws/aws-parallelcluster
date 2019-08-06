@@ -386,7 +386,7 @@ class ParallelClusterConfig(object):
                 ImageId=test_ami_id,
                 SubnetId=subnet_id,
                 Placement={"GroupName": self.parameters.get("PlacementGroup")}
-                if self.parameters.get("PlacementGroup")
+                if self.parameters.get("PlacementGroup") not in [None, "NONE", "DYNAMIC"]
                 else {},
                 DryRun=True,
             )
