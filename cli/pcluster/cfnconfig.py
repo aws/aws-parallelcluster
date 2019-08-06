@@ -900,7 +900,10 @@ class ParallelClusterConfig(object):
         for key in fsx_options:
             value = self.__get_option_in_section(fsx_section, key)
             if not value:
-                temp_fsx_options.append("NONE")
+                if key == "storage_capacity":
+                    temp_fsx_options.append("3600")
+                else:
+                    temp_fsx_options.append("NONE")
             else:
                 if self.__sanity_check:
                     # Separate sanity_check for fs_id, need to pass in fs_id and subnet_id

@@ -102,23 +102,6 @@
         }
       ]
     },
-    "UseStorageCap": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Fn::Select": [
-                "2",
-                {
-                  "Ref": "FSXOptions"
-                }
-              ]
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
     "UseWeeklyMaintenanceStartTime": {
       "Fn::Not": [
         {
@@ -269,18 +252,10 @@
           }
         ],
         "StorageCapacity": {
-          "Fn::If": [
-            "UseStorageCap",
+          "Fn::Select": [
+            "2",
             {
-              "Fn::Select": [
-                "2",
-                {
-                  "Ref": "FSXOptions"
-                }
-              ]
-            },
-            {
-              "Ref": "AWS::NoValue"
+              "Ref": "FSXOptions"
             }
           ]
         },
