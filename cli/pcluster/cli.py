@@ -20,7 +20,8 @@ import textwrap
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-from pcluster import easyconfig, pcluster
+from pcluster import pcluster
+from pcluster.configure import easyconfig
 
 LOGGER = logging.getLogger("pcluster.pcluster")
 
@@ -372,6 +373,13 @@ def main():
     except NoCredentialsError:
         logger.error("AWS Credentials not found.")
         sys.exit(1)
+    except KeyboardInterrupt:
+        logger.info("Exiting...")
+        sys.exit(1)
     except Exception as e:
         logger.error("Unexpected error of type %s: %s", type(e).__name__, e)
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

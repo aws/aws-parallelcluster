@@ -11,12 +11,17 @@
 from __future__ import absolute_import, print_function
 
 import json
+import logging
 import os
+import sys
+import time
 import zipfile
 from io import BytesIO
 
 import boto3
 from botocore.exceptions import ClientError
+
+LOGGER = logging.getLogger("pcluster.pcluster")
 
 
 def boto3_client(service, aws_client_config):
@@ -180,3 +185,78 @@ def get_instance_vcpus(region, instance_type):
         vcpus = -1
 
     return vcpus
+
+
+def get_supported_os(scheduler):
+    """
+    Return a tuple of the os supported by parallelcluster for the specific scheduler.
+
+    :param scheduler: the scheduler for which we want to know the supported os
+    :return: a tuple of strings of the supported os
+    """
+    return "alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"
+
+
+def get_supported_schedulers():
+    """
+    Return a tuple of the scheduler supported by parallelcluster.
+
+    :return: a tuple of strings of the supported scheduler
+    """
+    return "sge", "torque", "slurm", "awsbatch"
+
+
+def get_stack_output_value(stack_outputs, output_key):
+    """
+    Get output value from Cloudformation Stack Output.
+
+    :param stack_outputs: Cloudformation Stack Outputs
+    :param output_key: Output Key
+    :return: OutputValue if that output exists, otherwise None
+    """
+    return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
+
+
+def verify_stack_creation(cfn_client, stack_name):
+    """
+    Wait for the stack creation to be completed and notify if the stack creation fails.
+
+    :param cfn_client: the CloudFormation client to use to verify stack status
+    :param stack_name: the stack name that we should verify
+    :return: True if the creation was successful, false otherwise.
+    """
+    status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+    resource_status = ""
+    while status == "CREATE_IN_PROGRESS":
+        status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+        resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
+            80
+        )
+        sys.stdout.write("\r%s" % resource_status)
+        sys.stdout.flush()
+        time.sleep(5)
+    # print the last status update in the logs
+    if resource_status != "":
+        LOGGER.debug(resource_status)
+    if status != "CREATE_COMPLETE":
+        LOGGER.critical("\nCluster creation failed.  Failed events:")
+        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")
+        for event in events:
+            if event.get("ResourceStatus") == "CREATE_FAILED":
+                LOGGER.info(
+                    "  - %s %s %s",
+                    event.get("ResourceType"),
+                    event.get("LogicalResourceId"),
+                    event.get("ResourceStatusReason"),
+                )
+        return False
+    return True
+
+
+def get_templates_bucket_path(aws_region_name):
+    """Return a string containing the path of bucket."""
+    s3_suffix = ".cn" if aws_region_name.startswith("cn") else ""
+    return "https://s3.{REGION}.amazonaws.com{S3_SUFFIX}/{REGION}-aws-parallelcluster/templates/".format(
+        REGION=aws_region_name, S3_SUFFIX=s3_suffix
+    )

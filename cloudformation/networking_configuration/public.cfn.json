@@ -1,0 +1,185 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Conditions": {
+    "CreateInternetGateway": {
+      "Fn::Equals": [
+        {
+          "Ref": "InternetGatewayId"
+        },
+        ""
+      ]
+    },
+    "ExistingInternetGateway": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "InternetGatewayId"
+            },
+            ""
+          ]
+        }
+      ]
+    }
+  },
+  "Description": "Network build by NetworkTemplateBuilder",
+  "Outputs": {
+    "PublicSubnetId": {
+      "Value": {
+        "Ref": "Public"
+      }
+    }
+  },
+  "Parameters": {
+    "AvailabilityZone": {
+      "Description": "(Optional) The zone in which you want to create your subnet(s)",
+      "Type": "String"
+    },
+    "InternetGatewayId": {
+      "Description": "(Optional) The id of the gateway (will be created if not specified)",
+      "Type": "String"
+    },
+    "PublicCIDR": {
+      "AllowedPattern": "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}/(1[6-9]|2[0-9]|3[0-2])$",
+      "Description": "The CIDR of the Public",
+      "Type": "String"
+    },
+    "VpcId": {
+      "Description": "The vpc id",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "DefaultRouteDependsOnPublic": {
+      "Condition": "CreateInternetGateway",
+      "DependsOn": "VPCGatewayAttachment",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Fn::If": [
+            "CreateInternetGateway",
+            {
+              "Ref": "InternetGateway"
+            },
+            {
+              "Ref": "InternetGatewayId"
+            }
+          ]
+        },
+        "RouteTableId": {
+          "Ref": "RouteTablePublic"
+        }
+      },
+      "Type": "AWS::EC2::Route"
+    },
+    "DefaultRouteNoDependsOnPublic": {
+      "Condition": "ExistingInternetGateway",
+      "Properties": {
+        "DestinationCidrBlock": "0.0.0.0/0",
+        "GatewayId": {
+          "Fn::If": [
+            "CreateInternetGateway",
+            {
+              "Ref": "InternetGateway"
+            },
+            {
+              "Ref": "InternetGatewayId"
+            }
+          ]
+        },
+        "RouteTableId": {
+          "Ref": "RouteTablePublic"
+        }
+      },
+      "Type": "AWS::EC2::Route"
+    },
+    "InternetGateway": {
+      "Condition": "CreateInternetGateway",
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ParallelClusterIG"
+          },
+          {
+            "Key": "Stack",
+            "Value": {
+              "Ref": "AWS::StackId"
+            }
+          }
+        ]
+      },
+      "Type": "AWS::EC2::InternetGateway"
+    },
+    "Public": {
+      "Properties": {
+        "AvailabilityZone": {
+          "Ref": "AvailabilityZone"
+        },
+        "CidrBlock": {
+          "Ref": "PublicCIDR"
+        },
+        "MapPublicIpOnLaunch": false,
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ParallelClusterPublicSubnet"
+          },
+          {
+            "Key": "Stack",
+            "Value": {
+              "Ref": "AWS::StackId"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Type": "AWS::EC2::Subnet"
+    },
+    "RouteAssociationPublic": {
+      "Properties": {
+        "RouteTableId": {
+          "Ref": "RouteTablePublic"
+        },
+        "SubnetId": {
+          "Ref": "Public"
+        }
+      },
+      "Type": "AWS::EC2::SubnetRouteTableAssociation"
+    },
+    "RouteTablePublic": {
+      "Properties": {
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ParallelClusterRouteTablePublic"
+          },
+          {
+            "Key": "Stack",
+            "Value": {
+              "Ref": "AWS::StackId"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Type": "AWS::EC2::RouteTable"
+    },
+    "VPCGatewayAttachment": {
+      "Condition": "CreateInternetGateway",
+      "Properties": {
+        "InternetGatewayId": {
+          "Ref": "InternetGateway"
+        },
+        "VpcId": {
+          "Ref": "VpcId"
+        }
+      },
+      "Type": "AWS::EC2::VPCGatewayAttachment"
+    }
+  }
+}
