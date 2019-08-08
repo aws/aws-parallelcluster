@@ -335,6 +335,7 @@ class ResourceValidator(object):
                             "autoscaling:SetDesiredCapacity",
                             "autoscaling:DescribeTags",
                             "autoScaling:UpdateAutoScalingGroup",
+                            "autoScaling:SetInstanceHealth",
                         ],
                         "*",
                     ),
