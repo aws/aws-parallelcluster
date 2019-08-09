@@ -36,7 +36,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from tabulate import tabulate
 
-from pcluster.utils import get_stack_output_value, verify_stack_creation
+from pcluster.utils import get_installed_version, get_stack_output_value, verify_stack_creation
 
 from . import cfnconfig, utils
 
@@ -67,8 +67,7 @@ def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_
 
 
 def version():
-    pcluster_version = pkg_resources.get_distribution("aws-parallelcluster").version
-    return pcluster_version
+    return get_installed_version()
 
 
 def create(args):  # noqa: C901 FIXME!!!
