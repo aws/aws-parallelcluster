@@ -41,7 +41,16 @@ def assert_no_errors_in_logs(remote_command_executor, log_files):
             assert_that(log).does_not_contain(error_level)
 
 
-def assert_scaling_worked(scheduler_commands, region, stack_name, scaledown_idletime, expected_max, expected_final):
+def assert_scaling_worked(
+    scheduler_commands,
+    region,
+    stack_name,
+    scaledown_idletime,
+    expected_max,
+    expected_final,
+    assert_asg=True,
+    assert_scheduler=True,
+):
     jobs_execution_time = 1
     estimated_scaleup_time = 5
     max_scaledown_time = 10
@@ -54,7 +63,9 @@ def assert_scaling_worked(scheduler_commands, region, stack_name, scaledown_idle
         + minutes(estimated_scaleup_time)
         + minutes(max_scaledown_time),
     )
-    assert_that(max(asg_capacity_time_series)).is_equal_to(expected_max)
-    assert_that(max(compute_nodes_time_series)).is_equal_to(expected_max)
-    assert_that(asg_capacity_time_series[-1]).is_equal_to(expected_final)
-    assert_that(compute_nodes_time_series[-1]).is_equal_to(expected_final)
+    if assert_asg:
+        assert_that(max(asg_capacity_time_series)).is_equal_to(expected_max)
+        assert_that(asg_capacity_time_series[-1]).is_equal_to(expected_final)
+    if assert_scheduler:
+        assert_that(max(compute_nodes_time_series)).is_equal_to(expected_max)
+        assert_that(compute_nodes_time_series[-1]).is_equal_to(expected_final)
