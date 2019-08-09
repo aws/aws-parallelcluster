@@ -95,6 +95,11 @@ class SchedulerCommands(metaclass=ABCMeta):
         """Retrieve the list of compute nodes attached to the scheduler."""
         pass
 
+    @abstractmethod
+    def wait_for_locked_node(self):
+        """Wait for at least one node to be locked."""
+        pass
+
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -136,6 +141,9 @@ class AWSBatchCommands(SchedulerCommands):
         raise NotImplementedError
 
     def get_compute_nodes(self):  # noqa: D102
+        raise NotImplementedError
+
+    def wait_for_locked_node(self):  # noqa: D102
         raise NotImplementedError
 
 
@@ -207,6 +215,14 @@ class SgeCommands(SchedulerCommands):
     def get_compute_nodes(self):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qhost | grep ip- | awk '{print $1}'")
         return result.stdout.splitlines()
+
+    @retry(
+        retry_on_result=lambda result: "<state>d</state>" not in result,
+        wait_fixed=seconds(3),
+        stop_max_delay=minutes(5),
+    )
+    def wait_for_locked_node(self):  # noqa: D102
+        return self._remote_command_executor.run_remote_command("qstat -f -xml").stdout
 
 
 class SlurmCommands(SchedulerCommands):
@@ -282,6 +298,10 @@ class SlurmCommands(SchedulerCommands):
         )
         return result.stdout.splitlines()
 
+    @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))
+    def wait_for_locked_node(self):  # noqa: D102
+        return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
@@ -346,6 +366,11 @@ class TorqueCommands(SchedulerCommands):
             "pbsnodes -l all | grep -v $(hostname) | awk '{print $1}'"
         )
         return result.stdout.splitlines()
+
+    @retry(retry_on_result=lambda result: "offline" not in result, wait_fixed=seconds(5), stop_max_delay=minutes(5))
+    def wait_for_locked_node(self):  # noqa: D102
+        # discard the first node since that is the master server
+        return self._remote_command_executor.run_remote_command(r'pbsnodes | grep -e "\sstate = " | tail -n +2').stdout
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):
