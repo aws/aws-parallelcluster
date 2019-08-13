@@ -62,7 +62,7 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory):
     parameters = _get_cfn_parameters(
         availability_zone, internet_gateway_id=internet_gateway_id, vpc_id=vpc_id, public_cidr=public_subnet_cidr
     )
-    path = os.path.join("..", "..", "cloudformation", "networking_configuration", "public.cfn.json")
+    path = os.path.join("..", "..", "cloudformation", "networking", "public.cfn.json")
     stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
@@ -90,7 +90,7 @@ def test_public_private_network_topology(region, vpc_stack, networking_stack_fac
         public_cidr=public_subnet_cidr,
         private_cidr=private_subnet_cidr,
     )
-    path = os.path.join("..", "..", "cloudformation", "networking_configuration", "public-private.cfn.json")
+    path = os.path.join("..", "..", "cloudformation", "networking", "public-private.cfn.json")
     stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
