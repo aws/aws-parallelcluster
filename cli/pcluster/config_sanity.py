@@ -14,6 +14,7 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -451,7 +452,21 @@ class ResourceValidator(object):
         elif resource_type == "URL":
             scheme = urlparse(resource_value).scheme
             if scheme == "s3":
-                pass
+                try:
+                    s3 = boto3.client(
+                        "s3",
+                        region_name=self.region,
+                        aws_access_key_id=self.aws_access_key_id,
+                        aws_secret_access_key=self.aws_secret_access_key,
+                    )
+                    m = re.match(r"s3://(\w*)/(.*)", resource_value)
+                    bucket, key = m.group(1), m.group(2)
+                    s3.head_object(Bucket=bucket, Key=key)
+                except ClientError:
+                    self.__fail(
+                        resource_type,
+                        "S3 object {0} does not exist or you do not have access to it.".format(resource_value),
+                    )
             else:
                 try:
                     urllib.request.urlopen(resource_value)
