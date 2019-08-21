@@ -156,7 +156,7 @@ class ParallelClusterConfig(object):
             else:
                 self.__fail("Config file %s not found" % config_file)
 
-        config = configparser.ConfigParser()
+        config = configparser.ConfigParser(inline_comment_prefixes=(";", "#"))
         config.read(config_file)
         return config
 
