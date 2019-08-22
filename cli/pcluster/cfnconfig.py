@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 # fmt: off
-from __future__ import absolute_import, print_function  # isort:skip
+from __future__ import absolute_import, print_function, division  # isort:skip
 from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
@@ -78,10 +78,6 @@ class ParallelClusterConfig(object):
         # Initialize parameters related to the cluster configuration
         self.__init_cluster_parameters()
 
-        # Verify Account limits
-        if self.__sanity_check:
-            self.__check_account_capacity()
-
         # Initialize ExtraJson parameter
         self.__init_extra_json_parameter()
 
@@ -105,6 +101,13 @@ class ParallelClusterConfig(object):
 
         # Initialize aliases public attributes
         self.__init_aliases()
+
+        # Initialize hyperthreading parameter
+        self.__init_hyperthreading_parameter()
+
+        # Verify Account limits
+        if self.__sanity_check:
+            self.__check_account_capacity()
 
         # efa checks
         self.__init_efa_parameters()
@@ -360,28 +363,49 @@ class ParallelClusterConfig(object):
         if self.parameters.get("Scheduler") == "awsbatch" or self.parameters.get("ClusterType", "ondemand") == "spot":
             return
 
-        instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
-        max_size = self.__get_max_number_of_instances(instance_type)
+        master_instance_type = self.parameters.get("MasterInstanceType", "t2.micro")
+        compute_instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
+        max_size = self.__get_max_number_of_instances(compute_instance_type)
         if max_size < 0:
             self.__warn("Unable to check AWS account capacity. Skipping limits validation")
             return
 
         try:
             # Check for insufficient Account capacity
+            # And check if EC2 instance type accepts CpuOptions as an argument
             ec2 = boto3.client("ec2", region_name=self.region)
 
-            subnet_id = self.parameters.get("ComputeSubnetId")
-            if not subnet_id:
-                subnet_id = self.parameters.get("MasterSubnetId")
+            master_subnet_id = self.parameters.get("MasterSubnetId")
+            compute_subnet_id = self.parameters.get("ComputeSubnetId")
+            if not compute_subnet_id:
+                compute_subnet_id = master_subnet_id
 
             test_ami_id = self.__get_latest_alinux_ami_id()
 
             ec2.run_instances(
-                InstanceType=instance_type,
+                InstanceType=compute_instance_type,
                 MinCount=max_size,
                 MaxCount=max_size,
                 ImageId=test_ami_id,
-                SubnetId=subnet_id,
+                SubnetId=compute_subnet_id,
+                CpuOptions={"CoreCount": int(self.parameters.get("ComputeCoreCount")), "ThreadsPerCore": 1}
+                if self.parameters.get("ComputeCoreCount", None) is not None
+                else {},
+                Placement={"GroupName": self.parameters.get("PlacementGroup")}
+                if self.parameters.get("PlacementGroup") not in [None, "NONE", "DYNAMIC"]
+                else {},
+                DryRun=True,
+            )
+
+            ec2.run_instances(
+                InstanceType=master_instance_type,
+                MinCount=1,
+                MaxCount=1,
+                ImageId=test_ami_id,
+                SubnetId=master_subnet_id,
+                CpuOptions={"CoreCount": int(self.parameters.get("MasterCoreCount")), "ThreadsPerCore": 1}
+                if self.parameters.get("MasterCoreCount", None) is not None
+                else {},
                 Placement={"GroupName": self.parameters.get("PlacementGroup")}
                 if self.parameters.get("PlacementGroup") not in [None, "NONE", "DYNAMIC"]
                 else {},
@@ -409,6 +433,8 @@ class ParallelClusterConfig(object):
                     "available in the Compute subnet.\n{1}".format(max_size, message)
                 )
             elif code == "InvalidParameterCombination":
+                self.__fail(message)
+            elif code == "UnsupportedOperation":
                 self.__fail(message)
             else:
                 self.__fail(
@@ -542,6 +568,30 @@ class ParallelClusterConfig(object):
             self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
             self.__validate_resource("EFA", self.parameters)
             self.parameters["EFA"] = __temp__
+        except configparser.NoOptionError:
+            pass
+
+    def __init_hyperthreading_parameter(self):
+        try:
+            __temp__ = self.__config.get(self.__cluster_section, "disable_hyperthreading")
+            if __temp__ not in {"true", "false"}:
+                self.__fail("valid values for disable_hyperthreading = true/false")
+            if __temp__ == "true":
+                master_instance_type = self.parameters.get("MasterInstanceType", "t2.micro")
+                compute_instance_type = self.parameters.get("ComputeInstanceType", "t2.micro")
+                master_core_count = int(get_instance_vcpus(self.region, master_instance_type))
+                compute_core_count = int(get_instance_vcpus(self.region, compute_instance_type))
+                if master_core_count <= 0 or compute_core_count <= 0:
+                    self.__fail(
+                        "Unable to determine the number of vCPUs for {0}. "
+                        "Please raise a ticket at https://github.com/aws/aws-parallelcluster/issues".format(
+                            master_instance_type if master_core_count <= 0 else compute_instance_type
+                        )
+                    )
+                master_core_count = master_core_count // 2
+                compute_core_count = compute_core_count // 2
+                self.parameters["MasterCoreCount"] = str(master_core_count)
+                self.parameters["ComputeCoreCount"] = str(compute_core_count)
         except configparser.NoOptionError:
             pass
 

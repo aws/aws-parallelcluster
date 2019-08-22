@@ -572,6 +572,16 @@
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",
       "Type": "String",
       "Default": "NONE"
+    },
+    "MasterCoreCount": {
+      "Description": "Number of cores to be used in MasterServer. If -1, cores are kept as is.",
+      "Type": "Number",
+      "Default": -1
+    },
+    "ComputeCoreCount": {
+      "Description": "Number of cores to be used in ComputeServer. If -1, cores are kept as is.",
+      "Type": "Number",
+      "Default": -1
     }
   },
   "Conditions": {
@@ -1141,6 +1151,16 @@
           ]
         }
       ]
+    },
+    "DisableHyperthreading": {
+      "Fn:Not": {
+        "Fn::Equals": [
+          {
+            "Ref": "ComputeCoreCount"
+          },
+          -1
+        ]
+      }
     }
   },
   "Mappings": {
@@ -2357,6 +2377,28 @@
                 ]
               ]
             }
+          },
+          "CpuOptions": {
+            "CoreCount": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                {
+                  "Ref": "MasterCoreCount"
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            "ThreadsPerCore": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                1,
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
           }
         }
       },
@@ -3221,6 +3263,28 @@
                   "# End of file\n",
                   "--==BOUNDARY==\n"
                 ]
+              ]
+            }
+          },
+          "CpuOptions": {
+            "CoreCount": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                {
+                  "Ref": "ComputeCoreCount"
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            "ThreadsPerCore": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                1,
+                {
+                  "Ref": "AWS::NoValue"
+                }
               ]
             }
           }
