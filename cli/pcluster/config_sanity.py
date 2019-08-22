@@ -372,6 +372,17 @@ class ResourceValidator(object):
                             sys.exit(1)
             except ClientError as e:
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
+        if resource_type == "EC2IAMPolicy":
+            try:
+                iam = boto3.client(
+                    "iam",
+                    region_name=self.region,
+                    aws_access_key_id=self.aws_access_key_id,
+                    aws_secret_access_key=self.aws_secret_access_key,
+                )
+                iam.get_policy(PolicyArn=resource_value)
+            except ClientError as e:
+                self.__fail(resource_type, e.response.get("Error").get("Message"))
         # VPC Id
         elif resource_type == "VPC":
             try:
