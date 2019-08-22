@@ -520,6 +520,11 @@
       "Type": "String",
       "Default": "NONE"
     },
+    "EC2IAMPolicy": {
+      "Description": "Existing EC2 IAM policy",
+      "Type": "String",
+      "Default": "NONE"
+    },
     "VPCSecurityGroupId": {
       "Description": "Existing VPC security group Id",
       "Type": "String",
@@ -1017,6 +1022,18 @@
           "Fn::Equals": [
             {
               "Ref": "EC2IAMRoleName"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseEC2IAMPolicy": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "EC2IAMPolicy"
             },
             "NONE"
           ]
@@ -1539,6 +1556,17 @@
             "Fn::If": [
               "CreateAWSBatchStack",
               "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          {
+            "Fn::If": [
+              "UseEC2IAMPolicy",
+              {
+                "Ref": "EC2IAMPolicy"
+              },
               {
                 "Ref": "AWS::NoValue"
               }

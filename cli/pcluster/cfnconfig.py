@@ -516,6 +516,7 @@ class ParallelClusterConfig(object):
             custom_chef_cookbook=("CustomChefCookbook", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
+            ec2_iam_policy=("EC2IAMPolicy", "EC2IAMPolicy"),
         )
         for key in cluster_options:
             try:
