@@ -76,7 +76,7 @@ def generate_json_report(test_results_dir, save_to_file=True):
     result_to_label_mapping = {"skipped": "skipped", "failure": "failures", "error": "errors"}
     results = {"all": _empty_results_dict()}
     xml = untangle.parse(test_report_file)
-    for testcase in xml.testsuite.children:
+    for testcase in xml.testsuites.testsuite.children:
         label = "succeeded"
         for key, value in result_to_label_mapping.items():
             if hasattr(testcase, key):
