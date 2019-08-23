@@ -537,7 +537,11 @@ class ParallelClusterConfig(object):
             supported_features = get_supported_features(self.region, "efa")
             valid_instances = supported_features.get("instances")
 
-            self.__validate_instance("EFA", self.parameters.get("ComputeInstanceType"), valid_instances)
+            # validate instance type only when sanity_check = true
+            # This relies on a file in S3, which could be out of date, in which case the customer can set
+            # sanity_check = false
+            if self.__sanity_check:
+                self.__validate_instance("EFA", self.parameters.get("ComputeInstanceType"), valid_instances)
             self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7", "ubuntu1604"])
             self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
             self.__validate_resource("EFA", self.parameters)
