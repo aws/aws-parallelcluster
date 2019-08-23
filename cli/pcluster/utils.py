@@ -166,9 +166,15 @@ def get_supported_features(region, feature):
     try:
         features = _get_json_from_s3(region, "features/feature_whitelist.json")
         supported_features = features.get("Features").get(feature)
-    except (ValueError, ClientError, KeyError):
+    except (ValueError, ClientError, KeyError) as e:
+        if type(e) is ClientError:
+            code = e.response.get("Error").get("Code")
+            if code == "InvalidAccessKeyId":
+                print(e.response.get("Error").get("Message"))
+                exit(1)
         print(
-            "Failed validate %s. This is probably a bug on our end. Please set sanity_check = false and retry" % feature
+            "Failed validate {0}. This is probably a bug on our end. Please submit an issue "
+            "https://github.com/aws/aws-parallelcluster/issues/new/choose".format(feature)
         )
         exit(1)
 
