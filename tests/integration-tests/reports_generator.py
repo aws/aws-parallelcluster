@@ -76,21 +76,22 @@ def generate_json_report(test_results_dir, save_to_file=True):
     result_to_label_mapping = {"skipped": "skipped", "failure": "failures", "error": "errors"}
     results = {"all": _empty_results_dict()}
     xml = untangle.parse(test_report_file)
-    for testcase in xml.testsuites.testsuite.children:
-        label = "succeeded"
-        for key, value in result_to_label_mapping.items():
-            if hasattr(testcase, key):
-                label = value
-                break
-        results["all"][label] += 1
-        results["all"]["total"] += 1
+    for testsuite in xml.testsuites.children:
+        for testcase in testsuite.children:
+            label = "succeeded"
+            for key, value in result_to_label_mapping.items():
+                if hasattr(testcase, key):
+                    label = value
+                    break
+            results["all"][label] += 1
+            results["all"]["total"] += 1
 
-        if hasattr(testcase, "properties"):
-            for property in testcase.properties.children:
-                _record_result(results, property["name"], property["value"], label)
+            if hasattr(testcase, "properties"):
+                for property in testcase.properties.children:
+                    _record_result(results, property["name"], property["value"], label)
 
-        feature = re.sub(r"test_|_test|.py", "", os.path.splitext(os.path.basename(testcase["file"]))[0])
-        _record_result(results, "feature", feature, label)
+            feature = re.sub(r"test_|_test|.py", "", os.path.splitext(os.path.basename(testcase["file"]))[0])
+            _record_result(results, "feature", feature, label)
 
     if save_to_file:
         with open("{0}/test_report.json".format(test_results_dir), "w") as out_f:
