@@ -16,7 +16,7 @@ from tests.common.assertions import assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 
 
-def test_overscaling_when_job_submitted_during_scaledown(
+def assert_overscaling_when_job_submitted_during_scaledown(
     remote_command_executor, scheduler, region, stack_name, scaledown_idletime
 ):
     """Test that if a job gets submitted when a node is locked the cluster does not overscale"""
