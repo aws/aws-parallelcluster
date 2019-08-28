@@ -19,7 +19,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import SlurmCommands
-from tests.schedulers.common import test_overscaling_when_job_submitted_during_scaledown
+from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
 @pytest.mark.regions(["us-west-1"])
@@ -43,7 +43,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
     _test_cluster_limits(remote_command_executor, max_queue_size, region, cluster.asg)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
     _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
-    test_overscaling_when_job_submitted_during_scaledown(
+    assert_overscaling_when_job_submitted_during_scaledown(
         remote_command_executor, "slurm", region, cluster.cfn_name, scaledown_idletime
     )
     _test_dynamic_dummy_nodes(remote_command_executor, max_queue_size)
