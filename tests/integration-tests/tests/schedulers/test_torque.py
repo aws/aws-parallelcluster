@@ -20,6 +20,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import TorqueCommands
+from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
 @pytest.mark.regions(["us-west-2"])
@@ -44,6 +45,9 @@ def test_torque(region, pcluster_config_reader, clusters_factory):
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
     _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_slots)
     _test_dynamic_cluster_limits(remote_command_executor, max_queue_size, max_slots, region, cluster.asg)
+    assert_overscaling_when_job_submitted_during_scaledown(
+        remote_command_executor, "torque", region, cluster.cfn_name, scaledown_idletime
+    )
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 

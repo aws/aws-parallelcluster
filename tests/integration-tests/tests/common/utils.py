@@ -16,7 +16,7 @@ from retrying import retry
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
-def _fetch_instance_slots(region, instance_type):
+def fetch_instance_slots(region, instance_type):
     bucket_name = "{0}-aws-parallelcluster".format(region)
     try:
         s3 = boto3.resource("s3", region_name=region)

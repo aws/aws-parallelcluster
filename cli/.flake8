@@ -17,6 +17,7 @@ per-file-ignores =
     pcluster/config_sanity.py: E402, D103
     pcluster/easyconfig.py: E402, D103
     pcluster/cfnconfig.py: E402, D103
+    pcluster/utils.py: E402
     tests/pcluster/pcluster-unittest.py: D101, D102, D103
     tests/pcluster/configure/test_*.py: D101, D102, D103
     tests/pcluster/test_*.py: D101, D102, D103

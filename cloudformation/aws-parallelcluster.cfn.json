@@ -854,21 +854,35 @@
       ]
     },
     "UseMasterSubnetForCompute": {
-      "Fn::And": [
+      "Fn::Or": [
         {
-          "Fn::Equals": [
+          "Fn::And": [
             {
-              "Ref": "ComputeSubnetId"
+              "Fn::Equals": [
+                {
+                  "Ref": "ComputeSubnetId"
+                },
+                "NONE"
+              ]
             },
-            "NONE"
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "ComputeSubnetCidr"
+                },
+                "NONE"
+              ]
+            }
           ]
         },
         {
           "Fn::Equals": [
             {
-              "Ref": "ComputeSubnetCidr"
+              "Ref": "ComputeSubnetId"
             },
-            "NONE"
+            {
+              "Ref": "MasterSubnetId"
+            }
           ]
         }
       ]

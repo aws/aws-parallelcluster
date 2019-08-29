@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import os
+import random
 
 import boto3
 import pytest
@@ -55,16 +56,13 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "10.0.3.0/24"
-    availability_zone = AVAILABILITY_ZONE_OVERRIDES.get(region, "")
+    availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
-
-    if isinstance(availability_zone, list):
-        availability_zone = availability_zone[0]
 
     parameters = _get_cfn_parameters(
         availability_zone, internet_gateway_id=internet_gateway_id, vpc_id=vpc_id, public_cidr=public_subnet_cidr
     )
-    path = os.path.join("..", "..", "cloudformation", "networking_configuration", "public.cfn.json")
+    path = os.path.join("..", "..", "cloudformation", "networking", "public.cfn.json")
     stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
@@ -82,11 +80,8 @@ def test_public_private_network_topology(region, vpc_stack, networking_stack_fac
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "10.0.5.0/24"
     private_subnet_cidr = "10.0.4.0/24"
-    availability_zone = AVAILABILITY_ZONE_OVERRIDES.get(region, "")
+    availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
-
-    if isinstance(availability_zone, list):
-        availability_zone = availability_zone[0]
 
     parameters = _get_cfn_parameters(
         availability_zone,
@@ -95,7 +90,7 @@ def test_public_private_network_topology(region, vpc_stack, networking_stack_fac
         public_cidr=public_subnet_cidr,
         private_cidr=private_subnet_cidr,
     )
-    path = os.path.join("..", "..", "cloudformation", "networking_configuration", "public-private.cfn.json")
+    path = os.path.join("..", "..", "cloudformation", "networking", "public-private.cfn.json")
     stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]

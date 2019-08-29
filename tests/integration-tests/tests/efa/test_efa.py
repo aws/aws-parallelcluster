@@ -19,7 +19,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
-from tests.common.utils import _fetch_instance_slots
+from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -33,7 +33,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     max_queue_size = 2
-    slots_per_instance = _fetch_instance_slots(region, instance)
+    slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader(max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)

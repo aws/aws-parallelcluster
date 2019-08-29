@@ -17,7 +17,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.mpi_common import OS_TO_OPENMPI_MODULE_MAP, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
-from tests.common.utils import _fetch_instance_slots
+from tests.common.utils import fetch_instance_slots
 from wrapt_timeout_decorator import timeout
 
 
@@ -28,7 +28,7 @@ from wrapt_timeout_decorator import timeout
 def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 3
-    slots_per_instance = _fetch_instance_slots(region, instance)
+    slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
