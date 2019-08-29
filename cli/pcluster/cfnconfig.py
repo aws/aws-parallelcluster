@@ -542,7 +542,7 @@ class ParallelClusterConfig(object):
             # sanity_check = false
             if self.__sanity_check:
                 self.__validate_instance("EFA", self.parameters.get("ComputeInstanceType"), valid_instances)
-            self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7", "ubuntu1604"])
+            self.__validate_os("EFA", self.__get_os(), ["alinux", "centos7", "ubuntu1604", "ubuntu1804"])
             self.__validate_scheduler("EFA", self.__get_scheduler(), ["sge", "slurm", "torque"])
             self.__validate_resource("EFA", self.parameters)
             self.parameters["EFA"] = __temp__

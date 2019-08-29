@@ -32,6 +32,7 @@ class RemoteCommandExecutor:
         "centos7": "centos",
         "ubuntu1404": "ubuntu",
         "ubuntu1604": "ubuntu",
+        "ubuntu1804": "ubuntu",
     }
 
     def __init__(self, cluster):
