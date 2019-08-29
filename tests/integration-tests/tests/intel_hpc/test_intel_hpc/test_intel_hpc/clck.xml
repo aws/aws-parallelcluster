@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+  <plugins>
+
+    <!-- Framework Definition configuration file -->
+    <framework_definitions>
+    </framework_definitions>
+
+  </plugins>
+
+  <analyzer>
+
+    <!-- Knowledge Base Configuration -->
+    <config>
+    </config>
+
+    <!-- DISPLAY OPTIONS -->
+
+    <!-- LOG LEVEL -->
+
+    <!-- This tag can be used to override the default log level.  Valid
+         values, in increasing order of severity are debug, info,
+         notice, warning, error, critical, and alert.  Only messages
+         that correspond to specified level and above are output.  The
+         default log level is error.
+    -->
+    <!--
+    <log_level>error</log_level>
+    -->
+
+    <!-- SUPPRESSIONS -->
+
+    <!-- This tag can be used to suppress signs and diagnoses.  See the User's
+         Guide for details.
+    -->
+    <!--
+    <suppressions>
+    </suppressions>
+    -->
+
+  </analyzer>
+
+  <postprocessor>
+    <!-- This tag can be used to override postprocessor extensions in the fwd -->
+    <!--
+       <postproc_extensions>
+         <group>
+           <entry>summary</entry>
+           <entry>clck_output_log</entry>
+         </group>
+       </postproc_extensions>
+       -->
+  </postprocessor>
+
+  <collector>
+    <!-- This tag can be used to run collector extensions such as the
+         mpi extention.
+    -->
+    <!--
+    <extension>mpi.so</extension>
+    -->
+
+    <!-- This tag can be used to set the network interface used for
+         accumulating data collected on-demand.
+    -->
+    <network_interface>ens5</network_interface>
+
+    <!-- This tag can be used to override the default location for
+         data provider helper files.
+
+         The string %PROVIDER_AUXILIARY_PATH% is replaced with the
+         value of this tag in the data provider XML configuration
+         files.
+    -->
+    <!--
+    <provider_auxiliary_path>/opt/intel/clck/2019.3.5/provider/share</provider_auxiliary_path>
+    -->
+
+    <!-- This can be used to override the default location for data
+         providers.
+    -->
+    <!--
+    <provider_config_dir>/opt/intel/clck/2019.3.5/provider/etc</provider_config_dir>
+    -->
+
+    <!-- This tag can be used to collect missing or old data. The default
+         is set to off. Valid values are 'on' or 'off'. -->
+    <!-- <re-collect>off</re-collect> -->
+
+
+    <!-- This tag can be used to override the global default minimum
+         data provider timeout threshold.  Individual data providers
+         may set larger timeout values, but this global value
+         overrides any smaller value.
+
+         This parameter is the base value of time (in seconds)
+         multiplied by a scale factor.  If this time is exceeded, the
+         data provider will be terminated to prevent it from hanging.
+
+         The scale attribute specifies the rate at which the timeout
+         value should increase based on the number of nodes.  Valid
+         options are: constant, linear, squared, logarithmic.
+
+         The "constant" attribute value does not scale the timeout
+         with the number of nodes used.
+
+         The "linear" attribute value scales linearly with the number
+         of nodes (e.g. base * num_nodes).
+
+         The "squared" attribute value scales with the number of nodes
+         squared (e.g. base * num_nodes^2).
+
+         The "logarithmic" tag scales logarithmically with the number
+         of nodes (e.g. base * ln((e-1) + num_nodes)).
+    -->
+    <!--
+    <timeout scale="constant">60</timeout>
+    -->
+  </collector>
+
+  <datastore_extensions>
+    <!-- This tag sets the database implementation. sqlite3 & odbc are the only
+         supported backend at this time.
+    -->
+    <!--
+    <group path="datastore/intel64/">
+        <entry config_file="default_sqlite.xml">libsqlite.so</entry>
+    </group>
+    -->
+  </datastore_extensions>
+
+</configuration>

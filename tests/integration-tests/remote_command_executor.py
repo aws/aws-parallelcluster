@@ -92,7 +92,7 @@ class RemoteCommandExecutor:
         :param script_file: local path to the script to execute remotely.
         :param args: args to pass to the script when invoked.
         :param log_error: log errors.
-        :param additional_files: additional files to copy before executing script.
+        :param additional_files: list of additional files (full path) to copy before executing script.
         :param hide: do not print command output to the local stdout
         :return: result of the execution.
         """
