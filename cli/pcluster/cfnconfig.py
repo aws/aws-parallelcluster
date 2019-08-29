@@ -88,6 +88,9 @@ class ParallelClusterConfig(object):
         # Initialize Tags public attribute
         self.__init_tags()
 
+        # Initialize SNS ARNs for cluster events notifications
+        self.__init_notification_arns()
+
         # Initialize EBS related parameters
         self.__init_ebs_parameters()
 
@@ -576,6 +579,17 @@ class ParallelClusterConfig(object):
                 for key in self.args.tags:
                     self.tags[key] = self.args.tags[key]
         except AttributeError:
+            pass
+
+    def __init_notification_arns(self):
+        """
+        Get notification ARNs for cluster's event notification service (SNS)
+        """
+        self.notification_arns = []
+        try:
+            notification_arns = self.__config.get(self.__cluster_section, "notification_arns")
+            self.notification_arns = json.loads(notification_arns)
+        except configparser.NoOptionError:
             pass
 
     def __init_scaling_parameters(self):  # noqa: C901 FIXME!!!
