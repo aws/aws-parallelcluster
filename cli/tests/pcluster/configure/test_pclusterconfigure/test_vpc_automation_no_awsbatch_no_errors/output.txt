@@ -26,6 +26,7 @@ Allowed values for Operating System:
 3. centos7
 4. ubuntu1404
 5. ubuntu1604
+6. ubuntu1804
 Allowed values for EC2 Key Pair Name:
 1. key1
 2. key2

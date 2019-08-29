@@ -26,6 +26,7 @@ from tests.schedulers.common import assert_overscaling_when_job_submitted_during
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.skip_oss(["ubuntu1804"])
 def test_sge(region, pcluster_config_reader, clusters_factory):
     """
     Test all AWS SGE related features.
