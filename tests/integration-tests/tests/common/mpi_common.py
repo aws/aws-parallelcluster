@@ -11,6 +11,7 @@ OS_TO_OPENMPI_MODULE_MAP = {
     "ubuntu1604": "openmpi",
     "centos6": "openmpi-x86_64",
     "ubuntu1404": "no_module_available",
+    "ubuntu1804": "openmpi",
 }
 
 

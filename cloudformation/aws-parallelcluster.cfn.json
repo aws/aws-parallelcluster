@@ -450,7 +450,8 @@
         "centos7",
         "alinux",
         "ubuntu1404",
-        "ubuntu1604"
+        "ubuntu1604",
+        "ubuntu1804"
       ]
     },
     "ScaleDownIdleTime": {
@@ -1325,6 +1326,10 @@
         "RootDevice": "/dev/sda1"
       },
       "ubuntu1604": {
+        "User": "ubuntu",
+        "RootDevice": "/dev/sda1"
+      },
+      "ubuntu1804": {
         "User": "ubuntu",
         "RootDevice": "/dev/sda1"
       }
