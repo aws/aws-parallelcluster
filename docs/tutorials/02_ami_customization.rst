@@ -45,6 +45,7 @@ base.
         .. warning::
             The AMI list to use must match the version of AWS ParallelCluster, for example:
 
+            - for AWS ParallelCluster 2.4.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.4.1/amis.txt
             - for AWS ParallelCluster 2.3.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.3.1/amis.txt
             - for AWS ParallelCluster 2.2.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.2.1/amis.txt
             - for AWS ParallelCluster 2.1.1 -> https://github.com/aws/aws-parallelcluster/blob/v2.1.1/amis.txt

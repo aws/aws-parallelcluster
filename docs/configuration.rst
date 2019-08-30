@@ -250,7 +250,7 @@ If unspecified, the current spot market price will be selected, capped at the on
 
 custom_ami
 """"""""""
-ID of a Custom AMI to use instead of the default `published AMIs <https://github.com/aws/aws-parallelcluster/blob/master/amis.txt>`_. ::
+ID of a Custom AMI to use instead of the default `published AMIs <https://github.com/aws/aws-parallelcluster/blob/master/amis.yml>`_. ::
 
     custom_ami = NONE
 

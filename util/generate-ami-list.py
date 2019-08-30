@@ -136,18 +136,6 @@ def get_images_ec2(filters, owner, region_name):
         print("Warning: non authorized in region '{0}', skipping".format(region_name))
         pass
 
-
-def convert_json_to_txt(amis_json):
-    amis_txt = ""
-    for key, value in distros.items():
-        amis_txt += "# " + key + "\n"
-        for region, amis in amis_json.items():
-            if key in amis:
-                amis_txt += region + ": " + amis[key] + "\n"
-
-    return amis_txt
-
-
 def get_aws_regions_from_file(region_file):
     # Region file format
     # {
@@ -186,10 +174,8 @@ def update_cfn_template(cfn_template_file, amis_to_update):
     return ordered_amis
 
 
-def update_amis_txt(amis_txt_file, amis):
-    amis_txt = convert_json_to_txt(amis_json=amis)
-    with open(amis_txt_file, "w") as f:
-        f.write("%s" % amis_txt)
+def update_amis_yml(amis):
+        f.write(yaml.dump(amis_amis, default_flow_style=False))
 
 
 if __name__ == "__main__":
@@ -213,7 +199,7 @@ if __name__ == "__main__":
     group3.add_argument(
         "--json-regions", type=str, help="path to input json file containing the regions", required=False
     )
-    parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
+    parser.add_argument("--yml-file", type=str, help="txt output file path", required=False, default="amis.yml")
     parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
     parser.add_argument(
         "--cloudformation-template",
@@ -262,4 +248,4 @@ if __name__ == "__main__":
         amis_dict = get_ami_list_from_file(regions, args.json_template)
 
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
-    update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
+    update_amis_yml(amis_yml_file=args.yml_file, amis=cfn_amis)
