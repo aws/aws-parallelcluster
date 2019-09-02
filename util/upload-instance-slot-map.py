@@ -31,7 +31,7 @@ def dump_instances(instance_details):
         data = json.load(data_file)
     instances = {}
     for sku, product in data.get("products").iteritems():
-        if product.get("productFamily") == "Compute Instance":
+        if "Compute Instance" in product.get("productFamily"):
             instance = product.get("attributes")
             instances[instance.get("instanceType")] = {"vcpus": instance.get("vcpu")}
     print(json.dumps(instances))
