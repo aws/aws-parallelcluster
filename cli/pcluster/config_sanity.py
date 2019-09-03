@@ -459,7 +459,9 @@ class ResourceValidator(object):
                         aws_access_key_id=self.aws_access_key_id,
                         aws_secret_access_key=self.aws_secret_access_key,
                     )
-                    m = re.match(r"s3://(\w*)/(.*)", resource_value)
+                    m = re.match(r"s3://(.*?)/(.*)", resource_value)
+                    if not m or len(m.groups()) < 2:
+                        self.__fail(resource_type, "S3 url {0} is invalid.".format(resource_value))
                     bucket, key = m.group(1), m.group(2)
                     s3.head_object(Bucket=bucket, Key=key)
                 except ClientError:
