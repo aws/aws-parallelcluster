@@ -24,11 +24,6 @@ def readme():
 VERSION = "2.4.1"
 REQUIRES = ["boto3>=1.9.54", "future>=0.16.0,<=0.17.1", "tabulate>=0.8.2,<=0.8.3", "ipaddress>=1.0.22", "enum34>=1.1.6"]
 
-if sys.version_info[:2] == (2, 6):
-    # For python2.6 we have to require argparse since it
-    # was not in stdlib until 2.7.
-    REQUIRES.append("argparse==1.4.0")
-
 if sys.version_info[0] == 2:
     REQUIRES.append("configparser>=3.5.0,<=3.5.3")
 
