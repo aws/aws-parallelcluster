@@ -30,10 +30,8 @@ def trigger_codebuild(project_name):
     """
     Start a build for a specific CodeBuild project.
 
-    Args:
-        project_name: name of the CodeBuild project to build.
-
-    Returns: the id of the started build.
+    :param project_name: name of the CodeBuild project to build.
+    :return the id of the started build.
     """
     codebuild_client = boto3.client("codebuild")
     """ :type : pyboto3.codebuild """
@@ -45,8 +43,7 @@ def delete_all_ecr_images(ecr_repo):
     """
     Delete all container images that are present in the specified ECR repository.
 
-    Args:
-        ecr_repo: name of the ECR repository.
+    :param ecr_repo: name of the ECR repository.
     """
     ecr_client = boto3.client("ecr")
     """ :type : pyboto3.ecr """
@@ -60,8 +57,7 @@ def create_docker_images(codebuild_project):
     """
     Start the build to create Docker images.
 
-    Args:
-        codebuild_project: CodeBuild project that builds docker container images.
+    :param codebuild_project: CodeBuild project that builds docker container images.
     """
     build_id = trigger_codebuild(codebuild_project)
     logger.info("Docker images creation: STARTED")

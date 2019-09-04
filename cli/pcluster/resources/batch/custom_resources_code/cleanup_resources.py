@@ -31,8 +31,7 @@ def delete_s3_bucket(bucket_name):
     Empty and delete the bucket passed as argument.
 
     It exits gracefully if bucket doesn't exist.
-    Args:
-        bucket_name: bucket to delete
+    :param bucket_name: bucket to delete
     """
     try:
         bucket = boto3.resource("s3").Bucket(bucket_name)

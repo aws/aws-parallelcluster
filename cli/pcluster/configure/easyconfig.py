@@ -75,9 +75,9 @@ def _get_vpcs_and_subnets(aws_region_name):
     Return a dictionary containing a list of vpc in the given region and the associated VPCs.
 
     Example:
-
     {"vpc_list": list(tuple(vpc-id, name, number of subnets)) ,
     "vpc_to_subnet" : {"vpc-id1": list(tuple(subnet-id1, name)), "vpc-id2": list(tuple(subnet-id1, name))}}
+
     :param aws_region_name: the region name
     """
     conn = ec2_conn(aws_region_name)

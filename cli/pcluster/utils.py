@@ -52,9 +52,8 @@ def create_s3_bucket(bucket_name, aws_client_config):
     """
     Create a new S3 bucket.
 
-    Args:
-        bucket_name: name of the S3 bucket to create
-        aws_client_config: dictionary containing configuration params for boto3 client
+    :param bucket_name: name of the S3 bucket to create
+    :param aws_client_config: dictionary containing configuration params for boto3 client
     """
     s3_client = boto3_client("s3", aws_client_config)
     """ :type : pyboto3.s3 """
@@ -72,9 +71,8 @@ def delete_s3_bucket(bucket_name, aws_client_config):
     """
     Delete an S3 bucket together with all stored objects.
 
-    Args:
-        bucket_name: name of the S3 bucket to delete
-        aws_client_config: dictionary containing configuration params for boto3 client
+    :param bucket_name: name of the S3 bucket to delete
+    :param aws_client_config: dictionary containing configuration params for boto3 client
     """
     try:
         bucket = boto3_resource("s3", aws_client_config).Bucket(bucket_name)
@@ -92,10 +90,8 @@ def zip_dir(path):
     Create a zip archive containing all files and dirs rooted in path.
 
     The archive is created in memory and a file handler is returned by the function.
-    Args:
-        path: directory containing the resources to archive.
-    Return:
-        file_out: file handler pointing to the compressed archive.
+    :param path: directory containing the resources to archive.
+    :return file handler pointing to the compressed archive.
     """
     file_out = BytesIO()
     with zipfile.ZipFile(file_out, "w", zipfile.ZIP_DEFLATED) as ziph:
@@ -112,10 +108,10 @@ def upload_resources_artifacts(bucket_name, root, aws_client_config):
 
     All dirs contained in root dir will be uploaded as zip files to $bucket_name/$dir_name/artifacts.zip.
     All files contained in root dir will be uploaded to $bucket_name.
-    Args:
-        bucket_name: name of the S3 bucket where files are uploaded
-        root: root directory containing the resources to upload.
-        aws_client_config: dictionary containing configuration params for boto3 client
+
+    :param bucket_name: name of the S3 bucket where files are uploaded
+    :param root: root directory containing the resources to upload.
+    :param aws_client_config: dictionary containing configuration params for boto3 client
     """
     bucket = boto3_resource("s3", aws_client_config).Bucket(bucket_name)
     for res in os.listdir(root):

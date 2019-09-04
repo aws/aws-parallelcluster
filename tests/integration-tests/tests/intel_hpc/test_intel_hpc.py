@@ -25,9 +25,7 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.oss(["centos7"])
 @pytest.mark.schedulers(["sge"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
-    """
-    Test Intel Cluster Checker
-    """
+    """Test Intel Cluster Checker"""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
