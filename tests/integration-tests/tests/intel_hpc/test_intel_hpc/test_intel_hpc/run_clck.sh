@@ -2,5 +2,4 @@
 set -e
 
 source /opt/intel/clck/2019.3.5/bin/clckvars.sh
-module load intelpsxe intelpython/2 intelpython/3
 clck -f nodefile -F intel_hpc_platform_compat-hpc-2018.0
