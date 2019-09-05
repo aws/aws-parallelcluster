@@ -21,7 +21,7 @@ import pkg_resources
 
 from pcluster.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
-from pcluster.subnet_computation import evaluate_cidr, get_subnet_cidr
+from pcluster.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.utils import get_stack_output_value, get_templates_bucket_path, verify_stack_creation
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"

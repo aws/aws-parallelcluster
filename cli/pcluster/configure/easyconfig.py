@@ -18,7 +18,7 @@ import stat
 
 import configparser
 
-from pcluster import cfnconfig
+from pcluster.config import cfnconfig
 from pcluster.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,

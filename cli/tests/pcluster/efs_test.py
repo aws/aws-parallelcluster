@@ -2,7 +2,7 @@ import unittest
 
 import argparse
 
-from pcluster import cfnconfig
+from pcluster.config import cfnconfig
 
 config_file = "tests/pcluster/config_efs"
 test_cluster_template = "unittest"

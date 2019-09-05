@@ -22,7 +22,7 @@ import boto3
 import configparser
 
 from moto import mock_autoscaling, mock_cloudformation, mock_ec2, mock_s3
-from pcluster import pcluster
+from pcluster import commands
 
 try:
     from StringIO import StringIO
@@ -104,7 +104,7 @@ class TestPCluster(unittest.TestCase):
 
     def test_cfn_cluster_version(self):
         args = BaseArgs()
-        pcluster.version(args)
+        commands.version(args)
         log = test_log_stream.getvalue()
         version_returned = re.match(r"^INFO:\w+\.\w+:(\d+\.\d+\.\d+.*)$", log).group(1)
         self.assertEqual(version_returned, version_on_file)
@@ -115,7 +115,7 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_create_nowait(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        pcluster.create(args)
+        commands.create(args)
         log = test_log_stream.getvalue()
         success_message = "INFO:parallelcluster.parallelcluster:Status: CREATE_COMPLETE"
         error_prefix = "CRITICAL:"
@@ -128,7 +128,7 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_create_wait(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, False)
-        pcluster.create(args)
+        commands.create(args)
         log = test_log_stream.getvalue()
         success_message = "INFO:parallelcluster.parallelcluster:MasterPublicIP:"
         error_prefix = "CRITICAL:"
@@ -142,7 +142,7 @@ class TestPCluster(unittest.TestCase):
         setup_configurations()
         args = CreateClusterArgs("", True)
         with self.assertRaises(SystemExit) as sys_ex:
-            pcluster.create(args)
+            commands.create(args)
 
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
@@ -154,7 +154,7 @@ class TestPCluster(unittest.TestCase):
     @mock_s3
     def test_cfn_cluster_list_empty(self):
         args = BaseArgs()
-        pcluster.list(args)
+        commands.list(args)
         self.assertEqual(test_log_stream.tell(), 0)
 
     @mock_ec2
@@ -163,10 +163,10 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_list_nonempty(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, False)
-        pcluster.create(args)
+        commands.create(args)
         # reset the logger
         self.tearDown()
-        pcluster.list(args)
+        commands.list(args)
         log = test_log_stream.getvalue()
         cluster_name = re.match(r"INFO:parallelcluster.parallelcluster:(\w+)", log).group(1)
         self.assertEqual(cluster_name, args.cluster_name)
@@ -178,8 +178,8 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_update_no_reset(self):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, False)
-        pcluster.create(args)
-        pcluster.update(args)
+        commands.create(args)
+        commands.update(args)
         success_message = "INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE"
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
@@ -193,8 +193,8 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_update_with_reset(self):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, True)
-        pcluster.create(args)
-        pcluster.update(args)
+        commands.create(args)
+        commands.update(args)
         success_message = "INFO:parallelcluster.parallelcluster:Status: UPDATE_COMPLETE"
         log = test_log_stream.getvalue()
         self.assertTrue(success_message in log)
@@ -209,7 +209,7 @@ class TestPCluster(unittest.TestCase):
         template_url = setup_configurations()
         args = UpdateClusterArgs(template_url, True, False)
         with self.assertRaises(SystemExit) as sys_ex:
-            pcluster.update(args)
+            commands.update(args)
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -222,9 +222,9 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_delete(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        pcluster.create(args)
+        commands.create(args)
         with self.assertRaises(SystemExit) as sys_ex:
-            pcluster.delete(args)
+            commands.delete(args)
             self.assertEqual(sys_ex.exception.code, 0)
         success_message = "Cluster deleted successfully"
         log = test_log_stream.getvalue()
@@ -238,7 +238,7 @@ class TestPCluster(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit) as sys_ex:
-            pcluster.delete(args)
+            commands.delete(args)
             self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -251,8 +251,8 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_start(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        pcluster.create(args)
-        pcluster.start(args)
+        commands.create(args)
+        commands.start(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         success_message = "Starting compute fleet"
@@ -267,7 +267,7 @@ class TestPCluster(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit) as sys_ex:
-            pcluster.start(args)
+            commands.start(args)
         self.assertEqual(sys_ex.exception.code, 1)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
@@ -280,9 +280,9 @@ class TestPCluster(unittest.TestCase):
     def test_cfn_cluster_stop(self):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
-        pcluster.create(args)
-        pcluster.start(args)
-        pcluster.stop(args)
+        commands.create(args)
+        commands.start(args)
+        commands.stop(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         success_message = "Stopping compute fleet"
@@ -297,7 +297,7 @@ class TestPCluster(unittest.TestCase):
         template_url = setup_configurations()
         args = CreateClusterArgs(template_url, True)
         with self.assertRaises(SystemExit):
-            pcluster.stop(args)
+            commands.stop(args)
         log = test_log_stream.getvalue()
         error_prefix = "CRITICAL:"
         self.assertTrue(error_prefix in log)
