@@ -39,7 +39,7 @@ from tabulate import tabulate
 from pcluster.utils import get_installed_version, get_stack_output_value, paginate_boto3, verify_stack_creation
 
 from pcluster import utils
-from pcluster.config import cfnconfig
+from pcluster.config import pcluster_config
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
@@ -76,7 +76,7 @@ def create(args):  # noqa: C901 FIXME!!!
     LOGGER.debug("Building cluster config based on args %s", str(args))
 
     # Build the config based on args
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
     aws_client_config = dict(
         region_name=config.region,
         aws_access_key_id=config.aws_access_key_id,
@@ -195,7 +195,7 @@ def is_ganglia_enabled(parameters):
 def update(args):  # noqa: C901 FIXME!!!
     LOGGER.info("Updating: %s", args.cluster_name)
     stack_name = "parallelcluster-" + args.cluster_name
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
     capabilities = ["CAPABILITY_IAM"]
 
     cfn = boto3.client(
@@ -281,7 +281,7 @@ def update(args):  # noqa: C901 FIXME!!!
 def start(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/max/0
     stack_name = "parallelcluster-" + args.cluster_name
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
 
     if config.parameters.get("Scheduler") == "awsbatch":
         LOGGER.info("Enabling AWS Batch compute environment : %s", args.cluster_name)
@@ -333,7 +333,7 @@ def start(args):
 def stop(args):
     # Set resource limits on compute fleet or awsbatch ce to min/max/desired = 0/0/0
     stack_name = "parallelcluster-" + args.cluster_name
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
 
     if config.parameters.get("Scheduler") == "awsbatch":
         LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
@@ -396,7 +396,7 @@ def colorize(stack_status, args):
 
 
 def list_stacks(args):
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
     cfn = boto3.client(
         "cloudformation",
         region_name=config.region,
@@ -596,7 +596,7 @@ def stop_batch_ce(ce_name, config):
 def instances(args):
     stack = "parallelcluster-" + args.cluster_name
 
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
     instances = []
     instances.extend(get_ec2_instances(stack, config))
 
@@ -653,7 +653,7 @@ def _get_param_value(params, key_name):
 
 def command(args, extra_args):  # noqa: C901 FIXME!!!
     stack = "parallelcluster-" + args.cluster_name
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
     if args.command in config.aliases:
         config_command = config.aliases[args.command]
     else:
@@ -720,7 +720,7 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
 
 def status(args):  # noqa: C901 FIXME!!!
     stack_name = "parallelcluster-" + args.cluster_name
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
 
     cfn = boto3.client(
         "cloudformation",
@@ -786,7 +786,7 @@ def delete(args):
     LOGGER.info("Deleting: %s", args.cluster_name)
     stack = "parallelcluster-" + args.cluster_name
 
-    config = cfnconfig.ParallelClusterConfig(args)
+    config = pcluster_config.ParallelClusterConfig(args)
 
     cfn = boto3.client(
         "cloudformation",
@@ -991,7 +991,7 @@ def create_ami(args):
 
     instance_type = args.instance_type
     try:
-        config = cfnconfig.ParallelClusterConfig(args)
+        config = pcluster_config.ParallelClusterConfig(args)
 
         vpc_id = args.vpc_id if args.vpc_id else config.parameters.get("VPCId")
         subnet_id = args.subnet_id if args.subnet_id else config.parameters.get("MasterSubnetId")

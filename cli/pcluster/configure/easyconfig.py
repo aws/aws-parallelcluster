@@ -18,7 +18,7 @@ import stat
 
 import configparser
 
-from pcluster.config import cfnconfig
+from pcluster.config import pcluster_config
 from pcluster.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
@@ -291,7 +291,7 @@ def _is_config_valid(args):
     """
     is_valid = True
     try:
-        cfnconfig.ParallelClusterConfig(args)
+        pcluster_config.ParallelClusterConfig(args)
     except SystemExit:
         is_valid = False
     return is_valid

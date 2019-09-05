@@ -2,7 +2,7 @@ import unittest
 
 import argparse
 
-from pcluster.config import cfnconfig
+from pcluster.config import pcluster_config
 
 config_file = "tests/pcluster/config_efs"
 test_cluster_template = "unittest"
@@ -28,7 +28,7 @@ class TestEFSConfigParser(unittest.TestCase):
         """Unit tests for parsing EFS related options when pcluster create is called."""
         global args
         args.func = create
-        config = cfnconfig.ParallelClusterConfig(args)
+        config = pcluster_config.ParallelClusterConfig(args)
         efs_options = [opt.strip() for opt in config.parameters["EFSOptions"].split(",")]
         self.assertEqual(efs_options[0], "efs_shared", msg="Unexpected shared_dir")
         self.assertEqual(efs_options[1], "fs-12345", msg="Unexpected efs_fs_id")
@@ -49,7 +49,7 @@ class TestEFSConfigParser(unittest.TestCase):
         """Unit tests for parsing EFS related options when pcluster update is called."""
         global args
         args.func = update
-        config = cfnconfig.ParallelClusterConfig(args)
+        config = pcluster_config.ParallelClusterConfig(args)
         efs_options = [opt.strip() for opt in config.parameters["EFSOptions"].split(",")]
         self.assertEqual(efs_options[0], "efs_shared", msg="Unexpected shared_dir")
         self.assertEqual(efs_options[1], "fs-12345", msg="Unexpected efs_fs_id")

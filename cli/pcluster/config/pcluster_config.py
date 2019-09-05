@@ -25,7 +25,7 @@ import boto3
 import configparser
 from botocore.exceptions import ClientError
 
-from pcluster.config.config_sanity import ResourceValidator
+from pcluster.config.validators import ResourceValidator
 from pcluster.utils import (
     check_if_latest_version,
     get_installed_version,
