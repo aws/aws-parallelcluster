@@ -38,7 +38,8 @@ from tabulate import tabulate
 
 from pcluster.utils import get_installed_version, get_stack_output_value, paginate_boto3, verify_stack_creation
 
-from . import cfnconfig, utils
+from pcluster import utils
+from pcluster.config import cfnconfig
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve

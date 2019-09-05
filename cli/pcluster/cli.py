@@ -20,14 +20,14 @@ import textwrap
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-from pcluster import pcluster
+from pcluster import commands
 from pcluster.configure import easyconfig
 
 LOGGER = logging.getLogger("pcluster.pcluster")
 
 
 def create(args):
-    pcluster.create(args)
+    commands.create(args)
 
 
 def configure(args):
@@ -35,44 +35,44 @@ def configure(args):
 
 
 def command(args, extra_args):
-    pcluster.command(args, extra_args)
+    commands.command(args, extra_args)
 
 
 def status(args):
-    pcluster.status(args)
+    commands.status(args)
 
 
 def list_stacks(args):
-    pcluster.list_stacks(args)
+    commands.list_stacks(args)
 
 
 def delete(args):
-    pcluster.delete(args)
+    commands.delete(args)
 
 
 def instances(args):
-    pcluster.instances(args)
+    commands.instances(args)
 
 
 def update(args):
-    pcluster.update(args)
+    commands.update(args)
 
 
 def version(args):
-    version = pcluster.version()
+    version = commands.version()
     LOGGER.info(version)
 
 
 def start(args):
-    pcluster.start(args)
+    commands.start(args)
 
 
 def stop(args):
-    pcluster.stop(args)
+    commands.stop(args)
 
 
 def create_ami(args):
-    pcluster.create_ami(args)
+    commands.create_ami(args)
 
 
 def config_logger():
