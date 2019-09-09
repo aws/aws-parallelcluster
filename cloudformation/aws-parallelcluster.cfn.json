@@ -2043,8 +2043,22 @@
                 },
                 {
                   "Key": "Name",
+                  "Value": "Master"
+                },
+                {
+                  "Key": "ClusterName",
                   "Value": {
-                    "Fn::Sub": "${AWS::StackName} Master"
+                    "Fn::Select": [
+                      "1",
+                      {
+                        "Fn::Split": [
+                          "parallelcluster-",
+                          {
+                            "Ref": "AWS::StackName"
+                          }
+                        ]
+                      }
+                    ]
                   }
                 },
                 {
@@ -2672,8 +2686,23 @@
         "Tags": [
           {
             "Key": "Name",
+            "Value": "Compute",
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "ClusterName",
             "Value": {
-              "Fn::Sub": "${AWS::StackName} Compute"
+              "Fn::Select": [
+                "1",
+                {
+                  "Fn::Split": [
+                    "parallelcluster-",
+                    {
+                      "Ref": "AWS::StackName"
+                    }
+                  ]
+                }
+              ]
             },
             "PropagateAtLaunch": true
           },
