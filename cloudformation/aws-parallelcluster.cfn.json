@@ -2021,7 +2021,9 @@
                 },
                 {
                   "Key": "Name",
-                  "Value": "Master"
+                  "Value": {
+                    "Fn::Sub": "${AWS::StackName} Master"
+                  }
                 },
                 {
                   "Key": "aws-parallelcluster-attributes",
@@ -2648,7 +2650,9 @@
         "Tags": [
           {
             "Key": "Name",
-            "Value": "Compute",
+            "Value": {
+              "Fn::Sub": "${AWS::StackName} Compute"
+            },
             "PropagateAtLaunch": true
           },
           {
