@@ -69,6 +69,9 @@ class ParallelClusterConfig(object):
         # Initialize template url public attribute
         self.__init_template_url()
 
+        # Initialize additional_cfn_template url attribute.
+        self.__init_additional_cfn_template_url()
+
         # Validate VPC configuration settings and initialize corresponding parameters
         self.__init_vpc_parameters()
 
@@ -319,6 +322,31 @@ class ParallelClusterConfig(object):
         except AttributeError:
             pass
 
+    def __init_additional_cfn_template_url(self):
+        """
+        Determine the CloudFormation URL of the additional_cfn_template to be used and initializes the attribute.
+
+        Order is 1) CLI arg 2) Config file
+        """
+        try:
+            if self.args.additional_cfn_template_url is not None:
+                self.parameters["AdditionalCfnTemplate"] = self.args.additional_cfn_template_url
+            else:
+                try:
+                    self.parameters["AdditionalCfnTemplate"] = self.__config.get(
+                        self.__cluster_section, "additional_cfn_template"
+                    )
+                    if not self.parameters["AdditionalCfnTemplate"]:
+                        self.__fail(
+                            "additional_cfn_template set in [%s] section but not defined." % self.__cluster_section
+                        )
+                    self.__validate_resource("URL", self.parameters["AdditionalCfnTemplate"])
+                except configparser.NoOptionError:
+                    pass
+
+        except AttributeError:
+            pass
+
     def __init_vpc_parameters(self):
         """Initialize VPC Parameters."""
         # Determine which vpc settings section will be used
@@ -514,7 +542,6 @@ class ParallelClusterConfig(object):
             ec2_iam_role=("EC2IAMRoleName", "EC2IAMRoleName"),
             extra_json=("ExtraJson", None),
             custom_chef_cookbook=("CustomChefCookbook", None),
-            additional_cfn_template=("AdditionalCfnTemplate", None),
             custom_awsbatch_template_url=("CustomAWSBatchTemplateURL", None),
         )
         for key in cluster_options:

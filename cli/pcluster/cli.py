@@ -159,6 +159,9 @@ Examples::
         help="Specifies the URL for a custom CloudFormation template, if it was used at creation time.",
     )
     pcreate.add_argument(
+        "-a", "--additional-cfn-template-url", help="Specifies the URL for a custom additional CloudFormation template."
+    )
+    pcreate.add_argument(
         "-t",
         "--cluster-template",
         help="Indicates which section of the configuration file to use for cluster creation.",
