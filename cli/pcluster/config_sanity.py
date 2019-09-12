@@ -603,14 +603,7 @@ class ResourceValidator(object):
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
             # Check region
-            if self.region in [
-                "ap-northeast-3",
-                "eu-north-1",
-                "cn-north-1",
-                "cn-northwest-1",
-                "us-gov-east-1",
-                "us-gov-west-1",
-            ]:
+            if self.region in ["ap-northeast-3", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]:
                 self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
 
             # Check spot bid percentage
