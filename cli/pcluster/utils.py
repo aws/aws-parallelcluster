@@ -195,6 +195,20 @@ def get_instance_vcpus(region, instance_type):
     return vcpus
 
 
+def get_partition(region):
+    """
+    Return partition given aws region.
+
+    :param region: region
+    :return: partiton
+    """
+    if region.startswith("cn-"):
+        return "aws-cn"
+    elif region.startswith("us-gov"):
+        return "aws-us-gov"
+    return "aws"
+
+
 def get_supported_os(scheduler):
     """
     Return a tuple of the os supported by parallelcluster for the specific scheduler.

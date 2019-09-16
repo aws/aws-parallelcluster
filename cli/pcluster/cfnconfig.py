@@ -30,6 +30,7 @@ from pcluster.utils import (
     check_if_latest_version,
     get_installed_version,
     get_instance_vcpus,
+    get_partition,
     get_supported_features,
     get_templates_bucket_path,
 )
@@ -77,6 +78,9 @@ class ParallelClusterConfig(object):
 
         # Initialize parameters related to the cluster configuration
         self.__init_cluster_parameters()
+
+        # validate additional_iam_policies
+        self.__init_ec2_policies()
 
         # Verify Account limits
         if self.__sanity_check:
@@ -527,6 +531,23 @@ class ParallelClusterConfig(object):
                 self.parameters[cluster_options.get(key)[0]] = __temp__
             except configparser.NoOptionError:
                 pass
+
+    def __init_ec2_policies(self):
+        try:
+            __temp__ = self.__config.get(self.__cluster_section, "additional_iam_policies")
+            if not __temp__:
+                self.__fail(
+                    "%s defined but not set in [%s] section" % ("additional_iam_policies", self.__cluster_section)
+                )
+            iam_policies = list(map(lambda x: x.strip(), __temp__.split(",")))
+            if self.parameters.get("Scheduler") == "awsbatch":
+                aws_batch_iam_policy = "arn:{0}:iam::aws:policy/AWSBatchFullAccess".format(get_partition(self.region))
+                if not (aws_batch_iam_policy in iam_policies):
+                    iam_policies.append(aws_batch_iam_policy)
+            self.__validate_resource("EC2IAMPolicies", iam_policies)
+            self.parameters["EC2IAMPolicies"] = ",".join(iam_policies)
+        except configparser.NoOptionError:
+            pass
 
     def __init_efa_parameters(self):
         try:

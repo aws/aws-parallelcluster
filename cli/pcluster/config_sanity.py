@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import get_instance_vcpus, get_supported_features
+from pcluster.utils import get_instance_vcpus, get_partition, get_supported_features
 
 
 class ResourceValidator(object):
@@ -46,11 +46,6 @@ class ResourceValidator(object):
         return "https://sts.{0}.{1}".format(
             self.region, "amazonaws.com.cn" if self.region.startswith("cn-") else "amazonaws.com"
         )
-
-    def __get_partition(self):
-        if self.region.startswith("us-gov"):
-            return "aws-us-gov"
-        return "aws"
 
     @staticmethod
     def __check_sg_rules_for_port(rule, port_to_check):
@@ -305,7 +300,7 @@ class ResourceValidator(object):
                     .get("Account")
                 )
 
-                partition = self.__get_partition()
+                partition = get_partition(self.region)
 
                 iam_policy = [
                     (
@@ -370,6 +365,18 @@ class ResourceValidator(object):
                             )
                             print("See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html")
                             sys.exit(1)
+            except ClientError as e:
+                self.__fail(resource_type, e.response.get("Error").get("Message"))
+        if resource_type == "EC2IAMPolicies":
+            try:
+                iam = boto3.client(
+                    "iam",
+                    region_name=self.region,
+                    aws_access_key_id=self.aws_access_key_id,
+                    aws_secret_access_key=self.aws_secret_access_key,
+                )
+                for iam_policy in resource_value:
+                    iam.get_policy(PolicyArn=iam_policy.strip())
             except ClientError as e:
                 self.__fail(resource_type, e.response.get("Error").get("Message"))
         # VPC Id
@@ -596,14 +603,7 @@ class ResourceValidator(object):
         # Batch Parameters
         elif resource_type == "AWSBatch_Parameters":
             # Check region
-            if self.region in [
-                "ap-northeast-3",
-                "eu-north-1",
-                "cn-north-1",
-                "cn-northwest-1",
-                "us-gov-east-1",
-                "us-gov-west-1",
-            ]:
+            if self.region in ["ap-northeast-3", "cn-north-1", "cn-northwest-1", "us-gov-east-1", "us-gov-west-1"]:
                 self.__fail(resource_type, "Region %s is not supported with batch scheduler" % self.region)
 
             # Check spot bid percentage

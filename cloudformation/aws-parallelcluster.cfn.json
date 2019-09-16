@@ -521,6 +521,11 @@
       "Type": "String",
       "Default": "NONE"
     },
+    "EC2IAMPolicies": {
+      "Description": "Attach additional IAM Policies to the created Root Role",
+      "Type": "CommaDelimitedList",
+      "Default": "NONE"
+    },
     "VPCSecurityGroupId": {
       "Description": "Existing VPC security group Id",
       "Type": "String",
@@ -1018,6 +1023,23 @@
           "Fn::Equals": [
             {
               "Ref": "EC2IAMRoleName"
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UseEC2IAMPolicies": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "EC2IAMPolicies"
+                }
+              ]
             },
             "NONE"
           ]
@@ -1539,17 +1561,17 @@
     "RootRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
-        "ManagedPolicyArns": [
-          {
-            "Fn::If": [
-              "CreateAWSBatchStack",
-              "arn:aws:iam::aws:policy/AWSBatchFullAccess",
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          }
-        ],
+        "ManagedPolicyArns": {
+          "Fn::If": [
+            "UseEC2IAMPolicies",
+            {
+              "Ref": "EC2IAMPolicies"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -2026,8 +2048,22 @@
                 },
                 {
                   "Key": "Name",
+                  "Value": "Master"
+                },
+                {
+                  "Key": "ClusterName",
                   "Value": {
-                    "Fn::Sub": "${AWS::StackName} Master"
+                    "Fn::Select": [
+                      "1",
+                      {
+                        "Fn::Split": [
+                          "parallelcluster-",
+                          {
+                            "Ref": "AWS::StackName"
+                          }
+                        ]
+                      }
+                    ]
                   }
                 },
                 {
@@ -2655,8 +2691,23 @@
         "Tags": [
           {
             "Key": "Name",
+            "Value": "Compute",
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "ClusterName",
             "Value": {
-              "Fn::Sub": "${AWS::StackName} Compute"
+              "Fn::Select": [
+                "1",
+                {
+                  "Fn::Split": [
+                    "parallelcluster-",
+                    {
+                      "Ref": "AWS::StackName"
+                    }
+                  ]
+                }
+              ]
             },
             "PropagateAtLaunch": true
           },
