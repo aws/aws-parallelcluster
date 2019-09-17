@@ -26,13 +26,7 @@ class RemoteCommandExecutionError(Exception):
 class RemoteCommandExecutor:
     """Execute remote commands on the cluster master node."""
 
-    USERNAMES = {
-        "alinux": "ec2-user",
-        "centos6": "centos",
-        "centos7": "centos",
-        "ubuntu1404": "ubuntu",
-        "ubuntu1604": "ubuntu",
-    }
+    USERNAMES = {"alinux": "ec2-user", "centos6": "centos", "centos7": "centos", "ubuntu1604": "ubuntu"}
 
     def __init__(self, cluster):
         self.__connection = Connection(

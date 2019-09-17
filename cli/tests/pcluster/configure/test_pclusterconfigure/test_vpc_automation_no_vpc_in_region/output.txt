@@ -24,8 +24,7 @@ Allowed values for Operating System:
 1. alinux
 2. centos6
 3. centos7
-4. ubuntu1404
-5. ubuntu1604
+4. ubuntu1604
 Allowed values for EC2 Key Pair Name:
 1. key1
 2. key2

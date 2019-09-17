@@ -10,7 +10,6 @@ OS_TO_OPENMPI_MODULE_MAP = {
     "centos7": "openmpi",
     "ubuntu1604": "openmpi",
     "centos6": "openmpi-x86_64",
-    "ubuntu1404": "no_module_available",
 }
 
 

@@ -317,8 +317,7 @@ Variables substituted::
         "--os",
         dest="base_ami_os",
         required=True,
-        help="Specifies the OS of the base AMI. "
-        "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
+        help="Specifies the OS of the base AMI. Valid options are: alinux, ubuntu1604, centos6, centos7.",
     )
     pami.add_argument(
         "-i",
