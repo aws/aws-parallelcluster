@@ -549,7 +549,8 @@ class ParallelClusterConfig(object):
             if aws_batch_iam_policy not in iam_policies:
                 iam_policies.append(aws_batch_iam_policy)
         self.__validate_resource("EC2IAMPolicies", iam_policies)
-        self.parameters["EC2IAMPolicies"] = ",".join(iam_policies)
+        if iam_policies:
+            self.parameters["EC2IAMPolicies"] = ",".join(iam_policies)
 
     def __init_efa_parameters(self):
         try:
