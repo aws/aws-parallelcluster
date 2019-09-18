@@ -20,6 +20,7 @@ UNSUPPORTED_DIMENSIONS = [
     ("ap-east-1", "c4.xlarge", "*", "*"),
     ("*", "*", "centos6", "awsbatch"),
     ("*", "*", "centos7", "awsbatch"),
+    ("*", "*", "ubuntu1804", "awsbatch"),
     ("*", "*", "ubuntu1604", "awsbatch"),
     ("*", "*", "ubuntu1404", "awsbatch"),
     ("cn-north-1", "*", "*", "awsbatch"),
