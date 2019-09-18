@@ -19,7 +19,8 @@ from tests.common.assertions import assert_no_errors_in_logs
 
 
 @pytest.mark.regions(["us-east-1"])
-def test_iam_policies(region, pcluster_config_reader, clusters_factory):
+@pytest.mark.schedulers(["sge", "awsbatch"])
+def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
     cluster_config = pcluster_config_reader(
         iam_policies="arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess, arn:aws:iam::aws:policy/AWSBatchFullAccess"
@@ -30,7 +31,8 @@ def test_iam_policies(region, pcluster_config_reader, clusters_factory):
     _test_s3_access(remote_command_executor, region)
     _test_batch_access(remote_command_executor, region)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    if not scheduler == "awsbatch":
+        assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
 
 def _test_s3_access(remote_command_executor, region):
