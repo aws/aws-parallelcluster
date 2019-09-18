@@ -51,7 +51,7 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
     # Output contains:
     # 00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0
     logging.info("Testing EFA installed")
-    result = scheduler_commands.submit_command("lspci > /shared/lspci.out")
+    result = scheduler_commands.submit_command("lspci -n > /shared/lspci.out")
 
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
@@ -59,17 +59,11 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
 
     # Check EFA interface is present on compute node
     result = remote_command_executor.run_remote_command("cat /shared/lspci.out")
-    assert_that(
-        ("Ethernet controller: Amazon.com, Inc. Elastic Fabric Adapter (EFA)" in result.stdout)
-        or ("Ethernet controller: Amazon.com, Inc. Device efa0" in result.stdout)
-    ).is_true()
+    assert_that(result.stdout).contains("1d0f:efa0")
 
     # Check EFA interface not present on master
-    result = remote_command_executor.run_remote_command("lspci")
-    assert_that(
-        ("Ethernet controller: Amazon.com, Inc. Elastic Fabric Adapter (EFA)" in result.stdout)
-        or ("Ethernet controller: Amazon.com, Inc. Device efa0" in result.stdout)
-    ).is_false()
+    result = remote_command_executor.run_remote_command("lspci -n")
+    assert_that(result.stdout).does_not_contain("1d0f:efa0")
 
 
 def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
