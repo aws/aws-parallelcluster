@@ -183,7 +183,7 @@ def _print_stack_outputs(stack):
 
 def is_ganglia_enabled(parameters):
     try:
-        extra_json = filter(lambda x: x.get("ParameterKey") == "ExtraJson", parameters)[0].get("ParameterValue")
+        extra_json = list(filter(lambda x: x.get("ParameterKey") == "ExtraJson", parameters))[0].get("ParameterValue")
         extra_json = json.loads(extra_json).get("cfncluster")
         return extra_json.get("ganglia_enabled") == "yes"
     except Exception:
