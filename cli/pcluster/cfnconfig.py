@@ -544,11 +544,11 @@ class ParallelClusterConfig(object):
         except configparser.NoOptionError:
             pass
 
+        self.__validate_resource("EC2IAMPolicies", iam_policies)
         if self.parameters.get("Scheduler") == "awsbatch":
             aws_batch_iam_policy = "arn:{0}:iam::aws:policy/AWSBatchFullAccess".format(get_partition(self.region))
             if aws_batch_iam_policy not in iam_policies:
                 iam_policies.append(aws_batch_iam_policy)
-        self.__validate_resource("EC2IAMPolicies", iam_policies)
         if iam_policies:
             self.parameters["EC2IAMPolicies"] = ",".join(iam_policies)
 
