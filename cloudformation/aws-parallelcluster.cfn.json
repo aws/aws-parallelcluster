@@ -77,7 +77,8 @@
             "Tenancy",
             "MasterRootVolumeSize",
             "ComputeRootVolumeSize",
-            "EC2IAMRoleName"
+            "EC2IAMRoleName",
+            "CentralisedLogging"
           ]
         },
         {
@@ -260,6 +261,9 @@
         },
         "CLITemplate": {
           "default": "CLI TEMPLATE"
+        },
+        "CentralisedLogging": {
+          "default": "centralised_logs"
         }
       }
     }
@@ -498,6 +502,12 @@
       "Description": "cluster_template section used in the config.",
       "Type": "String",
       "Default": "default"
+    },
+    "CentralisedLogging": {
+      "Description": "Option for enabling or disabling centralised logging options",
+      "Type": "String",
+      "Default": "NONE",
+      "AllowedPattern": "(NONE|YES|NO)"
     },
     "AdditionalSG": {
       "Description": "Additional VPC security group to be added to instances. Defaults to NONE",
@@ -1677,6 +1687,20 @@
               "Effect": "Allow",
               "Resource": [
                 "*"
+              ]
+            },
+            {
+              "Sid": "CloudWatchLogs",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+                "logs:DescribeLogStreams"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "arn:aws:logs:*:*:*",
+                "Ref": "CentralisedLogging"
               ]
             },
             {
