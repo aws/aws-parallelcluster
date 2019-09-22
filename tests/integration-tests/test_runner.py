@@ -86,30 +86,13 @@ def _init_argparser():
     parser = argparse.ArgumentParser(
         description="Run integration tests suite.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument(
-        "-f",
-        "--features",
-        help="Run only tests for the listed features. Prepending the not keyword to the feature name causes the "
-        "feature to be excluded.",
-        default=TEST_DEFAULTS.get("features"),
-        nargs="+",
-    )
-    parser.add_argument(
-        "-r", "--regions", help="AWS region where tests are executed.", default=TEST_DEFAULTS.get("regions"), nargs="+"
-    )
+
     parser.add_argument(
         "--credential",
         action="append",
         help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
         "Could be specified multiple times.",
         required=False,
-    )
-    parser.add_argument(
-        "-i", "--instances", help="AWS instances under test.", default=TEST_DEFAULTS.get("instances"), nargs="+"
-    )
-    parser.add_argument("-o", "--oss", help="OSs under test.", default=TEST_DEFAULTS.get("oss"), nargs="+")
-    parser.add_argument(
-        "-s", "--schedulers", help="Schedulers under test.", default=TEST_DEFAULTS.get("schedulers"), nargs="+"
     )
     parser.add_argument(
         "-n", "--parallelism", help="Tests parallelism for every region.", default=TEST_DEFAULTS.get("parallelism")
@@ -127,18 +110,42 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("dry_run"),
     )
     parser.add_argument(
-        "--show-output",
-        help="Do not redirect tests stdout to file. Not recommended when running in multiple regions.",
-        action="store_true",
-        default=TEST_DEFAULTS.get("show_output"),
-    )
-    parser.add_argument(
         "--sequential",
         help="Run tests in a single process. When not specified tests will run concurrently in all regions.",
         action="store_true",
         default=TEST_DEFAULTS.get("sequential"),
     )
-    parser.add_argument(
+    parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
+    parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
+
+    dimensions_group = parser.add_argument_group("Test dimensions")
+    dimensions_group.add_argument(
+        "-i", "--instances", help="AWS instances under test.", default=TEST_DEFAULTS.get("instances"), nargs="+"
+    )
+    dimensions_group.add_argument("-o", "--oss", help="OSs under test.", default=TEST_DEFAULTS.get("oss"), nargs="+")
+    dimensions_group.add_argument(
+        "-s", "--schedulers", help="Schedulers under test.", default=TEST_DEFAULTS.get("schedulers"), nargs="+"
+    )
+    dimensions_group.add_argument(
+        "-r", "--regions", help="AWS region where tests are executed.", default=TEST_DEFAULTS.get("regions"), nargs="+"
+    )
+    dimensions_group.add_argument(
+        "-f",
+        "--features",
+        help="Run only tests for the listed features. Prepending the not keyword to the feature name causes the "
+        "feature to be excluded.",
+        default=TEST_DEFAULTS.get("features"),
+        nargs="+",
+    )
+
+    reports_group = parser.add_argument_group("Test reports")
+    reports_group.add_argument(
+        "--show-output",
+        help="Do not redirect tests stdout to file. Not recommended when running in multiple regions.",
+        action="store_true",
+        default=TEST_DEFAULTS.get("show_output"),
+    )
+    reports_group.add_argument(
         "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
         "style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into "
@@ -147,112 +154,120 @@ def _init_argparser():
         choices=["html", "junitxml", "json", "cw"],
         default=TEST_DEFAULTS.get("reports"),
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-namespace",
         help="CloudWatch namespace where to publish metrics",
         default=TEST_DEFAULTS.get("cw_namespace"),
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-timestamp-day-start",
         action="store_true",
         help="CloudWatch metrics pushed with at timestamp equal to the start of the current day (midnight)",
         default=TEST_DEFAULTS.get("cw_timestamp_day_start"),
     )
-    parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
-    parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
-    parser.add_argument(
+    reports_group.add_argument(
         "--output-dir", help="Directory where tests outputs are generated", default=TEST_DEFAULTS.get("output_dir")
     )
-    parser.add_argument(
+
+    custom_group = parser.add_argument_group("Custom packages and templates")
+    custom_group.add_argument(
         "--custom-node-url",
         help="URL to a custom node package.",
         default=TEST_DEFAULTS.get("custom_node_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-cookbook-url",
         help="URL to a custom cookbook package.",
         default=TEST_DEFAULTS.get("custom_cookbook_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--createami-custom-cookbook-url",
         help="URL to a custom cookbook package for the createami command.",
         default=TEST_DEFAULTS.get("createami_custom_cookbook_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-template-url",
         help="URL to a custom cfn template.",
         default=TEST_DEFAULTS.get("custom_template_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-hit-template-url",
         help="URL to a custom hit cfn template.",
         default=TEST_DEFAULTS.get("custom_hit_template_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-awsbatchcli-url",
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
         type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
-    parser.add_argument("--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"), type=_is_url)
-    parser.add_argument(
+    custom_group.add_argument(
+        "--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"), type=_is_url
+    )
+    custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install"), type=_is_url
     )
-    parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
-    parser.add_argument(
-        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
-    )
-    parser.add_argument(
-        "--no-delete",
-        action="store_true",
-        help="Don't delete stacks after tests are complete.",
-        default=TEST_DEFAULTS.get("no_delete"),
-    )
-    parser.add_argument(
+
+    banchmarks_group = parser.add_argument_group("Benchmarks")
+    banchmarks_group.add_argument(
         "--benchmarks",
         help="run benchmarks tests. This disables the execution of all tests defined under the tests directory.",
         action="store_true",
         default=TEST_DEFAULTS.get("benchmarks"),
     )
-    parser.add_argument(
+    banchmarks_group.add_argument(
         "--benchmarks-target-capacity",
         help="set the target capacity for benchmarks tests",
         default=TEST_DEFAULTS.get("benchmarks_target_capacity"),
         type=int,
     )
-    parser.add_argument(
+    banchmarks_group.add_argument(
         "--benchmarks-max-time",
         help="set the max waiting time in minutes for benchmarks tests",
         default=TEST_DEFAULTS.get("benchmarks_max_time"),
         type=int,
     )
-    parser.add_argument(
-        "--stackname-suffix",
-        help="set a suffix in the integration tests stack names",
-        default=TEST_DEFAULTS.get("stackname_suffix"),
+
+    debug_group = parser.add_argument_group("Debugging/Development options")
+    debug_group.add_argument(
+        "--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack")
     )
-    parser.add_argument(
+    debug_group.add_argument(
+        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
+    )
+    debug_group.add_argument(
+        "--no-delete",
+        action="store_true",
+        help="Don't delete stacks after tests are complete.",
+        default=TEST_DEFAULTS.get("no_delete"),
+    )
+    debug_group.add_argument(
         "--keep-logs-on-cluster-failure",
         help="preserve CloudWatch logs when a cluster fails to be created",
         action="store_true",
         default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
     )
-    parser.add_argument(
+    debug_group.add_argument(
         "--keep-logs-on-test-failure",
         help="preserve CloudWatch logs when a test fails",
         action="store_true",
         default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+    )
+    debug_group.add_argument(
+        "--stackname-suffix",
+        help="set a suffix in the integration tests stack names",
+        default=TEST_DEFAULTS.get("stackname_suffix"),
     )
 
     return parser
