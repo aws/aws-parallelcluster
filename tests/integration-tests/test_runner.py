@@ -15,6 +15,7 @@ import multiprocessing
 import os
 import sys
 import time
+import urllib.request
 from tempfile import TemporaryDirectory
 
 import argparse
@@ -166,37 +167,47 @@ def _init_argparser():
         "--output-dir", help="Directory where tests outputs are generated", default=TEST_DEFAULTS.get("output_dir")
     )
     parser.add_argument(
-        "--custom-node-url", help="URL to a custom node package.", default=TEST_DEFAULTS.get("custom_node_url")
+        "--custom-node-url",
+        help="URL to a custom node package.",
+        default=TEST_DEFAULTS.get("custom_node_url"),
+        type=_is_url,
     )
     parser.add_argument(
         "--custom-cookbook-url",
         help="URL to a custom cookbook package.",
         default=TEST_DEFAULTS.get("custom_cookbook_url"),
+        type=_is_url,
     )
     parser.add_argument(
         "--createami-custom-cookbook-url",
         help="URL to a custom cookbook package for the createami command.",
         default=TEST_DEFAULTS.get("createami_custom_cookbook_url"),
+        type=_is_url,
     )
     parser.add_argument(
-        "--custom-template-url", help="URL to a custom cfn template.", default=TEST_DEFAULTS.get("custom_template_url")
+        "--custom-template-url",
+        help="URL to a custom cfn template.",
+        default=TEST_DEFAULTS.get("custom_template_url"),
+        type=_is_url,
     )
     parser.add_argument(
         "--custom-hit-template-url",
         help="URL to a custom hit cfn template.",
         default=TEST_DEFAULTS.get("custom_hit_template_url"),
+        type=_is_url,
     )
     parser.add_argument(
         "--custom-awsbatchcli-url",
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
+        type=_is_url,
     )
     parser.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
-    parser.add_argument("--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"))
+    parser.add_argument("--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"), type=_is_url)
     parser.add_argument(
-        "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
+        "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install"), type=_is_url
     )
     parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
     parser.add_argument(
@@ -250,6 +261,14 @@ def _init_argparser():
 def _is_file(value):
     if not os.path.isfile(value):
         raise argparse.ArgumentTypeError("'{0}' is not a valid key".format(value))
+    return value
+
+
+def _is_url(value):
+    try:
+        urllib.request.urlopen(value)
+    except Exception:
+        raise argparse.ArgumentTypeError("'{0}' is not a valid url".format(value))
     return value
 
 
