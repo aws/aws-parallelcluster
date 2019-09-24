@@ -100,6 +100,11 @@ class SchedulerCommands(metaclass=ABCMeta):
         """Wait for at least one node to be locked."""
         pass
 
+    @abstractmethod
+    def get_node_cores(self):
+        """Get number of slots per instance."""
+        pass
+
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -224,6 +229,11 @@ class SgeCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("qstat -f -xml").stdout
 
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("qhost -F | grep hl:m_core")
+        return re.search(r"hl:m_core=(\d+).000000", result.stdout).group(1)
+
 
 class SlurmCommands(SchedulerCommands):
     """Implement commands for slurm scheduler."""
@@ -302,6 +312,11 @@ class SlurmCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
 
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -o '%c' -h")
+        return re.search(r"(\d+)", result.stdout).group(1)
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
@@ -371,6 +386,11 @@ class TorqueCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         # discard the first node since that is the master server
         return self._remote_command_executor.run_remote_command(r'pbsnodes | grep -e "\sstate = " | tail -n +2').stdout
+
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("pbsnodes | tail -n +10")
+        return re.search(r"np = (\d+)", result.stdout).group(1)
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):
