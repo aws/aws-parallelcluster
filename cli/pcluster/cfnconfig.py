@@ -515,7 +515,7 @@ class ParallelClusterConfig(object):
             master_root_volume_size=("MasterRootVolumeSize", None),
             compute_root_volume_size=("ComputeRootVolumeSize", None),
             base_os=("BaseOS", None),
-            ec2_iam_role=("EC2IAMRoleName", "EC2IAMRoleName"),
+            ec2_iam_role=("EC2IAMRoleName", None),
             extra_json=("ExtraJson", None),
             custom_chef_cookbook=("CustomChefCookbook", None),
             additional_cfn_template=("AdditionalCfnTemplate", None),
