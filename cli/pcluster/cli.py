@@ -189,7 +189,7 @@ Examples::
     pupdate.add_argument(
         "-t", "--cluster-template", help="Indicates which section of the configuration file to use for cluster update."
     )
-    pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
+    pupdate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack update.")
     pupdate.add_argument(
         "-rd",
         "--reset-desired",
