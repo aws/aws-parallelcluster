@@ -184,8 +184,10 @@ def fsx_storage_capacity_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    if int(param_value) % 3600 != 0 or int(param_value) < 0:
-        errors.append("Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB")
+    if int(param_value) > 0 and not (
+        int(param_value) == 1200 or int(param_value) == 2400 or int(param_value) % 3600 == 0
+    ):
+        errors.append("Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB")
 
     return errors, warnings
 

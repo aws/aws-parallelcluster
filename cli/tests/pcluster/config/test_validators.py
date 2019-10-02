@@ -456,9 +456,14 @@ def test_fsx_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"),
+        ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB"),
+        ({"storage_capacity": 1200}, None),
+        ({"storage_capacity": 2400}, None),
         ({"storage_capacity": 3600}, None),
-        ({"storage_capacity": 3601}, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"),
+        (
+            {"storage_capacity": 3601},
+            "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB",
+        ),
         ({"storage_capacity": 7200}, None),
     ],
 )
