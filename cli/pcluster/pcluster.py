@@ -36,7 +36,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from tabulate import tabulate
 
-from pcluster.utils import get_installed_version, get_stack_output_value, verify_stack_creation
+from pcluster.utils import get_installed_version, get_stack_output_value, paginate_boto3, verify_stack_creation
 
 from . import cfnconfig, utils
 
@@ -403,9 +403,8 @@ def list_stacks(args):
         aws_secret_access_key=config.aws_secret_access_key,
     )
     try:
-        stacks = cfn.describe_stacks().get("Stacks")
         result = []
-        for stack in stacks:
+        for stack in paginate_boto3(cfn.describe_stacks):
             if stack.get("ParentId") is None and stack.get("StackName").startswith("parallelcluster-"):
                 pcluster_version = get_version(stack)
                 result.append(
