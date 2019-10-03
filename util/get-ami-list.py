@@ -22,9 +22,11 @@ import os
 import re
 import shutil
 import tempfile
+import yaml
 
 import argparse
 
+from cmp_version import cmp_version
 from git import Repo
 
 repo_url = "https://github.com/aws/aws-parallelcluster.git"
@@ -42,22 +44,29 @@ def build_release_ami_list(scratch_dir, tag):
     active_distro = None
     amis = {}
 
-    file = open(os.path.join(repo_dir, "amis.txt"), "r")
-    for line in file:
-        m = re.match("^#\s*(.*)", line)
-        if not m == None:
-            active_distro = m.groups()[0]
-            amis[active_distro] = []
-        else:
-            m = re.match(".*:?\s*(ami-[a-zA-Z0-9]*)", line)
-            if active_distro != None:
-                amis[active_distro].append(m.groups()[0])
-            else:
-                # In old tags, the amis.txt file doesn't contain the distro comment on top
-                # because centos6 only was supported
-                active_distro = "centos6"
+    if cmp_version(tag, "v2.4.1") <= 0:
+
+        file = open(os.path.join(repo_dir, "amis.txt"), "r")
+        for line in file:
+            m = re.match("^#\s*(.*)", line)
+            if not m == None:
+                active_distro = m.groups()[0]
                 amis[active_distro] = []
-                amis[active_distro].append(m.groups()[0])
+            else:
+                m = re.match(".*:?\s*(ami-[a-zA-Z0-9]*)", line)
+                if active_distro != None:
+                    amis[active_distro].append(m.groups()[0])
+                else:
+                    # In old tags, the amis.txt file doesn't contain the distro comment on top
+                    # because centos6 only was supported
+                    active_distro = "centos6"
+                    amis[active_distro] = []
+                    amis[active_distro].append(m.groups()[0])
+
+    else:
+
+        with open(os.path.join(repo_dir, "amis.yml"), "r") as file:
+            amis_yml = yaml.load(file, loader=yaml.FullLoader)
 
     return amis
 
@@ -72,6 +81,7 @@ if __name__ == "__main__":
     try:
         for tag in sorted(args.tags):
             amis = build_release_ami_list(scratch_dir=scratch_dir, tag=tag)
+            print(amis)
             for distro in sorted(amis):
                 print("%s %s: %s" % (tag, distro, " ".join(amis[distro])))
     finally:
