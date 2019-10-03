@@ -16,6 +16,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
@@ -33,6 +34,38 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+
+@pytest.mark.regions(["us-east-1"])
+@pytest.mark.instances(["c4.xlarge", "c5d.large"])  # Test on EBS-Only and NVMe instances
+@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.usefixtures("os", "instance")
+@pytest.mark.skip_oss("centos6")  # centos6 does not support GPT
+def test_ebs_snapshot(
+    request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
+):
+    logging.info("Testing ebs snapshot")
+    mount_dir = "ebs_mount_dir"
+    volume_size = 10
+
+    logging.info("Creating snapshot")
+
+    snapshot_id = snapshots_factory.create_snapshot(request, vpc_stacks[region].cfn_outputs["PublicSubnetId"], region)
+
+    logging.info("Snapshot id: %s" % snapshot_id)
+    cluster_config = pcluster_config_reader(mount_dir=mount_dir, volume_size=volume_size, snapshot_id=snapshot_id)
+
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    mount_dir = "/" + mount_dir
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.8")
+    _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+    # Checks for test data
+    result = remote_command_executor.run_remote_command("cat {}/test.txt".format(mount_dir))
+    assert_that(result.stdout.strip()).is_equal_to("hello world")
 
 
 # cn-north-1 does not support KMS
@@ -76,9 +109,7 @@ def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size)
     assert_that(result.stdout).matches(r"{size}G {mount_dir}".format(size=volume_size, mount_dir=mount_dir))
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
-    assert_that(result.stdout).matches(
-        r"/dev/disk/by-ebs-volumeid/vol-[a-z0-9]{{17}} {mount_dir} ext4 _netdev 0 0".format(mount_dir=mount_dir)
-    )
+    assert_that(result.stdout).matches(r"UUID=.* {mount_dir} ext4 _netdev 0 0".format(mount_dir=mount_dir))
 
 
 def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
@@ -89,3 +120,10 @@ def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_com
 def _test_home_correctly_shared(remote_command_executor, scheduler_commands):
     logging.info("Testing home dir correctly mounted on compute nodes")
     verify_directory_correctly_shared(remote_command_executor, "/home", scheduler_commands)
+
+
+@pytest.fixture()
+def snapshots_factory():
+    factory = EBSSnapshotsFactory()
+    yield factory
+    factory.release_all()
