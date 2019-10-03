@@ -48,6 +48,21 @@ def boto3_resource(service, aws_client_config):
     )
 
 
+def paginate_boto3(method, **kwargs):
+    """
+    Return a generator for a boto3 call, this allows pagnition over an arbitrary number of responses.
+
+    :param method: boto3 method
+    :param kwargs: arguments to method
+    :return: generator with boto3 results
+    """
+    client = method.__self__
+    paginator = client.get_paginator(method.__name__)
+    for page in paginator.paginate(**kwargs).result_key_iters():
+        for result in page:
+            yield result
+
+
 def create_s3_bucket(bucket_name, aws_client_config):
     """
     Create a new S3 bucket.
