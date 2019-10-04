@@ -26,26 +26,82 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def dump_instances(instance_details):
-    with open(instance_details) as data_file:
-        data = json.load(data_file)
+def dump_instances(instance_details, region, aws_credentials=None):
+    """
+    Get instance information from pricing file and dump to instances.json
+    """
+    # Added exception block to check if pricing information is a valid JSON file
+    try:
+        with open(instance_details) as data_file:
+            data = json.load(data_file)
+    except json.JSONDecodeError as e:
+        print("Error when parsing pricing information: {0}".format(e.msg))
+        raise
+
     instances = {}
-    for sku, product in data.get("products").iteritems():
+    for sku, product in data.get("products").items():
         if "Compute Instance" in product.get("productFamily"):
             instance = product.get("attributes")
             instances[instance.get("instanceType")] = {"vcpus": instance.get("vcpu")}
+            # Adding instance's gpu information to instances.json
+            if "gpu" in instance:
+                instances[instance.get("instanceType")]["gpu"] = instance.get("gpu")
+
+    # Check if all info from old instances.json is included in the new instances.json
+    validate_against_old_version(instances, region, aws_credentials)
+
     print(json.dumps(instances))
     json.dump(instances, open("instances.json", "w"))
 
 
+def validate_against_old_version(instances_info, region, aws_credentials=None):
+    """
+    Validate that old instances information are all contained in the new version
+    """
+    old_instances_info = get_old_instances_info(region, aws_credentials)
+    for instance_type in old_instances_info:
+        if instance_type not in instances_info:
+            _fail("new file does not contain {0} instance type!".format(instance_type))
+        for resource in old_instances_info[instance_type]:
+            if resource not in instances_info[instance_type]:
+                _fail("new file does not contain {0} resource for {1} instance type!".format(resource, instance_type))
+
+
 def get_all_aws_regions(region):
+    """Return all AWS regions"""
     ec2 = boto3.client("ec2", region_name=region)
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
-def push_to_s3(region, aws_credentials=None):
-    bucket_name = region + "-aws-parallelcluster"
+def get_old_instances_info(region, aws_credentials=None):
+    """
+    Retrieve and parse old instances.json from aws-parallelcluster S3 bucket
+    """
+    bucket_name = "{0}-aws-parallelcluster".format(region)
     print(bucket_name)
+    s3 = return_s3_object(region, aws_credentials, bucket_name)
+    old_instances_file_content = s3.Object(bucket_name, "instances/instances.json").get()["Body"].read()
+    try:
+        old_instances_info = json.loads(old_instances_file_content)
+    except json.JSONDecodeError as e:
+        print("Error when parsing information from old instances.json: {0}".format(e.msg))
+        raise
+    return old_instances_info
+
+
+def push_to_s3(region, aws_credentials=None):
+    """Push instances.json to S3"""
+    bucket_name = "{0}-aws-parallelcluster".format(region)
+    print(bucket_name)
+    s3 = return_s3_object(region, aws_credentials, bucket_name)
+    bucket = s3.Bucket(bucket_name)
+    bucket.upload_file("instances.json", "instances/instances.json")
+    object_acl = s3.ObjectAcl(bucket_name, "instances/instances.json")
+    object_acl.put(ACL="public-read")
+
+
+def return_s3_object(region, aws_credentials, bucket_name):
+    """Return an S3 object"""
     try:
         if aws_credentials:
             s3 = boto3.resource(
@@ -58,22 +114,19 @@ def push_to_s3(region, aws_credentials=None):
         else:
             s3 = boto3.resource("s3", region_name=region)
         s3.meta.client.head_bucket(Bucket=bucket_name)
+        return s3
     except ClientError as e:
         # If a client error is thrown, then check that it was a 404 error.
         # If it was a 404 error, then the bucket does not exist.
         error_code = int(e.response["Error"]["Code"])
         if error_code == 404:
-            print("Bucket %s does not exist", bucket_name)
+            print("Bucket {0} does not exist".format(bucket_name))
             return
         raise
 
-    bucket = s3.Bucket(bucket_name)
-    bucket.upload_file("instances.json", "instances/instances.json")
-    object_acl = s3.ObjectAcl(bucket_name, "instances/instances.json")
-    object_acl.put(ACL="public-read")
-
 
 def upload(regions, main_region, credentials):
+    """Push instances.json to all regions"""
     for region in regions:
         push_to_s3(region)
 
@@ -97,6 +150,12 @@ def upload(regions, main_region, credentials):
                 except ClientError:
                     print("Warning: non authorized in region '{0}', skipping".format(credential_region))
                     pass
+
+
+def _fail(msg):
+    """Print an error message and exit."""
+    print("ERROR: {0}".format(msg))
+    sys.exit(1)
 
 
 if __name__ == "__main__":
@@ -127,7 +186,7 @@ if __name__ == "__main__":
     elif args.partition == "china":
         main_region = "cn-north-1"
     else:
-        print("Unsupported partition %s" % args.partition)
+        print("Unsupported partition {0}".format(args.partition))
         sys.exit(1)
 
     credentials = []
@@ -138,7 +197,7 @@ if __name__ == "__main__":
             if credential_tuple.strip()
         ]
 
-    dump_instances(args.instance_details)
+    dump_instances(args.instance_details, main_region, credentials)
 
     regions = get_all_aws_regions(main_region)
 
