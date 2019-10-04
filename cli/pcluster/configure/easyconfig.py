@@ -108,6 +108,7 @@ def configure(args):
 
     # Use built in boto regions as an available option
     aws_region_name = prompt_iterable("AWS Region ID", get_regions())
+    pcluster_config.region = aws_region_name
 
     scheduler = prompt_iterable(
         "Scheduler", get_supported_schedulers(), default_value=cluster_section.get_param_value("scheduler")
@@ -137,9 +138,6 @@ def configure(args):
     # Remove parameters from the past configuration that can conflict with the user's choices.
     _reset_config_params(cluster_section, scheduler_handler.get_parameters_to_reset())
     _reset_config_params(vpc_section, ("compute_subnet_id", "use_public_ips", "compute_subnet_cidr"))
-
-    # Update configuration values according to user's choices
-    pcluster_config.region = aws_region_name
 
     cluster_section.label = cluster_label
     for param_key, param_value in cluster_parameters.items():

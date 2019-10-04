@@ -73,6 +73,15 @@ class PclusterConfig(object):
             self.__init_sections_from_file(file_sections, cluster_label, self.config_parser, fail_on_file_absence)
             self.__validate()
 
+    @property
+    def region(self):
+        return self._region
+
+    @region.setter
+    def region(self, value):
+        self._region = value
+        os.environ["AWS_DEFAULT_REGION"] = self._region
+
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
         Parse the config file and initialize config_file and config_parser attributes.
@@ -204,7 +213,6 @@ class PclusterConfig(object):
             self.region = os.environ.get("AWS_DEFAULT_REGION")
         else:
             self.region = self.get_section("aws").get_param_value("aws_region_name")
-            os.environ["AWS_DEFAULT_REGION"] = self.region
 
     def to_file(self):
         """
