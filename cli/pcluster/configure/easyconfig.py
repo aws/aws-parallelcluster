@@ -136,6 +136,7 @@ def configure(args):
 
     # Use built in boto regions as an available option
     aws_region_name = prompt_iterable("AWS Region ID", get_regions())
+    os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
     scheduler = prompt_iterable(
         "Scheduler",
