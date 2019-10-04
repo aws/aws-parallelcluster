@@ -557,3 +557,8 @@ The only differences are the following:
 - the tests are defined under the `benchmarks/` directory
 - they are not executed by default with the rest of the integration tests
 - they write their output to a specific benchmarks directory created in the output dir
+
+### Troubleshooting and fixes
+
+* `IdentityFile` option in `ssh/config` will trigger a `str has no attribute extend` bug in the `fabric` package. 
+Please remove `IdentityFile` option from `ssh/config` before running the testing framework
