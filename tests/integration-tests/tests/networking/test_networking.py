@@ -52,6 +52,7 @@ def vpc_stack(vpc_stacks, region):
 
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
+@pytest.mark.skip_instances(["g3.8xlarge"])
 def test_public_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
@@ -75,6 +76,7 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory):
 
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
+@pytest.mark.skip_instances(["g3.8xlarge"])
 def test_public_private_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]

@@ -267,14 +267,18 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None):  # noqa: D102
-        submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
+    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None, other_options=None):  # noqa: D102
+        submission_command = "sbatch --wrap='{0}'".format(command)
+        if nodes > 0:
+            submission_command += "  -N {0}".format(nodes)
         if host:
             submission_command += " --nodelist={0}".format(host)
         if slots:
             submission_command += " -n {0}".format(slots)
         if after_ok:
             submission_command += " -d afterok:{0}".format(after_ok)
+        if other_options:
+            submission_command += " {0}".format(other_options)
         return self._remote_command_executor.run_remote_command(submission_command)
 
     def submit_script(
@@ -319,6 +323,10 @@ class SlurmCommands(SchedulerCommands):
         """Return number of slots from the scheduler."""
         result = self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -o '%c' -h")
         return re.search(r"(\d+)", result.stdout).group(1)
+
+    def get_job_info(self, job_id):
+        """Return job details from slurm"""
+        return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
 
 
 class TorqueCommands(SchedulerCommands):
