@@ -16,13 +16,13 @@ from retrying import retry
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
-def fetch_instance_slots(region, instance_type):
+def fetch_instance_slots(region, instance_type, slots="vcpus"):
     bucket_name = "{0}-aws-parallelcluster".format(region)
     try:
         s3 = boto3.resource("s3", region_name=region)
         instances_file_content = s3.Object(bucket_name, "instances/instances.json").get()["Body"].read()
         instances = json.loads(instances_file_content)
-        return int(instances[instance_type]["vcpus"])
+        return int(instances[instance_type][slots])
     except Exception as e:
         logging.critical(
             "Could not load instance mapping file from S3 bucket {0}. Failed with exception: {1}".format(bucket_name, e)
