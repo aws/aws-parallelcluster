@@ -45,7 +45,7 @@ if sys.version_info[0] >= 3:
 else:
     from urllib import urlretrieve  # pylint: disable=no-name-in-module
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster." + __name__)
 
 
 def create_bucket_with_batch_resources(stack_name, aws_client_config, resources_dir):

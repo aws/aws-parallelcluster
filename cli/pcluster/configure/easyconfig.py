@@ -32,7 +32,7 @@ from pcluster.utils import get_supported_os, get_supported_schedulers
 standard_library.install_aliases()
 
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("pcluster." + __name__)
 DEFAULT_VALUES = {
     "aws_region_name": "us-east-1",
     "cluster_template": "default",

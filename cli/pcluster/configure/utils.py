@@ -16,7 +16,7 @@ from builtins import input
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("pcluster." + __name__)
 unsupported_regions = ["ap-northeast-3"]
 
 

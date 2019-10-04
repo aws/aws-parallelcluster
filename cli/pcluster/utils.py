@@ -27,7 +27,7 @@ import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster." + __name__)
 
 
 def boto3_client(service, aws_client_config):

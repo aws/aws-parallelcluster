@@ -23,7 +23,7 @@ from botocore.exceptions import NoCredentialsError
 from pcluster import pcluster
 from pcluster.configure import easyconfig
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger("pcluster." + __name__)
 
 
 def create(args):
@@ -76,7 +76,7 @@ def create_ami(args):
 
 
 def config_logger():
-    logger = logging.getLogger("pcluster.pcluster")
+    logger = logging.getLogger("pcluster")
     logger.setLevel(logging.DEBUG)
 
     ch = logging.StreamHandler(sys.stdout)
@@ -369,7 +369,7 @@ Variables substituted::
 def main():
     config_logger()
 
-    logger = logging.getLogger("pcluster.pcluster")
+    logger = logging.getLogger("pcluster." + __name__)
     logger.debug("pcluster CLI starting")
 
     parser = _get_parser()

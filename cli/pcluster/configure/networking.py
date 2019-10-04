@@ -25,7 +25,7 @@ from pcluster.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.utils import get_stack_output_value, get_templates_bucket_path, verify_stack_creation
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"
-LOGGER = logging.getLogger(__name__)
+LOGGER = logging.getLogger("pcluster." + __name__)
 TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
 MASTER_SUBNET_IPS = 250
 
