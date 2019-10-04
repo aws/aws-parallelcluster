@@ -33,3 +33,5 @@ Allowed values for VPC ID:
 3. vpc-3 | default | 3 subnets inside
 4. vpc-4 | ParallelClusterVPC-20190626095403 | 1 subnets inside
 The configuration is valid
+Configuration file written to {{ CONFIG_FILE }}
+You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster

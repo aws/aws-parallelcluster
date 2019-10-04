@@ -29,3 +29,5 @@ Allowed values for EC2 Key Pair Name:
 6. key6
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 The configuration is valid
+Configuration file written to {{ CONFIG_FILE }}
+You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster

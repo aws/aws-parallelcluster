@@ -205,6 +205,11 @@ def configure(args):
     args.cluster_template = cluster_template
     if _is_config_valid(args):
         print("The configuration is valid")
+        print("Configuration file written to {0}".format(config_file))
+        print(
+            "You can edit your configuration file or simply run 'pcluster create -c {0} cluster-name' "
+            "to create your cluster".format(config_file)
+        )
 
 
 def _check_destination_directory(config_file):

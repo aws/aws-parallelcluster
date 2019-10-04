@@ -38,3 +38,5 @@ Allowed values for Network Configuration:
 2. Master and compute fleet in the same public subnet
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 The configuration is valid
+Configuration file written to {{ CONFIG_FILE }}
+You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster
