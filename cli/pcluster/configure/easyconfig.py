@@ -151,6 +151,11 @@ def configure(args):
 
     # Update config file by overriding changed settings
     pcluster_config.to_file()
+    print("Configuration file written to {0}".format(pcluster_config.config_file))
+    print(
+        "You can edit your configuration file or simply run 'pcluster create -c {0} cluster-name' "
+        "to create your cluster".format(pcluster_config.config_file)
+    )
 
 
 def _reset_config_params(section, parameters_to_remove):
