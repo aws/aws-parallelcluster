@@ -329,6 +329,11 @@
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",
       "Type": "String",
       "Default": "NONE"
+    },
+    "CWLogOptions": {
+      "Description": "Comma separated list of CloudWatch logging, 2 parameters in total, [enabled, retention_days]",
+      "Type": "String",
+      "Default": "true,14"
     }
   },
   "Conditions": {
@@ -1148,6 +1153,59 @@
       },
       "Condition": "CreateEFSSubstack"
     },
+    "CloudWatchLogsSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "CWLogOptions": {
+            "Ref": "CWLogOptions"
+          },
+          "CWLogGroupName": {
+            "Fn::Sub": [
+              "/aws/parallelcluster/${cluster_name}",
+              {
+                "cluster_name": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        "parallelcluster-",
+                        {
+                          "Ref": "AWS::StackName"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/cw-logs-substack-${version}.cfn.json",
+            {
+              "s3_domain": {
+                "Fn::If": [
+                  "GovCloudRegion",
+                  {
+                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                  },
+                  "s3.amazonaws.com"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "parallelcluster"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
     "SQS": {
       "Type": "AWS::SQS::Queue",
       "Properties": {
@@ -1640,6 +1698,9 @@
     },
     "MasterServer": {
       "Type": "AWS::EC2::Instance",
+      "DependsOn": [
+        "CloudWatchLogsSubstack"
+      ],
       "Properties": {
         "LaunchTemplate": {
           "LaunchTemplateId": {
@@ -2330,6 +2391,12 @@
                         "SQS",
                         "QueueName"
                       ]
+                    },
+                    "cfn_cluster_cw_logging_enabled": {
+                      "Fn::GetAtt": [
+                        "CloudWatchLogsSubstack",
+                        "Outputs.Enabled"
+                      ]
                     }
                   },
                   "run_list": {
@@ -2414,9 +2481,6 @@
     },
     "MasterServerWaitCondition": {
       "Type": "AWS::CloudFormation::WaitCondition",
-      "DependsOn": [
-        "MasterServer"
-      ],
       "CreationPolicy": {
         "ResourceSignal": {
           "Count": "1",
@@ -2426,6 +2490,9 @@
     },
     "ComputeFleet": {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "DependsOn": [
+        "CloudWatchLogsSubstack"
+      ],
       "Properties": {
         "MaxSize": {
           "Ref": "MaxSize"
@@ -3233,6 +3300,19 @@
                           "Ref": "BaseOS"
                         },
                         "User"
+                      ]
+                    },
+                    "cfn_cluster_cw_logging_enabled": {
+                      "Fn::Select": [
+                        "0",
+                        {
+                          "Fn::Split": [
+                            ",",
+                            {
+                              "Ref": "CWLogOptions"
+                            }
+                          ]
+                        }
                       ]
                     }
                   },
