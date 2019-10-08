@@ -1,0 +1,74 @@
+{
+  "Conditions": {
+    "CreateCloudWatchLogGroup": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        },
+        "true"
+      ]
+    }
+  },
+  "Parameters": {
+    "CWLogOptions": {
+      "Description": "Comma separated list of CloudWatch logging, 2 parameters in total, [enabled, retention_days]",
+      "Type": "String"
+    },
+    "CWLogGroupName": {
+      "Description": "Name of the CloudWatch Log Group to be created",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "CloudWatchLogGroup": {
+      "Condition": "CreateCloudWatchLogGroup",
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Ref": "CWLogGroupName"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "Enabled": {
+      "Description": "'true' if CloudWatch logging is enabled for this cluster, 'false' otherwise",
+      "Value": {
+        "Fn::Select": [
+          "0",
+          {
+            "Fn::Split": [
+              ",",
+              {
+                "Ref": "CWLogOptions"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

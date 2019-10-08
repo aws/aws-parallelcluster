@@ -384,6 +384,26 @@ DCV = {
         ]
     )
 }
+CW_LOG = {
+    "type": Section,
+    "key": "cw_log",
+    "default_label": "default",
+    "cfn_param_mapping": "CWLogOptions",  # Stringify params into single CFN parameter
+    "params": OrderedDict([
+        ("enable", {
+            "type": BoolParam,
+            "default": True,
+        }),
+        ("retention_days", {
+            "type": IntParam,
+            "default": 14,
+            "cfn_param_mapping": "CWLogEventRententionDays",
+            "allowed_values": [
+                1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
+            ]
+        }),
+    ])
+}
 
 CLUSTER = {
     "type": ClusterSection,
@@ -494,11 +514,6 @@ CLUSTER = {
             ("ec2_iam_role", {
                 "cfn_param_mapping": "EC2IAMRoleName",
                 "validators": [ec2_iam_role_validator],  # TODO add regex
-            }),
-            ("additional_iam_policies", {
-                "type": AdditionalIamPoliciesParam,
-                "cfn_param_mapping": "EC2IAMPolicies",
-                "validators": [ec2_iam_policies_validator],
             }),
             ("s3_read_resource", {
                 "cfn_param_mapping": "S3ReadResource",  # TODO add validator
@@ -620,6 +635,17 @@ CLUSTER = {
             ("dcv_settings", {
                 "type": SettingsParam,
                 "referred_section": DCV,
+            }),
+            ("cw_log_settings", {
+                "type": SettingsParam,
+                "referred_section": CW_LOG,
+            }),
+            # Moved from the "Access and Networking" section because its configuration is
+            # dependent on multiple other parameters from within this section.
+            ("additional_iam_policies", {
+                "type": AdditionalIamPoliciesParam,
+                "cfn_param_mapping": "EC2IAMPolicies",
+                "validators": [ec2_iam_policies_validator],
             }),
         ]
     )

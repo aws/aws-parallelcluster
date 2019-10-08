@@ -865,7 +865,8 @@ def test_cluster_section_to_file(
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_cfn_params", [(DefaultDict["cluster"].value, DefaultCfnParams["cluster"].value)]
+    "section_dict, expected_cfn_params",
+    [(DefaultDict["cluster"].value, utils.merge_dicts(DefaultCfnParams["cluster"].value))],
 )
 def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
     mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
@@ -876,7 +877,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
 @pytest.mark.parametrize(
     "settings_label, expected_cfn_params",
     [
-        ("default", DefaultCfnParams["cluster"].value),
+        ("default", utils.merge_dicts(DefaultCfnParams["cluster"].value)),
         (
             "custom1",
             utils.merge_dicts(
@@ -903,7 +904,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "5.5",
                     "ProxyServer": "proxy",
                     "EC2IAMRoleName": "role",
-                    "EC2IAMPolicies": "policy1,policy2",
+                    "EC2IAMPolicies": "policy1,policy2,arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                     "S3ReadResource": "s3://url",
                     "S3ReadWriteResource": "s3://url",
                     "EFA": "compute",
@@ -939,7 +940,12 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "MaxSize": "10",
                     "MinSize": "0",
                     "SpotPrice": "0",
-                    "EC2IAMPolicies": "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                    "EC2IAMPolicies": ",".join(
+                        [
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                        ]
+                    ),
                     "ComputeInstanceType": "optimal",
                 },
             ),
@@ -959,8 +965,36 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "MinSize": "2",
                     "ClusterType": "spot",
                     "SpotPrice": "25",
-                    "EC2IAMPolicies": "policy1,policy2,arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                    "EC2IAMPolicies": ",".join(
+                        [
+                            "policy1",
+                            "policy2",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                        ]
+                    ),
                     "ComputeInstanceType": "optimal",
+                },
+            ),
+        ),
+        (
+            "batch-no-cw-logging",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "CLITemplate": "batch-no-cw-logging",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "VPCId": "vpc-12345678",
+                    "MasterSubnetId": "subnet-12345678",
+                    "Scheduler": "awsbatch",
+                    "DesiredSize": "3",
+                    "MaxSize": "4",
+                    "MinSize": "2",
+                    "ClusterType": "spot",
+                    "SpotPrice": "25",
+                    "EC2IAMPolicies": "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                    "ComputeInstanceType": "optimal",
+                    "CWLogOptions": "false,14",
                 },
             ),
         ),
@@ -997,7 +1031,12 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "MinSize": "2",
                     "ClusterType": "spot",
                     "SpotPrice": "25",
-                    "EC2IAMPolicies": "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                    "EC2IAMPolicies": ",".join(
+                        [
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                        ]
+                    ),
                     "ComputeInstanceType": "optimal",
                 },
             ),
@@ -1067,6 +1106,10 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                 },
             ),
+        ),
+        (
+            "cw_log",
+            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CLITemplate": "cw_log", "CWLogOptions": "true,1"}),
         ),
         (
             "all-settings",
