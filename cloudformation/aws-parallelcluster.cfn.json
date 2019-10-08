@@ -1126,6 +1126,32 @@
       },
       "Condition": "CreateEFSSubstack"
     },
+    "CloudWatchLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": [
+            "/aws/parallelcluster/${cluster_name}",
+            {
+              "cluster_name": {
+                "Fn::Select": [
+                  "1",
+                  {
+                    "Fn::Split": [
+                      "parallelcluster-",
+                      {
+                        "Ref": "AWS::StackName"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "RetentionInDays": 14
+      }
+    },
     "SQS": {
       "Type": "AWS::SQS::Queue",
       "Properties": {
@@ -1618,6 +1644,9 @@
     },
     "MasterServer": {
       "Type": "AWS::EC2::Instance",
+      "DependsOn": [
+        "CloudWatchLogGroup"
+      ],
       "Properties": {
         "LaunchTemplate": {
           "LaunchTemplateId": {
@@ -2357,6 +2386,9 @@
     },
     "ComputeFleet": {
       "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "DependsOn": [
+        "CloudWatchLogGroup"
+      ],
       "Properties": {
         "MaxSize": {
           "Ref": "MaxSize"
