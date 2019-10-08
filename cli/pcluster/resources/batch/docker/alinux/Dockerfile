@@ -14,6 +14,7 @@ RUN yum update -y \
     binutils \
     gcc \
     gfortran \
+    iproute \
     nfs-utils \
     openssh-server \
     openssh-clients \
