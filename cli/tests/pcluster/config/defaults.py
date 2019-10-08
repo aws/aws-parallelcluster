@@ -127,7 +127,10 @@ DEFAULT_CLUSTER_DICT = {
     "raid_settings": None,
     "fsx_settings": None,
     "dcv_settings": None,
+    "cw_log_settings": None,
 }
+
+DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
 
 DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_DICT}
 
@@ -146,13 +149,14 @@ class DefaultDict(Enum):
     raid = DEFAULT_RAID_DICT
     fsx = DEFAULT_FSX_DICT
     dcv = DEFAULT_DCV_DICT
+    cw_log = DEFAULT_CW_LOG_DICT
     pcluster = DEFAULT_PCLUSTER_DICT
 
 
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 57
+CFN_CONFIG_NUM_OF_PARAMS = 58
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -190,6 +194,7 @@ DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NO
 DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
+DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
 
 DEFAULT_CLUSTER_CFN_PARAMS = {
     "KeyName": "NONE",
@@ -210,7 +215,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "SpotPrice": "0.0",
     "ProxyServer": "NONE",
     "EC2IAMRoleName": "NONE",
-    "EC2IAMPolicies": "NONE",
+    "EC2IAMPolicies": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
     "S3ReadResource": "NONE",
     "S3ReadWriteResource": "NONE",
     "EFA": "NONE",
@@ -258,6 +263,8 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
+    # cw_log_settings
+    "CWLogOptions": "true,14",
 }
 
 
@@ -271,4 +278,5 @@ class DefaultCfnParams(Enum):
     raid = DEFAULT_RAID_CFN_PARAMS
     fsx = DEFAULT_FSX_CFN_PARAMS
     dcv = DEFAULT_DCV_CFN_PARAMS
+    cw_log = DEFAULT_CW_LOG_CFN_PARAMS
     cluster = DEFAULT_CLUSTER_CFN_PARAMS
