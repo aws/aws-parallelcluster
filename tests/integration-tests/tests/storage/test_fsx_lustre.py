@@ -24,7 +24,7 @@ from tests.common.schedulers_common import SgeCommands
 @pytest.mark.oss(["centos7", "alinux"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir):
+def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, os):
     """
     Test all FSx Lustre related features.
 
@@ -38,21 +38,27 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir)
+    _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
 
 
-def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir):
+def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
     logging.info("Testing fsx lustre is correctly mounted")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     assert_that(result.stdout).matches(r"[0-9\.]+@tcp:/fsx\s+3\.4T\s+{mount_dir}".format(mount_dir=mount_dir))
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
+    mount_options = {
+        "centos7": "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount,"
+        "x-systemd.requires=lnet.service",
+        "alinux": "defaults,_netdev,flock,user_xattr,noatime",
+    }
+
     assert_that(result.stdout).matches(
-        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/fsx {mount_dir} lustre defaults,_netdev 0 0".format(
-            mount_dir=mount_dir
+        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/fsx {mount_dir} lustre {mount_options} 0 0".format(
+            mount_dir=mount_dir, mount_options=mount_options[os] if os in mount_options else ""
         )
     )
 
