@@ -17,13 +17,13 @@ import re
 from configparser import NoSectionError
 
 import yaml
+from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.utils import (
     PCLUSTER_ISSUES_LINK,
     get_avail_zone,
     get_cfn_param,
     get_efs_mount_target_id,
     get_instance_vcpus,
-    get_partition,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -626,21 +626,23 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
     """
     Class to manage the additional_iam_policies configuration parameters.
 
-    We need this class because in the awsbatch case we need to add/remove the AWSBatchFullAccess policy
-    during CFN conversion.
+    We need this class for 2 reasons:
+    * When the scheduler is awsbatch, we need to add/remove the AWSBatchFullAccess policy
+      during CFN conversion.
+    * When CloudWatch logging is enabled, we need to add/remove the CloudWatchAgentServerPolicy
+      during CFN conversion.
     """
 
     def __init__(self, section_key, section_label, param_key, param_definition, pcluster_config):
         super(AdditionalIamPoliciesParam, self).__init__(
             section_key, section_label, param_key, param_definition, pcluster_config
         )
-        self.aws_batch_iam_policy = "arn:{0}:iam::aws:policy/AWSBatchFullAccess".format(get_partition())
+        self.policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
 
     def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser in the right section."""
-        # remove awsbatch policy, if there
-        if self.aws_batch_iam_policy in self.value:
-            self.value.remove(self.aws_batch_iam_policy)
+        # remove conditional policies, if there
+        self._remove_conditional_policies()
         super(AdditionalIamPoliciesParam, self).to_file(config_parser)
 
     def from_cfn_params(self, cfn_params):
@@ -650,24 +652,26 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
         """
         super(AdditionalIamPoliciesParam, self).from_cfn_params(cfn_params)
-
-        # remove awsbatch policy, if there
-        if self.aws_batch_iam_policy in self.value:
-            self.value.remove(self.aws_batch_iam_policy)
-
+        # remove conditional policies, if there
+        self._remove_conditional_policies()
         return self
 
     def to_cfn(self):
         """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
-        # add awsbatch policy if scheduler is awsbatch
-        cluster_config = self.pcluster_config.get_section(self.section_key)
-        if cluster_config.get_param_value("scheduler") == "awsbatch":
-            if self.aws_batch_iam_policy not in self.value:
-                self.value.append(self.aws_batch_iam_policy)
+        # Add conditional policies if appropriate
+        for rule in self.policy_inclusion_rules:
+            if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in self.value:
+                self.value.append(rule.get_policy())
 
         cfn_params = super(AdditionalIamPoliciesParam, self).to_cfn()
 
         return cfn_params
+
+    def _remove_conditional_policies(self):
+        """Remove any of the policy ARNs in self.conditional_policies from self.value."""
+        for rule in self.policy_inclusion_rules:
+            if rule.get_policy() in self.value:
+                self.value.remove(rule.get_policy())
 
 
 class AvailabilityZoneParam(Param):

@@ -74,13 +74,18 @@ def test_defaults_consistency():
     total_number_of_params = CFN_CONFIG_NUM_OF_PARAMS + len(CFN_CLI_RESERVED_PARAMS)
     assert_that(total_number_of_params).is_equal_to(template_num_of_params)
 
+    # The EC2IAMPoicies parameter is expected to differ by default from the default value in the
+    # CFN template. This is because CloudWatch logging is enabled by default, and the appropriate
+    # policy is added to this parameter in a transparent fashion.
+    ignored_params = CFN_CLI_RESERVED_PARAMS + ["EC2IAMPolicies"]
+
     cfn_params = [section_cfn_params.value for section_cfn_params in DefaultCfnParams]
     default_cfn_values = utils.merge_dicts(*cfn_params)
 
     # verify default parameter values used for tests with default values in CFN template
     pcluster_cfn_json = _get_pcluster_cfn_json()
     for param_key, param in pcluster_cfn_json["Parameters"].items():
-        if param_key not in CFN_CLI_RESERVED_PARAMS:
+        if param_key not in ignored_params:
             default_value = param.get("Default", None)
             if default_value:
                 assert_that(default_value, description=param_key).is_equal_to(default_cfn_values.get(param_key, None))
