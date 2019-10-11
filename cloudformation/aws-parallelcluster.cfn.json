@@ -1948,7 +1948,7 @@
                   {
                     "Ref": "AWS::StackName"
                   },
-                  " --resource=MasterServer --region=",
+                  " --resource=MasterServerWaitCondition --region=",
                   {
                     "Ref": "AWS::Region"
                   },
