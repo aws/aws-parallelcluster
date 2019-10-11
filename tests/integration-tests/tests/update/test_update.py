@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
 import time
 from collections import namedtuple
 
@@ -35,7 +36,7 @@ PClusterConfig = namedtuple(
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "slurm")
 @pytest.mark.usefixtures("os", "scheduler")
-def test_update(instance, region, pcluster_config_reader, clusters_factory, test_datadir):
+def test_update(instance, region, pcluster_config_reader, clusters_factory, test_datadir, os):
     """
     Test 'pcluster update' command.
 
@@ -69,6 +70,7 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory, test
     _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
     _test_s3_read_resource(region, cluster, updated_config.s3_read_resource)
     _test_s3_read_write_resource(region, cluster, updated_config.s3_read_write_resource)
+    _test_fsx_lustre_correctly_mounted(command_executor, "/fsx", os)
 
     # verify params that are NOT updated in OLD compute nodes
     compute_nodes = slurm_commands.get_compute_nodes()
@@ -158,6 +160,25 @@ def _add_compute_nodes(slurm_commands, number_of_nodes=1):
     )
 
     return [node for node in slurm_commands.get_compute_nodes() if node not in initial_compute_nodes]
+
+
+def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
+    logging.info("Testing fsx lustre is correctly mounted")
+    result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
+    assert_that(result.stdout).matches(r"[0-9\.]+@tcp:/fsx\s+3\.4T\s+{mount_dir}".format(mount_dir=mount_dir))
+
+    result = remote_command_executor.run_remote_command("cat /etc/fstab")
+    mount_options = {
+        "centos7": "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount,"
+        "x-systemd.requires=lnet.service",
+        "alinux": "defaults,_netdev,flock,user_xattr,noatime",
+    }
+
+    assert_that(result.stdout).matches(
+        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/fsx {mount_dir} lustre {mount_options} 0 0".format(
+            mount_dir=mount_dir, mount_options=mount_options[os] if os in mount_options else ""
+        )
+    )
 
 
 def _test_compute_instance_type(region, stack_name, compute_instance_type, host):
