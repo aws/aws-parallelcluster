@@ -277,10 +277,9 @@ class PclusterConfig(object):
         :param fail_on_absence: if true, the initialization will fail if the section doesn't exist in the file
         """
         section_type = section_definition.get("type")
-        section = section_type(
-            section_definition=section_definition, pcluster_config=self, section_label=section_label
-        ).from_file(config_parser, fail_on_absence)
+        section = section_type(section_definition=section_definition, pcluster_config=self, section_label=section_label)
         self.add_section(section)
+        section.from_file(config_parser, fail_on_absence)
 
     def __init_sections_from_cfn(self, cluster_name):
         try:

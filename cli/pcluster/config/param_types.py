@@ -180,8 +180,22 @@ class Param(object):
         return cfn_params
 
     def get_default_value(self):
-        """Get default value from the Param definition if there, None otherwise."""
-        return self.definition.get("default", None)
+        """
+        Get default value from the Param definition.
+
+        If the default value is a function, pass it the Section this parameter
+        is contained within. Otherwise, pass the literal value, defaulting to
+        None if not specified.
+        """
+        default = self.definition.get("default", None)
+        if callable(default):
+            # Assume that functions are used to set default values conditionally
+            # based on the value of other parameters within the same section.
+            # They are passed the Section object that they are a member of.
+            section = self.pcluster_config.get_section(self.section_key, self.section_label)
+            return default(section)
+        else:
+            return default
 
     def get_cfn_value(self):
         """
