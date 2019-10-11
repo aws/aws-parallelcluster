@@ -11,6 +11,7 @@
 from future.moves.collections import OrderedDict
 
 import functools
+import json
 import logging
 import re
 
@@ -396,6 +397,14 @@ class JsonParam(Param):
     def get_default_value(self):
         """Get default value from the Param definition, if there, {} otherwise."""
         return self.definition.get("default", {})
+
+    def get_string_value(self):
+        """Convert internal representation into JSON."""
+        return json.dumps(self.value)
+
+    def get_cfn_value(self):
+        """Convert parameter value into CFN value."""
+        return self.get_string_value()
 
 
 # ---------------------- custom Parameters ---------------------- #

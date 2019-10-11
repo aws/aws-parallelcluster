@@ -41,7 +41,7 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
             CLUSTER,
             "extra_json",
             {"cluster": {"cfn_scheduler_slots": "cores"}},
-            "{'cluster': {'cfn_scheduler_slots': 'cores'}}",
+            '{"cluster": {"cfn_scheduler_slots": "cores"}}',
         ),
     ],
 )
