@@ -690,9 +690,15 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("extra_json", None, {}, None),
         ("extra_json", "", {}, None),
         ("extra_json", "{}", {}, None),
-        ("extra_json", "{'test': 'test'}", {"test": "test"}, None),
+        ("extra_json", '{"test": "test"}', {"test": "test"}, None),
+        (
+            "extra_json",
+            "{'test': 'test'}",
+            {"test": "test"},
+            None,
+        ),  # WARNING it is considered a valid value by yaml.safe_load
         ("extra_json", "{'test': 'test'", None, "Error parsing JSON parameter"),
-        ("extra_json", "fake_value", "fake_value", None),  # WARNING it is considered a valid value by yaml.safe_load
+        ("extra_json", "fake_value", "fake_value", None),
         # TODO add regex for additional_cfn_template
         ("additional_cfn_template", None, None, None),
         ("additional_cfn_template", "", None, None),
@@ -808,7 +814,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "PreInstallArgs": '"one two"',
                     "PostInstallScript": "postinstall",
                     "PostInstallArgs": '"one two"',
-                    "ExtraJson": "{'cluster': {'cfn_scheduler_slots': 'cores'}}",
+                    "ExtraJson": '{"cluster": {"cfn_scheduler_slots": "cores"}}',
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
@@ -1008,7 +1014,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "PreInstallArgs": '"one two"',
                     "PostInstallScript": "postinstall",
                     "PostInstallArgs": '"one two"',
-                    "ExtraJson": "{'cluster': {'cfn_scheduler_slots': 'cores'}}",
+                    "ExtraJson": '{"cluster": {"cfn_scheduler_slots": "cores"}}',
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
