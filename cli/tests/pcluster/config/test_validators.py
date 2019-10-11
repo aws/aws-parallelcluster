@@ -53,7 +53,7 @@ def boto3_stubber_path():
 def test_cluster_validator(mocker, section_dict, expected_message):
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
+        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
     )
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
@@ -229,7 +229,7 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
 def test_scheduler_validator(mocker, region, expected_message):
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
+        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
     )
     # we need to set the region in the environment because it takes precedence respect of the config file
     os.environ["AWS_DEFAULT_REGION"] = region
