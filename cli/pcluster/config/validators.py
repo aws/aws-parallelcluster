@@ -569,7 +569,6 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     if param_value == "awsbatch":
         if pcluster_config.region in [
             "ap-northeast-3",
-            "eu-north-1",
             "cn-north-1",
             "cn-northwest-1",
             "us-gov-east-1",
