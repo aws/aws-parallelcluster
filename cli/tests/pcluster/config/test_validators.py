@@ -216,7 +216,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     [
         # validate awsbatch not supported regions
         ("ap-northeast-3", "scheduler is not supported in the .* region"),
-        ("eu-north-1", "scheduler is not supported in the .* region"),
         ("cn-north-1", "scheduler is not supported in the .* region"),
         ("cn-northwest-1", "scheduler is not supported in the .* region"),
         ("us-gov-east-1", "scheduler is not supported in the .* region"),
@@ -224,6 +223,7 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         # test some awsbatch supported regions
         ("eu-west-1", None),
         ("us-east-1", None),
+        ("eu-north-1", None),
     ],
 )
 def test_scheduler_validator(mocker, region, expected_message):
