@@ -155,13 +155,17 @@ class Param(object):
         section_name = _get_file_section_name(self.section_key, self.section_label)
         if self.value and self.value != self.get_default_value():
             _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, str(self.value))
+            config_parser.set(section_name, self.key, self.get_string_value())
         else:
             # remove parameter from config_parser if there
             try:
                 config_parser.remove_option(section_name, self.key)
             except NoSectionError:
                 pass
+
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return str(self.value)
 
     def to_cfn(self):
         """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
@@ -205,18 +209,9 @@ class CommaSeparatedParam(Param):
 
         return self
 
-    def to_file(self, config_parser):
-        """Set parameter in the config_parser in the right section."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value is not None and self.value != self.get_default_value():
-            _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, str(",".join(self.value)))
-        else:
-            # remove parameter from config_parser if there
-            try:
-                config_parser.remove_option(section_name, self.key)
-            except NoSectionError:
-                pass
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return str(",".join(self.value))
 
     def get_value_from_string(self, string_value):
         """Return internal representation starting from string/CFN value."""
@@ -310,18 +305,9 @@ class BoolParam(Param):
 
         return param_value
 
-    def to_file(self, config_parser):
-        """Set parameter in the config_parser in the right section."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value != self.get_default_value():
-            _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, self.get_cfn_value())
-        else:
-            # remove parameter from config_parser if there
-            try:
-                config_parser.remove_option(section_name, self.key)
-            except NoSectionError:
-                pass
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return "true" if self.value else "false"
 
     def get_cfn_value(self):
         """
@@ -329,8 +315,11 @@ class BoolParam(Param):
 
         Used when the parameter must go into a comma separated CFN parameter.
         """
-        param_value = self.get_default_value() if self.value is None else self.value
-        return "true" if param_value else "false"
+        return self.get_string_value()
+
+    def get_default_value(self):
+        """Get default value from the Param definition if there, False otherwise."""
+        return self.definition.get("default", False)
 
 
 class IntParam(Param):
