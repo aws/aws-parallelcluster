@@ -3760,7 +3760,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
@@ -3772,10 +3774,10 @@
                   "Effect": "Allow",
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
                     },
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
                     }
                   ],
                   "Sid": "S3BucketPolicy"
