@@ -198,11 +198,10 @@ def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
 
     if param_value:
         # Check to see if cfn_scheduler_slots is set
-        extra_json = pcluster_config.get_param_value("extra_json")
-        if extra_json:
-            if extra_json.get("cluster"):
-                if extra_json.get("cluster").get("cfn_scheduler_slots"):
-                    errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
+        cluster_section = pcluster_config.get_section("cluster")
+        extra_json = cluster_section.get_param_value("extra_json")
+        if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
+            errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
 
     return errors, warnings
 

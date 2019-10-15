@@ -141,7 +141,7 @@ class Param(object):
         """Call validation functions for the parameter, if there."""
         for validation_func in self.definition.get("validators", []):
             if self.value is None:
-                LOGGER.debug("Configuration parameter '%s' has not a value", self.key)
+                LOGGER.debug("Configuration parameter '%s' has no value", self.key)
             else:
                 errors, warnings = validation_func(self.key, self.value, self.pcluster_config)
                 if errors:
@@ -704,23 +704,25 @@ class DisableHyperThreadingParam(BoolParam):
 
     def from_cfn_params(self, cfn_params):
         """Initialize param value by parsing the right CFN input."""
-        cfn_converter = self.definition.get("cfn_param_mapping", None)
-        if cfn_converter and cfn_params:
-            cores = get_cfn_param(cfn_params, cfn_converter)
-            if cores and cores != "NONE":
-                cores = int(cores.split(",")[0])
-                self.value = cores > 0
+        try:
+            cfn_converter = self.definition.get("cfn_param_mapping", None)
+            if cfn_converter and cfn_params:
+                cores = get_cfn_param(cfn_params, cfn_converter)
+                if cores and cores != "NONE":
+                    cores = int(cores.split(",")[0])
+                    self.value = cores > 0
+        except ValueError or IndexError:
+            warn("Unable to parse Cfn Parameter Cores = {0}".format(cfn_params))
 
         return self
 
     def to_cfn(self):
         """
-        Return a tuple (cores_master,cores_compute) if disable_hyperthreading = true.
+        Define the Cores CFN parameter as a tuple (cores_master,cores_compute) if disable_hyperthreading = true.
 
         :return: string (cores_master,cores_compute)
         """
-
-        cfn_params = {}
+        cfn_params = {self.definition.get("cfn_param_mapping"): "-1,-1"}
 
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if cluster_config.get_param_value("disable_hyperthreading"):
@@ -732,15 +734,14 @@ class DisableHyperThreadingParam(BoolParam):
 
             if master_cores < 0 or compute_cores < 0:
                 error(
-                    "For disable_hyperthreading, unable to get number of vcpus for {0} instance. Please open an issue {1}".format(
+                    "For disable_hyperthreading, unable to get number of vcpus for {0} instance. "
+                    "Please open an issue {1}".format(
                         master_instance_type if master_cores < 0 else compute_instance_type,
                         "https://github.com/aws/aws-parallelcluster/issues",
                     )
                 )
             cfn_params.update({self.definition.get("cfn_param_mapping"): "{0},{1}".format(master_cores, compute_cores)})
 
-        else:
-            cfn_params.update({self.definition.get("cfn_param_mapping"): "-1,-1"})
         return cfn_params
 
 

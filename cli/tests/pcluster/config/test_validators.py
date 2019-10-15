@@ -476,6 +476,33 @@ def test_fsx_storage_capacity_validator(mocker, section_dict, expected_message):
     "section_dict, expected_message",
     [
         (
+            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": "vcpus"}}'},
+            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
+        ),
+        (
+            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": "cores"}}'},
+            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
+        ),
+        (
+            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": 3}}'},
+            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
+        ),
+        ({"disable_hyperthreading": True, "extra_json": '{"cluster": {"other_param": "fake_value"}}'}, None),
+        ({"disable_hyperthreading": True}, None),
+        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": "vcpus"}}'}, None),
+        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": "cores"}}'}, None),
+        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": 3}}'}, None),
+    ],
+)
+def test_disable_hyperthreading_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        (
             {"imported_file_chunk_size": 0, "import_path": "test-import"},
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),

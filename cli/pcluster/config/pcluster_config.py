@@ -342,57 +342,61 @@ class PclusterConfig(object):
             warn("Unable to check AWS account capacity. Skipping limits validation")
             return
 
+        # Check for insufficient Account capacity
+        compute_subnet = vpc_section.get_param_value("compute_subnet_id")
+        master_subnet = vpc_section.get_param_value("master_subnet_id")
+        if not compute_subnet:
+            compute_subnet = master_subnet
+
+        # Initialize CpuOptions
+        disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
+        master_vcpus = get_instance_vcpus(self.region, master_instance_type)
+        compute_vcpus = get_instance_vcpus(self.region, compute_instance_type)
+        master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
+        compute_cpu_options = {"CoreCount": compute_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
+
+        # Initialize Placement Group Logic
+        placement_group = cluster_section.get_param_value("placement_group")
+        placement = cluster_section.get_param_value("placement")
+        master_placement_group = (
+            {"GroupName": placement_group}
+            if placement_group not in [None, "NONE", "DYNAMIC"] and placement == "cluster"
+            else {}
+        )
+        compute_placement_group = (
+            {"GroupName": placement_group} if placement_group not in [None, "NONE", "DYNAMIC"] else {}
+        )
+
+        # Test Master Instance Configuration
+        self.__ec2_run_instance(
+            max_size,
+            InstanceType=master_instance_type,
+            MinCount=1,
+            MaxCount=1,
+            ImageId=get_latest_alinux_ami_id(),
+            SubnetId=master_subnet,
+            CpuOptions=master_cpu_options,
+            Placement=master_placement_group,
+            DryRun=True,
+        )
+
+        # Test Compute Instances Configuration
+        self.__ec2_run_instance(
+            max_size,
+            InstanceType=compute_instance_type,
+            MinCount=max_size,
+            MaxCount=max_size,
+            ImageId=get_latest_alinux_ami_id(),
+            SubnetId=compute_subnet,
+            CpuOptions=compute_cpu_options,
+            Placement=compute_placement_group,
+            DryRun=True,
+        )
+
+    def __ec2_run_instance(self, max_size, **kwargs):
+        """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
-            # Check for insufficient Account capacity
-            compute_subnet = vpc_section.get_param_value("compute_subnet_id")
-            master_subnet = vpc_section.get_param_value("master_subnet_id")
-            if not compute_subnet:
-                compute_subnet = master_subnet
-
-            # Initialize CpuOptions
-            disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
-            master_vcpus = get_instance_vcpus(self.region, master_instance_type)
-            compute_vcpus = get_instance_vcpus(self.region, compute_instance_type)
-            master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-            compute_cpu_options = (
-                {"CoreCount": compute_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-            )
-
-            # Initialize Placement Group Logic
-            placement_group = cluster_section.get_param_value("placement_group")
-            placement = cluster_section.get_param_value("placement")
-            master_placement_group = (
-                {"GroupName": placement_group}
-                if placement_group not in [None, "NONE", "DYNAMIC"] and placement == "cluster"
-                else {}
-            )
-            compute_placement_group = (
-                {"GroupName": placement_group} if placement_group not in [None, "NONE", "DYNAMIC"] else {}
-            )
-
-            # Test Master Instance Configuration
-            boto3.client("ec2").run_instances(
-                InstanceType=master_instance_type,
-                MinCount=1,
-                MaxCount=1,
-                ImageId=get_latest_alinux_ami_id(),
-                SubnetId=master_subnet,
-                CpuOptions=master_cpu_options,
-                Placement=master_placement_group,
-                DryRun=True,
-            )
-
-            # Test Compute Instances Configuration
-            boto3.client("ec2").run_instances(
-                InstanceType=compute_instance_type,
-                MinCount=max_size,
-                MaxCount=max_size,
-                ImageId=get_latest_alinux_ami_id(),
-                SubnetId=compute_subnet,
-                CpuOptions=compute_cpu_options,
-                Placement=compute_placement_group,
-                DryRun=True,
-            )
+            boto3.client("ec2").run_instances(**kwargs)
         except ClientError as e:
             code = e.response.get("Error").get("Code")
             message = e.response.get("Error").get("Message")
