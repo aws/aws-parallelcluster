@@ -321,7 +321,7 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "Cores": {
-      "Description": "Comma seperated string of [master cores],[compute cores]. If set to -1, no CpuOptions are set.",
+      "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 no CpuOptions are set.",
       "Type": "CommaDelimitedList",
       "Default": "-1,-1"
     },
@@ -1669,12 +1669,7 @@
                   "Fn::Select": [
                     "0",
                     {
-                      "Fn::Split": [
-                        ",",
-                        {
-                          "Ref": "Cores"
-                        }
-                      ]
+                      "Ref": "Cores"
                     }
                   ]
                 },
@@ -2229,12 +2224,7 @@
                           "Fn::Select": [
                             "0",
                             {
-                              "Fn::Split": [
-                                ",",
-                                {
-                                  "Ref": "Cores"
-                                }
-                              ]
+                              "Ref": "Cores"
                             }
                           ]
                         },
@@ -2730,12 +2720,7 @@
                   "Fn::Select": [
                     "1",
                     {
-                      "Fn::Split": [
-                        ",",
-                        {
-                          "Ref": "Cores"
-                        }
-                      ]
+                      "Ref": "Cores"
                     }
                   ]
                 },
@@ -3199,12 +3184,7 @@
                           "Fn::Select": [
                             "1",
                             {
-                              "Fn::Split": [
-                                ",",
-                                {
-                                  "Ref": "Cores"
-                                }
-                              ]
+                              "Ref": "Cores"
                             }
                           ]
                         },

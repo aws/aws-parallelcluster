@@ -253,7 +253,6 @@ def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_
                 "VolumeIOPS": "100, 100, 100, 100, 100",
                 "VolumeSize": "20, 20, 20, 20, 20",
                 "VolumeType": "gp2, gp2, gp2, gp2, gp2",
-                "Cores": "-1,-1",
             },
             utils.merge_dicts(
                 DefaultDict["cluster"].value,
@@ -798,6 +797,11 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("tags", "{}", {}, None),
         ("tags", "{'test': 'test'}", {"test": "test"}, None),
         ("tags", "{'test': 'test'", None, "Error parsing JSON parameter"),
+        ("disable_hyperthreading", None, False, None),
+        ("disable_hyperthreading", "", False, None),
+        ("disable_hyperthreading", "NONE", None, "must be a Boolean"),
+        ("disable_hyperthreading", "true", True, None),
+        ("disable_hyperthreading", "false", False, None),
         # TODO add regex for custom_chef_cookbook
         ("custom_chef_cookbook", None, None, None),
         ("custom_chef_cookbook", "", None, None),
@@ -905,6 +909,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
+                    "Cores": "1,1",
                     # template_url = template
                     # tags = {"test": "test"}
                 },
@@ -1141,4 +1146,5 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
         "pcluster.config.validators.get_supported_features",
         return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},
     )
+    mocker.patch("pcluster.config.param_types.get_instance_vcpus", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)

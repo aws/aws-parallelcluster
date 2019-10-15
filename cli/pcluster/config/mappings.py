@@ -32,6 +32,7 @@ from pcluster.config.param_types import (
 from pcluster.config.validators import (
     cluster_validator,
     compute_instance_type_validator,
+    disable_hyperthreading_validator,
     ec2_ami_validator,
     ec2_ebs_snapshot_validator,
     ec2_iam_policies_validator,
@@ -364,222 +365,230 @@ CLUSTER = {
     "key": "cluster",
     "default_label": "default",
     "validators": [cluster_validator],
-    "params": {
-        "key_name": {
-            "cfn_param_mapping": "KeyName",
-            "validators": [ec2_key_pair_validator],
-        },
-        "base_os": {
-            "default": "alinux",
-            "cfn_param_mapping": "BaseOS",
-            "allowed_values": ["alinux", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
-        },
-        "scheduler": {
-            "default": "sge",
-            "cfn_param_mapping": "Scheduler",
-            "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
-            "validators": [scheduler_validator],
-        },
-        "placement_group": {
-            "cfn_param_mapping": "PlacementGroup",
-            "validators": [ec2_placement_group_validator],
-        },
-        "placement": {
-            "default": "compute",
-            "cfn_param_mapping": "Placement",
-            "allowed_values": ["cluster", "compute"],
-        },
-        # Master
-        "master_instance_type": {
-            "default": "t2.micro",
-            "cfn_param_mapping": "MasterInstanceType",
-            "validators": [ec2_instance_type_validator],
-        },
-        "master_root_volume_size": {
-            "type": IntParam,
-            "default": 20,
-            "allowed_values": ALLOWED_VALUES["greater_than_20"],
-            "cfn_param_mapping": "MasterRootVolumeSize",
-        },
-        # Compute fleet
-        "compute_instance_type": {
-            "default": "t2.micro",
-            "cfn_param_mapping": "ComputeInstanceType",
-            "validators": [compute_instance_type_validator],
-        },
-        "compute_root_volume_size": {
-            "type": IntParam,
-            "default": 20,
-            "allowed_values": ALLOWED_VALUES["greater_than_20"],
-            "cfn_param_mapping": "ComputeRootVolumeSize",
-        },
-        "initial_queue_size": {
-            "type": QueueSizeParam,
-            "default": 0,
-            "cfn_param_mapping": "DesiredSize",  # TODO verify the update case
-        },
-        "max_queue_size": {
-            "type": QueueSizeParam,
-            "default": 10,
-            "cfn_param_mapping": "MaxSize",
-        },
-        "maintain_initial_size": {
-            "type": MaintainInitialSizeParam,
-            "default": False,
-            "cfn_param_mapping": "MinSize",
-        },
-        "min_vcpus": {
-            "type": QueueSizeParam,
-            "default": 0,
-            "cfn_param_mapping": "MinSize",
-        },
-        "desired_vcpus": {
-            "type": QueueSizeParam,
-            "default": 4,
-            "cfn_param_mapping": "DesiredSize",
-        },
-        "max_vcpus": {
-            "type": QueueSizeParam,
-            "default": 10,
-            "cfn_param_mapping": "MaxSize",
-        },
-        "cluster_type": {
-            "default": "ondemand",
-            "allowed_values": ["ondemand", "spot"],
-            "cfn_param_mapping": "ClusterType",
-        },
-        "spot_price": {
-            "type": SpotPriceParam,
-            "default": 0.0,
-            "cfn_param_mapping": "SpotPrice",
-        },
-        "spot_bid_percentage": {
-            "type": SpotBidPercentageParam,
-            "default": 0,
-            "cfn_param_mapping": "SpotPrice",
-            "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
-        },
-        # Access and networking
-        "proxy_server": {
-            "cfn_param_mapping": "ProxyServer",
-        },
-        "ec2_iam_role": {
-            "cfn_param_mapping": "EC2IAMRoleName",
-            "validators": [ec2_iam_role_validator],  # TODO add regex
-        },
-        "additional_iam_policies": {
-            "type": AdditionalIamPoliciesParam,
-            "cfn_param_mapping": "EC2IAMPolicies",
-            "validators": [ec2_iam_policies_validator],
-        },
-        "s3_read_resource": {
-            "cfn_param_mapping": "S3ReadResource",  # TODO add validator
-        },
-        "s3_read_write_resource": {
-            "cfn_param_mapping": "S3ReadWriteResource",  # TODO add validator
-        },
-        "disable_hyperthreading": {
-            "type": DisableHyperThreadingParam,
-            "default": False,
-            "cfn_param_mapping": "Cores",
-        },
-        # Customization
-        "template_url": {
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        "shared_dir": {
-            "type": SharedDirParam,
-            "allowed_values": ALLOWED_VALUES["file_path"],
-            "cfn_param_mapping": "SharedDir",
-            "default": "/shared",
-        },
-        "enable_efa": {
-            "allowed_values": ["compute"],
-            "cfn_param_mapping": "EFA",
-            "validators": [efa_validator],
-        },
-        "ephemeral_dir": {
-            "allowed_values": ALLOWED_VALUES["file_path"],
-            "default": "/scratch",
-            "cfn_param_mapping": "EphemeralDir",
-        },
-        "encrypted_ephemeral": {
-            "default": False,
-            "type": BoolParam,
-            "cfn_param_mapping": "EncryptedEphemeral",
-        },
-        "custom_ami": {
-            "cfn_param_mapping": "CustomAMI",
-            "allowed_values": ALLOWED_VALUES["ami_id"],
-            "validators": [ec2_ami_validator],
-        },
-        "pre_install": {
-            "cfn_param_mapping": "PreInstallScript",
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        "pre_install_args": {
-            "cfn_param_mapping": "PreInstallArgs",
-        },
-        "post_install": {
-            "cfn_param_mapping": "PostInstallScript",
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        "post_install_args": {
-            "cfn_param_mapping": "PostInstallArgs",
-        },
-        "extra_json": {
-            "type": JsonParam,
-            "cfn_param_mapping": "ExtraJson",
-        },
-        "additional_cfn_template": {
-            "cfn_param_mapping": "AdditionalCfnTemplate",
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        "tags": {
-            "type": JsonParam,
-        },
-        "custom_chef_cookbook": {
-            "cfn_param_mapping": "CustomChefCookbook",
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        "custom_awsbatch_template_url": {
-            "cfn_param_mapping": "CustomAWSBatchTemplateURL",
-            # TODO add regex
-            "validators": [url_validator],
-        },
-        # Settings
-        "scaling_settings": {
-            "type": SettingsParam,
-            "default": "default",  # set a value to create always the internal structure for the scaling section
-            "referred_section": SCALING,
-        },
-        "vpc_settings": {
-            "type": SettingsParam,
-            "default": "default",  # set a value to create always the internal structure for the vpc section
-            "referred_section": VPC,
-        },
-        "ebs_settings": {
-            "type": EBSSettingsParam,
-            "referred_section": EBS,
-        },
-        "efs_settings": {
-            "type": SettingsParam,
-            "referred_section": EFS,
-        },
-        "raid_settings": {
-            "type": SettingsParam,
-            "referred_section": RAID,
-        },
-        "fsx_settings": {
-            "type": SettingsParam,
-            "referred_section": FSX,
-        },
-    }
+    "params": OrderedDict(
+        [  # OrderedDict due to conditional defaults values
+            ("key_name", {
+                "cfn_param_mapping": "KeyName",
+                "validators": [ec2_key_pair_validator],
+            }),
+            ("base_os", {
+                "default": "alinux",
+                "cfn_param_mapping": "BaseOS",
+                "allowed_values": ["alinux", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
+            }),
+            ("scheduler", {
+                "default": "sge",
+                "cfn_param_mapping": "Scheduler",
+                "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
+                "validators": [scheduler_validator],
+            }),
+            ("placement_group", {
+                "cfn_param_mapping": "PlacementGroup",
+                "validators": [ec2_placement_group_validator],
+            }),
+            ("placement", {
+                "default": "compute",
+                "cfn_param_mapping": "Placement",
+                "allowed_values": ["cluster", "compute"],
+            }),
+            # Master
+            ("master_instance_type", {
+                "default": "t2.micro",
+                "cfn_param_mapping": "MasterInstanceType",
+                "validators": [ec2_instance_type_validator],
+            }),
+            ("master_root_volume_size", {
+                "type": IntParam,
+                "default": 20,
+                "allowed_values": ALLOWED_VALUES["greater_than_20"],
+                "cfn_param_mapping": "MasterRootVolumeSize",
+            }),
+            # Compute fleet
+            ("compute_instance_type", {
+                "default":
+                    lambda section:
+                        "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
+                "cfn_param_mapping": "ComputeInstanceType",
+                "validators": [compute_instance_type_validator],
+            }),
+            ("compute_root_volume_size", {
+                "type": IntParam,
+                "default": 20,
+                "allowed_values": ALLOWED_VALUES["greater_than_20"],
+                "cfn_param_mapping": "ComputeRootVolumeSize",
+            }),
+            ("initial_queue_size", {
+                "type": QueueSizeParam,
+                "default": 0,
+                "cfn_param_mapping": "DesiredSize",  # TODO verify the update case
+            }),
+            ("max_queue_size", {
+                "type": QueueSizeParam,
+                "default": 10,
+                "cfn_param_mapping": "MaxSize",
+            }),
+            ("maintain_initial_size", {
+                "type": MaintainInitialSizeParam,
+                "default": False,
+                "cfn_param_mapping": "MinSize",
+            }),
+            ("min_vcpus", {
+                "type": QueueSizeParam,
+                "default": 0,
+                "cfn_param_mapping": "MinSize",
+            }),
+            ("desired_vcpus", {
+                "type": QueueSizeParam,
+                "default": 4,
+                "cfn_param_mapping": "DesiredSize",
+            }),
+            ("max_vcpus", {
+                "type": QueueSizeParam,
+                "default": 10,
+                "cfn_param_mapping": "MaxSize",
+            }),
+            ("cluster_type", {
+                "default": "ondemand",
+                "allowed_values": ["ondemand", "spot"],
+                "cfn_param_mapping": "ClusterType",
+            }),
+            ("spot_price", {
+                "type": SpotPriceParam,
+                "default": 0.0,
+                "cfn_param_mapping": "SpotPrice",
+            }),
+            ("spot_bid_percentage", {
+                "type": SpotBidPercentageParam,
+                "default": 0,
+                "cfn_param_mapping": "SpotPrice",
+                "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
+            }),
+            # Access and networking
+            ("proxy_server", {
+                "cfn_param_mapping": "ProxyServer",
+            }),
+            ("ec2_iam_role", {
+                "cfn_param_mapping": "EC2IAMRoleName",
+                "validators": [ec2_iam_role_validator],  # TODO add regex
+            }),
+            ("additional_iam_policies", {
+                "type": AdditionalIamPoliciesParam,
+                "cfn_param_mapping": "EC2IAMPolicies",
+                "validators": [ec2_iam_policies_validator],
+            }),
+            ("s3_read_resource", {
+                "cfn_param_mapping": "S3ReadResource",  # TODO add validator
+            }),
+            ("s3_read_write_resource", {
+                "cfn_param_mapping": "S3ReadWriteResource",  # TODO add validator
+            }),
+            (
+                "disable_hyperthreading",
+                {
+                    "type": DisableHyperThreadingParam,
+                    "default": False,
+                    "cfn_param_mapping": "Cores",
+                    "validators": [disable_hyperthreading_validator],
+                },
+            ),
+            # Customization
+            ("template_url", {
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            ("shared_dir", {
+                "type": SharedDirParam,
+                "allowed_values": ALLOWED_VALUES["file_path"],
+                "cfn_param_mapping": "SharedDir",
+                "default": "/shared",
+            }),
+            ("enable_efa", {
+                "allowed_values": ["compute"],
+                "cfn_param_mapping": "EFA",
+                "validators": [efa_validator],
+            }),
+            ("ephemeral_dir", {
+                "allowed_values": ALLOWED_VALUES["file_path"],
+                "default": "/scratch",
+                "cfn_param_mapping": "EphemeralDir",
+            }),
+            ("encrypted_ephemeral", {
+                "default": False,
+                "type": BoolParam,
+                "cfn_param_mapping": "EncryptedEphemeral",
+            }),
+            ("custom_ami", {
+                "cfn_param_mapping": "CustomAMI",
+                "allowed_values": ALLOWED_VALUES["ami_id"],
+                "validators": [ec2_ami_validator],
+            }),
+            ("pre_install", {
+                "cfn_param_mapping": "PreInstallScript",
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            ("pre_install_args", {
+                "cfn_param_mapping": "PreInstallArgs",
+            }),
+            ("post_install", {
+                "cfn_param_mapping": "PostInstallScript",
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            ("post_install_args", {
+                "cfn_param_mapping": "PostInstallArgs",
+            }),
+            ("extra_json", {
+                "type": JsonParam,
+                "cfn_param_mapping": "ExtraJson",
+            }),
+            ("additional_cfn_template", {
+                "cfn_param_mapping": "AdditionalCfnTemplate",
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            ("tags", {
+                "type": JsonParam,
+            }),
+            ("custom_chef_cookbook", {
+                "cfn_param_mapping": "CustomChefCookbook",
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            ("custom_awsbatch_template_url", {
+                "cfn_param_mapping": "CustomAWSBatchTemplateURL",
+                # TODO add regex
+                "validators": [url_validator],
+            }),
+            # Settings
+            ("scaling_settings", {
+                "type": SettingsParam,
+                "default": "default",  # set a value to create always the internal structure for the scaling section
+                "referred_section": SCALING,
+            }),
+            ("vpc_settings", {
+                "type": SettingsParam,
+                "default": "default",  # set a value to create always the internal structure for the vpc section
+                "referred_section": VPC,
+            }),
+            ("ebs_settings", {
+                "type": EBSSettingsParam,
+                "referred_section": EBS,
+            }),
+            ("efs_settings", {
+                "type": SettingsParam,
+                "referred_section": EFS,
+            }),
+            ("raid_settings", {
+                "type": SettingsParam,
+                "referred_section": RAID,
+            }),
+            ("fsx_settings", {
+                "type": SettingsParam,
+                "referred_section": FSX,
+            }),
+        ]
+    )
 }
 
 # fmt: on
