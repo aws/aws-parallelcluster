@@ -53,7 +53,7 @@ def boto3_stubber_path():
 def test_cluster_validator(mocker, section_dict, expected_message):
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
+        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
     )
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
@@ -216,7 +216,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     [
         # validate awsbatch not supported regions
         ("ap-northeast-3", "scheduler is not supported in the .* region"),
-        ("eu-north-1", "scheduler is not supported in the .* region"),
         ("cn-north-1", "scheduler is not supported in the .* region"),
         ("cn-northwest-1", "scheduler is not supported in the .* region"),
         ("us-gov-east-1", "scheduler is not supported in the .* region"),
@@ -224,12 +223,13 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         # test some awsbatch supported regions
         ("eu-west-1", None),
         ("us-east-1", None),
+        ("eu-north-1", None),
     ],
 )
 def test_scheduler_validator(mocker, region, expected_message):
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
+        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
     )
     # we need to set the region in the environment because it takes precedence respect of the config file
     os.environ["AWS_DEFAULT_REGION"] = region
@@ -456,9 +456,14 @@ def test_fsx_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"),
+        ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB"),
+        ({"storage_capacity": 1200}, None),
+        ({"storage_capacity": 2400}, None),
         ({"storage_capacity": 3600}, None),
-        ({"storage_capacity": 3601}, "Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB"),
+        (
+            {"storage_capacity": 3601},
+            "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB",
+        ),
         ({"storage_capacity": 7200}, None),
     ],
 )

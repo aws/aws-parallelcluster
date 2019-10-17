@@ -11,6 +11,7 @@
 from future.moves.collections import OrderedDict
 
 import functools
+import json
 import logging
 import re
 
@@ -155,13 +156,17 @@ class Param(object):
         section_name = _get_file_section_name(self.section_key, self.section_label)
         if self.value and self.value != self.get_default_value():
             _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, str(self.value))
+            config_parser.set(section_name, self.key, self.get_string_value())
         else:
             # remove parameter from config_parser if there
             try:
                 config_parser.remove_option(section_name, self.key)
             except NoSectionError:
                 pass
+
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return str(self.value)
 
     def to_cfn(self):
         """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
@@ -175,8 +180,22 @@ class Param(object):
         return cfn_params
 
     def get_default_value(self):
-        """Get default value from the Param definition if there, None otherwise."""
-        return self.definition.get("default", None)
+        """
+        Get default value from the Param definition.
+
+        If the default value is a function, pass it the Section this parameter
+        is contained within. Otherwise, pass the literal value, defaulting to
+        None if not specified.
+        """
+        default = self.definition.get("default", None)
+        if callable(default):
+            # Assume that functions are used to set default values conditionally
+            # based on the value of other parameters within the same section.
+            # They are passed the Section object that they are a member of.
+            section = self.pcluster_config.get_section(self.section_key, self.section_label)
+            return default(section)
+        else:
+            return default
 
     def get_cfn_value(self):
         """
@@ -205,18 +224,9 @@ class CommaSeparatedParam(Param):
 
         return self
 
-    def to_file(self, config_parser):
-        """Set parameter in the config_parser in the right section."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value is not None and self.value != self.get_default_value():
-            _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, str(",".join(self.value)))
-        else:
-            # remove parameter from config_parser if there
-            try:
-                config_parser.remove_option(section_name, self.key)
-            except NoSectionError:
-                pass
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return str(",".join(self.value))
 
     def get_value_from_string(self, string_value):
         """Return internal representation starting from string/CFN value."""
@@ -310,18 +320,9 @@ class BoolParam(Param):
 
         return param_value
 
-    def to_file(self, config_parser):
-        """Set parameter in the config_parser in the right section."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value != self.get_default_value():
-            _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, self.get_cfn_value())
-        else:
-            # remove parameter from config_parser if there
-            try:
-                config_parser.remove_option(section_name, self.key)
-            except NoSectionError:
-                pass
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return "true" if self.value else "false"
 
     def get_cfn_value(self):
         """
@@ -329,8 +330,11 @@ class BoolParam(Param):
 
         Used when the parameter must go into a comma separated CFN parameter.
         """
-        param_value = self.get_default_value() if self.value is None else self.value
-        return "true" if param_value else "false"
+        return self.get_string_value()
+
+    def get_default_value(self):
+        """Get default value from the Param definition if there, False otherwise."""
+        return self.definition.get("default", False)
 
 
 class IntParam(Param):
@@ -407,6 +411,14 @@ class JsonParam(Param):
     def get_default_value(self):
         """Get default value from the Param definition, if there, {} otherwise."""
         return self.definition.get("default", {})
+
+    def get_string_value(self):
+        """Convert internal representation into JSON."""
+        return json.dumps(self.value)
+
+    def get_cfn_value(self):
+        """Convert parameter value into CFN value."""
+        return self.get_string_value()
 
 
 # ---------------------- custom Parameters ---------------------- #

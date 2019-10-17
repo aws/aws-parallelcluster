@@ -184,8 +184,10 @@ def fsx_storage_capacity_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    if int(param_value) % 3600 != 0 or int(param_value) < 0:
-        errors.append("Capacity for FSx lustre filesystem, minimum of 3,600 GB, increments of 3,600 GB")
+    if int(param_value) > 0 and not (
+        int(param_value) == 1200 or int(param_value) == 2400 or int(param_value) % 3600 == 0
+    ):
+        errors.append("Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB")
 
     return errors, warnings
 
@@ -213,7 +215,7 @@ def efa_validator(param_key, param_value, pcluster_config):
             "to one of the following values : {1}".format(param_value, allowed_instances)
         )
 
-    allowed_oses = ["alinux", "centos7", "ubuntu1604"]
+    allowed_oses = ["alinux", "centos7", "ubuntu1604", "ubuntu1804"]
     if cluster_section.get_param_value("base_os") not in allowed_oses:
         errors.append(
             "When using 'enable_efa = {0}' it is required to set the 'base_os' parameter "
@@ -567,7 +569,6 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     if param_value == "awsbatch":
         if pcluster_config.region in [
             "ap-northeast-3",
-            "eu-north-1",
             "cn-north-1",
             "cn-northwest-1",
             "us-gov-east-1",
