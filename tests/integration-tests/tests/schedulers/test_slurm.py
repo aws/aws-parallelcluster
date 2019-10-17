@@ -54,7 +54,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 18.08.6-2")
+    assert_that(version).is_equal_to("slurm 19.05.3-2")
 
 
 def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name):
@@ -120,18 +120,19 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
     slurm_commands = SlurmCommands(remote_command_executor)
     result = slurm_commands.submit_command("sleep 1000", nodes=max_queue_size + 1)
     max_nodes_job_id = slurm_commands.assert_job_submitted(result.stdout)
-    result = remote_command_executor.run_remote_command("sbatch -N 1 --wrap='sleep 1' --cpus-per-task 5")
-    max_cpu_job_id = slurm_commands.assert_job_submitted(result.stdout)
 
+    # Check cpu limit job is rejected at submission
+    result = remote_command_executor.run_remote_command(
+        "sbatch -N 1 --wrap='sleep 1' --cpus-per-task 5", raise_on_error=False
+    )
+    assert_that(result.stdout).contains(
+        "sbatch: error: Batch job submission failed: Requested node configuration is not available"
+    )
     # Check we are not scaling
     time.sleep(60)
     assert_asg_desired_capacity(region, asg_name, expected=0)
     assert_that(_get_job_info(remote_command_executor, max_nodes_job_id)).contains(
         "JobState=PENDING Reason=PartitionNodeLimit"
-    )
-    assert_that(_get_job_info(remote_command_executor, max_cpu_job_id)).contains(
-        "JobState=PENDING Reason=Nodes_required_for_job_are_DOWN,_DRAINED"
-        "_or_reserved_for_jobs_in_higher_priority_partitions"
     )
 
 
