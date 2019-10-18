@@ -924,6 +924,7 @@ def create_ami(args):
             "AMI_NAME_PREFIX": args.custom_ami_name_prefix,
             "AWS_VPC_ID": vpc_id,
             "AWS_SUBNET_ID": subnet_id,
+            "ASSOCIATE_PUBLIC_IP": "true" if args.associate_public_ip else "false",
         }
 
         aws_section = pcluster_config.get_section("aws")
