@@ -355,6 +355,13 @@ Variables substituted::
         dest="custom_ami_cookbook",
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
     )
+    pami.add_argument(
+        "--no-public-ip",
+        dest="associate_public_ip",
+        action="store_false",
+        default=True,
+        help="Do not associate public IP to the Packer instance. Defaults to associate public ip",
+    )
     _addarg_config(pami)
     pami_group1 = pami.add_argument_group("Build AMI by using VPC settings from configuration file")
     pami_group1.add_argument(
