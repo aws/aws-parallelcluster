@@ -132,9 +132,7 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "ecs-tasks.${S3Url}"
-                }
+                "Service": "ecs-tasks.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
@@ -197,9 +195,7 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "batch.${S3Url}"
-                }
+                "Service": "batch.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
@@ -338,9 +334,7 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "spotfleet.${S3Url}"
-                }
+                "Service": "spotfleet.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
@@ -709,11 +703,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "codebuild.${S3Url}"
-                  }
-                ]
+                "Service": "codebuild.amazonaws.com"
               }
             }
           ]
@@ -772,11 +762,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "lambda.${S3Url}"
-                  }
-                ]
+                "Service": "lambda.amazonaws.com"
               }
             }
           ],
@@ -866,11 +852,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "lambda.${S3Url}"
-                  }
-                ]
+                "Service": "lambda.amazonaws.com"
               }
             }
           ],
@@ -945,9 +927,7 @@
             "Arn"
           ]
         },
-        "Principal": {
-          "Fn::Sub": "events.${S3Url}"
-        },
+        "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
             "CodeBuildNotificationRule",
