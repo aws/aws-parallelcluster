@@ -27,7 +27,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 
-distros = OrderedDict(
+DISTROS = OrderedDict(
     [
         ("alinux", "amzn"),
         ("centos6", "centos6"),
@@ -86,7 +86,7 @@ def populate_amis_json(amis_json, images, region_name):
     if images:
         amis = {}
         for image in images.get("Images"):
-            for key, value in distros.items():
+            for key, value in DISTROS.items():
                 if value in image.get("Name"):
                     amis[key] = image.get("ImageId")
         if len(amis) == 0:
@@ -121,7 +121,7 @@ def get_images_ec2_credential(filters, main_region, credential):
         )
 
         images = ec2.describe_images(Owners=[credential_owner], Filters=filters)
-        return images
+        return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(credential_region))
         pass
@@ -131,15 +131,29 @@ def get_images_ec2(filters, owner, region_name):
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
         images = ec2.describe_images(Owners=[owner], Filters=filters)
-        return images
+        return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(region_name))
         pass
 
 
+def get_latest_images(images):
+    # filter for the latest image per OS
+    images_filtered = {"Images": []}
+    for key, value in DISTROS.items():
+        ami_filtered_and_sorted = sorted(
+            filter(lambda ami: "-{0}-".format(value) in ami["Name"], images["Images"]),
+            key=lambda ami: ami["CreationDate"],
+            reverse=True,
+        )
+        if ami_filtered_and_sorted:
+            images_filtered["Images"].append(ami_filtered_and_sorted[0])
+    return images_filtered
+
+
 def convert_json_to_txt(amis_json):
     amis_txt = ""
-    for key, value in distros.items():
+    for key, value in DISTROS.items():
         amis_txt += "# " + key + "\n"
         for region, amis in amis_json.items():
             if key in amis:
