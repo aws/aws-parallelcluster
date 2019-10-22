@@ -3742,22 +3742,7 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  {
-                    "Fn::Sub": [
-                      "lambda.${s3_url}",
-                      {
-                        "s3_url": {
-                          "Fn::FindInMap": [
-                            "Partition2Url",
-                            {
-                              "Ref": "AWS::Partition"
-                            },
-                            "url"
-                          ]
-                        }
-                      }
-                    ]
-                  }
+                  "lambda.amazonaws.com"
                 ]
               }
             }
