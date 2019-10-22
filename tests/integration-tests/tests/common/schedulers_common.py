@@ -151,6 +151,9 @@ class AWSBatchCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         raise NotImplementedError
 
+    def get_node_cores(self):  # noqa: D102
+        raise NotImplementedError
+
 
 class SgeCommands(SchedulerCommands):
     """Implement commands for sge scheduler."""
@@ -181,8 +184,8 @@ class SgeCommands(SchedulerCommands):
 
     def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None):  # noqa: D102
         flags = ""
-        if nodes != 1:
-            raise Exception("SGE does not support nodes option")
+        if nodes > 1:
+            slots = nodes * slots
         if slots:
             flags += "-pe mpi {0} ".format(slots)
         if hold:
