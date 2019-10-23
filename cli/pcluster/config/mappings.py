@@ -33,6 +33,7 @@ from pcluster.config.param_types import (
 from pcluster.config.validators import (
     cluster_validator,
     compute_instance_type_validator,
+    dcv_enabled_validator,
     disable_hyperthreading_validator,
     ec2_ami_validator,
     ec2_ebs_snapshot_validator,
@@ -361,6 +362,29 @@ FSX = {
     )
 }
 
+DCV = {
+    "type": Section,
+    "key": "dcv",
+    "default_label": "default",
+    "cfn_param_mapping": "DCVOptions",  # All the parameters in the section are converted into a single CFN parameter
+    "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
+        [
+            ("enable", {
+                "allowed_values": ["master"],
+                "validators": [dcv_enabled_validator],
+            }),
+            ("port", {
+                "type": IntParam,
+                "default": 8443,
+            }),
+            ("access_from", {
+                "default": "0.0.0.0/0",
+                "allowed_values": ALLOWED_VALUES["cidr"],
+            }),
+        ]
+    )
+}
+
 CLUSTER = {
     "type": ClusterSection,
     "key": "cluster",
@@ -587,6 +611,10 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsParam,
                 "referred_section": FSX,
+            }),
+            ("dcv_settings", {
+                "type": SettingsParam,
+                "referred_section": DCV,
             }),
         ]
     )
