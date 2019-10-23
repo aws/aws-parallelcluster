@@ -119,7 +119,9 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+          }
         ]
       }
     },
@@ -202,7 +204,9 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole"
+          }
         ]
       }
     },
@@ -268,7 +272,7 @@
                     },
                     {
                       "Fn::Sub": [
-                        "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
+                        "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
                         {
                           "ComputeEnvironmentPrefix": {
                             "Fn::Select": [
@@ -287,10 +291,10 @@
                       ]
                     },
                     {
-                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
                     },
                     {
-                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
                     }
                   ]
                 },
@@ -341,7 +345,9 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+          }
         ]
       },
       "Condition": "UseSpot"
@@ -667,7 +673,9 @@
                 "logs:PutLogEvents"
               ],
               "Effect": "Allow",
-              "Resource": "arn:aws:logs:*:*:*",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+              },
               "Sid": "CloudWatchLogsPolicy"
             },
             {
@@ -677,7 +685,7 @@
               ],
               "Effect": "Allow",
               "Resource": {
-                "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
               },
               "Sid": "S3GetObjectPolicy"
             }
@@ -779,7 +787,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
@@ -869,7 +879,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 }
               ],
