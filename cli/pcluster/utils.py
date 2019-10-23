@@ -30,6 +30,7 @@ from botocore.exceptions import ClientError
 LOGGER = logging.getLogger(__name__)
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
+PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 
 
 def get_stack_name(cluster_name):
@@ -176,8 +177,8 @@ def get_supported_features(region, feature):
             if code == "InvalidAccessKeyId":
                 error(e.response.get("Error").get("Message"))
         error(
-            "Failed validate {0}. This is probably a bug on our end. Please submit an issue "
-            "https://github.com/aws/aws-parallelcluster/issues/new/choose".format(feature)
+            "Failed validate {0}. This is probably a bug on our end. "
+            "Please submit an issue {1}".format(feature, PCLUSTER_ISSUES_LINK)
         )
 
     return supported_features
@@ -389,3 +390,72 @@ def get_latest_alinux_ami_id():
 def list_ec2_instance_types():
     """Return a list of all the instance types available on EC2, independent by the region."""
     return boto3.client("ec2").meta.service_model.shape_for("InstanceType").enum
+
+
+def get_master_server_id(stack_name):
+    """Return the physical id of the master server, or [] if no master server."""
+    try:
+        resources = boto3.client("cloudformation").describe_stack_resource(
+            StackName=stack_name, LogicalResourceId="MasterServer"
+        )
+        return resources.get("StackResourceDetail").get("PhysicalResourceId")
+    except ClientError as e:
+        error(e.response.get("Error").get("Message"))
+
+
+def _get_master_server_ip(stack_name):
+    """
+    Get the IP Address of the MasterServer.
+
+    :param stack_name: The name of the cloudformation stack
+    :param config: Config object
+    :return private/public ip address
+    """
+    ec2 = boto3.client("ec2")
+
+    master_id = get_master_server_id(stack_name)
+    if not master_id:
+        error("MasterServer not running. Can't SSH")
+    instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
+    ip_address = instance.get("PublicIpAddress")
+    if ip_address is None:
+        ip_address = instance.get("PrivateIpAddress")
+    state = instance.get("State").get("Name")
+    if state != "running" or ip_address is None:
+        error("MasterServer: %s\nCannot get ip address.", state.upper())
+    return ip_address
+
+
+def get_master_ip_and_username(cluster_name):
+    cfn = boto3.client("cloudformation")
+    try:
+        stack_name = get_stack_name(cluster_name)
+
+        stack_result = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+        stack_status = stack_result.get("StackStatus")
+        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
+        invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
+
+        if stack_status in invalid_status:
+            error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
+        elif stack_status in valid_status:
+            outputs = stack_result.get("Outputs")
+            master_ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
+            username = get_stack_output_value(outputs, "ClusterUser")
+        else:
+            # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
+            master_ip = _get_master_server_ip(stack_name)
+            template = cfn.get_template(StackName=stack_name)
+            mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
+            base_os = get_cfn_param(stack_result.get("Parameters"), "BaseOS")
+            username = mappings.get(base_os).get("User")
+
+        if not master_ip:
+            error("Failed to get cluster {0} ip.".format(cluster_name))
+        if not username:
+            error("Failed to get cluster {0} username.".format(cluster_name))
+
+    except ClientError as e:
+        error(e.response.get("Error").get("Message"))
+
+    return master_ip, username

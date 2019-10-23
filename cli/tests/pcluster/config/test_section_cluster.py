@@ -1006,6 +1006,19 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             ),
         ),
         (
+            "dcv",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "CLITemplate": "dcv",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "VPCId": "vpc-12345678",
+                    "MasterSubnetId": "subnet-12345678",
+                    "DCVOptions": "master,8555,10.0.0.0/0",
+                },
+            ),
+        ),
+        (
             "ebs",
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
@@ -1072,6 +1085,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    # dcv
+                    "DCVOptions": "master,8555,10.0.0.0/0",
                 },
             ),
         ),
@@ -1133,6 +1148,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    # dcv
+                    "DCVOptions": "master,8555,10.0.0.0/0",
                 },
             ),
         ),
