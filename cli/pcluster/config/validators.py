@@ -16,6 +16,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
+from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
     get_efs_mount_target_id,
     get_instance_vcpus,
@@ -202,6 +203,26 @@ def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
         extra_json = cluster_section.get_param_value("extra_json")
         if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
             errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
+
+    return errors, warnings
+
+
+def dcv_enabled_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_section = pcluster_config.get_section("cluster")
+    if param_value == "master":
+
+        allowed_oses = get_supported_dcv_os()
+        if cluster_section.get_param_value("base_os") not in allowed_oses:
+            errors.append(
+                "NICE DCV can be used with one of the following operating systems: {0}. "
+                "Please double check the 'base_os' configuration parameter".format(allowed_oses)
+            )
+
+        if get_partition() not in get_supported_dcv_partition():
+            errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
     return errors, warnings
 

@@ -231,7 +231,7 @@ def _print_stack_outputs(stack):
 def _is_ganglia_enabled(parameters):
     is_ganglia_enabled = False
     try:
-        cfn_extra_json = _get_param_value(parameters, "ExtraJson")
+        cfn_extra_json = utils.get_cfn_param(parameters, "ExtraJson")
         is_ganglia_enabled = json.loads(cfn_extra_json).get("cfncluster").get("ganglia_enabled") == "yes"
     except Exception:
         pass
@@ -414,23 +414,10 @@ def list_stacks(args):
         sys.exit(0)
 
 
-def _get_master_server_id(stack_name):
-    # returns the physical id of the master server
-    # if no master server returns []
-    cfn = boto3.client("cloudformation")
-    try:
-        resources = cfn.describe_stack_resource(StackName=stack_name, LogicalResourceId="MasterServer")
-        return resources.get("StackResourceDetail").get("PhysicalResourceId")
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
-
-
 def _poll_master_server_state(stack_name):
     ec2 = boto3.client("ec2")
-    master_id = _get_master_server_id(stack_name)
-
     try:
+        master_id = utils.get_master_server_id(stack_name)
         instance = ec2.describe_instance_status(InstanceIds=[master_id]).get("InstanceStatuses")[0]
         state = instance.get("InstanceState").get("Name")
         sys.stdout.write("\rMasterServer: %s" % state.upper())
@@ -464,9 +451,8 @@ def _poll_master_server_state(stack_name):
 
 
 def _get_ec2_instances(stack):
-    cfn = boto3.client("cloudformation")
     try:
-        resources = cfn.describe_stack_resources(StackName=stack).get("StackResources")
+        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack).get("StackResources")
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
@@ -482,9 +468,8 @@ def _get_ec2_instances(stack):
 
 
 def _get_asg_name(stack_name):
-    cfn = boto3.client("cloudformation")
     try:
-        resources = cfn.describe_stack_resources(StackName=stack_name).get("StackResources")
+        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack_name).get("StackResources")
         return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
@@ -516,9 +501,8 @@ def _get_asg_instances(stack):
 
 
 def _start_batch_ce(ce_name, min_vcpus, desired_vcpus, max_vcpus):
-    batch = boto3.client("batch")
     try:
-        batch.update_compute_environment(
+        boto3.client("batch").update_compute_environment(
             computeEnvironment=ce_name,
             state="ENABLED",
             computeResources={
@@ -533,9 +517,7 @@ def _start_batch_ce(ce_name, min_vcpus, desired_vcpus, max_vcpus):
 
 
 def _stop_batch_ce(ce_name):
-    batch = boto3.client("batch")
-
-    batch.update_compute_environment(computeEnvironment=ce_name, state="DISABLED")
+    boto3.client("batch").update_compute_environment(computeEnvironment=ce_name, state="DISABLED")
 
 
 def instances(args):
@@ -556,80 +538,21 @@ def instances(args):
         LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
 
-def _get_master_server_ip(stack_name):
+def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     """
-    Get the IP Address of the MasterServer.
+    Execute an SSH command to the master instance, according to the [aliases] section if there.
 
-    :param stack_name: The name of the cloudformation stack
-    :param config: Config object
-    :return private/public ip address
+    :param args: pcluster CLI args
+    :param extra_args: pcluster CLI extra_args
     """
-    ec2 = boto3.client("ec2")
-
-    master_id = _get_master_server_id(stack_name)
-    if not master_id:
-        LOGGER.info("MasterServer not running. Can't SSH")
-        sys.exit(1)
-    instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
-    ip_address = instance.get("PublicIpAddress")
-    if ip_address is None:
-        ip_address = instance.get("PrivateIpAddress")
-    state = instance.get("State").get("Name")
-    if state != "running" or ip_address is None:
-        LOGGER.info("MasterServer: %s\nCannot get ip address.", state.upper())
-        sys.exit(1)
-    return ip_address
-
-
-def _get_param_value(params, key_name):
-    """
-    Get parameter value from CloudFormation Stack Parameters.
-
-    :param outputs: CloudFormation Stack Parameters
-    :param key_name: ParameterKey
-    :return: ParameterValue if the parameter exists, None otherwise
-    """
-    return next((i.get("ParameterValue") for i in params if i.get("ParameterKey") == key_name), None)
-
-
-def command(args, extra_args):  # noqa: C901 FIXME!!!
-    stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(file_sections=[ALIASES])
-
+    pcluster_config = PclusterConfig(file_sections=[ALIASES])  # FIXME it always search for the default config file
     if args.command in pcluster_config.get_section("aliases").params:
-        config_command = pcluster_config.get_section("aliases").get_param_value(args.command)
+        ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
     else:
-        config_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
+        ssh_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
 
-    cfn = boto3.client("cloudformation")
     try:
-        stack_info = utils.get_stack(stack_name, cfn)
-        stack_status = stack_info.get("StackStatus")
-        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
-        invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
-
-        if stack_status in invalid_status:
-            LOGGER.info("Stack status: %s. Cannot SSH while in %s", stack_status, " or ".join(invalid_status))
-            sys.exit(1)
-        elif stack_status in valid_status:
-            outputs = stack_info.get("Outputs")
-            username = utils.get_stack_output_value(outputs, "ClusterUser")
-            master_ip = utils.get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
-
-            if not username:
-                LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
-                sys.exit(1)
-
-            if not master_ip:
-                LOGGER.info("Failed to get cluster %s ip.", args.cluster_name)
-                sys.exit(1)
-        else:
-            # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
-            master_ip = _get_master_server_ip(stack_name)
-            template = cfn.get_template(StackName=stack_name)
-            mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
-            base_os = _get_param_value(stack_info.get("Parameters"), "BaseOS")
-            username = mappings.get(base_os).get("User")
+        master_ip, username = utils.get_master_ip_and_username(args.cluster_name)
 
         try:
             from shlex import quote as cmd_quote
@@ -637,21 +560,17 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
             from pipes import quote as cmd_quote
 
         # build command
-        cmd = config_command.format(
-            CFN_USER=username, MASTER_IP=master_ip, ARGS=" ".join(cmd_quote(str(e)) for e in extra_args)
+        cmd = ssh_command.format(
+            CFN_USER=username, MASTER_IP=master_ip, ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args)
         )
 
         # run command
-        log_message = "Stack status: {0}, SSH command: {1}".format(stack_status, cmd)
+        log_message = "SSH command: {0}".format(cmd)
         if not args.dryrun:
             LOGGER.debug(log_message)
             os.system(cmd)
         else:
             LOGGER.info(log_message)
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)

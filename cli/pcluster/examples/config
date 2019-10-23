@@ -125,6 +125,8 @@ vpc_settings = public
 #efs_settings = customfs
 # Settings section relating to RAID drive
 #raid_settings = rs
+# Settings section relating to NICE DCV connection
+#dcv_settings = dcv-custom
 
 ## VPC Settings
 [vpc public]
@@ -240,3 +242,15 @@ master_subnet_id = subnet-12345678
 # Use encrypted volume
 # (defaults to false)
 #encrypted = false
+
+## DCV settings
+#[dcv dcv-custom]
+# Parameter required to explicitly enable DCV feature
+#enable = master
+# The port to use to connect to the NICE DCV server
+# (defaults to 8443)
+#port = 8443
+# DCV access from CIDR
+# This is used when AWS ParallelCluster creates the security group
+# (defaults to 0.0.0.0/0)
+#access_from = 0.0.0.0/0

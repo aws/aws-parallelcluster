@@ -113,7 +113,7 @@ def main(args):
                 "Volume%s" % (i + 1),
                 AvailabilityZone=Ref(availability_zone),
                 VolumeType=If(use_vol_type, Select(str(i), Ref(volume_type)), "gp2"),
-                Size=If(use_ebs_snapshot, NoValue, If(use_vol_size, Select(str(i), Ref(volume_size)), "20")),
+                Size=If(use_vol_size, Select(str(i), Ref(volume_size)), "20"),
                 SnapshotId=If(use_ebs_snapshot, Select(str(i), Ref(ebs_snapshot_id)), NoValue),
                 Iops=If(use_ebs_iops, Select(str(i), Ref(volume_iops)), NoValue),
                 Encrypted=If(use_ebs_encryption, Select(str(i), Ref(ebs_encryption)), NoValue),
