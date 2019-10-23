@@ -46,6 +46,12 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
             '{ "cluster" : { "cfn_scheduler_slots" : "cores" } }',
             {"cluster": {"cfn_scheduler_slots": "cores"}},
         ),
+        (
+            CLUSTER,
+            "extra_json",
+            '{ "cfncluster" : { "enable_ganglia" : "true" } }',
+            {"cfncluster": {"enable_ganglia": "true"}},
+        ),
         # SharedDirParam
         (CLUSTER, "shared_dir", "", "/shared"),
         (CLUSTER, "shared_dir", "NONE", "/shared"),
@@ -115,6 +121,12 @@ def test_param_from_cfn_value(mocker, section_definition, param_key, cfn_value, 
             "extra_json",
             {"ExtraJson": '{ "cluster" : { "cfn_scheduler_slots" : "cores" } }'},
             {"cluster": {"cfn_scheduler_slots": "cores"}},
+        ),
+        (
+            CLUSTER,
+            "extra_json",
+            {"ExtraJson": '{ "cfncluster" : { "cfn_scheduler_slots" : "cores" } }'},
+            {"cfncluster": {"cfn_scheduler_slots": "cores"}},
         ),
         # AdditionalIamPoliciesParam --> CommaSeparatedParam
         (CLUSTER, "additional_iam_policies", {"EC2IAMPolicies": ""}, []),
