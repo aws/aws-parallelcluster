@@ -43,6 +43,12 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
             {"cluster": {"cfn_scheduler_slots": "cores"}},
             '{"cluster": {"cfn_scheduler_slots": "cores"}}',
         ),
+        (
+            CLUSTER,
+            "extra_json",
+            {"cfncluster": {"cfn_scheduler_slots": "cores"}},
+            '{"cluster": {"cfn_scheduler_slots": "cores"}}',
+        ),
     ],
 )
 def test_param_to_file(mocker, section_definition, param_key, param_value, expected_value):
