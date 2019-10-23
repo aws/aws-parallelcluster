@@ -98,6 +98,7 @@ def test_vpc_section_from_file(mocker, config_parser_dict, expected_dict_params,
         # other values
         (VPC, {"ssh_from": "1.1.1.1/32"}, {"vpc default": {"ssh_from": "1.1.1.1/32"}}, None),
         (VPC, {"additional_sg": "sg-12345678"}, {"vpc default": {"additional_sg": "sg-12345678"}}, None),
+        (VPC, {"use_public_ips": False}, {"vpc default": {"use_public_ips": "false"}}, None),
     ],
 )
 def test_vpc_section_to_file(mocker, section_definition, section_dict, expected_config_parser_dict, expected_message):
