@@ -2222,7 +2222,7 @@
                         "DisableHyperthreading",
                         {
                           "Fn::Select": [
-                            "0",
+                            "1",
                             {
                               "Ref": "Cores"
                             }
