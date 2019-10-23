@@ -333,11 +333,11 @@ def stop(args):
     cluster_section = pcluster_config.get_section("cluster")
 
     if cluster_section.get_param_value("scheduler") == "awsbatch":
-        LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
+        LOGGER.info("Disabling AWS Batch compute environment: %s", args.cluster_name)
         ce_name = _get_batch_ce(stack_name)
         _stop_batch_ce(ce_name=ce_name)
     else:
-        LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
+        LOGGER.info("Stopping compute fleet: %s", args.cluster_name)
         asg_name = _get_asg_name(stack_name)
         _set_asg_limits(asg_name=asg_name, min=0, max=0, desired=0)
 
