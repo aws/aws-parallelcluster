@@ -162,7 +162,7 @@ class Param(object):
     def to_file(self, config_parser):
         """Set parameter in the config_parser in the right section."""
         section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value and self.value != self.get_default_value():
+        if self.value is not None and self.value != self.get_default_value():
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.get_string_value())
         else:
