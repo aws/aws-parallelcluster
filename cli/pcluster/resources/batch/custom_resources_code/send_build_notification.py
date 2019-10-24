@@ -10,8 +10,9 @@
 # limitations under the License.
 import json
 import os
-
-from botocore.vendored import requests
+import time
+from http.client import HTTPSConnection
+from urllib.parse import urlsplit, urlunsplit
 
 
 def handler(event, context):
@@ -29,4 +30,19 @@ def handler(event, context):
     )
     print("Notification URL: %s" % notification_url)
     print("Notification data: %s" % data)
-    requests.put(notification_url, data=data, headers={"Content-Type": ""})
+
+    split_url = urlsplit(notification_url)
+    host = split_url.netloc
+    url = urlunsplit(("", "", *split_url[2:]))
+    while True:
+        try:
+            connection = HTTPSConnection(host)
+            connection.request(
+                method="PUT", url=url, body=data, headers={"Content-Type": "", "content-length": str(len(data))}
+            )
+            response = connection.getresponse()
+            print("CloudFormation returned status code: {}".format(response.reason))
+            break
+        except Exception as e:
+            print("Unexpected failure sending response to CloudFormation {}".format(e), exc_info=True)
+            time.sleep(5)
