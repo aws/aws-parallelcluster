@@ -221,6 +221,7 @@ class PclusterConfig(object):
         NOTE: aws, global, aliases sections will be excluded from this transformation.
         """
         self.get_section("cluster").to_file(self.config_parser)
+        self.get_section("aws").to_file(self.config_parser)
 
         # ensure that the directory for the config file exists
         if not os.path.isfile(self.config_file):
