@@ -614,8 +614,9 @@
               }
             }
           ],
-          "Image": "aws/codebuild/docker:17.09.0",
-          "Type": "LINUX_CONTAINER"
+          "Image": "aws/codebuild/amazonlinux2-x86_64-standard:1.0",
+          "Type": "LINUX_CONTAINER",
+          "PrivilegedMode": true
         },
         "Name": {
           "Fn::Sub": "${ClusterName}-build-docker-images-project"
