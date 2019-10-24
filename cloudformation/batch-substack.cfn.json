@@ -606,6 +606,12 @@
               "Value": {
                 "Ref": "OS"
               }
+            },
+            {
+              "Name": "NOTIFICATION_URL",
+              "Value": {
+                "Ref": "DockerBuildWaitHandle"
+              }
             }
           ],
           "Image": "aws/codebuild/docker:17.09.0",
@@ -901,13 +907,6 @@
           },
           "S3Key": "custom_resources_code/artifacts.zip"
         },
-        "Environment": {
-          "Variables": {
-            "NOTIFICATION_URL": {
-              "Ref": "DockerBuildWaitHandle"
-            }
-          }
-        },
         "Handler": "send_build_notification.handler",
         "MemorySize": 128,
         "Role": {
@@ -918,7 +917,8 @@
         },
         "Runtime": "python3.6",
         "Timeout": 60
-      }
+      },
+      "DependsOn": "DockerBuildWaitHandle"
     },
     "SendBuildNotificationFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
