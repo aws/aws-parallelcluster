@@ -15,6 +15,7 @@ standard_library.install_aliases()
 # fmt: on
 
 import logging
+import sys
 
 import boto3
 
@@ -46,6 +47,7 @@ def _get_keys():
             "No KeyPair found in region {0}, please create one following the guide: "
             "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-key-pairs.html".format(get_region())
         )
+        sys.exit(1)
 
     return key_options
 
