@@ -1,15 +1,17 @@
 # Imported from https://github.com/aws-cloudformation/custom-resource-helper
+# The file has been modified to drop dependency on requests package
 # flake8: noqa
 from __future__ import print_function
-import requests
 import json
 import logging as logging
 import time
+from urllib.parse import urlsplit, urlunsplit
+from http.client import HTTPSConnection
 
 logger = logging.getLogger(__name__)
 
 
-def _send_response(response_url, response_body, put=requests.put):
+def _send_response(response_url, response_body):
     try:
         json_response_body = json.dumps(response_body)
     except Exception as e:
@@ -20,9 +22,14 @@ def _send_response(response_url, response_body, put=requests.put):
     logger.debug("CFN response URL: {}".format(response_url))
     logger.debug(json_response_body)
     headers = {'content-type': '', 'content-length': str(len(json_response_body))}
+    split_url = urlsplit(response_url)
+    host = split_url.netloc
+    url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
-            response = put(response_url, data=json_response_body, headers=headers)
+            connection = HTTPSConnection(host)
+            connection.request(method="PUT", url=url, body=json_response_body, headers=headers)
+            response = connection.getresponse()
             logger.info("CloudFormation returned status code: {}".format(response.reason))
             break
         except Exception as e:
