@@ -202,8 +202,8 @@ class Param(object):
             # They are passed the Section object that they are a member of.
             section = self.pcluster_config.get_section(self.section_key, self.section_label)
             return default(section)
-        else:
-            return default
+
+        return default
 
     def get_cfn_value(self):
         """
@@ -292,7 +292,6 @@ class FloatParam(Param):
                 "Unable to convert the value '{0}' to a Float. "
                 "Using default value for parameter '{1}'".format(string_value, self.key)
             )
-            pass
 
         return param_value
 
@@ -378,7 +377,6 @@ class IntParam(Param):
                 "Unable to convert the value '{0}' to an Integer. "
                 "Using default value for parameter '{1}'".format(string_value, self.key)
             )
-            pass
 
         return param_value
 
@@ -579,16 +577,15 @@ class QueueSizeParam(IntParam):
         if cfn_converter and cfn_params:
             cfn_value = get_cfn_param(cfn_params, cfn_converter) if cfn_converter else "NONE"
 
+            is_traditional_scheduler_param = get_cfn_param(cfn_params, "Scheduler") != "awsbatch" and (
+                self.key == "initial_queue_size" or self.key == "max_queue_size"
+            )
+            is_awsbatch_param = get_cfn_param(cfn_params, "Scheduler") == "awsbatch" and (
+                self.key == "desired_vcpus" or self.key == "max_vcpus" or self.key == "min_vcpus"
+            )
+
             # initialize the value from cfn according to the scheduler
-            if (
-                # traditional scheduler parameter
-                get_cfn_param(cfn_params, "Scheduler") != "awsbatch"
-                and (self.key == "initial_queue_size" or self.key == "max_queue_size")
-            ) or (
-                # awsbatch scheduler parameters
-                get_cfn_param(cfn_params, "Scheduler") == "awsbatch"
-                and (self.key == "desired_vcpus" or self.key == "max_vcpus" or self.key == "min_vcpus")
-            ):
+            if is_traditional_scheduler_param or is_awsbatch_param:
                 self.value = self.get_value_from_string(cfn_value)
 
         return self
@@ -657,7 +654,7 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
     """
 
     def __init__(self, section_key, section_label, param_key, param_definition, pcluster_config):
-        super(CommaSeparatedParam, self).__init__(
+        super(AdditionalIamPoliciesParam, self).__init__(
             section_key, section_label, param_key, param_definition, pcluster_config
         )
         self.aws_batch_iam_policy = "arn:{0}:iam::aws:policy/AWSBatchFullAccess".format(get_partition())
@@ -667,7 +664,7 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         # remove awsbatch policy, if there
         if self.aws_batch_iam_policy in self.value:
             self.value.remove(self.aws_batch_iam_policy)
-        super(CommaSeparatedParam, self).to_file(config_parser)
+        super(AdditionalIamPoliciesParam, self).to_file(config_parser)
 
     def from_cfn_params(self, cfn_params):
         """
@@ -675,7 +672,7 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
 
         :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
         """
-        super(CommaSeparatedParam, self).from_cfn_params(cfn_params)
+        super(AdditionalIamPoliciesParam, self).from_cfn_params(cfn_params)
 
         # remove awsbatch policy, if there
         if self.aws_batch_iam_policy in self.value:
@@ -691,7 +688,7 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
             if self.aws_batch_iam_policy not in self.value:
                 self.value.append(self.aws_batch_iam_policy)
 
-        cfn_params = super(CommaSeparatedParam, self).to_cfn()
+        cfn_params = super(AdditionalIamPoliciesParam, self).to_cfn()
 
         return cfn_params
 
@@ -736,7 +733,7 @@ class DisableHyperThreadingParam(BoolParam):
                 if cores and cores != "NONE":
                     cores = int(cores.split(",")[0])
                     self.value = cores > 0
-        except ValueError or IndexError:
+        except (ValueError, IndexError):
             warn("Unable to parse Cfn Parameter Cores = {0}".format(cfn_params))
 
         return self
@@ -1259,7 +1256,7 @@ class EFSSection(Section):
             mount_target_id = get_efs_mount_target_id(
                 efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=master_avail_zone
             )
-            efs_section_valid = True if mount_target_id else False
+            efs_section_valid = bool(mount_target_id)
 
         cfn_items.append("Valid" if efs_section_valid else "NONE")
         cfn_params[cfn_converter] = ",".join(cfn_items)

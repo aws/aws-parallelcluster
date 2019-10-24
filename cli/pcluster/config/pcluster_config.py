@@ -227,8 +227,8 @@ class PclusterConfig(object):
                 os.chmod(self.config_file, stat.S_IRUSR | stat.S_IWUSR)
 
         # Write configuration to disk
-        with open(self.config_file, "w") as cf:
-            self.config_parser.write(cf)
+        with open(self.config_file, "w") as conf_file_stream:
+            self.config_parser.write(conf_file_stream)
 
     def to_cfn(self):
         """

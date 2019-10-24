@@ -93,7 +93,6 @@ def delete_s3_bucket(bucket_name):
         pass
     except ClientError:
         print("Failed to delete bucket %s. Please delete it manually." % bucket_name)
-        pass
 
 
 def zip_dir(path):
@@ -141,10 +140,9 @@ def _get_json_from_s3(region, file_name):
     :raises ClientError if unable to download the file
     :raises ValueError if unable to decode the file content
     """
-    s3 = boto3.resource("s3")
     bucket_name = "{0}-aws-parallelcluster".format(region)
 
-    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+    file_contents = boto3.resource("s3").Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
     return json.loads(file_contents)
 
 
@@ -173,16 +171,14 @@ def get_supported_features(region, feature):
         features = _get_json_from_s3(region, "features/feature_whitelist.json")
         supported_features = features.get("Features").get(feature)
     except (ValueError, ClientError, KeyError) as e:
-        if type(e) is ClientError:
+        if isinstance(e, ClientError):
             code = e.response.get("Error").get("Code")
             if code == "InvalidAccessKeyId":
-                print(e.response.get("Error").get("Message"))
-                exit(1)
-        print(
+                error(e.response.get("Error").get("Message"))
+        error(
             "Failed validate {0}. This is probably a bug on our end. Please submit an issue "
             "https://github.com/aws/aws-parallelcluster/issues/new/choose".format(feature)
         )
-        exit(1)
 
     return supported_features
 
@@ -212,7 +208,7 @@ def get_supported_os(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: a tuple of strings of the supported os
     """
-    return ("alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804")
+    return "alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804"
 
 
 def get_supported_schedulers():
