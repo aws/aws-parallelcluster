@@ -71,7 +71,6 @@ class PclusterConfig(object):
             self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(file_sections, cluster_label, self.config_parser, fail_on_file_absence)
-            self.__validate()
 
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
@@ -298,7 +297,8 @@ class PclusterConfig(object):
                 )
             )
 
-    def __validate(self):
+    def validate(self):
+        """Validate the configuration."""
         fail_on_error = (
             self.get_section("global").get_param_value("sanity_check")
             if self.get_section("global")

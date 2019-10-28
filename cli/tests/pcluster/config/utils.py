@@ -108,7 +108,6 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
 
 
 def get_mocked_pcluster_config(mocker):
-    mocker.patch.object(PclusterConfig, "_PclusterConfig__validate")
     return PclusterConfig(config_file="wrong-file", file_sections=[GLOBAL, ALIASES, CLUSTER])
 
 
@@ -192,7 +191,6 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
 
 
 def assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
-    mocker.patch.object(PclusterConfig, "_PclusterConfig__validate")
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):
             PclusterConfig(
@@ -218,7 +216,7 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
             )
 
 
-def init_pcluster_config_from_configparser(config_parser):
+def init_pcluster_config_from_configparser(config_parser, validate=True):
     with tempfile.NamedTemporaryFile(delete=False) as config_file:
 
         with open(config_file.name, "w") as cf:
@@ -230,4 +228,6 @@ def init_pcluster_config_from_configparser(config_parser):
             file_sections=[GLOBAL, CLUSTER, ALIASES],
             fail_on_file_absence=True,
         )
+        if validate:
+            pcluster_config.validate()
     return pcluster_config
