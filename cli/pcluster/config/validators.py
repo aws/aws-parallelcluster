@@ -659,7 +659,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
                         "Skipping instance type against max_vcpus validation".format(param_value)
                     )
                 else:
-                    if cluster_config.get_param_value("max_queue_size") < vcpus:
+                    if cluster_config.get_param_value("max_vcpus") < vcpus:
                         errors.append(
                             "max_vcpus must be greater than or equal to {0}, that is the number of vcpus "
                             "available for the {1} that you selected as compute_instance_type".format(

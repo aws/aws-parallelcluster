@@ -2011,7 +2011,11 @@
                   "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "  HOME_BAK=\"${HOME}\"\n",
                   "  export HOME=\"/tmp\"\n",
-                  "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                  "  . /tmp/proxy.sh\n",
+                  "  for d in `ls /tmp/cookbooks`; do\n",
+                  "    cd /tmp/cookbooks/$d\n",
+                  "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
+                  "  done;\n",
                   "  export HOME=\"${HOME_BAK}\"\n",
                   "}\n",
                   "function bootstrap_instance\n",
@@ -2222,7 +2226,7 @@
                         "DisableHyperthreading",
                         {
                           "Fn::Select": [
-                            "0",
+                            "1",
                             {
                               "Ref": "Cores"
                             }
@@ -2922,7 +2926,11 @@
                   "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "  HOME_BAK=${HOME}\n",
                   "  export HOME=\"/tmp\"\n",
-                  "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
+                  "  . /tmp/proxy.sh;\n",
+                  "  for d in `ls /tmp/cookbooks`; do\n",
+                  "    cd /tmp/cookbooks/$d\n",
+                  "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
+                  "    done;\n",
                   "  export HOME=${HOME_BAK}\n",
                   "}\n",
                   "function bootstrap_instance\n",

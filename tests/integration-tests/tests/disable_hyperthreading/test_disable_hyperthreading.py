@@ -23,6 +23,7 @@ from tests.common.utils import fetch_instance_slots
 # t2's do not support CpuOptions and hence do not support disable_hyperthreading
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.skip_instances(["t2.micro"])
+@pytest.mark.skip_schedulers(["awsbatch"])
 def test_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """Test Disable Hyperthreading"""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -30,12 +31,12 @@ def test_disable_hyperthreading(region, scheduler, instance, os, pcluster_config
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance)
+    _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
 
-def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance):
+def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler):
     # Test disable hyperthreading on Master
     logging.info("Test Disable Hyperthreading on Master")
     result = remote_command_executor.run_remote_command("lscpu")
@@ -61,7 +62,9 @@ def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, sl
     assert_that(int(result)).is_equal_to(slots_per_instance // 2)
 
     # check scale up to 2 nodes
-    result = scheduler_commands.submit_command("hostname > /shared/hostname.out", slots=slots_per_instance)
+    result = scheduler_commands.submit_command(
+        "hostname > /shared/hostname.out", nodes=2, slots=slots_per_instance // 2
+    )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)

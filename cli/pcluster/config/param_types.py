@@ -434,6 +434,31 @@ class JsonParam(Param):
 # that require some custom action during CFN/file conversion
 
 
+class ExtraJsonParam(JsonParam):
+    """Class to manage extra_json configuration parameters."""
+
+    def get_cfn_value(self):
+        """
+        Convert parameter value into CFN value.
+
+        The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but cookbook
+        recipes require "cfncluster" as key.
+        """
+        if self.value and "cluster" in self.value:
+            self.value = {"cfncluster": self.value.pop("cluster")}
+        return self.get_string_value()
+
+    def to_file(self, config_parser):
+        """Set parameter in the config_parser in the right section.
+
+        The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but
+        we are writing "cluster" in the file to suggest the users the recommended syntax.
+        """
+        if self.value and "cfncluster" in self.value:
+            self.value = {"cluster": self.value.pop("cfncluster")}
+        super(ExtraJsonParam, self).to_file(config_parser)
+
+
 class SharedDirParam(Param):
     """
     Class to manage the shared_dir configuration parameter.

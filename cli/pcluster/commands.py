@@ -86,6 +86,7 @@ def create(args):  # noqa: C901 FIXME!!!
         cluster_label=args.cluster_template,
         fail_on_file_absence=True,
     )
+    pcluster_config.validate()
     # get CFN parameters, template url and tags from config
     cluster_section = pcluster_config.get_section("cluster")
     cfn_params = pcluster_config.to_cfn()
@@ -245,6 +246,7 @@ def update(args):  # noqa: C901 FIXME!!!
         cluster_label=args.cluster_template,
         fail_on_file_absence=True,
     )
+    pcluster_config.validate()
     cfn_params = pcluster_config.to_cfn()
 
     cluster_section = pcluster_config.get_section("cluster")
