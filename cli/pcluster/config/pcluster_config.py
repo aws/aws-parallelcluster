@@ -21,7 +21,7 @@ import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import error, get_instance_vcpus, get_latest_alinux_ami_id, get_stack_name, warn
+from pcluster.utils import error, get_instance_vcpus, get_latest_alinux_ami_id, get_stack, get_stack_name, warn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -290,8 +290,7 @@ class PclusterConfig(object):
 
     def __init_sections_from_cfn(self, cluster_name):
         try:
-            stack_name = get_stack_name(cluster_name)
-            stack = boto3.client("cloudformation").describe_stacks(StackName=stack_name).get("Stacks")[0]
+            stack = get_stack(get_stack_name(cluster_name))
 
             section_type = CLUSTER.get("type")
             section = section_type(section_definition=CLUSTER, pcluster_config=self).from_cfn_params(

@@ -231,18 +231,34 @@ def get_stack_output_value(stack_outputs, output_key):
     return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
 
 
-def verify_stack_creation(cfn_client, stack_name):
+def get_stack(stack_name, cfn_client=None):
+    """
+    Get the output for a DescribeStacks action for the given Stack.
+
+    :param stack_name: the CFN Stack name
+    :param cfn_client: boto3 cloudformation client
+    :return: the Stack data type
+    """
+    try:
+        if not cfn_client:
+            cfn_client = boto3.client("cloudformation")
+        return cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0]
+    except (ClientError, IndexError) as e:
+        error(e.response.get("Error").get("Message"))
+
+
+def verify_stack_creation(stack_name, cfn_client):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
-    :param cfn_client: the CloudFormation client to use to verify stack status
     :param stack_name: the stack name that we should verify
+    :param cfn_client: the CloudFormation client to use to verify stack status
     :return: True if the creation was successful, false otherwise.
     """
-    status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+    status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
     while status == "CREATE_IN_PROGRESS":
-        status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        status = get_stack(stack_name, cfn_client).get("StackStatus")
         events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
