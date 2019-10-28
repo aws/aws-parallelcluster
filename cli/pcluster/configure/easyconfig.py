@@ -15,6 +15,7 @@ standard_library.install_aliases()
 # fmt: on
 
 import logging
+import os
 
 import boto3
 
@@ -108,6 +109,8 @@ def configure(args):
 
     # Use built in boto regions as an available option
     aws_region_name = prompt_iterable("AWS Region ID", get_regions())
+    # Set provided region into os environment for suggestions and validations from here on
+    os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
     scheduler = prompt_iterable(
         "Scheduler", get_supported_schedulers(), default_value=cluster_section.get_param_value("scheduler")
