@@ -74,11 +74,10 @@ def prompt_iterable(message, options, default_value=None):
     :param default_value: the default value
     :return: the validated value
     """
-    is_tuple = isinstance(options[0], (list, tuple))
-
     if not options:
         LOGGER.error("ERROR: No options found for {0}".format(message))
         sys.exit(1)
+    is_tuple = isinstance(options[0], (list, tuple))
 
     if not default_value:
         default_value = options[0][0] if is_tuple else options[0]
