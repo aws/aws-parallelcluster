@@ -93,7 +93,6 @@ def delete_s3_bucket(bucket_name):
         pass
     except ClientError:
         print("Failed to delete bucket %s. Please delete it manually." % bucket_name)
-        pass
 
 
 def zip_dir(path):
@@ -141,10 +140,9 @@ def _get_json_from_s3(region, file_name):
     :raises ClientError if unable to download the file
     :raises ValueError if unable to decode the file content
     """
-    s3 = boto3.resource("s3")
     bucket_name = "{0}-aws-parallelcluster".format(region)
 
-    file_contents = s3.Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
+    file_contents = boto3.resource("s3").Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
     return json.loads(file_contents)
 
 
@@ -173,16 +171,14 @@ def get_supported_features(region, feature):
         features = _get_json_from_s3(region, "features/feature_whitelist.json")
         supported_features = features.get("Features").get(feature)
     except (ValueError, ClientError, KeyError) as e:
-        if type(e) is ClientError:
+        if isinstance(e, ClientError):
             code = e.response.get("Error").get("Code")
             if code == "InvalidAccessKeyId":
-                print(e.response.get("Error").get("Message"))
-                exit(1)
-        print(
+                error(e.response.get("Error").get("Message"))
+        error(
             "Failed validate {0}. This is probably a bug on our end. Please submit an issue "
             "https://github.com/aws/aws-parallelcluster/issues/new/choose".format(feature)
         )
-        exit(1)
 
     return supported_features
 
@@ -212,7 +208,7 @@ def get_supported_os(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: a tuple of strings of the supported os
     """
-    return ("alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804")
+    return "alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804"
 
 
 def get_supported_schedulers():
@@ -235,18 +231,34 @@ def get_stack_output_value(stack_outputs, output_key):
     return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
 
 
-def verify_stack_creation(cfn_client, stack_name):
+def get_stack(stack_name, cfn_client=None):
+    """
+    Get the output for a DescribeStacks action for the given Stack.
+
+    :param stack_name: the CFN Stack name
+    :param cfn_client: boto3 cloudformation client
+    :return: the Stack data type
+    """
+    try:
+        if not cfn_client:
+            cfn_client = boto3.client("cloudformation")
+        return cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0]
+    except (ClientError, IndexError) as e:
+        error(e.response.get("Error").get("Message"))
+
+
+def verify_stack_creation(stack_name, cfn_client):
     """
     Wait for the stack creation to be completed and notify if the stack creation fails.
 
-    :param cfn_client: the CloudFormation client to use to verify stack status
     :param stack_name: the stack name that we should verify
+    :param cfn_client: the CloudFormation client to use to verify stack status
     :return: True if the creation was successful, false otherwise.
     """
-    status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+    status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
     while status == "CREATE_IN_PROGRESS":
-        status = cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        status = get_stack(stack_name, cfn_client).get("StackStatus")
         events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
