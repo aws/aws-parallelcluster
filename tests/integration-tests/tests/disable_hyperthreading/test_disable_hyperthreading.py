@@ -40,8 +40,8 @@ def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, sl
     # Test disable hyperthreading on Master
     logging.info("Test Disable Hyperthreading on Master")
     result = remote_command_executor.run_remote_command("lscpu")
-    assert_that(result.stdout).contains("Thread(s) per core:    1")
-    assert_that(result.stdout).contains("CPU(s):                {0}".format(slots_per_instance // 2))
+    assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+1")
+    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance // 2))
 
     # Test disable hyperthreading on Compute
     logging.info("Test Disable Hyperthreading on Compute")
@@ -53,8 +53,8 @@ def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, sl
 
     # Check EFA interface is present on compute node
     result = remote_command_executor.run_remote_command("cat /shared/lscpu.out")
-    assert_that(result.stdout).contains("Thread(s) per core:    1")
-    assert_that(result.stdout).contains("CPU(s):                {0}".format(slots_per_instance // 2))
+    assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+1")
+    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance // 2))
 
     # Check scheduler has correct number of cores
     result = scheduler_commands.get_node_cores()

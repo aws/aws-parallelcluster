@@ -30,6 +30,18 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
         (SCALING, "scaledown_idletime", 10, "10"),
         (SCALING, "scaledown_idletime", 10, "10"),
         (SCALING, "scaledown_idletime", 3, "3"),
+        (
+            CLUSTER,
+            "extra_json",
+            {"cluster": {"cfn_scheduler_slots": "cores"}},
+            '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
+        ),
+        (
+            CLUSTER,
+            "extra_json",
+            {"cfncluster": {"cfn_scheduler_slots": "cores"}},
+            '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
+        ),
         # SpotPriceParam --> FloatParam
         (CLUSTER, "spot_price", None, "0.0"),
         (CLUSTER, "spot_price", 0.0009, "0.0009"),
