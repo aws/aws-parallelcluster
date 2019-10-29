@@ -147,10 +147,12 @@ def _are_configurations_equals(path_verify, path_verified):
     return True
 
 
-def _are_output_error_correct(capsys, output, error):
+def _are_output_error_correct(capsys, output, error, config_path):
     readouterr = capsys.readouterr()
     with open(output) as f:
-        assert_that(readouterr.out).is_equal_to(f.read())
+        expected_output = f.read()
+        expected_output = expected_output.replace("{{ CONFIG_FILE }}", config_path)
+        assert_that(readouterr.out).is_equal_to(expected_output)
     with open(error) as f:
         assert_that(readouterr.err).is_equal_to(f.read())
 
@@ -216,7 +218,7 @@ def get_file_path(test_datadir):
 def _verify_test(mocker, capsys, output, error, config, temp_path_for_config):
     _launch_config(mocker, temp_path_for_config)
     assert_that(_are_configurations_equals(temp_path_for_config, config)).is_true()
-    _are_output_error_correct(capsys, output, error)
+    _are_output_error_correct(capsys, output, error, temp_path_for_config)
     os.remove(temp_path_for_config)
 
 
@@ -323,7 +325,7 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys
 
     _launch_config(mocker, old_config_file, remove_path=False)
     assert_that(_are_configurations_equals(old_config_file, config)).is_true()
-    _are_output_error_correct(capsys, output, error)
+    _are_output_error_correct(capsys, output, error, old_config_file)
     os.remove(old_config_file)
 
 

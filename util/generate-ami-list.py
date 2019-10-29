@@ -55,7 +55,9 @@ def get_ami_list_from_file(regions, cfn_template_file):
     return amis_json
 
 
-def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git_ref, version, owner, credentials):
+def get_ami_list_from_ec2(
+    main_region, regions, date, build_date, cookbook_git_ref, node_git_ref, version, owner, credentials
+):
     amis_json = {}
 
     for region_name in regions:
@@ -65,7 +67,8 @@ def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git
         elif cookbook_git_ref and node_git_ref:
             filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
             filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
-            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*"]})
+            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]})
+
         else:
             print("Error: you can search for version and date or cookbook and node git reference")
             exit(1)
@@ -216,6 +219,9 @@ if __name__ == "__main__":
     group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
     group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
     group2.add_argument(
+        "--build-date", type=str, help="(optional) build date [timestamp] (e.g. 201801112350)", required=False
+    )
+    group2.add_argument(
         "--credential",
         type=str,
         action="append",
@@ -265,6 +271,7 @@ if __name__ == "__main__":
             main_region=region,
             regions=regions,
             date=args.date,
+            build_date=args.build_date,
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             version=args.version,

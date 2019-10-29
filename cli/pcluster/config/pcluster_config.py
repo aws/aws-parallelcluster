@@ -21,7 +21,7 @@ import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import error, get_instance_vcpus, get_latest_alinux_ami_id, get_stack_name, warn
+from pcluster.utils import error, get_instance_vcpus, get_latest_alinux_ami_id, get_stack, get_stack_name, warn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -193,6 +193,16 @@ class PclusterConfig(object):
             # we rely on the AWS CLI configuration or already set env variable
             pass
 
+    @property
+    def region(self):
+        """Get the region. The value is stored inside the aws_region_name of the aws section."""
+        return self.get_section("aws").get_param_value("aws_region_name")
+
+    @region.setter
+    def region(self, region):
+        """Set the region. The value is stored inside the aws_region_name of the aws section."""
+        self.get_section("aws").get_param("aws_region_name").value = region
+
     def __init_region(self):
         """
         Evaluate region to use and set in the environment to be available for all the boto3 calls.
@@ -202,15 +212,13 @@ class PclusterConfig(object):
         if os.environ.get("AWS_DEFAULT_REGION"):
             self.region = os.environ.get("AWS_DEFAULT_REGION")
         else:
-            self.region = self.get_section("aws").get_param_value("aws_region_name")
             os.environ["AWS_DEFAULT_REGION"] = self.region
 
     def to_file(self):
-        """
-        Convert the internal representation of the cluster to the relative file sections.
+        """Convert the internal representation of the cluster to the relative file sections."""
+        for section_key in ["aws", "global", "aliases"]:
+            self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
-        NOTE: aws, global, aliases sections will be excluded from this transformation.
-        """
         self.get_section("cluster").to_file(self.config_parser)
 
         # ensure that the directory for the config file exists
@@ -227,8 +235,8 @@ class PclusterConfig(object):
                 os.chmod(self.config_file, stat.S_IRUSR | stat.S_IWUSR)
 
         # Write configuration to disk
-        with open(self.config_file, "w") as cf:
-            self.config_parser.write(cf)
+        with open(self.config_file, "w") as conf_file_stream:
+            self.config_parser.write(conf_file_stream)
 
     def to_cfn(self):
         """
@@ -282,8 +290,7 @@ class PclusterConfig(object):
 
     def __init_sections_from_cfn(self, cluster_name):
         try:
-            stack_name = get_stack_name(cluster_name)
-            stack = boto3.client("cloudformation").describe_stacks(StackName=stack_name).get("Stacks")[0]
+            stack = get_stack(get_stack_name(cluster_name))
 
             section_type = CLUSTER.get("type")
             section = section_type(section_definition=CLUSTER, pcluster_config=self).from_cfn_params(
