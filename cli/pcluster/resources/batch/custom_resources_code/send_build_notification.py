@@ -31,8 +31,10 @@ def handler(event, context):
     print("Notification URL: %s" % notification_url)
     print("Notification data: %s" % data)
 
+    # This function returns a 5-tuple: (addressing scheme, network location, path, query, fragment identifier)
     split_url = urlsplit(notification_url)
     host = split_url.netloc
+    # Building the url without scheme and hostname
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
