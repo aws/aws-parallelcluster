@@ -193,6 +193,16 @@ class PclusterConfig(object):
             # we rely on the AWS CLI configuration or already set env variable
             pass
 
+    @property
+    def region(self):
+        """Get the region. The value is stored inside the aws_region_name of the aws section."""
+        return self.get_section("aws").get_param_value("aws_region_name")
+
+    @region.setter
+    def region(self, region):
+        """Set the region. The value is stored inside the aws_region_name of the aws section."""
+        self.get_section("aws").get_param("aws_region_name").value = region
+
     def __init_region(self):
         """
         Evaluate region to use and set in the environment to be available for all the boto3 calls.
@@ -202,15 +212,13 @@ class PclusterConfig(object):
         if os.environ.get("AWS_DEFAULT_REGION"):
             self.region = os.environ.get("AWS_DEFAULT_REGION")
         else:
-            self.region = self.get_section("aws").get_param_value("aws_region_name")
             os.environ["AWS_DEFAULT_REGION"] = self.region
 
     def to_file(self):
-        """
-        Convert the internal representation of the cluster to the relative file sections.
+        """Convert the internal representation of the cluster to the relative file sections."""
+        for section_key in ["aws", "global", "aliases"]:
+            self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
-        NOTE: aws, global, aliases sections will be excluded from this transformation.
-        """
         self.get_section("cluster").to_file(self.config_parser)
 
         # ensure that the directory for the config file exists
