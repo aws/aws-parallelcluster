@@ -43,6 +43,8 @@ def dump_instances(instance_details, region, aws_credentials=None):
         if "Compute Instance" in product.get("productFamily"):
             instance = product.get("attributes")
             instances[instance.get("instanceType")] = {"vcpus": instance.get("vcpu")}
+            # Sample memory input: {"memory" : "30 GiB"}
+            instances[instance.get("instanceType")]["memory"] = instance.get("memory")
             # Adding instance's gpu information to instances.json
             if "gpu" in instance:
                 instances[instance.get("instanceType")]["gpu"] = instance.get("gpu")
@@ -59,12 +61,23 @@ def validate_against_old_version(instances_info, region, aws_credentials=None):
     Validate that old instances information are all contained in the new version
     """
     old_instances_info = get_old_instances_info(region, aws_credentials)
+    print("Old instances.json:\n{0}".format(old_instances_info))
+    print("New instances.json:\n{0}".format(instances_info))
     for instance_type in old_instances_info:
         if instance_type not in instances_info:
             _fail("new file does not contain {0} instance type!".format(instance_type))
         for resource in old_instances_info[instance_type]:
             if resource not in instances_info[instance_type]:
                 _fail("new file does not contain {0} resource for {1} instance type!".format(resource, instance_type))
+            if old_instances_info[instance_type][resource] != instances_info[instance_type][resource]:
+                _fail(
+                    "{0}:{1} value is different from previous version! New value: {2}, previous value: {3}!".format(
+                        instance_type,
+                        resource,
+                        instances_info[instance_type][resource],
+                        old_instances_info[instance_type][resource],
+                    )
+                )
 
 
 def get_all_aws_regions(region):
@@ -153,7 +166,7 @@ def upload(regions, main_region, credentials):
 
 
 def _fail(msg):
-    """Print an error message and exit."""
+    """Print old and new instances.json and error message then exit."""
     print("ERROR: {0}".format(msg))
     sys.exit(1)
 
@@ -175,6 +188,13 @@ if __name__ == "__main__":
         type=str,
         action="append",
         help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        required=False,
+    )
+    parser.add_argument(
+        "--deploy",
+        action="store_true",
+        help="If deploy is false, we will perform a dryrun and instances.json will not be pushed to buckets",
+        default=False,
         required=False,
     )
     args = parser.parse_args()
@@ -201,4 +221,6 @@ if __name__ == "__main__":
 
     regions = get_all_aws_regions(main_region)
 
-    upload(regions, main_region, credentials)
+    if args.deploy:
+        print("Pushing instances.json to S3...")
+        upload(regions, main_region, credentials)

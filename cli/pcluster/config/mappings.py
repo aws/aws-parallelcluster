@@ -18,6 +18,7 @@ from pcluster.config.param_types import (
     DisableHyperThreadingParam,
     EBSSettingsParam,
     EFSSection,
+    ExtraJsonParam,
     FloatParam,
     IntParam,
     JsonParam,
@@ -539,7 +540,7 @@ CLUSTER = {
                 "cfn_param_mapping": "PostInstallArgs",
             }),
             ("extra_json", {
-                "type": JsonParam,
+                "type": ExtraJsonParam,
                 "cfn_param_mapping": "ExtraJson",
             }),
             ("additional_cfn_template", {

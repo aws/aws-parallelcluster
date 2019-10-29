@@ -71,7 +71,6 @@ class PclusterConfig(object):
             self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(file_sections, cluster_label, self.config_parser, fail_on_file_absence)
-            self.__validate()
 
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
@@ -194,6 +193,16 @@ class PclusterConfig(object):
             # we rely on the AWS CLI configuration or already set env variable
             pass
 
+    @property
+    def region(self):
+        """Get the region. The value is stored inside the aws_region_name of the aws section."""
+        return self.get_section("aws").get_param_value("aws_region_name")
+
+    @region.setter
+    def region(self, region):
+        """Set the region. The value is stored inside the aws_region_name of the aws section."""
+        self.get_section("aws").get_param("aws_region_name").value = region
+
     def __init_region(self):
         """
         Evaluate region to use and set in the environment to be available for all the boto3 calls.
@@ -203,15 +212,13 @@ class PclusterConfig(object):
         if os.environ.get("AWS_DEFAULT_REGION"):
             self.region = os.environ.get("AWS_DEFAULT_REGION")
         else:
-            self.region = self.get_section("aws").get_param_value("aws_region_name")
             os.environ["AWS_DEFAULT_REGION"] = self.region
 
     def to_file(self):
-        """
-        Convert the internal representation of the cluster to the relative file sections.
+        """Convert the internal representation of the cluster to the relative file sections."""
+        for section_key in ["aws", "global", "aliases"]:
+            self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
-        NOTE: aws, global, aliases sections will be excluded from this transformation.
-        """
         self.get_section("cluster").to_file(self.config_parser)
 
         # ensure that the directory for the config file exists
@@ -298,7 +305,8 @@ class PclusterConfig(object):
                 )
             )
 
-    def __validate(self):
+    def validate(self):
+        """Validate the configuration."""
         fail_on_error = (
             self.get_section("global").get_param_value("sanity_check")
             if self.get_section("global")

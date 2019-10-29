@@ -51,8 +51,6 @@ def test_mapping_consistency():
 
 def test_example_config_consistency(mocker):
     """Validate example file and try to convert to CFN."""
-    # mock validation to avoid boto3 calls required at validation stage
-    mocker.patch.object(PclusterConfig, "_PclusterConfig__validate")
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
     pcluster_config = PclusterConfig(
         config_file=utils.get_pcluster_config_example(),

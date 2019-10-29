@@ -27,7 +27,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError
 
-distros = OrderedDict(
+DISTROS = OrderedDict(
     [
         ("alinux", "amzn"),
         ("centos6", "centos6"),
@@ -55,7 +55,9 @@ def get_ami_list_from_file(regions, cfn_template_file):
     return amis_json
 
 
-def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git_ref, version, owner, credentials):
+def get_ami_list_from_ec2(
+    main_region, regions, date, build_date, cookbook_git_ref, node_git_ref, version, owner, credentials
+):
     amis_json = {}
 
     for region_name in regions:
@@ -65,7 +67,8 @@ def get_ami_list_from_ec2(main_region, regions, date, cookbook_git_ref, node_git
         elif cookbook_git_ref and node_git_ref:
             filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
             filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
-            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*"]})
+            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]})
+
         else:
             print("Error: you can search for version and date or cookbook and node git reference")
             exit(1)
@@ -86,7 +89,7 @@ def populate_amis_json(amis_json, images, region_name):
     if images:
         amis = {}
         for image in images.get("Images"):
-            for key, value in distros.items():
+            for key, value in DISTROS.items():
                 if value in image.get("Name"):
                     amis[key] = image.get("ImageId")
         if len(amis) == 0:
@@ -121,7 +124,7 @@ def get_images_ec2_credential(filters, main_region, credential):
         )
 
         images = ec2.describe_images(Owners=[credential_owner], Filters=filters)
-        return images
+        return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(credential_region))
         pass
@@ -131,15 +134,29 @@ def get_images_ec2(filters, owner, region_name):
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
         images = ec2.describe_images(Owners=[owner], Filters=filters)
-        return images
+        return get_latest_images(images)
     except ClientError:
         print("Warning: non authorized in region '{0}', skipping".format(region_name))
         pass
 
 
+def get_latest_images(images):
+    # filter for the latest image per OS
+    images_filtered = {"Images": []}
+    for key, value in DISTROS.items():
+        ami_filtered_and_sorted = sorted(
+            filter(lambda ami: "-{0}-".format(value) in ami["Name"], images["Images"]),
+            key=lambda ami: ami["CreationDate"],
+            reverse=True,
+        )
+        if ami_filtered_and_sorted:
+            images_filtered["Images"].append(ami_filtered_and_sorted[0])
+    return images_filtered
+
+
 def convert_json_to_txt(amis_json):
     amis_txt = ""
-    for key, value in distros.items():
+    for key, value in DISTROS.items():
         amis_txt += "# " + key + "\n"
         for region, amis in amis_json.items():
             if key in amis:
@@ -202,6 +219,9 @@ if __name__ == "__main__":
     group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
     group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
     group2.add_argument(
+        "--build-date", type=str, help="(optional) build date [timestamp] (e.g. 201801112350)", required=False
+    )
+    group2.add_argument(
         "--credential",
         type=str,
         action="append",
@@ -251,6 +271,7 @@ if __name__ == "__main__":
             main_region=region,
             regions=regions,
             date=args.date,
+            build_date=args.build_date,
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             version=args.version,

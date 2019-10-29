@@ -204,12 +204,19 @@ def clusters_factory(request):
 
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
+
+    # Sanitize config file name to make it Windows compatible
+    # request.node.nodeid example:
+    # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-sge-8443-0.0.0.0/0-/shared]'
+    test_file, test_name = request.node.nodeid.split("::", 1)
+    config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
+
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(test_file)),
         exist_ok=True,
     )
-    cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
+    cluster_config_dst = "{out_dir}/clusters_configs/{config_file_name}.config".format(
+        out_dir=out_dir, config_file_name=config_file_name
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst

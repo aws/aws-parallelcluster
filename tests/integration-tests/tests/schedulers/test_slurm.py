@@ -17,7 +17,7 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
+from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
@@ -40,7 +40,7 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
 
     _test_slurm_version(remote_command_executor)
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg)
-    _test_cluster_limits(remote_command_executor, max_queue_size, region, cluster.asg)
+    _test_cluster_limits(remote_command_executor, max_queue_size)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
     _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
     assert_overscaling_when_job_submitted_during_scaledown(
@@ -115,11 +115,14 @@ def _test_job_dependencies(remote_command_executor, region, stack_name, scaledow
     _assert_job_completed(remote_command_executor, dependent_job_id)
 
 
-def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_name):
-    logging.info("Testing cluster doesn't scale when job requires a capacity that is higher than the max available")
-    slurm_commands = SlurmCommands(remote_command_executor)
-    result = slurm_commands.submit_command("sleep 1000", nodes=max_queue_size + 1)
-    max_nodes_job_id = slurm_commands.assert_job_submitted(result.stdout)
+def _test_cluster_limits(remote_command_executor, max_queue_size):
+    logging.info("Testing scheduler rejects jobs that require a capacity that is higher than the max available")
+
+    # Check node limit job is rejected at submission
+    result = remote_command_executor.run_remote_command(
+        "sbatch -N {0} --wrap='sleep 1'".format(max_queue_size + 1), raise_on_error=False
+    )
+    assert_that(result.stdout).contains("sbatch: error: Batch job submission failed: Node count specification invalid")
 
     # Check cpu limit job is rejected at submission
     result = remote_command_executor.run_remote_command(
@@ -127,12 +130,6 @@ def _test_cluster_limits(remote_command_executor, max_queue_size, region, asg_na
     )
     assert_that(result.stdout).contains(
         "sbatch: error: Batch job submission failed: Requested node configuration is not available"
-    )
-    # Check we are not scaling
-    time.sleep(60)
-    assert_asg_desired_capacity(region, asg_name, expected=0)
-    assert_that(_get_job_info(remote_command_executor, max_nodes_job_id)).contains(
-        "JobState=PENDING Reason=PartitionNodeLimit"
     )
 
 

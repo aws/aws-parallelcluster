@@ -159,10 +159,10 @@ class Param(object):
                 else:
                     LOGGER.debug("Configuration parameter '%s' is valid", self.key)
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser in the right section."""
         section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value and self.value != self.get_default_value():
+        if self.value is not None and (write_defaults or self.value != self.get_default_value()):
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.get_string_value())
         else:
@@ -434,6 +434,31 @@ class JsonParam(Param):
 # that require some custom action during CFN/file conversion
 
 
+class ExtraJsonParam(JsonParam):
+    """Class to manage extra_json configuration parameters."""
+
+    def get_cfn_value(self):
+        """
+        Convert parameter value into CFN value.
+
+        The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but cookbook
+        recipes require "cfncluster" as key.
+        """
+        if self.value and "cluster" in self.value:
+            self.value = {"cfncluster": self.value.pop("cluster")}
+        return self.get_string_value()
+
+    def to_file(self, config_parser, write_defaults=False):
+        """Set parameter in the config_parser in the right section.
+
+        The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but
+        we are writing "cluster" in the file to suggest the users the recommended syntax.
+        """
+        if self.value and "cfncluster" in self.value:
+            self.value = {"cluster": self.value.pop("cfncluster")}
+        super(ExtraJsonParam, self).to_file(config_parser)
+
+
 class SharedDirParam(Param):
     """
     Class to manage the shared_dir configuration parameter.
@@ -452,11 +477,11 @@ class SharedDirParam(Param):
         # else: there are ebs volumes, let the EBSSettings populate the SharedDir CFN parameter.
         return cfn_params
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser only if the PclusterConfig object does not contains ebs sections."""
         # if not contains ebs_settings --> single SharedDir
         section_name = _get_file_section_name(self.section_key, self.section_label)
-        if not self.pcluster_config.get_section("ebs") and self.value != self.get_default_value():
+        if not self.pcluster_config.get_section("ebs") and (write_defaults or self.value != self.get_default_value()):
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.value)
         # else: there are ebs volumes, let the EBSSettings parse the SharedDir CFN parameter.
@@ -637,7 +662,7 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         )
         self.aws_batch_iam_policy = "arn:{0}:iam::aws:policy/AWSBatchFullAccess".format(get_partition())
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser in the right section."""
         # remove awsbatch policy, if there
         if self.aws_batch_iam_policy in self.value:
@@ -690,7 +715,7 @@ class AvailabilityZoneParam(Param):
 
         return self
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Do nothing, because master_availability_zone it is an internal parameter, not exposed in the config file."""
         pass
 
@@ -819,7 +844,7 @@ class SettingsParam(Param):
                 )
                 self.pcluster_config.add_section(section)
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Convert the param value into a section in the config_parser and initialize it."""
         section = self.pcluster_config.get_section(self.referred_section_key, self.value)
         if section:
@@ -830,8 +855,8 @@ class SettingsParam(Param):
                 param_value = section.get_param_value(param_key)
 
                 section_name = _get_file_section_name(self.section_key, self.section_label)
-                if not config_parser.has_option(section_name, self.key) and param_value != param_definition.get(
-                    "default", None
+                if not config_parser.has_option(section_name, self.key) and (
+                    write_defaults or (param_value != param_definition.get("default", None))
                 ):
                     _ensure_section_existence(config_parser, section_name)
                     config_parser.set(section_name, self.key, self.value)
@@ -917,7 +942,7 @@ class EBSSettingsParam(SettingsParam):
 
         return self
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Convert the param value into a list of sections in the config_parser and initialize them."""
         sections = {}
         if self.value:
@@ -1105,7 +1130,7 @@ class Section(object):
                         fail_on_error
                     )
 
-    def to_file(self, config_parser):
+    def to_file(self, config_parser, write_defaults=False):
         """Create the section and add all the parameters in the config_parser."""
         section_name = _get_file_section_name(self.key, self.label)
 
@@ -1116,11 +1141,11 @@ class Section(object):
                 param_type = param_definition.get("type", Param)
                 param = param_type(self.key, self.label, param_key, param_definition, self.pcluster_config)
 
-            if param.value != param_definition.get("default", None):
+            if write_defaults or param.value != param_definition.get("default", None):
                 # add section in the config file only if at least one parameter value is different by the default
                 _ensure_section_existence(config_parser, section_name)
 
-            param.to_file(config_parser)
+            param.to_file(config_parser, write_defaults)
 
     def to_cfn(self):
         """
