@@ -21,7 +21,13 @@ import pkg_resources
 from pcluster.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
-from pcluster.utils import get_region, get_stack_output_value, get_templates_bucket_path, verify_stack_creation
+from pcluster.utils import (
+    get_region,
+    get_stack,
+    get_stack_output_value,
+    get_templates_bucket_path,
+    verify_stack_creation,
+)
 
 DEFAULT_AWS_REGION_NAME = "us-east-1"
 LOGGER = logging.getLogger(__name__)
@@ -149,8 +155,8 @@ def _create_network_stack(configuration, parameters):
     stack_name = "parallelclusternetworking-{0}{1}".format(configuration.stack_name_prefix, TIMESTAMP)
     version = pkg_resources.get_distribution("aws-parallelcluster").version
     try:
-        cfn = boto3.client("cloudformation")
-        stack = cfn.create_stack(
+        cfn_client = boto3.client("cloudformation")
+        stack = cfn_client.create_stack(
             StackName=stack_name,
             TemplateURL=get_templates_bucket_path()
             + "networking/%s-%s.cfn.json" % (configuration.template_name, version),
@@ -159,12 +165,12 @@ def _create_network_stack(configuration, parameters):
         )
         LOGGER.debug("StackId: {0}".format(stack.get("StackId")))
         LOGGER.info("Stack Name: {0}".format(stack_name))
-        if not verify_stack_creation(cfn, stack_name):
+        if not verify_stack_creation(stack_name, cfn_client):
             LOGGER.error("Could not create the network configuration")
             sys.exit(0)
         print()
         LOGGER.info("The stack has been created")
-        return cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]["Outputs"]
+        return get_stack(stack_name, cfn_client).get("Outputs")
     except KeyboardInterrupt:
         print()
         LOGGER.info(

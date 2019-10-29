@@ -95,7 +95,7 @@ def create(args):  # noqa: C901 FIXME!!!
 
     batch_temporary_bucket = None
     try:
-        cfn = boto3.client("cloudformation")
+        cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
         # If scheduler is awsbatch create bucket with resources
@@ -122,7 +122,7 @@ def create(args):  # noqa: C901 FIXME!!!
 
         # prepare input parameters for stack creation and create the stack
         params = [{"ParameterKey": key, "ParameterValue": value} for key, value in cfn_params.items()]
-        stack = cfn.create_stack(
+        stack = cfn_client.create_stack(
             StackName=stack_name,
             TemplateURL=template_url,
             Parameters=params,
@@ -133,12 +133,12 @@ def create(args):  # noqa: C901 FIXME!!!
         LOGGER.debug("StackId: %s", stack.get("StackId"))
 
         if not args.nowait:
-            utils.verify_stack_creation(cfn, stack_name)
+            utils.verify_stack_creation(stack_name, cfn_client)
             LOGGER.info("")
-            result_stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+            result_stack = utils.get_stack(stack_name, cfn_client)
             _print_stack_outputs(result_stack)
         else:
-            stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+            stack_status = utils.get_stack(stack_name, cfn_client).get("StackStatus")
             LOGGER.info("Status: %s", stack_status)
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
@@ -264,7 +264,7 @@ def update(args):  # noqa: C901 FIXME!!!
     else:
         if args.reset_desired:
             LOGGER.info("reset_desired flag does not work with awsbatch scheduler")
-        params = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Parameters")
+        params = utils.get_stack(stack_name, cfn).get("Parameters")
 
         for parameter in params:
             if parameter.get("ParameterKey") == "ResourcesS3Bucket":
@@ -281,10 +281,10 @@ def update(args):  # noqa: C901 FIXME!!!
         cfn.update_stack(
             StackName=stack_name, UsePreviousTemplate=True, Parameters=cfn_params, Capabilities=["CAPABILITY_IAM"]
         )
-        stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
         if not args.nowait:
             while stack_status == "UPDATE_IN_PROGRESS":
-                stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
@@ -293,7 +293,7 @@ def update(args):  # noqa: C901 FIXME!!!
                 sys.stdout.flush()
                 time.sleep(5)
         else:
-            stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+            stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
             LOGGER.info("Status: %s", stack_status)
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
@@ -592,7 +592,7 @@ def _get_param_value(params, key_name):
 
 
 def command(args, extra_args):  # noqa: C901 FIXME!!!
-    stack = utils.get_stack_name(args.cluster_name)
+    stack_name = utils.get_stack_name(args.cluster_name)
     pcluster_config = PclusterConfig(file_sections=[ALIASES])
 
     if args.command in pcluster_config.get_section("aliases").params:
@@ -602,8 +602,8 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
 
     cfn = boto3.client("cloudformation")
     try:
-        stack_result = cfn.describe_stacks(StackName=stack).get("Stacks")[0]
-        stack_status = stack_result.get("StackStatus")
+        stack_info = utils.get_stack(stack_name, cfn)
+        stack_status = stack_info.get("StackStatus")
         valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
         invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
 
@@ -611,9 +611,9 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
             LOGGER.info("Stack status: %s. Cannot SSH while in %s", stack_status, " or ".join(invalid_status))
             sys.exit(1)
         elif stack_status in valid_status:
-            outputs = stack_result.get("Outputs")
+            outputs = stack_info.get("Outputs")
             username = utils.get_stack_output_value(outputs, "ClusterUser")
-            master_ip = utils.get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack)
+            master_ip = utils.get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
 
             if not username:
                 LOGGER.info("Failed to get cluster %s username.", args.cluster_name)
@@ -624,10 +624,10 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
                 sys.exit(1)
         else:
             # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
-            master_ip = _get_master_server_ip(stack)
-            template = cfn.get_template(StackName=stack)
+            master_ip = _get_master_server_ip(stack_name)
+            template = cfn.get_template(StackName=stack_name)
             mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
-            base_os = _get_param_value(stack_result.get("Parameters"), "BaseOS")
+            base_os = _get_param_value(stack_info.get("Parameters"), "BaseOS")
             username = mappings.get(base_os).get("User")
 
         try:
@@ -662,7 +662,7 @@ def status(args):  # noqa: C901 FIXME!!!
 
     cfn = boto3.client("cloudformation")
     try:
-        stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
         sys.stdout.write("\rStatus: %s" % stack_status)
         sys.stdout.flush()
         if not args.nowait:
@@ -675,7 +675,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 "DELETE_FAILED",
             ]:
                 time.sleep(5)
-                stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
+                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
@@ -687,7 +687,7 @@ def status(args):  # noqa: C901 FIXME!!!
             if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
-                    stack = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
+                    stack = utils.get_stack(stack_name, cfn)
                     _print_stack_outputs(stack)
             elif stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED", "UPDATE_ROLLBACK_COMPLETE"]:
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")
@@ -716,7 +716,7 @@ def status(args):  # noqa: C901 FIXME!!!
 def delete(args):
     saw_update = False
     LOGGER.info("Deleting: %s", args.cluster_name)
-    stack = utils.get_stack_name(args.cluster_name)
+    stack_name = utils.get_stack_name(args.cluster_name)
 
     # Parse configuration file to read the AWS section
     PclusterConfig(config_file=args.config_file)
@@ -725,18 +725,18 @@ def delete(args):
     try:
         # delete_stack does not raise an exception if stack does not exist
         # Use describe_stacks to explicitly check if the stack exists
-        cfn.describe_stacks(StackName=stack)
-        cfn.delete_stack(StackName=stack)
+        cfn.describe_stacks(StackName=stack_name)
+        cfn.delete_stack(StackName=stack_name)
         saw_update = True
-        stack_status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get("StackStatus")
+        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
         sys.stdout.write("\rStatus: %s" % stack_status)
         sys.stdout.flush()
         LOGGER.debug("Status: %s", stack_status)
         if not args.nowait:
             while stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
-                stack_status = cfn.describe_stacks(StackName=stack).get("Stacks")[0].get("StackStatus")
-                events = cfn.describe_stack_events(StackName=stack).get("StackEvents")[0]
+                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
+                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
                 ).ljust(80)

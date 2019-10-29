@@ -77,10 +77,10 @@ def create_ami(args):
 def config_logger():
     LOGGER.setLevel(logging.DEBUG)
 
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter("%(message)s"))
-    LOGGER.addHandler(ch)
+    log_stream_handler = logging.StreamHandler(sys.stdout)
+    log_stream_handler.setLevel(logging.INFO)
+    log_stream_handler.setFormatter(logging.Formatter("%(message)s"))
+    LOGGER.addHandler(log_stream_handler)
 
     logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
     try:
@@ -89,10 +89,10 @@ def config_logger():
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
-    fh = logging.FileHandler(logfile)
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
-    LOGGER.addHandler(fh)
+    log_file_handler = logging.FileHandler(logfile)
+    log_file_handler.setLevel(logging.DEBUG)
+    log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+    LOGGER.addHandler(log_file_handler)
 
 
 def _addarg_config(subparser):
