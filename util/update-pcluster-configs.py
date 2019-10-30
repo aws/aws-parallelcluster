@@ -168,7 +168,7 @@ class InstancesConfigGenerator(ConfigGenerator):
     @staticmethod
     def _download_pricing_file(region):
         logging.info("Downloading pricing file...This might take a while.")
-        url_prefix = f"https://pricing.{region}.amazonaws.com"
+        url_prefix = f"https://pricing.{region}.amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
         index_json = _read_json_from_url(f"{url_prefix}/offers/v1.0/aws/index.json")
         ec2_pricing_url = index_json["offers"]["AmazonEC2"]["currentVersionUrl"]
         return _read_json_from_url(f"{url_prefix}{ec2_pricing_url}")
