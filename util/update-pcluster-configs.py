@@ -148,8 +148,11 @@ class InstancesConfigGenerator(ConfigGenerator):
             if "Compute Instance" in product.get("productFamily"):
                 instance = product.get("attributes")
                 instances[instance.get("instanceType")] = {"vcpus": instance.get("vcpu")}
-                # Sample memory input: {"memory" : "30 GiB"}
-                instances[instance.get("instanceType")]["memory"] = instance.get("memory")
+                # Sample memory input: {"memory" : "1,952.5 GiB"}
+                memory = instance.get("memory")
+                memory = memory.replace(",", "")  # Remove comma delimiter
+                memory = memory.replace(" GiB", "")  # Remove GiB
+                instances[instance.get("instanceType")]["memory"] = memory
                 # Adding instance's gpu information to instances.json
                 if "gpu" in instance:
                     instances[instance.get("instanceType")]["gpu"] = instance.get("gpu")
