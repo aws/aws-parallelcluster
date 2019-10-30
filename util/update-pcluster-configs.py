@@ -73,6 +73,12 @@ class S3JsonDocumentManager:
             )
             raise
 
+    def get_current_version(self, s3_bucket, document_s3_path):
+        response = boto3.client("s3", region_name=self._region, **self._credentials).head_object(
+            Bucket=s3_bucket, Key=document_s3_path
+        )
+        return response["VersionId"]
+
     @staticmethod
     def validate_document(old_doc, new_doc):
         try:
@@ -403,13 +409,7 @@ def _parse_args():
     return args
 
 
-if __name__ == "__main__":
-    args = _parse_args()
-    logging.info("Parsed cli args: %s", vars(args))
-
-    sts_credentials = _retrieve_sts_credentials(args.credentials, args.partition)
-
-    logging.info("Generating all documents to upload")
+def _generate_docs(args, sts_credentials):
     files_to_upload = {}
     for file in args.config_files:
         files_to_upload[file] = {}
@@ -418,34 +418,73 @@ if __name__ == "__main__":
             files_to_upload[file][region] = CONFIG_FILE_TO_GENERATOR[file](
                 args, region, sts_credentials.get(region, {})
             )
+    return files_to_upload
 
-    if not args.skip_validation:
-        logging.info("Validating all documents to upload")
-        for file in files_to_upload.keys():
-            for region in args.regions:
-                logging.info("Validating file %s in region %s", file, region)
-                doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
-                current_file = doc_manager.download(args.bucket.format(region=region), FILE_TO_S3_PATH[file])
-                logging.info("Current version: %s", current_file)
-                logging.info("New version: %s", files_to_upload[file][region])
-                doc_manager.validate_document(current_file, files_to_upload[file][region])
-                logging.info("Document is valid", files_to_upload[file][region])
 
-    logging.info("Uploading documents...")
+def _validate_documents_against_existing_version(args, files_to_upload, sts_credentials):
+    for file in files_to_upload.keys():
+        for region in args.regions:
+            logging.info("Validating file %s in region %s", file, region)
+            doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+            current_file = doc_manager.download(args.bucket.format(region=region), FILE_TO_S3_PATH[file])
+            logging.info("Current version: %s", current_file)
+            logging.info("New version: %s", files_to_upload[file][region])
+            doc_manager.validate_document(current_file, files_to_upload[file][region])
+            logging.info("Document is valid", files_to_upload[file][region])
+
+
+def _generate_rollback_data(args, files_to_upload, sts_credentials):
+    rollback_data = {}
+    for file in files_to_upload.keys():
+        rollback_data[FILE_TO_S3_PATH[file]] = {}
+        for region in args.regions:
+            doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+            rollback_data[FILE_TO_S3_PATH[file]][region] = doc_manager.get_current_version(
+                args.bucket.format(region=region), FILE_TO_S3_PATH[file]
+            )
+    logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
+    with open("rollback-data.json", "w") as outfile:
+        json.dump(rollback_data, outfile, indent=2)
+
+
+def _upload_documents(args, files_to_upload, sts_credentials):
     for file in files_to_upload.keys():
         for region in args.regions:
             logging.info("Uploading file %s in region %s", file, region)
             doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
-            current_file = doc_manager.upload(
+            doc_manager.upload(
                 args.bucket.format(region=region),
                 FILE_TO_S3_PATH[file],
                 files_to_upload[file][region],
                 dryrun=not args.deploy,
             )
 
+
+def main():
+    args = _parse_args()
+    logging.info("Parsed cli args: %s", vars(args))
+
+    sts_credentials = _retrieve_sts_credentials(args.credentials, args.partition)
+
+    logging.info("Generating all documents to upload")
+    files_to_upload = _generate_docs(args, sts_credentials)
+
+    if not args.skip_validation:
+        logging.info("Validating all documents to upload")
+        _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
+
+    logging.info("Generating rollback data")
+    _generate_rollback_data(args, files_to_upload, sts_credentials)
+
+    logging.info("Uploading documents...")
+    _upload_documents(args, files_to_upload, sts_credentials)
+
     logging.info(
-        "Summary of uploaded docs:\n%s",
-        json.dumps({k: list(v.keys()) for k, v in files_to_upload.items()}, indent=True),
+        "Summary of uploaded docs:\n%s", json.dumps({k: list(v.keys()) for k, v in files_to_upload.items()}, indent=2)
     )
     if not args.deploy:
         logging.warning("Documents not uploaded since --deploy flag not specified. Rerun with --deploy flag to upload")
+
+
+if __name__ == "__main__":
+    main()
