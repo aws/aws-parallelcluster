@@ -9,6 +9,8 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
+from jsonschema import validate
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
 PARTITIONS = ["commercial", "china", "govcloud"]
@@ -93,12 +95,31 @@ class ConfigGenerator(ABC):
 
 
 class InstancesConfigGenerator(ConfigGenerator):
+    SCHEMA = {
+        "type": "object",
+        "patternProperties": {
+            r"^[a-z0-9-]+\.[a-z0-9]+$": {
+                "type": "object",
+                "properties": {
+                    "vcpus": {"type": "string", "pattern": r"^\d+$"},
+                    "memory": {"type": "string", "pattern": r"^\d+(\.\d+)?$"},
+                    "gpus": {"type": "string", "pattern": r"^\d+$"},
+                },
+                "required": ["vcpus", "memory"],
+            }
+        },
+        "additionalProperties": False,
+    }
+
     def __init__(self):
         self.__pricing_file_cache = None
 
     def generate(self, args, region, credentials):
         pricing_file = self._read_pricing_file(PARTITION_TO_MAIN_REGION[args.partition], args.pricing_file)
-        return self._parse_pricing_file(pricing_file)
+        instances_config = self._parse_pricing_file(pricing_file)
+        logging.info("Validating doc against its schema")
+        validate(instance=instances_config, schema=self.SCHEMA)
+        return instances_config
 
     # {
     #   "formatVersion" : "v1.0",
@@ -178,14 +199,50 @@ class InstancesConfigGenerator(ConfigGenerator):
 
 
 class FeatureWhitelistConfigGenerator(ConfigGenerator):
+    SCHEMA = {
+        "type": "object",
+        "properties": {
+            "Features": {
+                "type": "object",
+                "properties": {
+                    "efa": {
+                        "type": "object",
+                        "properties": {
+                            "instances": {
+                                "type": "array",
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+\.[a-z0-9]+$"},
+                            }
+                        },
+                        "required": ["instances"],
+                    },
+                    "batch": {
+                        "type": "object",
+                        "properties": {
+                            "instances": {
+                                "type": "array",
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+(\.[a-z0-9]+)?$"},
+                            }
+                        },
+                        "required": ["instances"],
+                    },
+                },
+                "required": ["efa", "batch"],
+            }
+        },
+        "additionalProperties": False,
+    }
+
     def generate(self, args, region, credentials):
         batch_instances = self._get_batch_instance_whitelist(region, credentials)
-        return {"Features": {"efa": {"instances": args.efa_instances}, "batch": {"instances": batch_instances}}}
+        config = {"Features": {"efa": {"instances": args.efa_instances}, "batch": {"instances": batch_instances}}}
+        logging.info("Validating doc against its schema")
+        validate(instance=config, schema=self.SCHEMA)
+        return config
 
     @staticmethod
     def _get_batch_instance_whitelist(region, credentials):
         instances = []
-        # try to create a dummy compute environmment
+        # try to create a dummy compute environment
         batch_client = boto3.client("batch", region_name=region, **credentials)
 
         try:
@@ -373,7 +430,10 @@ if __name__ == "__main__":
                 files_to_upload[file][region],
                 dryrun=not args.deploy,
             )
-    if not args.deploy:
-        logging.info("Documents not uploaded since --deploy flag not specified. Rerun with --deploy flag to upload")
 
-    logging.info("Summary of uploaded docs:\n%s", {k: list(v.keys()) for k, v in files_to_upload.items()})
+    logging.info(
+        "Summary of uploaded docs:\n%s",
+        json.dumps({k: list(v.keys()) for k, v in files_to_upload.items()}, indent=True),
+    )
+    if not args.deploy:
+        logging.warning("Documents not uploaded since --deploy flag not specified. Rerun with --deploy flag to upload")
