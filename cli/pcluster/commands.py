@@ -121,6 +121,7 @@ def create(args):  # noqa: C901 FIXME!!!
             cfn_params.update(dict(args.extra_parameters))
 
         # prepare input parameters for stack creation and create the stack
+        LOGGER.debug(cfn_params)
         params = [{"ParameterKey": key, "ParameterValue": value} for key, value in cfn_params.items()]
         stack = cfn_client.create_stack(
             StackName=stack_name,
@@ -641,10 +642,12 @@ def command(args, extra_args):  # noqa: C901 FIXME!!!
         )
 
         # run command
+        log_message = "Stack status: {0}, SSH command: {1}".format(stack_status, cmd)
         if not args.dryrun:
+            LOGGER.debug(log_message)
             os.system(cmd)
         else:
-            LOGGER.info(cmd)
+            LOGGER.info(log_message)
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
