@@ -13,6 +13,7 @@
 import collections
 import json
 import logging
+import os
 import re
 from abc import ABC, abstractmethod
 from urllib.request import urlopen
@@ -36,10 +37,13 @@ class S3JsonDocumentManager:
         self._region = region
         self._credentials = credentials or {}
 
-    def download(self, s3_bucket, document_s3_path):
+    def download(self, s3_bucket, document_s3_path, version_id=None):
         try:
             s3 = boto3.resource("s3", region_name=self._region, **self._credentials)
-            instances_file_content = s3.Object(s3_bucket, document_s3_path).get()["Body"].read()
+            if version_id:
+                instances_file_content = s3.ObjectVersion(s3_bucket, document_s3_path, version_id).get()["Body"].read()
+            else:
+                instances_file_content = s3.Object(s3_bucket, document_s3_path).get()["Body"].read()
             return json.loads(instances_file_content)
         except Exception as e:
             logging.error(
@@ -79,6 +83,17 @@ class S3JsonDocumentManager:
         )
         return response["VersionId"]
 
+    def revert_object(self, s3_bucket, s3_key, version_id, dryrun=True):
+        logging.info("Reverting object %s in region %s", s3_key, self._region)
+
+        if version_id != self.get_current_version(s3_bucket, s3_key):
+            current_object = self.download(s3_bucket, s3_key)
+            logging.info("Current version: %s", json.dumps(current_object))
+            reverting_object = self.download(s3_bucket, s3_key, version_id)
+            self.upload(s3_bucket, s3_key, reverting_object, dryrun=dryrun)
+        else:
+            logging.info("Current version is already the requested one: %s", version_id)
+
     @staticmethod
     def validate_document(old_doc, new_doc):
         try:
@@ -88,6 +103,7 @@ class S3JsonDocumentManager:
         except ImportError:
             logging.warning("Install dictdiffer if you want to display diffs: pip install dictdiffer")
 
+        logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
         logging.info("Checking that the new configuration file includes the old entries.")
         S3JsonDocumentManager._assert_document_is_included(old_doc, new_doc)
 
@@ -309,8 +325,11 @@ def _get_aws_regions(partition):
 
 
 def _validate_args(args, parser):
-    if "feature_whitelist" in args.config_files and not args.efa_instances:
+    if args.config_files and "feature_whitelist" in args.config_files and not args.efa_instances:
         parser.error("feature_whitelist requires --efa-instances to be specified")
+
+    if not args.rollback_file_path and not args.regions:
+        parser.error("please specify --regions or --autodetect-regions")
 
 
 def _retrieve_sts_credentials(credentials, partition):
@@ -334,15 +353,17 @@ def _parse_args():
     def _aws_credentials_type(value):
         return tuple(value.strip().split(","))
 
+    def _file_type(value):
+        if not os.path.isfile(value):
+            raise argparse.ArgumentTypeError("'{0}' is not a valid file".format(value))
+        return value
+
     parser = argparse.ArgumentParser(
         description="Update pcluster config files. Currently supports instances.json and feature_whitelist.json"
     )
 
     parser.add_argument(
         "--partition", choices=PARTITIONS, help="AWS Partition where to update the files", required=True
-    )
-    parser.add_argument(
-        "--config-files", choices=CONFIG_FILES, help="Configurations to update", required=True, nargs="+"
     )
     parser.add_argument(
         "--credentials",
@@ -373,6 +394,7 @@ def _parse_args():
         help="If not specified ec2.describe_regions is used to retrieve regions",
         required=False,
         nargs="+",
+        default=[]
     )
     parser.add_argument(
         "--autodetect-regions",
@@ -380,7 +402,7 @@ def _parse_args():
         help="If set ec2.describe_regions is used to retrieve regions. "
         "Additional regions can be specified with --regions",
         required=False,
-        default="True",
+        default=False,
     )
     parser.add_argument(
         "--bucket",
@@ -399,6 +421,9 @@ def _parse_args():
     parser.add_argument(
         "--pricing-file", type=str, help="If not specified this will be downloaded automatically", required=False
     )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--rollback-file-path", help="Path to file containing the rollback information", type=_file_type)
+    group.add_argument("--config-files", choices=CONFIG_FILES, help="Configurations to update", nargs="+")
 
     args = parser.parse_args()
 
@@ -460,30 +485,58 @@ def _upload_documents(args, files_to_upload, sts_credentials):
             )
 
 
+def _execute_rollback(args, sts_credentials):
+    with open(args.rollback_file_path) as rollback_file:
+        rollback_data = json.load(rollback_file)
+        logging.info("Loaded rollback data:\n%s", json.dumps(rollback_data, indent=2))
+
+        # Rollback file format
+        # {
+        #     "s3_object": {
+        #         "region": "version-id",
+        #         "region": "version-id"
+        #     },
+        #     "s3_object": {
+        #         "region": "version-id",
+        #         "region": "version-id"
+        #     }
+        # }
+        for s3_object in rollback_data:
+            for region, version_id in rollback_data[s3_object].items():
+                object_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+                object_manager.revert_object(args.bucket.format(region=region), s3_object, version_id, not args.deploy)
+
+
 def main():
     args = _parse_args()
     logging.info("Parsed cli args: %s", vars(args))
 
     sts_credentials = _retrieve_sts_credentials(args.credentials, args.partition)
 
-    logging.info("Generating all documents to upload")
-    files_to_upload = _generate_docs(args, sts_credentials)
+    if args.rollback_file_path:
+        _execute_rollback(args, sts_credentials)
+    else:
+        logging.info("Generating all documents to upload")
+        files_to_upload = _generate_docs(args, sts_credentials)
 
-    if not args.skip_validation:
-        logging.info("Validating all documents to upload")
-        _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
+        if not args.skip_validation:
+            logging.info("Validating all documents to upload")
+            _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
 
-    logging.info("Generating rollback data")
-    _generate_rollback_data(args, files_to_upload, sts_credentials)
+        logging.info("Generating rollback data")
+        _generate_rollback_data(args, files_to_upload, sts_credentials)
 
-    logging.info("Uploading documents...")
-    _upload_documents(args, files_to_upload, sts_credentials)
+        logging.info("Uploading documents...")
+        _upload_documents(args, files_to_upload, sts_credentials)
 
-    logging.info(
-        "Summary of uploaded docs:\n%s", json.dumps({k: list(v.keys()) for k, v in files_to_upload.items()}, indent=2)
-    )
-    if not args.deploy:
-        logging.warning("Documents not uploaded since --deploy flag not specified. Rerun with --deploy flag to upload")
+        logging.info(
+            "Summary of uploaded docs:\n%s",
+            json.dumps({k: list(v.keys()) for k, v in files_to_upload.items()}, indent=2),
+        )
+        if not args.deploy:
+            logging.warning(
+                "Documents not uploaded since --deploy flag not specified. Rerun with --deploy flag to upload"
+            )
 
 
 if __name__ == "__main__":
