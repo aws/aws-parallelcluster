@@ -29,6 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(nam
 PARTITIONS = ["commercial", "china", "govcloud"]
 CONFIG_FILES = ["instances", "feature_whitelist"]
 PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}
+PARTITION_TO_PRICING_FILE_REGION = {"commercial": "us-east-1", "govcloud": "us-east-1", "china": "cn-north-1"}
 FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
@@ -149,7 +150,7 @@ class InstancesConfigGenerator(ConfigGenerator):
         self.__pricing_file_cache = None
 
     def generate(self, args, region, credentials):
-        pricing_file = self._read_pricing_file(PARTITION_TO_MAIN_REGION[args.partition], args.pricing_file)
+        pricing_file = self._read_pricing_file(PARTITION_TO_PRICING_FILE_REGION[args.partition], args.pricing_file)
         instances_config = self._parse_pricing_file(pricing_file)
         logging.info("Validating doc against its schema")
         validate(instance=instances_config, schema=self.SCHEMA)
@@ -394,7 +395,7 @@ def _parse_args():
         help="If not specified ec2.describe_regions is used to retrieve regions",
         required=False,
         nargs="+",
-        default=[]
+        default=[],
     )
     parser.add_argument(
         "--autodetect-regions",
