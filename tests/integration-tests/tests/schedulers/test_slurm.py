@@ -71,7 +71,15 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _gpu_test_scaleup(remote_command_executor, region, cluster.asg, cluster.cfn_name, scaledown_idletime, num_gpus=2)
-    _test_dynamic_dummy_nodes(remote_command_executor, region, cluster.asg, max_queue_size, slots=32, gpus=2)
+    _test_dynamic_dummy_nodes(
+        remote_command_executor,
+        region,
+        cluster.asg,
+        max_queue_size,
+        slots=32,
+        gpus=2,
+        mem=244,
+    )
     _gpu_test_cluster_limits(remote_command_executor, max_queue_size, 2)
     _gpu_resource_check(remote_command_executor)
     _gpu_test_conflicting_options(remote_command_executor, 2)
@@ -157,7 +165,7 @@ def _gpu_test_scaleup(remote_command_executor, region, asg_name, stack_name, sca
     # sbatch --wrap 'sleep 10' -G 3
     result = slurm_commands.submit_command(command="sleep 10", nodes=-1, other_options="-G 3")
     job_ids.append(slurm_commands.assert_job_submitted(result.stdout))
-    # Nodes/resources available after this job:
+    # Nodes/resources available after this job(according to jobwatcher bean-packing logic):
     # [{cpu:31, gpu:0}, {cpu:31, gpu:0}]
 
     # sbatch --wrap 'sleep 10' --cpus-per-gpu=10 --gpus-per-task=1
@@ -224,18 +232,30 @@ def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name, ma
     _assert_dummy_nodes(remote_command_executor, max_queue_size)
 
 
-def _test_dynamic_dummy_nodes(remote_command_executor, region, asg_name, max_queue_size, slots=4, gpus=0):
+def _test_dynamic_dummy_nodes(
+    remote_command_executor,
+    region,
+    asg_name,
+    max_queue_size,
+    slots=4,
+    gpus=0,
+    mem=8
+):
     logging.info("Testing dummy nodes are automatically reconfigured based on actual compute nodes")
     slurm_commands = SlurmCommands(remote_command_executor)
     # Assert initial conditions
     _assert_asg_has_no_node(region, asg_name)
     _assert_no_nodes_in_scheduler(slurm_commands)
 
-    _assert_dummy_nodes(remote_command_executor, max_queue_size, slots, gpus)
+    _assert_dummy_nodes(
+        remote_command_executor, max_queue_size, slots, gpus, mem
+    )
     result = slurm_commands.submit_command("sleep 1", nodes=1)
     job_id = slurm_commands.assert_job_submitted(result.stdout)
     slurm_commands.wait_job_completed(job_id)
-    _assert_dummy_nodes(remote_command_executor, max_queue_size - 1, slots, gpus)
+    _assert_dummy_nodes(
+        remote_command_executor, max_queue_size - 1, slots, gpus, mem
+    )
 
 
 def _test_job_dependencies(remote_command_executor, region, stack_name, scaledown_idletime, max_queue_size):
@@ -288,7 +308,10 @@ def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_na
     result = remote_command_executor.run_remote_command("sbatch --wrap 'sleep 1' -a 1-5")
     array_job_id = slurm_commands.assert_job_submitted(result.stdout)
 
-    result = remote_command_executor.run_remote_command("sbatch --wrap 'sleep 1' -c 3 -n 2")
+    # Added memory option, c5.xlarge has 8Gs of memory
+    # Not testing memory limits, user is responsible for submitting jobs with valid memory option
+    # Default unit for --mem-per-cpu is MB, below job requests 500MB memory per CPU
+    result = remote_command_executor.run_remote_command("sbatch --wrap 'sleep 1' -c 3 -n 2 --mem-per-cpu=500")
     parallel_job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Assert scaling worked as expected
@@ -333,7 +356,9 @@ def _assert_asg_has_no_node(region, asg_name):
     assert_asg_desired_capacity(region, asg_name, expected=0)
 
 
-def _assert_dummy_nodes(remote_command_executor, count, slots=4, gpus=0):
+def _assert_dummy_nodes(
+    remote_command_executor, count, slots=4, gpus=0, mem=8
+):
     __tracebackhide__ = True
     if gpus > 0:
         # If GPU instance, need to check for extra GPU info in slurm_parallelcluster_nodes.conf
@@ -350,11 +375,20 @@ def _assert_dummy_nodes(remote_command_executor, count, slots=4, gpus=0):
     # Checking dummy nodes in slurm_parallelcluster_nodes.conf
     if count == 0:
         assert_that(dummy_nodes_config[0]).is_equal_to(
-            'NodeName=dummy-compute-stop CPUs={0} State=DOWN Reason="Cluster is stopped or max size is 0"'.format(slots)
+            ('NodeName=dummy-compute-stop CPUs={cpus} State=DOWN Reason="Cluster is stopped or max size is 0"').format(
+                cpus=slots
+            )
         )
     else:
+        # Memory input are in GiB, multiplying by 1000 to converting to MB(consistent with sqswatcher logic)
+        # Socket/core/thread information are not written to dummy nodes
         assert_that(dummy_nodes_config[0]).is_equal_to(
-            "NodeName=dummy-compute[1-{0}] CPUs={1} {2}State=FUTURE".format(count, slots, gpu_entry)
+            "NodeName=dummy-compute[1-{count}] RealMemory={memory} CPUs={cpus} {gpu_info}State=FUTURE".format(
+                count=count,
+                cpus=slots,
+                memory=int(mem * 1000),
+                gpu_info=gpu_entry,
+            )
         )
         dummy_nodes_count = _retrieve_slurm_dummy_nodes(remote_command_executor)
         assert_that(dummy_nodes_count).is_equal_to(count)
