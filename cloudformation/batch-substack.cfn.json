@@ -119,7 +119,9 @@
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+          }
         ]
       }
     },
@@ -132,9 +134,7 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "ecs-tasks.${S3Url}"
-                }
+                "Service": "ecs-tasks.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
@@ -197,16 +197,16 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "batch.${S3Url}"
-                }
+                "Service": "batch.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSBatchServiceRole"
+          }
         ]
       }
     },
@@ -272,7 +272,7 @@
                     },
                     {
                       "Fn::Sub": [
-                        "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
+                        "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:cluster/${ComputeEnvironmentPrefix}_Batch_*",
                         {
                           "ComputeEnvironmentPrefix": {
                             "Fn::Select": [
@@ -291,10 +291,10 @@
                       ]
                     },
                     {
-                      "Fn::Sub": "arn:aws:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:ecs:${AWS::Region}:${AWS::AccountId}:container-instance/*"
                     },
                     {
-                      "Fn::Sub": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/batch/job:log-stream:*"
                     }
                   ]
                 },
@@ -338,16 +338,16 @@
             {
               "Effect": "Allow",
               "Principal": {
-                "Service": {
-                  "Fn::Sub": "spotfleet.${S3Url}"
-                }
+                "Service": "spotfleet.amazonaws.com"
               },
               "Action": "sts:AssumeRole"
             }
           ]
         },
         "ManagedPolicyArns": [
-          "arn:aws:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+          {
+            "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AmazonEC2SpotFleetTaggingRole"
+          }
         ]
       },
       "Condition": "UseSpot"
@@ -606,10 +606,17 @@
               "Value": {
                 "Ref": "OS"
               }
+            },
+            {
+              "Name": "NOTIFICATION_URL",
+              "Value": {
+                "Ref": "DockerBuildWaitHandle"
+              }
             }
           ],
-          "Image": "aws/codebuild/docker:17.09.0",
-          "Type": "LINUX_CONTAINER"
+          "Image": "aws/codebuild/amazonlinux2-x86_64-standard:1.0",
+          "Type": "LINUX_CONTAINER",
+          "PrivilegedMode": true
         },
         "Name": {
           "Fn::Sub": "${ClusterName}-build-docker-images-project"
@@ -673,7 +680,9 @@
                 "logs:PutLogEvents"
               ],
               "Effect": "Allow",
-              "Resource": "arn:aws:logs:*:*:*",
+              "Resource": {
+                "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+              },
               "Sid": "CloudWatchLogsPolicy"
             },
             {
@@ -683,7 +692,7 @@
               ],
               "Effect": "Allow",
               "Resource": {
-                "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
               },
               "Sid": "S3GetObjectPolicy"
             }
@@ -709,11 +718,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "codebuild.${S3Url}"
-                  }
-                ]
+                "Service": "codebuild.amazonaws.com"
               }
             }
           ]
@@ -772,11 +777,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "lambda.${S3Url}"
-                  }
-                ]
+                "Service": "lambda.amazonaws.com"
               }
             }
           ],
@@ -793,7 +794,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
@@ -866,11 +869,7 @@
               ],
               "Effect": "Allow",
               "Principal": {
-                "Service": [
-                  {
-                    "Fn::Sub": "lambda.${S3Url}"
-                  }
-                ]
+                "Service": "lambda.amazonaws.com"
               }
             }
           ],
@@ -887,7 +886,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 }
               ],
@@ -907,13 +908,6 @@
           },
           "S3Key": "custom_resources_code/artifacts.zip"
         },
-        "Environment": {
-          "Variables": {
-            "NOTIFICATION_URL": {
-              "Ref": "DockerBuildWaitHandle"
-            }
-          }
-        },
         "Handler": "send_build_notification.handler",
         "MemorySize": 128,
         "Role": {
@@ -924,7 +918,8 @@
         },
         "Runtime": "python3.6",
         "Timeout": 60
-      }
+      },
+      "DependsOn": "DockerBuildWaitHandle"
     },
     "SendBuildNotificationFunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
@@ -945,9 +940,7 @@
             "Arn"
           ]
         },
-        "Principal": {
-          "Fn::Sub": "events.${S3Url}"
-        },
+        "Principal": "events.amazonaws.com",
         "SourceArn": {
           "Fn::GetAtt": [
             "CodeBuildNotificationRule",

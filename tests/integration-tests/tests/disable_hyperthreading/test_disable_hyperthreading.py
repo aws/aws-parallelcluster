@@ -22,7 +22,7 @@ from tests.common.utils import fetch_instance_slots
 
 # t2's do not support CpuOptions and hence do not support disable_hyperthreading
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.skip_instances(["t2.micro"])
+@pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.skip_schedulers(["awsbatch"])
 def test_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """Test Disable Hyperthreading"""
@@ -51,14 +51,14 @@ def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, sl
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
-    # Check EFA interface is present on compute node
+    # Check compute has 1 thread per core
     result = remote_command_executor.run_remote_command("cat /shared/lscpu.out")
     assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+1")
     assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance // 2))
 
     # Check scheduler has correct number of cores
     result = scheduler_commands.get_node_cores()
-    print("[{0}]".format(result))
+    logging.info("{0} Cores: [{1}]".format(scheduler, result))
     assert_that(int(result)).is_equal_to(slots_per_instance // 2)
 
     # check scale up to 2 nodes

@@ -3,7 +3,7 @@ set -eu
 
 push_docker_image() {
     local image=$1
-    echo "Uploading image image"
+    echo "Uploading image ${image}"
     S3_SUFFIX=""
     if [[ ${AWS_REGION} == cn-* ]]; then
         S3_SUFFIX=".cn"

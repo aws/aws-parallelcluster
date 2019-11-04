@@ -16,6 +16,7 @@ import logging
 import os
 import sys
 import textwrap
+from logging.handlers import RotatingFileHandler
 
 import argparse
 from botocore.exceptions import NoCredentialsError
@@ -23,7 +24,7 @@ from botocore.exceptions import NoCredentialsError
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 
-LOGGER = logging.getLogger("pcluster.cli")
+LOGGER = logging.getLogger(__name__)
 
 
 def create(args):
@@ -75,12 +76,13 @@ def create_ami(args):
 
 
 def config_logger():
-    LOGGER.setLevel(logging.DEBUG)
+    logger = logging.getLogger("pcluster")
+    logger.setLevel(logging.DEBUG)
 
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter("%(message)s"))
-    LOGGER.addHandler(ch)
+    log_stream_handler = logging.StreamHandler(sys.stdout)
+    log_stream_handler.setLevel(logging.INFO)
+    log_stream_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(log_stream_handler)
 
     logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
     try:
@@ -89,10 +91,10 @@ def config_logger():
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
-    fh = logging.FileHandler(logfile)
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
-    LOGGER.addHandler(fh)
+    log_file_handler = RotatingFileHandler(logfile, maxBytes=5 * 1024 * 1024, backupCount=1)
+    log_file_handler.setLevel(logging.DEBUG)
+    log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+    logger.addHandler(log_file_handler)
 
 
 def _addarg_config(subparser):
@@ -418,7 +420,7 @@ def main():
         LOGGER.info("Exiting...")
         sys.exit(1)
     except Exception as e:
-        LOGGER.error("Unexpected error of type %s: %s", type(e).__name__, e)
+        LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
         sys.exit(1)
 
 
