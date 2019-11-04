@@ -22,9 +22,10 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.instances(["c5n.metal", "m5dn.24xlarge", "m5n.24xlarge", "r5dn.24xlarge", "r5n.24xlarge"])
-@pytest.mark.oss(["alinux", "centos7", "ubuntu1604"])
-@pytest.mark.schedulers(["slurm"])
+@pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
+@pytest.mark.oss(["alinux", "centos7", "ubuntu1604", "ubuntu1804"])
+@pytest.mark.schedulers(["sge", "slurm"])
 def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """
     Test all EFA Features.
