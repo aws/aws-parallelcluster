@@ -25,7 +25,6 @@ from pcluster.utils import (
     get_efs_mount_target_id,
     get_instance_vcpus,
     get_partition,
-    warn,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -125,19 +124,19 @@ class Param(object):
         if allowed_values:
             if isinstance(allowed_values, list):
                 if self.value not in allowed_values:
-                    error(
+                    self.pcluster_config.error(
                         "The configuration parameter '{0}' has an invalid value '{1}'\n"
                         "Allowed values are: {2}".format(self.key, self.value, allowed_values)
                     )
             else:
                 # convert to regex
                 if not re.compile(allowed_values).match(str(self.value)):
-                    error(
+                    self.pcluster_config.error(
                         "The configuration parameter '{0}' has an invalid value '{1}'\n"
                         "Allowed values are: {2}".format(self.key, self.value, allowed_values)
                     )
 
-    def validate(self, fail_on_error=True):
+    def validate(self):
         """Call validation functions for the parameter, if there."""
         for validation_func in self.definition.get("validators", []):
             if self.value is None:
@@ -145,13 +144,12 @@ class Param(object):
             else:
                 errors, warnings = validation_func(self.key, self.value, self.pcluster_config)
                 if errors:
-                    error(
+                    self.pcluster_config.error(
                         "The configuration parameter '{0}' has an invalid value '{1}'\n"
-                        "{2}".format(self.key, self.value, "\n".join(errors)),
-                        fail_on_error,
+                        "{2}".format(self.key, self.value, "\n".join(errors))
                     )
                 elif warnings:
-                    warn(
+                    self.pcluster_config.warn(
                         "The configuration parameter '{0}' has a wrong value '{1}'\n{2}".format(
                             self.key, self.value, "\n".join(warnings)
                         )
@@ -274,7 +272,7 @@ class FloatParam(Param):
                 self.value = config_parser.getfloat(section_name, self.key)
                 self._check_allowed_values()
             except ValueError:
-                error("Configuration parameter '{0}' must be a Float".format(self.key))
+                self.pcluster_config.error("Configuration parameter '{0}' must be a Float".format(self.key))
 
         return self
 
@@ -288,7 +286,7 @@ class FloatParam(Param):
                 if string_value != "NONE":
                     param_value = float(string_value)
         except ValueError:
-            warn(
+            self.pcluster_config.warn(
                 "Unable to convert the value '{0}' to a Float. "
                 "Using default value for parameter '{1}'".format(string_value, self.key)
             )
@@ -312,7 +310,7 @@ class BoolParam(Param):
                 self.value = config_parser.getboolean(section_name, self.key)
                 self._check_allowed_values()
             except ValueError:
-                error("Configuration parameter '{0}' must be a Boolean".format(self.key))
+                self.pcluster_config.error("Configuration parameter '{0}' must be a Boolean".format(self.key))
 
         return self
 
@@ -360,7 +358,7 @@ class IntParam(Param):
                 self.value = config_parser.getint(section_name, self.key)
                 self._check_allowed_values()
             except ValueError:
-                error("Configuration parameter '{0}' must be an Integer".format(self.key))
+                self.pcluster_config.error("Configuration parameter '{0}' must be an Integer".format(self.key))
 
         return self
 
@@ -373,7 +371,7 @@ class IntParam(Param):
                 if string_value != "NONE":
                     param_value = int(string_value)
         except ValueError:
-            warn(
+            self.pcluster_config.warn(
                 "Unable to convert the value '{0}' to an Integer. "
                 "Using default value for parameter '{1}'".format(string_value, self.key)
             )
@@ -410,7 +408,7 @@ class JsonParam(Param):
                 if string_value != "NONE":
                     param_value = yaml.safe_load(string_value)
         except (TypeError, ValueError, Exception) as e:
-            error("Error parsing JSON parameter '{0}'. {1}".format(self.key, e))
+            self.pcluster_config.error("Error parsing JSON parameter '{0}'. {1}".format(self.key, e))
 
         return param_value
 
@@ -734,7 +732,7 @@ class DisableHyperThreadingParam(BoolParam):
                     cores = int(cores.split(",")[0])
                     self.value = cores > 0
         except (ValueError, IndexError):
-            warn("Unable to parse Cfn Parameter Cores = {0}".format(cfn_params))
+            self.pcluster_config.warn("Unable to parse Cfn Parameter Cores = {0}".format(cfn_params))
 
         return self
 
@@ -755,7 +753,7 @@ class DisableHyperThreadingParam(BoolParam):
             compute_cores = get_instance_vcpus(self.pcluster_config.region, compute_instance_type) // 2
 
             if master_cores < 0 or compute_cores < 0:
-                error(
+                self.pcluster_config.error(
                     "For disable_hyperthreading, unable to get number of vcpus for {0} instance. "
                     "Please open an issue {1}".format(
                         master_instance_type if master_cores < 0 else compute_instance_type,
@@ -792,7 +790,7 @@ class SettingsParam(Param):
             self.value = config_parser.get(section_name, self.key)
             if self.value:
                 if "," in self.value:
-                    error(
+                    self.pcluster_config.error(
                         "The value of '{0}' parameter is invalid. "
                         "It can only contains a single {1} section label.".format(self.key, self.referred_section_key)
                     )
@@ -830,7 +828,7 @@ class SettingsParam(Param):
             LOGGER.debug("Initializing default Section '[%s %s]'", self.key, self.value)
             # Use the label defined in the SettingsParam definition
             if "," in self.value:
-                error(
+                self.pcluster_config.error(
                     "The default value of '{0}' parameter is invalid. "
                     "It can only contains a single {1} section label.".format(self.key, self.referred_section_key)
                 )
@@ -1039,20 +1037,18 @@ class Section(object):
                 ).from_file(config_parser)
                 self.add_param(param)
 
-                not_valid_keys = [
-                    key for key, value in config_parser.items(section_name) if key not in params_definitions
-                ]
-                if not_valid_keys:
-                    error(
-                        "The configuration parameter{0} '{1}' {2} not allowed in the [{3}] section".format(
-                            "s" if len(not_valid_keys) > 1 else "",
-                            ",".join(not_valid_keys),
-                            "are" if len(not_valid_keys) > 1 else "is",
-                            section_name,
-                        )
+            not_valid_keys = [key for key, value in config_parser.items(section_name) if key not in params_definitions]
+            if not_valid_keys:
+                self.pcluster_config.error(
+                    "The configuration parameter{0} '{1}' {2} not allowed in the [{3}] section".format(
+                        "s" if len(not_valid_keys) > 1 else "",
+                        ",".join(not_valid_keys),
+                        "are" if len(not_valid_keys) > 1 else "is",
+                        section_name,
                     )
+                )
         elif fail_on_absence:
-            error("Section '[{0}]' not found in the config file.".format(section_name))
+            self.pcluster_config.error("Section '[{0}]' not found in the config file.".format(section_name))
 
         return self
 
@@ -1105,12 +1101,13 @@ class Section(object):
             for validation_func in self.definition.get("validators", []):
                 errors, warnings = validation_func(self.key, self.label, self.pcluster_config)
                 if errors:
-                    error(
-                        "The section [{0}] is wrongly configured\n" "{1}".format(section_name, "\n".join(errors)),
-                        fail_on_error,
+                    self.pcluster_config.error(
+                        "The section [{0}] is wrongly configured\n" "{1}".format(section_name, "\n".join(errors))
                     )
                 elif warnings:
-                    warn("The section [{0}] is wrongly configured\n{1}".format(section_name, "\n".join(warnings)))
+                    self.pcluster_config.warn(
+                        "The section [{0}] is wrongly configured\n{1}".format(section_name, "\n".join(warnings))
+                    )
                 else:
                     LOGGER.debug("Section '[%s]' is valid", section_name)
 
@@ -1120,12 +1117,10 @@ class Section(object):
 
                 param = self.get_param(param_key)
                 if param:
-                    param.validate(fail_on_error)
+                    param.validate()
                 else:
                     # define a default param and validate it
-                    param_type(self.key, self.label, param_key, param_definition, self.pcluster_config).validate(
-                        fail_on_error
-                    )
+                    param_type(self.key, self.label, param_key, param_definition, self.pcluster_config).validate()
 
     def to_file(self, config_parser, write_defaults=False):
         """Create the section and add all the parameters in the config_parser."""

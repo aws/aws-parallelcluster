@@ -357,7 +357,18 @@ def get_efs_mount_target_id(efs_fs_id, avail_zone):
 
 
 def get_avail_zone(subnet_id):
-    return boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
+    avail_zone = None
+    try:
+        avail_zone = (
+            boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
+        )
+    except ClientError as e:
+        LOGGER.debug(
+            "Unable to detect availability zone for subnet {0}.\n{1}".format(
+                subnet_id, e.response.get("Error").get("Message")
+            )
+        )
+    return avail_zone
 
 
 def get_latest_alinux_ami_id():
