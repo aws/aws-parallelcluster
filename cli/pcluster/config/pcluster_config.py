@@ -15,6 +15,7 @@ import inspect
 import logging
 import os
 import stat
+import sys
 
 import boto3
 import configparser
@@ -39,6 +40,7 @@ class PclusterConfig(object):
         file_sections=None,
         cluster_label=None,  # args.cluster_template
         fail_on_file_absence=False,
+        fail_on_error=True,
         cluster_name=None,
     ):
         """
@@ -57,6 +59,7 @@ class PclusterConfig(object):
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
         """
+        self.fail_on_error = fail_on_error
         self.sections = OrderedDict({})
 
         # always parse the configuration file if there, to get AWS section
@@ -111,7 +114,10 @@ class PclusterConfig(object):
         else:
             LOGGER.debug("Parsing configuration file %s", self.config_file)
         self.config_parser = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
-        self.config_parser.read(self.config_file)
+        try:
+            self.config_parser.read(self.config_file)
+        except configparser.ParsingError as e:
+            LOGGER.debug("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
     def get_sections(self, section_key):
         """
@@ -435,3 +441,14 @@ class PclusterConfig(object):
                 error(
                     "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
                 )
+
+    def error(self, message):
+        """Print an error message and Raise SystemExit exception to the stderr if fail_on_error is true."""
+        if self.fail_on_error:
+            sys.exit("ERROR: {0}".format(message))
+        else:
+            print("ERROR: {0}".format(message))
+
+    def warn(self, message):
+        """Print a warning message."""
+        print("WARNING: {0}".format(message))
