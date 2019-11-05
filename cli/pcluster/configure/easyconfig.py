@@ -16,7 +16,6 @@ standard_library.install_aliases()
 
 import logging
 import os
-import sys
 
 import boto3
 
