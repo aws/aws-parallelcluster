@@ -81,4 +81,4 @@ def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_command
 
     output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
     latency = re.search(r"0\s+(\d\d)\.", output).group(1)
-    assert_that(int(latency)).is_less_than(20)
+    assert_that(int(latency)).is_less_than_or_equal_to(20)
