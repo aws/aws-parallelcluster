@@ -1442,28 +1442,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":cloudformation:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":stack/",
-                      {
-                        "Ref": "AWS::StackName"
-                      },
-                      "/*"
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
                 }
               ]
             },
@@ -1479,27 +1458,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":dynamodb:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":table/",
-                      {
-                        "Ref": "DynamoDBTable"
-                      }
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTable}"
                 }
               ]
             },
@@ -1511,20 +1470,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":s3:::",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "-aws-parallelcluster/*"
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*"
                 }
               ]
             },
@@ -3796,22 +3742,7 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  {
-                    "Fn::Sub": [
-                      "lambda.${s3_url}",
-                      {
-                        "s3_url": {
-                          "Fn::FindInMap": [
-                            "Partition2Url",
-                            {
-                              "Ref": "AWS::Partition"
-                            },
-                            "url"
-                          ]
-                        }
-                      }
-                    ]
-                  }
+                  "lambda.amazonaws.com"
                 ]
               }
             }
@@ -3829,7 +3760,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
@@ -3841,10 +3774,10 @@
                   "Effect": "Allow",
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
                     },
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
                     }
                   ],
                   "Sid": "S3BucketPolicy"

@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import json
-import os
 import time
 from http.client import HTTPSConnection
 from urllib.parse import urlsplit, urlunsplit
@@ -18,7 +17,8 @@ from urllib.parse import urlsplit, urlunsplit
 def handler(event, context):
     """Handle CodeBuild build status changes and send notifications to CFN WaitCondition."""
     print("CodeBuild event: %s" % json.dumps(event))
-    notification_url = os.environ["NOTIFICATION_URL"]
+    environment_variables = event["detail"]["additional-information"]["environment"]["environment-variables"]
+    notification_url = next(var.get("value") for var in environment_variables if var.get("name") == "NOTIFICATION_URL")
     succeeded = event["detail"]["build-status"] == "SUCCEEDED"
     data = json.dumps(
         {
