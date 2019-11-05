@@ -19,6 +19,13 @@ Allowed values for AWS Region ID:
 14. us-east-2
 15. us-west-1
 16. us-west-2
+Allowed values for EC2 Key Pair Name:
+1. key1
+2. key2
+3. key3
+4. key4
+5. key5
+6. key6
 Allowed values for Scheduler:
 1. sge
 2. torque
@@ -30,13 +37,6 @@ Allowed values for Operating System:
 3. centos7
 4. ubuntu1604
 5. ubuntu1804
-Allowed values for EC2 Key Pair Name:
-1. key1
-2. key2
-3. key3
-4. key4
-5. key5
-6. key6
 Allowed values for Network Configuration:
 1. Master in a public subnet and compute fleet in a private subnet
 2. Master and compute fleet in the same public subnet

@@ -126,6 +126,9 @@ def configure(args):
     # Set provided region into os environment for suggestions and validations from here on
     os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
+    # Get the key name from the current region, if any
+    key_name = prompt_iterable("EC2 Key Pair Name", _get_keys())
+
     scheduler = prompt_iterable(
         "Scheduler", get_supported_schedulers(), default_value=cluster_section.get_param_value("scheduler")
     )
@@ -142,7 +145,6 @@ def configure(args):
 
     scheduler_handler.prompt_compute_instance_type()
 
-    key_name = prompt_iterable("EC2 Key Pair Name", _get_keys())
     automate_vpc = prompt("Automate VPC creation? (y/n)", lambda x: x in ("y", "n"), default_value="n") == "y"
 
     vpc_parameters = _create_vpc_parameters(
