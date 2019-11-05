@@ -438,6 +438,32 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
+def test_bad_config_file(mocker, capsys, test_datadir):
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file")
+
+    mock_handler = MockHandler(mocker)
+    mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer.add_first_flow(
+        op_sys="centos6",
+        min_size="13",
+        max_size="14",
+        master_instance="t2.nano",
+        compute_instance="t2.micro",
+        key="key1",
+    )
+    input_composer.add_sub_automation(
+        vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
+    )
+    input_composer.finalize_config(mocker)
+
+    _launch_config(mocker, old_config_file, remove_path=False)
+    assert_that(_are_configurations_equals(old_config_file, config)).is_true()
+    _are_output_error_correct(capsys, output, error, old_config_file)
+    os.remove(old_config_file)
+
+
 def general_wrapper_for_prompt_testing(
     mocker,
     region="eu-west-1",
