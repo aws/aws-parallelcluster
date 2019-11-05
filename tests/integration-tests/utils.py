@@ -85,6 +85,27 @@ def retrieve_cfn_resources(stack_name, region):
         raise
 
 
+def get_compute_nodes_instance_ids(stack_name, region):
+    """Return a list of Compute Instances Id's."""
+    resources = retrieve_cfn_resources(stack_name, region)
+    asg_name = resources.get("ComputeFleet")
+
+    try:
+        asg = boto3.client("autoscaling", region_name=region)
+        instances = (
+            asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            .get("AutoScalingGroups")[0]
+            .get("Instances")
+        )
+        instance_ids = []
+        for instance in instances:
+            instance_ids.append(instance.get("InstanceId"))
+        return instance_ids
+    except Exception as e:
+        logging.error("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+
+
 def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
