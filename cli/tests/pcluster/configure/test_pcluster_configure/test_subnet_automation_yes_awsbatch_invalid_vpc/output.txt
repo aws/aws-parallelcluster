@@ -19,11 +19,6 @@ Allowed values for AWS Region ID:
 14. us-east-2
 15. us-west-1
 16. us-west-2
-Allowed values for Scheduler:
-1. sge
-2. torque
-3. slurm
-4. awsbatch
 Allowed values for EC2 Key Pair Name:
 1. key1
 2. key2
@@ -31,6 +26,11 @@ Allowed values for EC2 Key Pair Name:
 4. key4
 5. key5
 6. key6
+Allowed values for Scheduler:
+1. sge
+2. torque
+3. slurm
+4. awsbatch
 Allowed values for VPC ID:
 1. vpc-12345678 | ParallelClusterVPC-20190625135738 | 2 subnets inside
 2. vpc-23456789 | ParallelClusterVPC-20190624105051 | 0 subnets inside
