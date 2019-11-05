@@ -16,6 +16,7 @@ standard_library.install_aliases()
 
 import logging
 import os
+import sys
 
 import boto3
 
@@ -28,7 +29,7 @@ from pcluster.configure.networking import (
     automate_vpc_with_subnet_creation,
 )
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
-from pcluster.utils import get_region, get_supported_os, get_supported_schedulers, list_ec2_instance_types
+from pcluster.utils import error, get_region, get_supported_os, get_supported_schedulers, list_ec2_instance_types
 
 LOGGER = logging.getLogger(__name__)
 
@@ -98,7 +99,21 @@ def _get_subnets(conn, vpc_id):
 
 
 def configure(args):
-    pcluster_config = PclusterConfig(config_file=args.config_file, file_sections=[GLOBAL, CLUSTER, ALIASES])
+    # Check for invalid path (eg. a directory)
+    if args.config_file and os.path.exists(args.config_file) and not os.path.isfile(args.config_file):
+        error("Invalid configuration file path: {0}".format(args.config_file))
+
+    pcluster_config = PclusterConfig(
+        config_file=args.config_file, file_sections=[GLOBAL, CLUSTER, ALIASES], fail_on_error=False
+    )
+
+    if os.path.exists(pcluster_config.config_file):
+        msg = "WARNING: Configuration file {0} will be overwritten."
+    else:
+        msg = "INFO: Configuration file {0} will be written."
+    print(msg.format(pcluster_config.config_file))
+    print("Press CTRL-C to interrupt the procedure.\n\n")
+
     cluster_section = pcluster_config.get_section("cluster")
 
     global_config = pcluster_config.get_section("global")

@@ -1,3 +1,7 @@
+WARNING: Configuration file {{ CONFIG_FILE }} will be overwritten.
+Press CTRL-C to interrupt the procedure.
+
+
 Allowed values for AWS Region ID:
 1. eu-north-1
 2. ap-south-1
