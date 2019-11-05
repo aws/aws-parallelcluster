@@ -20,6 +20,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
+from utils import get_compute_nodes_instance_ids
 
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
@@ -41,6 +42,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
 
     _test_efa_installed(scheduler_commands, remote_command_executor)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, os)
+    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
 
@@ -81,4 +83,4 @@ def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_command
 
     output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
     latency = re.search(r"0\s+(\d\d)\.", output).group(1)
-    assert_that(int(latency)).is_less_than_or_equal_to(20)
+    assert_that(int(latency)).is_less_than(20)
