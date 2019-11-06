@@ -73,6 +73,7 @@ def test_ebs_snapshot(
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.skip_oss("[centos6]")
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
