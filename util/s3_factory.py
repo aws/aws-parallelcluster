@@ -9,9 +9,7 @@ logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message
 
 
 class S3DocumentManager:
-    """
-    Class to manage S3 Operations.
-    """
+    """Class to manage S3 Operations."""
 
     def __init__(self, _region, _credentials=None):
         self._region = _region
@@ -83,20 +81,27 @@ class S3DocumentManager:
         except ClientError:
             return False
 
-    def get_current_version(self, s3_bucket, document_s3_path):
+    def get_current_version(self, s3_bucket, document_s3_path, raise_on_object_not_found=True):
         """
         Get the most recent version of the s3 file.
 
         :param s3_bucket: bucket
         :param document_s3_path: s3 key path to the object
+        :param raise_on_object_not_found: Raise an exception if not found
         :return: versionId if it's versioned, else None
         """
-        response = boto3.client("s3", region_name=self._region, **self._credentials).head_object(
-            Bucket=s3_bucket, Key=document_s3_path
-        )
-        if not response.get("VersionId"):
-            self.error(f"Versioning not enabled for s3://{s3_bucket}")
-        return response.get("VersionId")
+        try:
+            response = boto3.client("s3", region_name=self._region, **self._credentials).head_object(
+                Bucket=s3_bucket, Key=document_s3_path
+            )
+            if not response.get("VersionId"):
+                self.error(f"Versioning not enabled for s3://{s3_bucket}")
+            return response.get("VersionId")
+        except ClientError as e:
+            if e.response.get("Error").get("Code") == "404" and not raise_on_object_not_found:
+                logging.warning("No Object Exists to rollback too... Continuing without rollback data.")
+            else:
+                raise e
 
     def revert_object(self, s3_bucket, s3_key, version_id, dryrun=True):
         """
