@@ -37,10 +37,10 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
 
 
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c4.xlarge", "c5d.large"])  # Test on EBS-Only and NVMe instances
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])  # Test on EBS-Only and NVMe instances
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("os", "instance")
-@pytest.mark.skip_oss("centos6")  # centos6 does not support GPT
+@pytest.mark.skip_oss(["centos6"])  # centos6 does not support GPT
 def test_ebs_snapshot(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
 ):
