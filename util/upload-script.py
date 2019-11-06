@@ -3,55 +3,13 @@ import logging
 import os
 
 import argparse
-import boto3
 
 from s3_factory import S3DocumentManager
-
-# from pcluster.utils import error
-# from pcluster.utils import error
+from update_pcluster_configs import get_aws_regions, retrieve_sts_credentials
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
 PARTITIONS = ["commercial", "china", "govcloud"]
-PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}
-
-
-def retrieve_sts_credentials(credentials, partition):
-    """
-    Given credentials from cli, returns a json credentials object:
-
-    {
-        'us-east-1': {
-            'aws_access_key_id': 'sjkdnf',
-            'aws_secret_access_key': 'ksjdfkjsd',
-            'aws_session_token': 'skajdfksdjn'
-        }
-        ...
-    }
-
-    :param credentials: STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times
-    :param partition: [commercial|china|govcloud]
-    :return: sts credentials json
-    """
-    sts_credentials = {}
-    for credential in credentials:
-        region, endpoint, arn, external_id = credential
-        sts = boto3.client("sts", region_name=PARTITION_TO_MAIN_REGION[partition], endpoint_url=endpoint)
-        assumed_role_object = sts.assume_role(
-            RoleArn=arn, ExternalId=external_id, RoleSessionName=region + "-upload_instance_slot_map_sts_session"
-        )
-        sts_credentials[region] = {
-            "aws_access_key_id": assumed_role_object["Credentials"].get("AccessKeyId"),
-            "aws_secret_access_key": assumed_role_object["Credentials"].get("SecretAccessKey"),
-            "aws_session_token": assumed_role_object["Credentials"].get("SessionToken"),
-        }
-
-    return sts_credentials
-
-
-def _get_aws_regions(partition):
-    ec2 = boto3.client("ec2", region_name=PARTITION_TO_MAIN_REGION[partition])
-    return set(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
 def _generate_rollback_data(bucket, regions, s3_path, sts_credentials):
@@ -142,6 +100,14 @@ if __name__ == "__main__":
         default=[],
     )
     parser.add_argument(
+        "--autodetect-regions",
+        action="store_true",
+        help="If set ec2.describe_regions is used to retrieve regions. "
+        "Additional regions can be specified with --regions",
+        required=False,
+        default=False,
+    )
+    parser.add_argument(
         "--bucket",
         type=str,
         help="Bucket to upload too, defaults to {region}-aws-parallelcluster",
@@ -164,9 +130,12 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # get regions if no regions are specified
-    if len(args.regions) == 0:
-        args.regions.extend(_get_aws_regions(args.partition))
+    # get regions if --autodetect-regions is set
+    if args.autodetect_regions:
+        args.regions = set(args.regions) | get_aws_regions(args.partition)
+
+    if not args.rollback_file_path and not args.regions:
+        parser.error("please specify --regions or --autodetect-regions")
 
     sts_credentials = retrieve_sts_credentials(args.credentials, args.regions)
     s3_path = args.key_path.format(version=args.version)
