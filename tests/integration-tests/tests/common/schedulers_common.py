@@ -336,7 +336,7 @@ class TorqueCommands(SchedulerCommands):
         super().__init__(remote_command_executor)
 
     @retry(
-        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(7)
+        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(12)
     )
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
