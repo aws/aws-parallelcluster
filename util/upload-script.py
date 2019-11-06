@@ -137,7 +137,7 @@ if __name__ == "__main__":
     if not args.rollback_file_path and not args.regions:
         parser.error("please specify --regions or --autodetect-regions")
 
-    sts_credentials = retrieve_sts_credentials(args.credentials, args.regions)
+    sts_credentials = retrieve_sts_credentials(args.credentials, args.partition)
     s3_path = args.key_path.format(version=args.version)
 
     if args.rollback_file_path:
