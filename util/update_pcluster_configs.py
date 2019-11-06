@@ -23,6 +23,7 @@ import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 from jsonschema import validate
+from s3_factory import S3DocumentManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
@@ -33,103 +34,47 @@ PARTITION_TO_PRICING_FILE_REGION = {"commercial": "us-east-1", "govcloud": "us-e
 FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
-class S3JsonDocumentManager:
-    def __init__(self, region, credentials=None):
-        self._region = region
-        self._credentials = credentials or {}
+def validate_document(old_doc, new_doc):
+    """
+    Diff's two dict object and checks the new_doc is a superset of old doc.
 
-    def download(self, s3_bucket, document_s3_path, version_id=None):
-        try:
-            s3 = boto3.resource("s3", region_name=self._region, **self._credentials)
-            if version_id:
-                instances_file_content = s3.ObjectVersion(s3_bucket, document_s3_path, version_id).get()["Body"].read()
-            else:
-                instances_file_content = s3.Object(s3_bucket, document_s3_path).get()["Body"].read()
-            return json.loads(instances_file_content)
-        except Exception as e:
-            logging.error(
-                "Failed when downloading file %s from bucket %s in region %s with error %s",
-                document_s3_path,
-                s3_bucket,
-                self._region,
-                e,
-            )
-            raise
+    :param old_doc: old object to diff
+    :param new_doc: new object to diff
+    :return: Raises an exception / logs diffs. Nothing returned.
+    """
+    try:
+        import dictdiffer
 
-    def upload(self, s3_bucket, s3_key, document_data, dryrun=True):
-        try:
-            if not dryrun:
-                object = boto3.resource("s3", region_name=self._region, **self._credentials).Object(s3_bucket, s3_key)
-                object.put(Body=json.dumps(document_data), ACL="public-read")
-            else:
-                logging.info(
-                    "Dryrun mode enabled. The following file would have been uploaded to %s/%s:\n%s",
-                    s3_bucket,
-                    s3_key,
-                    json.dumps(document_data),
-                )
-        except Exception as e:
-            logging.error(
-                "Failed when uploading file %s to bucket %s in region %s with error %s",
-                s3_key,
-                s3_bucket,
-                self._region,
-                e,
-            )
-            raise
+        logging.info("Found following diffs: %s", list(dictdiffer.diff(old_doc, new_doc)))
+    except ImportError:
+        logging.warning("Install dictdiffer if you want to display diffs: pip install dictdiffer")
 
-    def get_current_version(self, s3_bucket, document_s3_path):
-        response = boto3.client("s3", region_name=self._region, **self._credentials).head_object(
-            Bucket=s3_bucket, Key=document_s3_path
-        )
-        return response["VersionId"]
+    logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
+    logging.info("Checking that the new configuration file includes the old entries.")
+    _assert_document_is_included(old_doc, new_doc)
 
-    def revert_object(self, s3_bucket, s3_key, version_id, dryrun=True):
-        logging.info("Reverting object %s in region %s", s3_key, self._region)
 
-        if version_id != self.get_current_version(s3_bucket, s3_key):
-            current_object = self.download(s3_bucket, s3_key)
-            logging.info("Current version: %s", json.dumps(current_object))
-            reverting_object = self.download(s3_bucket, s3_key, version_id)
-            self.upload(s3_bucket, s3_key, reverting_object, dryrun=dryrun)
+def _assert_document_is_included(doc_to_be_included, doc):
+    for k, v in doc_to_be_included.items():
+        if k not in doc:
+            raise Exception(f"Key {k} not found in new doc")
+        if isinstance(v, collections.Mapping):
+            _assert_document_is_included(v, doc[k])
+        elif isinstance(v, list):
+            if not all(elem in doc[k] for elem in v):
+                raise Exception(f"Old list {v} is not included in new list {doc[k]}")
         else:
-            logging.info("Current version is already the requested one: %s", version_id)
-
-    @staticmethod
-    def validate_document(old_doc, new_doc):
-        try:
-            import dictdiffer
-
-            logging.info("Found following diffs: %s", list(dictdiffer.diff(old_doc, new_doc)))
-        except ImportError:
-            logging.warning("Install dictdiffer if you want to display diffs: pip install dictdiffer")
-
-        logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
-        logging.info("Checking that the new configuration file includes the old entries.")
-        S3JsonDocumentManager._assert_document_is_included(old_doc, new_doc)
-
-    @staticmethod
-    def _assert_document_is_included(doc_to_be_included, doc):
-        for k, v in doc_to_be_included.items():
-            if k not in doc:
-                raise Exception(f"Key {k} not found in new doc")
-            if isinstance(v, collections.Mapping):
-                S3JsonDocumentManager._assert_document_is_included(v, doc[k])
-            elif isinstance(v, list):
-                if not all(elem in doc[k] for elem in v):
-                    raise Exception(f"Old list {v} is not included in new list {doc[k]}")
-            else:
-                if v != doc[k]:
-                    raise Exception(f"Old value {v} does not match new value {doc[k]}")
+            if v != doc[k]:
+                raise Exception(f"Old value {v} does not match new value {doc[k]}")
 
 
-class ConfigGenerator(ABC):
+class _ConfigGenerator(ABC):
     @abstractmethod
     def generate(self, args, region, credentials):
         pass
 
 
-class InstancesConfigGenerator(ConfigGenerator):
+class _InstancesConfigGenerator(_ConfigGenerator):
     SCHEMA = {
         "type": "object",
         "patternProperties": {
@@ -233,7 +178,7 @@ class InstancesConfigGenerator(ConfigGenerator):
         return _read_json_from_url(f"{url_prefix}{ec2_pricing_url}")
 
 
-class FeatureWhitelistConfigGenerator(ConfigGenerator):
+class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
     SCHEMA = {
         "type": "object",
         "properties": {
@@ -310,8 +255,8 @@ class FeatureWhitelistConfigGenerator(ConfigGenerator):
 
 
 CONFIG_FILE_TO_GENERATOR = {
-    "instances": InstancesConfigGenerator().generate,
-    "feature_whitelist": FeatureWhitelistConfigGenerator().generate,
+    "instances": _InstancesConfigGenerator().generate,
+    "feature_whitelist": _FeatureWhitelistConfigGenerator().generate,
 }
 
 
@@ -335,7 +280,7 @@ def _validate_args(args, parser):
 
 def retrieve_sts_credentials(credentials, partition):
     """
-    Given credentials from cli, returns a json credentials object:
+    Given credentials from cli, returns a json credentials object.
 
     {
         'us-east-1': {
@@ -346,7 +291,8 @@ def retrieve_sts_credentials(credentials, partition):
         ...
     }
 
-    :param credentials: STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times
+    :param credentials: STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.
+                        Could be specified multiple times
     :param partition: [commercial|china|govcloud]
     :return: sts credentials json
     """
@@ -467,11 +413,11 @@ def _validate_documents_against_existing_version(args, files_to_upload, sts_cred
     for file in files_to_upload.keys():
         for region in args.regions:
             logging.info("Validating file %s in region %s", file, region)
-            doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
-            current_file = doc_manager.download(args.bucket.format(region=region), FILE_TO_S3_PATH[file])
+            doc_manager = S3DocumentManager(region, sts_credentials.get(region))
+            current_file = json.loads(doc_manager.download(args.bucket.format(region=region), FILE_TO_S3_PATH[file]))
             logging.info("Current version: %s", current_file)
             logging.info("New version: %s", files_to_upload[file][region])
-            doc_manager.validate_document(current_file, files_to_upload[file][region])
+            validate_document(current_file, files_to_upload[file][region])
             logging.info("Document is valid", files_to_upload[file][region])
 
 
@@ -480,9 +426,9 @@ def _generate_rollback_data(args, files_to_upload, sts_credentials):
     for file in files_to_upload.keys():
         rollback_data[FILE_TO_S3_PATH[file]] = {}
         for region in args.regions:
-            doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+            doc_manager = S3DocumentManager(region, sts_credentials.get(region))
             rollback_data[FILE_TO_S3_PATH[file]][region] = doc_manager.get_current_version(
-                args.bucket.format(region=region), FILE_TO_S3_PATH[file]
+                args.bucket.format(region=region), FILE_TO_S3_PATH[file], raise_on_404=False
             )
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
     with open("rollback-data.json", "w") as outfile:
@@ -493,11 +439,11 @@ def _upload_documents(args, files_to_upload, sts_credentials):
     for file in files_to_upload.keys():
         for region in args.regions:
             logging.info("Uploading file %s in region %s", file, region)
-            doc_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+            doc_manager = S3DocumentManager(region, sts_credentials.get(region))
             doc_manager.upload(
                 args.bucket.format(region=region),
                 FILE_TO_S3_PATH[file],
-                files_to_upload[file][region],
+                json.dumps(files_to_upload[file][region]),
                 dryrun=not args.deploy,
             )
 
@@ -520,7 +466,7 @@ def _execute_rollback(args, sts_credentials):
         # }
         for s3_object in rollback_data:
             for region, version_id in rollback_data[s3_object].items():
-                object_manager = S3JsonDocumentManager(region, sts_credentials.get(region))
+                object_manager = S3DocumentManager(region, sts_credentials.get(region))
                 object_manager.revert_object(args.bucket.format(region=region), s3_object, version_id, not args.deploy)
 
 

@@ -144,7 +144,8 @@ if __name__ == "__main__":
         "--credential",
         type=str,
         action="append",
-        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>."
+        "Could be specified multiple times",
         required=False,
     )
     parser.add_argument(

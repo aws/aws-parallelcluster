@@ -44,13 +44,13 @@ def build_release_ami_list(scratch_dir, tag):
 
     file = open(os.path.join(repo_dir, "amis.txt"), "r")
     for line in file:
-        m = re.match("^#\s*(.*)", line)
-        if not m == None:
+        m = re.match(r"^#\s*(.*)", line)
+        if m is not None:
             active_distro = m.groups()[0]
             amis[active_distro] = []
         else:
-            m = re.match(".*:?\s*(ami-[a-zA-Z0-9]*)", line)
-            if active_distro != None:
+            m = re.match(r".*:?\s*(ami-[a-zA-Z0-9]*)", line)
+            if active_distro is not None:
                 amis[active_distro].append(m.groups()[0])
             else:
                 # In old tags, the amis.txt file doesn't contain the distro comment on top

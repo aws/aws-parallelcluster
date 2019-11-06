@@ -143,7 +143,7 @@ def get_images_ec2(filters, owner, region_name):
 def get_latest_images(images):
     # filter for the latest image per OS
     images_filtered = {"Images": []}
-    for key, value in DISTROS.items():
+    for _key, value in DISTROS.items():
         ami_filtered_and_sorted = sorted(
             filter(lambda ami: "-{0}-".format(value) in ami["Name"], images["Images"]),
             key=lambda ami: ami["CreationDate"],
@@ -156,7 +156,7 @@ def get_latest_images(images):
 
 def convert_json_to_txt(amis_json):
     amis_txt = ""
-    for key, value in DISTROS.items():
+    for key, _value in DISTROS.items():
         amis_txt += "# " + key + "\n"
         for region, amis in amis_json.items():
             if key in amis:
@@ -225,7 +225,8 @@ if __name__ == "__main__":
         "--credential",
         type=str,
         action="append",
-        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
+        "Could be specified multiple times",
         required=False,
     )
     group3 = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
