@@ -16,12 +16,11 @@
 #
 # Upload cookbook
 #
-# usage: ./upload-cookbook.py --regions "<region>[,<region>, ...]" --full_name "<cookbook full name without extension>" \
+# usage: ./upload-cookbook.py --regions "<region>[,<region>, ...]" --full_name "<cookbook name without extension>" \
 # --partition <partition> \
 # [--unsupportedregions "<region>[, <region>, ...]"] [--dryrun] [--override] \
 # [--credential <region>,<endpoint>,<arn>,<role>]*
 
-import re
 from datetime import datetime
 
 import argparse
@@ -162,7 +161,8 @@ def _parse_args():
         "--credential",
         type=str,
         action="append",
-        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
+        "Could be specified multiple times",
         required=False,
     )
 

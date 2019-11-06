@@ -52,7 +52,7 @@ def main(args):
         )
     )
 
-    mt = t.add_resource(
+    t.add_resource(
         MountTarget(
             "EFSMT",
             FileSystemId=If(create_efs, Ref(fs), Select(str(1), Ref(efs_options))),

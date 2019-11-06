@@ -19,7 +19,7 @@ def _generate_rollback_data(bucket, regions, s3_path, sts_credentials):
         object_manager = S3DocumentManager(region, sts_credentials.get(region))
         try:
             rollback_data[s3_path][region] = object_manager.get_current_version(bucket.format(region=region), s3_path)
-        except Exception as e:
+        except Exception:
             pass
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
     with open("rollback-data.json", "w") as outfile:
