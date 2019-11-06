@@ -158,17 +158,16 @@ def _are_output_error_correct(capsys, output, error, config_path):
 
 
 class ComposeInput:
-    def __init__(self, aws_region_name, scheduler):
+    def __init__(self, aws_region_name, key, scheduler):
         self.is_not_aws_batch = scheduler != "awsbatch"
-        self.input_list = [aws_region_name, scheduler]
+        self.input_list = [aws_region_name, key, scheduler]
 
-    def add_first_flow(self, op_sys, min_size, max_size, master_instance, compute_instance, key):
+    def add_first_flow(self, op_sys, min_size, max_size, master_instance, compute_instance):
         if self.is_not_aws_batch:
             self.input_list.append(op_sys)
         self.input_list.extend([min_size, max_size, master_instance])
         if self.is_not_aws_batch:
             self.input_list.append(compute_instance)
-        self.input_list.append(key)
 
     def add_no_automation_no_empty_vpc(self, vpc_id, master_id, compute_id):
         self.input_list.extend(["n", vpc_id, "n", master_id, compute_id])
@@ -226,14 +225,9 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="torque")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="torque")
     input_composer.add_first_flow(
-        op_sys="alinux",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
@@ -247,9 +241,9 @@ def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
 
     MockHandler(mocker)
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="awsbatch")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
+        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
@@ -264,14 +258,9 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-23456789", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=False
@@ -286,14 +275,9 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -309,14 +293,9 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -334,14 +313,9 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
@@ -354,9 +328,9 @@ def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="awsbatch")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
+        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
@@ -372,9 +346,9 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
         mock_handler.add_subnet_automation(
             public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789", is_a_valid_vpc=False
         )
-        input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="awsbatch")
+        input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
         input_composer.add_first_flow(
-            op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
+            op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
         )
         input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
         input_composer.finalize_config(mocker)
@@ -388,9 +362,9 @@ def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir
     mock_handler.add_subnet_automation(
         public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789", is_a_valid_vpc=False
     )
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="awsbatch")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None, key="key1"
+        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
     )
     input_composer.add_sub_automation(vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
@@ -403,14 +377,9 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker, empty_region=True)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="slurm")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.finalize_config(mocker)
@@ -423,14 +392,9 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker, empty_region=True)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="slurm")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
     input_composer.finalize_config(mocker)
@@ -444,14 +408,9 @@ def test_bad_config_file(mocker, capsys, test_datadir):
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
-    input_composer = ComposeInput(aws_region_name="eu-west-1", scheduler="sge")
+    input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6",
-        min_size="13",
-        max_size="14",
-        master_instance="t2.nano",
-        compute_instance="t2.micro",
-        key="key1",
+        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -480,8 +439,8 @@ def general_wrapper_for_prompt_testing(
 ):
     path = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
     MockHandler(mocker)
-    input_composer = ComposeInput(aws_region_name=region, scheduler=scheduler)
-    input_composer.add_first_flow(op_sys, min_size, max_size, master_instance, compute_instance, key)
+    input_composer = ComposeInput(aws_region_name=region, key=key, scheduler=scheduler)
+    input_composer.add_first_flow(op_sys, min_size, max_size, master_instance, compute_instance)
     input_composer.add_no_automation_no_empty_vpc(vpc_id, master_id, compute_id)
     input_composer.finalize_config(mocker)
 
