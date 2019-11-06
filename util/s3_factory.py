@@ -1,9 +1,8 @@
 import logging
+import sys
 
 import boto3
 from botocore.exceptions import ClientError
-
-from pcluster.utils import error
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(format="%(asctime)s - %(levelname)s - %(module)s - %(message)s", level=logging.INFO)
@@ -35,7 +34,7 @@ class S3DocumentManager:
                 instances_file_content = s3.Object(s3_bucket, document_s3_path).get()["Body"].read()
             return instances_file_content
         except Exception as e:
-            error(
+            self.error(
                 "Failed when downloading file %s from bucket %s in region %s with error %s".format(
                     document_s3_path, s3_bucket, self._region, e
                 )
@@ -63,7 +62,7 @@ class S3DocumentManager:
                     data,
                 )
         except Exception as e:
-            error(
+            self.error(
                 "Failed when uploading file %s to bucket %s in region %s with error %s".format(
                     s3_key, s3_bucket, self._region, e,
                 )
@@ -96,7 +95,7 @@ class S3DocumentManager:
             Bucket=s3_bucket, Key=document_s3_path
         )
         if not response.get("VersionId"):
-            error(f"Versioning not enabled for s3://{s3_bucket}")
+            self.error(f"Versioning not enabled for s3://{s3_bucket}")
         return response.get("VersionId")
 
     def revert_object(self, s3_bucket, s3_key, version_id, dryrun=True):
@@ -118,3 +117,12 @@ class S3DocumentManager:
             self.upload(s3_bucket, s3_key, reverting_object, dryrun=dryrun)
         else:
             logging.info(f"Current version is already the requested one: {version_id}")
+
+    @staticmethod
+    def error(message, fail_on_error=True):
+        """Print an error message and Raise SystemExit exception to the stderr if fail_on_error is true."""
+        if fail_on_error:
+            LOGGER.error(message)
+            sys.exit()
+        else:
+            LOGGER.error(message)

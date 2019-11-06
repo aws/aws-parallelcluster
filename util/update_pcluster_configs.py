@@ -320,9 +320,9 @@ def _read_json_from_url(url):
     return json.loads(response.read().decode("utf-8"))
 
 
-def _get_aws_regions(partition):
+def get_aws_regions(partition):
     ec2 = boto3.client("ec2", region_name=PARTITION_TO_MAIN_REGION[partition])
-    return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
+    return set(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
 def _validate_args(args, parser):
@@ -333,7 +333,23 @@ def _validate_args(args, parser):
         parser.error("please specify --regions or --autodetect-regions")
 
 
-def _retrieve_sts_credentials(credentials, partition):
+def retrieve_sts_credentials(credentials, partition):
+    """
+    Given credentials from cli, returns a json credentials object:
+
+    {
+        'us-east-1': {
+            'aws_access_key_id': 'sjkdnf',
+            'aws_secret_access_key': 'ksjdfkjsd',
+            'aws_session_token': 'skajdfksdjn'
+        }
+        ...
+    }
+
+    :param credentials: STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times
+    :param partition: [commercial|china|govcloud]
+    :return: sts credentials json
+    """
     sts_credentials = {}
     for credential in credentials:
         region, endpoint, arn, external_id = credential
@@ -429,7 +445,7 @@ def _parse_args():
     args = parser.parse_args()
 
     if args.autodetect_regions:
-        args.regions.extend(_get_aws_regions(args.partition))
+        args.regions.extend(get_aws_regions(args.partition))
 
     _validate_args(args, parser)
     return args
@@ -512,7 +528,7 @@ def main():
     args = _parse_args()
     logging.info("Parsed cli args: %s", vars(args))
 
-    sts_credentials = _retrieve_sts_credentials(args.credentials, args.partition)
+    sts_credentials = retrieve_sts_credentials(args.credentials, args.partition)
 
     if args.rollback_file_path:
         _execute_rollback(args, sts_credentials)
