@@ -77,6 +77,8 @@ DEFAULT_FSX_DICT = {
     "weekly_maintenance_start_time": None,
 }
 
+DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
+
 DEFAULT_CLUSTER_DICT = {
     "key_name": None,
     "template_url": None,
@@ -86,9 +88,9 @@ DEFAULT_CLUSTER_DICT = {
     "placement_group": None,
     "placement": "compute",
     "master_instance_type": "t2.micro",
-    "master_root_volume_size": 20,
+    "master_root_volume_size": 25,
     "compute_instance_type": "t2.micro",
-    "compute_root_volume_size": 20,
+    "compute_root_volume_size": 25,
     "initial_queue_size": 0,
     "max_queue_size": 10,
     "maintain_initial_size": False,
@@ -123,6 +125,7 @@ DEFAULT_CLUSTER_DICT = {
     "efs_settings": None,
     "raid_settings": None,
     "fsx_settings": None,
+    "dcv_settings": None,
 }
 
 DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_DICT}
@@ -141,13 +144,14 @@ class DefaultDict(Enum):
     efs = DEFAULT_EFS_DICT
     raid = DEFAULT_RAID_DICT
     fsx = DEFAULT_FSX_DICT
+    dcv = DEFAULT_DCV_DICT
     pcluster = DEFAULT_PCLUSTER_DICT
 
 
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 55
+CFN_CONFIG_NUM_OF_PARAMS = 56
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -184,6 +188,8 @@ DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NO
 
 DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
+DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
+
 DEFAULT_CLUSTER_CFN_PARAMS = {
     "KeyName": "NONE",
     "BaseOS": "alinux",
@@ -193,9 +199,9 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "PlacementGroup": "NONE",
     "Placement": "compute",
     "MasterInstanceType": "t2.micro",
-    "MasterRootVolumeSize": "20",
+    "MasterRootVolumeSize": "25",
     "ComputeInstanceType": "t2.micro",
-    "ComputeRootVolumeSize": "20",
+    "ComputeRootVolumeSize": "25",
     "DesiredSize": "0",
     "MaxSize": "10",
     "MinSize": "0",
@@ -248,6 +254,8 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    # dcv
+    "DCVOptions": "NONE,NONE,NONE",
 }
 
 
@@ -260,4 +268,5 @@ class DefaultCfnParams(Enum):
     efs = DEFAULT_EFS_CFN_PARAMS
     raid = DEFAULT_RAID_CFN_PARAMS
     fsx = DEFAULT_FSX_CFN_PARAMS
+    dcv = DEFAULT_DCV_CFN_PARAMS
     cluster = DEFAULT_CLUSTER_CFN_PARAMS

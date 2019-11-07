@@ -19,6 +19,7 @@ from configparser import NoSectionError
 
 import yaml
 from pcluster.utils import (
+    PCLUSTER_ISSUES_LINK,
     error,
     get_avail_zone,
     get_cfn_param,
@@ -756,8 +757,7 @@ class DisableHyperThreadingParam(BoolParam):
                 self.pcluster_config.error(
                     "For disable_hyperthreading, unable to get number of vcpus for {0} instance. "
                     "Please open an issue {1}".format(
-                        master_instance_type if master_cores < 0 else compute_instance_type,
-                        "https://github.com/aws/aws-parallelcluster/issues",
+                        master_instance_type if master_cores < 0 else compute_instance_type, PCLUSTER_ISSUES_LINK
                     )
                 )
             cfn_params.update({self.definition.get("cfn_param_mapping"): "{0},{1}".format(master_cores, compute_cores)})

@@ -608,12 +608,13 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("master_instance_type", "test", "test", None),
         ("master_instance_type", "NONE", "NONE", None),
         ("master_instance_type", "fake_value", "fake_value", None),
-        ("master_root_volume_size", None, 20, None),
-        ("master_root_volume_size", "", 20, None),
+        ("master_root_volume_size", None, 25, None),
+        ("master_root_volume_size", "", 25, None),
         ("master_root_volume_size", "NONE", None, "must be an Integer"),
         ("master_root_volume_size", "wrong_value", None, "must be an Integer"),
         ("master_root_volume_size", "19", 19, "Allowed values are"),
-        ("master_root_volume_size", "21", 21, None),
+        ("master_root_volume_size", "22", 22, "Allowed values are"),
+        ("master_root_volume_size", "31", 31, None),
         # Compute fleet
         # TODO add regex for compute_instance_type
         ("compute_instance_type", None, "t2.micro", None),
@@ -621,12 +622,13 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("compute_instance_type", "test", "test", None),
         ("compute_instance_type", "NONE", "NONE", None),
         ("compute_instance_type", "fake_value", "fake_value", None),
-        ("compute_root_volume_size", None, 20, None),
-        ("compute_root_volume_size", "", 20, None),
+        ("compute_root_volume_size", None, 25, None),
+        ("compute_root_volume_size", "", 25, None),
         ("compute_root_volume_size", "NONE", None, "must be an Integer"),
         ("compute_root_volume_size", "wrong_value", None, "must be an Integer"),
         ("compute_root_volume_size", "19", 19, "Allowed values are"),
-        ("compute_root_volume_size", "21", 21, None),
+        ("compute_root_volume_size", "22", 22, "Allowed values are"),
+        ("compute_root_volume_size", "31", 31, None),
         ("initial_queue_size", None, 0, None),
         ("initial_queue_size", "", 0, None),
         ("initial_queue_size", "NONE", None, "must be an Integer"),
@@ -1006,6 +1008,19 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             ),
         ),
         (
+            "dcv",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "CLITemplate": "dcv",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "VPCId": "vpc-12345678",
+                    "MasterSubnetId": "subnet-12345678",
+                    "DCVOptions": "master,8555,10.0.0.0/0",
+                },
+            ),
+        ),
+        (
             "ebs",
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
@@ -1072,6 +1087,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    # dcv
+                    "DCVOptions": "master,8555,10.0.0.0/0",
                 },
             ),
         ),
@@ -1133,6 +1150,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    # dcv
+                    "DCVOptions": "master,8555,10.0.0.0/0",
                 },
             ),
         ),

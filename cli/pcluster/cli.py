@@ -23,6 +23,7 @@ from botocore.exceptions import NoCredentialsError
 
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
+from pcluster.dcv.connect import dcv_connect
 
 LOGGER = logging.getLogger(__name__)
 
@@ -35,8 +36,12 @@ def configure(args):
     easyconfig.configure(args)
 
 
-def command(args, extra_args):
-    pcluster.command(args, extra_args)
+def ssh(args, extra_args):
+    pcluster.ssh(args, extra_args)
+
+
+def dcv(args):
+    dcv_connect(args)
 
 
 def status(args):
@@ -316,7 +321,7 @@ Variables substituted::
     )
     pssh.add_argument("cluster_name", help="Name of the cluster to connect to.")
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
-    pssh.set_defaults(func=command)
+    pssh.set_defaults(func=ssh)
 
     # createami command subparser
     pami = subparsers.add_parser(
@@ -387,6 +392,24 @@ Variables substituted::
     pversion = subparsers.add_parser("version", help="Displays the version of AWS ParallelCluster.")
     pversion.set_defaults(func=version)
 
+    # dcv command subparser
+    pdcv = subparsers.add_parser(
+        "dcv",
+        help="The dcv command permits to use NICE DCV related features.",
+        epilog='For dcv subcommand specific flags, please run: "pcluster dcv [subcommand] --help"',
+    )
+    dcv_subparsers = pdcv.add_subparsers()
+    dcv_subparsers.required = True
+    dcv_subparsers.dest = "subcommand"
+    pdcv_connect = dcv_subparsers.add_parser(
+        "connect", help="Permits to connect to the master node through an interactive session by using NICE DCV."
+    )
+    pdcv_connect.add_argument("cluster_name", help="Name of the cluster to connect to")
+    pdcv_connect.add_argument(
+        "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
+    )
+    pdcv.set_defaults(func=dcv)
+
     return parser
 
 
@@ -405,7 +428,7 @@ def main():
         if "region" in args and args.region:
             os.environ["AWS_DEFAULT_REGION"] = args.region
 
-        if args.func.__name__ == "command":
+        if args.func.__name__ == "ssh":
             args.func(args, extra_args)
         else:
             if extra_args:

@@ -253,14 +253,14 @@
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
       "Type": "Number",
-      "Default": "20",
-      "MinValue": "20"
+      "Default": "25",
+      "MinValue": "25"
     },
     "ComputeRootVolumeSize": {
       "Description": "Size of ComputeFleet EBS root volume in GB",
       "Type": "Number",
-      "Default": "20",
-      "MinValue": "20"
+      "Default": "25",
+      "MinValue": "25"
     },
     "EC2IAMRoleName": {
       "Description": "Existing EC2 IAM role name",
@@ -329,6 +329,11 @@
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",
       "Type": "String",
       "Default": "NONE"
+    },
+    "DCVOptions": {
+      "Description": "Comma separated list of NICE DCV related options, 3 parameters in total, [enabled,port,access_from]",
+      "Type": "String",
+      "Default": "NONE,NONE,NONE"
     }
   },
   "Conditions": {
@@ -932,6 +937,24 @@
           ]
         }
       ]
+    },
+    "EnableDCV": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "DCVOptions"
+                }
+              ]
+            }
+          ]
+        },
+        "master"
+      ]
     }
   },
   "Mappings": {
@@ -1505,6 +1528,16 @@
               "Resource": [
                 {
                   "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster-*"
+                }
+              ]
+            },
+            {
+              "Sid": "DcvLicense",
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*"
                 }
               ]
             }
@@ -2275,6 +2308,26 @@
                       "Fn::GetAtt": [
                         "SQS",
                         "QueueName"
+                      ]
+                    },
+                    "dcv_enabled": {
+                      "Fn::If": [
+                        "EnableDCV",
+                        "master",
+                        "false"
+                      ]
+                    },
+                    "dcv_port": {
+                      "Fn::Select": [
+                        "1",
+                        {
+                          "Fn::Split": [
+                            ",",
+                            {
+                              "Ref": "DCVOptions"
+                            }
+                          ]
+                        }
                       ]
                     }
                   },
@@ -3344,6 +3397,56 @@
             "CidrIp": {
               "Ref": "AccessFrom"
             }
+          },
+          {
+            "Fn::If": [
+              "EnableDCV",
+              {
+                "IpProtocol": "tcp",
+                "FromPort": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "ToPort": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "CidrIp": {
+                  "Fn::Select": [
+                    "2",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
           }
         ]
       },
