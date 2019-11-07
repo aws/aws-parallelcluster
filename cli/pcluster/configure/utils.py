@@ -120,7 +120,9 @@ def generate_printable_list(items):
 def get_regions():
     ec2 = boto3.client("ec2")
     regions = ec2.describe_regions().get("Regions")
-    return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+    regions = [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+    regions.sort()
+    return regions
 
 
 def get_resource_tag(resource, tag_name):
