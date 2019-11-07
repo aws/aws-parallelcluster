@@ -94,7 +94,7 @@ ALLOWED_VALUES = {
     "efs_fs_id": r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}|NONE$",
     "file_path": r"\/?[\w:]+",
     "fsx_fs_id": r"^fs-[0-9a-z]{17}|NONE$",
-    "greater_than_20": r"^([0-9]+[0-9]{2}|[2-9][0-9])$",
+    "greater_than_25": r"^([0-9]+[0-9]{2}|[3-9][0-9]|2[5-9])$",
     "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
     "snapshot_id": r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
@@ -424,8 +424,8 @@ CLUSTER = {
             }),
             ("master_root_volume_size", {
                 "type": IntParam,
-                "default": 20,
-                "allowed_values": ALLOWED_VALUES["greater_than_20"],
+                "default": 25,
+                "allowed_values": ALLOWED_VALUES["greater_than_25"],
                 "cfn_param_mapping": "MasterRootVolumeSize",
             }),
             # Compute fleet
@@ -438,8 +438,8 @@ CLUSTER = {
             }),
             ("compute_root_volume_size", {
                 "type": IntParam,
-                "default": 20,
-                "allowed_values": ALLOWED_VALUES["greater_than_20"],
+                "default": 25,
+                "allowed_values": ALLOWED_VALUES["greater_than_25"],
                 "cfn_param_mapping": "ComputeRootVolumeSize",
             }),
             ("initial_queue_size", {
