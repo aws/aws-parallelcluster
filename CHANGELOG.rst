@@ -7,7 +7,7 @@ x.x.x
 
 **CHANGES**
 
-* Increase default EBS volume size from 17GB to 20GB
+* Increase default EBS volume size from 17GB to 25GB
 * Search for new available version only at ``pcluster create`` action
 
 2.4.1
