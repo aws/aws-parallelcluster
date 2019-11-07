@@ -2,13 +2,41 @@
 CHANGELOG
 =========
 
-x.x.x
+2.5.0
 =====
+
+**ENHANCEMENTS**
+* Ubuntu 18.04 Support
+* New ``pcluster configure`` command is significantly easier and more powerful
+* Connect graphically to the desktop with DCV using ``pcluster dcv connect``
+* Slurm GPU Scheduling
+* Disable Hyperthreading by setting ``disable_hyperthreading = true``
+* Intel Parallel Studio Runtime is Packaged with Centos 7 AMI
+  * This makes Centos 7 Intel Cluster Checker Compliant
+  * /opt/intel is shared via NFS
+* Additional EC2 IAM Policies can be specified with ``additional_iam_policies``
 
 **CHANGES**
 
+* Ubuntu 14.04 is no longer supported
 * Increase default EBS volume size from 17GB to 25GB
 * Search for new available version only at ``pcluster create`` action
+* EFA 1.6.2 Installer - this also updates Open MPI to 4.0.2
+* Updated Slurm to version 19.05
+* FSx Lustre now mounts with flags ``defaults,_netdev,flock`` and others
+* Updated Intel MPI to version U5
+* Add ``--cluster-template``, ``--vpc-id``, ``-no-public-ip`` and ``--subnet-id`` parameters to ``pcluster createami`` command
+* Support inline comments in config file
+* Support Python 3.8
+* Deprecate Python 2.6 Support
+* Adds ``ClusterName`` tag to EC2 instances
+* FSx Lustre now supports new storage_capacity options 1,200 and 2,400 GiB
+
+**BUG FIXES**
+* Fix sanity check for custom ec2 role. Fixes `#1241 <https://github.com/aws/aws-parallelcluster/issues/1241>`_ .
+* Fix bug when using same subnet for both master and compute.
+* Fix bug when ganglia is enabled ganglia urls are shown. Fixes `#1322 <https://github.com/aws/aws-parallelcluster/issues/1322>`_ .
+* Fix bug with ``awsbatch`` scheduler that prevented Multi-node jobs from running.
 
 2.4.1
 =====
