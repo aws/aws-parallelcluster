@@ -64,7 +64,7 @@ class S3DocumentManager:
         except Exception as e:
             self.error(
                 "Failed when uploading file %s to bucket %s in region %s with error %s".format(
-                    s3_key, s3_bucket, self._region, e,
+                    s3_key, s3_bucket, self._region, e
                 )
             )
             raise

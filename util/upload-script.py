@@ -114,9 +114,7 @@ if __name__ == "__main__":
         required=False,
         default="{region}-aws-parallelcluster",
     )
-    parser.add_argument(
-        "--version", type=str, help="Version of the script", required=False,
-    )
+    parser.add_argument("--version", type=str, help="Version of the script", required=False)
     parser.add_argument("--override", action="store_true", help="Overwrite existing version.", default=False)
     parser.add_argument(
         "--key-path",
