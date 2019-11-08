@@ -7,11 +7,10 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
-* Add support for Ubuntu 18.04.
+* Add support for new OS: Ubuntu 18.04
 * Add support for AWS Batch scheduler in China partition and in ``eu-north-1``.
 * Revamped ``pcluster configure`` command which now supports automated networking configuration.
-* Add support for NICE DCV on Centos 7. You can now connect graphically to the desktop with DCV using
-  ``pcluster dcv connect``.
+* Add support for NICE DCV on Centos 7 to setup a graphical remote desktop session on the Master node.
 * Add support for new EFA supported instances: ``c5n.metal``, ``m5dn.24xlarge``, ``m5n.24xlarge``, ``r5dn.24xlarge``,
   ``r5n.24xlarge``
 * Add support for scheduling with GPU options in Slurm. Currently supports the following GPU-related options: ``—G/——gpus,
@@ -40,14 +39,14 @@ CHANGELOG
   ``x-systemd.automount x-systemd.requires=lnet.service`` for systemd based systems.
 * Increase the number of hosts that can be processed by scaling daemons in a single batch from 50 to 200. This
   improves the scaling time especially with increased ASG launch rates.
-* Change default sshd config in order to disable X11 forwarding and allow only secure ciphers.
+* Change default sshd config in order to disable X11 forwarding and update the list of supported ciphers
   significantly increases scaling speed when ASG launch rate is raised.
 * Increase faulty node termination timeout from 1 minute to 5 in order to give some additional time to the scheduler
   to recover when under heavy load.
-* Add ``--cluster-template``, ``--vpc-id``, ``-no-public-ip`` and ``--subnet-id`` parameters to ``pcluster createami`` command
+* Extended ``pcluster createami`` command to specify the VPC and network settings when building the AMI.
 * Support inline comments in config file
-* Support Python 3.8 in pcluster cli.
-* Deprecate Python 2.6 Support
+* Support Python 3.8 in pcluster CLI.
+* Deprecate Python 2.6 support
 * Add ``ClusterName`` tag to EC2 instances.
 * Search for new available version only at ``pcluster create`` action.
 * Enable ``sanity_check`` by default.
