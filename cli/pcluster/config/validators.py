@@ -345,7 +345,7 @@ def ec2_iam_role_validator(param_key, param_value, pcluster_config):
                 if decision.get("EvalDecision") != "allowed":
                     errors.append(
                         "IAM role error on user provided role {0}: action {1} is {2}.\n"
-                        "See https://aws-parallelcluster.readthedocs.io/en/latest/iam.html".format(
+                        "See https://docs.aws.amazon.com/parallelcluster/latest/ug/iam.html".format(
                             param_value, decision.get("EvalActionName"), decision.get("EvalDecision")
                         )
                     )
