@@ -124,7 +124,7 @@ class EBSSnapshotsFactory:
             except BaseException:
                 logging.info("SSH connection error - retrying...")
                 tries -= 1
-                time.sleep(10)
+                time.sleep(20)
 
         if (ssh_conn is None) or (not ssh_conn.is_connected):
             raise ConnectionError()
@@ -193,7 +193,7 @@ class EBSSnapshotsFactory:
         )[0]
         logging.info("Waiting for instance to be running...")
         while instance.state["Name"] == "pending":
-            time.sleep(20)
+            time.sleep(10)
             instance = self.ec2.Instance(instance.id)
 
         logging.info("Instance state: %s" % instance.state)
