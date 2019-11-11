@@ -193,7 +193,7 @@ class EBSSnapshotsFactory:
         )[0]
         logging.info("Waiting for instance to be running...")
         while instance.state["Name"] == "pending":
-            time.sleep(10)
+            time.sleep(20)
             instance = self.ec2.Instance(instance.id)
 
         logging.info("Instance state: %s" % instance.state)
