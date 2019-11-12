@@ -40,7 +40,7 @@ class PclusterConfig(object):
         file_sections=None,
         cluster_label=None,  # args.cluster_template
         fail_on_file_absence=False,
-        fail_on_error=True,
+        fail_on_error=None,
         cluster_name=None,
     ):
         """
@@ -54,7 +54,8 @@ class PclusterConfig(object):
         by default the init reads the configuration file to get AWS credentials.
         :param cluster_label: the label associated to a [cluster ...] section in the file
         :param fail_on_file_absence: initialization will fail if the specified file or a default one doesn't exist
-
+        :param fail_on_error: tells if initialization must fail in presence of errors. If not set, the behaviour will
+        depend on sanity_check parameter in conf file
         # "From Stack" initialization parameters:
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
@@ -220,6 +221,16 @@ class PclusterConfig(object):
         else:
             os.environ["AWS_DEFAULT_REGION"] = self.region
 
+    @property
+    def fail_on_error(self):
+        if self._fail_on_error is None:
+            self._fail_on_error = self.get_section("global").get_param_value("sanity_check")
+        return self._fail_on_error
+
+    @fail_on_error.setter
+    def fail_on_error(self, fail_on_error):
+        self._fail_on_error = fail_on_error
+
     def to_file(self):
         """Convert the internal representation of the cluster to the relative file sections."""
         for section_key in ["aws", "global", "aliases"]:
@@ -312,15 +323,9 @@ class PclusterConfig(object):
 
     def validate(self):
         """Validate the configuration."""
-        fail_on_error = (
-            self.get_section("global").get_param_value("sanity_check")
-            if self.get_section("global")
-            else GLOBAL.get("params").get("sanity_check").get("default")
-        )
-
         for _, sections in self.sections.items():
             for _, section in sections.items():
-                section.validate(fail_on_error=fail_on_error)
+                section.validate()
 
         # check AWS account limits
         self.__check_account_capacity()

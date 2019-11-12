@@ -198,6 +198,7 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
                 config_file=pcluster_config_reader(settings_label=settings_label),
                 file_sections=[GLOBAL, CLUSTER],
                 fail_on_file_absence=True,
+                fail_on_error=True,
             )
     else:
         pcluster_config = PclusterConfig(
