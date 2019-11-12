@@ -21,6 +21,10 @@ def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
 
 
+def _mock_efa_supported_instances(mocker):
+    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
+
+
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
@@ -51,11 +55,33 @@ def boto3_stubber_path():
     ],
 )
 def test_cluster_validator(mocker, section_dict, expected_message):
-    mocker.patch(
-        "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
-    )
     config_parser_dict = {"cluster default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
+)
+def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
+    config_parser_dict = {"cluster default": {"master_instance_type": instance_type}}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "scheduler, instance_type, expected_message",
+    [
+        ("sge", "t2.micro", None),
+        ("sge", "c4.xlarge", None),
+        ("sge", "c5.xlarge", "is not supported"),
+        # NOTE: compute_instance_type_validator calls ec2_instance_type_validator only if the scheduler is not awsbatch
+        ("awsbatch", "t2.micro", None),
+        ("awsbatch", "c4.xlarge", "is not supported"),
+        ("awsbatch", "t2", None),  # t2 family
+        ("awsbatch", "optimal", None),
+    ],
+)
+def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message):
+    config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
@@ -212,10 +238,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     ],
 )
 def test_scheduler_validator(mocker, region, expected_message):
-    mocker.patch(
-        "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.micro", "optimal"], "baseos": ["alinux"], "schedulers": ["awsbatch"]},
-    )
     # we need to set the region in the environment because it takes precedence respect of the config file
     os.environ["AWS_DEFAULT_REGION"] = region
     config_parser_dict = {"cluster default": {"scheduler": "awsbatch"}}
@@ -761,8 +783,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, section_dict, expected_m
     ],
 )
 def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_warning):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
-
+    _mock_efa_supported_instances(mocker)
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
 
@@ -800,7 +821,7 @@ def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_wa
 def test_efa_validator_with_vpc_security_group(
     boto3_stubber, mocker, ip_permissions, ip_permissions_egress, expected_message
 ):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.micro"]})
+    _mock_efa_supported_instances(mocker)
 
     describe_security_groups_response = {
         "SecurityGroups": [
@@ -824,7 +845,12 @@ def test_efa_validator_with_vpc_security_group(
     boto3_stubber("ec2", mocked_requests)
 
     config_parser_dict = {
-        "cluster default": {"enable_efa": "compute", "placement_group": "DYNAMIC", "vpc_settings": "default"},
+        "cluster default": {
+            "enable_efa": "compute",
+            "compute_instance_type": "t2.large",
+            "placement_group": "DYNAMIC",
+            "vpc_settings": "default",
+        },
         "vpc default": {"vpc_security_group_id": "sg-12345678"},
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
@@ -863,8 +889,6 @@ def test_efa_validator_with_vpc_security_group(
     ],
 )
 def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, expected_message):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
-
     config_parser_dict = {"cluster default": cluster_section_dict}
     if ebs_section_dict:
         for vol in ebs_section_dict:

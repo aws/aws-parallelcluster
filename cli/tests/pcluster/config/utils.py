@@ -65,13 +65,27 @@ def assert_param_from_file(mocker, section_definition, param_key, param_value, e
         assert_that(param.value, description="{0} assert fail".format(param.key)).is_equal_to(expected_value)
 
 
+def mock_pcluster_config(mocker, scheduler=None):
+    mocker.patch(
+        "pcluster.config.validators.get_supported_instance_types", return_value=["t2.micro", "t2.large", "c4.xlarge"]
+    )
+    mocker.patch(
+        "pcluster.config.validators.get_supported_compute_instance_types",
+        return_value=(
+            ["t2.micro", "t2.large", "t2", "optimal"]
+            if scheduler == "awsbatch"
+            else ["t2.micro", "t2.large", "c4.xlarge"]
+        ),
+    )
+    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch.object(PclusterConfig, "_PclusterConfig__check_account_capacity")
+
+
 def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
 
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
-    mocker.patch.object(PclusterConfig, "_PclusterConfig__check_account_capacity")
-
+    mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"))
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)

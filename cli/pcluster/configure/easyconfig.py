@@ -27,7 +27,14 @@ from pcluster.configure.networking import (
     automate_vpc_with_subnet_creation,
 )
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
-from pcluster.utils import error, get_region, get_supported_os, get_supported_schedulers, list_ec2_instance_types
+from pcluster.utils import (
+    error,
+    get_region,
+    get_supported_compute_instance_types,
+    get_supported_instance_types,
+    get_supported_os,
+    get_supported_schedulers,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -146,7 +153,7 @@ def configure(args):
 
     master_instance_type = prompt(
         "Master instance type",
-        lambda x: x in list_ec2_instance_types(),
+        lambda x: x in get_supported_instance_types(),
         default_value=cluster_section.get_param_value("master_instance_type"),
     )
 
@@ -304,7 +311,7 @@ class SchedulerHandler:
         if not self.is_aws_batch:
             self.compute_instance_type = prompt(
                 "Compute instance type",
-                lambda x: x in list_ec2_instance_types(),
+                lambda x: x in get_supported_compute_instance_types(self.scheduler),
                 default_value=self.cluster_section.get_param_value("compute_instance_type"),
             )
 
