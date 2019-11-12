@@ -867,8 +867,8 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
     [(DefaultDict["cluster"].value, utils.merge_dicts(DefaultCfnParams["cluster"].value))],
 )
 def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
+    utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
     utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params)
 
 

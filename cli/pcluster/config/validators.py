@@ -22,7 +22,9 @@ from pcluster.utils import (
     get_instance_vcpus,
     get_partition,
     get_region,
+    get_supported_compute_instance_types,
     get_supported_features,
+    get_supported_instance_types,
 )
 
 
@@ -420,6 +422,19 @@ def _get_pcluster_user_policy(partition, region, account_id):
     ]
 
 
+def ec2_instance_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value not in get_supported_instance_types():
+        errors.append(
+            "The instance type '{0}' used for the '{1}' parameter is not supported by AWS ParallelCluster.".format(
+                param_value, param_key
+            )
+        )
+    return errors, warnings
+
+
 def ec2_vpc_id_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
@@ -672,46 +687,44 @@ def cluster_validator(section_key, section_label, pcluster_config):
 
 
 def compute_instance_type_validator(param_key, param_value, pcluster_config):
+    """Validate compute instance type, calling ec2_instance_type_validator if the scheduler is not awsbatch."""
     errors = []
     warnings = []
 
     cluster_config = pcluster_config.get_section("cluster")
-    if cluster_config.get_param_value("scheduler") == "awsbatch":
-
-        try:
-            supported_instances = get_supported_features(pcluster_config.region, "batch").get("instances")
-            if supported_instances:
-                for instance in param_value.split(","):
-                    if not instance.strip() in supported_instances:
-                        errors.append(
-                            "compute_instance_type '{0}' is not supported by awsbatch in region '{1}'".format(
-                                instance, pcluster_config.region
-                            )
+    scheduler = cluster_config.get_param_value("scheduler")
+    if scheduler == "awsbatch":
+        supported_instances = get_supported_compute_instance_types(scheduler)
+        if supported_instances:
+            for instance in param_value.split(","):
+                if not instance.strip() in supported_instances:
+                    errors.append(
+                        "compute_instance_type '{0}' is not supported by awsbatch in region '{1}'".format(
+                            instance, pcluster_config.region
                         )
-            else:
-                warnings.append(
-                    "Unable to get instance types supported by awsbatch. Skipping compute_instance_type validation"
-                )
-
-            if "," not in param_value and "." in param_value:
-                # if the type is not a list, and contains dot (nor optimal, nor a family)
-                # validate instance type against max_vcpus limit
-                vcpus = get_instance_vcpus(pcluster_config.region, param_value)
-                if vcpus <= 0:
-                    warnings.append(
-                        "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
-                        "Skipping instance type against max_vcpus validation".format(param_value)
                     )
-                else:
-                    if cluster_config.get_param_value("max_vcpus") < vcpus:
-                        errors.append(
-                            "max_vcpus must be greater than or equal to {0}, that is the number of vcpus "
-                            "available for the {1} that you selected as compute_instance_type".format(
-                                vcpus, param_value
-                            )
-                        )
-        except ClientError as e:
-            errors.append(e.response.get("Error").get("Message"))
+        else:
+            warnings.append(
+                "Unable to get instance types supported by awsbatch. Skipping compute_instance_type validation"
+            )
+
+        if "," not in param_value and "." in param_value:
+            # if the type is not a list, and contains dot (nor optimal, nor a family)
+            # validate instance type against max_vcpus limit
+            vcpus = get_instance_vcpus(pcluster_config.region, param_value)
+            if vcpus <= 0:
+                warnings.append(
+                    "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
+                    "Skipping instance type against max_vcpus validation".format(param_value)
+                )
+            else:
+                if cluster_config.get_param_value("max_vcpus") < vcpus:
+                    errors.append(
+                        "max_vcpus must be greater than or equal to {0}, that is the number of vcpus "
+                        "available for the {1} that you selected as compute_instance_type".format(vcpus, param_value)
+                    )
+    else:
+        errors, warnings = ec2_instance_type_validator(param_key, param_value, pcluster_config)
 
     return errors, warnings
 
