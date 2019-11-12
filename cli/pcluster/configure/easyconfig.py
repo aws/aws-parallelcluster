@@ -103,7 +103,7 @@ def configure(args):
         error("Invalid configuration file path: {0}".format(args.config_file))
 
     pcluster_config = PclusterConfig(
-        config_file=args.config_file, file_sections=[GLOBAL, CLUSTER, ALIASES], fail_on_error=False
+        config_file=args.config_file, fail_on_error=False
     )
 
     if os.path.exists(pcluster_config.config_file):
