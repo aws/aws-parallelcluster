@@ -15,17 +15,17 @@ import boto3
 import pytest
 
 from assertpy import assert_that
-from pcluster.dcv.utils import DCV_CONNECT_SCRIPT, get_supported_dcv_os
 from remote_command_executor import RemoteCommandExecutor
 
 SERVER_URL = "https://localhost"
+DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 
 @pytest.mark.parametrize(
     "dcv_port, access_from, shared_dir", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")]
 )
 @pytest.mark.regions(["eu-west-1", "cn-northwest-1"])  # DCV license bucket not present in us-gov
-@pytest.mark.oss(get_supported_dcv_os())
+@pytest.mark.oss(["centos7"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 def test_dcv_configuration(
     dcv_port, access_from, shared_dir, region, instance, os, scheduler, pcluster_config_reader, clusters_factory
