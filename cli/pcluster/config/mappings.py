@@ -53,6 +53,7 @@ from pcluster.config.validators import (
     fsx_imported_file_chunk_size_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
+    intel_hpc_validator,
     raid_volume_iops_validator,
     scheduler_validator,
     url_validator,
@@ -584,6 +585,12 @@ CLUSTER = {
                 "cfn_param_mapping": "CustomAWSBatchTemplateURL",
                 # TODO add regex
                 "validators": [url_validator],
+            }),
+            ("enable_intel_hpc_platform", {
+                "default": False,
+                "type": BoolParam,
+                "cfn_param_mapping": "IntelHPCPlatform",
+                "validators": [intel_hpc_validator],
             }),
             # Settings
             ("scaling_settings", {
