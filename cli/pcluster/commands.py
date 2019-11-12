@@ -82,7 +82,6 @@ def create(args):  # noqa: C901 FIXME!!!
     # Build the config based on args
     pcluster_config = PclusterConfig(
         config_file=args.config_file,
-        file_sections=[GLOBAL, CLUSTER],
         cluster_label=args.cluster_template,
         fail_on_file_absence=True,
     )
@@ -243,7 +242,6 @@ def update(args):  # noqa: C901 FIXME!!!
     stack_name = utils.get_stack_name(args.cluster_name)
     pcluster_config = PclusterConfig(
         config_file=args.config_file,
-        file_sections=[GLOBAL, CLUSTER],
         cluster_label=args.cluster_template,
         fail_on_file_absence=True,
     )
@@ -545,7 +543,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
     """
-    pcluster_config = PclusterConfig(file_sections=[ALIASES])  # FIXME it always search for the default config file
+    pcluster_config = PclusterConfig(fail_on_error=False)  # FIXME it always search for the default config file
     if args.command in pcluster_config.get_section("aliases").params:
         ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
     else:
@@ -835,7 +833,7 @@ def create_ami(args):
     try:
         # FIXME it doesn't work if there is no a default section
         pcluster_config = PclusterConfig(
-            config_file=args.config_file, file_sections=[GLOBAL, CLUSTER], fail_on_file_absence=True
+            config_file=args.config_file, fail_on_file_absence=True
         )
 
         vpc_section = pcluster_config.get_section("vpc")
