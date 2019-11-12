@@ -334,6 +334,14 @@
       "Description": "Comma separated list of NICE DCV related options, 3 parameters in total, [enabled,port,access_from]",
       "Type": "String",
       "Default": "NONE,NONE,NONE"
+    },
+    "IntelHPCPlatform": {
+      "Description": "Enable Intel HPC Platform packages.",
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
     }
   },
   "Conditions": {
@@ -2330,6 +2338,9 @@
                         }
                       ]
                     }
+                  },
+                  "enable_intel_hpc_platform": {
+                    "Ref": "IntelHPCPlatform"
                   },
                   "run_list": {
                     "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"

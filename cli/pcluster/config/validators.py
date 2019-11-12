@@ -688,3 +688,19 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
         errors, warnings = ec2_instance_type_validator(param_key, param_value, pcluster_config)
 
     return errors, warnings
+
+
+def intel_hpc_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    allowed_oses = ["centos7"]
+
+    cluster_section = pcluster_config.get_section("cluster")
+    if param_value and cluster_section.get_param_value("base_os") not in allowed_oses:
+        errors.append(
+            "When using 'enable_intel_hpc_platform = {0}' it is required to set the 'base_os' parameter "
+            "to one of the following values : {1}".format(param_value, allowed_oses)
+        )
+
+    return errors, warnings
