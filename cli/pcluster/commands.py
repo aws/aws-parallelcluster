@@ -37,7 +37,6 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from pcluster.config.mappings import ALIASES, CLUSTER, GLOBAL
 from pcluster.config.pcluster_config import PclusterConfig
 
 if sys.version_info[0] >= 3:
@@ -389,7 +388,7 @@ def _colorize(stack_status, args):
 
 def list_stacks(args):
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_AWS(config_file=args.config_file)
 
     try:
         result = []
@@ -578,7 +577,7 @@ def status(args):  # noqa: C901 FIXME!!!
     stack_name = utils.get_stack_name(args.cluster_name)
 
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_AWS(config_file=args.config_file)
 
     cfn = boto3.client("cloudformation")
     try:
@@ -639,7 +638,7 @@ def delete(args):
     stack_name = utils.get_stack_name(args.cluster_name)
 
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_AWS(config_file=args.config_file)
 
     cfn = boto3.client("cloudformation")
     try:
