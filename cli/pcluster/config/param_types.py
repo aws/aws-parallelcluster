@@ -1092,7 +1092,7 @@ class Section(object):
             param = param_type(self.key, self.label, param_key, param_definition, self.pcluster_config)
             self.add_param(param)
 
-    def validate(self, fail_on_error=True):
+    def validate(self):
         """Call the validator function of the section and of all the parameters."""
         if self.params:
             section_name = _get_file_section_name(self.key, self.label)
