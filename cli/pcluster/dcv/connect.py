@@ -38,7 +38,7 @@ def dcv_connect(args):
     :param args: pcluster cli arguments.
     """
     # Parse configuration file to read the AWS section
-    PclusterConfig.init_AWS()  # FIXME it always searches for the default configuration file
+    PclusterConfig.init_aws()  # FIXME it always searches for the default configuration file
 
     # Prepare ssh command to execute in the master instance
     stack = get_stack(get_stack_name(args.cluster_name))
