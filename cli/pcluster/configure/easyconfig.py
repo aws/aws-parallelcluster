@@ -19,7 +19,6 @@ import os
 
 import boto3
 
-from pcluster.config.mappings import ALIASES, CLUSTER, GLOBAL
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.configure.networking import (
     NetworkConfiguration,
@@ -102,9 +101,7 @@ def configure(args):
     if args.config_file and os.path.exists(args.config_file) and not os.path.isfile(args.config_file):
         error("Invalid configuration file path: {0}".format(args.config_file))
 
-    pcluster_config = PclusterConfig(
-        config_file=args.config_file, fail_on_error=False
-    )
+    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False)
 
     if os.path.exists(pcluster_config.config_file):
         msg = "WARNING: Configuration file {0} will be overwritten."

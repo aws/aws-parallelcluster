@@ -276,9 +276,7 @@ class PclusterConfig(object):
         # get cluster by cluster_label
         if not cluster_label:
             cluster_label = (
-                self.get_section("global").get_param_value("cluster_template")
-                if self.get_section("global")
-                else None
+                self.get_section("global").get_param_value("cluster_template") if self.get_section("global") else None
             )
         self.__init_section_from_file(
             CLUSTER, config_parser, section_label=cluster_label, fail_on_absence=fail_on_absence
