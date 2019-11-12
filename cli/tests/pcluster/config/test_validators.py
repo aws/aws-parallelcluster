@@ -456,6 +456,19 @@ def test_fsx_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
+        ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
+        ({"enable_intel_hpc_platform": "true", "base_os": "alinux"}, "it is required to set the 'base_os'"),
+        ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
+    ],
+)
+def test_intel_hpc_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
         ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB"),
         ({"storage_capacity": 1200}, None),
         ({"storage_capacity": 2400}, None),

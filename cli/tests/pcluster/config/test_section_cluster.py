@@ -77,6 +77,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "VolumeType": "gp2, gp2, gp2, gp2, gp2",
                 "Cores": "-1,-1",
                 "EC2IAMPolicies": "NONE",
+                "IntelHPCPlatform": "true",
             },
             utils.merge_dicts(
                 DefaultDict["cluster"].value,
@@ -91,6 +92,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "max_queue_size": 3,
                     "placement": "cluster",
                     "maintain_initial_size": True,
+                    "enable_intel_hpc_platform": True,
                 },
             ),
         )
@@ -804,6 +806,11 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("disable_hyperthreading", "NONE", None, "must be a Boolean"),
         ("disable_hyperthreading", "true", True, None),
         ("disable_hyperthreading", "false", False, None),
+        ("enable_intel_hpc_platform", None, False, None),
+        ("enable_intel_hpc_platform", "", False, None),
+        ("enable_intel_hpc_platform", "NONE", None, "must be a Boolean"),
+        ("enable_intel_hpc_platform", "true", True, None),
+        ("enable_intel_hpc_platform", "false", False, None),
         # TODO add regex for custom_chef_cookbook
         ("custom_chef_cookbook", None, None, None),
         ("custom_chef_cookbook", "", None, None),
@@ -912,6 +919,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
                     "Cores": "1,1",
+                    "IntelHPCPlatform": "true",
                     # template_url = template
                     # tags = {"test": "test"}
                 },
@@ -1130,6 +1138,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
+                    "IntelHPCPlatform": "false",
                     # scaling
                     "ScaleDownIdleTime": "15",
                     # vpc

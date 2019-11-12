@@ -110,6 +110,12 @@ key_name = mykey
 # Existing EC2 IAM policies to be associated with the EC2 instances
 # (defaults to NONE)
 #additional_iam_policies = NONE
+# Disable Hyperthreading on all instances
+# (defaults to False)
+#disable_hyperthreading = false
+# Install Intel Parallel Studio at /opt/intel
+# (defaults to False)
+#enable_intel_hpc_platform = False
 # Extra Json to be merged with the dna.json used by Chef
 # (defaults to {})
 #extra_json = {}
