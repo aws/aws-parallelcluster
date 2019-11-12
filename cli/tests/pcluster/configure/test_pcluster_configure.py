@@ -138,6 +138,11 @@ def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_
 
 
 def _mock_parallel_cluster_config(mocker):
+    supported_instance_types = ["t2.nano", "t2.micro", "t2.large", "c5.xlarge", "g3.8xlarge"]
+    mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
+    mocker.patch(
+        "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
+    )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
 
 
