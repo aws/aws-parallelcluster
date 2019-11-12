@@ -54,7 +54,6 @@ def test_example_config_consistency(mocker):
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
     pcluster_config = PclusterConfig(
         config_file=utils.get_pcluster_config_example(),
-        file_sections=[GLOBAL, CLUSTER, ALIASES],
         fail_on_file_absence=True,
     )
 
