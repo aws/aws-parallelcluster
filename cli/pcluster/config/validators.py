@@ -23,7 +23,6 @@ from pcluster.utils import (
     get_partition,
     get_region,
     get_supported_features,
-    list_ec2_instance_types,
 )
 
 
