@@ -2337,10 +2337,10 @@
                           ]
                         }
                       ]
+                    },
+                    "enable_intel_hpc_platform": {
+                      "Ref": "IntelHPCPlatform"
                     }
-                  },
-                  "enable_intel_hpc_platform": {
-                    "Ref": "IntelHPCPlatform"
                   },
                   "run_list": {
                     "Fn::Sub": "recipe[aws-parallelcluster::${Scheduler}_config]"
