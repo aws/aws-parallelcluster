@@ -22,6 +22,7 @@ from pcluster.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 from pcluster.configure.utils import handle_client_exception
 from pcluster.networking.vpc_factory import VpcFactory
 from pcluster.utils import (
+    get_cli_log_file,
     get_region,
     get_stack,
     get_stack_output_value,
@@ -180,7 +181,8 @@ def _create_network_stack(configuration, parameters):
     except Exception as e:  # Any exception is a problem
         print()
         LOGGER.error(
-            "An exception as occured. Please restart the configuration and check manually the created resource"
+            "An exception occured while creating the CloudFormation stack: {0}. "
+            "For details please check log file: {1}".format(stack_name, get_cli_log_file())
         )
         LOGGER.critical(e)
         sys.exit(1)

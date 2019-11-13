@@ -459,3 +459,7 @@ def get_master_ip_and_username(cluster_name):
         error(e.response.get("Error").get("Message"))
 
     return master_ip, username
+
+
+def get_cli_log_file():
+    return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
