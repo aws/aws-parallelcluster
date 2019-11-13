@@ -23,6 +23,7 @@ from botocore.exceptions import NoCredentialsError
 
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
+import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
 
 LOGGER = logging.getLogger(__name__)
@@ -89,7 +90,7 @@ def config_logger():
     log_stream_handler.setFormatter(logging.Formatter("%(message)s"))
     logger.addHandler(log_stream_handler)
 
-    logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    logfile = utils.get_cli_log_file()
     try:
         os.makedirs(os.path.dirname(logfile))
     except OSError as e:
