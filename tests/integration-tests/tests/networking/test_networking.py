@@ -29,7 +29,11 @@ def networking_stack_factory(request):
     def _create_network(region, template_path, parameters):
         file_content = extract_template(template_path)
         stack = CfnStack(
-            name="integ-tests-networking-" + random_alphanumeric(),
+            name="integ-tests-networking-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
             region=region,
             template=file_content,
             parameters=parameters,
