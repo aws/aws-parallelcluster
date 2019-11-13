@@ -37,7 +37,6 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from pcluster.config.mappings import ALIASES, CLUSTER, GLOBAL
 from pcluster.config.pcluster_config import PclusterConfig
 
 if sys.version_info[0] >= 3:
@@ -81,10 +80,7 @@ def create(args):  # noqa: C901 FIXME!!!
 
     # Build the config based on args
     pcluster_config = PclusterConfig(
-        config_file=args.config_file,
-        file_sections=[GLOBAL, CLUSTER],
-        cluster_label=args.cluster_template,
-        fail_on_file_absence=True,
+        config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
     )
     pcluster_config.validate()
     # get CFN parameters, template url and tags from config
@@ -242,10 +238,7 @@ def update(args):  # noqa: C901 FIXME!!!
     LOGGER.info("Updating: %s", args.cluster_name)
     stack_name = utils.get_stack_name(args.cluster_name)
     pcluster_config = PclusterConfig(
-        config_file=args.config_file,
-        file_sections=[GLOBAL, CLUSTER],
-        cluster_label=args.cluster_template,
-        fail_on_file_absence=True,
+        config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
     )
     pcluster_config.validate()
     cfn_params = pcluster_config.to_cfn()
@@ -391,7 +384,7 @@ def _colorize(stack_status, args):
 
 def list_stacks(args):
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_aws(config_file=args.config_file)
 
     try:
         result = []
@@ -545,7 +538,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
     """
-    pcluster_config = PclusterConfig(file_sections=[ALIASES])  # FIXME it always search for the default config file
+    pcluster_config = PclusterConfig(fail_on_error=False)  # FIXME it always search for the default config file
     if args.command in pcluster_config.get_section("aliases").params:
         ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
     else:
@@ -580,7 +573,7 @@ def status(args):  # noqa: C901 FIXME!!!
     stack_name = utils.get_stack_name(args.cluster_name)
 
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_aws(config_file=args.config_file)
 
     cfn = boto3.client("cloudformation")
     try:
@@ -641,7 +634,7 @@ def delete(args):
     stack_name = utils.get_stack_name(args.cluster_name)
 
     # Parse configuration file to read the AWS section
-    PclusterConfig(config_file=args.config_file)
+    PclusterConfig.init_aws(config_file=args.config_file)
 
     cfn = boto3.client("cloudformation")
     try:
@@ -834,9 +827,7 @@ def create_ami(args):
     instance_type = args.instance_type
     try:
         # FIXME it doesn't work if there is no a default section
-        pcluster_config = PclusterConfig(
-            config_file=args.config_file, file_sections=[GLOBAL, CLUSTER], fail_on_file_absence=True
-        )
+        pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
 
         vpc_section = pcluster_config.get_section("vpc")
         vpc_id = args.vpc_id if args.vpc_id else vpc_section.get_param_value("vpc_id")

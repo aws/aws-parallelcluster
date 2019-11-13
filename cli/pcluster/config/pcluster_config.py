@@ -37,10 +37,9 @@ class PclusterConfig(object):
     def __init__(
         self,
         config_file=None,
-        file_sections=None,
         cluster_label=None,  # args.cluster_template
         fail_on_file_absence=False,
-        fail_on_error=True,
+        fail_on_error=None,
         cluster_name=None,
     ):
         """
@@ -50,11 +49,10 @@ class PclusterConfig(object):
 
         # "From file" initialization parameters:
         :param config_file: if specified the initialization of the sections will start from the file
-        :param file_sections: the sections of the configuration file to parse and initialize,
-        by default the init reads the configuration file to get AWS credentials.
         :param cluster_label: the label associated to a [cluster ...] section in the file
         :param fail_on_file_absence: initialization will fail if the specified file or a default one doesn't exist
-
+        :param fail_on_error: tells if initialization must fail in presence of errors. If not set, the behaviour will
+        depend on sanity_check parameter in conf file
         # "From Stack" initialization parameters:
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
@@ -73,7 +71,7 @@ class PclusterConfig(object):
         if cluster_name:
             self.__init_sections_from_cfn(cluster_name)
         else:
-            self.__init_sections_from_file(file_sections, cluster_label, self.config_parser, fail_on_file_absence)
+            self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
 
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
@@ -220,6 +218,18 @@ class PclusterConfig(object):
         else:
             os.environ["AWS_DEFAULT_REGION"] = self.region
 
+    @property
+    def fail_on_error(self):
+        """Get fail_on_error property value. Will fall back to sanity_check parameter if not explicitly set."""
+        if self._fail_on_error is None:
+            self._fail_on_error = self.get_section("global").get_param_value("sanity_check")
+        return self._fail_on_error
+
+    @fail_on_error.setter
+    def fail_on_error(self, fail_on_error):
+        """Set fail_on_error property value."""
+        self._fail_on_error = fail_on_error
+
     def to_file(self):
         """Convert the internal representation of the cluster to the relative file sections."""
         for section_key in ["aws", "global", "aliases"]:
@@ -252,33 +262,25 @@ class PclusterConfig(object):
         """
         return self.get_section("cluster").to_cfn()
 
-    def __init_sections_from_file(self, file_sections, cluster_label=None, config_parser=None, fail_on_absence=False):
+    def __init_sections_from_file(self, cluster_label=None, config_parser=None, fail_on_absence=False):
         """
         Initialize all the Sections object and add them to the internal structure by parsing configuration file.
 
-        :param file_sections: list of sections definition to initialize
         :param cluster_label: the label of the section (if there)
         :param config_parser: the config parser object to parse
         :param fail_on_absence: if true, the initialization will fail if one section doesn't exist in the file
         """
-        if not file_sections:
-            file_sections = []
-
         for section_definition in [ALIASES, GLOBAL]:
-            if section_definition in file_sections:
-                self.__init_section_from_file(section_definition, config_parser)
+            self.__init_section_from_file(section_definition, config_parser)
 
         # get cluster by cluster_label
-        if CLUSTER in file_sections:
-            if not cluster_label:
-                cluster_label = (
-                    self.get_section("global").get_param_value("cluster_template")
-                    if self.get_section("global")
-                    else None
-                )
-            self.__init_section_from_file(
-                CLUSTER, config_parser, section_label=cluster_label, fail_on_absence=fail_on_absence
+        if not cluster_label:
+            cluster_label = (
+                self.get_section("global").get_param_value("cluster_template") if self.get_section("global") else None
             )
+        self.__init_section_from_file(
+            CLUSTER, config_parser, section_label=cluster_label, fail_on_absence=fail_on_absence
+        )
 
     def __init_section_from_file(self, section_definition, config_parser, section_label=None, fail_on_absence=False):
         """
@@ -312,15 +314,9 @@ class PclusterConfig(object):
 
     def validate(self):
         """Validate the configuration."""
-        fail_on_error = (
-            self.get_section("global").get_param_value("sanity_check")
-            if self.get_section("global")
-            else GLOBAL.get("params").get("sanity_check").get("default")
-        )
-
         for _, sections in self.sections.items():
             for _, section in sections.items():
-                section.validate(fail_on_error=fail_on_error)
+                section.validate()
 
         # check AWS account limits
         self.__check_account_capacity()
@@ -452,3 +448,14 @@ class PclusterConfig(object):
     def warn(self, message):
         """Print a warning message."""
         print("WARNING: {0}".format(message))
+
+    @staticmethod
+    def init_aws(config_file=None):
+        """
+        Initialize AWS env settings from pcluster config file.
+
+        Useful when the only thing needed is to set AWS env variables, without really loading and checking the
+        configuration settings.
+        :param config_file: pcluster config file - None to use default
+        """
+        PclusterConfig(config_file=config_file, fail_on_error=False, fail_on_file_absence=False)

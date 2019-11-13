@@ -17,7 +17,6 @@ import pytest
 from configparser import NoOptionError, NoSectionError
 
 from assertpy import assert_that
-from pcluster.config.mappings import ALIASES, CLUSTER, GLOBAL
 from pcluster.config.param_types import Param
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict
@@ -108,7 +107,7 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
 
 
 def get_mocked_pcluster_config(mocker):
-    return PclusterConfig(config_file="wrong-file", file_sections=[GLOBAL, ALIASES, CLUSTER])
+    return PclusterConfig(config_file="wrong-file")
 
 
 def assert_section_from_file(mocker, section_definition, config_parser_dict, expected_dict_params, expected_message):
@@ -196,14 +195,12 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
             PclusterConfig(
                 cluster_label="default",
                 config_file=pcluster_config_reader(settings_label=settings_label),
-                file_sections=[GLOBAL, CLUSTER],
                 fail_on_file_absence=True,
+                fail_on_error=True,
             )
     else:
         pcluster_config = PclusterConfig(
-            config_file=pcluster_config_reader(settings_label=settings_label),
-            file_sections=[GLOBAL, CLUSTER],
-            fail_on_file_absence=True,
+            config_file=pcluster_config_reader(settings_label=settings_label), fail_on_file_absence=True
         )
 
         cfn_params = pcluster_config.to_cfn()
@@ -223,10 +220,7 @@ def init_pcluster_config_from_configparser(config_parser, validate=True):
             config_parser.write(cf)
 
         pcluster_config = PclusterConfig(
-            config_file=config_file.name,
-            cluster_label="default",
-            file_sections=[GLOBAL, CLUSTER, ALIASES],
-            fail_on_file_absence=True,
+            config_file=config_file.name, cluster_label="default", fail_on_file_absence=True
         )
         if validate:
             pcluster_config.validate()
