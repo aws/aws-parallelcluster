@@ -59,21 +59,6 @@ def test_cluster_validator(mocker, section_dict, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
-@pytest.mark.parametrize(
-    "instance_type, expected_message",
-    [
-        ("wrong_instance_type", "has an invalid value"),
-        ("t2.micro", None),
-        ("c4.xlarge", None),
-        ("c5.xlarge", "has an invalid value"),  # to verify mock is working
-    ],
-)
-def test_instance_type_validator(mocker, instance_type, expected_message):
-    mocker.patch("pcluster.config.validators.list_ec2_instance_types", return_value=["t2.micro", "c4.xlarge"])
-    config_parser_dict = {"cluster default": {"compute_instance_type": instance_type}}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
 def test_ec2_key_pair_validator(mocker, boto3_stubber):
     describe_key_pairs_response = {
         "KeyPairs": [
