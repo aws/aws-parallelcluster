@@ -72,6 +72,7 @@ TEST_DEFAULTS = {
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
+    "stackname_suffix": "",
 }
 
 
@@ -205,6 +206,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("benchmarks_max_time"),
         type=int,
     )
+    parser.add_argument(
+        "--stackname-suffix",
+        help="set a suffix in the integration tests stack names",
+        default=TEST_DEFAULTS.get("stackname_suffix"),
+    )
 
     return parser
 
@@ -244,6 +250,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
+    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
 
     if args.credential:
         pytest_args.append("--credential")

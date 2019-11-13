@@ -74,6 +74,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
+    parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
 
 
 def pytest_generate_tests(metafunc):
@@ -189,7 +190,11 @@ def clusters_factory(request):
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
-            else "integ-tests-" + random_alphanumeric(),
+            else "integ-tests-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
         )
@@ -387,7 +392,15 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
         logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
         stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
     else:
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        stack = CfnStack(
+            name="integ-tests-vpc-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
+            region=region,
+            template=template.to_json(),
+        )
         cfn_stacks_factory.create_stack(stack)
     return stack
 
