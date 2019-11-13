@@ -3244,6 +3244,9 @@
                         },
                         "User"
                       ]
+                    },
+                    "enable_intel_hpc_platform": {
+                      "Ref": "IntelHPCPlatform"
                     }
                   },
                   "run_list": {
