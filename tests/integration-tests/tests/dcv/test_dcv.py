@@ -26,8 +26,8 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 )
 @pytest.mark.regions(["eu-west-1", "cn-northwest-1"])  # DCV license bucket not present in us-gov
 @pytest.mark.oss(["centos7"])
-@pytest.mark.instances(["c4.xlarge", "g3.8xlarge"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.skip_instances(["g3.8xlarge"])
 def test_dcv_configuration(
     dcv_port, access_from, shared_dir, region, instance, os, scheduler, pcluster_config_reader, clusters_factory
 ):
