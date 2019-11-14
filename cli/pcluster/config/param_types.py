@@ -10,7 +10,6 @@
 # limitations under the License.
 from future.moves.collections import OrderedDict
 
-import functools
 import json
 import logging
 import re
@@ -20,7 +19,6 @@ from configparser import NoSectionError
 import yaml
 from pcluster.utils import (
     PCLUSTER_ISSUES_LINK,
-    error,
     get_avail_zone,
     get_cfn_param,
     get_efs_mount_target_id,
@@ -29,20 +27,6 @@ from pcluster.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-
-def handle_no_section_error(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            called_func = func(*args, **kwargs)
-        except NoSectionError as e:
-            error("Section '[{0}]' not found in the config file.".format(e.section))
-
-        return called_func
-
-    return wrapper
-
 
 # ---------------------- standard Parameters ---------------------- #
 # The following classes represent the Param of the standard types
@@ -76,7 +60,6 @@ class Param(object):
 
         return param_value
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -216,7 +199,6 @@ class Param(object):
 class CommaSeparatedParam(Param):
     """Class to manage comma separated parameters. E.g. additional_iam_policies."""
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -260,7 +242,6 @@ class CommaSeparatedParam(Param):
 class FloatParam(Param):
     """Class to manage float configuration parameters."""
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -298,7 +279,6 @@ class FloatParam(Param):
 class BoolParam(Param):
     """Class to manage boolean configuration parameters."""
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -346,7 +326,6 @@ class BoolParam(Param):
 class IntParam(Param):
     """Class to manage integer configuration parameters."""
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize param_value from config_parser.
@@ -383,7 +362,6 @@ class IntParam(Param):
 class JsonParam(Param):
     """Class to manage json configuration parameters."""
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -700,7 +678,6 @@ class AvailabilityZoneParam(Param):
     and it is used during EFS conversion and validation.
     """
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """Initialize the Availability zone of the cluster by checking the Master Subnet."""
         section_name = _get_file_section_name(self.section_key, self.section_label)
@@ -778,7 +755,6 @@ class SettingsParam(Param):
         self.referred_section_type = self.referred_section_definition.get("type")
         super(SettingsParam, self).__init__(section_key, section_label, param_key, param_definition, pcluster_config)
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -881,7 +857,6 @@ class EBSSettingsParam(SettingsParam):
     Furthermore, as opposed to SettingsParam, the value can be a comma separated value (e.g. ebs_settings = ebs1,ebs2).
     """
 
-    @handle_no_section_error
     def from_file(self, config_parser):
         """
         Initialize parameter value from configuration file.
