@@ -58,7 +58,7 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     )
 
 
-@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.regions(["us-east-2"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
@@ -79,12 +79,25 @@ def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
     compute_node = scheduler_commands.get_compute_nodes()
     assert_that(len(compute_node)).is_equal_to(1)
     remote_host = compute_node[0]
+
+    # Gets remote host ip from hostname
+    remote_host_ip = remote_command_executor.run_remote_command(
+        "getent hosts {0} | cut -d' ' -f1".format(remote_host)
+    ).stdout
+
+    # Below job will timeout if the IP address is not in known_hosts
+    mpirun_out_ip = remote_command_executor.run_remote_script(
+        str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip]
+    ).stdout.splitlines()
+
+    # mpirun_out_ip = "ip-10-0-127-71"
+    assert_that(len(mpirun_out_ip)).is_equal_to(1)
+    assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
+
     mpirun_out = remote_command_executor.run_remote_script(
         str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host]
     ).stdout.splitlines()
 
-    # mpirun_out =
-    # "Warning: Permanently added the RSA host key for IP address '10.0.127.71' to the list of known hosts.\n
-    # ip-10-0-127-71"
-    assert_that(len(mpirun_out)).is_greater_than_or_equal_to(1)
+    # mpirun_out = "ip-10-0-127-71"
+    assert_that(len(mpirun_out)).is_equal_to(1)
     assert_that(mpirun_out[-1]).is_equal_to(remote_host)
