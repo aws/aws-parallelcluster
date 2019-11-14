@@ -294,7 +294,10 @@ class PclusterConfig(object):
         section_type = section_definition.get("type")
         section = section_type(section_definition=section_definition, pcluster_config=self, section_label=section_label)
         self.add_section(section)
-        section.from_file(config_parser, fail_on_absence)
+        try:
+            section.from_file(config_parser, fail_on_absence)
+        except configparser.NoSectionError as e:
+            self.error("Section '[{0}]' not found in the config file.".format(e.section))
 
     def __init_sections_from_cfn(self, cluster_name):
         try:
