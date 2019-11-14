@@ -49,7 +49,8 @@ LOGGER = logging.getLogger(__name__)
 
 def _create_bucket_with_batch_resources(stack_name, resources_dir, region):
     random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-    s3_bucket_name = "-".join([stack_name.lower(), random_string])
+    # bucket names must be at least 3 and no more than 63 characters long
+    s3_bucket_name = "-".join([stack_name.lower()[: 63 - len(random_string) - 1], random_string])
 
     try:
         utils.create_s3_bucket(bucket_name=s3_bucket_name, region=region)
