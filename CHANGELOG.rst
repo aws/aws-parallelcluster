@@ -62,6 +62,7 @@ CHANGELOG
 * Fix bug that was causing failures in sqswatcher when ADD and REMOVE event for the same host are fetched together.
 * Fix bug that was preventing nodes to mount partitioned EBS volumes.
 * Implement paginated calls in ``pcluster list``.
+* Fix bug when creating ``awsbatch`` cluster with name longer than 31 chars
 
 2.4.1
 =====
