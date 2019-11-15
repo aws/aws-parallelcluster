@@ -51,7 +51,7 @@ TEST_DEFAULTS = {
         "sa-east-1",
         "eu-west-3",
     ],
-    "oss": ["alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"],
+    "oss": ["alinux", "centos6", "centos7", "ubuntu1804", "ubuntu1604"],
     "schedulers": ["sge", "slurm", "torque", "awsbatch"],
     "instances": ["c4.xlarge", "c5.xlarge"],
     "dry_run": False,
@@ -72,6 +72,7 @@ TEST_DEFAULTS = {
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
+    "stackname_suffix": "",
 }
 
 
@@ -205,6 +206,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("benchmarks_max_time"),
         type=int,
     )
+    parser.add_argument(
+        "--stackname-suffix",
+        help="set a suffix in the integration tests stack names",
+        default=TEST_DEFAULTS.get("stackname_suffix"),
+    )
 
     return parser
 
@@ -244,6 +250,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
+    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
 
     if args.credential:
         pytest_args.append("--credential")
@@ -352,6 +359,17 @@ def _run_parallel(args):
         job.join()
 
 
+def _check_args(args):
+    # If --cluster is set only one os, scheduler, instance type and region can be provided
+    if args.cluster:
+        if len(args.oss) > 1 or len(args.schedulers) > 1 or len(args.instances) > 1 or len(args.regions) > 1:
+            logger.error(
+                "when cluster option is specified, you can have a single value for oss, regions, instances "
+                "and schedulers and you need to make sure they match the cluster specific ones"
+            )
+            exit(1)
+
+
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
@@ -369,6 +387,7 @@ def main():
         exit(1)
 
     args = _init_argparser().parse_args()
+    _check_args(args)
     logger.info("Starting tests with parameters {0}".format(args))
 
     _make_logging_dirs(args.output_dir)

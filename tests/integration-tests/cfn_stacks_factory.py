@@ -14,18 +14,20 @@ import boto3
 from botocore.exceptions import ClientError
 from retrying import retry
 
-from utils import retrieve_cfn_outputs, set_credentials, unset_credentials
+from utils import retrieve_cfn_outputs, retrieve_cfn_resources, set_credentials, unset_credentials
 
 
 class CfnStack:
     """Identify a CloudFormation stack."""
 
-    def __init__(self, name, region, template):
+    def __init__(self, name, region, template, parameters=None):
         self.name = name
         self.region = region
         self.template = template
+        self.parameters = parameters or []
         self.cfn_stack_id = None
         self.__cfn_outputs = None
+        self.__cfn_resources = None
 
     @property
     def cfn_outputs(self):
@@ -36,6 +38,16 @@ class CfnStack:
         if not self.__cfn_outputs:
             self.__cfn_outputs = retrieve_cfn_outputs(self.name, self.region)
         return self.__cfn_outputs
+
+    @property
+    def cfn_resources(self):
+        """
+        Return the CloudFormation stack resources for the stack.
+        Resources are retrieved only once and then cached.
+        """
+        if not self.__cfn_resources:
+            self.__cfn_resources = retrieve_cfn_resources(self.name, self.region)
+        return self.__cfn_resources
 
 
 class CfnStacksFactory:
@@ -64,7 +76,9 @@ class CfnStacksFactory:
             self.__created_stacks[id] = stack
             try:
                 cfn_client = boto3.client("cloudformation", region_name=region)
-                result = cfn_client.create_stack(StackName=name, TemplateBody=stack.template)
+                result = cfn_client.create_stack(
+                    StackName=name, TemplateBody=stack.template, Parameters=stack.parameters
+                )
                 stack.cfn_stack_id = result["StackId"]
                 final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
                 self.__assert_stack_status(final_status, "CREATE_COMPLETE")

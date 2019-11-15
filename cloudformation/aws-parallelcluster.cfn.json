@@ -1,257 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.4.1",
-  "Metadata": {
-    "AWS::CloudFormation::Interface": {
-      "ParameterGroups": [
-        {
-          "Label": {
-            "default": "Network - Basic Settings"
-          },
-          "Parameters": [
-            "VPCId",
-            "MasterSubnetId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Cluster - Basic Setting"
-          },
-          "Parameters": [
-            "KeyName",
-            "AvailabilityZone",
-            "MasterInstanceType",
-            "ComputeInstanceType",
-            "BaseOS",
-            "Scheduler"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EBS - Basic Settings"
-          },
-          "Parameters": [
-            "VolumeSize"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Network - Advanced Settings"
-          },
-          "Parameters": [
-            "AccessFrom",
-            "ComputeSubnetId",
-            "ComputeSubnetCidr",
-            "UsePublicIps",
-            "AdditionalSG",
-            "VPCSecurityGroupId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Cluster - Advanced Setting"
-          },
-          "Parameters": [
-            "MinSize",
-            "DesiredSize",
-            "MaxSize",
-            "SpotPrice",
-            "ClusterType",
-            "ProxyServer",
-            "CustomAMI",
-            "PreInstallScript",
-            "PreInstallArgs",
-            "PostInstallArgs",
-            "PostInstallScript",
-            "S3ReadResource",
-            "S3ReadWriteResource",
-            "Placement",
-            "PlacementGroup",
-            "EncryptedEphemeral",
-            "EphemeralDir",
-            "SharedDir",
-            "CustomChefCookbook",
-            "ExtraJson",
-            "MasterRootVolumeSize",
-            "ComputeRootVolumeSize",
-            "EC2IAMRoleName"
-          ]
-        },
-        {
-          "Label": {
-            "default": "EBS - Advanced Settings"
-          },
-          "Parameters": [
-            "VolumeType",
-            "EBSSnapshotId",
-            "VolumeIOPS",
-            "EBSEncryption",
-            "EBSKMSKeyId",
-            "EBSVolumeId"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Scaling Settings"
-          },
-          "Parameters": [
-            "ScaleDownIdleTime"
-          ]
-        },
-        {
-          "Label": {
-            "default": "Additonal Settings"
-          },
-          "Parameters": [
-            "CLITemplate"
-          ]
-        }
-      ],
-      "ParameterLabels": {
-        "KeyName": {
-          "default": "key_name"
-        },
-        "AccessFrom": {
-          "default": "access_from",
-          "AccessFrom": {
-            "default": "access_from"
-          }
-        },
-        "VPCId": {
-          "default": "vpc_id"
-        },
-        "MasterSubnetId": {
-          "default": "master_subnet_id"
-        },
-        "ComputeSubnetId": {
-          "default": "compute_subnet_id"
-        },
-        "ComputeSubnetCidr": {
-          "default": "compute_subnet_cidr"
-        },
-        "UsePublicIps": {
-          "default": "use_public_ips"
-        },
-        "AdditionalSG": {
-          "default": "additional_sg"
-        },
-        "VPCSecurityGroupId": {
-          "default": "vpc_security_group_id"
-        },
-        "ComputeInstanceType": {
-          "default": "compute_instance_type"
-        },
-        "MasterInstanceType": {
-          "default": "master_instance_type"
-        },
-        "MinSize": {
-          "default": "initial_queue_size"
-        },
-        "DesiredSize": {
-          "default": "desired_size"
-        },
-        "MaxSize": {
-          "default": "max_queue_size"
-        },
-        "Scheduler": {
-          "default": "scheduler"
-        },
-        "ClusterType": {
-          "default": "cluster_type"
-        },
-        "EphemeralDir": {
-          "default": "ephemeral_dir"
-        },
-        "SpotPrice": {
-          "default": "spot_price"
-        },
-        "CustomAMI": {
-          "default": "custom_ami"
-        },
-        "PreInstallScript": {
-          "default": "pre_install"
-        },
-        "PostInstallScript": {
-          "default": "post_install"
-        },
-        "PreInstallArgs": {
-          "default": "pre_install_args"
-        },
-        "PostInstallArgs": {
-          "default": "post_install_args"
-        },
-        "S3ReadResource": {
-          "default": "s3_read_resource"
-        },
-        "S3ReadWriteResource": {
-          "default": "s3_read_write_resource"
-        },
-        "ProxyServer": {
-          "default": "proxy_server"
-        },
-        "Placement": {
-          "default": "placement"
-        },
-        "PlacementGroup": {
-          "default": "placement_group"
-        },
-        "EncryptedEphemeral": {
-          "default": "encrypted_ephemeral"
-        },
-        "SharedDir": {
-          "default": "shared_dir"
-        },
-        "MasterRootVolumeSize": {
-          "default": "master_root_volume_size"
-        },
-        "ComputeRootVolumeSize": {
-          "default": "compute_volume_size"
-        },
-        "BaseOS": {
-          "default": "base_os"
-        },
-        "EC2IAMRoleName": {
-          "default": "ec2_iam_role"
-        },
-        "ExtraJson": {
-          "default": "extra_json"
-        },
-        "CustomChefCookbook": {
-          "default": "custom_chef_cookbook"
-        },
-        "EBSSnapshotId": {
-          "default": "ebs_snapshot_id"
-        },
-        "VolumeType": {
-          "default": "volume_type"
-        },
-        "VolumeSize": {
-          "default": "volume_size"
-        },
-        "EBSKMSKeyId": {
-          "default": "ebs_kms_key_id"
-        },
-        "VolumeIOPS": {
-          "default": "volume_iops"
-        },
-        "EBSEncryption": {
-          "default": "ebs_encryption"
-        },
-        "EBSVolumeId": {
-          "default": "ebs_volume_id"
-        },
-        "ScaleDownIdleTime": {
-          "default": "scaledown_idletime"
-        },
-        "AvailabilityZone": {
-          "default": "AVAILABILITY ZONE"
-        },
-        "CLITemplate": {
-          "default": "CLI TEMPLATE"
-        }
-      }
-    }
-  },
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.5.0",
   "Parameters": {
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
@@ -290,7 +39,7 @@
     "SpotPrice": {
       "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\". When awsbatch is the scheduler, this is spot bid percentage.",
       "Type": "Number",
-      "Default": "0.00"
+      "Default": "0.0"
     },
     "ClusterType": {
       "Description": "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
@@ -310,12 +59,12 @@
     "VolumeSize": {
       "Description": "Comma delimited list of size of EBS volume in GB, if creating a new one",
       "Type": "String",
-      "Default": "20, 20, 20, 20, 20"
+      "Default": "20,20,20,20,20"
     },
     "VolumeType": {
       "Description": "Comma delimited list of type of volume to create either new or from snapshot",
       "Type": "String",
-      "Default": "gp2, gp2, gp2, gp2, gp2",
+      "Default": "gp2,gp2,gp2,gp2,gp2",
       "ConstraintDescription": "must be a supported volume type: standard, io1, gp2, st1, sc1",
       "AllowedPattern": "^(NONE|standard|io1|gp2|st1|sc1)((,|, )(NONE|standard|io1|gp2|st1|sc1)){4}$"
     },
@@ -330,7 +79,7 @@
     "EBSSnapshotId": {
       "Description": "Comma delimited list of Id of EBS snapshot if using snapshot as source for volume",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "Default": "NONE,NONE,NONE,NONE,NONE",
       "AllowedPattern": "^(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})((,|, )(NONE|snap-[0-9a-z]{8}|snap-[0-9a-z]{17})){4}$"
     },
     "CustomAMI": {
@@ -372,7 +121,7 @@
     "VolumeIOPS": {
       "Description": "Comma delimited list of number of IOPS for volume type io1. Not used for other volume types.",
       "Type": "String",
-      "Default": "100, 100, 100, 100, 100"
+      "Default": "100,100,100,100,100"
     },
     "PreInstallScript": {
       "Description": "Preinstall script URL. This is run before any host configuration.",
@@ -431,7 +180,7 @@
     "EBSEncryption": {
       "Description": "Comma delimited list of boolean flag to use EBS encryption for /shared volume. (Not to be used for snapshots)",
       "Type": "String",
-      "Default": "false, false, false, false, false",
+      "Default": "false,false,false,false,false",
       "ConstraintDescription": "true/false",
       "AllowedPattern": "^(NONE|true|false)((,|, )(NONE|true|false)){4}$"
     },
@@ -449,8 +198,8 @@
         "centos6",
         "centos7",
         "alinux",
-        "ubuntu1404",
-        "ubuntu1604"
+        "ubuntu1604",
+        "ubuntu1804"
       ]
     },
     "ScaleDownIdleTime": {
@@ -467,9 +216,7 @@
         "sge",
         "torque",
         "slurm",
-        "custom",
-        "awsbatch",
-        "test"
+        "awsbatch"
       ]
     },
     "SharedDir": {
@@ -501,23 +248,28 @@
     "EBSKMSKeyId": {
       "Description": "Comma delimited list of KMS ARN for customer created master key, will be used for EBS encryption",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE"
     },
     "MasterRootVolumeSize": {
       "Description": "Size of MasterServer EBS root volume in GB",
       "Type": "Number",
-      "Default": "17",
-      "MinValue": "17"
+      "Default": "25",
+      "MinValue": "25"
     },
     "ComputeRootVolumeSize": {
       "Description": "Size of ComputeFleet EBS root volume in GB",
       "Type": "Number",
-      "Default": "17",
-      "MinValue": "17"
+      "Default": "25",
+      "MinValue": "25"
     },
     "EC2IAMRoleName": {
       "Description": "Existing EC2 IAM role name",
       "Type": "String",
+      "Default": "NONE"
+    },
+    "EC2IAMPolicies": {
+      "Description": "Attach additional IAM Policies to the created Root Role",
+      "Type": "CommaDelimitedList",
       "Default": "NONE"
     },
     "VPCSecurityGroupId": {
@@ -529,7 +281,7 @@
     "EBSVolumeId": {
       "Description": "Comma delimited list of existing EBS volume Id",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE",
+      "Default": "NONE,NONE,NONE,NONE,NONE",
       "AllowedPattern": "^(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})((,|, )(NONE|vol-[0-9a-z]{8}|vol-[0-9a-z]{17})){4}$"
     },
     "AdditionalCfnTemplate": {
@@ -561,17 +313,35 @@
     "FSXOptions": {
       "Description": "Comma separated list of FSx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
       "Type": "String",
-      "Default": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+    },
+    "Cores": {
+      "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 no CpuOptions are set.",
+      "Type": "CommaDelimitedList",
+      "Default": "-1,-1"
     },
     "EFA": {
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",
       "Type": "String",
       "Default": "NONE"
+    },
+    "DCVOptions": {
+      "Description": "Comma separated list of NICE DCV related options, 3 parameters in total, [enabled,port,access_from]",
+      "Type": "String",
+      "Default": "NONE,NONE,NONE"
+    },
+    "IntelHPCPlatform": {
+      "Description": "Enable Intel HPC Platform packages.",
+      "Type": "String",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
     }
   },
   "Conditions": {
@@ -824,7 +594,7 @@
             {
               "Ref": "SpotPrice"
             },
-            "0.00"
+            "0"
           ]
         }
       ]
@@ -854,21 +624,35 @@
       ]
     },
     "UseMasterSubnetForCompute": {
-      "Fn::And": [
+      "Fn::Or": [
         {
-          "Fn::Equals": [
+          "Fn::And": [
             {
-              "Ref": "ComputeSubnetId"
+              "Fn::Equals": [
+                {
+                  "Ref": "ComputeSubnetId"
+                },
+                "NONE"
+              ]
             },
-            "NONE"
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "ComputeSubnetCidr"
+                },
+                "NONE"
+              ]
+            }
           ]
         },
         {
           "Fn::Equals": [
             {
-              "Ref": "ComputeSubnetCidr"
+              "Ref": "ComputeSubnetId"
             },
-            "NONE"
+            {
+              "Ref": "MasterSubnetId"
+            }
           ]
         }
       ]
@@ -1009,6 +793,23 @@
         }
       ]
     },
+    "UseEC2IAMPolicies": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "EC2IAMPolicies"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
     "CreateEC2IAMRole": {
       "Fn::Equals": [
         {
@@ -1127,148 +928,183 @@
           ]
         }
       ]
+    },
+    "DisableHyperthreading": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "Cores"
+                }
+              ]
+            },
+            "-1"
+          ]
+        }
+      ]
+    },
+    "EnableDCV": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "DCVOptions"
+                }
+              ]
+            }
+          ]
+        },
+        "master"
+      ]
     }
   },
   "Mappings": {
     "AWSRegionOS2AMI": {
       "ap-east-1": {
-        "alinux": "ami-0548157406b20efd7",
-        "centos6": "ami-08de06c8c25c4e483",
-        "centos7": "ami-0b8dbcf754d6b1a15",
-        "ubuntu1404": "ami-0059b45a57f781c19",
-        "ubuntu1604": "ami-0eacbde87adcd79a4"
+        "alinux": "ami-0e4534512c68d2422",
+        "centos6": "ami-04a55b2ec8294dae7",
+        "centos7": "ami-07393a0ea90ae0123",
+        "ubuntu1604": "ami-0216ccb9f26093508",
+        "ubuntu1804": "ami-05588db6def211bc1"
       },
       "ap-northeast-1": {
-        "alinux": "ami-0266f3876f58f4c10",
-        "centos6": "ami-0fb1e620a6e6c7c63",
-        "centos7": "ami-075158d05e7ffc090",
-        "ubuntu1404": "ami-07531e6831cd3b73e",
-        "ubuntu1604": "ami-082d16fe36ad64a5d"
+        "alinux": "ami-03ecaf23726667051",
+        "centos6": "ami-0b9443dc7e5694acd",
+        "centos7": "ami-0316b5b9e81669352",
+        "ubuntu1604": "ami-08c6f3dc6ad27eb10",
+        "ubuntu1804": "ami-07a725b9f846769e6"
       },
       "ap-northeast-2": {
-        "alinux": "ami-0b83279e099fee532",
-        "centos6": "ami-083dda363f440b5f3",
-        "centos7": "ami-03d158fde32bf5c43",
-        "ubuntu1404": "ami-0ee26fe2d03734d6c",
-        "ubuntu1604": "ami-0603f6bfdaf0520b9"
+        "alinux": "ami-07bc89c8e9cee2627",
+        "centos6": "ami-0f6e9e053be315fa3",
+        "centos7": "ami-09954619b05dedfa6",
+        "ubuntu1604": "ami-007cbc23e61426fea",
+        "ubuntu1804": "ami-002ba0855dd9c8226"
       },
       "ap-south-1": {
-        "alinux": "ami-08d877dddd63d4f11",
-        "centos6": "ami-0a19d85caae09e69b",
-        "centos7": "ami-0256ac397ea3738d9",
-        "ubuntu1404": "ami-047d504b1c9897a71",
-        "ubuntu1604": "ami-0e4af994480d249c6"
+        "alinux": "ami-08af74429b0d457dd",
+        "centos6": "ami-0dab7dcee8a36446e",
+        "centos7": "ami-0d11b8f93f0c2b73e",
+        "ubuntu1604": "ami-02d03682382206884",
+        "ubuntu1804": "ami-054b83bc2b10e08f4"
       },
       "ap-southeast-1": {
-        "alinux": "ami-0797836c2582f62b3",
-        "centos6": "ami-04b147081e72b8141",
-        "centos7": "ami-0768c2e0ebf2b048b",
-        "ubuntu1404": "ami-0497ef9ffb2284737",
-        "ubuntu1604": "ami-0e51553a3f083c9d3"
+        "alinux": "ami-0efb53072c3197065",
+        "centos6": "ami-01aa420961c426466",
+        "centos7": "ami-05536d8fd75c5a540",
+        "ubuntu1604": "ami-0023d60a8d51c5149",
+        "ubuntu1804": "ami-07ea773ee5aa16bd6"
       },
       "ap-southeast-2": {
-        "alinux": "ami-097287dbf20f32cd2",
-        "centos6": "ami-0cc13227daec10928",
-        "centos7": "ami-0d4bc69b138616534",
-        "ubuntu1404": "ami-07c920b78a691f3de",
-        "ubuntu1604": "ami-0404f148f2106e206"
+        "alinux": "ami-0f129748f7db06830",
+        "centos6": "ami-09f94a841b2fde649",
+        "centos7": "ami-032afdcfa1ee7a4c0",
+        "ubuntu1604": "ami-06d2974227738b60b",
+        "ubuntu1804": "ami-081ebce3d5e4b88c8"
       },
       "ca-central-1": {
-        "alinux": "ami-00695df58bfe70532",
-        "centos6": "ami-0e584b1dc9d90cfe3",
-        "centos7": "ami-03f172775e62c78ef",
-        "ubuntu1404": "ami-0a25d23a0f47e04df",
-        "ubuntu1604": "ami-079729e8f44ea4e33"
+        "alinux": "ami-0a47f8b45017c91a9",
+        "centos6": "ami-0fce1c05dae5fef3c",
+        "centos7": "ami-03c4bf9b2f9f03633",
+        "ubuntu1604": "ami-0a327c898da988e1f",
+        "ubuntu1804": "ami-09e08adfd8b6db859"
       },
       "cn-north-1": {
-        "alinux": "ami-0bf01904468ac34e0",
-        "ubuntu1404": "ami-0d20db2e290c07266",
-        "ubuntu1604": "ami-0f71072a6c2f049fc"
+        "alinux": "ami-02d8c4f46ddaa963f",
+        "ubuntu1604": "ami-0be283f7ce8800c88",
+        "ubuntu1804": "ami-048c92cbf8cf39045"
       },
       "cn-northwest-1": {
-        "alinux": "ami-07ce7fae883830295",
-        "ubuntu1404": "ami-091c2a6f3a16fe374",
-        "ubuntu1604": "ami-0625b09f99c971e40"
+        "alinux": "ami-0ab8a54fbf54abb1f",
+        "ubuntu1604": "ami-09e41a30a1b8ddf12",
+        "ubuntu1804": "ami-0a46aab69758b32c7"
       },
       "eu-central-1": {
-        "alinux": "ami-0ae496b08133b7003",
-        "centos6": "ami-047fc8e8af243d384",
-        "centos7": "ami-009cd1bd82fcb612e",
-        "ubuntu1404": "ami-0cd4c9af30dce9c71",
-        "ubuntu1604": "ami-054fd0d64e09a12d5"
+        "alinux": "ami-01a311f46ea7200d4",
+        "centos6": "ami-0a44aea0fbda54beb",
+        "centos7": "ami-0e9c2f1b3eb6716f7",
+        "ubuntu1604": "ami-0a0dbcedffd5ae09d",
+        "ubuntu1804": "ami-0dc915aae5f6c9a6a"
       },
       "eu-north-1": {
-        "alinux": "ami-006772a1e3158c024",
-        "centos6": "ami-07413aa597232ff9e",
-        "centos7": "ami-018a7d07256217bd0",
-        "ubuntu1404": "ami-02a5769e4d5f5c4c9",
-        "ubuntu1604": "ami-08984e346e48bc46f"
+        "alinux": "ami-0f839487a367f6b1f",
+        "centos6": "ami-0371e92c324448ffd",
+        "centos7": "ami-0a6f7b4ac0924bce8",
+        "ubuntu1604": "ami-04d685fa9e2a53e78",
+        "ubuntu1804": "ami-007a2041c803de05f"
       },
       "eu-west-1": {
-        "alinux": "ami-03112372c8bd7886e",
-        "centos6": "ami-0ef1bf4281c1c4604",
-        "centos7": "ami-0a47a5dc8fee55323",
-        "ubuntu1404": "ami-00aeb9a13213998a0",
-        "ubuntu1604": "ami-0c5c2481e10335e90"
+        "alinux": "ami-0535ba62d17389bc9",
+        "centos6": "ami-0ec9e417e4d31b948",
+        "centos7": "ami-0334a7a72f69e4d0f",
+        "ubuntu1604": "ami-0bfcf40007b85d85b",
+        "ubuntu1804": "ami-0756a808962b1d3da"
       },
       "eu-west-2": {
-        "alinux": "ami-0f2ed960e7413b152",
-        "centos6": "ami-0097ab9ba306ca46b",
-        "centos7": "ami-0697036b2287f0afc",
-        "ubuntu1404": "ami-0be08f7b993cf51e5",
-        "ubuntu1604": "ami-047a75cbcc2756dda"
+        "alinux": "ami-0c1f8ad149e8deb93",
+        "centos6": "ami-0ba5dc05c7885d165",
+        "centos7": "ami-0737177c3efbf852a",
+        "ubuntu1604": "ami-0b7ff67510d199c89",
+        "ubuntu1804": "ami-0498411bee1d61c00"
       },
       "eu-west-3": {
-        "alinux": "ami-0feb90a4cf119551f",
-        "centos6": "ami-0b941e4e71f296ca7",
-        "centos7": "ami-017a92730499673fd",
-        "ubuntu1404": "ami-0dfb94ca6be715d8c",
-        "ubuntu1604": "ami-0b26c8b0857c0722d"
+        "alinux": "ami-0f0d70ee88ea788e5",
+        "centos6": "ami-089d98d9f75b183a5",
+        "centos7": "ami-04545359d2fbf157c",
+        "ubuntu1604": "ami-0250478548629fd41",
+        "ubuntu1804": "ami-0100462d5ed0027a1"
       },
       "sa-east-1": {
-        "alinux": "ami-02ce797ed2bac903a",
-        "centos6": "ami-0505ed5c5ad56d04b",
-        "centos7": "ami-00e378be239ed59f4",
-        "ubuntu1404": "ami-008eaaf7ed3b81e00",
-        "ubuntu1604": "ami-0e654e24368bf23f5"
+        "alinux": "ami-0af1a284d2e23cef9",
+        "centos6": "ami-03f6b83017acdb7d5",
+        "centos7": "ami-0a3b04cf80e427dba",
+        "ubuntu1604": "ami-04bc487e9f580f508",
+        "ubuntu1804": "ami-0d26efa3eddae3a8c"
       },
       "us-east-1": {
-        "alinux": "ami-0fd18b144da8357b7",
-        "centos6": "ami-016392fa0b61bde58",
-        "centos7": "ami-0a4d7e08ea5178c02",
-        "ubuntu1404": "ami-006da8413e239334a",
-        "ubuntu1604": "ami-0c535eb8c5a80b962"
+        "alinux": "ami-025502bb832b5efcd",
+        "centos6": "ami-0952a20604d34206f",
+        "centos7": "ami-09e595ac95c50c47b",
+        "ubuntu1604": "ami-0c4c380a3a9588d3c",
+        "ubuntu1804": "ami-0216c99589fe68acd"
       },
       "us-east-2": {
-        "alinux": "ami-0257f6012767b54c9",
-        "centos6": "ami-000a7976d7539e448",
-        "centos7": "ami-0a3b8f19ab7333a80",
-        "ubuntu1404": "ami-0a1882523d4df3e24",
-        "ubuntu1604": "ami-00fb6e36bb37b662e"
+        "alinux": "ami-0366610a0aaef61d0",
+        "centos6": "ami-0e80fa3ae49c57c55",
+        "centos7": "ami-0b153d9288673612c",
+        "ubuntu1604": "ami-0e51b135f6d906150",
+        "ubuntu1804": "ami-0fb12813c4a4bb20a"
       },
       "us-gov-east-1": {
-        "alinux": "ami-002752c6ec611554d",
-        "ubuntu1404": "ami-04d31bc443d9b3c36",
-        "ubuntu1604": "ami-0a4c82eb37facd766"
+        "alinux": "ami-0b47254eb7c506d3a",
+        "ubuntu1604": "ami-083a41405641f8100",
+        "ubuntu1804": "ami-066dd542b693aee8c"
       },
       "us-gov-west-1": {
-        "alinux": "ami-527e3e33",
-        "ubuntu1404": "ami-8b7c3cea",
-        "ubuntu1604": "ami-777b3b16"
+        "alinux": "ami-c94418a8",
+        "ubuntu1604": "ami-cc4418ad",
+        "ubuntu1804": "ami-6a4c100b"
       },
       "us-west-1": {
-        "alinux": "ami-03a203cbdfe6ef914",
-        "centos6": "ami-0a25f5e16aafd09d1",
-        "centos7": "ami-0b977098af0dd77e3",
-        "ubuntu1404": "ami-02a1eceaa0c83ee27",
-        "ubuntu1604": "ami-0bb311ef404c8a54b"
+        "alinux": "ami-06fb13ee50b63a3be",
+        "centos6": "ami-03e7d31f9ab62e63c",
+        "centos7": "ami-0ef758ff7c02e2002",
+        "ubuntu1604": "ami-0a044e3b9b7a9cae0",
+        "ubuntu1804": "ami-058ff45b24587a354"
       },
       "us-west-2": {
-        "alinux": "ami-0340aea5e9e9e5202",
-        "centos6": "ami-0951110bddb6944b0",
-        "centos7": "ami-0d6c93513ba5d3734",
-        "ubuntu1404": "ami-0b1e995e9452b4050",
-        "ubuntu1604": "ami-097b7aae68846a39a"
+        "alinux": "ami-0b42f02aa4158806f",
+        "centos6": "ami-09e82b3e9992975f6",
+        "centos7": "ami-038eb7d19f400584d",
+        "ubuntu1604": "ami-0e51a67dcbf3dc37b",
+        "ubuntu1804": "ami-05f4c69e2b99b86be"
       }
     },
     "OSFeatures": {
@@ -1284,11 +1120,11 @@
         "User": "ec2-user",
         "RootDevice": "/dev/xvda"
       },
-      "ubuntu1404": {
+      "ubuntu1604": {
         "User": "ubuntu",
         "RootDevice": "/dev/sda1"
       },
-      "ubuntu1604": {
+      "ubuntu1804": {
         "User": "ubuntu",
         "RootDevice": "/dev/sda1"
       }
@@ -1306,8 +1142,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.4.1",
-        "cookbook": "aws-parallelcluster-cookbook-2.4.1",
+        "parallelcluster": "2.5.0",
+        "cookbook": "aws-parallelcluster-cookbook-2.5.0",
         "chef": "14.2.0",
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
@@ -1520,17 +1356,17 @@
     "RootRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
-        "ManagedPolicyArns": [
-          {
-            "Fn::If": [
-              "CreateAWSBatchStack",
-              "arn:aws:iam::aws:policy/AWSBatchFullAccess",
-              {
-                "Ref": "AWS::NoValue"
-              }
-            ]
-          }
-        ],
+        "ManagedPolicyArns": {
+          "Fn::If": [
+            "UseEC2IAMPolicies",
+            {
+              "Ref": "EC2IAMPolicies"
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
           "Statement": [
@@ -1658,28 +1494,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":cloudformation:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":stack/",
-                      {
-                        "Ref": "AWS::StackName"
-                      },
-                      "/*"
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
                 }
               ]
             },
@@ -1695,27 +1510,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":dynamodb:",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      ":",
-                      {
-                        "Ref": "AWS::AccountId"
-                      },
-                      ":table/",
-                      {
-                        "Ref": "DynamoDBTable"
-                      }
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTable}"
                 }
               ]
             },
@@ -1727,20 +1522,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Join": [
-                    "",
-                    [
-                      "arn:",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      ":s3:::",
-                      {
-                        "Ref": "AWS::Region"
-                      },
-                      "-aws-parallelcluster/*"
-                    ]
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${AWS::Region}-aws-parallelcluster/*"
                 }
               ]
             },
@@ -1775,6 +1557,16 @@
               "Resource": [
                 {
                   "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/parallelcluster-*"
+                }
+              ]
+            },
+            {
+              "Sid": "DcvLicense",
+              "Effect": "Allow",
+              "Action": "s3:GetObject",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::dcv-license.${AWS::Region}/*"
                 }
               ]
             }
@@ -1857,465 +1649,539 @@
     "MasterServer": {
       "Type": "AWS::EC2::Instance",
       "Properties": {
-        "InstanceType": {
-          "Ref": "MasterInstanceType"
-        },
-        "BlockDeviceMappings": [
-          {
-            "DeviceName": "/dev/xvdba",
-            "VirtualName": "ephemeral0"
+        "LaunchTemplate": {
+          "LaunchTemplateId": {
+            "Ref": "MasterServerLaunchTemplate"
           },
-          {
-            "DeviceName": "/dev/xvdbb",
-            "VirtualName": "ephemeral1"
+          "Version": {
+            "Fn::GetAtt": [
+              "MasterServerLaunchTemplate",
+              "LatestVersionNumber"
+            ]
+          }
+        }
+      }
+    },
+    "MasterServerLaunchTemplate": {
+      "Type": "AWS::EC2::LaunchTemplate",
+      "Properties": {
+        "LaunchTemplateData": {
+          "InstanceType": {
+            "Ref": "MasterInstanceType"
           },
-          {
-            "DeviceName": "/dev/xvdbc",
-            "VirtualName": "ephemeral2"
-          },
-          {
-            "DeviceName": "/dev/xvdbd",
-            "VirtualName": "ephemeral3"
-          },
-          {
-            "DeviceName": "/dev/xvdbe",
-            "VirtualName": "ephemeral4"
-          },
-          {
-            "DeviceName": "/dev/xvdbf",
-            "VirtualName": "ephemeral5"
-          },
-          {
-            "DeviceName": "/dev/xvdbg",
-            "VirtualName": "ephemeral6"
-          },
-          {
-            "DeviceName": "/dev/xvdbh",
-            "VirtualName": "ephemeral7"
-          },
-          {
-            "DeviceName": "/dev/xvdbi",
-            "VirtualName": "ephemeral8"
-          },
-          {
-            "DeviceName": "/dev/xvdbj",
-            "VirtualName": "ephemeral9"
-          },
-          {
-            "DeviceName": "/dev/xvdbk",
-            "VirtualName": "ephemeral10"
-          },
-          {
-            "DeviceName": "/dev/xvdbl",
-            "VirtualName": "ephemeral11"
-          },
-          {
-            "DeviceName": "/dev/xvdbm",
-            "VirtualName": "ephemeral12"
-          },
-          {
-            "DeviceName": "/dev/xvdbn",
-            "VirtualName": "ephemeral13"
-          },
-          {
-            "DeviceName": "/dev/xvdbo",
-            "VirtualName": "ephemeral14"
-          },
-          {
-            "DeviceName": "/dev/xvdbp",
-            "VirtualName": "ephemeral15"
-          },
-          {
-            "DeviceName": "/dev/xvdbq",
-            "VirtualName": "ephemeral16"
-          },
-          {
-            "DeviceName": "/dev/xvdbr",
-            "VirtualName": "ephemeral17"
-          },
-          {
-            "DeviceName": "/dev/xvdbs",
-            "VirtualName": "ephemeral18"
-          },
-          {
-            "DeviceName": "/dev/xvdbt",
-            "VirtualName": "ephemeral19"
-          },
-          {
-            "DeviceName": "/dev/xvdbu",
-            "VirtualName": "ephemeral20"
-          },
-          {
-            "DeviceName": "/dev/xvdbv",
-            "VirtualName": "ephemeral21"
-          },
-          {
-            "DeviceName": "/dev/xvdbw",
-            "VirtualName": "ephemeral22"
-          },
-          {
-            "DeviceName": "/dev/xvdbx",
-            "VirtualName": "ephemeral23"
-          },
-          {
-            "DeviceName": {
-              "Fn::FindInMap": [
-                "OSFeatures",
+          "CpuOptions": {
+            "CoreCount": {
+              "Fn::If": [
+                "DisableHyperthreading",
                 {
-                  "Ref": "BaseOS"
+                  "Fn::Select": [
+                    "0",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
                 },
-                "RootDevice"
+                {
+                  "Ref": "AWS::NoValue"
+                }
               ]
             },
-            "Ebs": {
-              "VolumeSize": {
-                "Ref": "MasterRootVolumeSize"
-              },
-              "VolumeType": "gp2"
-            }
-          }
-        ],
-        "KeyName": {
-          "Ref": "KeyName"
-        },
-        "Tags": [
-          {
-            "Key": "Application",
-            "Value": {
-              "Ref": "AWS::StackName"
-            }
-          },
-          {
-            "Key": "Name",
-            "Value": "Master"
-          },
-          {
-            "Key": "aws-parallelcluster-attributes",
-            "Value": {
-              "Fn::Sub": [
-                "${BaseOS}, ${Scheduler}, ${version}",
+            "ThreadsPerCore": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                1,
                 {
-                  "version": {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          },
+          "BlockDeviceMappings": [
+            {
+              "DeviceName": "/dev/xvdba",
+              "VirtualName": "ephemeral0"
+            },
+            {
+              "DeviceName": "/dev/xvdbb",
+              "VirtualName": "ephemeral1"
+            },
+            {
+              "DeviceName": "/dev/xvdbc",
+              "VirtualName": "ephemeral2"
+            },
+            {
+              "DeviceName": "/dev/xvdbd",
+              "VirtualName": "ephemeral3"
+            },
+            {
+              "DeviceName": "/dev/xvdbe",
+              "VirtualName": "ephemeral4"
+            },
+            {
+              "DeviceName": "/dev/xvdbf",
+              "VirtualName": "ephemeral5"
+            },
+            {
+              "DeviceName": "/dev/xvdbg",
+              "VirtualName": "ephemeral6"
+            },
+            {
+              "DeviceName": "/dev/xvdbh",
+              "VirtualName": "ephemeral7"
+            },
+            {
+              "DeviceName": "/dev/xvdbi",
+              "VirtualName": "ephemeral8"
+            },
+            {
+              "DeviceName": "/dev/xvdbj",
+              "VirtualName": "ephemeral9"
+            },
+            {
+              "DeviceName": "/dev/xvdbk",
+              "VirtualName": "ephemeral10"
+            },
+            {
+              "DeviceName": "/dev/xvdbl",
+              "VirtualName": "ephemeral11"
+            },
+            {
+              "DeviceName": "/dev/xvdbm",
+              "VirtualName": "ephemeral12"
+            },
+            {
+              "DeviceName": "/dev/xvdbn",
+              "VirtualName": "ephemeral13"
+            },
+            {
+              "DeviceName": "/dev/xvdbo",
+              "VirtualName": "ephemeral14"
+            },
+            {
+              "DeviceName": "/dev/xvdbp",
+              "VirtualName": "ephemeral15"
+            },
+            {
+              "DeviceName": "/dev/xvdbq",
+              "VirtualName": "ephemeral16"
+            },
+            {
+              "DeviceName": "/dev/xvdbr",
+              "VirtualName": "ephemeral17"
+            },
+            {
+              "DeviceName": "/dev/xvdbs",
+              "VirtualName": "ephemeral18"
+            },
+            {
+              "DeviceName": "/dev/xvdbt",
+              "VirtualName": "ephemeral19"
+            },
+            {
+              "DeviceName": "/dev/xvdbu",
+              "VirtualName": "ephemeral20"
+            },
+            {
+              "DeviceName": "/dev/xvdbv",
+              "VirtualName": "ephemeral21"
+            },
+            {
+              "DeviceName": "/dev/xvdbw",
+              "VirtualName": "ephemeral22"
+            },
+            {
+              "DeviceName": "/dev/xvdbx",
+              "VirtualName": "ephemeral23"
+            },
+            {
+              "DeviceName": {
+                "Fn::FindInMap": [
+                  "OSFeatures",
+                  {
+                    "Ref": "BaseOS"
+                  },
+                  "RootDevice"
+                ]
+              },
+              "Ebs": {
+                "VolumeSize": {
+                  "Ref": "MasterRootVolumeSize"
+                },
+                "VolumeType": "gp2"
+              }
+            }
+          ],
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "TagSpecifications": [
+            {
+              "ResourceType": "instance",
+              "Tags": [
+                {
+                  "Key": "Application",
+                  "Value": {
+                    "Ref": "AWS::StackName"
+                  }
+                },
+                {
+                  "Key": "Name",
+                  "Value": "Master"
+                },
+                {
+                  "Key": "ClusterName",
+                  "Value": {
+                    "Fn::Select": [
+                      "1",
+                      {
+                        "Fn::Split": [
+                          "parallelcluster-",
+                          {
+                            "Ref": "AWS::StackName"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Key": "aws-parallelcluster-attributes",
+                  "Value": {
+                    "Fn::Sub": [
+                      "${BaseOS}, ${Scheduler}, ${version}",
+                      {
+                        "version": {
+                          "Fn::FindInMap": [
+                            "PackagesVersions",
+                            "default",
+                            "parallelcluster"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                },
+                {
+                  "Key": "aws-parallelcluster-networking",
+                  "Value": {
+                    "Fn::Sub": "EFA=${EFA}"
+                  }
+                },
+                {
+                  "Key": "aws-parallelcluster-filesystem",
+                  "Value": {
+                    "Fn::Sub": [
+                      "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}, fsx=${fsx}",
+                      {
+                        "efs": {
+                          "Fn::If": [
+                            "CreateEFSSubstack",
+                            "1",
+                            "0"
+                          ]
+                        },
+                        "raid": {
+                          "Fn::If": [
+                            "CreateRAIDSubstack",
+                            "1",
+                            "0"
+                          ]
+                        },
+                        "fsx": {
+                          "Fn::If": [
+                            "CreateFSXSubstack",
+                            "1",
+                            "0"
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
+          ],
+          "NetworkInterfaces": [
+            {
+              "NetworkInterfaceId": {
+                "Ref": "MasterENI"
+              },
+              "DeviceIndex": 0
+            }
+          ],
+          "ImageId": {
+            "Fn::If": [
+              "UseCustomAMI",
+              {
+                "Ref": "CustomAMI"
+              },
+              {
+                "Fn::FindInMap": [
+                  "AWSRegionOS2AMI",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  {
+                    "Ref": "BaseOS"
+                  }
+                ]
+              }
+            ]
+          },
+          "EbsOptimized": {
+            "Fn::If": [
+              "IsMasterInstanceEbsOpt",
+              true,
+              false
+            ]
+          },
+          "IamInstanceProfile": {
+            "Name": {
+              "Ref": "RootInstanceProfile"
+            }
+          },
+          "Placement": {
+            "GroupName": {
+              "Fn::If": [
+                "UseClusterPlacement",
+                {
+                  "Fn::If": [
+                    "CreatePlacementGroup",
+                    {
+                      "Ref": "DynamicPlacementGroup"
+                    },
+                    {
+                      "Ref": "PlacementGroup"
+                    }
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          },
+          "UserData": {
+            "Fn::Base64": {
+              "Fn::Join": [
+                "",
+                [
+                  "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "--==BOUNDARY==\n",
+                  "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "#cloud-config:\n",
+                  "runcmd:\n",
+                  " - [ sh, -c, 'which yum && echo \"proxy=",
+                  {
+                    "Fn::If": [
+                      "UseProxy",
+                      {
+                        "Ref": "ProxyServer"
+                      },
+                      "_none_"
+                    ]
+                  },
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
+                  " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
+                  {
+                    "Fn::If": [
+                      "UseProxy",
+                      {
+                        "Ref": "ProxyServer"
+                      },
+                      "false"
+                    ]
+                  },
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
+                  "--==BOUNDARY==\n",
+                  "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
+                  "MIME-Version: 1.0\n\n",
+                  "#!/bin/bash -x\n\n",
+                  "function error_exit\n",
+                  "{\n",
+                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --resource=MasterServerWaitCondition --region=",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "  exit 1\n",
+                  "}\n",
+                  "function vendor_cookbook\n",
+                  "{\n",
+                  "  mkdir /tmp/cookbooks\n",
+                  "  cd /tmp/cookbooks\n",
+                  "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
+                  "  HOME_BAK=\"${HOME}\"\n",
+                  "  export HOME=\"/tmp\"\n",
+                  "  . /tmp/proxy.sh;\n",
+                  "  for d in `ls /tmp/cookbooks`; do\n",
+                  "    cd /tmp/cookbooks/$d\n",
+                  "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
+                  "  done;\n",
+                  "  export HOME=\"${HOME_BAK}\"\n",
+                  "}\n",
+                  "function bootstrap_instance\n",
+                  "{\n",
+                  "  which yum 2>/dev/null; yum=$?\n",
+                  "  which apt-get 2>/dev/null; apt=$?\n",
+                  "  if [ \"${yum}\" == \"0\" ]; then\n",
+                  "    yum -y groupinstall development && yum -y install curl wget jq awscli\n",
+                  "  fi\n",
+                  "  if [ \"${apt}\" == \"0\" ]; then\n",
+                  "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
+                  "  fi\n",
+                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"\n",
+                  "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
+                  "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
+                  "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
+                  "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version} ffi-libarchive\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
+                  "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
+                  "  vendor_cookbook\n",
+                  "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                  "}\n",
+                  "proxy=",
+                  {
+                    "Ref": "ProxyServer"
+                  },
+                  "\n",
+                  "custom_cookbook=",
+                  {
+                    "Ref": "CustomChefCookbook"
+                  },
+                  "\n",
+                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
+                  "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
+                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                  "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
+                  "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
+                  "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
+                  "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
+                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                  "else\n",
+                  "  proxy_args=\"\"\n",
+                  "  touch /tmp/proxy.sh\n",
+                  "fi\n",
+                  "  export _region=",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "s3_url=",
+                  {
+                    "Fn::FindInMap": [
+                      "Partition2Url",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      "url"
+                    ]
+                  },
+                  "\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  cookbook_url=${custom_cookbook}\n",
+                  "else\n",
+                  "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
+                  {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "cookbook"
+                    ]
+                  },
+                  ".tgz\n",
+                  "fi\n",
+                  "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
+                  "export parallelcluster_version=aws-parallelcluster-",
+                  {
                     "Fn::FindInMap": [
                       "PackagesVersions",
                       "default",
                       "parallelcluster"
                     ]
-                  }
-                }
-              ]
-            }
-          },
-          {
-            "Key": "aws-parallelcluster-networking",
-            "Value": {
-              "Fn::Sub": "EFA=${EFA}"
-            }
-          },
-          {
-            "Key": "aws-parallelcluster-filesystem",
-            "Value": {
-              "Fn::Sub": [
-                "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}, fsx=${fsx}",
-                {
-                  "efs": {
-                    "Fn::If": [
-                      "CreateEFSSubstack",
-                      "1",
-                      "0"
+                  },
+                  "\n",
+                  "export cookbook_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "cookbook"
                     ]
                   },
-                  "raid": {
-                    "Fn::If": [
-                      "CreateRAIDSubstack",
-                      "1",
-                      "0"
+                  "\n",
+                  "export chef_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "chef"
                     ]
                   },
-                  "fsx": {
-                    "Fn::If": [
-                      "CreateFSXSubstack",
-                      "1",
-                      "0"
+                  "\n",
+                  "export ridley_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "ridley"
                     ]
-                  }
-                }
+                  },
+                  "\n",
+                  "export berkshelf_version=",
+                  {
+                    "Fn::FindInMap": [
+                      "PackagesVersions",
+                      "default",
+                      "berkshelf"
+                    ]
+                  },
+                  "\n",
+                  "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
+                  "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
+                  "  if [ \"${parallelcluster_version}\" != \"${installed_version}\" ]; then\n",
+                  "    bootstrap_instance\n",
+                  "  fi\n",
+                  "else\n",
+                  "  bootstrap_instance\n",
+                  "fi\n",
+                  "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
+                  "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
+                  "  vendor_cookbook\n",
+                  "fi\n",
+                  "cd /tmp\n",
+                  "# Call CloudFormation\n",
+                  "cfn-init ${proxy_args} -s ",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " -v -c default -r MasterServerLaunchTemplate --region ",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
+                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                  {
+                    "Ref": "AWS::StackName"
+                  },
+                  " --resource=MasterServerWaitCondition --region=",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "\n",
+                  "# End of file\n",
+                  "--==BOUNDARY==\n"
+                ]
               ]
             }
-          }
-        ],
-        "NetworkInterfaces": [
-          {
-            "NetworkInterfaceId": {
-              "Ref": "MasterENI"
-            },
-            "DeviceIndex": "0"
-          }
-        ],
-        "ImageId": {
-          "Fn::If": [
-            "UseCustomAMI",
-            {
-              "Ref": "CustomAMI"
-            },
-            {
-              "Fn::FindInMap": [
-                "AWSRegionOS2AMI",
-                {
-                  "Ref": "AWS::Region"
-                },
-                {
-                  "Ref": "BaseOS"
-                }
-              ]
-            }
-          ]
-        },
-        "EbsOptimized": {
-          "Fn::If": [
-            "IsMasterInstanceEbsOpt",
-            true,
-            false
-          ]
-        },
-        "IamInstanceProfile": {
-          "Ref": "RootInstanceProfile"
-        },
-        "PlacementGroupName": {
-          "Fn::If": [
-            "UseClusterPlacement",
-            {
-              "Fn::If": [
-                "CreatePlacementGroup",
-                {
-                  "Ref": "DynamicPlacementGroup"
-                },
-                {
-                  "Ref": "PlacementGroup"
-                }
-              ]
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        },
-        "UserData": {
-          "Fn::Base64": {
-            "Fn::Join": [
-              "",
-              [
-                "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
-                "MIME-Version: 1.0\n\n",
-                "--==BOUNDARY==\n",
-                "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
-                "MIME-Version: 1.0\n\n",
-                "#cloud-config:\n",
-                "runcmd:\n",
-                " - [ sh, -c, 'which yum && echo \"proxy=",
-                {
-                  "Fn::If": [
-                    "UseProxy",
-                    {
-                      "Ref": "ProxyServer"
-                    },
-                    "_none_"
-                  ]
-                },
-                "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
-                " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
-                {
-                  "Fn::If": [
-                    "UseProxy",
-                    {
-                      "Ref": "ProxyServer"
-                    },
-                    "false"
-                  ]
-                },
-                "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
-                "--==BOUNDARY==\n",
-                "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
-                "MIME-Version: 1.0\n\n",
-                "#!/bin/bash -x\n\n",
-                "function error_exit\n",
-                "{\n",
-                "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " --resource=MasterServer --region=",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "  exit 1\n",
-                "}\n",
-                "function vendor_cookbook\n",
-                "{\n",
-                "  mkdir /tmp/cookbooks\n",
-                "  cd /tmp/cookbooks\n",
-                "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
-                "  HOME_BAK=\"${HOME}\"\n",
-                "  export HOME=\"/tmp\"\n",
-                "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
-                "  export HOME=\"${HOME_BAK}\"\n",
-                "}\n",
-                "function bootstrap_instance\n",
-                "{\n",
-                "  which yum 2>/dev/null; yum=$?\n",
-                "  which apt-get 2>/dev/null; apt=$?\n",
-                "  if [ \"${yum}\" == \"0\" ]; then\n",
-                "    yum -y groupinstall development && yum -y install curl wget jq awscli\n",
-                "  fi\n",
-                "  if [ \"${apt}\" == \"0\" ]; then\n",
-                "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
-                "  fi\n",
-                "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
-                "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
-                "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
-                "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
-                "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
-                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
-                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
-                "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
-                "  vendor_cookbook\n",
-                "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
-                "}\n",
-                "proxy=",
-                {
-                  "Ref": "ProxyServer"
-                },
-                "\n",
-                "custom_cookbook=",
-                {
-                  "Ref": "CustomChefCookbook"
-                },
-                "\n",
-                "if [ \"${proxy}\" != \"NONE\" ]; then\n",
-                "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
-                "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
-                "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
-                "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
-                "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                "else\n",
-                "  proxy_args=\"\"\n",
-                "  touch /tmp/proxy.sh\n",
-                "fi\n",
-                "  export _region=",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "s3_url=",
-                {
-                  "Fn::FindInMap": [
-                    "Partition2Url",
-                    {
-                      "Ref": "AWS::Partition"
-                    },
-                    "url"
-                  ]
-                },
-                "\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  cookbook_url=${custom_cookbook}\n",
-                "else\n",
-                "  cookbook_url=https://s3.${_region}.${s3_url}/${_region}-aws-parallelcluster/cookbooks/",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "cookbook"
-                  ]
-                },
-                ".tgz\n",
-                "fi\n",
-                "export PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin:/opt/aws/bin\n",
-                "export parallelcluster_version=aws-parallelcluster-",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "parallelcluster"
-                  ]
-                },
-                "\n",
-                "export cookbook_version=",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "cookbook"
-                  ]
-                },
-                "\n",
-                "export chef_version=",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "chef"
-                  ]
-                },
-                "\n",
-                "export ridley_version=",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "ridley"
-                  ]
-                },
-                "\n",
-                "export berkshelf_version=",
-                {
-                  "Fn::FindInMap": [
-                    "PackagesVersions",
-                    "default",
-                    "berkshelf"
-                  ]
-                },
-                "\n",
-                "if [ -f /opt/parallelcluster/.bootstrapped ]; then\n",
-                "  installed_version=$(cat /opt/parallelcluster/.bootstrapped)\n",
-                "  if [ \"${parallelcluster_version}\" != \"${installed_version}\" ]; then\n",
-                "    bootstrap_instance\n",
-                "  fi\n",
-                "else\n",
-                "  bootstrap_instance\n",
-                "fi\n",
-                "if [ \"${custom_cookbook}\" != \"NONE\" ]; then\n",
-                "  curl --retry 3 -v -L -o /etc/chef/aws-parallelcluster-cookbook.tgz -z \"$(cat /etc/chef/aws-parallelcluster-cookbook.tgz.date)\" ${cookbook_url}\n",
-                "  vendor_cookbook\n",
-                "fi\n",
-                "cd /tmp\n",
-                "# Call CloudFormation\n",
-                "cfn-init ${proxy_args} -s ",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " -v -c default -r MasterServer --region ",
-                {
-                  "Ref": "AWS::Region"
-                },
-                " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
-                {
-                  "Ref": "AWS::StackName"
-                },
-                " --resource=MasterServerWaitCondition --region=",
-                {
-                  "Ref": "AWS::Region"
-                },
-                "\n",
-                "# End of file\n",
-                "--==BOUNDARY==\n"
-              ]
-            ]
           }
         }
       },
@@ -2362,6 +2228,22 @@
                     },
                     "cfn_raid_parameters": {
                       "Ref": "RAIDOptions"
+                    },
+                    "cfn_scheduler_slots": {
+                      "Fn::If": [
+                        "DisableHyperthreading",
+                        {
+                          "Fn::Select": [
+                            "1",
+                            {
+                              "Ref": "Cores"
+                            }
+                          ]
+                        },
+                        {
+                          "Ref": "AWS::NoValue"
+                        }
+                      ]
                     },
                     "cfn_base_os": {
                       "Ref": "BaseOS"
@@ -2456,6 +2338,29 @@
                         "SQS",
                         "QueueName"
                       ]
+                    },
+                    "dcv_enabled": {
+                      "Fn::If": [
+                        "EnableDCV",
+                        "master",
+                        "false"
+                      ]
+                    },
+                    "dcv_port": {
+                      "Fn::Select": [
+                        "1",
+                        {
+                          "Fn::Split": [
+                            ",",
+                            {
+                              "Ref": "DCVOptions"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    "enable_intel_hpc_platform": {
+                      "Ref": "IntelHPCPlatform"
                     }
                   },
                   "run_list": {
@@ -2608,6 +2513,23 @@
           {
             "Key": "Name",
             "Value": "Compute",
+            "PropagateAtLaunch": true
+          },
+          {
+            "Key": "ClusterName",
+            "Value": {
+              "Fn::Select": [
+                "1",
+                {
+                  "Fn::Split": [
+                    "parallelcluster-",
+                    {
+                      "Ref": "AWS::StackName"
+                    }
+                  ]
+                }
+              ]
+            },
             "PropagateAtLaunch": true
           },
           {
@@ -2825,6 +2747,33 @@
               }
             ]
           },
+          "CpuOptions": {
+            "CoreCount": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            },
+            "ThreadsPerCore": {
+              "Fn::If": [
+                "DisableHyperthreading",
+                1,
+                {
+                  "Ref": "AWS::NoValue"
+                }
+              ]
+            }
+          },
           "Monitoring": {
             "Enabled": false
           },
@@ -3006,10 +2955,14 @@
                   "  mkdir /tmp/cookbooks\n",
                   "  cd /tmp/cookbooks\n",
                   "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
-                  "  HOME_BAK=${HOME}\n",
+                  "  HOME_BAK=\"${HOME}\"\n",
                   "  export HOME=\"/tmp\"\n",
-                  "  . /tmp/proxy.sh; for d in `ls /tmp/cookbooks`; do cd /tmp/cookbooks/$d;LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete; done;\n",
-                  "  export HOME=${HOME_BAK}\n",
+                  "  . /tmp/proxy.sh;\n",
+                  "  for d in `ls /tmp/cookbooks`; do\n",
+                  "    cd /tmp/cookbooks/$d\n",
+                  "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
+                  "  done;\n",
+                  "  export HOME=\"${HOME_BAK}\"\n",
                   "}\n",
                   "function bootstrap_instance\n",
                   "{\n",
@@ -3021,11 +2974,11 @@
                   "  if [ \"${apt}\" == \"0\" ]; then\n",
                   "    apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli\n",
                   "  fi\n",
-                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"",
+                  "  [[ ${_region} =~ ^cn- ]] && s3_url=\"cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster\"\n",
                   "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://www.chef.io/chef/install.sh | bash -s -- -v ${chef_version}\n",
-                  "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version}\n",
+                  "  /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${ridley_version} berkshelf:${berkshelf_version} ffi-libarchive\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
@@ -3263,6 +3216,22 @@
                     "cfn_scheduler": {
                       "Ref": "Scheduler"
                     },
+                    "cfn_scheduler_slots": {
+                      "Fn::If": [
+                        "DisableHyperthreading",
+                        {
+                          "Fn::Select": [
+                            "1",
+                            {
+                              "Ref": "Cores"
+                            }
+                          ]
+                        },
+                        {
+                          "Ref": "AWS::NoValue"
+                        }
+                      ]
+                    },
                     "cfn_scaledown_idletime": {
                       "Ref": "ScaleDownIdleTime"
                     },
@@ -3296,6 +3265,9 @@
                         },
                         "User"
                       ]
+                    },
+                    "enable_intel_hpc_platform": {
+                      "Ref": "IntelHPCPlatform"
                     }
                   },
                   "run_list": {
@@ -3460,6 +3432,56 @@
             "CidrIp": {
               "Ref": "AccessFrom"
             }
+          },
+          {
+            "Fn::If": [
+              "EnableDCV",
+              {
+                "IpProtocol": "tcp",
+                "FromPort": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "ToPort": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "CidrIp": {
+                  "Fn::Select": [
+                    "2",
+                    {
+                      "Fn::Split": [
+                        ",",
+                        {
+                          "Ref": "DCVOptions"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
           }
         ]
       },
@@ -3858,22 +3880,7 @@
               "Effect": "Allow",
               "Principal": {
                 "Service": [
-                  {
-                    "Fn::Sub": [
-                      "lambda.${s3_url}",
-                      {
-                        "s3_url": {
-                          "Fn::FindInMap": [
-                            "Partition2Url",
-                            {
-                              "Ref": "AWS::Partition"
-                            },
-                            "url"
-                          ]
-                        }
-                      }
-                    ]
-                  }
+                  "lambda.amazonaws.com"
                 ]
               }
             }
@@ -3891,7 +3898,9 @@
                     "logs:PutLogEvents"
                   ],
                   "Effect": "Allow",
-                  "Resource": "arn:aws:logs:*:*:*",
+                  "Resource": {
+                    "Fn::Sub": "arn:${AWS::Partition}:logs:*:*:*"
+                  },
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
@@ -3903,10 +3912,10 @@
                   "Effect": "Allow",
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
                     },
                     {
-                      "Fn::Sub": "arn:aws:s3:::${ResourcesS3Bucket}/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
                     }
                   ],
                   "Sid": "S3BucketPolicy"

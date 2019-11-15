@@ -2,6 +2,69 @@
 CHANGELOG
 =========
 
+2.5.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for new OS: Ubuntu 18.04
+* Add support for AWS Batch scheduler in China partition and in ``eu-north-1``.
+* Revamped ``pcluster configure`` command which now supports automated networking configuration.
+* Add support for NICE DCV on Centos 7 to setup a graphical remote desktop session on the Master node.
+* Add support for new EFA supported instances: ``c5n.metal``, ``m5dn.24xlarge``, ``m5n.24xlarge``, ``r5dn.24xlarge``,
+  ``r5n.24xlarge``
+* Add support for scheduling with GPU options in Slurm. Currently supports the following GPU-related options: ``—G/——gpus,
+  ——gpus-per-task, ——gpus-per-node, ——gres=gpu, ——cpus-per-gpu``.
+  Integrated GPU requirements into scaling logic, cluster will scale automatically to satisfy GPU/CPU requirements
+  for pending jobs. When submitting GPU jobs, CPU/node/task information is not required but preferred in order to
+  avoid ambiguity. If only GPU requirements are specified, cluster will scale up to the minimum number of nodes
+  required to satisfy all GPU requirements.
+* Add new cluster configuration option to automatically disable Hyperthreading (``disable_hyperthreading = true``)
+* Install Intel Parallel Studio 2019.5 Runtime in Centos 7 when ``enable_intel_hpc_platform = true``  and share /opt/intel over NFS
+* Additional EC2 IAM Policies can now be added to the role ParallelCluster automatically creates for cluster nodes by
+  simply specifying ``additional_iam_policies`` in the cluster config.
+
+**CHANGES**
+
+* Ubuntu 14.04 is no longer supported
+* Upgrade Intel MPI to version U5.
+* Upgrade EFA Installer to version 1.7.0, this also upgrades Open MPI to 4.0.2.
+* Upgrade NVIDIA driver to Tesla version 418.87.
+* Upgrade CUDA library to version 10.1.
+* Upgrade Slurm to version 19.05.3-2.
+* Install EFA in China AMIs.
+* Increase default EBS volume size from 17GB to 25GB
+* FSx Lustre now supports new storage_capacity options 1,200 and 2,400 GiB
+* Enable ``flock user_xattr noatime`` Lustre mount options by default everywhere and
+  ``x-systemd.automount x-systemd.requires=lnet.service`` for systemd based systems.
+* Increase the number of hosts that can be processed by scaling daemons in a single batch from 50 to 200. This
+  improves the scaling time especially with increased ASG launch rates.
+* Change default sshd config in order to disable X11 forwarding and update the list of supported ciphers
+  significantly increases scaling speed when ASG launch rate is raised.
+* Increase faulty node termination timeout from 1 minute to 5 in order to give some additional time to the scheduler
+  to recover when under heavy load.
+* Extended ``pcluster createami`` command to specify the VPC and network settings when building the AMI.
+* Support inline comments in config file
+* Support Python 3.8 in pcluster CLI.
+* Deprecate Python 2.6 support
+* Add ``ClusterName`` tag to EC2 instances.
+* Search for new available version only at ``pcluster create`` action.
+* Enable ``sanity_check`` by default.
+
+**BUG FIXES**
+
+* Fix sanity check for custom ec2 role. Fixes `#1241 <https://github.com/aws/aws-parallelcluster/issues/1241>`_ .
+* Fix bug when using same subnet for both master and compute.
+* Fix bug when ganglia is enabled ganglia urls are shown. Fixes `#1322 <https://github.com/aws/aws-parallelcluster/issues/1322>`_ .
+* Fix bug with ``awsbatch`` scheduler that prevented Multi-node jobs from running.
+* Fix jobwatcher behaviour that was marking nodes locked by the nodewatcher as busy even if they had been removed
+  already from the ASG Desired count. This was causing, in rare circumstances, a cluster overscaling.
+* Fix bug that was causing failures in sqswatcher when ADD and REMOVE event for the same host are fetched together.
+* Fix bug that was preventing nodes to mount partitioned EBS volumes.
+* Implement paginated calls in ``pcluster list``.
+* Fix bug when creating ``awsbatch`` cluster with name longer than 31 chars
+* Fix a bug that lead to ssh not working after ssh'ing into a compute node by ip address.
+
 2.4.1
 =====
 
@@ -9,8 +72,8 @@ CHANGELOG
 
 * Add support for ap-east-1 region (Hong Kong)
 * Add possibility to specify instance type to use when building custom AMIs with ``pcluster createami``
-* Speed up cluster creation by having compute nodes starting together with master node
-* Enable ASG CloudWatch metrics for the ASG managing compute nodes
+* Speed up cluster creation by having compute nodes starting together with master node. **Note** this requires one new IAM permissions in the `ParallelClusterInstancePolicy <https://docs.aws.amazon.com/en_us/parallelcluster/latest/ug/iam.html#parallelclusterinstancepolicy>`_, ``cloudformation:DescribeStackResource``
+* Enable ASG CloudWatch metrics for the ASG managing compute nodes. **Note** this requires two new IAM permissions in the `ParallelClusterUserPolicy <https://docs.aws.amazon.com/parallelcluster/latest/ug/iam.html#parallelclusteruserpolicy>`_, ``autoscaling:DisableMetricsCollection`` and ``autoscaling:EnableMetricsCollection``
 * Install Intel MPI 2019u4 on Amazon Linux, Centos 7 and Ubuntu 1604
 * Upgrade Elastic Fabric Adapter (EFA) to version 1.4.1 that supports Intel MPI
 * Run all node daemons and cookbook recipes in isolated Python virtualenvs. This allows our code to always run with the
@@ -44,7 +107,7 @@ CHANGELOG
 * Make FSx Substack depend on ComputeSecurityGroupIngress to keep FSx from trying to create prior to the SG
   allowing traffic within itself
 * Restore correct value for ``filehandle_limit`` that was getting reset when setting ``memory_limit`` for EFA
-* Torque: fix compute nodes locking mechanism to prevent job scheduling on nodes being terminated 
+* Torque: fix compute nodes locking mechanism to prevent job scheduling on nodes being terminated
 * Restore logic that was automatically adding compute nodes identity to SSH ``known_hosts`` file
 * Slurm: fix issue that was causing the ParallelCluster daemons to fail when the cluster is stopped and an empty compute nodes file
   is imported in Slurm config

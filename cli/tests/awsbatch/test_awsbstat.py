@@ -1,9 +1,11 @@
 import json
+import os
 
 import pytest
 
 from awsbatch import awsbstat
-from common import DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG, MockedBoto3Request, read_text
+from tests.common import MockedBoto3Request, read_text
+from tests.conftest import DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG
 
 ALL_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING", "SUCCEEDED", "FAILED"]
 DEFAULT_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING"]
@@ -12,6 +14,13 @@ DEFAULT_JOB_STATUS = ["SUBMITTED", "PENDING", "RUNNABLE", "STARTING", "RUNNING"]
 class TestArgs(object):
     def test_missing_cluster_parameter(self, failed_with_message):
         failed_with_message(awsbstat.main, "Error: cluster parameter is required\n", argv=[])
+
+
+@pytest.fixture()
+def boto3_stubber_path():
+    # we need to set the region in the environment because the Boto3ClientFactory requires it.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
+    return "awsbatch.common.boto3"
 
 
 @pytest.mark.usefixtures("awsbatchcliconfig_mock")

@@ -36,6 +36,7 @@ from conftest_markers import (
     check_marker_skip_list,
 )
 from jinja2 import Environment, FileSystemLoader
+from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
@@ -44,7 +45,6 @@ from utils import (
     to_snake_case,
     unset_credentials,
 )
-from vpc_builder import Gateways, SubnetConfig, VPCConfig, VPCTemplateBuilder
 
 
 def pytest_addoption(parser):
@@ -74,6 +74,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
+    parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
 
 
 def pytest_generate_tests(metafunc):
@@ -189,7 +190,11 @@ def clusters_factory(request):
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
-            else "integ-tests-" + random_alphanumeric(),
+            else "integ-tests-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
         )
@@ -204,12 +209,19 @@ def clusters_factory(request):
 
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
+
+    # Sanitize config file name to make it Windows compatible
+    # request.node.nodeid example:
+    # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-sge-8443-0.0.0.0/0-/shared]'
+    test_file, test_name = request.node.nodeid.split("::", 1)
+    config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
+
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(test_file)),
         exist_ok=True,
     )
-    cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
+    cluster_config_dst = "{out_dir}/clusters_configs/{config_file_name}.config".format(
+        out_dir=out_dir, config_file_name=config_file_name
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst
@@ -321,7 +333,7 @@ def cfn_stacks_factory(request):
 
 # FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
 # https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
-_AVAILABILITY_ZONE_OVERRIDES = {
+AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
     "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
@@ -354,26 +366,24 @@ def vpc_stacks(cfn_stacks_factory, request):
     regions = request.config.getoption("regions")
     vpc_stacks = {}
     for region in regions:
+        availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         # defining subnets per region to allow AZs override
-        availability_zone = random.choice(_AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
         public_subnet = SubnetConfig(
-            name="PublicSubnet",
+            name="Public",
             cidr="10.0.124.0/22",  # 1,022 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
-            availability_zone=availability_zone,
         )
         private_subnet = SubnetConfig(
-            name="PrivateSubnet",
+            name="Private",
             cidr="10.0.128.0/17",  # 32766 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
-            availability_zone=availability_zone,
         )
         vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
-        template = VPCTemplateBuilder(vpc_config).build()
+        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zone).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
@@ -381,13 +391,25 @@ def vpc_stacks(cfn_stacks_factory, request):
 
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
 # not available in randomly picked AZs.
-@retry(stop_max_attempt_number=2, wait_fixed=5000)
+@retry(
+    stop_max_attempt_number=2,
+    wait_fixed=5000,
+    retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
+)
 def _create_vpc_stack(request, template, region, cfn_stacks_factory):
     if request.config.getoption("vpc_stack"):
         logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
         stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
     else:
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        stack = CfnStack(
+            name="integ-tests-vpc-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
+            region=region,
+            template=template.to_json(),
+        )
         cfn_stacks_factory.create_stack(stack)
     return stack
 
