@@ -119,7 +119,7 @@ def _create_s3_client(region):
             print("Warning: non authorized in region '{0}', skipping".format(credential_region))
             raise e
     else:
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=region)
     return s3
 
 
@@ -207,8 +207,9 @@ def main():
         s3 = _create_s3_client(region)
         bucket_name = _get_bucket_name(args, region)
 
-        print("Listing cookbook for region ({0})".format(region))
-        _aws_s3_ls(s3, region, bucket_name, _COOKBOOKS_DIR + "/" + args.full_name + ".tgz")
+        s3_key = _COOKBOOKS_DIR + "/" + args.full_name + ".tgz"
+        print("Listing cookbook for region: {0}, bucket: {1}, key: {2}".format(region, bucket_name, s3_key))
+        _aws_s3_ls(s3, region, bucket_name, s3_key)
 
     if len(_ls_error_array) > 0 and not args.override:
         print("We know the cookbook archives are already there, in this round we need to upload the .date files!")
