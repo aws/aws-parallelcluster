@@ -131,10 +131,12 @@ def create(args):  # noqa: C901 FIXME!!!
         LOGGER.debug("StackId: %s", stack.get("StackId"))
 
         if not args.nowait:
-            utils.verify_stack_creation(stack_name, cfn_client)
+            verified = utils.verify_stack_creation(stack_name, cfn_client)
             LOGGER.info("")
             result_stack = utils.get_stack(stack_name, cfn_client)
             _print_stack_outputs(result_stack)
+            if not verified:
+                sys.exit(1)
         else:
             stack_status = utils.get_stack(stack_name, cfn_client).get("StackStatus")
             LOGGER.info("Status: %s", stack_status)
