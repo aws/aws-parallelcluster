@@ -20,7 +20,7 @@ CHANGELOG
   avoid ambiguity. If only GPU requirements are specified, cluster will scale up to the minimum number of nodes
   required to satisfy all GPU requirements.
 * Add new cluster configuration option to automatically disable Hyperthreading (``disable_hyperthreading = true``)
-* Install Intel Parallel Studio 2019.5 Runtime in Centos 7 AMI and share /opt/intel over NFS.
+* Install Intel Parallel Studio 2019.5 Runtime in Centos 7 when ``enable_intel_hpc_platform = true``  and share /opt/intel over NFS
 * Additional EC2 IAM Policies can now be added to the role ParallelCluster automatically creates for cluster nodes by
   simply specifying ``additional_iam_policies`` in the cluster config.
 
@@ -28,7 +28,7 @@ CHANGELOG
 
 * Ubuntu 14.04 is no longer supported
 * Upgrade Intel MPI to version U5.
-* Upgrade EFA Installer to version 1.6.2, this also upgrades Open MPI to 4.0.2.
+* Upgrade EFA Installer to version 1.7.0, this also upgrades Open MPI to 4.0.2.
 * Upgrade NVIDIA driver to Tesla version 418.87.
 * Upgrade CUDA library to version 10.1.
 * Upgrade Slurm to version 19.05.3-2.
@@ -63,6 +63,7 @@ CHANGELOG
 * Fix bug that was preventing nodes to mount partitioned EBS volumes.
 * Implement paginated calls in ``pcluster list``.
 * Fix bug when creating ``awsbatch`` cluster with name longer than 31 chars
+* Fix a bug that lead to ssh not working after ssh'ing into a compute node by ip address.
 
 2.4.1
 =====
