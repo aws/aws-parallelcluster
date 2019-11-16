@@ -83,10 +83,15 @@ def dcv_connect(args):
         else:
             error("Something went wrong during DCV connection.\n{0}".format(e.output))
 
-    # Open web browser
+    # DCV URL
     url = "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
         IP=master_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )
+
+    if args.show_url:
+        LOGGER.info("Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url))
+        return
+
     try:
         webbrowser.open_new(url)
     except webbrowser.Error:
