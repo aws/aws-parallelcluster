@@ -409,6 +409,7 @@ Variables substituted::
     pdcv_connect.add_argument(
         "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
     )
+    pdcv_connect.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
     pdcv.set_defaults(func=dcv)
 
     return parser
