@@ -222,7 +222,11 @@ class PclusterConfig(object):
     def fail_on_error(self):
         """Get fail_on_error property value. Will fall back to sanity_check parameter if not explicitly set."""
         if self._fail_on_error is None:
-            self._fail_on_error = self.get_section("global").get_param_value("sanity_check")
+            self._fail_on_error = (
+                self.get_section("global").get_param_value("sanity_check")
+                if self.get_section("global")
+                else GLOBAL.get("params").get("sanity_check").get("default")
+            )
         return self._fail_on_error
 
     @fail_on_error.setter
