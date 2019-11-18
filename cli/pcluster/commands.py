@@ -651,7 +651,7 @@ def delete(args):
         if not args.nowait:
             while stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
-                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
+                stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
                 events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
