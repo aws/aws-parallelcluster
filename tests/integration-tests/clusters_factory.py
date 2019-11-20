@@ -30,6 +30,7 @@ class Cluster:
         self.ssh_key = ssh_key
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
+        self.has_been_deleted = False
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
@@ -57,6 +58,28 @@ class Cluster:
         # reset cached properties
         self.__cfn_outputs = None
         self.__cfn_resources = None
+
+    def delete(self, extra_args=None):
+        """Delete this cluster."""
+        if self.has_been_deleted:
+            return
+        if extra_args is None:
+            extra_args = []
+        cmd_args = ["pcluster", "delete", "--config", self.config_file, self.name] + extra_args
+        try:
+            result = run_command(cmd_args, log_error=False)
+            if "DELETE_FAILED" in result.stdout:
+                error = "Cluster deletion failed for {0} with output: {1}".format(self.name, result.stdout)
+                logging.error(error)
+                raise Exception(error)
+            logging.info("Cluster {0} deleted successfully".format(self.name))
+        except subprocess.CalledProcessError as e:
+            if re.search(r"Stack with id parallelcluster-.+ does not exist", e.stdout):
+                pass
+            else:
+                logging.error("Failed destroying cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+                raise
+        self.has_been_deleted = True
 
     @property
     def cfn_name(self):
@@ -147,23 +170,9 @@ class ClustersFactory:
         """Destroy a created cluster."""
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
-            cluster = self.__created_clusters[name]
-
-            # destroy the cluster
-            try:
-                result = run_command(["pcluster", "delete", "--config", cluster.config_file, name], log_error=False)
-                if "DELETE_FAILED" in result.stdout:
-                    error = "Cluster deletion failed for {0} with output: {1}".format(name, result.stdout)
-                    logging.error(error)
-                    raise Exception(error)
-                del self.__created_clusters[name]
-                logging.info("Cluster {0} deleted successfully".format(name))
-            except subprocess.CalledProcessError as e:
-                if re.search(r"Stack with id parallelcluster-.+ does not exist", e.stdout):
-                    pass
-                else:
-                    logging.error("Failed destroying cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
-                    raise
+            self.__created_clusters[name].delete()
+            del self.__created_clusters[name]
+            logging.info("Cluster {0} deleted successfully".format(name))
         else:
             logging.warning("Couldn't find cluster with name {0}. Skipping deletion.".format(name))
 
