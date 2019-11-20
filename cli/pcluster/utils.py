@@ -30,11 +30,45 @@ from botocore.exceptions import ClientError
 LOGGER = logging.getLogger(__name__)
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
+CW_LOGS_SUBSTACK_PREFIX = "CloudWatchLogsSubstack-"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 
 
 def get_stack_name(cluster_name):
     return PCLUSTER_STACK_PREFIX + cluster_name
+
+
+def get_stack_template(stack_name):
+    """Get the template used for the given stack."""
+    try:
+        template = boto3.client("cloudformation").get_template(StackName=stack_name).get("TemplateBody")
+    except ClientError as client_err:
+        error(
+            "Unable to get template for stack {stack_name}.\n{err_msg}".format(
+                stack_name=stack_name, err_msg=client_err.response.get("Error").get("Message")
+            )
+        )
+    if not template:
+        error("Unable to get template for stack {0}.".format(stack_name))
+    return template
+
+
+def update_stack_template(stack_name, updated_template, cfn_parameters):
+    """Update stack_name's template to that represented by updated_template."""
+    try:
+        boto3.client("cloudformation").update_stack(
+            StackName=stack_name,
+            TemplateBody=json.dumps(updated_template, indent=2),  # Indent so it looks nice in the console
+            Parameters=cfn_parameters,
+        )
+    except ClientError as client_err:
+        if "no updates are to be performed" in client_err.response.get("Error").get("Message").lower():
+            return  # If updated_template was the same as the stack's current one, consider the update a success
+        error(
+            "Unable to update stack template for stack {stack_name}: {emsg}".format(
+                stack_name=stack_name, emsg=client_err.response.get("Error").get("Message")
+            )
+        )
 
 
 def get_region():
@@ -244,8 +278,50 @@ def get_stack(stack_name, cfn_client=None):
         if not cfn_client:
             cfn_client = boto3.client("cloudformation")
         return cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0]
-    except (ClientError, IndexError) as e:
+    except ClientError as e:
         error(e.response.get("Error").get("Message"))
+
+
+def stack_exists(stack_name):
+    """Return a boolean describing whether or not a stack by the given name exists."""
+    try:
+        get_stack(stack_name)
+        return True
+    except SystemExit as sys_exit:
+        if "Stack with id {0} does not exist".format(stack_name) in str(sys_exit):
+            return False
+        raise
+
+
+def get_stack_resources(stack_name):
+    """Get the given stack's resources."""
+    cfn_client = boto3.client("cloudformation")
+    try:
+        return cfn_client.describe_stack_resources(StackName=stack_name).get("StackResources")
+    except ClientError as client_err:
+        error(
+            "Unable to get {stack_name}'s resources: {reason}".format(
+                stack_name=stack_name, reason=client_err.response.get("Error").get("Message")
+            )
+        )
+
+
+def get_cluster_substacks(cluster_name):
+    """Return stack objects with names that match the given prefix."""
+    resources = get_stack_resources(get_stack_name(cluster_name))
+    return [resource for resource in resources if resource.get("ResourceType") == "AWS::CloudFormation::Stack"]
+
+
+def get_cloudwatch_logs_substack(cluster_name):
+    """Return the stack object for the given cluster's CloudWatch logs substack."""
+    substacks = get_cluster_substacks(cluster_name)
+    cw_logs_stack_prefix = "{cluster_name}-{cw_logs_prefix}".format(
+        cluster_name=get_stack_name(cluster_name), cw_logs_prefix=CW_LOGS_SUBSTACK_PREFIX
+    )
+    for stack in substacks:
+        if stack.get("StackName").startswith(cw_logs_stack_prefix):
+            return stack
+    error("Unable to get CloudWatch logs substack for cluster {0}".format(cluster_name))
 
 
 def verify_stack_creation(stack_name, cfn_client):

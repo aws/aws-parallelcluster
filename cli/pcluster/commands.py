@@ -635,18 +635,38 @@ def status(args):  # noqa: C901 FIXME!!!
         sys.exit(0)
 
 
-def delete(args):
-    saw_update = False
-    LOGGER.info("Deleting: %s", args.cluster_name)
-    stack_name = utils.get_stack_name(args.cluster_name)
+def _persist_cloudwatch_log_group(cluster_name, pcluster_config):
+    """Set cluster's CloudWatch log group to persist past cluster deletion via its DeletionPolicy."""
+    LOGGER.info("Configuring {0}'s CloudWatch log group to persist past cluster deletion.".format(cluster_name))
 
-    # Parse configuration file to read the AWS section
-    PclusterConfig.init_aws(config_file=args.config_file)
+    # Ensure CloudWatch logging is enabled. If not, the log group won't exist.
+    if not pcluster_config.get_section("cw_log").get_param_value("enable"):
+        utils.warn("CloudWatch logging is not enabled for cluster {0}".format(cluster_name))
+        return
 
+    # Get and modify the substack's template, then update the stack w/ the modified version
+    try:
+        stack = utils.get_cloudwatch_logs_substack(cluster_name)
+        template = utils.get_stack_template(stack.get("StackName"))
+        if template.get("Resources").get("CloudWatchLogGroup").get("DeletionPolicy") != "Retain":
+            template["Resources"]["CloudWatchLogGroup"]["DeletionPolicy"] = "Retain"
+            utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
+    except SystemExit as sys_exit:
+        utils.error(
+            "Unable to retain {cluster_name}'s CloudWatch log groups: {reason}".format(
+                cluster_name=cluster_name, reason=sys_exit
+            )
+        )
+
+
+def _delete_cluster(cluster_name, nowait):
+    """Delete cluster described by cluster_name."""
     cfn = boto3.client("cloudformation")
+    saw_update = False
     try:
         # delete_stack does not raise an exception if stack does not exist
         # Use describe_stacks to explicitly check if the stack exists
+        stack_name = utils.get_stack_name(cluster_name)
         cfn.describe_stacks(StackName=stack_name)
         cfn.delete_stack(StackName=stack_name)
         saw_update = True
@@ -654,7 +674,7 @@ def delete(args):
         sys.stdout.write("\rStatus: %s" % stack_status)
         sys.stdout.flush()
         LOGGER.debug("Status: %s", stack_status)
-        if not args.nowait:
+        if not nowait:
             while stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
                 stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
@@ -671,7 +691,7 @@ def delete(args):
             sys.stdout.write("\n")
             sys.stdout.flush()
         if stack_status == "DELETE_FAILED":
-            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", args.cluster_name)
+            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", cluster_name)
     except ClientError as e:
         if e.response.get("Error").get("Message").endswith("does not exist"):
             if saw_update:
@@ -683,6 +703,24 @@ def delete(args):
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
+
+
+def delete(args):
+    pcluster_config = PclusterConfig(cluster_name=args.cluster_name)
+    LOGGER.info("Deleting: %s", args.cluster_name)
+    stack_name = utils.get_stack_name(args.cluster_name)
+    if not utils.stack_exists(stack_name):
+        if args.keep_logs:
+            utils.warn(
+                "Stack for {0} does not exist. Cannot prevent its log group from being deleted.".format(
+                    args.cluster_name
+                )
+            )
+        utils.warn("Cluster {0} has already been deleted.".format(args.cluster_name))
+        sys.exit(0)
+    elif args.keep_logs:
+        _persist_cloudwatch_log_group(args.cluster_name, pcluster_config)
+    _delete_cluster(args.cluster_name, args.nowait)
 
 
 def _get_cookbook_url(region, template_url, args, tmpdir):
