@@ -19,6 +19,7 @@ from pathlib import Path
 
 import boto3
 import pytest
+from botocore.exceptions import ClientError
 from retrying import retry
 
 from assertpy import assert_that
@@ -144,7 +145,7 @@ class CloudWatchLoggingClusterState:
                 self._set_master_instance(instance)
             else:
                 self._add_compute_instance(instance)
-        LOGGER.debug("After getting initial cluster state:\n{}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After getting initial cluster state:\n{0}".format(self._dump_cluster_log_state()))
 
     def _read_log_configs_from_master(self):
         """Read the log configs file at /usr/local/etc/cloudwatch_log_files.json."""
@@ -184,7 +185,7 @@ class CloudWatchLoggingClusterState:
         logs = self._read_log_configs_from_master()
         self._filter_logs(logs)
         self._create_log_entries_for_nodes()
-        LOGGER.debug("After populating relevant logs:\n{}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After populating relevant logs:\n{0}".format(self._dump_cluster_log_state()))
 
     def _run_command_on_master(self, cmd):
         """Run cmd on cluster's MasterServer."""
@@ -206,10 +207,10 @@ class CloudWatchLoggingClusterState:
 
         # Read the output and map it to the hostname
         outputs = {}
-        result_files = self._run_command_on_master("ls {}".format(out_dir))
+        result_files = self._run_command_on_master("ls {0}".format(out_dir))
         for hostname in result_files.split():
-            outputs[hostname] = self._run_command_on_master("sudo cat {}".format(out_dir / hostname))
-        self._run_command_on_master("rm -rf {}".format(out_dir))
+            outputs[hostname] = self._run_command_on_master("sudo cat {0}".format(out_dir / hostname))
+        self._run_command_on_master("rm -rf {0}".format(out_dir))
         return outputs
 
     def _populate_master_log_existence(self):
@@ -238,7 +239,7 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for each node type don't exist."""
         self._populate_master_log_existence()
         self._populate_compute_log_existence()
-        LOGGER.debug("After populating log existence:\n{}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After populating log existence:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_master_log_emptiness_and_tail(self):
         """Figure out which of the relevant logs for the MasterServer are empty."""
@@ -273,7 +274,7 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for each node type are empty."""
         self._populate_master_log_emptiness_and_tail()
         self._populate_compute_log_emptiness_and_tail()
-        LOGGER.debug("After populating log emptiness and tails:\n{}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After populating log emptiness and tails:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_master_agent_status(self):
         """Get the cloudwatch agent's status for the MasterServer."""
@@ -295,7 +296,7 @@ class CloudWatchLoggingClusterState:
         """Get the cloudwatch agent's status for all the nodes in the cluster."""
         self._populate_master_agent_status()
         self._populate_compute_agent_status()
-        LOGGER.debug("After populating agent statuses:\n{}".format(self._dump_cluster_log_state()))
+        LOGGER.debug("After populating agent statuses:\n{0}".format(self._dump_cluster_log_state()))
 
     def _set_cluster_log_state(self):
         """
@@ -326,7 +327,7 @@ class Boto3DataRetriever:
         """Get list of log groups."""
         logs_client = boto3.client("logs", region_name=self.region)
         log_groups = logs_client.describe_log_groups().get("logGroups")
-        LOGGER.debug("Log groups: {}\n".format(json.dumps(log_groups, indent=4)))
+        LOGGER.debug("Log groups: {0}\n".format(json.dumps(log_groups, indent=4)))
         return log_groups
 
     def get_log_streams(self, log_group_name):
@@ -358,16 +359,29 @@ class Boto3DataRetriever:
                 for instance in reservation.get("Instances"):
                     yield instance
 
+    def delete_log_group(self, log_group):
+        """Delete the given log group."""
+        logs_client = boto3.client("logs", region_name=self.region)
+        try:
+            logs_client.delete_log_group(logGroupName=log_group)
+        except ClientError as client_err:
+            LOGGER.warning(
+                "Error when deleting log group {log_group}: {msg}".format(
+                    log_group=log_group, msg=client_err.response.get("Error").get("Message")
+                )
+            )
+
 
 class CloudWatchLoggingTestRunner:
     """Tests and utilities for verifying that CloudWatch logging integration works as expected."""
 
-    def __init__(self, data_retriever, log_group_name, enabled, retention_days):
+    def __init__(self, data_retriever, log_group_name, enabled, retention_days, logs_persist_after_delete):
         """Initialize class for CloudWatch logging testing."""
         self.data_retriever = data_retriever
         self.log_group_name = log_group_name
         self.enabled = enabled
         self.retention_days = retention_days
+        self.logs_persist_after_delete = logs_persist_after_delete
         self.failures = []
 
     @staticmethod
@@ -393,7 +407,7 @@ class CloudWatchLoggingTestRunner:
                     instance.get("hostname"), instance.get("instance_id"), log_dict.get("log_stream_name")
                 )
                 expected_stream_index[expected_stream_name] = log_dict
-        LOGGER.info("Expected log streams:\n{}".format("\n".join(expected_stream_index.keys())))
+        LOGGER.info("Expected log streams:\n{0}".format("\n".join(expected_stream_index.keys())))
         return expected_stream_index
 
     def verify_log_streams_exist(self, logs_state, expected_stream_index, observed_streams):
@@ -415,18 +429,18 @@ class CloudWatchLoggingTestRunner:
         for stream in observed_streams:
             self._verify_log_stream_data(logs_state, expected_stream_index, stream)
 
-    def verify_log_group_created(self, log_groups):
+    def verify_log_group_exists(self, log_groups, cluster_has_been_deleted):
         """Verify whether or not the cluster's log group was created depending on whether it was enabled."""
         assert_that_log_group_names = assert_that(log_groups).extracting("logGroupName")
-        if self.enabled:
+        if self.enabled and (not cluster_has_been_deleted or self.logs_persist_after_delete):
             assert_that_log_group_names.contains(self.log_group_name)
         else:
             assert_that_log_group_names.does_not_contain(self.log_group_name)
 
-    def verify_log_group_retention_days(self, log_groups):
+    def verify_log_group_retention_days(self, log_groups, cluster_has_been_deleted):
         """Verify whether or not the cluster's log group was created depending on whether it was enabled."""
-        if not self.enabled:
-            return  # Log group should not be created if not enabled.
+        if not self.enabled or (cluster_has_been_deleted and not self.logs_persist_after_delete):
+            return
         log_group = next((group for group in log_groups if group.get("logGroupName") == self.log_group_name), None)
         assert_that(log_group).is_not_none().is_equal_to(
             {"retentionInDays": self.retention_days}, include="retentionInDays"
@@ -446,31 +460,40 @@ class CloudWatchLoggingTestRunner:
                     continue  # Don't assert existence of a log if it depend on a feature being enabled
                 assert_that(log_dict).is_equal_to({"exists": True}, include="exists")
 
-    def run_tests(self, logs_state):
+    def run_tests(self, logs_state, cluster_has_been_deleted):
         """Run all CloudWatch logging integration tests."""
         log_groups = self.data_retriever.get_log_groups()
-        self.verify_log_group_created(log_groups)
-        self.verify_log_group_retention_days(log_groups)
+        self.verify_log_group_exists(log_groups, cluster_has_been_deleted)
+        self.verify_log_group_retention_days(log_groups, cluster_has_been_deleted)
 
-        LOGGER.info("state of logs for cluster:\n{}".format(json.dumps(logs_state, indent=4)))
-        self.verify_agent_status(logs_state)
-        self.verify_logs_exist(logs_state)
+        if not cluster_has_been_deleted:
+            LOGGER.info("state of logs for cluster:\n{0}".format(json.dumps(logs_state, indent=4)))
+            self.verify_agent_status(logs_state)
+            self.verify_logs_exist(logs_state)
 
-        if self.enabled:  # Log streams are only relevant when the feature is enabled
+        if self.enabled and (not cluster_has_been_deleted or self.logs_persist_after_delete):
             observed_streams = self.data_retriever.get_log_streams(self.log_group_name)
             expected_stream_index = self._get_expected_log_stream_index(logs_state)
             self.verify_log_streams_exist(logs_state, expected_stream_index, observed_streams)
             self.verify_log_streams_data(logs_state, expected_stream_index, observed_streams)
 
         if self.failures:
-            pytest.fail("Failures: {}".format(", ".join(self.failures)), pytrace=False)
+            pytest.fail("Failures: {0}".format(", ".join(self.failures)), pytrace=False)
 
 
 @pytest.mark.parametrize("cw_logging_enabled", [True, False])
+@pytest.mark.parametrize("cw_logs_persist_after_delete", [True, False])
 @pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["t2.micro", "c5.xlarge"])
 def test_cloudwatch_logging(
-    region, scheduler, instance, os, pcluster_config_reader, clusters_factory, cw_logging_enabled
+    region,
+    scheduler,
+    instance,
+    os,
+    pcluster_config_reader,
+    clusters_factory,
+    cw_logging_enabled,
+    cw_logs_persist_after_delete,
 ):
     """
     Test all CloudWatch logging features.
@@ -492,7 +515,21 @@ def test_cloudwatch_logging(
     }
     cluster_config = pcluster_config_reader(**param_kwargs)
     cluster = clusters_factory(cluster_config)
-    log_group_name = "/aws/parallelcluster/{}".format(cluster.name)
+    log_group_name = "/aws/parallelcluster/{0}".format(cluster.name)
     data_retriever = Boto3DataRetriever(region)
-    test_runner = CloudWatchLoggingTestRunner(data_retriever, log_group_name, cw_logging_enabled, retention_days)
-    test_runner.run_tests(CloudWatchLoggingClusterState(scheduler, os, cluster, data_retriever).get_logs_state())
+    test_runner = CloudWatchLoggingTestRunner(
+        data_retriever, log_group_name, cw_logging_enabled, retention_days, cw_logs_persist_after_delete
+    )
+    cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster, data_retriever).get_logs_state()
+
+    # These tests require a running cluster
+    test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
+
+    # These tests reqiure a cluster be deleted before running
+    try:
+        extra_delete_args = ["--keep-logs"] if cw_logs_persist_after_delete and cw_logging_enabled else []
+        cluster.delete(extra_args=extra_delete_args)
+        test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)
+    finally:
+        if cw_logs_persist_after_delete and cw_logging_enabled:
+            data_retriever.delete_log_group(test_runner.log_group_name)
