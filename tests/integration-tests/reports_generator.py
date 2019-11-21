@@ -21,12 +21,13 @@ from junitparser import JUnitXml
 import untangle
 
 
-def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_start):
+def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_start=False):
     """
     Publish tests results to CloudWatch
     :param test_results_dir: dir containing the tests outputs.
     :param namespace: namespace for the CW metric.
     :param aws_region: region where to push the metric.
+    :param timestamp_day_start: timestamp of the CW metric equal to the start of the current day (midnight).
     """
     test_report_file = os.path.join(test_results_dir, "test_report.xml")
     if not os.path.isfile(test_report_file):
