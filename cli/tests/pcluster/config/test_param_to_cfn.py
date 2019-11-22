@@ -43,9 +43,9 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
             '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
         ),
         # SpotPriceParam --> FloatParam
-        (CLUSTER, "spot_price", None, "0.0"),
+        (CLUSTER, "spot_price", None, "0"),
         (CLUSTER, "spot_price", 0.0009, "0.0009"),
-        (CLUSTER, "spot_price", 0.0, "0.0"),
+        (CLUSTER, "spot_price", 0.0, "0"),
         (CLUSTER, "spot_price", 10, "10"),
         (CLUSTER, "spot_price", 3, "3"),
         # SharedDirParam

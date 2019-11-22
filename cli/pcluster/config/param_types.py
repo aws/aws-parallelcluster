@@ -495,14 +495,21 @@ class SpotPriceParam(FloatParam):
 
         return self
 
+    def get_cfn_value(self):
+        """
+        Convert parameter value into CFN value.
+
+        Insignificant trailing zeros removed to correctly match CloudFormation conditions using "0" as test value
+        """
+        return str("{0:g}".format(self.value) if self.value is not None else self.definition.get("default", "NONE"))
+
     def to_cfn(self):
         """Convert parameter to CFN representation."""
         cfn_params = {}
 
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if cluster_config.get_param_value("scheduler") != "awsbatch":
-            cfn_value = cluster_config.get_param_value("spot_price")
-            cfn_params[self.definition.get("cfn_param_mapping")] = str(cfn_value)
+            cfn_params[self.definition.get("cfn_param_mapping")] = self.get_cfn_value()
 
         return cfn_params
 
@@ -533,8 +540,7 @@ class SpotBidPercentageParam(IntParam):
 
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if cluster_config.get_param_value("scheduler") == "awsbatch":
-            cfn_value = cluster_config.get_param_value("spot_bid_percentage")
-            cfn_params[self.definition.get("cfn_param_mapping")] = str(cfn_value)
+            cfn_params[self.definition.get("cfn_param_mapping")] = self.get_cfn_value()
 
         return cfn_params
 
