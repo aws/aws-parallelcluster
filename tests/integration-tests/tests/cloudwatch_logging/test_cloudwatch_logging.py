@@ -81,6 +81,14 @@ class CloudWatchLoggingClusterState:
         self._cluster_log_state = {"MasterServer": {}, "ComputeFleet": {}}
         self._set_cluster_log_state()
 
+    @property
+    def compute_nodes_count(self):
+        """Return the number of compute nodes in the cluster."""
+        if self.scheduler == "awsbatch":
+            return 0  # batch "computes" use a different log group
+        else:
+            return self.scheduler_commands.compute_nodes_count()
+
     def get_logs_state(self):
         """Get the state of the log files applicable to each of the cluster's EC2 instances."""
         desired_keys = ["hostname", "instance_id", "node_role", "agent_status", "logs"]
@@ -91,7 +99,7 @@ class CloudWatchLoggingClusterState:
                 for hostname, host_dict in self._cluster_log_state.get("ComputeFleet").items()
             ]
         )
-        assert_that(states).is_length(self.scheduler_commands.compute_nodes_count() + 1)  # computes + master
+        assert_that(states).is_length(self.compute_nodes_count + 1)  # computes + master
         return states
 
     def _dump_cluster_log_state(self):
@@ -149,16 +157,18 @@ class CloudWatchLoggingClusterState:
         desired_keys = ["file_path", "log_stream_name"]
         return {key: log[key] for key in desired_keys}
 
-    def _get_relevant_logs(self):
-        """Get subset of all log configs that apply to this cluster's scheduler/os combo."""
-        # Figure out which logs are relevant to the master and computes for this cluster
-        logs = self._read_log_configs_from_master()
+    def _filter_logs(self, logs):
+        """Populate self._relevant_logs with logs appropriate for the two different node types."""
+        # Batch doesn't really have compute nodes in the traditional sense.
+        desired_node_roles = {"MasterServer"} if self.scheduler == "awsbatch" else {"MasterServer", "ComputeFleet"}
         for log in logs:
             if self.scheduler not in log.get("schedulers") or self.platform not in log.get("platforms"):
                 continue
-            for node_role in log.get("node_roles"):
+            for node_role in set(log.get("node_roles")) & desired_node_roles:
                 self._relevant_logs[node_role].append(self._clean_log_config(log))
-        # Give each nodes representative dict in self._cluster_log_state a copy
+
+    def _create_log_entries_for_nodes(self):
+        """Create an entry for each relevant log in self._cluster_log_state."""
         self._cluster_log_state["MasterServer"]["logs"] = {
             log.get("file_path"): log for log in self._relevant_logs.get("MasterServer")
         }
@@ -166,6 +176,12 @@ class CloudWatchLoggingClusterState:
             compute_instance_dict["logs"] = {
                 log.get("file_path"): log.copy() for log in self._relevant_logs.get("ComputeFleet")
             }
+
+    def _get_relevant_logs(self):
+        """Get subset of all log configs that apply to this cluster's scheduler/os combo."""
+        logs = self._read_log_configs_from_master()
+        self._filter_logs(logs)
+        self._create_log_entries_for_nodes()
         LOGGER.debug("After populating relevant logs:\n{}".format(self._dump_cluster_log_state()))
 
     def _run_command_on_master(self, cmd):
@@ -180,9 +196,7 @@ class CloudWatchLoggingClusterState:
         remote_cmd = cmd.format(redirect=redirect)
 
         # Run the command, wait for it to complete
-        submit_out = self.scheduler_commands.submit_command(
-            remote_cmd, nodes=self.scheduler_commands.compute_nodes_count()
-        )
+        submit_out = self.scheduler_commands.submit_command(remote_cmd, nodes=self.compute_nodes_count)
         job_id = self.scheduler_commands.assert_job_submitted(submit_out.stdout)
         self.scheduler_commands.wait_job_completed(job_id)
         if assert_success:
@@ -205,6 +219,8 @@ class CloudWatchLoggingClusterState:
 
     def _populate_compute_log_existence(self):
         """Figure out which of the relevant logs for the ComputeFleet nodes don't exist."""
+        if self.compute_nodes_count == 0:
+            return
         for log_dict in self._relevant_logs.get("ComputeFleet"):
             cmd = "[[ -n `ls {path}` ]] && echo {{redirect}} exists || " "echo {{redirect}} does not exist".format(
                 path=log_dict.get("file_path")
@@ -233,6 +249,8 @@ class CloudWatchLoggingClusterState:
 
     def _populate_compute_log_emptiness_and_tail(self):
         """Figure out which of the relevant logs for the ComputeFleet nodes are empty."""
+        if self.compute_nodes_count == 0:
+            return
         for log_dict in self._relevant_logs.get("ComputeFleet"):
             # If this file doesn't exist on any of the computes, don't assert success
             assert_success = True
@@ -263,6 +281,8 @@ class CloudWatchLoggingClusterState:
 
     def _populate_compute_agent_status(self):
         """Get the cloudwatch agent's status for all the compute nodes in the cluster."""
+        if self.compute_nodes_count == 0:
+            return
         status_cmd = "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl {redirect} -a status"
         compute_statuses = self._run_command_on_computes(status_cmd)
         hostname_to_status_dict = {hostname: json.loads(status) for hostname, status in compute_statuses.items()}
