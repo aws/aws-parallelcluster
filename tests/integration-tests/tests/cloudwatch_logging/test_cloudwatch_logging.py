@@ -19,6 +19,7 @@ from pathlib import Path
 
 import boto3
 import pytest
+from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -159,7 +160,8 @@ class CloudWatchLoggingClusterState:
 
     def _filter_logs(self, logs):
         """Populate self._relevant_logs with logs appropriate for the two different node types."""
-        # Batch doesn't really have compute nodes in the traditional sense.
+        # When the scheduler is AWS Batch, only keep log that whose config's node_role value is MasterServer, since
+        # Batch doesn't have compute nodes in the traditional sense.
         desired_node_roles = {"MasterServer"} if self.scheduler == "awsbatch" else {"MasterServer", "ComputeFleet"}
         for log in logs:
             if self.scheduler not in log.get("schedulers") or self.platform not in log.get("platforms"):
@@ -399,14 +401,19 @@ class CloudWatchLoggingTestRunner:
         observed_stream_names = [stream.get("logStreamName") for stream in observed_streams]
         assert_that(observed_stream_names).contains_only(*expected_stream_index)
 
+    @retry(stop_max_attempt_number=3, wait_fixed=10 * 1000)  # Allow time for log events to reach the log stream
+    def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
+        """Verify that stream contains an event for the last line read from its corresponding log."""
+        events = self.data_retriever.get_log_events(self.log_group_name, stream.get("logStreamName"))
+        assert_that(events).is_not_empty()
+        expected_tail = expected_stream_index.get(stream.get("logStreamName")).get("tail")
+        event_generator = (event for event in events if event.get("message") == expected_tail)
+        assert_that(next(event_generator, None)).is_not_none()
+
     def verify_log_streams_data(self, logs_state, expected_stream_index, observed_streams):
         """Verify each observed log stream has >= 1 event and that its timestamp format is working."""
         for stream in observed_streams:
-            events = self.data_retriever.get_log_events(self.log_group_name, stream.get("logStreamName"))
-            assert_that(events).is_not_empty()
-            expected_tail = expected_stream_index.get(stream.get("logStreamName")).get("tail")
-            event_generator = (event for event in events if event.get("message") == expected_tail)
-            assert_that(next(event_generator, None)).is_not_none()
+            self._verify_log_stream_data(logs_state, expected_stream_index, stream)
 
     def verify_log_group_created(self, log_groups):
         """Verify whether or not the cluster's log group was created depending on whether it was enabled."""
