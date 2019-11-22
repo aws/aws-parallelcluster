@@ -676,7 +676,7 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("spot_price", "NONE", None, "must be a Float"),
         ("spot_price", "wrong_value", None, "must be a Float"),
         ("spot_price", "0.09", 0.09, None),
-        ("spot_price", "0.0", 0.0, None),
+        ("spot_price", "0", 0.0, None),
         ("spot_price", "0.1", 0.1, None),
         ("spot_price", "1", 1, None),
         ("spot_price", "100", 100, None),

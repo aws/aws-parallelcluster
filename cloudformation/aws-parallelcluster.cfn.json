@@ -39,7 +39,7 @@
     "SpotPrice": {
       "Description": "Spot bid price for the ComputeFleet AutoScaling Group when the ClusterType = \"spot\". When awsbatch is the scheduler, this is spot bid percentage.",
       "Type": "Number",
-      "Default": "0.0"
+      "Default": "0"
     },
     "ClusterType": {
       "Description": "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
