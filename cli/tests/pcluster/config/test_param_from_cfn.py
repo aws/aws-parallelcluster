@@ -64,7 +64,8 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
         (CLUSTER, "spot_price", "10", 10),
         (CLUSTER, "spot_price", "3", 3),
         (CLUSTER, "spot_price", "0.0009", 0.0009),
-        (CLUSTER, "spot_price", "0.0", 0.0),
+        (CLUSTER, "spot_price", "0", 0.0),
+        (CLUSTER, "spot_price", "0.00", 0.0),
         # SpotBidPercentageParam --> IntParam
         (CLUSTER, "spot_bid_percentage", "", 0),
         (CLUSTER, "spot_bid_percentage", "NONE", 0),
