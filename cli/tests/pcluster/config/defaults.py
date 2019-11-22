@@ -207,7 +207,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "MaxSize": "10",
     "MinSize": "0",
     "ClusterType": "ondemand",
-    "SpotPrice": "0.0",
+    "SpotPrice": "0",
     "ProxyServer": "NONE",
     "EC2IAMRoleName": "NONE",
     "EC2IAMPolicies": "NONE",

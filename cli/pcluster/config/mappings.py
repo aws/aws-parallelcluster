@@ -478,7 +478,7 @@ CLUSTER = {
             }),
             ("spot_price", {
                 "type": SpotPriceParam,
-                "default": 0.0,
+                "default": 0,
                 "cfn_param_mapping": "SpotPrice",
             }),
             ("spot_bid_percentage", {
