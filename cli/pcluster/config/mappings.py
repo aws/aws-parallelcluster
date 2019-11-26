@@ -35,6 +35,7 @@ from pcluster.config.validators import (
     compute_instance_type_validator,
     dcv_enabled_validator,
     disable_hyperthreading_validator,
+    ebs_settings_validator,
     ec2_ami_validator,
     ec2_ebs_snapshot_validator,
     ec2_iam_policies_validator,
@@ -55,6 +56,7 @@ from pcluster.config.validators import (
     intel_hpc_validator,
     raid_volume_iops_validator,
     scheduler_validator,
+    shared_dir_validator,
     url_validator,
 )
 
@@ -217,6 +219,7 @@ EBS = {
         "shared_dir": {
             "allowed_values": ALLOWED_VALUES["file_path"],
             "cfn_param_mapping": "SharedDir",
+            "validators": [shared_dir_validator],
         },
         "ebs_snapshot_id": {
             "allowed_values": ALLOWED_VALUES["snapshot_id"],
@@ -264,6 +267,7 @@ EFS = {
         [
             ("shared_dir", {
                 "allowed_values": ALLOWED_VALUES["file_path"],
+                "validators": [shared_dir_validator],
             }),
             ("efs_fs_id", {
                 "allowed_values": ALLOWED_VALUES["efs_fs_id"],
@@ -299,6 +303,7 @@ RAID = {
         [
             ("shared_dir", {
                 "allowed_values": ALLOWED_VALUES["file_path"],
+                "validators": [shared_dir_validator],
             }),
             ("raid_type", {
                 "type": IntParam,
@@ -341,6 +346,7 @@ FSX = {
         [
             ("shared_dir", {
                 "allowed_values": ALLOWED_VALUES["file_path"],
+                "validators": [shared_dir_validator],
             }),
             ("fsx_fs_id", {
                 "allowed_values": ALLOWED_VALUES["fsx_fs_id"],
@@ -525,6 +531,7 @@ CLUSTER = {
                 "allowed_values": ALLOWED_VALUES["file_path"],
                 "cfn_param_mapping": "SharedDir",
                 "default": "/shared",
+                "validators": [shared_dir_validator],
             }),
             ("enable_efa", {
                 "allowed_values": ["compute"],
@@ -604,6 +611,7 @@ CLUSTER = {
             ("ebs_settings", {
                 "type": EBSSettingsParam,
                 "referred_section": EBS,
+                "validators": [ebs_settings_validator],
             }),
             ("efs_settings", {
                 "type": SettingsParam,
