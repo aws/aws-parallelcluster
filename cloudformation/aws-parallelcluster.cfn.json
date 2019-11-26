@@ -41,6 +41,11 @@
       "Type": "Number",
       "Default": "0"
     },
+    "SpotBlockDurationMinutes": {
+      "Description": "Required Spot block duration in minutes for instances in the ComputeFleet AutoScaling Group when the ClusterType = \"spot\".",
+      "Type": "Number",
+      "Default": "0"
+    },
     "ClusterType": {
       "Description": "Type of cluster to launch. Can either be \"ondemand\" or \"spot\". Choosing \"spot\" will cause the ComputeFleet AutoScaling group to launch EC2 Spot instances. Default value is \"ondemand\".",
       "Type": "String",
@@ -598,6 +603,18 @@
           "Fn::Equals": [
             {
               "Ref": "SpotPrice"
+            },
+            "0"
+          ]
+        }
+      ]
+    },
+    "UseSpotBlockDurationMinutes": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "SpotBlockDurationMinutes"
             },
             "0"
           ]
@@ -2784,6 +2801,17 @@
                       "UseSpotPrice",
                       {
                         "Ref": "SpotPrice"
+                      },
+                      {
+                        "Ref": "AWS::NoValue"
+                      }
+                    ]
+                  },
+                  "BlockDurationMinutes": {
+                    "Fn::If": [
+                      "UseSpotBlockDurationMinutes",
+                      {
+                        "Ref": "SpotBlockDurationMinutes"
                       },
                       {
                         "Ref": "AWS::NoValue"

@@ -73,6 +73,13 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
         (CLUSTER, "spot_bid_percentage", "0.0", 0),
         (CLUSTER, "spot_bid_percentage", "10.0", 0),
         (CLUSTER, "spot_bid_percentage", "10", 10),
+        # SpotBlockDurationMinutes --> IntParam
+        (CLUSTER, "spot_block_duration_minutes", "", 0),
+        (CLUSTER, "spot_block_duration_minutes", "NONE", 0),
+        (CLUSTER, "spot_block_duration_minutes", "wrong_value", 0),
+        (CLUSTER, "spot_block_duration_minutes", "0.0", 0),
+        (CLUSTER, "spot_block_duration_minutes", "10.0", 0),
+        (CLUSTER, "spot_block_duration_minutes", "10", 10),
         # AdditionalIamPoliciesParam --> CommaSeparatedParam
         (CLUSTER, "additional_iam_policies", "", []),
         (CLUSTER, "additional_iam_policies", "NONE", []),

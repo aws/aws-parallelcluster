@@ -222,6 +222,27 @@ def test_scheduler_validator(mocker, region, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
+@pytest.mark.parametrize(
+    "value, expected_message",
+    [
+        (0, None),
+        (60, None),
+        (120, None),
+        (180, None),
+        (240, None),
+        (300, None),
+        (360, None),
+        (-1, "spot_block_duration_minutes must be a positive integer"),
+        (1, "spot_block_duration_minutes must be a multiple of 60"),
+        (59, "spot_block_duration_minutes must be a multiple of 60"),
+        (130, "spot_block_duration_minutes must be a multiple of 60"),
+    ],
+)
+def test_spot_block_duration_minutes_validator(mocker, value, expected_message):
+    config_parser_dict = {"cluster default": {"spot_block_duration_minutes": value}}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
 def test_placement_group_validator(mocker, boto3_stubber):
     describe_placement_groups_response = {
         "PlacementGroups": [{"GroupName": "my-cluster", "State": "available", "Strategy": "cluster"}]

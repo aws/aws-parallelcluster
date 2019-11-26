@@ -100,6 +100,7 @@ DEFAULT_CLUSTER_DICT = {
     "cluster_type": "ondemand",
     "spot_price": 0.0,
     "spot_bid_percentage": 0,
+    "spot_block_duration_minutes": 0,
     "proxy_server": None,
     "ec2_iam_role": None,
     "additional_iam_policies": [],
@@ -156,7 +157,7 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 58
+CFN_CONFIG_NUM_OF_PARAMS = 59
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -213,6 +214,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "MinSize": "0",
     "ClusterType": "ondemand",
     "SpotPrice": "0",
+    "SpotBlockDurationMinutes": "0",
     "ProxyServer": "NONE",
     "EC2IAMRoleName": "NONE",
     "EC2IAMPolicies": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",

@@ -691,6 +691,13 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("spot_bid_percentage", "20", 20, None),
         ("spot_bid_percentage", "100.1", None, "must be an Integer"),
         ("spot_bid_percentage", "101", None, "has an invalid value"),
+        ("spot_block_duration_minutes", None, 0, None),
+        ("spot_block_duration_minutes", "", 0, None),
+        ("spot_block_duration_minutes", "NONE", None, "must be an Integer"),
+        ("spot_block_duration_minutes", "wrong_value", None, "must be an Integer"),
+        ("spot_block_duration_minutes", "60", 60, None),
+        ("spot_block_duration_minutes", "120", 120, None),
+        ("spot_block_duration_minutes", "100.1", None, "must be an Integer"),
         # Access and networking
         ("proxy_server", None, None, None),
         ("proxy_server", "", None, None),

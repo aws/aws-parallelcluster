@@ -589,6 +589,19 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def spot_block_duration_minutes_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    v = int(param_value)
+    if v < 0:
+        errors.append("spot_block_duration_minutes must be a positive integer")
+    if v > 0 and not v % 60 == 0:
+        errors.append("spot_block_duration_minutes must be a multiple of 60")
+
+    return errors, warnings
+
+
 def cluster_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []

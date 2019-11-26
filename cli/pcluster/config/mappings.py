@@ -55,6 +55,7 @@ from pcluster.config.validators import (
     intel_hpc_validator,
     raid_volume_iops_validator,
     scheduler_validator,
+    spot_block_duration_minutes_validator,
     url_validator,
 )
 
@@ -506,6 +507,12 @@ CLUSTER = {
                 "default": 0,
                 "cfn_param_mapping": "SpotPrice",
                 "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
+            }),
+            ("spot_block_duration_minutes", {
+                "type": IntParam,
+                "default": 0,
+                "cfn_param_mapping": "SpotBlockDurationMinutes",
+                "validators": [spot_block_duration_minutes_validator],
             }),
             # Access and networking
             ("proxy_server", {
