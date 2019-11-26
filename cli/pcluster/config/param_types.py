@@ -446,10 +446,17 @@ class SharedDirParam(Param):
     def to_cfn(self):
         """Convert parameter to CFN representation."""
         cfn_params = {}
-        # if not contains ebs_settings --> single SharedDir
-        if not self.pcluster_config.get_section("ebs"):
+        # if not using ebs_settings or
+        # if only using 1 volume without specifying shared_dir in EBS section
+        # use the shared_dir parameter in cluster section
+        ebs_labels = self.pcluster_config.get_section("cluster").get_param_value("ebs_settings")
+        if not ebs_labels or (
+            len(ebs_labels.split(",")) == 1
+            and not self.pcluster_config.get_section("ebs", ebs_labels).get_param_value("shared_dir")
+        ):
             cfn_params[self.definition.get("cfn_param_mapping")] = self.get_cfn_value()
-        # else: there are ebs volumes, let the EBSSettings populate the SharedDir CFN parameter.
+        # else: there are shared_dir specified in EBS sections
+        # let the EBSSettings populate the SharedDir CFN parameter.
         return cfn_params
 
     def to_file(self, config_parser, write_defaults=False):
@@ -948,10 +955,14 @@ class EBSSettingsParam(SettingsParam):
         cfn_params = {}
         number_of_ebs_sections = len(sections)
         for param_key, param_definition in self.referred_section_definition.get("params").items():
-            if number_of_ebs_sections == 0 and param_key == "shared_dir":
+            if param_key == "shared_dir":
                 # The same CFN parameter is used for both single and multiple EBS cases
-                # if there are no ebs volumes, let the SharedDirParam populate the "SharedDir" CFN parameter.
-                continue
+                # if there are no EBS volumes, or if user does not specify shared_dir when using 1 EBS volume
+                # let the SharedDirParam populate the "SharedDir" CFN parameter.
+                if number_of_ebs_sections == 0 or (
+                    number_of_ebs_sections == 1 and not next(iter(sections.values())).get_param_value("shared_dir")
+                ):
+                    continue
 
             cfn_converter = param_definition.get("cfn_param_mapping", None)
             if cfn_converter:

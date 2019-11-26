@@ -400,6 +400,9 @@ def test_ec2_security_group_validator(mocker, boto3_stubber):
             "When specifying 'provisioned_throughput', the 'throughput_mode' must be set to 'provisioned'",
         ),
         ({"throughput_mode": "provisioned", "provisioned_throughput": 1024}, None),
+        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/efs"}, None),
     ],
 )
 def test_efs_validator(mocker, section_dict, expected_message):
@@ -410,13 +413,18 @@ def test_efs_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
+        # Testing iops validator
         ({"volume_iops": 1, "volume_size": 1}, None),
         ({"volume_iops": 51, "volume_size": 1}, "IOPS to volume size ratio of .* is too hig"),
         ({"volume_iops": 1, "volume_size": 20}, None),
         ({"volume_iops": 1001, "volume_size": 20}, "IOPS to volume size ratio of .* is too hig"),
+        # Testing shared_dir validator
+        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/raid"}, None),
     ],
 )
-def test_raid_volume_iops_validator(mocker, section_dict, expected_message):
+def test_raid_validators(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"raid_settings": "default"}, "raid default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
@@ -431,6 +439,9 @@ def test_raid_volume_iops_validator(mocker, section_dict, expected_message):
         ),
         ({"export_path": "test", "import_path": "test"}, None),
         ({"export_path": "test"}, "When specifying 'export_path', the 'import_path' option must be specified"),
+        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/fsx"}, None),
     ],
 )
 def test_fsx_validator(mocker, section_dict, expected_message):
@@ -623,4 +634,59 @@ def test_efa_validator_with_vpc_security_group(
         "cluster default": {"enable_efa": "compute", "placement_group": "DYNAMIC", "vpc_settings": "default"},
         "vpc default": {"vpc_security_group_id": "sg-12345678"},
     }
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "cluster_section_dict, ebs_section_dict, expected_message",
+    [
+        (
+            {"ebs_settings": "vol1,vol2,vol3,vol4,vol5,vol6"},
+            {
+                "vol1": {"shared_dir": "/vol1"},
+                "vol2": {"shared_dir": "/vol2"},
+                "vol3": {"shared_dir": "/vol3"},
+                "vol4": {"shared_dir": "/vol4"},
+                "vol5": {"shared_dir": "/vol5"},
+                "vol6": {"shared_dir": "/vol6"},
+            },
+            "Currently only supports upto 5 EBS volumes",
+        ),
+        (
+            {"ebs_settings": "vol1,vol2"},
+            {"vol1": {"shared_dir": "vol1"}, "vol2": {"volume_type": "io1"}},
+            "When using more than 1 EBS volume, shared_dir is required under each EBS section",
+        ),
+        (
+            {"ebs_settings": "vol1,vol2"},
+            {"vol1": {"shared_dir": "/NONE"}, "vol2": {"shared_dir": "vol2"}},
+            "/NONE cannot be used as a shared directory",
+        ),
+        (
+            {"ebs_settings": "vol1,vol2"},
+            {"vol1": {"shared_dir": "/vol1"}, "vol2": {"shared_dir": "NONE"}},
+            "NONE cannot be used as a shared directory",
+        ),
+    ],
+)
+def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, expected_message):
+    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
+
+    config_parser_dict = {"cluster default": cluster_section_dict}
+    if ebs_section_dict:
+        for vol in ebs_section_dict:
+            config_parser_dict["ebs {0}".format(vol)] = ebs_section_dict.get(vol)
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONEshared"}, None),
+    ],
+)
+def test_shared_dir_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
