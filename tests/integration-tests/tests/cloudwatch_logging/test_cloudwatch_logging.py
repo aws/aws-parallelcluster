@@ -215,7 +215,7 @@ class CloudWatchLoggingClusterState:
     def _populate_master_log_existence(self):
         """Figure out which of the relevant logs for the MasterServer don't exist."""
         for log_path, log_dict in self._cluster_log_state.get("MasterServer").get("logs").items():
-            cmd = "[[ -n `ls {path}` ]] && echo exists || echo does not exist".format(path=log_path)
+            cmd = "[ -f {path} ] && echo exists || echo does not exist".format(path=log_path)
             output = self._run_command_on_master(cmd)
             log_dict["exists"] = output == "exists"
 
@@ -224,7 +224,7 @@ class CloudWatchLoggingClusterState:
         if self.compute_nodes_count == 0:
             return
         for log_dict in self._relevant_logs.get("ComputeFleet"):
-            cmd = "[[ -n `ls {path}` ]] && echo {{redirect}} exists || " "echo {{redirect}} does not exist".format(
+            cmd = "[ -f {path} ] && echo {{redirect}} exists || " "echo {{redirect}} does not exist".format(
                 path=log_dict.get("file_path")
             )
             hostname_to_output = self._run_command_on_computes(cmd)
