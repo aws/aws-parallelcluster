@@ -105,7 +105,7 @@ DEFAULT_CLUSTER_DICT = {
     "spot_bid_percentage": 0,
     "proxy_server": None,
     "ec2_iam_role": None,
-    "additional_iam_policies": [],
+    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
     "s3_read_resource": None,
     "s3_read_write_resource": None,
     "enable_efa": None,
@@ -131,6 +131,7 @@ DEFAULT_CLUSTER_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "cluster_config_metadata": {"sections": {}},
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -202,7 +203,6 @@ DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
 DEFAULT_CLUSTER_CFN_PARAMS = {
     "KeyName": "NONE",
     "BaseOS": "alinux2",
-    "CLITemplate": "default",
     "Scheduler": "slurm",
     "SharedDir": "/shared",
     "PlacementGroup": "NONE",
@@ -268,6 +268,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
     "CWLogOptions": "true,14",
+    "ClusterConfigMetadata": "{'sections': {}}",
 }
 
 

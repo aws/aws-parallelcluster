@@ -225,10 +225,10 @@
       "Type": "String",
       "Default": "/shared"
     },
-    "CLITemplate": {
-      "Description": "cluster_template section used in the config.",
+    "ClusterConfigMetadata": {
+      "Description": "Cluster configuration metadata.",
       "Type": "String",
-      "Default": "default"
+      "Default": "{}"
     },
     "AdditionalSG": {
       "Description": "Additional VPC security group to be added to instances. Defaults to NONE",
@@ -4370,9 +4370,9 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
-    "CLITemplate": {
+    "ClusterConfigMetadata": {
       "Value": {
-        "Ref": "CLITemplate"
+        "Ref": "ClusterConfigMetadata"
       }
     }
   }

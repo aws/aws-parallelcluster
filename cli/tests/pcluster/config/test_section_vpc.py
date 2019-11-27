@@ -44,7 +44,6 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "ComputeSubnetCidr": "1.1.1.1/32",
                 "UsePublicIps": "false",
                 "VPCSecurityGroupId": "sg-12345678",
-                "AvailabilityZone": "my-avail-zone",
             },
             {
                 "vpc_id": "vpc-12345678",
@@ -56,6 +55,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "use_public_ips": False,
                 "vpc_security_group_id": "sg-12345678",
                 "master_availability_zone": "my-avail-zone",
+                "compute_availability_zone": "my-avail-zone",
             },
         ),
     ],
