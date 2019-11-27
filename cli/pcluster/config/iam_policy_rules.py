@@ -58,7 +58,7 @@ class CloudWatchAgentServerPolicyInclusionRule(EC2IAMPolicyInclusionRule):
             # A cw_log section was referenced from the config file's cluster section.
             # Use that section's "enable" parameter's value
             cw_log_section = pcluster_config.get_section("cw_log", cw_log_settings.value)
-            should_include_policy = cw_log_section.get_param_value("enable")
+            should_include_policy = cw_log_section and cw_log_section.get_param_value("enable")
         else:
             # A cw_log section was referenced from the config file's cluster section
             should_include_policy = cw_log_settings.referred_section_definition["params"]["enable"]["default"]

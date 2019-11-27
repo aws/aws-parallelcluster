@@ -56,6 +56,10 @@ def get_stack_template(stack_name):
     return template
 
 
+def get_stack_version(stack):
+    return next(iter([tag["Value"] for tag in stack.get("Tags") if tag["Key"] == "Version"]), None)
+
+
 def _wait_for_update(stack_name):
     """Wait for the given stack to be finished updating."""
     while get_stack(stack_name).get("StackStatus") == "UPDATE_IN_PROGRESS":
@@ -602,6 +606,20 @@ def get_master_ip_and_username(cluster_name):
     return master_ip, username
 
 
+def get_master_server_state(stack_name):
+    """
+    Get the State of the MasterServer.
+
+    :param stack_name: The name of the cloudformation stack
+    :return master server state name
+    """
+    master_id = get_master_server_id(stack_name)
+    instance = (
+        boto3.client("ec2").describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
+    )
+    return instance.get("State").get("Name")
+
+
 def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
@@ -628,6 +646,66 @@ def retry(func, func_args, attempts=1, wait=0):
             time.sleep(wait)
 
 
+def get_asg_name(stack_name):
+    try:
+        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack_name).get("StackResources")
+        return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.stdout.flush()
+        sys.exit(1)
+    except IndexError:
+        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
+        sys.exit(1)
+
+
+def set_asg_limits(asg_name, min, max, desired):
+    asg = boto3.client("autoscaling")
+    asg.update_auto_scaling_group(
+        AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max), DesiredCapacity=int(desired)
+    )
+
+
+def get_asg_instances(stack):
+    asg = boto3.client("autoscaling")
+    asg_name = get_asg_name(stack)
+    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
+    if not auto_scaling_groups:
+        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
+        sys.exit(1)
+    asg = auto_scaling_groups[0]
+    name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
+
+    temp_instances = []
+    for instance in asg.get("Instances"):
+        temp_instances.append([name, instance.get("InstanceId")])
+
+    return temp_instances
+
+
+def get_batch_ce(stack_name):
+    """
+    Get name of the AWS Batch Compute Environment.
+
+    :param stack_name: name of the master stack
+    :param config: config
+    :return: ce_name or exit if not found
+    """
+    outputs = get_stack(stack_name).get("Outputs")
+    return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
+
+
+def get_batch_ce_capacity(stack_name):
+    client = boto3.client("batch")
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("desiredvCpus")
+    )
+
+
 def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
     while True:
         try:
@@ -637,3 +715,20 @@ def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
                 raise
             LOGGER.debug("Throttling when calling %s function. Will retry in %d seconds.", func.__name__, wait)
             time.sleep(wait)
+
+
+def get_asg_settings(stack_name):
+    try:
+        asg_name = get_asg_name(stack_name)
+        asg_client = boto3.client("autoscaling")
+        return asg_client.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
+    except Exception as e:
+        LOGGER.error("Failed when retrieving data for ASG %s with exception %s", asg_name, e)
+        raise
+
+
+def ellipsize(text, max_length):
+    """Truncate the provided text to max length, adding ellipsis."""
+    # Convert input text to string, just in case
+    text = str(text)
+    return (text[: max_length - 3] + "...") if len(text) > max_length else text

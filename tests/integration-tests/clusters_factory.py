@@ -43,7 +43,7 @@ class Cluster:
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
-        command = ["pcluster", "update", "--config", self.config_file]
+        command = ["pcluster", "update", "--config", self.config_file, "--force", "--yes"]
         if reset_desired:
             command.append("--reset-desired")
         if extra_params:

@@ -25,6 +25,7 @@ import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
+from pcluster.update import update_command
 
 LOGGER = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ def instances(args):
 
 
 def update(args):
-    pcluster.update(args)
+    update_command.execute(args)
 
 
 def version(args):
@@ -222,6 +223,10 @@ Examples::
         default=False,
         help="Resets the current ASG desired capacity to the initial config values.",
     )
+    pupdate.add_argument(
+        "-f", "--force", action="store_true", help="Forces the update skipping security checks. Not recommended."
+    )
+    pupdate.add_argument("-y", "--yes", action="store_true", help="Assumes 'yes' as answer to confirmation prompt.")
     pupdate.set_defaults(func=update)
 
     # delete command subparser

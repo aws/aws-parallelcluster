@@ -121,3 +121,62 @@ def get_desired_asg_capacity(region, stack_name):
 def get_max_asg_capacity(region, stack_name):
     """Retrieve the max capacity of the autoscaling group for a specific cluster."""
     return _get_asg(region, stack_name)["MaxSize"]
+
+
+def get_min_asg_capacity(region, stack_name):
+    """Retrieve the min capacity of the autoscaling group for a specific cluster."""
+    return _get_asg(region, stack_name)["MinSize"]
+
+
+def get_stack(stack_name, region, cfn_client=None):
+    """
+    Get the output for a DescribeStacks action for the given Stack.
+
+    :return: the Stack data type
+    """
+    if not cfn_client:
+        cfn_client = boto3.client("cloudformation", region_name=region)
+    return cfn_client.describe_stacks(StackName=stack_name,).get("Stacks")[0]
+
+
+def get_stack_output_value(stack_outputs, output_key):
+    """
+    Get output value from Cloudformation Stack Output.
+
+    :return: OutputValue if that output exists, otherwise None
+    """
+    return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
+
+
+def get_batch_ce(stack_name, region):
+    """
+    Get name of the AWS Batch Compute Environment.
+
+    :return: ce_name or exit if not found
+    """
+    outputs = get_stack(stack_name, region).get("Outputs")
+    return get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
+
+
+def get_batch_ce_max_size(stack_name, region):
+    """Get max vcpus for Batch Compute Environment."""
+    client = boto3.client("batch", region_name=region)
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("maxvCpus")
+    )
+
+
+def get_batch_ce_min_size(stack_name, region):
+    """Get min vcpus for Batch Compute Environment."""
+    client = boto3.client("batch", region_name=region)
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("minvCpus")
+    )

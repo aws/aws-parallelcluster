@@ -241,69 +241,6 @@ def _is_ganglia_enabled(parameters):
     return is_ganglia_enabled
 
 
-def update(args):  # noqa: C901 FIXME!!!
-    LOGGER.info("Updating: %s", args.cluster_name)
-    stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(
-        config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
-    )
-    pcluster_config.validate()
-    cfn_params = pcluster_config.to_cfn()
-
-    cluster_section = pcluster_config.get_section("cluster")
-    cfn = boto3.client("cloudformation")
-    if cluster_section.get_param_value("scheduler") != "awsbatch":
-        if not args.reset_desired:
-            asg_name = _get_asg_name(stack_name)
-            desired_capacity = (
-                boto3.client("autoscaling")
-                .describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-                .get("AutoScalingGroups")[0]
-                .get("DesiredCapacity")
-            )
-            cfn_params["DesiredSize"] = str(desired_capacity)
-    else:
-        if args.reset_desired:
-            LOGGER.info("reset_desired flag does not work with awsbatch scheduler")
-        params = utils.get_stack(stack_name, cfn).get("Parameters")
-
-        for parameter in params:
-            if parameter.get("ParameterKey") == "ResourcesS3Bucket":
-                cfn_params["ResourcesS3Bucket"] = parameter.get("ParameterValue")
-
-    try:
-        LOGGER.debug(cfn_params)
-        if args.extra_parameters:
-            LOGGER.debug("Adding extra parameters to the CFN parameters")
-            cfn_params.update(dict(args.extra_parameters))
-
-        cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in cfn_params.items()]
-        LOGGER.info("Calling update_stack")
-        cfn.update_stack(
-            StackName=stack_name, UsePreviousTemplate=True, Parameters=cfn_params, Capabilities=["CAPABILITY_IAM"]
-        )
-        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-        if not args.nowait:
-            while stack_status == "UPDATE_IN_PROGRESS":
-                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-                events = utils.get_stack_events(stack_name)[0]
-                resource_status = (
-                    "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                ).ljust(80)
-                sys.stdout.write("\r%s" % resource_status)
-                sys.stdout.flush()
-                time.sleep(5)
-        else:
-            stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-            LOGGER.info("Status: %s", stack_status)
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
-    except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
-        sys.exit(0)
-
-
 def start(args):
     """Restore ASG limits or awsbatch CE to min/max/desired."""
     stack_name = utils.get_stack_name(args.cluster_name)
@@ -315,7 +252,7 @@ def start(args):
         max_vcpus = cluster_section.get_param_value("max_vcpus")
         desired_vcpus = cluster_section.get_param_value("desired_vcpus")
         min_vcpus = cluster_section.get_param_value("min_vcpus")
-        ce_name = _get_batch_ce(stack_name)
+        ce_name = utils.get_batch_ce(stack_name)
         _start_batch_ce(ce_name=ce_name, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus)
     else:
         LOGGER.info("Starting compute fleet : %s", args.cluster_name)
@@ -325,8 +262,8 @@ def start(args):
             if cluster_section.get_param_value("maintain_initial_size")
             else 0
         )
-        asg_name = _get_asg_name(stack_name)
-        _set_asg_limits(asg_name=asg_name, min=min_desired_size, max=max_queue_size, desired=min_desired_size)
+        asg_name = utils.get_asg_name(stack_name)
+        utils.set_asg_limits(asg_name=asg_name, min=min_desired_size, max=max_queue_size, desired=min_desired_size)
 
 
 def stop(args):
@@ -337,24 +274,12 @@ def stop(args):
 
     if cluster_section.get_param_value("scheduler") == "awsbatch":
         LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
-        ce_name = _get_batch_ce(stack_name)
+        ce_name = utils.get_batch_ce(stack_name)
         _stop_batch_ce(ce_name=ce_name)
     else:
         LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
-        asg_name = _get_asg_name(stack_name)
-        _set_asg_limits(asg_name=asg_name, min=0, max=0, desired=0)
-
-
-def _get_batch_ce(stack_name):
-    """
-    Get name of the AWS Batch Compute Environment.
-
-    :param stack_name: name of the master stack
-    :param config: config
-    :return: ce_name or exit if not found
-    """
-    outputs = utils.get_stack(stack_name).get("Outputs")
-    return utils.get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
+        asg_name = utils.get_asg_name(stack_name)
+        utils.set_asg_limits(asg_name=asg_name, min=0, max=0, desired=0)
 
 
 def _get_pcluster_version_from_stack(stack):
@@ -456,39 +381,6 @@ def _get_ec2_instances(stack):
     return stack_instances
 
 
-def _get_asg_name(stack_name):
-    try:
-        resources = utils.get_stack_resources(stack_name)
-        return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
-    except IndexError:
-        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
-        sys.exit(1)
-
-
-def _set_asg_limits(asg_name, min, max, desired):
-    asg = boto3.client("autoscaling")
-    asg.update_auto_scaling_group(
-        AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max), DesiredCapacity=int(desired)
-    )
-
-
-def _get_asg_instances(stack):
-    asg = boto3.client("autoscaling")
-    asg_name = _get_asg_name(stack)
-    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
-    if not auto_scaling_groups:
-        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
-        sys.exit(1)
-    asg = auto_scaling_groups[0]
-    name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
-
-    temp_instances = []
-    for instance in asg.get("Instances"):
-        temp_instances.append([name, instance.get("InstanceId")])
-
-    return temp_instances
-
-
 def _start_batch_ce(ce_name, min_vcpus, desired_vcpus, max_vcpus):
     try:
         boto3.client("batch").update_compute_environment(
@@ -518,7 +410,7 @@ def instances(args):
     instances.extend(_get_ec2_instances(stack_name))
 
     if cluster_section.get_param_value("scheduler") != "awsbatch":
-        instances.extend(_get_asg_instances(stack_name))
+        instances.extend(utils.get_asg_instances(stack_name))
 
     for instance in instances:
         LOGGER.info("%s         %s", instance[0], instance[1])
