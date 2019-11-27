@@ -155,7 +155,7 @@ class CloudWatchLoggingClusterState:
     @staticmethod
     def _clean_log_config(log):
         """Remove unnecessary fields from the given log dict."""
-        desired_keys = ["file_path", "log_stream_name"]
+        desired_keys = ["file_path", "log_stream_name", "feature_conditions"]
         return {key: log[key] for key in desired_keys}
 
     def _filter_logs(self, logs):
@@ -387,7 +387,7 @@ class CloudWatchLoggingTestRunner:
         expected_stream_index = {}
         for instance in logs_state:
             for _log_path, log_dict in instance.get("logs").items():
-                if log_dict.get("is_empty"):
+                if not log_dict.get("exists") or log_dict.get("is_empty"):
                     continue  # Log streams aren't created until events are logged to the file
                 expected_stream_name = self._get_expected_log_stream_name(
                     instance.get("hostname"), instance.get("instance_id"), log_dict.get("log_stream_name")
@@ -442,6 +442,8 @@ class CloudWatchLoggingTestRunner:
         """Verify that the log files expected to exist on the nodes of this cluster do."""
         for host_dict in logs_state:
             for _log_path, log_dict in host_dict.get("logs").items():
+                if len(log_dict.get("feature_conditions")) > 0:
+                    continue  # Don't assert existence of a log if it depend on a feature being enabled
                 assert_that(log_dict).is_equal_to({"exists": True}, include="exists")
 
     def run_tests(self, logs_state):
