@@ -855,7 +855,7 @@
         "Handle": {
           "Ref": "DockerBuildWaitHandle"
         },
-        "Timeout": "1200"
+        "Timeout": "1800"
       }
     },
     "SendBuildNotificationFunctionExecutionRole": {
