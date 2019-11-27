@@ -156,12 +156,9 @@ def pcluster_config_reader(test_datadir):
     The current renderer injects options for custom templates and packages in case these
     are passed to the cli and not present already in the cluster config.
     Also sanity_check is set to true by default unless explicitly set in config.
-
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
-    config_file = "pcluster.config.ini"
-
-    def _config_renderer(**kwargs):
+    def _config_renderer(config_file = "pcluster.config.ini", **kwargs):
         config_file_path = os.path.join(str(test_datadir), config_file)
         # default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))
