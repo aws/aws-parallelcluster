@@ -2,6 +2,17 @@
 CHANGELOG
 =========
 
+2.5.1
+=====
+
+**ENHANCEMENTS**
+
+**CHANGES**
+
+* Using a Placement Group is not required anymore when enabling EFA
+
+**BUG FIXES**
+
 2.5.0
 =====
 

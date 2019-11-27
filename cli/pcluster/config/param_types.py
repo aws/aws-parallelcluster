@@ -134,7 +134,7 @@ class Param(object):
                     )
                 elif warnings:
                     self.pcluster_config.warn(
-                        "The configuration parameter '{0}' has a wrong value '{1}'\n{2}".format(
+                        "The configuration parameter '{0} = {1}' generated the following warnings:\n{2}".format(
                             self.key, self.value, "\n".join(warnings)
                         )
                     )
