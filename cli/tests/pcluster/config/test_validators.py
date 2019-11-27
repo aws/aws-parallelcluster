@@ -519,14 +519,19 @@ def test_fsx_imported_file_chunk_size_validator(mocker, section_dict, expected_m
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "section_dict, expected_error, expected_warning",
     [
-        ({"enable_efa": "NONE"}, "invalid value"),
-        ({"enable_efa": "compute"}, "is required to set the 'compute_instance_type'"),
-        ({"enable_efa": "compute", "compute_instance_type": "t2.large"}, "is required to set the 'placement_group'"),
+        ({"enable_efa": "NONE"}, "invalid value", None),
+        ({"enable_efa": "compute"}, "is required to set the 'compute_instance_type'", None),
+        (
+            {"enable_efa": "compute", "compute_instance_type": "t2.large"},
+            None,
+            "You may see better performance using a cluster placement group",
+        ),
         (
             {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6"},
             "it is required to set the 'base_os'",
+            None,
         ),
         (
             {
@@ -536,6 +541,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, section_dict, expected_m
                 "scheduler": "awsbatch",
             },
             "it is required to set the 'scheduler'",
+            None,
         ),
         (
             {
@@ -546,14 +552,15 @@ def test_fsx_imported_file_chunk_size_validator(mocker, section_dict, expected_m
                 "placement_group": "DYNAMIC",
             },
             None,
+            None,
         ),
     ],
 )
-def test_efa_validator(mocker, section_dict, expected_message):
+def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_warning):
     mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
 
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
 
 
 @pytest.mark.parametrize(
