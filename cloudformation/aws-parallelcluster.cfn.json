@@ -4058,7 +4058,7 @@
         "LogGroupName": {
           "Fn::Sub": "/aws/lambda/${CleanupResourcesFunction}"
         },
-        "RetentionInDays": 1
+        "RetentionInDays": 14
       },
       "Condition": "HasResourcesS3Bucket"
     },
