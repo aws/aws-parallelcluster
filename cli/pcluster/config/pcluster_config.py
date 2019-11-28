@@ -146,7 +146,12 @@ class PclusterConfig(object):
         :param section_label: the label of the section, returns the first section if empty.
         """
         if section_label:
-            section = self.get_sections(section_key).get(section_label, None)
+            # TODO: use list instead of dict for sections with same key
+            # section = self.get_sections(section_key).get(section_label, None)
+            section = next(
+                (section for _, section in self.get_sections(section_key).items() if section.label == section_label),
+                None,
+            )
         else:
             sections = self.get_sections(section_key)
             section = next(iter(sections.values()), None) if sections else None
