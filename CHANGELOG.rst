@@ -13,6 +13,8 @@ CHANGELOG
 
 **BUG FIXES**
 
+* Correctly handle failures when retrieving ASG in ``pcluster instances`` command
+
 2.5.0
 =====
 
