@@ -52,8 +52,7 @@ CHANGELOG
   ``x-systemd.automount x-systemd.requires=lnet.service`` for systemd based systems.
 * Increase the number of hosts that can be processed by scaling daemons in a single batch from 50 to 200. This
   improves the scaling time especially with increased ASG launch rates.
-* Change default sshd config in order to disable X11 forwarding and update the list of supported ciphers
-  significantly increases scaling speed when ASG launch rate is raised.
+* Change default sshd config in order to disable X11 forwarding and update the list of supported ciphers.
 * Increase faulty node termination timeout from 1 minute to 5 in order to give some additional time to the scheduler
   to recover when under heavy load.
 * Extended ``pcluster createami`` command to specify the VPC and network settings when building the AMI.
