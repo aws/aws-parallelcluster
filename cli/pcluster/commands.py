@@ -486,7 +486,11 @@ def _set_asg_limits(asg_name, min, max, desired):
 def _get_asg_instances(stack):
     asg = boto3.client("autoscaling")
     asg_name = _get_asg_name(stack)
-    asg = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")[0]
+    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
+    if not auto_scaling_groups:
+        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
+        sys.exit(1)
+    asg = auto_scaling_groups[0]
     name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
 
     temp_instances = []

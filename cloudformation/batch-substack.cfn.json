@@ -641,7 +641,7 @@
         "LogGroupName": {
           "Fn::Sub": "/aws/codebuild/${CodeBuildDockerImageBuilderProject}"
         },
-        "RetentionInDays": 1
+        "RetentionInDays": 14
       }
     },
     "CodeBuildPolicy": {
@@ -841,7 +841,7 @@
         "LogGroupName": {
           "Fn::Sub": "/aws/lambda/${ManageDockerImagesFunction}"
         },
-        "RetentionInDays": 1
+        "RetentionInDays": 14
       }
     },
     "DockerBuildWaitHandle": {
@@ -855,7 +855,7 @@
         "Handle": {
           "Ref": "DockerBuildWaitHandle"
         },
-        "Timeout": "1200"
+        "Timeout": "1800"
       }
     },
     "SendBuildNotificationFunctionExecutionRole": {
@@ -927,7 +927,7 @@
         "LogGroupName": {
           "Fn::Sub": "/aws/lambda/${SendBuildNotificationFunction}"
         },
-        "RetentionInDays": 1
+        "RetentionInDays": 14
       }
     },
     "SendBuildNotificationFunctionInvokePermission": {

@@ -1235,15 +1235,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/cw-logs-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/cw-logs-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -1299,15 +1299,15 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${s3_domain}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
             {
-              "s3_domain": {
-                "Fn::If": [
-                  "GovCloudRegion",
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
                   {
-                    "Fn::Sub": "s3-${AWS::Region}.amazonaws.com"
+                    "Ref": "AWS::Partition"
                   },
-                  "s3.amazonaws.com"
+                  "url"
                 ]
               },
               "version": {
@@ -4058,7 +4058,7 @@
         "LogGroupName": {
           "Fn::Sub": "/aws/lambda/${CleanupResourcesFunction}"
         },
-        "RetentionInDays": 1
+        "RetentionInDays": 14
       },
       "Condition": "HasResourcesS3Bucket"
     },

@@ -264,10 +264,7 @@ def efa_validator(param_key, param_value, pcluster_config):
         )
 
     if cluster_section.get_param_value("placement_group") is None:
-        errors.append(
-            "When using 'enable_efa = {0}' it is required to set the 'placement_group' parameter "
-            "to DYNAMIC or to an existing EC2 cluster placement group name".format(param_value)
-        )
+        warnings.append("You may see better performance using a cluster placement group.")
 
     _validate_efa_sg(pcluster_config, errors)
 

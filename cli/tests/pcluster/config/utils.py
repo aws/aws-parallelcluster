@@ -65,18 +65,21 @@ def assert_param_from_file(mocker, section_definition, param_key, param_value, e
         assert_that(param.value, description="{0} assert fail".format(param.key)).is_equal_to(expected_value)
 
 
-def assert_param_validator(mocker, config_parser_dict, expected_message=None):
+def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
 
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
     mocker.patch.object(PclusterConfig, "_PclusterConfig__check_account_capacity")
 
-    if expected_message:
-        with pytest.raises(SystemExit, match=expected_message):
+    if expected_error:
+        with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)
     else:
         _ = init_pcluster_config_from_configparser(config_parser)
+        if expected_warning:
+            assert_that(capsys).is_not_none()
+            assert_that(capsys.readouterr().out).matches(expected_warning)
 
 
 def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expected_section_dict):
