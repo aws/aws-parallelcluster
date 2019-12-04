@@ -7,13 +7,30 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
+* Add ``--show-url`` flag to ``pcluster dcv`` command in order to generate a one-time URL that can be used to start
+  a DCV session.
+
 **CHANGES**
 
-* Using a Placement Group is not required anymore when enabling EFA
+* Upgrade NVIDIA driver to Tesla version 440.33.01.
+* Upgrade CUDA library to version 10.2.
+* Using a Placement Group is not required anymore when enabling EFA.
+* Increase default root volume size in Centos 6 AMI to 25GB.
+* Increase the retention of CloudWatch logs produced when generating AWS Batch Docker images from 1 to 14 days.
+* Increase the total time allowed to build Docker images from 20 minutes to 30 minutes. This is done to better deal
+  with slow networking in China regions.
 
 **BUG FIXES**
 
-* Correctly handle failures when retrieving ASG in ``pcluster instances`` command
+* Fix installation of NVIDIA drivers on Ubuntu 18.
+* Fix installation of CUDA toolkit on Centos 6.
+* Fix invalid default value for ``spot_price``.
+* Correctly handle failures when retrieving ASG in ``pcluster instances`` command.
+* Fix the default mount dir when a single EBS volume is specified through a dedicated ebs configuration section.
+* Correctly handle failures when there is an invalid parameter in the ``aws`` config section.
+* Fix a bug in ``pcluster delete`` that was causing the cli to exit with error when the cluster is successfully deleted.
+* Exit with status code 1 if ``pcluster create`` fails to create a stack.
+
 
 2.5.0
 =====
