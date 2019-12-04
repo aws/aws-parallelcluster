@@ -119,29 +119,40 @@ def _launch_config(mocker, path, remove_path=True):
     configure(args)
 
 
-def _are_configurations_equals(path_verify, path_verified):
-    if not os.path.isfile(path_verify):
+def _are_configurations_equals(path_config_expected, path_config_after_input):
+    if not os.path.isfile(path_config_expected):
         return False
-    if not os.path.isfile(path_verified):
+    if not os.path.isfile(path_config_after_input):
         return False
-    config_temp = ConfigParser()
-    config_temp.read(path_verify)
-    dict1 = {s: dict(config_temp.items(s)) for s in config_temp.sections()}
     config_expected = ConfigParser()
-    config_expected.read(path_verified)
-    dict2 = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
+    config_expected.read(path_config_expected)
+    dict1 = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
+    config_temp = ConfigParser()
+    config_temp.read(path_config_after_input)
+    dict2 = {s: dict(config_temp.items(s)) for s in config_temp.sections()}
     for section_name, section in dict1.items():
         for key, value in section.items():
             try:
                 if dict2[section_name][key] != value:
                     print(
+                        (
+                            "Expected parameters are: {0}\n"
+                            "Actual parameters after running pcluster configure are: {1}"
+                        ).format(dict1, dict2)
+                    )
+                    print(
                         "\nTest failed: Parameter '{0}' in section '{1}' is different from the expected one.".format(
                             key, section_name
                         )
                     )
-                    print("The value is '{0}' but it should be '{1}'".format(value, dict2[section_name][key]))
+                    print("The actual value is '{0}' but expected is '{1}'".format(dict2[section_name][key], value))
                     return False
             except KeyError:
+                print(
+                    "Expected parameters are: {0}\nActual parameters after running pcluster configure are: {1}".format(
+                        dict1, dict2
+                    )
+                )
                 print("\nTest failed: Parameter '{0}' doesn't exist in section '{1}'.".format(key, section_name))
                 return False
     return True
@@ -214,9 +225,14 @@ def get_file_path(test_datadir):
     return str(config), str(error), str(output)
 
 
-def _verify_test(mocker, capsys, output, error, config, temp_path_for_config):
-    _launch_config(mocker, temp_path_for_config)
-    assert_that(_are_configurations_equals(temp_path_for_config, config)).is_true()
+def _verify_test(
+    mocker, capsys, output, error, expected_config, temp_path_for_config, with_config=False, exact_match=False
+):
+    if with_config:
+        _launch_config(mocker, temp_path_for_config, remove_path=False)
+    else:
+        _launch_config(mocker, temp_path_for_config)
+    assert_that(_are_configurations_equals(expected_config, temp_path_for_config)).is_true()
     _are_output_error_correct(capsys, output, error, temp_path_for_config)
     os.remove(temp_path_for_config)
 
@@ -235,6 +251,54 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     input_composer.finalize_config(mocker)
 
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
+
+
+def _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False):
+    """Helper function to run input tests."""
+    if with_input:
+        input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
+        input_composer.add_first_flow(
+            op_sys="ubuntu1604", min_size="7", max_size="18", master_instance="c5.xlarge", compute_instance="g3.8xlarge"
+        )
+        input_composer.add_no_automation_no_empty_vpc(
+            vpc_id="vpc-34567891", master_id="subnet-34567891", compute_id="subnet-45678912"
+        )
+    else:
+        input_composer = ComposeInput(aws_region_name="", key="", scheduler="")
+        input_composer.add_first_flow(op_sys="", min_size="", max_size="", master_instance="", compute_instance="")
+        input_composer.add_no_automation_no_empty_vpc(vpc_id="", master_id="", compute_id="")
+
+    input_composer.finalize_config(mocker)
+
+    _verify_test(mocker, capsys, output, error, config, old_config_file, with_config=True)
+
+
+def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
+    """
+    Testing easy config with all user hitting return on all prompts.
+
+    After running easy config, the old original_config_file should be the same as pcluster.config.ini
+    """
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file")
+
+    MockHandler(mocker)
+
+    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
+
+
+def test_with_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
+    """
+    Testing only inputting queue_size inputs.
+
+    After running easy config on the old original_config_file, output should be the same as pcluster.config.ini
+    """
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file")
+
+    MockHandler(mocker)
+
+    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=True)
 
 
 def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
@@ -302,10 +366,7 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys
     )
     input_composer.finalize_config(mocker)
 
-    _launch_config(mocker, old_config_file, remove_path=False)
-    assert_that(_are_configurations_equals(old_config_file, config)).is_true()
-    _are_output_error_correct(capsys, output, error, old_config_file)
-    os.remove(old_config_file)
+    _verify_test(mocker, capsys, output, error, config, old_config_file, with_config=True)
 
 
 def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
@@ -417,10 +478,7 @@ def test_bad_config_file(mocker, capsys, test_datadir):
     )
     input_composer.finalize_config(mocker)
 
-    _launch_config(mocker, old_config_file, remove_path=False)
-    assert_that(_are_configurations_equals(old_config_file, config)).is_true()
-    _are_output_error_correct(capsys, output, error, old_config_file)
-    os.remove(old_config_file)
+    _verify_test(mocker, capsys, output, error, config, old_config_file, with_config=True)
 
 
 def general_wrapper_for_prompt_testing(
