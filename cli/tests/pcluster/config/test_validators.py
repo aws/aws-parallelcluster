@@ -546,7 +546,7 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
             method="describe_subnets",
             response=describe_subnets_response,
             expected_params={"SubnetIds": ["subnet-12345678"]},
-        ),
+        )
     ] * 2
 
     if network_interfaces:
@@ -599,7 +599,7 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
                     "SubnetId": "subnet-12345678",
                     "TagSet": [],
                     "VpcId": fsx_vpc,
-                },
+                }
             )
         describe_network_interfaces_response = {"NetworkInterfaces": network_interfaces_in_response}
         ec2_mocked_requests.append(
