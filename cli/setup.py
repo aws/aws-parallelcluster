@@ -21,7 +21,7 @@ def readme():
         return f.read()
 
 
-VERSION = "2.5.0"
+VERSION = "2.5.1"
 REQUIRES = [
     "boto3>=1.10.15",
     "future>=0.16.0,<=0.18.2",
