@@ -52,8 +52,7 @@ class Param(object):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
 
-        if isinstance(string_value, str):
-            string_value = string_value.strip()
+        string_value = str(string_value).strip()
 
         if string_value and string_value != "NONE":
             param_value = string_value
@@ -263,8 +262,8 @@ class FloatParam(Param):
         param_value = self.get_default_value()
 
         try:
-            if string_value is not None and isinstance(string_value, str):
-                string_value = string_value.strip()
+            if string_value is not None:
+                string_value = str(string_value).strip()
                 if string_value != "NONE":
                     param_value = float(string_value)
         except ValueError:
@@ -299,8 +298,8 @@ class BoolParam(Param):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
 
-        if string_value is not None and isinstance(string_value, str):
-            string_value = string_value.strip()
+        if string_value is not None:
+            string_value = str(string_value).strip()
             if string_value != "NONE":
                 param_value = string_value == "true"
 
@@ -346,8 +345,8 @@ class IntParam(Param):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
         try:
-            if string_value is not None and isinstance(string_value, str):
-                string_value = string_value.strip()
+            if string_value is not None:
+                string_value = str(string_value).strip()
                 if string_value != "NONE":
                     param_value = int(string_value)
         except ValueError:
@@ -382,8 +381,8 @@ class JsonParam(Param):
         try:
             # Do not convert empty string and use format and yaml.load in place of json.loads
             # for Python 2.7 compatibility because it returns unicode chars
-            if string_value and isinstance("{0}".format(string_value), str):
-                string_value = string_value.strip()
+            if string_value:
+                string_value = str(string_value).strip()
                 if string_value != "NONE":
                     param_value = yaml.safe_load(string_value)
         except (TypeError, ValueError, Exception) as e:

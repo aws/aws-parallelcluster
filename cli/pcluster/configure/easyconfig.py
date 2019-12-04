@@ -160,12 +160,12 @@ def configure(args):
     cluster_section.label = cluster_label
     for param_key, param_value in cluster_parameters.items():
         param = cluster_section.get_param(param_key)
-        param.value = param.get_value_from_string(param_value)
+        param.value = param.get_value_from_string(str(param_value))
 
     vpc_section.label = vpc_label
     for param_key, param_value in vpc_parameters.items():
         param = vpc_section.get_param(param_key)
-        param.value = param.get_value_from_string(param_value)
+        param.value = param.get_value_from_string(str(param_value))
 
     # Update config file by overriding changed settings
     pcluster_config.to_file()
