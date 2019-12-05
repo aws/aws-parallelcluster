@@ -42,6 +42,7 @@ from utils import (
     delete_s3_bucket,
     random_alphanumeric,
     set_credentials,
+    set_logger_formatter,
     to_snake_case,
     unset_credentials,
 )
@@ -109,7 +110,12 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
+    set_logger_formatter(logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - {item.name} - %(module)s - %(message)s"))
     logging.info("Running test " + item.name)
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
 
 
 def pytest_collection_modifyitems(items):
