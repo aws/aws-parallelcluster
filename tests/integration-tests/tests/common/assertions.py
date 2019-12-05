@@ -10,7 +10,7 @@
 # limitations under the License.
 import boto3
 
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from tests.common.scaling_common import get_compute_nodes_allocation
 from time_utils import minutes
 
@@ -63,9 +63,21 @@ def assert_scaling_worked(
         + minutes(estimated_scaleup_time)
         + minutes(max_scaledown_time),
     )
-    if assert_asg:
-        assert_that(max(asg_capacity_time_series)).is_equal_to(expected_max)
-        assert_that(asg_capacity_time_series[-1]).is_equal_to(expected_final)
-    if assert_scheduler:
-        assert_that(max(compute_nodes_time_series)).is_equal_to(expected_max)
-        assert_that(compute_nodes_time_series[-1]).is_equal_to(expected_final)
+
+    with soft_assertions():
+        if assert_asg:
+            asg_capacity_time_series_str = f"asg_capacity_time_series={asg_capacity_time_series}"
+            assert_that(max(asg_capacity_time_series)).described_as(asg_capacity_time_series_str).is_equal_to(
+                expected_max
+            )
+            assert_that(asg_capacity_time_series[-1]).described_as(asg_capacity_time_series_str).is_equal_to(
+                expected_final
+            )
+        if assert_scheduler:
+            compute_nodes_time_series_str = f"compute_nodes_time_series={compute_nodes_time_series}"
+            assert_that(max(compute_nodes_time_series)).described_as(compute_nodes_time_series_str).is_equal_to(
+                expected_max
+            )
+            assert_that(compute_nodes_time_series[-1]).described_as(compute_nodes_time_series_str).is_equal_to(
+                expected_final
+            )
