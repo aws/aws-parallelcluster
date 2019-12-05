@@ -208,3 +208,8 @@ def unset_credentials():
         del os.environ["AWS_SECRET_ACCESS_KEY"]
     if "AWS_SESSION_TOKEN" in os.environ:
         del os.environ["AWS_SESSION_TOKEN"]
+
+
+def set_logger_formatter(formatter):
+    for handler in logging.getLogger().handlers:
+        handler.setFormatter(formatter)
