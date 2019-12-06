@@ -834,7 +834,7 @@ def test_efa_validator_with_vpc_security_group(
     "cluster_section_dict, ebs_section_dict, expected_message",
     [
         (
-            {"ebs_settings": "vol1,vol2,vol3,vol4,vol5,vol6"},
+            {"ebs_settings": "vol1, vol2, vol3, vol4, vol5, vol6"},
             {
                 "vol1": {"shared_dir": "/vol1"},
                 "vol2": {"shared_dir": "/vol2"},
@@ -846,7 +846,7 @@ def test_efa_validator_with_vpc_security_group(
             "Currently only supports upto 5 EBS volumes",
         ),
         (
-            {"ebs_settings": "vol1,vol2"},
+            {"ebs_settings": "vol1, vol2 "},
             {"vol1": {"shared_dir": "vol1"}, "vol2": {"volume_type": "io1"}},
             "When using more than 1 EBS volume, shared_dir is required under each EBS section",
         ),
@@ -856,7 +856,7 @@ def test_efa_validator_with_vpc_security_group(
             "/NONE cannot be used as a shared directory",
         ),
         (
-            {"ebs_settings": "vol1,vol2"},
+            {"ebs_settings": "vol1, vol2 "},
             {"vol1": {"shared_dir": "/vol1"}, "vol2": {"shared_dir": "NONE"}},
             "NONE cannot be used as a shared directory",
         ),
