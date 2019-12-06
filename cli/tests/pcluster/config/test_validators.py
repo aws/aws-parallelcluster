@@ -546,7 +546,7 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
             method="describe_subnets",
             response=describe_subnets_response,
             expected_params={"SubnetIds": ["subnet-12345678"]},
-        ),
+        )
     ] * 2
 
     if network_interfaces:
@@ -599,7 +599,7 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
                     "SubnetId": "subnet-12345678",
                     "TagSet": [],
                     "VpcId": fsx_vpc,
-                },
+                }
             )
         describe_network_interfaces_response = {"NetworkInterfaces": network_interfaces_in_response}
         ec2_mocked_requests.append(
@@ -834,7 +834,7 @@ def test_efa_validator_with_vpc_security_group(
     "cluster_section_dict, ebs_section_dict, expected_message",
     [
         (
-            {"ebs_settings": "vol1,vol2,vol3,vol4,vol5,vol6"},
+            {"ebs_settings": "vol1, vol2, vol3, vol4, vol5, vol6"},
             {
                 "vol1": {"shared_dir": "/vol1"},
                 "vol2": {"shared_dir": "/vol2"},
@@ -846,7 +846,7 @@ def test_efa_validator_with_vpc_security_group(
             "Currently only supports upto 5 EBS volumes",
         ),
         (
-            {"ebs_settings": "vol1,vol2"},
+            {"ebs_settings": "vol1, vol2 "},
             {"vol1": {"shared_dir": "vol1"}, "vol2": {"volume_type": "io1"}},
             "When using more than 1 EBS volume, shared_dir is required under each EBS section",
         ),
@@ -856,7 +856,7 @@ def test_efa_validator_with_vpc_security_group(
             "/NONE cannot be used as a shared directory",
         ),
         (
-            {"ebs_settings": "vol1,vol2"},
+            {"ebs_settings": "vol1, vol2 "},
             {"vol1": {"shared_dir": "/vol1"}, "vol2": {"shared_dir": "NONE"}},
             "NONE cannot be used as a shared directory",
         ),
