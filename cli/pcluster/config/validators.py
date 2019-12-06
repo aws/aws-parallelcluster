@@ -155,25 +155,33 @@ def fsx_id_validator(param_key, param_value, pcluster_config):
                 "Currently only support using FSx file system that is in the same VPC as the stack. "
                 "The file system provided is in {0}".format(file_system.get("VpcId"))
             )
+
         # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
         network_interface_ids = file_system.get("NetworkInterfaceIds")
-        network_interface_responses = ec2.describe_network_interfaces(NetworkInterfaceIds=network_interface_ids).get(
-            "NetworkInterfaces"
-        )
-        fs_access = False
-        network_interfaces = [i for i in network_interface_responses if i.get("VpcId") == vpc_id]
-        for network_interface in network_interfaces:
-            # Get list of security group IDs
-            sg_ids = [i.get("GroupId") for i in network_interface.get("Groups")]
-            if _check_in_out_access(sg_ids, port=988):
-                fs_access = True
-                break
-        if not fs_access:
+        if not network_interface_ids:
             errors.append(
-                "The current security group settings on file system %s does not satisfy "
-                "mounting requirement. The file system must be associated to a security group that allows "
-                "inbound and outbound TCP traffic through port 988." % param_value
+                "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
+                "Elastic Network Interfaces attached to it.".format(param_value)
             )
+        else:
+            network_interface_responses = ec2.describe_network_interfaces(
+                NetworkInterfaceIds=network_interface_ids
+            ).get("NetworkInterfaces")
+
+            fs_access = False
+            network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
+            for network_interface in network_interfaces:
+                # Get list of security group IDs
+                sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
+                if _check_in_out_access(sg_ids, port=988):
+                    fs_access = True
+                    break
+            if not fs_access:
+                errors.append(
+                    "The current security group settings on file system '{0}' does not satisfy mounting requirement. "
+                    "The file system must be associated to a security group that allows inbound and outbound "
+                    "TCP traffic through port 988.".format(param_value)
+                )
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 
@@ -541,7 +549,7 @@ def ebs_settings_validator(param_key, param_value, pcluster_config):
 
     list_of_shared_dir = []
     for section_label in param_value.split(","):
-        section = pcluster_config.get_section("ebs", section_label)
+        section = pcluster_config.get_section("ebs", section_label.strip())
         list_of_shared_dir.append(section.get_param_value("shared_dir"))
 
     max_number_of_ebs_volumes = 5

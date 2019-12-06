@@ -119,12 +119,18 @@ def configure(args):
     vpc_label = vpc_section.label
 
     # Use built in boto regions as an available option
-    aws_region_name = prompt_iterable("AWS Region ID", get_regions())
+    aws_region_name = prompt_iterable(
+        "AWS Region ID",
+        get_regions(),
+        default_value=pcluster_config.get_section("aws").get_param_value("aws_region_name"),
+    )
     # Set provided region into os environment for suggestions and validations from here on
     os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
     # Get the key name from the current region, if any
-    key_name = prompt_iterable("EC2 Key Pair Name", _get_keys())
+    key_name = prompt_iterable(
+        "EC2 Key Pair Name", _get_keys(), default_value=cluster_section.get_param_value("key_name")
+    )
 
     scheduler = prompt_iterable(
         "Scheduler", get_supported_schedulers(), default_value=cluster_section.get_param_value("scheduler")
@@ -208,13 +214,20 @@ def _create_vpc_parameters(vpc_section, scheduler, min_subnet_size, automate_vpc
                     automate_subnet_creation(vpc_id, _choose_network_configuration(scheduler), min_subnet_size)
                 )
             else:
-                vpc_parameters.update(_ask_for_subnets(subnet_list))
+                vpc_parameters.update(_ask_for_subnets(subnet_list, vpc_section))
     return vpc_parameters
 
 
-def _ask_for_subnets(subnet_list):
-    master_subnet_id = prompt_iterable("Master Subnet ID", subnet_list)
-    compute_subnet_id = prompt_iterable("Compute Subnet ID", subnet_list, default_value=master_subnet_id)
+def _ask_for_subnets(subnet_list, vpc_section):
+    master_subnet_id = prompt_iterable(
+        "Master Subnet ID", subnet_list, default_value=vpc_section.get_param_value("master_subnet_id")
+    )
+
+    compute_subnet_id = prompt_iterable(
+        "Compute Subnet ID",
+        subnet_list,
+        default_value=vpc_section.get_param_value("compute_subnet_id") or master_subnet_id,
+    )
     vpc_parameters = {"master_subnet_id": master_subnet_id}
 
     if master_subnet_id != compute_subnet_id:
@@ -277,7 +290,7 @@ class SchedulerHandler:
             self.compute_instance_type = prompt(
                 "Compute instance type",
                 lambda x: x in list_ec2_instance_types(),
-                default_value=self.compute_instance_type,
+                default_value=self.cluster_section.get_param_value("compute_instance_type"),
             )
 
     def prompt_cluster_size(self):

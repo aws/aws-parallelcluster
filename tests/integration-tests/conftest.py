@@ -42,6 +42,7 @@ from utils import (
     delete_s3_bucket,
     random_alphanumeric,
     set_credentials,
+    set_logger_formatter,
     to_snake_case,
     unset_credentials,
 )
@@ -109,7 +110,12 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
+    set_logger_formatter(logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - {item.name} - %(module)s - %(message)s"))
     logging.info("Running test " + item.name)
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
 
 
 def pytest_collection_modifyitems(items):
@@ -370,19 +376,30 @@ def vpc_stacks(cfn_stacks_factory, request):
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
-            cidr="10.0.124.0/22",  # 1,022 IPs
+            cidr="192.168.0.0/18",  # 16382 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="10.0.128.0/17",  # 32766 IPs
+            cidr="192.168.64.0/18",  # 16382 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
+        private_subnet_different_cidr = SubnetConfig(
+            name="PrivateAdditionalCidr",
+            cidr="192.168.128.0/17",  # 32766 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
+        vpc_config = VPCConfig(
+            cidr="192.168.0.0/17",
+            additional_cidr_blocks=["192.168.128.0/17"],
+            subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
+        )
         template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zone).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
