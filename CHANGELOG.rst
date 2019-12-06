@@ -30,6 +30,9 @@ CHANGELOG
 * Correctly handle failures when there is an invalid parameter in the ``aws`` config section.
 * Fix a bug in ``pcluster delete`` that was causing the cli to exit with error when the cluster is successfully deleted.
 * Exit with status code 1 if ``pcluster create`` fails to create a stack.
+* Handle whitespace in the value passed to the ``ebs`` parameter of the ``[cluster]`` section of the config file.
+* Handle the case of multiple or no network interfaces on FSX filesystems.
+* Fix easy config to retain default values from old config file.
 
 
 2.5.0
