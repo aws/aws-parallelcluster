@@ -254,7 +254,6 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
 
 def _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False):
-    """Helper function to run input tests."""
     if with_input:
         input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
         input_composer.add_first_flow(
