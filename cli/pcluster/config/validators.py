@@ -549,7 +549,7 @@ def ebs_settings_validator(param_key, param_value, pcluster_config):
 
     list_of_shared_dir = []
     for section_label in param_value.split(","):
-        section = pcluster_config.get_section("ebs", section_label)
+        section = pcluster_config.get_section("ebs", section_label.strip())
         list_of_shared_dir.append(section.get_param_value("shared_dir"))
 
     max_number_of_ebs_volumes = 5
