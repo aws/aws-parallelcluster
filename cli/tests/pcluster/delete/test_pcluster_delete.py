@@ -5,9 +5,13 @@ from collections import namedtuple
 import pytest
 
 import pcluster.commands as commands
+import pcluster.utils as utils
 from assertpy import assert_that
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
+FAKE_CLUSTER_NAME = "cluster_name"
+FAKE_STACK_NAME = utils.get_stack_name(FAKE_CLUSTER_NAME)
+LOG_GROUP_TYPE = "AWS::Logs::LogGroup"
 
 
 def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=False, keep_logs=False, region=None):
@@ -29,10 +33,10 @@ def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=
 def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called, delete_called):
     """Verify that commands.delete behaves as expected."""
     mocker.patch("pcluster.commands.utils.stack_exists").return_value = stack_exists
-    mocker.patch("pcluster.commands._persist_cloudwatch_log_group")
+    mocker.patch("pcluster.commands._persist_cloudwatch_log_groups")
     mocker.patch("pcluster.commands._delete_cluster")
     mocker.patch("pcluster.commands.utils.warn")
-    mocker.patch("pcluster.commands.PclusterConfig")
+    mocker.patch("pcluster.commands.PclusterConfig.init_aws")
     args = get_fake_pdelete_args(keep_logs=keep_logs)
 
     if not stack_exists:
@@ -42,15 +46,15 @@ def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called
     else:
         commands.delete(args)
 
+    commands.PclusterConfig.init_aws.called_with(args.config_file)
+
     assert_that(commands.utils.warn.call_count).is_equal_to(warn_call_count)
     if warn_call_count > 0:
         commands.utils.warn.assert_called_with("Cluster {0} has already been deleted.".format(args.cluster_name))
 
-    assert_that(commands._persist_cloudwatch_log_group.called).is_equal_to(persist_called)
+    assert_that(commands._persist_cloudwatch_log_groups.called).is_equal_to(persist_called)
     if persist_called:
-        commands._persist_cloudwatch_log_group.assert_called_with(
-            args.cluster_name, commands.PclusterConfig(args.cluster_name)
-        )
+        commands._persist_cloudwatch_log_groups.assert_called_with(args.cluster_name)
 
     assert_that(commands._delete_cluster.called).is_equal_to(delete_called)
     if delete_called:
@@ -58,45 +62,84 @@ def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called
 
 
 @pytest.mark.parametrize(
-    "feature_enabled,substack,substack_template",
+    "stacks,template",
     [
-        (False, None, None),
-        (True, {"StackName": "stack_name"}, {"Resources": {"CloudWatchLogGroup": {"DeletionPolicy": "Retain"}}}),
+        ([], {},),
         (
-            True,
-            {"StackName": "stack_name"},
-            {"Resources": {"CloudWatchLogGroup": {"DeletionPolicy": "NotRetain"}}, "Parameters": "FakeParameters"},
+            [{"StackName": FAKE_STACK_NAME}, {"StackName": "substack_one"}],
+            {"Resources": {"key": {"DeletionPolicy": "Retain"}}},
         ),
+        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}},),
+        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Delete"}}},),
     ],
 )
-def test_persist_cloudwatch_log_group(mocker, feature_enabled, substack, substack_template):
-    """Verify that commands._persist_cloudwatch_log_group behaves as expected."""
-    cluster_name = "cluster_name"
-    pcluster_config = mocker.Mock()
-    pcluster_config.get_section.return_value.get_param_value.return_value = feature_enabled
-
-    mocker.patch("pcluster.commands.utils.warn")
-    mocker.patch("pcluster.commands.utils.get_cloudwatch_logs_substack").return_value = substack
-    mocker.patch("pcluster.commands.utils.get_stack_template").return_value = substack_template
-    mocker.patch("pcluster.commands.utils.update_stack_template")
-    if substack_template:
-        orig_retain = substack_template.get("Resources").get("CloudWatchLogGroup").get("DeletionPolicy") == "Retain"
+def test_persist_cloudwatch_log_groups(mocker, stacks, template):
+    """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
+    mocker.patch("pcluster.commands.utils.get_cluster_substacks").return_value = stacks
+    mocker.patch("pcluster.commands.utils.get_stack_template").return_value = template
+    mocker.patch("pcluster.commands._persist_stack_resources")
+    if template.get("Resources", {}).get("key", {}).get("DeletionPolicy") == "Retain":
+        keys = ["key"]
+        expected_persist_cloudwatch_log_groups_call_count = len(stacks)
     else:
-        orig_retain = False
+        keys = []
+        expected_persist_cloudwatch_log_groups_call_count = 0
+    mocker.patch("pcluster.commands._get_unretained_cw_log_group_resource_keys").return_value = keys
+    commands._persist_cloudwatch_log_groups(FAKE_CLUSTER_NAME)
+    commands.utils.get_cluster_substacks.assert_called_with(FAKE_CLUSTER_NAME)
+    assert_that(commands.utils.get_stack_template.call_count).is_equal_to(len(stacks))
+    assert_that(commands._get_unretained_cw_log_group_resource_keys.call_count).is_equal_to(len(stacks))
+    assert_that(commands._persist_stack_resources.call_count).is_equal_to(
+        expected_persist_cloudwatch_log_groups_call_count
+    )
 
-    commands._persist_cloudwatch_log_group(cluster_name, pcluster_config)
 
-    if not feature_enabled:
-        commands.utils.warn.assert_called_with("CloudWatch logging is not enabled for cluster {0}".format(cluster_name))
+@pytest.mark.parametrize(
+    "template",
+    [
+        {},
+        {"Resources": {}},
+        {"Resources": {"key": {}}},
+        {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}},
+        {"Resources": {"key": {"DeletionPolicy": "Delete"}}},
+        {"Resources": {"key": {"DeletionPolicy": "Retain"}}},  # Note update_stack_template still called for this
+    ],
+)
+def test_persist_stack_resources(mocker, template):
+    """Verify that commands._persist_stack_resources behaves as expected."""
+    mocker.patch("pcluster.commands.utils.update_stack_template")
+    stack = {"StackName": FAKE_STACK_NAME, "Parameters": {"Some Key": "Some Values"}}
 
-    if substack:
-        commands.utils.get_cloudwatch_logs_substack.assert_called_with(cluster_name)
+    if "Resources" not in template:
+        expected_error_message = "Resources"
+    elif "key" not in template.get("Resources"):
+        expected_error_message = "key"
+    else:
+        expected_error_message = None
 
-    if substack_template:
-        commands.utils.get_stack_template.assert_called_with(substack.get("StackName"))
-        if orig_retain:
-            assert_that(commands.utils.update_stack_template.called).is_false()
-        else:
-            commands.utils.update_stack_template.assert_called_with(
-                substack.get("StackName"), substack_template, substack.get("Parameters")
-            )
+    if expected_error_message:
+        with pytest.raises(KeyError, match=expected_error_message):
+            commands._persist_stack_resources(stack, template, ["key"])
+        assert_that(commands.utils.update_stack_template.called).is_false()
+    else:
+        commands._persist_stack_resources(stack, template, ["key"])
+        commands.utils.update_stack_template.assert_called_with(
+            stack.get("StackName"), template, stack.get("Parameters")
+        )
+        assert_that(template["Resources"]["key"]["DeletionPolicy"]).is_equal_to("Retain")
+
+
+@pytest.mark.parametrize(
+    "template,expected_return",
+    [
+        ({}, []),
+        ({"Resources": {}}, []),
+        ({"Resources": {"ResourceOne": {"Type": LOG_GROUP_TYPE, "DeletionPolicy": "Retain"}}}, []),
+        ({"Resources": {"ResourceOne": {"Type": LOG_GROUP_TYPE, "DeletionPolicy": "NotRetain"}}}, ["ResourceOne"]),
+        ({"Resources": {"ResourceOne": {"Type": LOG_GROUP_TYPE, "DeletionPolicy": "Delete"}}}, ["ResourceOne"]),
+    ],
+)
+def test_get_unretained_cw_log_group_resource_keys(template, expected_return):
+    """Verify that commands._get_unretained_cw_log_group_resource_keys behaves as expected."""
+    observed_return = commands._get_unretained_cw_log_group_resource_keys(template)
+    assert_that(observed_return) == expected_return

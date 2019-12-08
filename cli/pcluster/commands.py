@@ -635,28 +635,33 @@ def status(args):  # noqa: C901 FIXME!!!
         sys.exit(0)
 
 
-def _persist_cloudwatch_log_group(cluster_name, pcluster_config):
-    """Set cluster's CloudWatch log group to persist past cluster deletion via its DeletionPolicy."""
-    LOGGER.info("Configuring {0}'s CloudWatch log group to persist past cluster deletion.".format(cluster_name))
+def _get_unretained_cw_log_group_resource_keys(template):
+    """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
+    unretained_cw_log_group_keys = []
+    for key, resource in template.get("Resources", {}).items():
+        if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
+            unretained_cw_log_group_keys.append(key)
+    return unretained_cw_log_group_keys
 
-    # Ensure CloudWatch logging is enabled. If not, the log group won't exist.
-    if not pcluster_config.get_section("cw_log").get_param_value("enable"):
-        utils.warn("CloudWatch logging is not enabled for cluster {0}".format(cluster_name))
-        return
 
-    # Get and modify the substack's template, then update the stack w/ the modified version
-    try:
-        stack = utils.get_cloudwatch_logs_substack(cluster_name)
-        template = utils.get_stack_template(stack.get("StackName"))
-        if template.get("Resources").get("CloudWatchLogGroup").get("DeletionPolicy") != "Retain":
-            template["Resources"]["CloudWatchLogGroup"]["DeletionPolicy"] = "Retain"
-            utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
-    except SystemExit as sys_exit:
-        utils.error(
-            "Unable to retain {cluster_name}'s CloudWatch log groups: {reason}".format(
-                cluster_name=cluster_name, reason=sys_exit
-            )
-        )
+def _persist_stack_resources(stack, template, keys):
+    """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
+    for key in keys:
+        template["Resources"][key]["DeletionPolicy"] = "Retain"
+    utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
+
+
+def _persist_cloudwatch_log_groups(cluster_name):
+    """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
+    LOGGER.info("Configuring {0}'s CloudWatch log groups to persist past cluster deletion.".format(cluster_name))
+    substacks = utils.get_cluster_substacks(cluster_name)
+    substack_template_pairs = [(stack, utils.get_stack_template(stack.get("StackName"))) for stack in substacks]
+    substack_template_keys_triplets = [
+        (s, t, _get_unretained_cw_log_group_resource_keys(t)) for s, t in substack_template_pairs
+    ]
+    for stack, template, keys in substack_template_keys_triplets:
+        if keys:  # Only persist the CloudWatch group
+            _persist_stack_resources(stack, template, keys)
 
 
 def _delete_cluster(cluster_name, nowait):
@@ -706,20 +711,20 @@ def _delete_cluster(cluster_name, nowait):
 
 
 def delete(args):
-    pcluster_config = PclusterConfig(cluster_name=args.cluster_name)
+    PclusterConfig.init_aws(config_file=args.config_file)
     LOGGER.info("Deleting: %s", args.cluster_name)
     stack_name = utils.get_stack_name(args.cluster_name)
     if not utils.stack_exists(stack_name):
         if args.keep_logs:
             utils.warn(
-                "Stack for {0} does not exist. Cannot prevent its log group from being deleted.".format(
+                "Stack for {0} does not exist. Cannot prevent its log groups from being deleted.".format(
                     args.cluster_name
                 )
             )
         utils.warn("Cluster {0} has already been deleted.".format(args.cluster_name))
         sys.exit(0)
     elif args.keep_logs:
-        _persist_cloudwatch_log_group(args.cluster_name, pcluster_config)
+        _persist_cloudwatch_log_groups(args.cluster_name)
     _delete_cluster(args.cluster_name, args.nowait)
 
 

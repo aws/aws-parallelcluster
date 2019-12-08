@@ -32,6 +32,7 @@ LOGGER = logging.getLogger(__name__)
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 CW_LOGS_SUBSTACK_PREFIX = "CloudWatchLogsSubstack-"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
+STACK_TYPE = "AWS::CloudFormation::Stack"
 
 
 def get_stack_name(cluster_name):
@@ -53,6 +54,12 @@ def get_stack_template(stack_name):
     return template
 
 
+def _wait_for_update(stack_name):
+    """Wait for the given stack to be finished updating."""
+    while get_stack(stack_name).get("StackStatus") == "UPDATE_IN_PROGRESS":
+        time.sleep(5)
+
+
 def update_stack_template(stack_name, updated_template, cfn_parameters):
     """Update stack_name's template to that represented by updated_template."""
     try:
@@ -60,7 +67,9 @@ def update_stack_template(stack_name, updated_template, cfn_parameters):
             StackName=stack_name,
             TemplateBody=json.dumps(updated_template, indent=2),  # Indent so it looks nice in the console
             Parameters=cfn_parameters,
+            Capabilities=["CAPABILITY_IAM"],
         )
+        _wait_for_update(stack_name)
     except ClientError as client_err:
         if "no updates are to be performed" in client_err.response.get("Error").get("Message").lower():
             return  # If updated_template was the same as the stack's current one, consider the update a success
@@ -309,19 +318,7 @@ def get_stack_resources(stack_name):
 def get_cluster_substacks(cluster_name):
     """Return stack objects with names that match the given prefix."""
     resources = get_stack_resources(get_stack_name(cluster_name))
-    return [resource for resource in resources if resource.get("ResourceType") == "AWS::CloudFormation::Stack"]
-
-
-def get_cloudwatch_logs_substack(cluster_name):
-    """Return the stack object for the given cluster's CloudWatch logs substack."""
-    substacks = get_cluster_substacks(cluster_name)
-    cw_logs_stack_prefix = "{cluster_name}-{cw_logs_prefix}".format(
-        cluster_name=get_stack_name(cluster_name), cw_logs_prefix=CW_LOGS_SUBSTACK_PREFIX
-    )
-    for stack in substacks:
-        if stack.get("StackName").startswith(cw_logs_stack_prefix):
-            return stack
-    error("Unable to get CloudWatch logs substack for cluster {0}".format(cluster_name))
+    return [get_stack(r.get("PhysicalResourceId")) for r in resources if r.get("ResourceType") == STACK_TYPE]
 
 
 def verify_stack_creation(stack_name, cfn_client):
