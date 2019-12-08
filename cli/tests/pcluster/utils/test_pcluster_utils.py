@@ -41,7 +41,7 @@ def test_get_stack_template(boto3_stubber, template_body, error_message):
     ]
     generate_errors = template_body is None
     boto3_stubber("cloudformation", mocked_requests, generate_errors=generate_errors)
-    if error_message is not None:
+    if error_message:
         with pytest.raises(SystemExit, match=error_message) as sysexit:
             utils.get_stack_template(stack_name=FAKE_STACK_NAME)
         assert_that(sysexit.value.code).is_not_equal_to(0)
@@ -50,17 +50,42 @@ def test_get_stack_template(boto3_stubber, template_body, error_message):
 
 
 @pytest.mark.parametrize(
+    "stack_statuses",
+    [
+        ["UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_COMPLETE"],
+        ["UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "UPDATE_IN_PROGRESS", "anything other than UPDATE_IN_PROGRESS"],
+        ["UPDATE_COMPLETE"],
+    ],
+)
+def test_wait_for_stack_update(mocker, stack_statuses):
+    """Verify that utils._wait_for_update behaves as expected."""
+    get_stack_returns = [{"StackStatus": s} for s in stack_statuses]
+
+    # _wait_for_update should call utils.get_stack until the StackStatus is anything besides UPDATE_IN_PROGRESS,
+    # use that to get expected call count for utils.get_stack
+    expected_call_count = 0
+    for status_idx, status in enumerate(stack_statuses):
+        if status != "UPDATE_IN_PROGRESS":
+            expected_call_count = status_idx + 1
+            break
+
+    mocker.patch("pcluster.utils.get_stack").side_effect = get_stack_returns
+    mocker.patch("pcluster.utils.time.sleep")  # so we don't actually have to wait
+    utils._wait_for_update(FAKE_STACK_NAME)
+    utils.get_stack.assert_called_with(FAKE_STACK_NAME)
+    assert_that(utils.get_stack.call_count).is_equal_to(expected_call_count)
+
+
+@pytest.mark.parametrize(
     "error_message",
     [
         None,
         "No UpDatES ARE TO BE PERformed",
-        "no updates are to be performed",
-        "NO UPDATES ARE TO BE PERFORMED",
         "some longer message also containing no updates are to be performed and more words at the end"
         "some other error message",
     ],
 )
-def test_update_stack_template(boto3_stubber, error_message):
+def test_update_stack_template(mocker, boto3_stubber, error_message):
     """Verify that utils.update_stack_template behaves as expected."""
     template_body = {"TemplateKey": "TemplateValue"}
     cfn_params = [{"ParameterKey": "Key", "ParameterValue": "Value"}]
@@ -68,13 +93,19 @@ def test_update_stack_template(boto3_stubber, error_message):
         "StackName": FAKE_STACK_NAME,
         "TemplateBody": json.dumps(template_body, indent=2),
         "Parameters": cfn_params,
+        "Capabilities": ["CAPABILITY_IAM"],
     }
-    response = error_message if error_message is not None else {"StackId": "stack ID"}
+    response = error_message or {"StackId": "stack ID"}
     mocked_requests = [MockedBoto3Request(method="update_stack", response=response, expected_params=expected_params)]
     generate_errors = error_message is not None
     boto3_stubber("cloudformation", mocked_requests, generate_errors=generate_errors)
+    mocker.patch("pcluster.utils._wait_for_update")
     if error_message is None or "no updates are to be performed" in error_message.lower():
         utils.update_stack_template(FAKE_STACK_NAME, template_body, cfn_params)
+        if error_message is None or "no updates are to be performed" not in error_message.lower():
+            utils._wait_for_update.assert_called_with(FAKE_STACK_NAME)
+        else:
+            assert_that(utils._wait_for_update.called).is_false()
     else:
         full_error_message = "Unable to update stack template for stack {stack_name}: {emsg}".format(
             stack_name=FAKE_STACK_NAME, emsg=error_message
@@ -88,53 +119,28 @@ def test_update_stack_template(boto3_stubber, error_message):
     "resources",
     [
         [
-            {"ResourceType": "Not a stack", "ResourceName": "name_one"},
-            {"ResourceType": STACK_TYPE, "ResourceName": "name_two"},
-            {"ResourceType": "Also not a stack", "ResourceName": "name_three"},
-            {"ResourceType": STACK_TYPE, "ResourceName": "name_four"},
+            {"ResourceType": "Not a stack", "ResourceName": "name_one", "PhysicalResourceId": "PhysIdOne"},
+            {"ResourceType": STACK_TYPE, "ResourceName": "name_two", "PhysicalResourceId": "PhysIdTwo"},
+            {"ResourceType": "Also not a stack", "ResourceName": "name_three", "PhysicalResourceId": "PhysIdThree"},
+            {"ResourceType": STACK_TYPE, "ResourceName": "name_four", "PhysicalResourceId": "PhysIdFour"},
         ],
         [],
     ],
 )
-def test_get_cluster_substacks(mocker, resources):
+def test_get_cluster_substacks(mocker, resources):  # noqa: D202
     """Verify that utils.get_cluster_substacks behaves as expected."""
+
+    def fake_get_stack(phys_id):
+        return phys_id
+
     mocker.patch("pcluster.utils.get_stack_resources").return_value = resources
-    expected_substacks = [r for r in resources if r.get("ResourceType") == STACK_TYPE]
+    mocker.patch("pcluster.utils.get_stack").side_effect = fake_get_stack
+    expected_substacks = [
+        fake_get_stack(r.get("PhysicalResourceId")) for r in resources if r.get("ResourceType") == STACK_TYPE
+    ]
     observed_substacks = utils.get_cluster_substacks(FAKE_CLUSTER_NAME)
     utils.get_stack_resources.assert_called_with(FAKE_STACK_NAME)
     assert_that(observed_substacks).is_equal_to(expected_substacks)
-
-
-@pytest.mark.parametrize(
-    "substacks_response,expected,error_message",
-    [
-        (
-            [
-                {"StackName": "substack_one"},
-                {"StackName": "substack_two"},
-                {"StackName": "not_a_substack"},
-                {"StackName": "{0}-CloudWatchLogsSubstack-skdfjaldks".format(utils.get_stack_name(FAKE_CLUSTER_NAME))},
-            ],
-            {"StackName": "{0}-CloudWatchLogsSubstack-skdfjaldks".format(utils.get_stack_name(FAKE_CLUSTER_NAME))},
-            None,
-        ),
-        (
-            [{"StackName": "substack_one"}, {"StackName": "substack_two"}, {"StackName": "not_a_substack"}],
-            None,
-            "Unable to get CloudWatch logs substack for cluster {0}".format(FAKE_CLUSTER_NAME),
-        ),
-    ],
-)
-def test_get_cloudwatch_logs_substack(mocker, substacks_response, expected, error_message):
-    """Verify that utils.get_cloudwatch_logs_substack behaves as expected."""
-    mocker.patch("pcluster.utils.get_cluster_substacks").return_value = substacks_response
-    if error_message is None:
-        assert_that(utils.get_cloudwatch_logs_substack(FAKE_CLUSTER_NAME)).is_equal_to(expected)
-    else:
-        with pytest.raises(SystemExit, match=error_message) as sysexit:
-            utils.get_cloudwatch_logs_substack(FAKE_CLUSTER_NAME)
-        assert_that(sysexit.value.code).is_not_equal_to(0)
-    utils.get_cluster_substacks.assert_called_with(FAKE_CLUSTER_NAME)
 
 
 @pytest.mark.parametrize(

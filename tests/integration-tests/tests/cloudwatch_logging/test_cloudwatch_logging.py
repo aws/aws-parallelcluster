@@ -17,13 +17,12 @@ import string
 from os import environ
 from pathlib import Path
 
-import boto3
 import pytest
-from botocore.exceptions import ClientError
 from retrying import retry
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_logs_utils
 from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
@@ -71,14 +70,13 @@ class CloudWatchLoggingClusterState:
     }
     """
 
-    def __init__(self, scheduler, os, cluster, data_retriever):
+    def __init__(self, scheduler, os, cluster):
         """Get the state of the cluster as it pertains to the CloudWatch logging feature."""
         self.scheduler = scheduler
         self.platform = self._base_os_to_platform(os)
         self.cluster = cluster
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
         self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
-        self.data_retriever = data_retriever
         self._relevant_logs = {"MasterServer": [], "ComputeFleet": []}
         self._cluster_log_state = {"MasterServer": {}, "ComputeFleet": {}}
         self._set_cluster_log_state()
@@ -137,7 +135,7 @@ class CloudWatchLoggingClusterState:
 
     def _get_initial_cluster_log_state(self):
         """Get EC2 instances belonging to this cluster. Figure out their roles in the cluster."""
-        for instance in self.data_retriever.get_ec2_instances():
+        for instance in cw_logs_utils.get_ec2_instances():
             tags = {tag.get("Key"): tag.get("Value") for tag in instance.get("Tags", [])}
             if tags.get("ClusterName", "") != self.cluster.name:
                 continue
@@ -316,68 +314,11 @@ class CloudWatchLoggingClusterState:
         self._populate_agent_status()
 
 
-class Boto3DataRetriever:
-    """Class used to get data from CloudWatch logs."""
-
-    def __init__(self, region):
-        """Save references to the variables the class will need to get log data."""
-        self.region = region
-
-    def get_log_groups(self):
-        """Get list of log groups."""
-        logs_client = boto3.client("logs", region_name=self.region)
-        log_groups = logs_client.describe_log_groups().get("logGroups")
-        LOGGER.debug("Log groups: {0}\n".format(json.dumps(log_groups, indent=4)))
-        return log_groups
-
-    def get_log_streams(self, log_group_name):
-        """Get list of log streams."""
-        logs_client = boto3.client("logs", region_name=self.region)
-        streams = logs_client.describe_log_streams(logGroupName=log_group_name).get("logStreams")
-        LOGGER.debug(
-            "Log streams for {group}:\n{streams}".format(group=log_group_name, streams=json.dumps(streams, indent=4))
-        )
-        return streams
-
-    def get_log_events(self, log_group_name, log_stream_name):
-        """Get log events for the given log_stream_name."""
-        logs_client = boto3.client("logs", region_name=self.region)
-        events = logs_client.get_log_events(logGroupName=log_group_name, logStreamName=log_stream_name).get("events")
-        LOGGER.debug(
-            "Log events for {group}/{stream}:\n{events}".format(
-                group=log_group_name, stream=log_stream_name, events=json.dumps(events, indent=4)
-            )
-        )
-        return events
-
-    def get_ec2_instances(self):
-        """Iterate through ec2's describe_instances."""
-        ec2_client = boto3.client("ec2", region_name=self.region)
-        paginator = ec2_client.get_paginator("describe_instances")
-        for page in paginator.paginate():
-            for reservation in page.get("Reservations"):
-                for instance in reservation.get("Instances"):
-                    yield instance
-
-    def delete_log_group(self, log_group):
-        """Delete the given log group."""
-        logs_client = boto3.client("logs", region_name=self.region)
-        try:
-            logs_client.delete_log_group(logGroupName=log_group)
-        except ClientError as client_err:
-            LOGGER.warning(
-                "Error when deleting log group {log_group}: {msg}".format(
-                    log_group=log_group, msg=client_err.response.get("Error").get("Message")
-                )
-            )
-
-
 class CloudWatchLoggingTestRunner:
     """Tests and utilities for verifying that CloudWatch logging integration works as expected."""
 
-    def __init__(self, data_retriever, log_group_name, enabled, retention_days, logs_persist_after_delete):
+    def __init__(self, log_group_name, enabled, retention_days, logs_persist_after_delete):
         """Initialize class for CloudWatch logging testing."""
-        self.data_retriever = data_retriever
         self.log_group_name = log_group_name
         self.enabled = enabled
         self.retention_days = retention_days
@@ -418,7 +359,7 @@ class CloudWatchLoggingTestRunner:
     @retry(stop_max_attempt_number=3, wait_fixed=10 * 1000)  # Allow time for log events to reach the log stream
     def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
         """Verify that stream contains an event for the last line read from its corresponding log."""
-        events = self.data_retriever.get_log_events(self.log_group_name, stream.get("logStreamName"))
+        events = cw_logs_utils.get_log_events(self.log_group_name, stream.get("logStreamName"))
         assert_that(events).is_not_empty()
         expected_tail = expected_stream_index.get(stream.get("logStreamName")).get("tail")
         event_generator = (event for event in events if event.get("message") == expected_tail)
@@ -462,7 +403,7 @@ class CloudWatchLoggingTestRunner:
 
     def run_tests(self, logs_state, cluster_has_been_deleted):
         """Run all CloudWatch logging integration tests."""
-        log_groups = self.data_retriever.get_log_groups()
+        log_groups = cw_logs_utils.get_log_groups()
         self.verify_log_group_exists(log_groups, cluster_has_been_deleted)
         self.verify_log_group_retention_days(log_groups, cluster_has_been_deleted)
 
@@ -472,13 +413,30 @@ class CloudWatchLoggingTestRunner:
             self.verify_logs_exist(logs_state)
 
         if self.enabled and (not cluster_has_been_deleted or self.logs_persist_after_delete):
-            observed_streams = self.data_retriever.get_log_streams(self.log_group_name)
+            observed_streams = cw_logs_utils.get_log_streams(self.log_group_name)
             expected_stream_index = self._get_expected_log_stream_index(logs_state)
             self.verify_log_streams_exist(logs_state, expected_stream_index, observed_streams)
             self.verify_log_streams_data(logs_state, expected_stream_index, observed_streams)
 
         if self.failures:
             pytest.fail("Failures: {0}".format(", ".join(self.failures)), pytrace=False)
+
+
+def get_config_param_vals(cw_logging_enabled):
+    """Return a dict used to set values for config file parameters."""
+    # Allow certain params to be set via environment variable in case manually re-testing on an existing cluster
+    retention_days = int(
+        environ.get(
+            "CW_LOGGING_RETENTION_DAYS",
+            random.choice([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
+        )
+    )
+    queue_size = int(environ.get("CW_LOGGING_QUEUE_SIZE", 1))
+    return {
+        "enable": str(cw_logging_enabled).lower(),
+        "retention_days": retention_days,
+        "queue_size": queue_size,
+    }
 
 
 @pytest.mark.parametrize("cw_logging_enabled", [True, False])
@@ -500,36 +458,47 @@ def test_cloudwatch_logging(
 
     All tests are grouped in a single function so that the cluster can be reused for all of them.
     """
-    # Allow certain params to be set via environment variable in case manually re-testing on an existing cluster
-    retention_days = int(
-        environ.get(
-            "CW_LOGGING_RETENTION_DAYS",
-            random.choice([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653]),
-        )
-    )
-    queue_size = int(environ.get("CW_LOGGING_QUEUE_SIZE", 1))
-    param_kwargs = {
-        "enable": str(cw_logging_enabled).lower(),
-        "retention_days": retention_days,
-        "queue_size": queue_size,
-    }
-    cluster_config = pcluster_config_reader(**param_kwargs)
+    environ["AWS_DEFAULT_REGION"] = region  # So that it doesn't have to be passed to boto3 calls
+    config_params = get_config_param_vals(cw_logging_enabled)
+    cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
     log_group_name = "/aws/parallelcluster/{0}".format(cluster.name)
-    data_retriever = Boto3DataRetriever(region)
     test_runner = CloudWatchLoggingTestRunner(
-        data_retriever, log_group_name, cw_logging_enabled, retention_days, cw_logs_persist_after_delete
+        log_group_name, cw_logging_enabled, config_params.get("retention_days"), cw_logs_persist_after_delete
     )
-    cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster, data_retriever).get_logs_state()
+    cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
+    _test_cw_logs_before_after_delete(
+        cluster, cw_logs_persist_after_delete, cw_logging_enabled, cluster_logs_state, test_runner
+    )
 
-    # These tests require a running cluster
+
+def _check_log_groups_after_test(test_func):  # noqa: D202
+    """Verify that log groups outlive the cluster if expected."""
+
+    def wrapped_test(cluster, keep_logs, *args, **kwargs):
+        pre_test_log_groups = cw_logs_utils.get_cluster_log_groups(cluster.cfn_name)
+        LOGGER.info("Log groups before deleting the cluster:\n{0}".format("\n".join(pre_test_log_groups)))
+        try:
+            test_func(cluster, keep_logs, *args, **kwargs)
+            if keep_logs and pre_test_log_groups:
+                post_test_log_groups = [lg.get("logGroupName") for lg in cw_logs_utils.get_log_groups()]
+                LOGGER.info("Log groups after deleting the cluster:\n{0}".format("\n".join(post_test_log_groups)))
+                assert_that(post_test_log_groups).contains(*pre_test_log_groups)
+        finally:
+            cw_logs_utils.delete_log_groups(pre_test_log_groups)
+
+    return wrapped_test
+
+
+def _delete_cluster(cluster, logging_enabled, keep_logs):
+    """Delete a cluster, passing it the appropriate logs."""
+    extra_delete_args = ["--keep-logs"] if keep_logs else []
+    cluster.delete(extra_args=extra_delete_args)
+
+
+@_check_log_groups_after_test
+def _test_cw_logs_before_after_delete(cluster, keep_logs, logging_enabled, cluster_logs_state, test_runner):
+    """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
-
-    # These tests reqiure a cluster be deleted before running
-    try:
-        extra_delete_args = ["--keep-logs"] if cw_logs_persist_after_delete and cw_logging_enabled else []
-        cluster.delete(extra_args=extra_delete_args)
-        test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)
-    finally:
-        if cw_logs_persist_after_delete and cw_logging_enabled:
-            data_retriever.delete_log_group(test_runner.log_group_name)
+    _delete_cluster(cluster, logging_enabled, keep_logs)
+    test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)
