@@ -70,19 +70,35 @@ def retrieve_cfn_outputs(stack_name, region):
 
 
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=5)
-def retrieve_cfn_resources(stack_name, region):
-    """Retrieve CloudFormation Stack Resources from a given stack."""
-    logging.debug("Retrieving stack resources for stack {}".format(stack_name))
+def get_cfn_resources(stack_name, region=None):
+    """Return the results of calling list_stack_resources for the given stack."""
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
     try:
+        logging.debug("Retrieving stack resources for stack {}".format(stack_name))
         cfn = boto3.client("cloudformation", region_name=region)
-        stack_resources = cfn.list_stack_resources(StackName=stack_name)["StackResourceSummaries"]
-        resources = {}
-        for resource in stack_resources:
-            resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
-        return resources
+        return cfn.list_stack_resources(StackName=stack_name).get("StackResourceSummaries")
     except Exception as e:
         logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
         raise
+
+
+def retrieve_cfn_resources(stack_name, region):
+    """Retrieve CloudFormation Stack Resources from a given stack."""
+    resources = {}
+    for resource in get_cfn_resources(stack_name, region):
+        resources[resource.get("LogicalResourceId")] = resource.get("PhysicalResourceId")
+    return resources
+
+
+def get_substacks(stack_name, region=None):
+    """Return the PhysicalResourceIds for all substacks created by the given stack."""
+    if region is None:
+        region = os.environ.get("AWS_DEFAULT_REGION")
+    stack_resources = get_cfn_resources(stack_name, region)
+    return [
+        r.get("PhysicalResourceId") for r in stack_resources if r.get("ResourceType") == "AWS::CloudFormation::Stack"
+    ]
 
 
 def get_compute_nodes_instance_ids(stack_name, region):
@@ -213,3 +229,18 @@ def unset_credentials():
 def set_logger_formatter(formatter):
     for handler in logging.getLogger().handlers:
         handler.setFormatter(formatter)
+
+
+def paginate_boto3(method, **kwargs):
+    """
+    Return a generator for a boto3 call, this allows pagination over an arbitrary number of responses.
+
+    :param method: boto3 method
+    :param kwargs: arguments to method
+    :return: generator with boto3 results
+    """
+    client = method.__self__
+    paginator = client.get_paginator(method.__name__)
+    for page in paginator.paginate(**kwargs).result_key_iters():
+        for result in page:
+            yield result
