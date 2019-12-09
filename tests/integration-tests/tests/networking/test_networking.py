@@ -60,7 +60,7 @@ def vpc_stack(vpc_stacks, region):
 def test_public_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "10.0.3.0/24"
+    public_subnet_cidr = "192.168.3.0/24"
     availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
@@ -84,8 +84,8 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory):
 def test_public_private_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "10.0.5.0/24"
-    private_subnet_cidr = "10.0.4.0/24"
+    public_subnet_cidr = "192.168.5.0/24"
+    private_subnet_cidr = "192.168.4.0/24"
     availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
@@ -138,10 +138,9 @@ def _assert_internet_gateway_in_subnet_route(ec2_client, subnet_id, expected_int
     """
     response = ec2_client.describe_route_tables(Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
     routes = response["RouteTables"][0]["Routes"]
-    # Routes[1] because 0 is always local
-    assert_that(routes[1]["DestinationCidrBlock"]).is_equal_to("0.0.0.0/0")
-    if expected_internet_gateway_id:
-        assert_that(routes[1]["GatewayId"]).is_equal_to(expected_internet_gateway_id)
+    internet_gateway_route = next(route for route in routes if route["DestinationCidrBlock"] == "0.0.0.0/0")
+    assert_that(internet_gateway_route).contains("GatewayId")
+    assert_that(internet_gateway_route["GatewayId"]).is_equal_to(expected_internet_gateway_id)
 
 
 def _assert_subnet_cidr(ec2_client, subnet_id, expected_subnet_cidr):
