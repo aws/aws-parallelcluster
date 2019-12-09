@@ -52,7 +52,7 @@ class Param(object):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
 
-        string_value = str(string_value).strip()
+        string_value = str(string_value).strip() if string_value else None
 
         if string_value and string_value != "NONE":
             param_value = string_value
