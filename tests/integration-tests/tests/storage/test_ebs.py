@@ -102,6 +102,21 @@ def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
+@pytest.mark.regions(["us-west-2", "cn-north-1", "us-gov-east-1"])
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
+@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.usefixtures("region", "os", "instance")
+def test_ebs_single_empty(scheduler, pcluster_config_reader, clusters_factory):
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    mount_dir = "/shared"
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
+    _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+
 def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
     logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
     result = remote_command_executor.run_remote_command(
