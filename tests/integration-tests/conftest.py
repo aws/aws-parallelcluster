@@ -376,7 +376,7 @@ def vpc_stacks(cfn_stacks_factory, request):
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
-            cidr="192.168.0.0/18",  # 16382 IPs
+            cidr="192.168.32.0/19",  # 8190 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
