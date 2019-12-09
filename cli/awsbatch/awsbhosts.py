@@ -70,7 +70,7 @@ class Host(object):
         cpu_avail,
         mem_avail,
     ):
-        """Constructor."""
+        """Initialize the object."""
         self.container_instance_arn = container_instance_arn
         self.status = status
         self.ec2_instance = ec2_instance
@@ -92,7 +92,7 @@ class AWSBhostsCommand(object):
 
     def __init__(self, log, boto3_factory):
         """
-        Constructor.
+        Initialize the object.
 
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object

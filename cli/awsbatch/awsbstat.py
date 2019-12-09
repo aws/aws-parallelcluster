@@ -99,7 +99,7 @@ class Job(object):
         log_stream_url,
         s3_folder_url,
     ):
-        """Constructor."""
+        """Initialize the object."""
         self.id = job_id
         self.name = name
         self.creation_time = creation_time
@@ -254,7 +254,7 @@ class AWSBstatCommand(object):
 
     def __init__(self, log, boto3_factory):
         """
-        Constructor.
+        Initialize the object.
 
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
