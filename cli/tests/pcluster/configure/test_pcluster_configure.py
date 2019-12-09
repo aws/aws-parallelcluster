@@ -21,60 +21,90 @@ def _mock_input(mocker, input_in_order):
     mocker.patch(UTILS + "input", side_effect=input_in_order)
 
 
-def _mock_aws_region(mocker):
-    regions = [
-        "eu-north-1",
-        "ap-south-1",
-        "eu-west-3",
-        "eu-west-2",
-        "eu-west-1",
-        "ap-northeast-2",
-        "ap-northeast-1",
-        "sa-east-1",
-        "ca-central-1",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "eu-central-1",
-        "us-east-1",
-        "us-east-2",
-        "us-west-1",
-        "us-west-2",
-    ]
-    mocker.patch(EASYCONFIG + "get_regions", return_value=regions)
+def _mock_aws_region(mocker, partition="commercial"):
+    regions = {
+        "commercial": [
+            "eu-north-1",
+            "ap-south-1",
+            "eu-west-3",
+            "eu-west-2",
+            "eu-west-1",
+            "ap-northeast-2",
+            "ap-northeast-1",
+            "sa-east-1",
+            "ca-central-1",
+            "ap-southeast-1",
+            "ap-southeast-2",
+            "eu-central-1",
+            "us-east-1",
+            "us-east-2",
+            "us-west-1",
+            "us-west-2",
+        ],
+        "china": ["cn-north-1", "cn-northwest-1"],
+    }
+    mocker.patch(EASYCONFIG + "get_regions", return_value=regions.get(partition))
 
 
-def _mock_list_keys(mocker):
+def _mock_list_keys(mocker, partition="commercial"):
     # If changed look for test_prompt_a_list
-    keys = ["key1", "key2", "key3", "key4", "key5", "key6"]
-    mocker.patch(EASYCONFIG + "_get_keys", return_value=keys)
+    keys = {
+        "commercial": ["key1", "key2", "key3", "key4", "key5", "key6"],
+        "china": ["some_key1", "some_key2", "some_key3"],
+    }
+    mocker.patch(EASYCONFIG + "_get_keys", return_value=keys.get(partition))
 
 
-def _mock_list_vpcs_and_subnets(mocker, empty_region=False):
+def _mock_list_vpcs_and_subnets(mocker, empty_region=False, partition="commercial"):
     # If changed look for test_prompt_a_list_of_tuple
     if empty_region:
         mocked_response = {"vpc_list": [], "vpc_to_subnets": {}}
     else:
-        mocked_response = {
-            "vpc_list": [
-                ("vpc-12345678", "ParallelClusterVPC-20190625135738", "2 subnets inside"),
-                ("vpc-23456789", "ParallelClusterVPC-20190624105051", "0 subnets inside"),
-                ("vpc-34567891", "default", "3 subnets inside"),
-                ("vpc-45678912", "ParallelClusterVPC-20190626095403", "1 subnets inside"),
-            ],
-            "vpc_subnets": {
-                "vpc-12345678": [
-                    ("subnet-12345678", "ParallelClusterPublicSubnet", "Subnet size: 256"),
-                    ("subnet-23456789", "ParallelClusterPrivateSubnet", "Subnet size: 4096"),
+        response_dict = {
+            "commercial": {
+                "vpc_list": [
+                    ("vpc-12345678", "ParallelClusterVPC-20190625135738", "2 subnets inside"),
+                    ("vpc-23456789", "ParallelClusterVPC-20190624105051", "0 subnets inside"),
+                    ("vpc-34567891", "default", "3 subnets inside"),
+                    ("vpc-45678912", "ParallelClusterVPC-20190626095403", "1 subnets inside"),
                 ],
-                "vpc-23456789": [],
-                "vpc-34567891": [
-                    ("subnet-34567891", "Subnet size: 4096"),
-                    ("subnet-45678912", "Subnet size: 4096"),
-                    ("subnet-56789123", "Subnet size: 4096"),
+                "vpc_subnets": {
+                    "vpc-12345678": [
+                        ("subnet-12345678", "ParallelClusterPublicSubnet", "Subnet size: 256"),
+                        ("subnet-23456789", "ParallelClusterPrivateSubnet", "Subnet size: 4096"),
+                    ],
+                    "vpc-23456789": [],
+                    "vpc-34567891": [
+                        ("subnet-34567891", "Subnet size: 4096"),
+                        ("subnet-45678912", "Subnet size: 4096"),
+                        ("subnet-56789123", "Subnet size: 4096"),
+                    ],
+                    "vpc-45678912": [("subnet-45678912", "ParallelClusterPublicSubnet", "Subnet size: 4096")],
+                },
+            },
+            "china": {
+                "vpc_list": [
+                    ("vpc-abcdefgh", "ParallelClusterVPC-20190625135738", "2 subnets inside"),
+                    ("vpc-bcdefghi", "ParallelClusterVPC-20190624105051", "0 subnets inside"),
+                    ("vpc-cdefghij", "default", "3 subnets inside"),
+                    ("vpc-abdbabcb", "ParallelClusterVPC-20190626095403", "1 subnets inside"),
                 ],
-                "vpc-45678912": [("subnet-45678912", "ParallelClusterPublicSubnet", "Subnet size: 4096")],
+                "vpc_subnets": {
+                    "vpc-abcdefgh": [
+                        ("subnet-77777777", "ParallelClusterPublicSubnet", "Subnet size: 256"),
+                        ("subnet-66666666", "ParallelClusterPrivateSubnet", "Subnet size: 4096"),
+                    ],
+                    "vpc-bcdefghi": [],
+                    "vpc-cdefghij": [
+                        ("subnet-11111111", "Subnet size: 4096"),
+                        ("subnet-22222222", "Subnet size: 4096"),
+                        ("subnet-33333333", "Subnet size: 4096"),
+                    ],
+                    "vpc-abdbabcb": [("subnet-55555555", "ParallelClusterPublicSubnet", "Subnet size: 4096")],
+                },
             },
         }
+        mocked_response = response_dict.get(partition)
     mocker.patch(EASYCONFIG + "_get_vpcs_and_subnets", return_value=mocked_response)
 
 
@@ -203,11 +233,11 @@ class ComposeInput:
 
 
 class MockHandler:
-    def __init__(self, mocker, empty_region=False):
+    def __init__(self, mocker, empty_region=False, partition="commercial"):
         self.mocker = mocker
-        _mock_aws_region(self.mocker)
-        _mock_list_keys(self.mocker)
-        _mock_list_vpcs_and_subnets(self.mocker, empty_region)
+        _mock_aws_region(self.mocker, partition)
+        _mock_list_keys(self.mocker, partition)
+        _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
 
     def add_subnet_automation(self, public_subnet_id, is_a_valid_vpc=True, private_subnet_id=None):
@@ -274,7 +304,7 @@ def _run_input_test_with_config(mocker, config, old_config_file, error, output, 
 
 def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
     """
-    Testing easy config with all user hitting return on all prompts.
+    Testing easy config with user hitting return on all prompts.
 
     After running easy config, the old original_config_file should be the same as pcluster.config.ini
     """
@@ -282,6 +312,22 @@ def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_
     old_config_file = str(test_datadir / "original_config_file")
 
     MockHandler(mocker)
+
+    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
+
+
+def test_no_available_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
+    """
+    Testing easy config with user hitting return on all prompts.
+
+    Mocking the case where parameters: aws_region_name, key_name, vpc_id, compute_subnet_id, master_subnet_id.
+    Are not found in available list under new partition/region/vpc configuration.
+    After running easy config, the old original_config_file should be the same as pcluster.config.ini
+    """
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file")
+
+    MockHandler(mocker, partition="china")
 
     _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
 
