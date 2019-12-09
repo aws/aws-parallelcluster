@@ -1,0 +1,25 @@
+[aws]
+aws_region_name = eu-west-1
+
+[cluster default]
+key_name = key3
+vpc_settings = default
+scheduler = torque
+master_instance_type = t2.nano
+compute_instance_type = t2.nano
+max_queue_size = 14
+initial_queue_size = 13
+maintain_initial_size = true
+
+[vpc default]
+vpc_id = vpc-12345678
+master_subnet_id = subnet-12345678
+compute_subnet_id = subnet-23456789
+
+[global]
+cluster_template = default
+update_check = true
+sanity_check = true
+
+[aliases]
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}

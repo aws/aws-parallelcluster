@@ -119,17 +119,21 @@ def configure(args):
     vpc_label = vpc_section.label
 
     # Use built in boto regions as an available option
+    available_regions = get_regions()
+    default_region = pcluster_config.get_section("aws").get_param_value("aws_region_name")
     aws_region_name = prompt_iterable(
         "AWS Region ID",
-        get_regions(),
-        default_value=pcluster_config.get_section("aws").get_param_value("aws_region_name"),
+        available_regions,
+        default_value=default_region if default_region in available_regions else None,
     )
     # Set provided region into os environment for suggestions and validations from here on
     os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
     # Get the key name from the current region, if any
+    available_keys = _get_keys()
+    default_key = cluster_section.get_param_value("key_name")
     key_name = prompt_iterable(
-        "EC2 Key Pair Name", _get_keys(), default_value=cluster_section.get_param_value("key_name")
+        "EC2 Key Pair Name", available_keys, default_value=default_key if default_key in available_keys else None
     )
 
     scheduler = prompt_iterable(
@@ -204,7 +208,12 @@ def _create_vpc_parameters(vpc_section, scheduler, min_subnet_size, automate_vpc
                 automate_vpc_with_subnet_creation(_choose_network_configuration(scheduler), min_subnet_size)
             )
         else:
-            vpc_id = prompt_iterable("VPC ID", vpc_list, vpc_section.get_param_value("vpc_id"))
+            default_vpc = vpc_section.get_param_value("vpc_id")
+            vpc_id = prompt_iterable(
+                "VPC ID",
+                vpc_list,
+                default_value=default_vpc if default_vpc in [vpc_entry[0] for vpc_entry in vpc_list] else None,
+            )
             vpc_parameters["vpc_id"] = vpc_id
             subnet_list = vpc_and_subnets["vpc_subnets"][vpc_id]
             if not subnet_list or (
@@ -219,14 +228,20 @@ def _create_vpc_parameters(vpc_section, scheduler, min_subnet_size, automate_vpc
 
 
 def _ask_for_subnets(subnet_list, vpc_section):
+    available_subnets = [subnet_entry[0] for subnet_entry in subnet_list]
+    default_master_subnet = vpc_section.get_param_value("master_subnet_id")
     master_subnet_id = prompt_iterable(
-        "Master Subnet ID", subnet_list, default_value=vpc_section.get_param_value("master_subnet_id")
+        "Master Subnet ID",
+        subnet_list,
+        default_value=default_master_subnet if default_master_subnet in available_subnets else None,
     )
 
+    default_compute_subnet = vpc_section.get_param_value("compute_subnet_id")
     compute_subnet_id = prompt_iterable(
         "Compute Subnet ID",
         subnet_list,
-        default_value=vpc_section.get_param_value("compute_subnet_id") or master_subnet_id,
+        default_value=(default_compute_subnet if default_compute_subnet in available_subnets else None)
+        or master_subnet_id,
     )
     vpc_parameters = {"master_subnet_id": master_subnet_id}
 
