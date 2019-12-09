@@ -54,7 +54,7 @@ class AWSBkillCommand(object):
 
     def __init__(self, log, boto3_factory):
         """
-        Constructor.
+        Initialize the object.
 
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
