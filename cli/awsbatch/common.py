@@ -103,7 +103,7 @@ class Boto3ClientFactory(object):
     """Boto3 configuration object."""
 
     def __init__(self, region, aws_access_key_id, aws_secret_access_key, proxy="NONE"):
-        """Constructor."""
+        """Initialize the object."""
         self.region = region
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
@@ -135,7 +135,7 @@ class AWSBatchCliConfig(object):
 
     def __init__(self, log, cluster):
         """
-        Constructor.
+        Initialize the object.
 
         Search for the [cluster cluster-name] section in the /etc/awsbatch-cli.cfg configuration file, if there
         or ask to the pcluster status.

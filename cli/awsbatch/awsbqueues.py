@@ -54,7 +54,7 @@ class Queue(object):
     """Generic queue object."""
 
     def __init__(self, arn, name, priority, status, status_reason):
-        """Constructor."""
+        """Initialize the object."""
         self.arn = arn
         self.name = name
         self.priority = priority
@@ -67,7 +67,7 @@ class AWSBqueuesCommand(object):
 
     def __init__(self, log, boto3_factory):
         """
-        Constructor.
+        Initialize the object.
 
         :param log: log
         :param boto3_factory: an initialized Boto3ClientFactory object
