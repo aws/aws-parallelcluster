@@ -8,13 +8,13 @@ CHANGELOG
 **ENHANCEMENTS**
 
 * Add ``--show-url`` flag to ``pcluster dcv`` command in order to generate a one-time URL that can be used to start
-  a DCV session.
+  a DCV session. This unblocks the usage of DCV when the browser cannot be launched automatically.
 
 **CHANGES**
 
 * Upgrade NVIDIA driver to Tesla version 440.33.01.
 * Upgrade CUDA library to version 10.2.
-* Using a Placement Group is not required anymore when enabling EFA.
+* Using a Placement Group is not required anymore but highly recommended when enabling EFA.
 * Increase default root volume size in Centos 6 AMI to 25GB.
 * Increase the retention of CloudWatch logs produced when generating AWS Batch Docker images from 1 to 14 days.
 * Increase the total time allowed to build Docker images from 20 minutes to 30 minutes. This is done to better deal
@@ -25,14 +25,17 @@ CHANGELOG
 * Fix installation of NVIDIA drivers on Ubuntu 18.
 * Fix installation of CUDA toolkit on Centos 6.
 * Fix invalid default value for ``spot_price``.
+* Fix issue that was preventing the cluster from being created in VPCs configured with multiple CIDR blocks.
 * Correctly handle failures when retrieving ASG in ``pcluster instances`` command.
 * Fix the default mount dir when a single EBS volume is specified through a dedicated ebs configuration section.
 * Correctly handle failures when there is an invalid parameter in the ``aws`` config section.
 * Fix a bug in ``pcluster delete`` that was causing the cli to exit with error when the cluster is successfully deleted.
 * Exit with status code 1 if ``pcluster create`` fails to create a stack.
-* Handle whitespace in the value passed to the ``ebs`` parameter of the ``[cluster]`` section of the config file.
-* Handle the case of multiple or no network interfaces on FSX filesystems.
-* Fix easy config to retain default values from old config file.
+* Better handle the case of multiple or no network interfaces on FSX filesystems.
+* Fix ``pcluster configure`` to retain default values from old config file.
+* Fix bug in sqswatcher that was causing the daemon to fail when more than 100 DynamoDB tables are present in the
+  cluster region.
+* Fix installation of Munge on Amazon Linux, Centos 6, Centos 7 and Ubuntu 16.
 
 
 2.5.0
