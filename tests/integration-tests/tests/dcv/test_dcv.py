@@ -16,6 +16,7 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import run_command
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
@@ -38,6 +39,13 @@ def test_dcv_configuration(
 
     # check configuration parameters
     _check_security_group(region, cluster, dcv_port, expected_cidr=access_from)
+
+    # dcv connect show url
+    result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"])
+    assert_that(result.stdout).matches(
+        r"Please use the following one-time URL in your browser within 30 seconds:\n"
+        r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_authenticator_port) + r"\?authToken=(.*)"
+    )
 
     # check error cases
     _check_auth_ko(
