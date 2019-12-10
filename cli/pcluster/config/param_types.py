@@ -128,13 +128,14 @@ class Param(object):
                 errors, warnings = validation_func(self.key, self.value, self.pcluster_config)
                 if errors:
                     self.pcluster_config.error(
-                        "The configuration parameter '{0}' has an invalid value '{1}'\n"
-                        "{2}".format(self.key, self.value, "\n".join(errors))
+                        "The configuration parameter '{0}' generated the following errors:\n{1}".format(
+                            self.key, "\n".join(errors)
+                        )
                     )
                 elif warnings:
                     self.pcluster_config.warn(
-                        "The configuration parameter '{0} = {1}' generated the following warnings:\n{2}".format(
-                            self.key, self.value, "\n".join(warnings)
+                        "The configuration parameter '{0}' generated the following warnings:\n{1}".format(
+                            self.key, "\n".join(warnings)
                         )
                     )
                 else:
