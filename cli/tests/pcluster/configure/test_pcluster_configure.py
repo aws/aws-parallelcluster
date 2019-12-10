@@ -309,7 +309,7 @@ def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_
     After running easy config, the old original_config_file should be the same as pcluster.config.ini
     """
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file")
+    old_config_file = str(test_datadir / "original_config_file.ini")
 
     MockHandler(mocker)
 
@@ -325,7 +325,7 @@ def test_no_available_no_input_no_automation_no_errors_with_config_file(mocker, 
     After running easy config, the old original_config_file should be the same as pcluster.config.ini
     """
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file")
+    old_config_file = str(test_datadir / "original_config_file.ini")
 
     MockHandler(mocker, partition="china")
 
@@ -339,7 +339,7 @@ def test_with_input_no_automation_no_errors_with_config_file(mocker, capsys, tes
     After running easy config on the old original_config_file, output should be the same as pcluster.config.ini
     """
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file")
+    old_config_file = str(test_datadir / "original_config_file.ini")
 
     MockHandler(mocker)
 
@@ -398,7 +398,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
 def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file")
+    old_config_file = str(test_datadir / "original_config_file.ini")
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
@@ -510,7 +510,7 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
 
 def test_bad_config_file(mocker, capsys, test_datadir):
     config, error, output = get_file_path(test_datadir)
-    old_config_file = str(test_datadir / "original_config_file")
+    old_config_file = str(test_datadir / "original_config_file.ini")
 
     mock_handler = MockHandler(mocker)
     mock_handler.add_subnet_automation(public_subnet_id="subnet-12345678", private_subnet_id="subnet-23456789")
