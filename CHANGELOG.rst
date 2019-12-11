@@ -19,6 +19,12 @@ CHANGELOG
 * Increase the retention of CloudWatch logs produced when generating AWS Batch Docker images from 1 to 14 days.
 * Increase the total time allowed to build Docker images from 20 minutes to 30 minutes. This is done to better deal
   with slow networking in China regions.
+* Upgrade EFA installer to version 1.7.1:
+
+  * Kernel module: ``efa-1.4.1``
+  * RDMA core: ``rdma-core-25.0``
+  * Libfabric: ``libfabric-aws-1.8.1amzn1.3``
+  * Open MPI: ``openmpi40-aws-4.0.2``
 
 **BUG FIXES**
 
