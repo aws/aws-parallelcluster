@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import os as operating_system
 import re
 
 import boto3
@@ -41,9 +42,9 @@ def test_dcv_configuration(
     _check_security_group(region, cluster, dcv_port, expected_cidr=access_from)
 
     # dcv connect show url
-    result = run_command(
-        ["AWS_DEFAULT_REGION={0}".format(region), "pcluster", "dcv", "connect", cluster.name, "--show-url"]
-    )
+    env = operating_system.environ.copy()
+    env["AWS_DEFAULT_REGION"] = region
+    result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_authenticator_port) + r"\?authToken=(.*)"
