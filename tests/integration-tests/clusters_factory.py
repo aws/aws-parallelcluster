@@ -10,6 +10,8 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
+import subprocess
 import time
 
 import boto3
@@ -148,13 +150,20 @@ class ClustersFactory:
             cluster = self.__created_clusters[name]
 
             # destroy the cluster
-            result = run_command(["pcluster", "delete", "--config", cluster.config_file, name])
-            if "DELETE_FAILED" in result.stdout:
-                error = "Cluster deletion failed for {0} with output: {1}".format(name, result.stdout)
-                logging.error(error)
-                raise Exception(error)
-            del self.__created_clusters[name]
-            logging.info("Cluster {0} deleted successfully".format(name))
+            try:
+                result = run_command(["pcluster", "delete", "--config", cluster.config_file, name], log_error=False)
+                if "DELETE_FAILED" in result.stdout:
+                    error = "Cluster deletion failed for {0} with output: {1}".format(name, result.stdout)
+                    logging.error(error)
+                    raise Exception(error)
+                del self.__created_clusters[name]
+                logging.info("Cluster {0} deleted successfully".format(name))
+            except subprocess.CalledProcessError as e:
+                if re.search(r"Stack with id parallelcluster-.+ does not exist", e.stdout):
+                    pass
+                else:
+                    logging.error("Failed destroying cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+                    raise
         else:
             logging.warning("Couldn't find cluster with name {0}. Skipping deletion.".format(name))
 
