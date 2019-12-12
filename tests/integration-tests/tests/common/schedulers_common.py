@@ -118,7 +118,7 @@ class AWSBatchCommands(SchedulerCommands):
         stop_max_delay=minutes(15),
     )
     def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
+        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
         return re.findall(r"status\s+: (.+)", result.stdout)
 
     def get_job_exit_status(self, job_id):  # noqa: D102
