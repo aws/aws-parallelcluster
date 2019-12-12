@@ -87,15 +87,14 @@ def dcv_connect(args):
     url = "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
         IP=master_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )
+    url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
 
     if args.show_url:
-        LOGGER.info("Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url))
+        LOGGER.info(url_message)
         return
 
     try:
-        webbrowser.open_new(url)
-    except webbrowser.Error:
-        LOGGER.info(
-            "Unable to open the Web browser. "
-            "Please use the following URL in your browser within 30 seconds:\n{0}".format(url)
-        )
+        if not webbrowser.open_new(url):
+            raise webbrowser.Error("Unable to open the Web browser.")
+    except webbrowser.Error as e:
+        LOGGER.info("{0}\n{1}".format(e, url_message))
