@@ -100,4 +100,8 @@ def _test_job_submission(remote_command_executor, submit_command, additional_fil
     job_id = awsbatch_commands.assert_job_submitted(result.stdout)
     logging.debug("Submitted Batch job id: {0}".format(job_id))
     awsbatch_commands.wait_job_completed(job_id)
-    awsbatch_commands.assert_job_succeeded(job_id, children_number)
+    try:
+        awsbatch_commands.assert_job_succeeded(job_id, children_number)
+    except AssertionError:
+        remote_command_executor.run_remote_command(f"awsbout {job_id}", raise_on_error=False, log_output=True)
+        raise
