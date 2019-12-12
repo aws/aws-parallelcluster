@@ -422,7 +422,7 @@ def _get_master_server_ip(stack_name):
         ip_address = instance.get("PrivateIpAddress")
     state = instance.get("State").get("Name")
     if state != "running" or ip_address is None:
-        error("MasterServer: %s\nCannot get ip address.", state.upper())
+        error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
 
 
