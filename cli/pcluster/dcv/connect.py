@@ -22,9 +22,16 @@ from pcluster.utils import (
     get_master_ip_and_username,
     get_stack,
     get_stack_name,
+    retry,
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class DCVConnectionError(Exception):
+    """Error raised with DCV connection fails."""
+
+    pass
 
 
 def _check_command_output(cmd):
@@ -52,13 +59,35 @@ def dcv_connect(args):
         DCV_SHARED_DIR=shared_dir,
     )
 
-    # Connect by ssh to the master instance and prepare DCV session
     try:
-        LOGGER.debug("SSH command: {0}".format(cmd))
-        output = _check_command_output(cmd)
+        url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, master_ip], attempts=4)
+        url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
+    except DCVConnectionError as e:
+        error(
+            "Something went wrong during DCV connection.\n{0}"
+            "Please check the logs in the /var/log/parallelcluster/ folder "
+            "of the master instance and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
+        )
+
+    if args.show_url:
+        LOGGER.info(url_message)
+        return
+
+    try:
+        if not webbrowser.open_new(url):
+            raise webbrowser.Error("Unable to open the Web browser.")
+    except webbrowser.Error as e:
+        LOGGER.info("{0}\n{1}".format(e, url_message))
+
+
+def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
+    """Connect by ssh to the master instance, prepare DCV session and return the DCV session URL."""
+    try:
+        LOGGER.debug("SSH command: {0}".format(ssh_cmd))
+        output = _check_command_output(ssh_cmd)
         # At first ssh connection, the ssh command alerts it is adding the host to the known hosts list
         if re.search("Permanently added .* to the list of known hosts.", output):
-            output = _check_command_output(cmd)
+            output = _check_command_output(ssh_cmd)
 
         dcv_parameters = re.search(
             r"PclusterDcvServerPort=([\d]+) PclusterDcvSessionId=([\w]+) PclusterDcvSessionToken=([\w-]+)", output
@@ -71,30 +100,18 @@ def dcv_connect(args):
             error(
                 "Something went wrong during DCV connection. Please manually execute the command:\n{0}\n"
                 "If the problem persists, please check the logs in the /var/log/parallelcluster/ folder "
-                "of the master instance and submit an issue {1}.".format(cmd, PCLUSTER_ISSUES_LINK)
+                "of the master instance and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
             )
 
     except sub.CalledProcessError as e:
         if "{0}: No such file or directory".format(DCV_CONNECT_SCRIPT) in e.output:
             error(
                 "The cluster {0} has been created with an old version of ParallelCluster "
-                "without the DCV support.".format(args.cluster_name)
+                "without the DCV support.".format(cluster_name)
             )
         else:
-            error("Something went wrong during DCV connection.\n{0}".format(e.output))
+            raise DCVConnectionError(e.output)
 
-    # DCV URL
-    url = "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
+    return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
         IP=master_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )
-    url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
-
-    if args.show_url:
-        LOGGER.info(url_message)
-        return
-
-    try:
-        if not webbrowser.open_new(url):
-            raise webbrowser.Error("Unable to open the Web browser.")
-    except webbrowser.Error as e:
-        LOGGER.info("{0}\n{1}".format(e, url_message))
