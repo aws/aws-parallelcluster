@@ -11,7 +11,6 @@
 from future.moves.collections import OrderedDict
 
 import errno
-import inspect
 import logging
 import os
 import stat
@@ -94,15 +93,11 @@ class PclusterConfig(object):
 
         if not os.path.isfile(self.config_file):
             if fail_on_config_file_absence:
-                error_message = "Configuration file {0} not found."
+                error_message = "Configuration file {0} not found.".format(self.config_file)
                 if default_config:
                     error_message += (
-                        "\nYou can copy a template from {1}{2}examples{2}config "
-                        "or execute the 'pcluster configure' command".format(
-                            self.config_file,
-                            os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe()))),
-                            os.path.sep,
-                        )
+                        "\nYou can execute the 'pcluster configure' command "
+                        "or see https://docs.aws.amazon.com/parallelcluster/latest/ug/configuration.html"
                     )
                 self.error(error_message)
             else:
