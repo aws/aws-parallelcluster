@@ -7,8 +7,8 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
-* Add ``--show-url`` flag to ``pcluster dcv`` command in order to generate a one-time URL that can be used to start
-  a DCV session. This unblocks the usage of DCV when the browser cannot be launched automatically.
+* Add ``--show-url`` flag to ``pcluster dcv connect`` command in order to generate a one-time URL that can be used to
+  start a DCV session. This unblocks the usage of DCV when the browser cannot be launched automatically.
 
 **CHANGES**
 
