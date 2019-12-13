@@ -25,9 +25,7 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.oss(["centos7"])
 @pytest.mark.schedulers(["sge"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
-    """
-    Test Intel Cluster Checker
-    """
+    """Test Intel Cluster Checker"""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -42,14 +40,6 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_inst
     # Install Intel Cluster Checker CLCK Master
     logging.info("Installing Intel Cluster Checker")
     remote_command_executor.run_remote_script(str(test_datadir / "install_clck.sh"), hide=False)
-
-    # Install Intel Cluster Checker CLCK Compute
-    result = scheduler_commands.submit_script(
-        str(test_datadir / "install_clck_compute.sh"), slots=2 * slots_per_instance
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
 
     # Create nodefile
     # ip-172-31-15-31  # role: head
@@ -74,10 +64,16 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_inst
         "sudo cp ~/clck.xml /opt/intel/clck/2019.3.5/etc/clck.xml", additional_files=[str(test_datadir / "clck.xml")]
     )
 
+    # Load modules in ~/.bashrc
+    remote_command_executor.run_remote_command(
+        "echo 'PATH=/opt/intel/intelpython2/bin/:$PATH\nPATH=/opt/intel/intelpython3/bin/:$PATH\n"
+        "source /opt/intel/psxe_runtime/linux/bin/psxevars.sh' >> ~/.bashrc"
+    )
+
     # Run Cluster Checker
     result = remote_command_executor.run_remote_script(str(test_datadir / "run_clck.sh"))
     try:
         assert_that(result.stdout).contains("Overall Result: PASS")
     except AssertionError as e:
-        logging.error(remote_command_executor.run_remote_command("cat clck_results.log"))
-        raise (e)
+        logging.error(remote_command_executor.run_remote_command("cat clck_results.log").stdout)
+        raise e

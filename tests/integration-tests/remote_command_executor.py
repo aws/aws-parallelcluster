@@ -30,8 +30,8 @@ class RemoteCommandExecutor:
         "alinux": "ec2-user",
         "centos6": "centos",
         "centos7": "centos",
-        "ubuntu1404": "ubuntu",
         "ubuntu1604": "ubuntu",
+        "ubuntu1804": "ubuntu",
     }
 
     def __init__(self, cluster):
@@ -51,7 +51,14 @@ class RemoteCommandExecutor:
             logging.warning("Exception raised when closing remote ssh client: {0}".format(e))
 
     def run_remote_command(
-        self, command, log_error=True, additional_files=None, raise_on_error=True, login_shell=True, hide=False
+        self,
+        command,
+        log_error=True,
+        additional_files=None,
+        raise_on_error=True,
+        login_shell=True,
+        hide=False,
+        log_output=False,
     ):
         """
         Execute remote command on the cluster master node.
@@ -62,6 +69,7 @@ class RemoteCommandExecutor:
         :param raise_on_error: if True raises a RemoteCommandExecutionError on failures
         :param login_shell: if True prepends /bin/bash --login -c to the given command
         :param hide: do not print command output to the local stdout
+        :param log_output: log the command output.
         :return: result of the execution.
         """
         if isinstance(command, list):
@@ -74,6 +82,8 @@ class RemoteCommandExecutor:
         result = self.__connection.run(command, warn=True, pty=True, hide=hide)
         result.stdout = "\n".join(result.stdout.splitlines())
         result.stderr = "\n".join(result.stderr.splitlines())
+        if log_output:
+            logging.info("Command output:\n%s", result.stdout)
         if result.failed and raise_on_error:
             if log_error:
                 logging.error(

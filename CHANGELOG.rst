@@ -2,13 +2,109 @@
 CHANGELOG
 =========
 
-x.x.x
+2.5.1
 =====
+
+**ENHANCEMENTS**
+
+* Add ``--show-url`` flag to ``pcluster dcv connect`` command in order to generate a one-time URL that can be used to
+  start a DCV session. This unblocks the usage of DCV when the browser cannot be launched automatically.
 
 **CHANGES**
 
-* Increase default EBS volume size from 17GB to 20GB
-* Search for new available version only at ``pcluster create`` action
+* Upgrade NVIDIA driver to Tesla version 440.33.01.
+* Upgrade CUDA library to version 10.2.
+* Using a Placement Group is not required anymore but highly recommended when enabling EFA.
+* Increase default root volume size in Centos 6 AMI to 25GB.
+* Increase the retention of CloudWatch logs produced when generating AWS Batch Docker images from 1 to 14 days.
+* Increase the total time allowed to build Docker images from 20 minutes to 30 minutes. This is done to better deal
+  with slow networking in China regions.
+* Upgrade EFA installer to version 1.7.1:
+
+  * Kernel module: ``efa-1.4.1``
+  * RDMA core: ``rdma-core-25.0``
+  * Libfabric: ``libfabric-aws-1.8.1amzn1.3``
+  * Open MPI: ``openmpi40-aws-4.0.2``
+
+**BUG FIXES**
+
+* Fix installation of NVIDIA drivers on Ubuntu 18.
+* Fix installation of CUDA toolkit on Centos 6.
+* Fix invalid default value for ``spot_price``.
+* Fix issue that was preventing the cluster from being created in VPCs configured with multiple CIDR blocks.
+* Correctly handle failures when retrieving ASG in ``pcluster instances`` command.
+* Fix the default mount dir when a single EBS volume is specified through a dedicated ebs configuration section.
+* Correctly handle failures when there is an invalid parameter in the ``aws`` config section.
+* Fix a bug in ``pcluster delete`` that was causing the cli to exit with error when the cluster is successfully deleted.
+* Exit with status code 1 if ``pcluster create`` fails to create a stack.
+* Better handle the case of multiple or no network interfaces on FSX filesystems.
+* Fix ``pcluster configure`` to retain default values from old config file.
+* Fix bug in sqswatcher that was causing the daemon to fail when more than 100 DynamoDB tables are present in the
+  cluster region.
+* Fix installation of Munge on Amazon Linux, Centos 6, Centos 7 and Ubuntu 16.
+
+
+2.5.0
+=====
+
+**ENHANCEMENTS**
+
+* Add support for new OS: Ubuntu 18.04
+* Add support for AWS Batch scheduler in China partition and in ``eu-north-1``.
+* Revamped ``pcluster configure`` command which now supports automated networking configuration.
+* Add support for NICE DCV on Centos 7 to setup a graphical remote desktop session on the Master node.
+* Add support for new EFA supported instances: ``c5n.metal``, ``m5dn.24xlarge``, ``m5n.24xlarge``, ``r5dn.24xlarge``,
+  ``r5n.24xlarge``
+* Add support for scheduling with GPU options in Slurm. Currently supports the following GPU-related options: ``—G/——gpus,
+  ——gpus-per-task, ——gpus-per-node, ——gres=gpu, ——cpus-per-gpu``.
+  Integrated GPU requirements into scaling logic, cluster will scale automatically to satisfy GPU/CPU requirements
+  for pending jobs. When submitting GPU jobs, CPU/node/task information is not required but preferred in order to
+  avoid ambiguity. If only GPU requirements are specified, cluster will scale up to the minimum number of nodes
+  required to satisfy all GPU requirements.
+* Add new cluster configuration option to automatically disable Hyperthreading (``disable_hyperthreading = true``)
+* Install Intel Parallel Studio 2019.5 Runtime in Centos 7 when ``enable_intel_hpc_platform = true``  and share /opt/intel over NFS
+* Additional EC2 IAM Policies can now be added to the role ParallelCluster automatically creates for cluster nodes by
+  simply specifying ``additional_iam_policies`` in the cluster config.
+
+**CHANGES**
+
+* Ubuntu 14.04 is no longer supported
+* Upgrade Intel MPI to version U5.
+* Upgrade EFA Installer to version 1.7.0, this also upgrades Open MPI to 4.0.2.
+* Upgrade NVIDIA driver to Tesla version 418.87.
+* Upgrade CUDA library to version 10.1.
+* Upgrade Slurm to version 19.05.3-2.
+* Install EFA in China AMIs.
+* Increase default EBS volume size from 17GB to 25GB
+* FSx Lustre now supports new storage_capacity options 1,200 and 2,400 GiB
+* Enable ``flock user_xattr noatime`` Lustre mount options by default everywhere and
+  ``x-systemd.automount x-systemd.requires=lnet.service`` for systemd based systems.
+* Increase the number of hosts that can be processed by scaling daemons in a single batch from 50 to 200. This
+  improves the scaling time especially with increased ASG launch rates.
+* Change default sshd config in order to disable X11 forwarding and update the list of supported ciphers.
+* Increase faulty node termination timeout from 1 minute to 5 in order to give some additional time to the scheduler
+  to recover when under heavy load.
+* Extended ``pcluster createami`` command to specify the VPC and network settings when building the AMI.
+* Support inline comments in config file
+* Support Python 3.8 in pcluster CLI.
+* Deprecate Python 2.6 support
+* Add ``ClusterName`` tag to EC2 instances.
+* Search for new available version only at ``pcluster create`` action.
+* Enable ``sanity_check`` by default.
+
+**BUG FIXES**
+
+* Fix sanity check for custom ec2 role. Fixes `#1241 <https://github.com/aws/aws-parallelcluster/issues/1241>`_ .
+* Fix bug when using same subnet for both master and compute.
+* Fix bug when ganglia is enabled ganglia urls are shown. Fixes `#1322 <https://github.com/aws/aws-parallelcluster/issues/1322>`_ .
+* Fix bug with ``awsbatch`` scheduler that prevented Multi-node jobs from running.
+* Fix jobwatcher behaviour that was marking nodes locked by the nodewatcher as busy even if they had been removed
+  already from the ASG Desired count. This was causing, in rare circumstances, a cluster overscaling.
+* Fix bug that was causing failures in sqswatcher when ADD and REMOVE event for the same host are fetched together.
+* Fix bug that was preventing nodes to mount partitioned EBS volumes.
+* Implement paginated calls in ``pcluster list``.
+* Fix bug when creating ``awsbatch`` cluster with name longer than 31 chars
+* Fix a bug that lead to ssh not working after ssh'ing into a compute node by ip address.
 
 2.4.1
 =====

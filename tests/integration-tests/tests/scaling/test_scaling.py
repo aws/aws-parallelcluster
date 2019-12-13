@@ -14,7 +14,7 @@ import logging
 import pytest
 from retrying import retry
 
-from assertpy import assert_that
+from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
 from tests.common.compute_logs_common import wait_compute_log
@@ -24,7 +24,7 @@ from time_utils import minutes, seconds
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
-@pytest.mark.skip_instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
+@pytest.mark.skip_instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge", "g3.8xlarge"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     scaledown_idletime = 4
@@ -128,18 +128,19 @@ def _assert_scaling_works(
     actual_compute_nodes_min = min(
         compute_nodes_time_series[compute_nodes_time_series.index(actual_compute_nodes_max) :]  # noqa E203
     )
-    assert_that(actual_asg_capacity_min).described_as(
-        "actual asg min capacity does not match the expected one"
-    ).is_equal_to(expected_asg_capacity_min)
-    assert_that(actual_asg_capacity_max).described_as(
-        "actual asg max capacity does not match the expected one"
-    ).is_equal_to(expected_asg_capacity_max)
-    assert_that(actual_compute_nodes_min).described_as(
-        "actual number of min compute nodes does not match the expected one"
-    ).is_equal_to(expected_compute_nodes_min)
-    assert_that(actual_compute_nodes_max).described_as(
-        "actual number of max compute nodes does not match the expected one"
-    ).is_equal_to(expected_compute_nodes_max)
+    with soft_assertions():
+        assert_that(actual_asg_capacity_min).described_as(
+            "actual asg min capacity does not match the expected one"
+        ).is_equal_to(expected_asg_capacity_min)
+        assert_that(actual_asg_capacity_max).described_as(
+            "actual asg max capacity does not match the expected one"
+        ).is_equal_to(expected_asg_capacity_max)
+        assert_that(actual_compute_nodes_min).described_as(
+            "actual number of min compute nodes does not match the expected one"
+        ).is_equal_to(expected_compute_nodes_min)
+        assert_that(actual_compute_nodes_max).described_as(
+            "actual number of max compute nodes does not match the expected one"
+        ).is_equal_to(expected_compute_nodes_max)
 
 
 def _assert_test_jobs_completed(remote_command_executor, max_jobs_exec_time):

@@ -2,31 +2,28 @@ FROM amazonlinux:latest
 
 ENV USER root
 
-# Install Python Packages
-RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py \
-    && python get-pip.py \
-    && rm get-pip.py \
-    && pip install supervisor
-
 RUN yum update -y \
     && yum -y install \
     aws-cli \
     binutils \
     gcc \
-    gfortran \
+    iproute \
     nfs-utils \
     openssh-server \
     openssh-clients \
     openmpi.x86_64 \
     openmpi-devel.x86_64 \
-    python27 \
-    python27-setuptools \
+    python2 \
+    python2-setuptools \
+    python2-pip \
     which  \
     && yum clean all \
     && rm -rf /var/cache/yum \
     && mkdir /var/run/sshd \
     && mkdir -p /parallelcluster/bin \
     && export DEBIAN_FRONTEND=noninteractive
+
+RUN pip install supervisor
 
 # Setup passwordless ssh
 ENV NOTVISIBLE "in users profile"

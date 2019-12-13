@@ -42,6 +42,7 @@ from utils import (
     delete_s3_bucket,
     random_alphanumeric,
     set_credentials,
+    set_logger_formatter,
     to_snake_case,
     unset_credentials,
 )
@@ -74,6 +75,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
+    parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
 
 
 def pytest_generate_tests(metafunc):
@@ -108,7 +110,12 @@ def pytest_configure(config):
 def pytest_runtest_call(item):
     """Called to execute the test item."""
     _add_properties_to_report(item)
+    set_logger_formatter(logging.Formatter(fmt=f"%(asctime)s - %(levelname)s - {item.name} - %(module)s - %(message)s"))
     logging.info("Running test " + item.name)
+
+
+def pytest_runtest_logfinish(nodeid, location):
+    set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
 
 
 def pytest_collection_modifyitems(items):
@@ -189,7 +196,11 @@ def clusters_factory(request):
         cluster = Cluster(
             name=request.config.getoption("cluster")
             if request.config.getoption("cluster")
-            else "integ-tests-" + random_alphanumeric(),
+            else "integ-tests-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
             config_file=cluster_config,
             ssh_key=request.config.getoption("key_path"),
         )
@@ -204,12 +215,19 @@ def clusters_factory(request):
 
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
+
+    # Sanitize config file name to make it Windows compatible
+    # request.node.nodeid example:
+    # 'dcv/test_dcv.py::test_dcv_configuration[eu-west-1-c5.xlarge-centos7-sge-8443-0.0.0.0/0-/shared]'
+    test_file, test_name = request.node.nodeid.split("::", 1)
+    config_file_name = "{0}-{1}".format(test_file, test_name.replace("/", "_"))
+
     os.makedirs(
-        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(request.node.nodeid)),
+        "{out_dir}/clusters_configs/{test_dir}".format(out_dir=out_dir, test_dir=os.path.dirname(test_file)),
         exist_ok=True,
     )
-    cluster_config_dst = "{out_dir}/clusters_configs/{test_name}.config".format(
-        out_dir=out_dir, test_name=request.node.nodeid.replace("::", "-")
+    cluster_config_dst = "{out_dir}/clusters_configs/{config_file_name}.config".format(
+        out_dir=out_dir, config_file_name=config_file_name
     )
     copyfile(cluster_config, cluster_config_dst)
     return cluster_config_dst
@@ -358,19 +376,30 @@ def vpc_stacks(cfn_stacks_factory, request):
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
-            cidr="10.0.124.0/22",  # 1,022 IPs
+            cidr="192.168.32.0/19",  # 8190 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="10.0.128.0/17",  # 32766 IPs
+            cidr="192.168.64.0/18",  # 16382 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        vpc_config = VPCConfig(subnets=[public_subnet, private_subnet])
+        private_subnet_different_cidr = SubnetConfig(
+            name="PrivateAdditionalCidr",
+            cidr="192.168.128.0/17",  # 32766 IPs
+            map_public_ip_on_launch=False,
+            has_nat_gateway=False,
+            default_gateway=Gateways.NAT_GATEWAY,
+        )
+        vpc_config = VPCConfig(
+            cidr="192.168.0.0/17",
+            additional_cidr_blocks=["192.168.128.0/17"],
+            subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
+        )
         template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zone).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
@@ -389,7 +418,15 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
         logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
         stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
     else:
-        stack = CfnStack(name="integ-tests-vpc-" + random_alphanumeric(), region=region, template=template.to_json())
+        stack = CfnStack(
+            name="integ-tests-vpc-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
+            region=region,
+            template=template.to_json(),
+        )
         cfn_stacks_factory.create_stack(stack)
     return stack
 

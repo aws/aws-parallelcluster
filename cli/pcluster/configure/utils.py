@@ -49,7 +49,7 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
         print("Allowed values for {0}:".format(message))
         for item in options_to_print:
             print(item)
-    user_prompt = "{0} [{1}]: ".format(message, default_value or "")
+    user_prompt = "{0} [{1}]: ".format(message, default_value if default_value is not None else "")
 
     valid_user_input = False
     result = default_value
@@ -74,11 +74,10 @@ def prompt_iterable(message, options, default_value=None):
     :param default_value: the default value
     :return: the validated value
     """
-    is_tuple = isinstance(options[0], (list, tuple))
-
     if not options:
         LOGGER.error("ERROR: No options found for {0}".format(message))
         sys.exit(1)
+    is_tuple = isinstance(options[0], (list, tuple))
 
     if not default_value:
         default_value = options[0][0] if is_tuple else options[0]
@@ -121,7 +120,9 @@ def generate_printable_list(items):
 def get_regions():
     ec2 = boto3.client("ec2")
     regions = ec2.describe_regions().get("Regions")
-    return [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+    regions = [region.get("RegionName") for region in regions if region.get("RegionName") not in unsupported_regions]
+    regions.sort()
+    return regions
 
 
 def get_resource_tag(resource, tag_name):

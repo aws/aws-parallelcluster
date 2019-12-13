@@ -4,7 +4,9 @@ ignore =
     D100, # Missing docstring in public module
     D104, # Missing docstring in public package
     D107, # Missing docstring in __init__
+    D103, # Missing docstring in public function
     W503, # line break before binary operator => Conflicts with black style.
+    D413, # Missing blank line after last section
 # D103 Missing docstring in public function
 # E402 module level import not at top of file
 # D101 Missing docstring in public class
@@ -13,16 +15,12 @@ ignore =
 # D400 First line should end with a period
 # D401 First line should be in imperative mood
 per-file-ignores =
-    pcluster/*.py: D103
-    pcluster/config_sanity.py: E402, D103
-    pcluster/easyconfig.py: E402, D103
-    pcluster/cfnconfig.py: E402, D103
+    pcluster/configure/easyconfig.py: E402
     pcluster/utils.py: E402
-    tests/pcluster/pcluster-unittest.py: D101, D102, D103
-    tests/pcluster/configure/test_*.py: D101, D102, D103
-    tests/pcluster/test_*.py: D101, D102, D103
+    tests/pcluster/pcluster-unittest.py: D101, D102
+    tests/pcluster/configure/test_*.py: D101, D102
+    tests/pcluster/test_*.py: D101, D102
     tests/awsbatch/test_*.py: D101, D102
-    ../tests/integration-tests/tests/*: D103
     ../tests/integration-tests/*: D205, D400, D401
 exclude =
     .tox,

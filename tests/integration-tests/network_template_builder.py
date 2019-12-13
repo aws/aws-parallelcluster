@@ -22,6 +22,7 @@ from troposphere.ec2 import (
     RouteTable,
     Subnet,
     SubnetRouteTableAssociation,
+    VPCCidrBlock,
     VPCGatewayAttachment,
 )
 
@@ -55,6 +56,7 @@ class VPCConfig(NamedTuple):
 
     name: str = "vpc"
     cidr: str = "10.0.0.0/16"
+    additional_cidr_blocks: List[str] = []
     enable_dns_support: bool = True
     enable_dns_hostnames: bool = True
     has_internet_gateway: bool = True
@@ -77,7 +79,7 @@ class NetworkTemplateBuilder:
         self.__template.set_description(description)
         self.__availability_zone = self.__get_availability_zone(availability_zone)
         self.__vpc_config = vpc_configuration
-        self.__vpc = self.__get_vpc(existing_vpc)
+        self.__vpc, self.__additional_vpc_cidr_blocks = self.__get_vpc(existing_vpc)
         self.__vpc_subnets = vpc_configuration.subnets
         self.__gateway_id = self.__get_gateway_id()
         self.__create_ig = self.__template.add_condition("CreateInternetGateway", Equals(self.__gateway_id, ""))
@@ -87,7 +89,7 @@ class NetworkTemplateBuilder:
 
     def __get_vpc(self, existing_vpc):
         if existing_vpc:
-            return self.__add_parameter(name="VpcId", description="The vpc id", expected_input_type="String")
+            return self.__add_parameter(name="VpcId", description="The vpc id", expected_input_type="String"), []
         else:
             return self.__build_vpc()
 
@@ -116,7 +118,7 @@ class NetworkTemplateBuilder:
         nat_gateway = None
         subnet_refs = []
         for subnet in self.__vpc_subnets:
-            subnet_ref = self.__build_subnet(subnet, self.__vpc)
+            subnet_ref = self.__build_subnet(subnet, self.__vpc, self.__additional_vpc_cidr_blocks)
             subnet_refs.append(subnet_ref)
             if subnet.has_nat_gateway:
                 nat_gateway = self.__build_nat_gateway(subnet, subnet_ref)
@@ -135,7 +137,16 @@ class NetworkTemplateBuilder:
             )
         )
         self.__template.add_output(Output("VpcId", Value=Ref(vpc), Description="The Vpc Id"))
-        return vpc
+
+        additional_vpc_cidr_blocks = []
+        for idx, cidr_block in enumerate(self.__vpc_config.additional_cidr_blocks):
+            additional_vpc_cidr_blocks.append(
+                self.__template.add_resource(
+                    VPCCidrBlock(f"AdditionalVPCCidrBlock{idx}", CidrBlock=cidr_block, VpcId=Ref(vpc))
+                )
+            )
+
+        return vpc, additional_vpc_cidr_blocks
 
     def __build_internet_gateway(self, vpc: VPC):
         internet_gateway = self.__template.add_resource(
@@ -167,7 +178,7 @@ class NetworkTemplateBuilder:
             )
         )
 
-    def __build_subnet(self, subnet_config: SubnetConfig, vpc: VPC):
+    def __build_subnet(self, subnet_config: SubnetConfig, vpc: VPC, additional_vpc_cidr_blocks: VPCCidrBlock):
         if not subnet_config.cidr:
             cidr = Ref(
                 self.__template.add_parameter(
@@ -189,6 +200,7 @@ class NetworkTemplateBuilder:
             MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
             Tags=subnet_config.tags(),
             AvailabilityZone=self.__availability_zone,
+            DependsOn=additional_vpc_cidr_blocks,
         )
         self.__template.add_resource(subnet)
         self.__template.add_output(Output(subnet_config.name + "SubnetId", Value=Ref(subnet)))

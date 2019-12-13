@@ -28,12 +28,12 @@ def retry_if_subprocess_error(exception):
     return isinstance(exception, subprocess.CalledProcessError)
 
 
-def run_command(command, capture_output=True, log_error=True):
+def run_command(command, capture_output=True, log_error=True, env=None):
     """Execute shell command."""
     if isinstance(command, str):
         command = shlex.split(command)
     logging.info("Executing command: " + " ".join(command))
-    result = subprocess.run(command, capture_output=capture_output, universal_newlines=True, encoding="utf-8")
+    result = subprocess.run(command, capture_output=capture_output, universal_newlines=True, encoding="utf-8", env=env)
     try:
         result.check_returncode()
     except subprocess.CalledProcessError:
@@ -82,6 +82,27 @@ def retrieve_cfn_resources(stack_name, region):
         return resources
     except Exception as e:
         logging.warning("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        raise
+
+
+def get_compute_nodes_instance_ids(stack_name, region):
+    """Return a list of Compute Instances Id's."""
+    resources = retrieve_cfn_resources(stack_name, region)
+    asg_name = resources.get("ComputeFleet")
+
+    try:
+        asg = boto3.client("autoscaling", region_name=region)
+        instances = (
+            asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
+            .get("AutoScalingGroups")[0]
+            .get("Instances")
+        )
+        instance_ids = []
+        for instance in instances:
+            instance_ids.append(instance.get("InstanceId"))
+        return instance_ids
+    except Exception as e:
+        logging.error("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
         raise
 
 
@@ -187,3 +208,8 @@ def unset_credentials():
         del os.environ["AWS_SECRET_ACCESS_KEY"]
     if "AWS_SESSION_TOKEN" in os.environ:
         del os.environ["AWS_SESSION_TOKEN"]
+
+
+def set_logger_formatter(formatter):
+    for handler in logging.getLogger().handlers:
+        handler.setFormatter(formatter)

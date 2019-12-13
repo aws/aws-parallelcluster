@@ -1,0 +1,36 @@
+INFO: Configuration file {{ CONFIG_FILE }} will be written.
+Press CTRL-C to interrupt the procedure.
+
+
+Allowed values for AWS Region ID:
+1. eu-north-1
+2. ap-south-1
+3. eu-west-3
+4. eu-west-2
+5. eu-west-1
+6. ap-northeast-2
+7. ap-northeast-1
+8. sa-east-1
+9. ca-central-1
+10. ap-southeast-1
+11. ap-southeast-2
+12. eu-central-1
+13. us-east-1
+14. us-east-2
+15. us-west-1
+16. us-west-2
+Allowed values for EC2 Key Pair Name:
+1. key1
+2. key2
+3. key3
+4. key4
+5. key5
+6. key6
+Allowed values for Scheduler:
+1. sge
+2. torque
+3. slurm
+4. awsbatch
+Beginning VPC creation. Please do not leave the terminal until the creation is finalized
+Configuration file written to {{ CONFIG_FILE }}
+You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster

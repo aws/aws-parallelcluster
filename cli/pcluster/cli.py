@@ -16,14 +16,17 @@ import logging
 import os
 import sys
 import textwrap
+from logging.handlers import RotatingFileHandler
 
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-from pcluster import pcluster
-from pcluster.configure import easyconfig
+import pcluster.commands as pcluster
+import pcluster.configure.easyconfig as easyconfig
+import pcluster.utils as utils
+from pcluster.dcv.connect import dcv_connect
 
-LOGGER = logging.getLogger("pcluster.pcluster")
+LOGGER = logging.getLogger(__name__)
 
 
 def create(args):
@@ -34,8 +37,12 @@ def configure(args):
     easyconfig.configure(args)
 
 
-def command(args, extra_args):
-    pcluster.command(args, extra_args)
+def ssh(args, extra_args):
+    pcluster.ssh(args, extra_args)
+
+
+def dcv(args):
+    dcv_connect(args)
 
 
 def status(args):
@@ -59,8 +66,7 @@ def update(args):
 
 
 def version(args):
-    version = pcluster.version()
-    LOGGER.info(version)
+    print(pcluster.version())
 
 
 def start(args):
@@ -76,25 +82,25 @@ def create_ami(args):
 
 
 def config_logger():
-    logger = logging.getLogger("pcluster.pcluster")
+    logger = logging.getLogger("pcluster")
     logger.setLevel(logging.DEBUG)
 
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter("%(message)s"))
-    logger.addHandler(ch)
+    log_stream_handler = logging.StreamHandler(sys.stdout)
+    log_stream_handler.setLevel(logging.INFO)
+    log_stream_handler.setFormatter(logging.Formatter("%(message)s"))
+    logger.addHandler(log_stream_handler)
 
-    logfile = os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+    logfile = utils.get_cli_log_file()
     try:
         os.makedirs(os.path.dirname(logfile))
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise  # can safely ignore EEXISTS for this purpose...
 
-    fh = logging.FileHandler(logfile)
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
-    logger.addHandler(fh)
+    log_file_handler = RotatingFileHandler(logfile, maxBytes=5 * 1024 * 1024, backupCount=1)
+    log_file_handler.setLevel(logging.DEBUG)
+    log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+    logger.addHandler(log_file_handler)
 
 
 def _addarg_config(subparser):
@@ -128,14 +134,13 @@ def _get_parser():
 
     # create command subparser
     create_example = textwrap.dedent(
-        """When the command is called and begins polling for status of that call
-, it is safe to use 'Ctrl-C' to exit.  You can return to viewing the current
+        """When the command is called and begins polling for status of that call,
+it is safe to use 'Ctrl-C' to exit. You can return to viewing the current
 status by calling "pcluster status mycluster".
 
 Examples::
 
-  $ pcluster create mycluster
-  $ pcluster create mycluster --tags \'{ "Key1" : "Value1" , "Key2" : "Value2" }\'"""
+  $ pcluster create mycluster"""
     )
     pcreate = subparsers.add_parser(
         "create",
@@ -163,8 +168,20 @@ Examples::
         "--cluster-template",
         help="Indicates which section of the configuration file to use for cluster creation.",
     )
-    pcreate.add_argument("-p", "--extra-parameters", type=json.loads, help="Adds extra parameters to the stack create.")
-    pcreate.add_argument("-g", "--tags", type=json.loads, help="Specifies additional tags to be added to the stack.")
+    pcreate.add_argument(
+        "-p",
+        "--extra-parameters",
+        type=json.loads,
+        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
+        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
+    )
+    pcreate.add_argument(
+        "-g",
+        "--tags",
+        type=json.loads,
+        help="Specifies additional tags to be added to the stack.\n"
+        'They must be in the form: {"Key1": "Value1", "Key2": "Value2"}',
+    )
     pcreate.set_defaults(func=create)
 
     # update command subparser
@@ -189,7 +206,13 @@ Examples::
     pupdate.add_argument(
         "-t", "--cluster-template", help="Indicates which section of the configuration file to use for cluster update."
     )
-    pupdate.add_argument("-p", "--extra-parameters", help="Adds extra parameters to the stack update.")
+    pupdate.add_argument(
+        "-p",
+        "--extra-parameters",
+        type=json.loads,
+        help="Adds extra parameters to pass as input to the CloudFormation template.\n"
+        'They must be in the form: {"ParameterKey1": "ParameterValue1", "ParameterKey2": "ParameterValue2"}',
+    )
     pupdate.add_argument(
         "-rd",
         "--reset-desired",
@@ -299,7 +322,7 @@ Variables substituted::
     )
     pssh.add_argument("cluster_name", help="Name of the cluster to connect to.")
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
-    pssh.set_defaults(func=command)
+    pssh.set_defaults(func=ssh)
 
     # createami command subparser
     pami = subparsers.add_parser(
@@ -318,7 +341,7 @@ Variables substituted::
         dest="base_ami_os",
         required=True,
         help="Specifies the OS of the base AMI. "
-        "Valid options are: alinux, ubuntu1404, ubuntu1604, centos6, centos7.",
+        "Valid options are: alinux, ubuntu1604, ubuntu1804, centos6, centos7.",
     )
     pami.add_argument(
         "-i",
@@ -339,6 +362,13 @@ Variables substituted::
         "--custom-cookbook",
         dest="custom_ami_cookbook",
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
+    )
+    pami.add_argument(
+        "--no-public-ip",
+        dest="associate_public_ip",
+        action="store_false",
+        default=True,
+        help="Do not associate public IP to the Packer instance. Defaults to associate public ip",
     )
     _addarg_config(pami)
     pami_group1 = pami.add_argument_group("Build AMI by using VPC settings from configuration file")
@@ -363,21 +393,44 @@ Variables substituted::
     pversion = subparsers.add_parser("version", help="Displays the version of AWS ParallelCluster.")
     pversion.set_defaults(func=version)
 
+    # dcv command subparser
+    pdcv = subparsers.add_parser(
+        "dcv",
+        help="The dcv command permits to use NICE DCV related features.",
+        epilog='For dcv subcommand specific flags, please run: "pcluster dcv [subcommand] --help"',
+    )
+    dcv_subparsers = pdcv.add_subparsers()
+    dcv_subparsers.required = True
+    dcv_subparsers.dest = "subcommand"
+    pdcv_connect = dcv_subparsers.add_parser(
+        "connect", help="Permits to connect to the master node through an interactive session by using NICE DCV."
+    )
+    pdcv_connect.add_argument("cluster_name", help="Name of the cluster to connect to")
+    pdcv_connect.add_argument(
+        "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
+    )
+    pdcv_connect.add_argument("--show-url", "-s", action="store_true", default=False, help="Print URL and exit")
+    pdcv.set_defaults(func=dcv)
+
     return parser
 
 
 def main():
     config_logger()
 
-    logger = logging.getLogger("pcluster.pcluster")
-    logger.debug("pcluster CLI starting")
+    # TODO remove logger
+    LOGGER.debug("pcluster CLI starting")
 
     parser = _get_parser()
     args, extra_args = parser.parse_known_args()
-    logger.debug(args)
+    LOGGER.debug(args)
 
     try:
-        if args.func.__name__ == "command":
+        # set region in the environment to make it available to all the boto3 calls
+        if "region" in args and args.region:
+            os.environ["AWS_DEFAULT_REGION"] = args.region
+
+        if args.func.__name__ == "ssh":
             args.func(args, extra_args)
         else:
             if extra_args:
@@ -386,13 +439,13 @@ def main():
                 sys.exit(1)
             args.func(args)
     except NoCredentialsError:
-        logger.error("AWS Credentials not found.")
+        LOGGER.error("AWS Credentials not found.")
         sys.exit(1)
     except KeyboardInterrupt:
-        logger.info("Exiting...")
+        LOGGER.info("Exiting...")
         sys.exit(1)
     except Exception as e:
-        logger.error("Unexpected error of type %s: %s", type(e).__name__, e)
+        LOGGER.exception("Unexpected error of type %s: %s", type(e).__name__, e)
         sys.exit(1)
 
 

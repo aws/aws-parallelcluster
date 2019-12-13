@@ -20,11 +20,12 @@ from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
+from utils import get_compute_nodes_instance_ids
 
 
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["us-east-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-@pytest.mark.oss(["alinux", "centos7", "ubuntu1604"])
+@pytest.mark.oss(["alinux", "centos7", "ubuntu1604", "ubuntu1804"])
 @pytest.mark.schedulers(["sge", "slurm"])
 def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """
@@ -41,6 +42,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
 
     _test_efa_installed(scheduler_commands, remote_command_executor)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, os)
+    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
 
@@ -51,7 +53,7 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
     # Output contains:
     # 00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0
     logging.info("Testing EFA installed")
-    result = scheduler_commands.submit_command("lspci > /shared/lspci.out")
+    result = scheduler_commands.submit_command("lspci -n > /shared/lspci.out")
 
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
@@ -59,11 +61,11 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
 
     # Check EFA interface is present on compute node
     result = remote_command_executor.run_remote_command("cat /shared/lspci.out")
-    assert_that(result.stdout).contains("00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0")
+    assert_that(result.stdout).contains("1d0f:efa0")
 
     # Check EFA interface not present on master
-    result = remote_command_executor.run_remote_command("lspci")
-    assert_that(result.stdout).does_not_contain("00:06.0 Ethernet controller: Amazon.com, Inc. Device efa0")
+    result = remote_command_executor.run_remote_command("lspci -n")
+    assert_that(result.stdout).does_not_contain("1d0f:efa0")
 
 
 def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
@@ -81,4 +83,4 @@ def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_command
 
     output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
     latency = re.search(r"0\s+(\d\d)\.", output).group(1)
-    assert_that(int(latency)).is_less_than(20)
+    assert_that(int(latency)).is_less_than_or_equal_to(24)

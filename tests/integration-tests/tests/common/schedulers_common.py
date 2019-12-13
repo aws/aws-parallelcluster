@@ -100,6 +100,11 @@ class SchedulerCommands(metaclass=ABCMeta):
         """Wait for at least one node to be locked."""
         pass
 
+    @abstractmethod
+    def get_node_cores(self):
+        """Get number of slots per instance."""
+        pass
+
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -113,7 +118,7 @@ class AWSBatchCommands(SchedulerCommands):
         stop_max_delay=minutes(15),
     )
     def wait_job_completed(self, job_id):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id))
+        result = self._remote_command_executor.run_remote_command("awsbstat -d {0}".format(job_id), log_output=True)
         return re.findall(r"status\s+: (.+)", result.stdout)
 
     def get_job_exit_status(self, job_id):  # noqa: D102
@@ -146,6 +151,9 @@ class AWSBatchCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         raise NotImplementedError
 
+    def get_node_cores(self):  # noqa: D102
+        raise NotImplementedError
+
 
 class SgeCommands(SchedulerCommands):
     """Implement commands for sge scheduler."""
@@ -176,8 +184,8 @@ class SgeCommands(SchedulerCommands):
 
     def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None):  # noqa: D102
         flags = ""
-        if nodes != 1:
-            raise Exception("SGE does not support nodes option")
+        if nodes > 1:
+            slots = nodes * slots
         if slots:
             flags += "-pe mpi {0} ".format(slots)
         if hold:
@@ -224,6 +232,11 @@ class SgeCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("qstat -f -xml").stdout
 
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("qhost -F | grep hl:m_core")
+        return re.search(r"hl:m_core=(\d+).000000", result.stdout).group(1)
+
 
 class SlurmCommands(SchedulerCommands):
     """Implement commands for slurm scheduler."""
@@ -254,14 +267,18 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None):  # noqa: D102
-        submission_command = "sbatch -N {0} --wrap='{1}'".format(nodes, command)
+    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None, other_options=None):  # noqa: D102
+        submission_command = "sbatch --wrap='{0}'".format(command)
+        if nodes > 0:
+            submission_command += "  -N {0}".format(nodes)
         if host:
             submission_command += " --nodelist={0}".format(host)
         if slots:
             submission_command += " -n {0}".format(slots)
         if after_ok:
             submission_command += " -d afterok:{0}".format(after_ok)
+        if other_options:
+            submission_command += " {0}".format(other_options)
         return self._remote_command_executor.run_remote_command(submission_command)
 
     def submit_script(
@@ -302,6 +319,15 @@ class SlurmCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
 
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -o '%c' -h")
+        return re.search(r"(\d+)", result.stdout).group(1)
+
+    def get_job_info(self, job_id):
+        """Return job details from slurm"""
+        return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
@@ -310,7 +336,7 @@ class TorqueCommands(SchedulerCommands):
         super().__init__(remote_command_executor)
 
     @retry(
-        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(7)
+        retry_on_result=lambda result: "job_state = C" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(12)
     )
     def wait_job_completed(self, job_id):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("qstat -f {0}".format(job_id))
@@ -371,6 +397,11 @@ class TorqueCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         # discard the first node since that is the master server
         return self._remote_command_executor.run_remote_command(r'pbsnodes | grep -e "\sstate = " | tail -n +2').stdout
+
+    def get_node_cores(self):
+        """Return number of slots from the scheduler."""
+        result = self._remote_command_executor.run_remote_command("pbsnodes | tail -n +10")
+        return re.search(r"np = (\d+)", result.stdout).group(1)
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):

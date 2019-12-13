@@ -133,7 +133,7 @@ class S3Uploader(object):
     """S3 uploader."""
 
     def __init__(self, boto3_factory, s3_bucket, default_folder=""):
-        """Constructor.
+        """Initialize the object.
 
         :param boto3_factory: initialized Boto3ClientFactory object
         :param s3_bucket: S3 bucket to use

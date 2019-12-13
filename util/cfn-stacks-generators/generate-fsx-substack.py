@@ -1,6 +1,6 @@
 import argparse
 
-from troposphere import And, Condition, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
+from troposphere import And, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
 from troposphere.fsx import FileSystem, LustreConfiguration
 
 
@@ -8,13 +8,17 @@ def main(args):
     t = Template()
 
     # ================= Parameters =================
-    #      0            1           2              3                    4                  5           6              7
-    # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]
+    #      0            1           2              3                    4                  5           6
+    # [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,
+    #              7
+    # weekly_maintenance_start_time]
     fsx_options = t.add_parameter(
         Parameter(
             "FSXOptions",
             Type="CommaDelimitedList",
-            Description="Comma separated list of fsx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
+            Description="Comma separated list of fsx related options, 8 parameters in total, [shared_dir,fsx_fs_id,"
+            "storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,"
+            "weekly_maintenance_start_time]",
         )
     )
 

@@ -16,20 +16,20 @@
 #
 # Upload cookbook
 #
-# usage: ./upload-cookbook.py --regions "<region>[,<region>, ...]" --full_name "<cookbook full name without extension>" \
+# usage: ./upload-cookbook.py --regions "<region>[,<region>, ...]" --full_name "<cookbook name without extension>" \
 # --partition <partition> \
 # [--unsupportedregions "<region>[, <region>, ...]"] [--dryrun] [--override] \
 # [--credential <region>,<endpoint>,<arn>,<role>]*
-
-import re
+import hashlib
+import os
 from datetime import datetime
 
 import argparse
 import boto3
 from botocore.exceptions import ClientError
 
-_BACKUP_DIR = "backup"
 _COOKBOOKS_DIR = "cookbooks"
+_BACKUP_DIR = "{0}/backup".format(_COOKBOOKS_DIR)
 _bck_date = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 _bck_error_array = set()
 _cp_error_array = set()
@@ -67,21 +67,22 @@ def _aws_s3_bck(s3, args, region, bucket_name, full_name):
             _bck_error_array.add(region)
 
 
-def _aws_s3_cp(s3, args, region, bucket_name, folder, full_name):
+def _aws_s3_cp(s3, args, region, bucket_name, folder, src_file):
+    key = folder + "/" + os.path.basename(src_file)
+    print("Bucket dest key: {0}".format(key))
     if args.dryrun:
         print(
             "Not uploading {0} to bucket {1}, override is {2}, dryrun is {3}".format(
-                full_name, bucket_name, args.override, args.dryrun
+                src_file, bucket_name, args.override, args.dryrun
             )
         )
     else:
-        key = folder + "/" + full_name
         try:
-            s3.upload_file(full_name, bucket_name, key, ExtraArgs={"ACL": "public-read"})
+            s3.upload_file(src_file, bucket_name, key, ExtraArgs={"ACL": "public-read"})
 
-            print("Successfully uploaded {0} to s3://{1}/{2}".format(full_name, bucket_name, key))
+            print("Successfully uploaded {0} to s3://{1}/{2}".format(src_file, bucket_name, key))
         except ClientError as e:
-            print("Couldn't upload {0} to bucket s3://{1}/{2}".format(full_name, bucket_name, key))
+            print("Couldn't upload {0} to bucket s3://{1}/{2}".format(src_file, bucket_name, key))
             _cp_error_array.add(region)
             if e.response["Error"]["Code"] == "NoSuchBucket":
                 print("Bucket is not present.")
@@ -120,12 +121,25 @@ def _create_s3_client(region):
             print("Warning: non authorized in region '{0}', skipping".format(credential_region))
             raise e
     else:
-        s3 = boto3.client("s3")
+        s3 = boto3.client("s3", region_name=region)
     return s3
 
 
 def _get_bucket_name(args, region):
     return region + "-aws-parallelcluster" if not args.bucket else args.bucket
+
+
+def _md5sum(cookbook_archive_file, md5sum_file):
+    blocksize = 65536
+    hasher = hashlib.md5()
+    with open(cookbook_archive_file, "rb") as arch:
+        buf = arch.read(blocksize)
+        while len(buf) > 0:
+            hasher.update(buf)
+            buf = arch.read(blocksize)
+
+    with open(md5sum_file, "w+") as md5:
+        md5.write("{0}  {1}".format(hasher.hexdigest(), os.path.basename(cookbook_archive_file)))
 
 
 def _parse_args():
@@ -152,7 +166,7 @@ def _parse_args():
     parser.add_argument(
         "--bucket", type=str, help="Buckets to upload to, defaults to [region]-aws-parallelcluster", required=False
     )
-    parser.add_argument("--full_name", type=str, help="Full Name of bucket resource", required=True)
+    parser.add_argument("--cookbook-archive-path", type=str, help="Cookbook archive path", required=True)
     parser.add_argument(
         "--dryrun", action="store_true", help="Doesn't push anything to S3, just outputs", default=False, required=False
     )
@@ -162,7 +176,8 @@ def _parse_args():
         "--credential",
         type=str,
         action="append",
-        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. Could be specified multiple times",
+        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
+        "Could be specified multiple times",
         required=False,
     )
 
@@ -203,12 +218,22 @@ def _parse_args():
 
 def main():
     args = _parse_args()
+
+    # Check if archive exists
+    if not os.path.exists(args.cookbook_archive_path):
+        print("Cookbook archive {0} not found".format(args.cookbook_archive_path))
+        exit(1)
+
+    base_name = os.path.splitext(os.path.basename(args.cookbook_archive_path))[0]
+    _md5sum(args.cookbook_archive_path, "{0}.md5".format(base_name))
+
     for region in args.regions:
         s3 = _create_s3_client(region)
         bucket_name = _get_bucket_name(args, region)
 
-        print("Listing cookbook for region ({0})".format(region))
-        _aws_s3_ls(s3, region, bucket_name, _COOKBOOKS_DIR + "/" + args.full_name + ".tgz")
+        s3_key = _COOKBOOKS_DIR + "/" + base_name + ".tgz"
+        print("Listing cookbook for region: {0}, bucket: {1}, key: {2}".format(region, bucket_name, s3_key))
+        _aws_s3_ls(s3, region, bucket_name, s3_key)
 
     if len(_ls_error_array) > 0 and not args.override:
         print("We know the cookbook archives are already there, in this round we need to upload the .date files!")
@@ -223,27 +248,23 @@ def main():
 
         if args.override:
             print("Backup cookbook for region: {0}".format(region))
-            _aws_s3_bck(s3, args, region, bucket_name, args.full_name + ".tgz")
-            _aws_s3_bck(s3, args, region, bucket_name, args.full_name + ".md5")
-            _aws_s3_bck(s3, args, region, bucket_name, args.full_name + ".tgz.date")
+            _aws_s3_bck(s3, args, region, bucket_name, base_name + ".tgz")
+            _aws_s3_bck(s3, args, region, bucket_name, base_name + ".md5")
+            _aws_s3_bck(s3, args, region, bucket_name, base_name + ".tgz.date")
 
         print("Pushing cookbook for region: {0}".format(region))
-        _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, args.full_name + ".tgz")
-        _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, args.full_name + ".md5")
+        _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, args.cookbook_archive_path)
+        _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, base_name + ".md5")
 
         if not args.dryrun:
             # Stores LastModified info into .tgz.date file and uploads it back to bucket
-            with (open(args.full_name + ".tgz.date", "w+")) as f:
-                response = s3.head_object(Bucket=bucket_name, Key=_COOKBOOKS_DIR + "/" + args.full_name + ".tgz")
+            with (open(base_name + ".tgz.date", "w+")) as f:
+                response = s3.head_object(Bucket=bucket_name, Key=_COOKBOOKS_DIR + "/" + base_name + ".tgz")
                 f.write(response.get("LastModified").strftime("%Y-%m-%d_%H-%M-%S"))
 
-            _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, args.full_name + ".tgz.date")
+            _aws_s3_cp(s3, args, region, bucket_name, _COOKBOOKS_DIR, base_name + ".tgz.date")
         else:
-            print(
-                "File {0}.{1} not stored to bucket {2} due to dryrun mode".format(
-                    args.full_name, "tgz.date", bucket_name
-                )
-            )
+            print("File {0}.{1} not stored to bucket {2} due to dryrun mode".format(base_name, "tgz.date", bucket_name))
 
     if len(_bck_error_array) > 0:
         print("Failed to backup cookbook for region ({0})".format(" ".join(_bck_error_array)))

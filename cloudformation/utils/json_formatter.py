@@ -27,8 +27,7 @@ def format_files(filenames):
     """
     Format JSON docs provided as input.
 
-    Args:
-        filenames: list of JSON docs to format.
+    :param filenames: list of JSON docs to format.
     """
     for unexpanded_file in filenames:
         for file in glob(unexpanded_file):
@@ -42,10 +41,8 @@ def check_formatting(filenames):
     """
     Check that provided JSON docs are correctly formatted.
 
-    Args:
-        filenames: list of JSON docs to check.
-
-    Returns: True if formatting is correct, False otherwise.
+    :param filenames: list of JSON docs to check.
+    :return True if formatting is correct, False otherwise.
     """
     has_failures = False
     for unexpanded_file in filenames:

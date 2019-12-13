@@ -51,13 +51,14 @@ TEST_DEFAULTS = {
         "sa-east-1",
         "eu-west-3",
     ],
-    "oss": ["alinux", "centos6", "centos7", "ubuntu1404", "ubuntu1604"],
+    "oss": ["alinux", "centos6", "centos7", "ubuntu1804", "ubuntu1604"],
     "schedulers": ["sge", "slurm", "torque", "awsbatch"],
     "instances": ["c4.xlarge", "c5.xlarge"],
     "dry_run": False,
     "reports": [],
     "cw_region": "us-east-1",
     "cw_namespace": "ParallelCluster/IntegrationTests",
+    "cw_timestamp_day_start": False,
     "sequential": False,
     "output_dir": "tests_outputs",
     "custom_node_url": None,
@@ -72,6 +73,7 @@ TEST_DEFAULTS = {
     "benchmarks": False,
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
+    "stackname_suffix": "",
 }
 
 
@@ -148,6 +150,12 @@ def _init_argparser():
         help="CloudWatch namespace where to publish metrics",
         default=TEST_DEFAULTS.get("cw_namespace"),
     )
+    parser.add_argument(
+        "--cw-timestamp-day-start",
+        action="store_true",
+        help="CloudWatch metrics pushed with at timestamp equal to the start of the current day (midnight)",
+        default=TEST_DEFAULTS.get("cw_timestamp_day_start"),
+    )
     parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
     parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
     parser.add_argument(
@@ -205,6 +213,11 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("benchmarks_max_time"),
         type=int,
     )
+    parser.add_argument(
+        "--stackname-suffix",
+        help="set a suffix in the integration tests stack names",
+        default=TEST_DEFAULTS.get("stackname_suffix"),
+    )
 
     return parser
 
@@ -244,6 +257,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
+    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
 
     if args.credential:
         pytest_args.append("--credential")
@@ -402,7 +416,7 @@ def main():
 
     if "cw" in args.reports:
         logger.info("Publishing CloudWatch metrics")
-        generate_cw_report(reports_output_dir, args.cw_namespace, args.cw_region)
+        generate_cw_report(reports_output_dir, args.cw_namespace, args.cw_region, args.cw_timestamp_day_start)
 
 
 if __name__ == "__main__":
