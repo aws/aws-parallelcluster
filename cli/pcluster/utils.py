@@ -422,7 +422,7 @@ def _get_master_server_ip(stack_name):
         ip_address = instance.get("PrivateIpAddress")
     state = instance.get("State").get("Name")
     if state != "running" or ip_address is None:
-        error("MasterServer: %s\nCannot get ip address.", state.upper())
+        error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
 
 
@@ -463,3 +463,25 @@ def get_master_ip_and_username(cluster_name):
 
 def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
+
+
+def retry(func, func_args, attempts=1, wait=0):
+    """
+    Call function and re-execute it if it raises an Exception.
+
+    :param func: the function to execute.
+    :param func_args: the positional arguments of the function.
+    :param attempts: the maximum number of attempts. Default: 1.
+    :param wait: delay between attempts. Default: 0.
+    :returns: the result of the function.
+    """
+    while attempts:
+        try:
+            return func(*func_args)
+        except Exception as e:
+            attempts -= 1
+            if not attempts:
+                raise e
+
+            LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
+            time.sleep(wait)
