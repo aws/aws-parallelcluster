@@ -25,6 +25,7 @@ PClusterConfig = namedtuple(
     "PClusterConfig",
     [
         "max_queue_size",
+        "master_instance_type",
         "compute_instance_type",
         "compute_root_volume_size",
         "s3_read_resource",
@@ -33,7 +34,7 @@ PClusterConfig = namedtuple(
 )
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "slurm")
+@pytest.mark.dimensions("us-east-2", "c5.xlarge", "alinux", "slurm")
 @pytest.mark.usefixtures("os", "scheduler")
 def test_update(instance, region, pcluster_config_reader, clusters_factory, test_datadir):
     """
@@ -44,6 +45,7 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory, test
     s3_arn = "arn:aws:s3:::fake_bucket/*"
     init_config = PClusterConfig(
         max_queue_size=5,
+        master_instance_type=instance,
         compute_instance_type=instance,
         compute_root_volume_size=30,
         s3_read_resource=s3_arn,
@@ -58,6 +60,7 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory, test
     s3_arn_updated = "arn:aws:s3:::fake_bucket/fake_folder/*"
     updated_config = PClusterConfig(
         max_queue_size=10,
+        master_instance_type="c4.xlarge",
         compute_instance_type="c4.xlarge",
         compute_root_volume_size=40,
         s3_read_resource=s3_arn_updated,
@@ -65,22 +68,35 @@ def test_update(instance, region, pcluster_config_reader, clusters_factory, test
     )
     _update_cluster(cluster, updated_config)
 
+    # since master is replaced, need new command_executor
+    command_executor_updated = RemoteCommandExecutor(cluster)
+    slurm_commands_updated = SlurmCommands(command_executor_updated)
+
     # verify updated parameters
     _test_max_queue(region, cluster.cfn_name, updated_config.max_queue_size)
     _test_s3_read_resource(region, cluster, updated_config.s3_read_resource)
     _test_s3_read_write_resource(region, cluster, updated_config.s3_read_write_resource)
+    _test_master_instance_type(region, cluster.master_ip, updated_config.master_instance_type)
 
     # verify params that are NOT updated in OLD compute nodes
-    compute_nodes = slurm_commands.get_compute_nodes()
+    compute_nodes = slurm_commands_updated.get_compute_nodes()
     _test_compute_instance_type(region, cluster.cfn_name, init_config.compute_instance_type, compute_nodes[0])
     _test_compute_root_volume_size(
-        command_executor, slurm_commands, test_datadir, init_config.compute_root_volume_size, compute_nodes[0]
+        command_executor_updated,
+        slurm_commands_updated,
+        test_datadir,
+        init_config.compute_root_volume_size,
+        compute_nodes[0],
     )
     # add compute nodes and verify updated params in NEW compute nodes
-    new_compute_nodes = _add_compute_nodes(slurm_commands)
+    new_compute_nodes = _add_compute_nodes(slurm_commands_updated)
     _test_compute_instance_type(region, cluster.cfn_name, updated_config.compute_instance_type, new_compute_nodes[0])
     _test_compute_root_volume_size(
-        command_executor, slurm_commands, test_datadir, updated_config.compute_root_volume_size, new_compute_nodes[0]
+        command_executor_updated,
+        slurm_commands_updated,
+        test_datadir,
+        updated_config.compute_root_volume_size,
+        new_compute_nodes[0],
     )
 
 
@@ -88,6 +104,7 @@ def _init_cluster(clusters_factory, pcluster_config_reader, config):
     # read configuration and create cluster
     cluster_config = pcluster_config_reader(
         max_queue_size=config.max_queue_size,
+        master_instance_type=config.master_instance_type,
         compute_instance_type=config.compute_instance_type,
         compute_root_volume_size=config.compute_root_volume_size,
         s3_read_resource=config.s3_read_resource,
@@ -102,6 +119,7 @@ def _verify_initialization(command_executor, slurm_commands, region, test_datadi
     _test_max_queue(region, cluster.cfn_name, config.max_queue_size)
     _test_s3_read_resource(region, cluster, config.s3_read_resource)
     _test_s3_read_write_resource(region, cluster, config.s3_read_write_resource)
+    _test_master_instance_type(region, cluster.master_ip, config.master_instance_type)
 
     # Verify Compute nodes initial settings
     compute_nodes = slurm_commands.get_compute_nodes()
@@ -114,6 +132,7 @@ def _verify_initialization(command_executor, slurm_commands, region, test_datadi
 def _update_cluster(cluster, config):
     # change cluster.config settings
     _update_cluster_property(cluster, "max_queue_size", str(config.max_queue_size))
+    _update_cluster_property(cluster, "master_instance_type", config.master_instance_type)
     _update_cluster_property(cluster, "compute_instance_type", config.compute_instance_type)
     _update_cluster_property(cluster, "compute_root_volume_size", str(config.compute_root_volume_size))
     _update_cluster_property(cluster, "s3_read_resource", config.s3_read_resource)
@@ -160,19 +179,27 @@ def _add_compute_nodes(slurm_commands, number_of_nodes=1):
     return [node for node in slurm_commands.get_compute_nodes() if node not in initial_compute_nodes]
 
 
+def _test_master_instance_type(region, master_ip, master_instance_type):
+    instance_filter = [{"Name": "network-interface.association.public-ip", "Values": [master_ip]}]
+    _assert_instance_type_helper(region, instance_filter, master_instance_type)
+
+
 def _test_compute_instance_type(region, stack_name, compute_instance_type, host):
     hostname = "{0}.{1}.compute.internal".format(host, region)
+    instance_filter = [
+        {"Name": "tag:Application", "Values": [stack_name]},
+        {"Name": "private-dns-name", "Values": [hostname]},
+    ]
+    _assert_instance_type_helper(region, instance_filter, compute_instance_type)
+
+
+def _assert_instance_type_helper(region, instance_filter, expected_instance_type):
     ec2_resource = boto3.resource("ec2", region_name=region)
     instance_types = []
-    for instance in ec2_resource.instances.filter(
-        Filters=[
-            {"Name": "tag:Application", "Values": [stack_name]},
-            {"Name": "private-dns-name", "Values": [hostname]},
-        ]
-    ):
+    for instance in ec2_resource.instances.filter(Filters=instance_filter):
         instance_types.append(instance.instance_type)
 
-    assert_that(instance_types).contains(compute_instance_type)
+    assert_that(instance_types).contains(expected_instance_type)
 
 
 def _test_compute_root_volume_size(command_executor, slurm_commands, test_datadir, compute_root_volume_size, host):
