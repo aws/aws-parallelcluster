@@ -153,7 +153,7 @@ def test_get_cluster_substacks(mocker, resources):  # noqa: D202
 def test_stack_exists(boto3_stubber, response, is_error):
     """Verify that utils.stack_exists behaves as expected."""
     mocked_requests = [
-        MockedBoto3Request(method="describe_stacks", response=response, expected_params={"StackName": FAKE_STACK_NAME},)
+        MockedBoto3Request(method="describe_stacks", response=response, expected_params={"StackName": FAKE_STACK_NAME})
     ]
     boto3_stubber("cloudformation", mocked_requests, generate_errors=is_error)
     should_exist = not is_error
@@ -172,7 +172,7 @@ def test_stack_exists(boto3_stubber, response, is_error):
                     "ResourceType": "resource_type",
                     "Timestamp": 0,
                     "ResourceStatus": "resource_status",
-                },
+                }
             ],
             None,
         ),
