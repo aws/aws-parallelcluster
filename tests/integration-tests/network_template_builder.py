@@ -44,6 +44,7 @@ class SubnetConfig(NamedTuple):
     cidr: object = None
     map_public_ip_on_launch: bool = True
     has_nat_gateway: bool = True
+    availability_zone: str = None
     default_gateway: Gateways = Gateways.INTERNET_GATEWAY
 
     def tags(self):
@@ -199,7 +200,7 @@ class NetworkTemplateBuilder:
             VpcId=Ref(vpc),
             MapPublicIpOnLaunch=subnet_config.map_public_ip_on_launch,
             Tags=subnet_config.tags(),
-            AvailabilityZone=self.__availability_zone,
+            AvailabilityZone=subnet_config.availability_zone or self.__availability_zone,
             DependsOn=additional_vpc_cidr_blocks,
         )
         self.__template.add_resource(subnet)

@@ -432,11 +432,7 @@ def get_config_param_vals(cw_logging_enabled):
         )
     )
     queue_size = int(environ.get("CW_LOGGING_QUEUE_SIZE", 1))
-    return {
-        "enable": str(cw_logging_enabled).lower(),
-        "retention_days": retention_days,
-        "queue_size": queue_size,
-    }
+    return {"enable": str(cw_logging_enabled).lower(), "retention_days": retention_days, "queue_size": queue_size}
 
 
 @pytest.mark.parametrize("cw_logging_enabled", [True, False])
