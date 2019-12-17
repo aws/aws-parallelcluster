@@ -64,13 +64,13 @@ def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called
 @pytest.mark.parametrize(
     "stacks,template",
     [
-        ([], {},),
+        ([], {}),
         (
             [{"StackName": FAKE_STACK_NAME}, {"StackName": "substack_one"}],
             {"Resources": {"key": {"DeletionPolicy": "Retain"}}},
         ),
-        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}},),
-        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Delete"}}},),
+        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}}),
+        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Delete"}}}),
     ],
 )
 def test_persist_cloudwatch_log_groups(mocker, stacks, template):
