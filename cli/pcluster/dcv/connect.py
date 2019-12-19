@@ -38,7 +38,7 @@ def _check_command_output(cmd):
     return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()
 
 
-def dcv_connect(args):
+def dcv_connect(args, extra_args):
     """
     Execute pcluster dcv connect command.
 
@@ -47,13 +47,19 @@ def dcv_connect(args):
     # Parse configuration file to read the AWS section
     PclusterConfig.init_aws()  # FIXME it always searches for the default configuration file
 
+    try:
+        from shlex import quote as cmd_quote
+    except ImportError:
+        from pipes import quote as cmd_quote
+
     # Prepare ssh command to execute in the master instance
     stack = get_stack(get_stack_name(args.cluster_name))
     shared_dir = get_cfn_param(stack.get("Parameters"), "SharedDir")
     master_ip, username = get_master_ip_and_username(args.cluster_name)
-    cmd = 'ssh {CFN_USER}@{MASTER_IP} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
+    cmd = 'ssh {CFN_USER}@{MASTER_IP} {ARGS} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
         CFN_USER=username,
         MASTER_IP=master_ip,
+        ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args),
         KEY="-i {0}".format(args.key_path) if args.key_path else "",
         REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
         DCV_SHARED_DIR=shared_dir,

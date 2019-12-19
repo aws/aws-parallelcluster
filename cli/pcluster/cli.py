@@ -41,8 +41,8 @@ def ssh(args, extra_args):
     pcluster.ssh(args, extra_args)
 
 
-def dcv(args):
-    dcv_connect(args)
+def dcv(args, extra_args):
+    dcv_connect(args, extra_args)
 
 
 def status(args):
@@ -430,7 +430,7 @@ def main():
         if "region" in args and args.region:
             os.environ["AWS_DEFAULT_REGION"] = args.region
 
-        if args.func.__name__ == "ssh":
+        if args.func.__name__ in ["ssh", "dcv"]:
             args.func(args, extra_args)
         else:
             if extra_args:
