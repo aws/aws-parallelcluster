@@ -652,39 +652,26 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         )
         self.policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section."""
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        super(AdditionalIamPoliciesParam, self).to_file(config_parser)
-
-    def from_cfn_params(self, cfn_params):
+    def from_file(self, config_parser):
         """
-        Initialize parameter value by parsing CFN input parameters.
+        Initialize AdditionalIamPoliciesParam value by parsing config file.
 
-        :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
+        Conditional policies are automatically added if appropriate.
         """
-        super(AdditionalIamPoliciesParam, self).from_cfn_params(cfn_params)
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        return self
-
-    def to_cfn(self):
-        """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
-        # Add conditional policies if appropriate
+        super(AdditionalIamPoliciesParam, self).from_file(config_parser)
         for rule in self.policy_inclusion_rules:
             if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in self.value:
                 self.value.append(rule.get_policy())
+        self.value = sorted(set(self.value))
+        return self
 
-        cfn_params = super(AdditionalIamPoliciesParam, self).to_cfn()
-
-        return cfn_params
-
-    def _remove_conditional_policies(self):
-        """Remove any of the policy ARNs in self.conditional_policies from self.value."""
+    def get_string_value(self):
+        """Convert internal representation into string. Conditional policies are not written."""
+        str_values = sorted(set(self.value))  # List is cloned to avoid modifying self value
         for rule in self.policy_inclusion_rules:
-            if rule.get_policy() in self.value:
-                self.value.remove(rule.get_policy())
+            if rule.get_policy() in str_values:
+                str_values.remove(rule.get_policy())
+        return str(",".join(str_values))
 
 
 class AvailabilityZoneParam(Param):
