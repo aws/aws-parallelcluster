@@ -44,7 +44,9 @@ def test_dcv_configuration(
     # dcv connect show url
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
-    result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+    result = run_command(
+        ["pcluster", "dcv", "connect", cluster.name, "--show-url", "-o StrictHostKeyChecking=no"], env=env
+    )
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_authenticator_port) + r"\?authToken=(.*)"
