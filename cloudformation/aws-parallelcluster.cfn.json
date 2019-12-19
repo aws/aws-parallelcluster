@@ -1317,6 +1317,7 @@
     "DynamoDBTable": {
       "Type": "AWS::DynamoDB::Table",
       "UpdateReplacePolicy": "Retain",
+      "DeletionPolicy": "Delete",
       "Properties": {
         "AttributeDefinitions": [
           {
