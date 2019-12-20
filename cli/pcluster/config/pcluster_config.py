@@ -131,7 +131,7 @@ class PclusterConfig(object):
         :param section_key: the identifier of the section type
         :return a dictionary containing the section
         """
-        return self.sections.get(section_key, {})
+        return self.sections.get(section_key, [])
 
     def get_section(self, section_key, section_label=None):
         """
@@ -145,35 +145,38 @@ class PclusterConfig(object):
         :param section_key: the identifier of the section type
         :param section_label: the label of the section, returns the first section if empty.
         """
+        sections = self.get_sections(section_key)
         if section_label:
-            # TODO: use list instead of dict for sections with same key
-            # section = self.get_sections(section_key).get(section_label, None)
-            section = next(
-                (section for _, section in self.get_sections(section_key).items() if section.label == section_label),
-                None,
-            )
+            section = next((section for section in sections if section.label == section_label), None,)
         else:
-            sections = self.get_sections(section_key)
-            section = next(iter(sections.values()), None) if sections else None
+            section = sections[0] if sections else None
         return section
 
-    def add_section(self, section):
+    def add_section(self, section, override=False):
         """
         Add a section to the PclusterConfig object.
 
-        The internal sections structure is a dictionary:
+        The internal sections structure is a list:
         {
-            "ebs" :{"ebs1": Section, "ebs2": Section},
-            "vpc" :{"default": Section}
+            "ebs" :[Section, Section],
+            "vpc" :[Section]}
         }
 
+        :param override: If true override existing section with same key/label
         :param section, a Section object
         """
         if section.key not in self.sections:
-            self.sections[section.key] = {}
+            self.sections[section.key] = []
 
-        section_label = section.label if section.label else section.definition.get("default_label", "default")
-        self.sections[section.key][section_label] = section
+        # Remove existing section if override = True
+        if override:
+            self.remove_section(section.key, section.label)
+
+        existing_section = self.get_section(section.key, section.label)
+        if not existing_section:
+            self.sections[section.key].append(section)
+        else:
+            raise Exception("Section with key {0} and label {1} already exists".format(section.key, section.label))
 
     def remove_section(self, section_key, section_label):
         """
@@ -183,7 +186,10 @@ class PclusterConfig(object):
         :param section_label: the label of the section to delete.
         """
         if section_key in self.sections:
-            self.sections[section_key].pop(section_label, None)
+            sections = self.sections[section_key]
+            for i, section in enumerate(sections):
+                if section.label == section_label:
+                    del sections[i]
 
     def __init_aws_credentials(self):
         """Set credentials in the environment to be available for all the boto3 calls."""
@@ -327,7 +333,7 @@ class PclusterConfig(object):
     def validate(self):
         """Validate the configuration."""
         for _, sections in self.sections.items():
-            for _, section in sections.items():
+            for section in sections:
                 section.validate()
 
         # check AWS account limits

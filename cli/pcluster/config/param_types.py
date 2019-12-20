@@ -785,7 +785,7 @@ class SettingsParam(Param):
                     self.pcluster_config.remove_section(
                         self.referred_section_key, self.referred_section_definition.get("default_label")
                     )
-                    self.pcluster_config.add_section(section)
+                    self.pcluster_config.add_section(section, override=True)
 
         return self
 
@@ -796,7 +796,7 @@ class SettingsParam(Param):
             section = self.referred_section_type(
                 self.referred_section_definition, self.pcluster_config, section_label=self.value
             ).from_cfn_params(cfn_params)
-            self.pcluster_config.add_section(section)
+            self.pcluster_config.add_section(section, override=True)
 
         return self
 
@@ -817,7 +817,7 @@ class SettingsParam(Param):
                 section = self.referred_section_type(
                     self.referred_section_definition, self.pcluster_config, section_label=self.value
                 )
-                self.pcluster_config.add_section(section)
+                self.pcluster_config.add_section(section, override=True)
 
     def to_file(self, config_parser, write_defaults=False):
         """Convert the param value into a section in the config_parser and initialize it."""
@@ -875,7 +875,7 @@ class EBSSettingsParam(SettingsParam):
                     section = self.referred_section_type(
                         self.referred_section_definition, self.pcluster_config, section_label=section_label.strip()
                     ).from_file(config_parser=config_parser, fail_on_absence=True)
-                    self.pcluster_config.add_section(section)
+                    self.pcluster_config.add_section(section, override=True)
 
         return self
 
@@ -910,7 +910,7 @@ class EBSSettingsParam(SettingsParam):
                             ).from_cfn_value(cfn_value)
                             referred_section.add_param(param)
 
-                    self.pcluster_config.add_section(referred_section)
+                    self.pcluster_config.add_section(referred_section, override=True)
 
         self.value = ",".join(labels) if labels else None
 

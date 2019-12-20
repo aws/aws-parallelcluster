@@ -198,7 +198,7 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
         param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
         param.value = param_value
         section.add_param(param)
-    pcluster_config.add_section(section)
+    pcluster_config.add_section(section, override=True)
 
     cfn_params = section.to_cfn()
     assert_that(cfn_params).is_equal_to(expected_cfn_params)
