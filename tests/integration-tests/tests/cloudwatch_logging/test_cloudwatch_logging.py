@@ -26,6 +26,21 @@ from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_logs_u
 from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
+DEFAULT_RETENTION_DAYS = 14
+NODE_CONFIG_PATH = "/etc/chef/dna.json"
+MASTER_NODE_ROLE_NAME = "MasterServer"
+COMPUTE_NODE_ROLE_NAME = "ComputeFleet"
+NODE_ROLE_NAMES = {MASTER_NODE_ROLE_NAME, COMPUTE_NODE_ROLE_NAME}
+
+
+def _get_log_group_name_for_cluster(cluster_name):
+    """Return the name of the log group to be created for the given cluster if CloudWatch logging is enabled."""
+    return "/aws/parallelcluster/{0}".format(cluster_name)
+
+
+def _dump_json(obj, indent=4):
+    """Dump obj to a JSON string."""
+    return json.dumps(obj, indent=indent)
 
 
 class CloudWatchLoggingClusterState:
@@ -70,15 +85,16 @@ class CloudWatchLoggingClusterState:
     }
     """
 
-    def __init__(self, scheduler, os, cluster):
+    def __init__(self, scheduler, os, cluster, feature_key=None):
         """Get the state of the cluster as it pertains to the CloudWatch logging feature."""
         self.scheduler = scheduler
         self.platform = self._base_os_to_platform(os)
         self.cluster = cluster
+        self.feature_key = feature_key
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
         self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
-        self._relevant_logs = {"MasterServer": [], "ComputeFleet": []}
-        self._cluster_log_state = {"MasterServer": {}, "ComputeFleet": {}}
+        self._relevant_logs = {MASTER_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
+        self._cluster_log_state = {MASTER_NODE_ROLE_NAME: {}, COMPUTE_NODE_ROLE_NAME: {}}
         self._set_cluster_log_state()
 
     @property
@@ -89,14 +105,19 @@ class CloudWatchLoggingClusterState:
         else:
             return self.scheduler_commands.compute_nodes_count()
 
+    @property
+    def is_feature_specific(self):
+        """Return a boolean describing if this instance is concerned only with logs for a specific feature."""
+        return self.feature_key is not None
+
     def get_logs_state(self):
         """Get the state of the log files applicable to each of the cluster's EC2 instances."""
         desired_keys = ["hostname", "instance_id", "node_role", "agent_status", "logs"]
-        states = [{key: self._cluster_log_state.get("MasterServer").get(key) for key in desired_keys}]
+        states = [{key: self._cluster_log_state.get(MASTER_NODE_ROLE_NAME).get(key) for key in desired_keys}]
         states.extend(
             [
                 {key: host_dict[key] for key in desired_keys}
-                for hostname, host_dict in self._cluster_log_state.get("ComputeFleet").items()
+                for hostname, host_dict in self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME).items()
             ]
         )
         assert_that(states).is_length(self.compute_nodes_count + 1)  # computes + master
@@ -104,7 +125,7 @@ class CloudWatchLoggingClusterState:
 
     def _dump_cluster_log_state(self):
         """Dump the JSON-ified string of self._cluster_log_state for debugging purposes."""
-        return json.dumps(self._cluster_log_state, indent=4)
+        return _dump_json(self._cluster_log_state)
 
     @staticmethod
     def _base_os_to_platform(base_os):
@@ -117,9 +138,9 @@ class CloudWatchLoggingClusterState:
 
     def _set_master_instance(self, instance):
         """Set the master instance field in self.cluster_log_state."""
-        self._cluster_log_state.get("MasterServer").update(
+        self._cluster_log_state.get(MASTER_NODE_ROLE_NAME).update(
             {
-                "node_role": "MasterServer",
+                "node_role": MASTER_NODE_ROLE_NAME,
                 "hostname": instance.get("PrivateDnsName"),
                 "instance_id": instance.get("InstanceId"),
             }
@@ -127,8 +148,8 @@ class CloudWatchLoggingClusterState:
 
     def _add_compute_instance(self, instance):
         """Update the cluster's log state by adding a compute node."""
-        self._cluster_log_state["ComputeFleet"][instance.get("PrivateDnsName")] = {
-            "node_role": "ComputeFleet",
+        self._cluster_log_state[COMPUTE_NODE_ROLE_NAME][instance.get("PrivateDnsName")] = {
+            "node_role": COMPUTE_NODE_ROLE_NAME,
             "hostname": instance.get("PrivateDnsName"),
             "instance_id": instance.get("InstanceId"),
         }
@@ -151,31 +172,114 @@ class CloudWatchLoggingClusterState:
         config = json.loads(self._run_command_on_master(read_cmd))
         return config.get("log_configs")
 
+    def _read_master_node_config(self):
+        """Read the node configuration JSON file at NODE_CONFIG_PATH on the master node."""
+        read_cmd = "cat {0}".format(NODE_CONFIG_PATH)
+        master_node_config = json.loads(self._run_command_on_master(read_cmd)).get("cfncluster", {})
+        assert_that(master_node_config).is_not_empty()
+        LOGGER.info("DNA config read from master node: {0}".format(_dump_json(master_node_config)))
+        return master_node_config
+
+    def _read_compute_node_config(self):
+        """Read the node configuration JSON file at NODE_CONFIG_PATH on a compute node."""
+        compute_node_config = {}
+        compute_hostname_to_config = self._run_command_on_computes("cat {{redirect}} {0}".format(NODE_CONFIG_PATH))
+
+        # Use first one, since ParallelCluster-specific node config should be the same on every compute node
+        for _, config_json in compute_hostname_to_config.items():
+            compute_node_config = json.loads(config_json).get("cfncluster", {})
+            break
+
+        assert_that(compute_node_config).is_not_empty()
+        LOGGER.info("DNA config read from compute node: {0}".format(_dump_json(compute_node_config)))
+        return compute_node_config
+
+    def _read_node_configs(self):
+        """Return a dict mapping node role names to the config at NODE_CONFIG_PATH."""
+        return {
+            MASTER_NODE_ROLE_NAME: self._read_master_node_config(),
+            COMPUTE_NODE_ROLE_NAME: self._read_compute_node_config(),
+        }
+
     @staticmethod
     def _clean_log_config(log):
         """Remove unnecessary fields from the given log dict."""
         desired_keys = ["file_path", "log_stream_name", "feature_conditions"]
         return {key: log[key] for key in desired_keys}
 
-    def _filter_logs(self, logs):
-        """Populate self._relevant_logs with logs appropriate for the two different node types."""
+    def _filter_logs_on_platform_and_scheduler(self, logs):
+        """Filter from logs all entries that don't support the cluster's OS or scheduler."""
+        return [
+            log for log in logs if self.scheduler in log.get("schedulers") and self.platform in log.get("platforms")
+        ]
+
+    def _log_is_relevant_for_feature(self, log, node_config):
+        """Return a boolean describing whether log contains a feature_conditions entry relevant to self.feature_key."""
+        for feature_condition in log.get("feature_conditions", []):
+            if all(
+                [
+                    self.feature_key == feature_condition.get("dna_key"),
+                    node_config.get(self.feature_key) in feature_condition.get("satisfying_values"),
+                ]
+            ):
+                return True
+        return False
+
+    def _get_node_roles_for_which_feature_is_relevant(self, log, node_configs):
+        """
+        Return a list of the node types on which the feature-specific log is applicable.
+
+        This is necessary because even though a log might support a certain node role, that particular node type might
+        not be enabled on that node type in the current cluster.
+        """
+        applicable_node_roles = []
+        for node_role in log.get("node_roles"):
+            if self._log_is_relevant_for_feature(log, node_configs[node_role]):
+                applicable_node_roles.append(node_role)
+        return applicable_node_roles
+
+    def _filter_logs_on_feature_key(self, logs):
+        """Filter from logs all entires that aren't specific to the feature whose logs are desired."""
+        node_configs = self._read_node_configs()
+        filtered_logs = []
+        for log in logs:
+            applicable_node_roles = self._get_node_roles_for_which_feature_is_relevant(log, node_configs)
+            if applicable_node_roles:
+                log["node_roles"] = applicable_node_roles
+                filtered_logs.append(log)
+        assert_that(filtered_logs).is_not_empty()
+        return filtered_logs
+
+    def _filter_logs_on_feature(self, logs):
+        """Filter logs based on whether or not we're testing for a specific feature."""
+        if self.is_feature_specific:
+            return self._filter_logs_on_feature_key(logs)
+        else:
+            return [log for log in logs if not log.get("feature_conditions")]
+
+    def _populate_relevant_logs_for_node_roles(self, logs):
+        """Populate self._relevant_logs with the entries of logs."""
         # When the scheduler is AWS Batch, only keep log that whose config's node_role value is MasterServer, since
         # Batch doesn't have compute nodes in the traditional sense.
-        desired_node_roles = {"MasterServer"} if self.scheduler == "awsbatch" else {"MasterServer", "ComputeFleet"}
+        desired_node_roles = {MASTER_NODE_ROLE_NAME} if self.scheduler == "awsbatch" else NODE_ROLE_NAMES
         for log in logs:
-            if self.scheduler not in log.get("schedulers") or self.platform not in log.get("platforms"):
-                continue
             for node_role in set(log.get("node_roles")) & desired_node_roles:
                 self._relevant_logs[node_role].append(self._clean_log_config(log))
 
+    def _filter_logs(self, logs):
+        """Populate self._relevant_logs with logs appropriate for the two different node types."""
+        logs = self._filter_logs_on_platform_and_scheduler(logs)
+        logs = self._filter_logs_on_feature(logs)
+        self._populate_relevant_logs_for_node_roles(logs)
+
     def _create_log_entries_for_nodes(self):
         """Create an entry for each relevant log in self._cluster_log_state."""
-        self._cluster_log_state["MasterServer"]["logs"] = {
-            log.get("file_path"): log for log in self._relevant_logs.get("MasterServer")
+        self._cluster_log_state[MASTER_NODE_ROLE_NAME]["logs"] = {
+            log.get("file_path"): log for log in self._relevant_logs.get(MASTER_NODE_ROLE_NAME)
         }
-        for _hostname, compute_instance_dict in self._cluster_log_state.get("ComputeFleet").items():
+        for _hostname, compute_instance_dict in self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME).items():
             compute_instance_dict["logs"] = {
-                log.get("file_path"): log.copy() for log in self._relevant_logs.get("ComputeFleet")
+                log.get("file_path"): log.copy() for log in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME)
             }
 
     def _get_relevant_logs(self):
@@ -213,7 +317,7 @@ class CloudWatchLoggingClusterState:
 
     def _populate_master_log_existence(self):
         """Figure out which of the relevant logs for the MasterServer don't exist."""
-        for log_path, log_dict in self._cluster_log_state.get("MasterServer").get("logs").items():
+        for log_path, log_dict in self._cluster_log_state.get(MASTER_NODE_ROLE_NAME).get("logs").items():
             cmd = "[ -f {path} ] && echo exists || echo does not exist".format(path=log_path)
             output = self._run_command_on_master(cmd)
             log_dict["exists"] = output == "exists"
@@ -222,14 +326,17 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for the ComputeFleet nodes don't exist."""
         if self.compute_nodes_count == 0:
             return
-        for log_dict in self._relevant_logs.get("ComputeFleet"):
+        for log_dict in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME):
             cmd = "[ -f {path} ] && echo {{redirect}} exists || " "echo {{redirect}} does not exist".format(
                 path=log_dict.get("file_path")
             )
             hostname_to_output = self._run_command_on_computes(cmd)
             for hostname, output in hostname_to_output.items():
                 node_log_dict = (
-                    self._cluster_log_state.get("ComputeFleet").get(hostname).get("logs").get(log_dict.get("file_path"))
+                    self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME)
+                    .get(hostname)
+                    .get("logs")
+                    .get(log_dict.get("file_path"))
                 )
                 node_log_dict["exists"] = output == "exists"
 
@@ -241,7 +348,7 @@ class CloudWatchLoggingClusterState:
 
     def _populate_master_log_emptiness_and_tail(self):
         """Figure out which of the relevant logs for the MasterServer are empty."""
-        for log_path, log_dict in self._cluster_log_state.get("MasterServer").get("logs").items():
+        for log_path, log_dict in self._cluster_log_state.get(MASTER_NODE_ROLE_NAME).get("logs").items():
             if not log_dict.get("exists"):
                 continue
             output = self._run_command_on_master("sudo tail -n 1 {path}".format(path=log_path))
@@ -252,10 +359,10 @@ class CloudWatchLoggingClusterState:
         """Figure out which of the relevant logs for the ComputeFleet nodes are empty."""
         if self.compute_nodes_count == 0:
             return
-        for log_dict in self._relevant_logs.get("ComputeFleet"):
+        for log_dict in self._relevant_logs.get(COMPUTE_NODE_ROLE_NAME):
             # If this file doesn't exist on any of the computes, don't assert success
             assert_success = True
-            for _, compute_dict in self._cluster_log_state.get("ComputeFleet").items():
+            for _, compute_dict in self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME).items():
                 if not compute_dict.get("logs").get(log_dict.get("file_path")).get("exists"):
                     assert_success = False
                     break
@@ -263,7 +370,10 @@ class CloudWatchLoggingClusterState:
             hostname_to_output = self._run_command_on_computes(cmd, assert_success=assert_success)
             for hostname, output in hostname_to_output.items():
                 host_log_dict = (
-                    self._cluster_log_state.get("ComputeFleet").get(hostname).get("logs").get(log_dict.get("file_path"))
+                    self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME)
+                    .get(hostname)
+                    .get("logs")
+                    .get(log_dict.get("file_path"))
                 )
                 host_log_dict["is_empty"] = output == ""
                 host_log_dict["tail"] = output
@@ -278,7 +388,7 @@ class CloudWatchLoggingClusterState:
         """Get the cloudwatch agent's status for the MasterServer."""
         status_cmd = "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status"
         status = json.loads(self._run_command_on_master(status_cmd))
-        self._cluster_log_state["MasterServer"]["agent_status"] = status.get("status")
+        self._cluster_log_state[MASTER_NODE_ROLE_NAME]["agent_status"] = status.get("status")
 
     def _populate_compute_agent_status(self):
         """Get the cloudwatch agent's status for all the compute nodes in the cluster."""
@@ -288,7 +398,7 @@ class CloudWatchLoggingClusterState:
         compute_statuses = self._run_command_on_computes(status_cmd)
         hostname_to_status_dict = {hostname: json.loads(status) for hostname, status in compute_statuses.items()}
         for hostname, status_dict in hostname_to_status_dict.items():
-            self._cluster_log_state["ComputeFleet"][hostname]["agent_status"] = status_dict.get("status")
+            self._cluster_log_state[COMPUTE_NODE_ROLE_NAME][hostname]["agent_status"] = status_dict.get("status")
 
     def _populate_agent_status(self):
         """Get the cloudwatch agent's status for all the nodes in the cluster."""
@@ -317,13 +427,14 @@ class CloudWatchLoggingClusterState:
 class CloudWatchLoggingTestRunner:
     """Tests and utilities for verifying that CloudWatch logging integration works as expected."""
 
-    def __init__(self, log_group_name, enabled, retention_days, logs_persist_after_delete):
+    def __init__(
+        self, log_group_name, enabled=True, retention_days=DEFAULT_RETENTION_DAYS, logs_persist_after_delete=False
+    ):
         """Initialize class for CloudWatch logging testing."""
         self.log_group_name = log_group_name
         self.enabled = enabled
         self.retention_days = retention_days
         self.logs_persist_after_delete = logs_persist_after_delete
-        self.failures = []
 
     @staticmethod
     def _fqdn_to_local_hostname(fqdn):
@@ -348,7 +459,7 @@ class CloudWatchLoggingTestRunner:
                     instance.get("hostname"), instance.get("instance_id"), log_dict.get("log_stream_name")
                 )
                 expected_stream_index[expected_stream_name] = log_dict
-        LOGGER.info("Expected log streams:\n{0}".format("\n".join(expected_stream_index.keys())))
+        LOGGER.info("Expected stream index:\n{0}".format(_dump_json(expected_stream_index)))
         return expected_stream_index
 
     def verify_log_streams_exist(self, logs_state, expected_stream_index, observed_streams):
@@ -401,14 +512,14 @@ class CloudWatchLoggingTestRunner:
                     continue  # Don't assert existence of a log if it depend on a feature being enabled
                 assert_that(log_dict).is_equal_to({"exists": True}, include="exists")
 
-    def run_tests(self, logs_state, cluster_has_been_deleted):
+    def run_tests(self, logs_state, cluster_has_been_deleted=False):
         """Run all CloudWatch logging integration tests."""
         log_groups = cw_logs_utils.get_log_groups()
         self.verify_log_group_exists(log_groups, cluster_has_been_deleted)
         self.verify_log_group_retention_days(log_groups, cluster_has_been_deleted)
 
         if not cluster_has_been_deleted:
-            LOGGER.info("state of logs for cluster:\n{0}".format(json.dumps(logs_state, indent=4)))
+            LOGGER.info("state of logs for cluster:\n{0}".format(_dump_json(logs_state)))
             self.verify_agent_status(logs_state)
             self.verify_logs_exist(logs_state)
 
@@ -418,8 +529,29 @@ class CloudWatchLoggingTestRunner:
             self.verify_log_streams_exist(logs_state, expected_stream_index, observed_streams)
             self.verify_log_streams_data(logs_state, expected_stream_index, observed_streams)
 
-        if self.failures:
-            pytest.fail("Failures: {0}".format(", ".join(self.failures)), pytrace=False)
+
+class FeatureSpecificCloudWatchLoggingTestRunner(CloudWatchLoggingTestRunner):
+    """This class enables running CloudWatch logging tests for only logs specific to a certain feature."""
+
+    def _verify_log_stream_data(self, logs_state, expected_stream_index, stream):
+        """Check if the stream is in the expected log stream index before validating."""
+        if stream.get("logStreamName") not in expected_stream_index:
+            LOGGER.info("Skipping validation of {0}'s log stream data.".format(stream.get("logStreamName")))
+        else:
+            super()._verify_log_stream_data(logs_state, expected_stream_index, stream)
+
+    def verify_log_streams_exist(self, logs_state, expected_stream_index, observed_streams):
+        """Enable the expected streams list to be a subset of the observed streams."""
+        observed_stream_names = [stream.get("logStreamName") for stream in observed_streams]
+        assert_that(observed_stream_names).contains(*expected_stream_index)
+
+    @classmethod
+    def run_tests_for_feature(cls, cluster, scheduler, os, feature_key, region, retention_days=DEFAULT_RETENTION_DAYS):
+        """Verify that the logs for the given feature are present on the cluster and are stored in cloudwatch."""
+        environ["AWS_DEFAULT_REGION"] = region
+        cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster, feature_key).get_logs_state()
+        test_runner = cls(_get_log_group_name_for_cluster(cluster.name))
+        test_runner.run_tests(cluster_logs_state)
 
 
 def get_config_param_vals(cw_logging_enabled):
@@ -462,9 +594,11 @@ def test_cloudwatch_logging(
     config_params = get_config_param_vals(cw_logging_enabled)
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
-    log_group_name = "/aws/parallelcluster/{0}".format(cluster.name)
     test_runner = CloudWatchLoggingTestRunner(
-        log_group_name, cw_logging_enabled, config_params.get("retention_days"), cw_logs_persist_after_delete
+        _get_log_group_name_for_cluster(cluster.name),
+        cw_logging_enabled,
+        config_params.get("retention_days"),
+        cw_logs_persist_after_delete,
     )
     cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
     _test_cw_logs_before_after_delete(
