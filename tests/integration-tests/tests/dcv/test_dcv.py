@@ -17,6 +17,7 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 from utils import run_command
 
 SERVER_URL = "https://localhost"
@@ -93,6 +94,9 @@ def test_dcv_configuration(
 
     # check shared dir configuration
     _check_shared_dir(remote_command_executor, shared_dir)
+
+    # Check that logs are stored in CloudWatch as expected
+    FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(cluster, scheduler, os, "dcv_enabled", region)
 
 
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
