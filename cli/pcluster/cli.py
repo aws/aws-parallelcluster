@@ -231,6 +231,12 @@ Examples::
         'calling "pcluster status mycluster".',
     )
     pdelete.add_argument("cluster_name", help="Names the cluster to delete.")
+    pdelete.add_argument(
+        "--keep-logs",
+        action="store_true",
+        help="Keep cluster's CloudWatch log group data after deleting. The log group will persist until it's deleted "
+        "manually, but log events will still expire based on the previously configured retention time.",
+    )
     _addarg_config(pdelete)
     _addarg_region(pdelete)
     _addarg_nowait(pdelete)
