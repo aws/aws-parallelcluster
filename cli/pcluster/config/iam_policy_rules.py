@@ -31,7 +31,7 @@ class EC2IAMPolicyInclusionRule(ABC):
 
     @classmethod
     @abc.abstractmethod
-    def policy_is_required(cls, pcluster_config):
+    def policy_is_required(cls, config_parser, cluster_section_name):
         """Describe whether the policy represented by this class must be included."""
         return cls("Conditional policy inclusion rule not implemented.")
 
@@ -51,17 +51,21 @@ class CloudWatchAgentServerPolicyInclusionRule(EC2IAMPolicyInclusionRule):
     """Include the CloudWatchServerAgentPolicy when CloudWatch logging is enabled."""
 
     @classmethod
-    def policy_is_required(cls, pcluster_config):
+    def policy_is_required(cls, config_parser, cluster_section_name):
         """Describe whether the policy represented by this class must be included."""
-        cw_log_settings = pcluster_config.get_section("cluster").get_param("cw_log_settings")
-        if cw_log_settings.value is not None:
+        from pcluster.config.mappings import CW_LOG
+
+        should_include_policy = CW_LOG.get("params").get("enable").get("default")
+
+        if config_parser.has_option(cluster_section_name, "cw_log_settings"):
+            cw_log_settings = config_parser.get(cluster_section_name, "cw_log_settings")
             # A cw_log section was referenced from the config file's cluster section.
             # Use that section's "enable" parameter's value
-            cw_log_section = pcluster_config.get_section("cw_log", cw_log_settings.value)
-            should_include_policy = cw_log_section.get_param_value("enable")
-        else:
-            # A cw_log section was referenced from the config file's cluster section
-            should_include_policy = cw_log_settings.referred_section_definition["params"]["enable"]["default"]
+            cw_log_section = "cw_log {0}".format(cw_log_settings)
+            if config_parser.has_option(cw_log_section, "enable"):
+                str_enable = config_parser.get(cw_log_section, "enable")
+                should_include_policy = str_enable.lower() != "false"
+
         return should_include_policy
 
     @classmethod
@@ -74,9 +78,12 @@ class AWSBatchFullAccessInclusionRule(EC2IAMPolicyInclusionRule):
     """Include the AWSBatchFullAccess when the scheduler is awsbatch."""
 
     @classmethod
-    def policy_is_required(cls, pcluster_config):
+    def policy_is_required(cls, config_parser, cluster_section_name):
         """Describe whether the policy represented by this class must be included."""
-        return pcluster_config.get_section("cluster").get_param_value("scheduler") == "awsbatch"
+        should_include_policy = False
+        if config_parser.has_option(cluster_section_name, "scheduler"):
+            should_include_policy = config_parser.get(cluster_section_name, "scheduler") == "awsbatch"
+        return should_include_policy
 
     @classmethod
     def get_policy(cls):

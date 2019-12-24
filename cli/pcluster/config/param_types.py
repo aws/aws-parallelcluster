@@ -659,8 +659,10 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         Conditional policies are automatically added if appropriate.
         """
         super(AdditionalIamPoliciesParam, self).from_file(config_parser)
+        # Cluster section name in config file
+        section_name = _get_file_section_name(self.section_key, self.section_label)
         for rule in self.policy_inclusion_rules:
-            if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in self.value:
+            if rule.policy_is_required(config_parser, section_name) and rule.get_policy() not in self.value:
                 self.value.append(rule.get_policy())
         self.value = sorted(set(self.value))
         return self
