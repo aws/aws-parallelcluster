@@ -372,13 +372,15 @@ def vpc_stacks(cfn_stacks_factory, request):
     regions = request.config.getoption("regions")
     vpc_stacks = {}
     for region in regions:
-        availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [None]))
+        # Randomly select 2 AZs from list WITHOUT replacement, hence the need for [None, None].
+        availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region, [None, None]), k=2)
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
             cidr="192.168.32.0/19",  # 8190 IPs
             map_public_ip_on_launch=True,
             has_nat_gateway=True,
+            availability_zone=availability_zones[0],
             default_gateway=Gateways.INTERNET_GATEWAY,
         )
         private_subnet = SubnetConfig(
@@ -386,6 +388,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             cidr="192.168.64.0/18",  # 16382 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
+            availability_zone=availability_zones[0],
             default_gateway=Gateways.NAT_GATEWAY,
         )
         private_subnet_different_cidr = SubnetConfig(
@@ -393,6 +396,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             cidr="192.168.128.0/17",  # 32766 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
+            availability_zone=availability_zones[1],
             default_gateway=Gateways.NAT_GATEWAY,
         )
         vpc_config = VPCConfig(
@@ -400,7 +404,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             additional_cidr_blocks=["192.168.128.0/17"],
             subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
         )
-        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zone).build()
+        template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks

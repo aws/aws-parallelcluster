@@ -678,6 +678,26 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
 
 class AvailabilityZoneParam(Param):
     """
+    Base class to manage availability_zone internal attribute.
+
+    This parameter is not exposed as configuration parameter in the file but it exists as CFN parameter
+    and it is used for master_availability_zone and compute_availability_zone.
+    """
+
+    def _init_az(self, config_parser, subnet_parameter):
+        section_name = _get_file_section_name(self.section_key, self.section_label)
+        if config_parser.has_option(section_name, subnet_parameter):
+            subnet_id = config_parser.get(section_name, subnet_parameter)
+            self.value = get_avail_zone(subnet_id)
+            self._check_allowed_values()
+
+    def to_file(self, config_parser, write_defaults=False):
+        """Do nothing, because master_availability_zone it is an internal parameter, not exposed in the config file."""
+        pass
+
+
+class MasterAvailabilityZoneParam(AvailabilityZoneParam):
+    """
     Class to manage master_availability_zone internal attribute.
 
     This parameter is not exposed as configuration parameter in the file but it exists as CFN parameter
@@ -686,17 +706,24 @@ class AvailabilityZoneParam(Param):
 
     def from_file(self, config_parser):
         """Initialize the Availability zone of the cluster by checking the Master Subnet."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if config_parser.has_option(section_name, "master_subnet_id"):
-            master_subnet_id = config_parser.get(section_name, "master_subnet_id")
-            self.value = get_avail_zone(master_subnet_id)
-            self._check_allowed_values()
+        self._init_az(config_parser, "master_subnet_id")
 
         return self
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Do nothing, because master_availability_zone it is an internal parameter, not exposed in the config file."""
-        pass
+
+class ComputeAvailabilityZoneParam(AvailabilityZoneParam):
+    """
+    Class to manage compute_availability_zone internal attribute.
+
+    This parameter is not exposed as configuration parameter in the file but it exists as CFN parameter
+    and it is used during EFS conversion and validation.
+    """
+
+    def from_file(self, config_parser):
+        """Initialize the Availability zone of the cluster by checking the Compute Subnet."""
+        self._init_az(config_parser, "compute_subnet_id")
+
+        return self
 
 
 class DisableHyperThreadingParam(BoolParam):
@@ -1227,18 +1254,28 @@ class EFSSection(Section):
                 cfn_items.append(param.get_cfn_value())
 
         if cfn_items[0] == "NONE":
-            efs_section_valid = False
+            master_mt_valid = False
+            compute_mt_valid = False
+            master_avail_zone = "fake_az1"
+            compute_avail_zone = "fake_az2"
             # empty dict or first item is NONE --> set all values to NONE
             cfn_items = ["NONE"] * len(self.definition.get("params"))
         else:
             # add another CFN param that will identify if create or not a Mount Target for the given EFS FS Id
             master_avail_zone = self.pcluster_config.get_master_availability_zone()
-            mount_target_id = get_efs_mount_target_id(
+            master_mount_target_id = get_efs_mount_target_id(
                 efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=master_avail_zone
             )
-            efs_section_valid = bool(mount_target_id)
+            compute_avail_zone = self.pcluster_config.get_compute_availability_zone()
+            compute_mount_target_id = get_efs_mount_target_id(
+                efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=compute_avail_zone
+            )
+            master_mt_valid = bool(master_mount_target_id)
+            compute_mt_valid = bool(compute_mount_target_id)
 
-        cfn_items.append("Valid" if efs_section_valid else "NONE")
+        cfn_items.append("Valid" if master_mt_valid else "NONE")
+        # Do not create additional compute mount target if compute and master subnet in the same AZ
+        cfn_items.append("Valid" if compute_mt_valid or (master_avail_zone == compute_avail_zone) else "NONE")
         cfn_params[cfn_converter] = ",".join(cfn_items)
 
         return cfn_params

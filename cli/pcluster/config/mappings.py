@@ -12,9 +12,9 @@ from future.moves.collections import OrderedDict
 
 from pcluster.config.param_types import (
     AdditionalIamPoliciesParam,
-    AvailabilityZoneParam,
     BoolParam,
     ClusterSection,
+    ComputeAvailabilityZoneParam,
     DisableHyperThreadingParam,
     EBSSettingsParam,
     EFSSection,
@@ -23,6 +23,7 @@ from pcluster.config.param_types import (
     IntParam,
     JsonParam,
     MaintainInitialSizeParam,
+    MasterAvailabilityZoneParam,
     QueueSizeParam,
     Section,
     SettingsParam,
@@ -205,8 +206,12 @@ VPC = {
         },
         "master_availability_zone": {
             # NOTE: this is not exposed as a configuration parameter
-            "type": AvailabilityZoneParam,
+            "type": MasterAvailabilityZoneParam,
             "cfn_param_mapping": "AvailabilityZone",
+        },
+        "compute_availability_zone": {
+            # NOTE: this is not exposed as a configuration parameter
+            "type": ComputeAvailabilityZoneParam,
         }
     },
 }

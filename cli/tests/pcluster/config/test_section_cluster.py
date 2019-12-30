@@ -42,7 +42,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
                 "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
                 "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
+                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
                 "EncryptedEphemeral": "false",
                 "EphemeralDir": "/scratch",
                 "ExtraJson": "{}",
@@ -223,7 +223,7 @@ def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_
                 "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
                 "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
                 "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
+                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
                 "EncryptedEphemeral": "false",
                 "EphemeralDir": "/scratch",
                 "ExtraJson": "{}",
@@ -309,7 +309,7 @@ def test_cluster_section_from_240_cfn(mocker, cfn_params_dict, expected_section_
                 "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
                 "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
                 "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
+                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
                 "EncryptedEphemeral": "false",
                 "EphemeralDir": "/scratch",
                 "ExtraJson": "{}",
@@ -395,7 +395,7 @@ def test_cluster_section_from_231_cfn(mocker, cfn_params_dict, expected_section_
                 "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
                 "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
                 "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
+                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
                 "EncryptedEphemeral": "false",
                 "EphemeralDir": "/scratch",
                 "ExtraJson": "{}",
@@ -1067,7 +1067,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
-                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid",
+                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                 },
             ),
         ),
@@ -1210,7 +1210,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
-                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid",
+                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
@@ -1263,7 +1263,9 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "ScaleDownIdleTime": "15",
                     # vpc
                     "VPCId": "vpc-12345678",
+                    #
                     "MasterSubnetId": "subnet-12345678",
+                    "ComputeSubnetId": "subnet-23456789",
                     # ebs
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
@@ -1274,7 +1276,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
-                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid",
+                    "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
@@ -1288,8 +1290,14 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
 )
 def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing Cluster related options."""
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="mount_target_id")
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch(
+        "pcluster.config.param_types.get_efs_mount_target_id",
+        side_effect=lambda efs_fs_id, avail_zone: "master_mt" if avail_zone == "mocked_avail_zone" else None,
+    )
+    mocker.patch(
+        "pcluster.config.param_types.get_avail_zone",
+        side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
+    )
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
         return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},

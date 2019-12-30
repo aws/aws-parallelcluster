@@ -316,9 +316,9 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
-      "Description": "Comma separated list of efs related options, 8 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,valid_existing_MTorNot]",
+      "Description": "Comma separated list of efs related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
       "Type": "String",
-      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "Cores": {
       "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 no CpuOptions are set.",
@@ -1175,8 +1175,11 @@
               }
             ]
           },
-          "SubnetId": {
+          "MasterSubnetId": {
             "Ref": "MasterSubnetId"
+          },
+          "ComputeSubnetId": {
+            "Ref": "ComputeSubnetId"
           }
         },
         "TemplateURL": {

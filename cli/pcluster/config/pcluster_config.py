@@ -343,6 +343,10 @@ class PclusterConfig(object):
         """Get the Availability zone of the Master Subnet."""
         return self.get_section("vpc").get_param_value("master_availability_zone")
 
+    def get_compute_availability_zone(self):
+        """Get the Availability zone of the Compute Subnet."""
+        return self.get_section("vpc").get_param_value("compute_availability_zone")
+
     def __check_account_capacity(self):  # noqa: C901
         """Try to launch the requested number of instances to verify Account limits."""
         cluster_section = self.get_section("cluster")
