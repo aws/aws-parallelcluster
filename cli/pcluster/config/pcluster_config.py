@@ -57,6 +57,7 @@ class PclusterConfig(object):
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
         """
+        self.__stale = False
         self.fail_on_error = fail_on_error
         self.sections = OrderedDict({})
 
@@ -131,6 +132,7 @@ class PclusterConfig(object):
         :param section_key: the identifier of the section type
         :return a dictionary containing the section
         """
+        self.__refresh()
         return self.sections.get(section_key, {})
 
     def get_section(self, section_key, section_label=None):
@@ -302,6 +304,25 @@ class PclusterConfig(object):
             section.from_file(config_parser, fail_on_absence)
         except configparser.NoSectionError as e:
             self.error("Section '[{0}]' not found in the config file.".format(e.section))
+
+    def __refresh(self):
+        """When the object is marked as stale, reload the sections structure."""
+        if self.__stale:
+            new_sections = OrderedDict({})
+            for key, sections in self.sections.items():
+                new_sections_map = {}
+                new_sections[key] = new_sections_map
+                for _, section in sections.items():
+                    new_sections_map[section.label] = section
+            self.sections = new_sections
+
+    def refresh(self):
+        """
+        Mark the object as stale.
+
+        When the object is marked as stale, the next call to one of its public methods will trigger a refresh operation.
+        """
+        self.__stale = True
 
     def __init_sections_from_cfn(self, cluster_name):
         try:

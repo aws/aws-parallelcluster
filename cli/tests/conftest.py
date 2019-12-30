@@ -158,7 +158,8 @@ def pcluster_config_reader(test_datadir):
     Also sanity_check is set to true by default unless explicitly set in config.
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
-    def _config_renderer(config_file = "pcluster.config.ini", **kwargs):
+
+    def _config_renderer(config_file="pcluster.config.ini", **kwargs):
         config_file_path = os.path.join(str(test_datadir), config_file)
         # default_values = _get_default_template_values(vpc_stacks, region, request)
         file_loader = FileSystemLoader(str(test_datadir))

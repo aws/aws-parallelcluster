@@ -1039,12 +1039,23 @@ class Section(object):
     def __init__(self, section_definition, pcluster_config, section_label=None):
         self.definition = section_definition
         self.key = section_definition.get("key")
-        self.label = section_label or self.definition.get("default_label", "")
+        self._label = section_label or self.definition.get("default_label", "")
         self.pcluster_config = pcluster_config
 
         # initialize section parameters with default values
         self.params = {}
         self._from_definition()
+
+    @property
+    def label(self):
+        """Get the section label."""
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        """Set the section label. Marks the PclusterConfig parent for refreshing if called."""
+        self._label = label
+        self.pcluster_config.refresh()
 
     def from_file(self, config_parser, fail_on_absence=False):
         """Initialize section configuration parameters by parsing config file."""
