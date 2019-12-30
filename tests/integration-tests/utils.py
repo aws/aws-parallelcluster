@@ -244,3 +244,11 @@ def paginate_boto3(method, **kwargs):
     for page in paginator.paginate(**kwargs).result_key_iters():
         for result in page:
             yield result
+
+
+def get_vpc_snakecase_value(region, vpc_stacks):
+    vpc_output_dict = {}
+    vpc = vpc_stacks[region]
+    for key, value in vpc.cfn_outputs.items():
+        vpc_output_dict[to_snake_case(key)] = value
+    return vpc_output_dict

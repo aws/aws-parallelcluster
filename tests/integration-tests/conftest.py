@@ -40,10 +40,10 @@ from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetCon
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    get_vpc_snakecase_value,
     random_alphanumeric,
     set_credentials,
     set_logger_formatter,
-    to_snake_case,
     unset_credentials,
 )
 
@@ -320,11 +320,10 @@ def _enable_sanity_check_if_unset(cluster_config):
 
 def _get_default_template_values(vpc_stacks, region, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
-    default_values = {dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS}
+    default_values = get_vpc_snakecase_value(region, vpc_stacks)
+    default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
-    vpc = vpc_stacks[region]
-    for key, value in vpc.cfn_outputs.items():
-        default_values[to_snake_case(key)] = value
+
     return default_values
 
 
@@ -373,6 +372,8 @@ def vpc_stacks(cfn_stacks_factory, request):
     vpc_stacks = {}
     for region in regions:
         # Randomly select 2 AZs from list WITHOUT replacement, hence the need for [None, None].
+        # Creating private_subnet_different_cidr in a different AZ for test_efs
+        # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
         availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region, [None, None]), k=2)
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
