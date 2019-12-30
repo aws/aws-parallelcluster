@@ -1,5 +1,15 @@
 {
   "Conditions": {
+    "CreateComputeMT": {
+      "Fn::And": [
+        {
+          "Condition": "UseUserProvidedComputeSubnet"
+        },
+        {
+          "Condition": "NoMTInComputeAZ"
+        }
+      ]
+    },
     "CreateEFS": {
       "Fn::And": [
         {
@@ -34,7 +44,7 @@
         }
       ]
     },
-    "CreateMT": {
+    "CreateMasterMT": {
       "Fn::And": [
         {
           "Fn::Not": [
@@ -66,6 +76,19 @@
             "NONE"
           ]
         }
+      ]
+    },
+    "NoMTInComputeAZ": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "8",
+            {
+              "Ref": "EFSOptions"
+            }
+          ]
+        },
+        "NONE"
       ]
     },
     "UseEFSEncryption": {
@@ -175,6 +198,18 @@
           ]
         }
       ]
+    },
+    "UseUserProvidedComputeSubnet": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "ComputeSubnetId"
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Outputs": {
@@ -200,19 +235,53 @@
   },
   "Parameters": {
     "ComputeSecurityGroup": {
-      "Description": "SecurityGroup for Mount Target",
-      "Type": "AWS::EC2::SecurityGroup::Id"
+      "Description": "Security Group for Mount Target",
+      "Type": "String"
+    },
+    "ComputeSubnetId": {
+      "Description": "User provided compute subnet id. Will be use to create compute mount target if needed.",
+      "Type": "String"
     },
     "EFSOptions": {
-      "Description": "Comma separated list of efs related options, 8 parameters in total",
+      "Description": "Comma separated list of efs related options, 9 parameters in total",
       "Type": "CommaDelimitedList"
     },
-    "SubnetId": {
-      "Description": "SubnetId for Mount Target",
+    "MasterSubnetId": {
+      "Description": "Master subnet id for master mount target",
       "Type": "String"
     }
   },
   "Resources": {
+    "ComputeSubnetEFSMT": {
+      "Condition": "CreateComputeMT",
+      "Properties": {
+        "FileSystemId": {
+          "Fn::If": [
+            "CreateEFS",
+            {
+              "Ref": "EFSFS"
+            },
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "EFSOptions"
+                }
+              ]
+            }
+          ]
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "ComputeSecurityGroup"
+          }
+        ],
+        "SubnetId": {
+          "Ref": "ComputeSubnetId"
+        }
+      },
+      "Type": "AWS::EFS::MountTarget"
+    },
     "EFSFS": {
       "Condition": "CreateEFS",
       "Properties": {
@@ -299,8 +368,8 @@
       },
       "Type": "AWS::EFS::FileSystem"
     },
-    "EFSMT": {
-      "Condition": "CreateMT",
+    "MasterSubnetEFSMT": {
+      "Condition": "CreateMasterMT",
       "Properties": {
         "FileSystemId": {
           "Fn::If": [
@@ -324,7 +393,7 @@
           }
         ],
         "SubnetId": {
-          "Ref": "SubnetId"
+          "Ref": "MasterSubnetId"
         }
       },
       "Type": "AWS::EFS::MountTarget"

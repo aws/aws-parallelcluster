@@ -32,6 +32,7 @@ DEFAULT_VPC_DICT = {
     "use_public_ips": True,
     "vpc_security_group_id": None,
     "master_availability_zone": None,
+    "compute_availability_zone": None,
 }
 
 DEFAULT_EBS_DICT = {
@@ -187,7 +188,7 @@ DEFAULT_EBS_CFN_PARAMS = {
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
 }
 
-DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
@@ -256,7 +257,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
     # efs
-    "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx

@@ -8,26 +8,52 @@ def main(args):
     t = Template()
 
     # [0 shared_dir, 1 efs_fs_id, 2 performance_mode, 3 efs_kms_key_id,
-    # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_mt]
+    # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_master_mt, 8 exists_valid_compute_mt]
     efs_options = t.add_parameter(
         Parameter(
             "EFSOptions",
             Type="CommaDelimitedList",
-            Description="Comma separated list of efs related options, " "8 parameters in total",
+            Description="Comma separated list of efs related options, 9 parameters in total",
         )
     )
     compute_security_group = t.add_parameter(
-        Parameter("ComputeSecurityGroup", Type="String", Description="SecurityGroup for Mount Target")
+        Parameter("ComputeSecurityGroup", Type="String", Description="Security Group for Mount Target")
     )
-    subnet_id = t.add_parameter(Parameter("SubnetId", Type="String", Description="SubnetId for Mount Target"))
+    master_subnet_id = t.add_parameter(
+        Parameter("MasterSubnetId", Type="String", Description="Master subnet id for master mount target")
+    )
+    compute_subnet_id = t.add_parameter(
+        Parameter(
+            "ComputeSubnetId",
+            Type="String",
+            Description="User provided compute subnet id. Will be use to create compute mount target if needed.",
+        )
+    )
+
     create_efs = t.add_condition(
         "CreateEFS",
         And(Not(Equals(Select(str(0), Ref(efs_options)), "NONE")), Equals(Select(str(1), Ref(efs_options)), "NONE")),
     )
-    create_mt = t.add_condition(
-        "CreateMT",
+    create_master_mt = t.add_condition(
+        "CreateMasterMT",
         And(Not(Equals(Select(str(0), Ref(efs_options)), "NONE")), Equals(Select(str(7), Ref(efs_options)), "NONE")),
     )
+    no_mt_in_compute_az = t.add_condition("NoMTInComputeAZ", Equals(Select(str(8), Ref(efs_options)), "NONE"))
+    use_user_provided_compute_subnet = t.add_condition(
+        "UseUserProvidedComputeSubnet", Not(Equals(Ref(compute_subnet_id), "NONE"))
+    )
+    # Need to create compute mount target if:
+    # user is providing a compute subnet and
+    # there is no existing MT in compute subnet's AZ(includes case where master AZ == compute AZ).
+    #
+    # If user is not providing a compute subnet, either we are using the master subnet as compute subnet,
+    # or we will be creating a compute subnet that is in the same AZ as master subnet,
+    # see ComputeSubnet resource in the main stack.
+    # In both cases no compute MT is needed.
+    create_compute_mt = t.add_condition(
+        "CreateComputeMT", And(Condition(use_user_provided_compute_subnet), Condition(no_mt_in_compute_az))
+    )
+
     use_performance_mode = t.add_condition("UsePerformanceMode", Not(Equals(Select(str(2), Ref(efs_options)), "NONE")))
     use_efs_encryption = t.add_condition("UseEFSEncryption", Equals(Select(str(5), Ref(efs_options)), "true"))
     use_efs_kms_key = t.add_condition(
@@ -54,11 +80,21 @@ def main(args):
 
     t.add_resource(
         MountTarget(
-            "EFSMT",
+            "MasterSubnetEFSMT",
             FileSystemId=If(create_efs, Ref(fs), Select(str(1), Ref(efs_options))),
             SecurityGroups=[Ref(compute_security_group)],
-            SubnetId=Ref(subnet_id),
-            Condition=create_mt,
+            SubnetId=Ref(master_subnet_id),
+            Condition=create_master_mt,
+        )
+    )
+
+    t.add_resource(
+        MountTarget(
+            "ComputeSubnetEFSMT",
+            FileSystemId=If(create_efs, Ref(fs), Select(str(1), Ref(efs_options))),
+            SecurityGroups=[Ref(compute_security_group)],
+            SubnetId=Ref(compute_subnet_id),
+            Condition=create_compute_mt,
         )
     )
 
