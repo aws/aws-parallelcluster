@@ -17,7 +17,6 @@ import re
 from configparser import NoSectionError
 
 import yaml
-from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.utils import (
     PCLUSTER_ISSUES_LINK,
     get_avail_zone,
@@ -650,41 +649,10 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
         super(AdditionalIamPoliciesParam, self).__init__(
             section_key, section_label, param_key, param_definition, pcluster_config
         )
-        self.policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section."""
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        super(AdditionalIamPoliciesParam, self).to_file(config_parser)
-
-    def from_cfn_params(self, cfn_params):
-        """
-        Initialize parameter value by parsing CFN input parameters.
-
-        :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
-        """
-        super(AdditionalIamPoliciesParam, self).from_cfn_params(cfn_params)
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        return self
-
-    def to_cfn(self):
-        """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
-        # Add conditional policies if appropriate
-        for rule in self.policy_inclusion_rules:
-            if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in self.value:
-                self.value.append(rule.get_policy())
-
-        cfn_params = super(AdditionalIamPoliciesParam, self).to_cfn()
-
-        return cfn_params
-
-    def _remove_conditional_policies(self):
-        """Remove any of the policy ARNs in self.conditional_policies from self.value."""
-        for rule in self.policy_inclusion_rules:
-            if rule.get_policy() in self.value:
-                self.value.remove(rule.get_policy())
+    def get_string_value(self):
+        """Convert internal representation into string. Conditionally enabled policies are not written."""
+        return str(",".join(self.pcluster_config.non_conditional_iam_policies(self.value)))
 
 
 class AvailabilityZoneParam(Param):
