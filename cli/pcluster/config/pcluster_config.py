@@ -62,7 +62,7 @@ class PclusterConfig(object):
         """
         self.__stale = False
         self.fail_on_error = fail_on_error
-        self.sections = OrderedDict({})
+        self.__sections = OrderedDict({})
 
         # always parse the configuration file if there, to get AWS section
         self._init_config_parser(config_file, fail_on_file_absence)
@@ -137,7 +137,7 @@ class PclusterConfig(object):
         :return a dictionary containing the section
         """
         self.__refresh()
-        return self.sections.get(section_key, {})
+        return self.__sections.get(section_key, {})
 
     def get_section(self, section_key, section_label=None):
         """
@@ -170,11 +170,11 @@ class PclusterConfig(object):
 
         :param section, a Section object
         """
-        if section.key not in self.sections:
-            self.sections[section.key] = {}
+        if section.key not in self.__sections:
+            self.__sections[section.key] = {}
 
         section_label = section.label if section.label else section.definition.get("default_label", "default")
-        self.sections[section.key][section_label] = section
+        self.__sections[section.key][section_label] = section
 
     def remove_section(self, section_key, section_label):
         """
@@ -183,8 +183,8 @@ class PclusterConfig(object):
         :param section_key: the identifier of the section type
         :param section_label: the label of the section to delete.
         """
-        if section_key in self.sections:
-            self.sections[section_key].pop(section_label, None)
+        if section_key in self.__sections:
+            self.__sections[section_key].pop(section_label, None)
 
     def __init_aws_credentials(self):
         """Set credentials in the environment to be available for all the boto3 calls."""
@@ -313,12 +313,12 @@ class PclusterConfig(object):
         """When the object is marked as stale, reload the sections structure."""
         if self.__stale:
             new_sections = OrderedDict({})
-            for key, sections in self.sections.items():
+            for key, sections in self.__sections.items():
                 new_sections_map = {}
                 new_sections[key] = new_sections_map
                 for _, section in sections.items():
                     new_sections_map[section.label] = section
-            self.sections = new_sections
+            self.__sections = new_sections
 
     def refresh(self):
         """
@@ -362,7 +362,7 @@ class PclusterConfig(object):
 
     def validate(self):
         """Validate the configuration."""
-        for _, sections in self.sections.items():
+        for _, sections in self.__sections.items():
             for _, section in sections.items():
                 section.validate()
 
