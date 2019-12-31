@@ -103,7 +103,7 @@ DEFAULT_CLUSTER_DICT = {
     "spot_bid_percentage": 0,
     "proxy_server": None,
     "ec2_iam_role": None,
-    "additional_iam_policies": [],
+    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
     "s3_read_resource": None,
     "s3_read_write_resource": None,
     "enable_efa": None,

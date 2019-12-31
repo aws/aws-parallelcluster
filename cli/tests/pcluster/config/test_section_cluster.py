@@ -93,6 +93,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "placement": "cluster",
                     "maintain_initial_size": True,
                     "enable_intel_hpc_platform": True,
+                    "additional_iam_policies": [],
                 },
             ),
         )
@@ -106,8 +107,14 @@ def test_cluster_section_from_250_cfn(mocker, cfn_params_dict, expected_section_
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict",
     [
-        ({}, DefaultDict["cluster"].value),
-        (DefaultCfnParams["cluster"].value, DefaultDict["cluster"].value),
+        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": []})),
+        (
+            DefaultCfnParams["cluster"].value,
+            utils.merge_dicts(
+                DefaultDict["cluster"].value,
+                {"additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"]},
+            ),
+        ),
         # awsbatch defaults
         (
             utils.merge_dicts(DefaultCfnParams["cluster"].value, {"Scheduler": "awsbatch"}),
@@ -124,6 +131,7 @@ def test_cluster_section_from_250_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 10,
                     "maintain_initial_size": False,
                     "spot_price": 0,
+                    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
                 },
             ),
         ),
@@ -269,6 +277,7 @@ def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 3,
                     "placement": "cluster",
                     "maintain_initial_size": True,
+                    "additional_iam_policies": [],
                 },
             ),
         )
@@ -355,6 +364,7 @@ def test_cluster_section_from_240_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 2,
                     "placement": "compute",
                     "base_os": "centos7",
+                    "additional_iam_policies": [],
                 },
             ),
         )
@@ -439,6 +449,7 @@ def test_cluster_section_from_231_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 3,
                     "placement": "cluster",
                     "base_os": "ubuntu1404",  # NOTE: We create the config with the old base_os (no longer supported)
+                    "additional_iam_policies": [],
                 },
             ),
         )
@@ -522,6 +533,7 @@ def test_cluster_section_from_210_cfn(mocker, cfn_params_dict, expected_section_
                     "initial_queue_size": 0,
                     "max_queue_size": 10,
                     "placement": "cluster",
+                    "additional_iam_policies": [],
                 },
             ),
         )
@@ -536,10 +548,10 @@ def test_cluster_section_from_200_cfn(mocker, cfn_params_dict, expected_section_
     "config_parser_dict, expected_dict_params, expected_message",
     [
         # default
-        ({"cluster default": {}}, {}, None),
+        ({"cluster default": {}}, {"additional_iam_policies": []}, None),
         # right value
-        ({"cluster default": {"key_name": "test"}}, {"key_name": "test"}, None),
-        ({"cluster default": {"base_os": "alinux"}}, {"base_os": "alinux"}, None),
+        ({"cluster default": {"key_name": "test"}}, {"key_name": "test", "additional_iam_policies": []}, None),
+        ({"cluster default": {"base_os": "alinux"}}, {"base_os": "alinux", "additional_iam_policies": []}, None),
         # invalid value
         ({"cluster default": {"base_os": "wrong_value"}}, None, "has an invalid value"),
         # invalid key
@@ -904,7 +916,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "5.5",
                     "ProxyServer": "proxy",
                     "EC2IAMRoleName": "role",
-                    "EC2IAMPolicies": "policy1,policy2,arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                    "EC2IAMPolicies": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy,policy1,policy2",
                     "S3ReadResource": "s3://url",
                     "S3ReadWriteResource": "s3://url",
                     "EFA": "compute",
@@ -942,8 +954,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "0",
                     "EC2IAMPolicies": ",".join(
                         [
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",
@@ -967,10 +979,10 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "25",
                     "EC2IAMPolicies": ",".join(
                         [
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "policy1",
                             "policy2",
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",
@@ -1033,8 +1045,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "25",
                     "EC2IAMPolicies": ",".join(
                         [
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",

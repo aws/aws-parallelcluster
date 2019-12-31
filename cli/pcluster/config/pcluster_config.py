@@ -21,6 +21,7 @@ import boto3
 import configparser
 from botocore.exceptions import ClientError
 
+from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
 from pcluster.utils import get_instance_vcpus, get_latest_alinux_ami_id, get_stack, get_stack_name, warn
 
@@ -33,6 +34,8 @@ class PclusterConfig(object):
 
     This class contains a dictionary of sections associated to the given cluster
     """
+
+    policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
 
     def __init__(
         self,
@@ -73,6 +76,7 @@ class PclusterConfig(object):
             self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
+            self.__update_conditional_policies()
 
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
@@ -323,6 +327,22 @@ class PclusterConfig(object):
         When the object is marked as stale, the next call to one of its public methods will trigger a refresh operation.
         """
         self.__stale = True
+
+    def __update_conditional_policies(self):
+        cluster_section = self.get_section("cluster")
+        additional_policies = cluster_section.get_param_value("additional_iam_policies")
+        for rule in PclusterConfig.policy_inclusion_rules:
+            if rule.policy_is_required(self) and rule.get_policy() not in additional_policies:
+                additional_policies.append(rule.get_policy())
+        cluster_section.get_param("additional_iam_policies").value = sorted(set(additional_policies))
+
+    def non_conditional_iam_policies(self, iam_policies):
+        """Given a list of IAM policies return a new list containing only the non conditional ones."""
+        policies = sorted(set(iam_policies))  # List is cloned to avoid modifying self value
+        for rule in self.policy_inclusion_rules:
+            if rule.get_policy() in policies and rule.policy_is_required(self):
+                policies.remove(rule.get_policy())
+        return policies
 
     def __init_sections_from_cfn(self, cluster_name):
         try:
