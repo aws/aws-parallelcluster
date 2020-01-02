@@ -847,20 +847,18 @@ def test_cluster_param_from_file(mocker, param_key, param_value, expected_value,
 
 
 @pytest.mark.parametrize(
-    "section_definition, section_dict, expected_config_parser_dict, expected_message",
+    "section_dict, expected_config_parser_dict, expected_message",
     [
         # default
-        (CLUSTER, {}, {"cluster default": {}}, None),
+        ({}, {"cluster default": {}}, None),
         # default values
-        (CLUSTER, {"base_os": "alinux"}, {"cluster default": {"base_os": "alinux"}}, "No option .* in section: .*"),
+        ({"base_os": "alinux"}, {"cluster default": {"base_os": "alinux"}}, "No option .* in section: .*"),
         # other values
-        (CLUSTER, {"key_name": "test"}, {"cluster default": {"key_name": "test"}}, None),
-        (CLUSTER, {"base_os": "centos7"}, {"cluster default": {"base_os": "centos7"}}, None),
+        ({"key_name": "test"}, {"cluster default": {"key_name": "test"}}, None),
+        ({"base_os": "centos7"}, {"cluster default": {"base_os": "centos7"}}, None),
     ],
 )
-def test_cluster_section_to_file(
-    mocker, section_definition, section_dict, expected_config_parser_dict, expected_message
-):
+def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_dict, expected_message):
     utils.assert_section_to_file(mocker, CLUSTER, section_dict, expected_config_parser_dict, expected_message)
 
 
