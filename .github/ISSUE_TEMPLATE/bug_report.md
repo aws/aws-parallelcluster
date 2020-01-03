@@ -8,11 +8,8 @@ assignees: ''
 ---
 
 **Environment:**
- - AWS ParallelCluster / CfnCluster version [e.g. aws-parallelcluster-2.4.1]
- - OS: [e.g. alinux]
- - Scheduler: [e.g. SGE]
- - Master instance type: [e.g. m5.xlarge]
- - Compute instance type: [e.g. c5.8xlarge]
+ - AWS ParallelCluster / CfnCluster version [e.g. aws-parallelcluster-2.5.1]
+ - Config (i.e. ~/.parallelcluster/config) with personal data removed
 
 **Bug description and how to reproduce:**
 A clear and concise description of what the bug is and the steps to reproduce the behavior.
