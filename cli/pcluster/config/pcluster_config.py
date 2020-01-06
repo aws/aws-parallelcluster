@@ -87,12 +87,10 @@ class PclusterConfig(object):
             self.config_file = os.environ["AWS_PCLUSTER_CONFIG_FILE"]
             default_config = False
         else:
-            config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+            self.config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
             default_config = True
 
-        self.config_file = str(
-            config_file if config_file else os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
-        )
+        self.config_file = str(self.config_file)
 
         if not os.path.isfile(self.config_file):
             if fail_on_config_file_absence:
