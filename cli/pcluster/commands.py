@@ -798,7 +798,7 @@ def _run_packer(packer_command, packer_env):
         sys.stdout.flush()
         LOGGER.error("Failed to run %s\n", _command)
         sys.exit(1)
-    except (IOError, OSError):
+    except (IOError, OSError):  # noqa: B014
         sys.stdout.flush()
         LOGGER.error("Failed to run %s\nCommand not found", packer_command)
         sys.exit(1)

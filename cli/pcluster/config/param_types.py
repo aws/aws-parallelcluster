@@ -386,7 +386,7 @@ class JsonParam(Param):
                 string_value = str(string_value).strip()
                 if string_value != "NONE":
                     param_value = yaml.safe_load(string_value)
-        except (TypeError, ValueError, Exception) as e:
+        except Exception as e:
             self.pcluster_config.error("Error parsing JSON parameter '{0}'. {1}".format(self.key, e))
 
         return param_value
