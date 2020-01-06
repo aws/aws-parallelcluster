@@ -28,7 +28,7 @@ REQUIRES = [
     "tabulate>=0.8.2,<=0.8.3",
     "ipaddress>=1.0.22",
     "enum34>=1.1.6",
-    "PyYAML>=5.1.2",
+    "PyYAML==5.2",
 ]
 
 if sys.version_info[0] == 2:
