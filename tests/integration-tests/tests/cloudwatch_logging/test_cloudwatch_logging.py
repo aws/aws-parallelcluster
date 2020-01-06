@@ -26,6 +26,7 @@ from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_logs_u
 from tests.common.schedulers_common import get_scheduler_commands
 
 LOGGER = logging.getLogger(__name__)
+DEFAULT_SHARED_DIR = "/shared"
 DEFAULT_RETENTION_DAYS = 14
 NODE_CONFIG_PATH = "/etc/chef/dna.json"
 MASTER_NODE_ROLE_NAME = "MasterServer"
@@ -85,12 +86,13 @@ class CloudWatchLoggingClusterState:
     }
     """
 
-    def __init__(self, scheduler, os, cluster, feature_key=None):
+    def __init__(self, scheduler, os, cluster, feature_key=None, shared_dir=DEFAULT_SHARED_DIR):
         """Get the state of the cluster as it pertains to the CloudWatch logging feature."""
         self.scheduler = scheduler
         self.platform = self._base_os_to_platform(os)
         self.cluster = cluster
         self.feature_key = feature_key
+        self.shared_dir = self._get_shared_dir(shared_dir)
         self.remote_command_executor = RemoteCommandExecutor(self.cluster)
         self.scheduler_commands = get_scheduler_commands(self.scheduler, self.remote_command_executor)
         self._relevant_logs = {MASTER_NODE_ROLE_NAME: [], COMPUTE_NODE_ROLE_NAME: []}
@@ -122,6 +124,13 @@ class CloudWatchLoggingClusterState:
         )
         assert_that(states).is_length(self.compute_nodes_count + 1)  # computes + master
         return states
+
+    @staticmethod
+    def _get_shared_dir(shared_dir):
+        """Return the path to the cluster's shared dir, ensuring that it's first character is /."""
+        if shared_dir[:1] != "/":
+            shared_dir = "/{shared_dir}".format(shared_dir=shared_dir)
+        return shared_dir
 
     def _dump_cluster_log_state(self):
         """Dump the JSON-ified string of self._cluster_log_state for debugging purposes."""
@@ -295,8 +304,8 @@ class CloudWatchLoggingClusterState:
 
     def _run_command_on_computes(self, cmd, assert_success=True):
         """Run cmd on all computes in the cluster."""
-        # Create directory in /shared to direct outputs to
-        out_dir = Path(self._run_command_on_master("mktemp -d -p /shared"))
+        # Create directory in self.shared_dir to direct outputs to
+        out_dir = Path(self._run_command_on_master("mktemp -d -p {shared_dir}".format(shared_dir=self.shared_dir)))
         redirect = " > {out_dir}/$(hostname -f) ".format(out_dir=out_dir)
         remote_cmd = cmd.format(redirect=redirect)
 
@@ -546,10 +555,21 @@ class FeatureSpecificCloudWatchLoggingTestRunner(CloudWatchLoggingTestRunner):
         assert_that(observed_stream_names).contains(*expected_stream_index)
 
     @classmethod
-    def run_tests_for_feature(cls, cluster, scheduler, os, feature_key, region, retention_days=DEFAULT_RETENTION_DAYS):
+    def run_tests_for_feature(
+        cls,
+        cluster,
+        scheduler,
+        os,
+        feature_key,
+        region,
+        shared_dir=DEFAULT_SHARED_DIR,
+        retention_days=DEFAULT_RETENTION_DAYS,
+    ):
         """Verify that the logs for the given feature are present on the cluster and are stored in cloudwatch."""
         environ["AWS_DEFAULT_REGION"] = region
-        cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster, feature_key).get_logs_state()
+        cluster_logs_state = CloudWatchLoggingClusterState(
+            scheduler, os, cluster, feature_key, shared_dir
+        ).get_logs_state()
         test_runner = cls(_get_log_group_name_for_cluster(cluster.name))
         test_runner.run_tests(cluster_logs_state)
 
