@@ -96,7 +96,9 @@ def test_dcv_configuration(
     _check_shared_dir(remote_command_executor, shared_dir)
 
     # Check that logs are stored in CloudWatch as expected
-    FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(cluster, scheduler, os, "dcv_enabled", region)
+    FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
+        cluster, scheduler, os, "dcv_enabled", region, shared_dir
+    )
 
 
 def _check_auth_ko(remote_command_executor, dcv_authenticator_port, params, expected_message):
