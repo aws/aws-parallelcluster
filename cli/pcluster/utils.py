@@ -581,3 +581,40 @@ def retry(func, func_args, attempts=1, wait=0):
 
             LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
             time.sleep(wait)
+
+
+def get_asg_name(stack_name):
+    try:
+        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack_name).get("StackResources")
+        return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.stdout.flush()
+        sys.exit(1)
+    except IndexError:
+        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
+        sys.exit(1)
+
+
+def set_asg_limits(asg_name, min, max, desired):
+    asg = boto3.client("autoscaling")
+    asg.update_auto_scaling_group(
+        AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max), DesiredCapacity=int(desired)
+    )
+
+
+def get_asg_instances(stack):
+    asg = boto3.client("autoscaling")
+    asg_name = get_asg_name(stack)
+    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
+    if not auto_scaling_groups:
+        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
+        sys.exit(1)
+    asg = auto_scaling_groups[0]
+    name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
+
+    temp_instances = []
+    for instance in asg.get("Instances"):
+        temp_instances.append([name, instance.get("InstanceId")])
+
+    return temp_instances
