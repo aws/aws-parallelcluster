@@ -156,7 +156,11 @@ class Param(object):
     def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser in the right section."""
         section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value is not None and (write_defaults or self.value != self.get_default_value()):
+        if (
+            self.value is not None
+            and (write_defaults or self.value != self.get_default_value())
+            and self.get_string_value()
+        ):
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.get_string_value())
         else:
@@ -669,7 +673,8 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
 
     def get_string_value(self):
         """Convert internal representation into string. Conditionally enabled policies are not written."""
-        return str(",".join(self.pcluster_config.non_conditional_iam_policies(self.value)))
+        non_conditional_iam_policies = self.pcluster_config.non_conditional_iam_policies(self.value)
+        return str(",".join(non_conditional_iam_policies)) if len(non_conditional_iam_policies) else None
 
 
 class AvailabilityZoneParam(Param):
