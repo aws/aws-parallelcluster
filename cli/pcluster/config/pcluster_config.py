@@ -112,8 +112,8 @@ class PclusterConfig(object):
         self.config_parser = configparser.ConfigParser(inline_comment_prefixes=("#", ";"))
         try:
             self.config_parser.read(self.config_file)
-        except configparser.ParsingError as e:
-            LOGGER.debug("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
+        except (configparser.ParsingError, configparser.DuplicateOptionError) as e:
+            self.error("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
     def get_sections(self, section_key):
         """
