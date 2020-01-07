@@ -31,6 +31,7 @@ from pcluster.config.param_types import (
     SpotBidPercentageParam,
     SpotPriceParam,
 )
+from pcluster.config.param_types import Updatability as Upd
 from pcluster.config.validators import (
     cluster_validator,
     compute_instance_type_validator,
@@ -111,10 +112,15 @@ AWS = {
     "type": Section,
     "key": "aws",
     "params": {
-        "aws_access_key_id": {},
-        "aws_secret_access_key": {},
+        "aws_access_key_id": {
+            "updatability": Upd.DENIED
+        },
+        "aws_secret_access_key": {
+            "updatability": Upd.DENIED
+        },
         "aws_region_name": {
             "default": "us-east-1",  # TODO add regex
+            "updatability": Upd.DENIED
         },
     }
 }
@@ -134,6 +140,7 @@ GLOBAL = {
         "sanity_check": {
             "type": BoolParam,
             "default": True,
+            "updatability": Upd.ALLOWED
         },
     }
 }
@@ -170,11 +177,13 @@ VPC = {
             "cfn_param_mapping": "VPCId",
             "allowed_values": ALLOWED_VALUES["vpc_id"],
             "validators": [ec2_vpc_id_validator],
+            "updatability": Upd.DENIED
         },
         "master_subnet_id": {
             "cfn_param_mapping": "MasterSubnetId",
             "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
+            "updatability": Upd.DENIED
         },
         "ssh_from": {
             "default": "0.0.0.0/0",
@@ -185,11 +194,13 @@ VPC = {
             "cfn_param_mapping": "AdditionalSG",
             "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
+            "updatability": Upd.ALLOWED
         },
         "compute_subnet_id": {
             "cfn_param_mapping": "ComputeSubnetId",
             "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
+            "updatability": Upd.DENIED
         },
         "compute_subnet_cidr": {
             "cfn_param_mapping": "ComputeSubnetCidr",
@@ -221,6 +232,7 @@ EBS = {
     "type": Section,
     "key": "ebs",
     "default_label": "default",
+    "key_param": "shared_dir",
     "params": {
         "shared_dir": {
             "allowed_values": ALLOWED_VALUES["file_path"],
@@ -547,6 +559,8 @@ CLUSTER = {
             ("template_url", {
                 # TODO add regex
                 "validators": [url_validator],
+                # Ignored during update since we force using previous template
+                "updatability": Upd.IGNORED
             }),
             ("shared_dir", {
                 "type": SharedDirParam,

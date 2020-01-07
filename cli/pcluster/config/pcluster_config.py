@@ -120,6 +120,10 @@ class PclusterConfig(object):
         except configparser.ParsingError as e:
             LOGGER.debug("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
+    def get_section_keys(self):
+        """Return the section keys."""
+        return self.__sections.keys()
+
     def get_sections(self, section_key):
         """
         Get the Section(s) identified by the given key.

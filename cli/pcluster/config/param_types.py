@@ -13,6 +13,7 @@ from future.moves.collections import OrderedDict
 import json
 import logging
 import re
+from enum import IntEnum
 
 from configparser import NoSectionError
 
@@ -26,6 +27,18 @@ from pcluster.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+class Updatability(IntEnum):
+    """Describes the updatability of a configuration parameter."""
+
+    IGNORED = (-1,)  # Parameter not considered on cluster updates
+    ALLOWED = (0,)  # Can be safely updated
+    COMPUTE_FLEET_RESTART = (1,)  # Can be updated but compute fleet must be restarted
+    MASTER_RESTART = (2,)  # Can be updated but master node must be restarted
+    UNKNOWN = (10,)  # Can be updated but we don't know the effects
+    DENIED = 100  # Cannot be updated
+
 
 # ---------------------- standard Parameters ---------------------- #
 # The following classes represent the Param of the standard types
@@ -193,6 +206,10 @@ class Param(object):
         Used when the parameter must go into a comma separated CFN parameter.
         """
         return str(self.value if self.value is not None else self.definition.get("default", "NONE"))
+
+    def get_updatability(self):
+        """Get the updatability of the parameter."""
+        return self.definition.get("updatability", Updatability.UNKNOWN)
 
 
 class CommaSeparatedParam(Param):
@@ -1213,6 +1230,11 @@ class Section(object):
         :return: the value of the Param object or None if the param is not present in the Section
         """
         return self.get_param(param_key).value if self.get_param(param_key) else None
+
+    @property
+    def key_param(self):
+        """Get the key parameter, if any. A key parameter is a parameter that can uniquely identify a section."""
+        return self.definition.get("key_param", None)
 
 
 class EFSSection(Section):

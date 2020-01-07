@@ -31,7 +31,7 @@ def test_mapping_consistency():
                 description="{0} is not allowed in {1} section definition".format(
                     section_key, section_definition.get("key")
                 ),
-            ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators")
+            ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "key_param", "validators")
 
         for param_key, param_definition in section_definition.get("params").items():
 
@@ -46,7 +46,15 @@ def test_mapping_consistency():
                 assert_that(
                     param_definition_key,
                     description="{0} is not allowed in {1} param definition".format(param_definition_key, param_key),
-                ).is_in("type", "cfn_param_mapping", "allowed_values", "validators", "default", "referred_section")
+                ).is_in(
+                    "type",
+                    "cfn_param_mapping",
+                    "allowed_values",
+                    "validators",
+                    "default",
+                    "referred_section",
+                    "updatability",
+                )
 
 
 def test_example_config_consistency(mocker):
