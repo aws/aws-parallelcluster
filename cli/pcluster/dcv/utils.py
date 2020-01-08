@@ -15,7 +15,7 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 def get_supported_dcv_os():
     """Return a list of all the operating system supported by DCV."""
-    return ["centos7"]
+    return ["centos7", "ubuntu1804"]
 
 
 def get_supported_dcv_partition():

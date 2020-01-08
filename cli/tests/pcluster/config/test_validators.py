@@ -937,3 +937,21 @@ def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, 
 def test_shared_dir_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "base_os, expected_message",
+    [
+        ("alinux", "Please double check the 'base_os' configuration parameter"),
+        ("centos6", "Please double check the 'base_os' configuration parameter"),
+        ("ubuntu1604", "Please double check the 'base_os' configuration parameter"),
+        ("centos7", None),
+        ("ubuntu1804", None),
+    ],
+)
+def test_dcv_enabled_validator(mocker, base_os, expected_message):
+    config_parser_dict = {
+        "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
+        "dcv dcv": {"enable": "master"},
+    }
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
