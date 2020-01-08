@@ -19,8 +19,10 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
+from tests.common.scaling_common import watch_compute_nodes
 from tests.common.schedulers_common import TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
+from time_utils import minutes
 
 
 @pytest.mark.regions(["us-west-2"])
@@ -36,11 +38,15 @@ def test_torque(region, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 2
     max_queue_size = 5
     max_slots = 4
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
+    initial_queue_size = 3  # in order to speed-up _test_jobs_executed_concurrently test
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, initial_queue_size=initial_queue_size
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_torque_version(remote_command_executor)
+    _test_jobs_executed_concurrently(remote_command_executor, max_slots)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)
     _test_job_arrays_and_parallel_jobs(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_slots)
@@ -143,6 +149,43 @@ def _test_job_arrays_and_parallel_jobs(remote_command_executor, region, stack_na
     _assert_job_completed(remote_command_executor, parallel_job_id)
 
 
+def _test_jobs_executed_concurrently(remote_command_executor, max_slots):
+    logging.info("Testing jobs are executed concurrently and nodes are fully allocated")
+    torque_commands = TorqueCommands(remote_command_executor)
+
+    # GIVEN: a cluster with 3 free nodes
+    assert_that(torque_commands.compute_nodes_count()).is_equal_to(3)
+
+    # WHEN: an array job that requires 3 nodes and all slots is submitted
+    jobs_start_time = int(remote_command_executor.run_remote_command("date +%s").stdout)
+    job_exec_time = 30
+    job_ids = []
+    for i in range(0, 3 * max_slots):
+        result = torque_commands.submit_command(
+            f"sleep {job_exec_time} && hostname > /shared/job{i} && date +%s >> /shared/end_time", nodes=1, slots=1
+        )
+        job_id = torque_commands.assert_job_submitted(result.stdout)
+        job_ids.append(job_id)
+
+    # THEN: cluster scales down correctly after completion
+    watch_compute_nodes(torque_commands, minutes(10), 0)
+    for id in job_ids:
+        _assert_job_completed(remote_command_executor, id)
+
+    # THEN: each host executes 4 jobs in the expected time
+    jobs_to_hosts_count = (
+        remote_command_executor.run_remote_command("cat /shared/job* | sort | uniq -c | awk '{print $1}'")
+        .stdout.strip()
+        .splitlines()
+    )
+    assert_that(jobs_to_hosts_count).is_equal_to(["4", "4", "4"])
+    # verify execution time
+    jobs_completion_time = int(
+        remote_command_executor.run_remote_command("cat /shared/end_time | sort -n | tail -1").stdout.split()[-1]
+    )
+    assert_that(jobs_completion_time - jobs_start_time).is_greater_than(0).is_less_than(2 * job_exec_time)
+
+
 def _test_dynamic_cluster_limits(remote_command_executor, max_queue_size, max_slots, region, asg_name):
     logging.info("Testing cluster limits are dynamically updated")
     torque_commands = TorqueCommands(remote_command_executor)
@@ -170,6 +213,8 @@ def _test_dynamic_cluster_limits(remote_command_executor, max_queue_size, max_sl
     asg_client.update_auto_scaling_group(AutoScalingGroupName=asg_name, MaxSize=max_queue_size)
     # sleeping for 200 seconds since daemons fetch this data every 3 minutes
     time.sleep(200)
+    # make sure cluster scaled to 0
+    watch_compute_nodes(torque_commands, minutes(10), 0)
     _assert_scheduler_configuration(remote_command_executor, torque_commands, max_slots, max_queue_size)
 
 
@@ -187,8 +232,14 @@ def _assert_scheduler_configuration(remote_command_executor, torque_commands, ma
 
     torque_config = remote_command_executor.run_remote_command("sudo /opt/torque/bin/qmgr -c 'p s'").stdout
     assert_that(torque_config).contains("set queue batch resources_max.ncpus = {0}\n".format(max_slots))
-    assert_that(torque_config).contains("set queue batch resources_available.nodect = {0}\n".format(max_queue_size))
-    assert_that(torque_config).contains("set server resources_available.nodect = {0}\n".format(max_queue_size))
+    assert_that(torque_config).contains(
+        "set queue batch resources_available.nodect = {0}\n".format(max_queue_size * max_slots)
+    )
+    assert_that(torque_config).contains(
+        "set server resources_available.nodect = {0}\n".format(max_queue_size * max_slots)
+    )
+    assert_that(torque_config).contains("set queue batch resources_max.nodect = {0}\n".format(max_queue_size))
+    assert_that(torque_config).contains("set server resources_max.nodect = {0}\n".format(max_queue_size))
 
 
 def _assert_job_completed(remote_command_executor, job_id):
