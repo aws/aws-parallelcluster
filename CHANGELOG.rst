@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+X.X.X
+====
+
+**CHANGES**
+
+* Use version 5.2 of PyYAML for python 3 versions of 3.4 or earlier.
+
 2.5.1
 =====
 
