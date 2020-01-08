@@ -743,3 +743,11 @@ def intel_hpc_validator(param_key, param_value, pcluster_config):
         )
 
     return errors, warnings
+
+
+def maintain_initial_size_validator(param_key, param_value, pcluster_config):
+    errors = []
+    initial_queue_size = pcluster_config.get_section("cluster").get_param("initial_queue_size").value
+    if param_value and initial_queue_size == 0:
+        errors.append("maintain_initial_size cannot be set to true if initial_queue_size is 0")
+    return errors, []
