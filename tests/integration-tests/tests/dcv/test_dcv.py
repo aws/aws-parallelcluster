@@ -18,7 +18,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
-from utils import run_command
+from utils import get_username_for_os, run_command
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
@@ -28,7 +28,7 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
     "dcv_port, access_from, shared_dir", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")]
 )
 @pytest.mark.regions(["eu-west-1", "cn-northwest-1"])  # DCV license bucket not present in us-gov
-@pytest.mark.oss(["centos7"])
+@pytest.mark.oss(["centos7", "ubuntu1804"])
 @pytest.mark.instances(["c4.xlarge", "g3.8xlarge"])
 @pytest.mark.schedulers(["sge"])
 def test_dcv_configuration(
@@ -83,7 +83,7 @@ def test_dcv_configuration(
     if dcv_parameters:
         dcv_session_id = dcv_parameters.group(2)
         dcv_session_token = dcv_parameters.group(3)
-        _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token)
+        _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token, os)
     else:
         print(
             "Command '{0} {1}' fails, output: {2}, error: {3}".format(
@@ -115,13 +115,14 @@ def _check_shared_dir(remote_command_executor, shared_dir):
     ).is_greater_than(0)
 
 
-def _check_auth_ok(remote_command_executor, external_authenticator_port, session_id, session_token):
+def _check_auth_ok(remote_command_executor, external_authenticator_port, session_id, session_token, os):
+    username = get_username_for_os(os)
     assert_that(
         remote_command_executor.run_remote_command(
             f"curl -s -k {SERVER_URL}:{external_authenticator_port} "
             f"-d sessionId={session_id} -d authenticationToken={session_token} -d clientAddr=someIp"
         ).stdout
-    ).is_equal_to('<auth result="yes"><username>centos</username></auth>')
+    ).is_equal_to('<auth result="yes"><username>{0}</username></auth>'.format(username))
 
 
 def _check_security_group(region, cluster, port, expected_cidr):

@@ -247,8 +247,21 @@ def paginate_boto3(method, **kwargs):
 
 
 def get_vpc_snakecase_value(region, vpc_stacks):
+    """Return dict containing snakecase vpc variables."""
     vpc_output_dict = {}
     vpc = vpc_stacks[region]
     for key, value in vpc.cfn_outputs.items():
         vpc_output_dict[to_snake_case(key)] = value
     return vpc_output_dict
+
+
+def get_username_for_os(os):
+    """Return username for a given os."""
+    usernames = {
+        "alinux": "ec2-user",
+        "centos6": "centos",
+        "centos7": "centos",
+        "ubuntu1604": "ubuntu",
+        "ubuntu1804": "ubuntu",
+    }
+    return usernames.get(os)
