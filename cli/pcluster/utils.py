@@ -275,12 +275,12 @@ def get_supported_compute_instance_types(scheduler):
 
 def get_supported_os(scheduler):
     """
-    Return a tuple of the os supported by parallelcluster for the specific scheduler.
+    Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
 
     :param scheduler: the scheduler for which we want to know the supported os
-    :return: a tuple of strings of the supported os
+    :return: an array of strings of the supported OSes
     """
-    return "alinux" if scheduler == "awsbatch" else "alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804"
+    return ["alinux"] if scheduler == "awsbatch" else ["alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]
 
 
 def get_supported_schedulers():
