@@ -45,17 +45,15 @@ def test_dcv_configuration(
     # dcv connect show url
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
-    operating_system.system(
-        r"sudo sed -i 's/\#   StrictHostKeyChecking ask/   StrictHostKeyChecking no/g' /etc/ssh/ssh_config"
-    )
+    # Disable StrictHostKeyChecking by adding option to end of file
+    operating_system.system(r"echo '    StrictHostKeyChecking no' >> /etc/ssh/ssh_config")
     result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_port) + r"\?authToken=(.*)"
     )
-    operating_system.system(
-        r"sudo sed -i 's/\#   StrictHostKeyChecking no/   StrictHostKeyChecking ask/g' /etc/ssh/ssh_config"
-    )
+    # Enable StrictHostKeyChecking again by removing last line
+    operating_system.system(r"sed -i '$ d' /etc/ssh/ssh_config")
 
     # check error cases
     _check_auth_ko(
