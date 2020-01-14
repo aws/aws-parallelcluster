@@ -14,6 +14,7 @@ import os
 import random
 import re
 import shlex
+import socket
 import string
 import subprocess
 
@@ -213,3 +214,26 @@ def unset_credentials():
 def set_logger_formatter(formatter):
     for handler in logging.getLogger().handlers:
         handler.setFormatter(formatter)
+
+
+def get_username_for_os(os):
+    """Return username for a given os."""
+    usernames = {
+        "alinux": "ec2-user",
+        "centos6": "centos",
+        "centos7": "centos",
+        "ubuntu1604": "ubuntu",
+        "ubuntu1804": "ubuntu",
+    }
+    return usernames.get(os)
+
+
+def add_keys_to_known_hosts(hostname, host_keys_file):
+    """Add ssh key for a host to a known_hosts file."""
+    os.system("ssh-keyscan -t rsa {0} >> {1}".format(hostname, host_keys_file))
+
+
+def remove_keys_from_known_hosts(hostname, host_keys_file, env):
+    """Remove ssh key for a host from a known_hosts file."""
+    for host in hostname, "{0}.".format(hostname), socket.gethostbyname(hostname):
+        run_command("ssh-keygen -R {0} -f {1}".format(host, host_keys_file), env=env)

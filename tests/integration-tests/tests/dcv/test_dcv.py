@@ -17,7 +17,7 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import run_command
+from utils import add_keys_to_known_hosts, get_username_for_os, remove_keys_from_known_hosts, run_command
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
@@ -44,10 +44,20 @@ def test_dcv_configuration(
     # dcv connect show url
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
-    result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+
+    # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
+    host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
+    add_keys_to_known_hosts(cluster.master_ip, host_keys_file)
+
+    try:
+        result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+    finally:
+        # remove ssh key from jenkins user known hosts file
+        remove_keys_from_known_hosts(cluster.master_ip, host_keys_file, env=env)
+
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
-        r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_authenticator_port) + r"\?authToken=(.*)"
+        r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_port) + r"\?authToken=(.*)"
     )
 
     # check error cases
@@ -76,7 +86,7 @@ def test_dcv_configuration(
     if dcv_parameters:
         dcv_session_id = dcv_parameters.group(2)
         dcv_session_token = dcv_parameters.group(3)
-        _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token)
+        _check_auth_ok(remote_command_executor, dcv_authenticator_port, dcv_session_id, dcv_session_token, os)
     else:
         print(
             "Command '{0} {1}' fails, output: {2}, error: {3}".format(
@@ -103,13 +113,14 @@ def _check_shared_dir(remote_command_executor, shared_dir):
     ).is_greater_than(0)
 
 
-def _check_auth_ok(remote_command_executor, external_authenticator_port, session_id, session_token):
+def _check_auth_ok(remote_command_executor, external_authenticator_port, session_id, session_token, os):
+    username = get_username_for_os(os)
     assert_that(
         remote_command_executor.run_remote_command(
             f"curl -s -k {SERVER_URL}:{external_authenticator_port} "
             f"-d sessionId={session_id} -d authenticationToken={session_token} -d clientAddr=someIp"
         ).stdout
-    ).is_equal_to('<auth result="yes"><username>centos</username></auth>')
+    ).is_equal_to('<auth result="yes"><username>{0}</username></auth>'.format(username))
 
 
 def _check_security_group(region, cluster, port, expected_cidr):
