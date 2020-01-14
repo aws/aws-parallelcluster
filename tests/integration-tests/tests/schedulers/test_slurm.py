@@ -192,7 +192,7 @@ def _gpu_test_scaleup(remote_command_executor, region, asg_name, stack_name, sca
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 19.05.3-2")
+    assert_that(version).is_equal_to("slurm 19.05.5")
 
 
 def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name, max_queue_size):
