@@ -484,16 +484,20 @@ def test_raid_validators(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"imported_file_chunk_size": 1024, "import_path": "test"}, None),
+        ({"imported_file_chunk_size": 1024, "import_path": "test", "storage_capacity": 1200}, None),
         (
-            {"imported_file_chunk_size": 1024},
+            {"imported_file_chunk_size": 1024, "storage_capacity": 1200},
             "When specifying 'imported_file_chunk_size', the 'import_path' option must be specified",
         ),
-        ({"export_path": "test", "import_path": "test"}, None),
-        ({"export_path": "test"}, "When specifying 'export_path', the 'import_path' option must be specified"),
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/fsx"}, None),
+        ({"export_path": "test", "import_path": "test", "storage_capacity": 1200}, None),
+        (
+            {"export_path": "test", "storage_capacity": 1200},
+            "When specifying 'export_path', the 'import_path' option must be specified",
+        ),
+        ({"shared_dir": "NONE", "storage_capacity": 1200}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE", "storage_capacity": 1200}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/fsx"}, "the 'storage_capacity' option must be specified"),
+        ({"shared_dir": "/fsx", "storage_capacity": 1200}, None),
     ],
 )
 def test_fsx_validator(mocker, section_dict, expected_message):
@@ -757,14 +761,14 @@ def test_disable_hyperthreading_validator(mocker, section_dict, expected_message
     "section_dict, expected_message",
     [
         (
-            {"imported_file_chunk_size": 0, "import_path": "test-import"},
+            {"imported_file_chunk_size": 0, "import_path": "test-import", "storage_capacity": 1200},
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
-        ({"imported_file_chunk_size": 1, "import_path": "test-import"}, None),
-        ({"imported_file_chunk_size": 10, "import_path": "test-import"}, None),
-        ({"imported_file_chunk_size": 512000, "import_path": "test-import"}, None),
+        ({"imported_file_chunk_size": 1, "import_path": "test-import", "storage_capacity": 1200}, None),
+        ({"imported_file_chunk_size": 10, "import_path": "test-import", "storage_capacity": 1200}, None),
+        ({"imported_file_chunk_size": 512000, "import_path": "test-import", "storage_capacity": 1200}, None),
         (
-            {"imported_file_chunk_size": 512001, "import_path": "test-import"},
+            {"imported_file_chunk_size": 512001, "import_path": "test-import", "storage_capacity": 1200},
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
     ],
