@@ -33,7 +33,7 @@ PClusterConfig = namedtuple(
 )
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "slurm")
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "slurm")
 @pytest.mark.usefixtures("os", "scheduler")
 def test_update(instance, region, pcluster_config_reader, clusters_factory, test_datadir):
     """
