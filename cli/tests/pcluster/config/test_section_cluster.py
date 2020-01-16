@@ -93,6 +93,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "placement": "cluster",
                     "maintain_initial_size": True,
                     "enable_intel_hpc_platform": True,
+                    "base_os": "alinux",
                 },
             ),
         )
@@ -269,6 +270,7 @@ def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 3,
                     "placement": "cluster",
                     "maintain_initial_size": True,
+                    "base_os": "alinux",
                 },
             ),
         )
@@ -522,6 +524,7 @@ def test_cluster_section_from_210_cfn(mocker, cfn_params_dict, expected_section_
                     "initial_queue_size": 0,
                     "max_queue_size": 10,
                     "placement": "cluster",
+                    "base_os": "alinux",
                 },
             ),
         )
