@@ -31,6 +31,7 @@ class Cluster:
         self.config = configparser.ConfigParser()
         self.config.read(config_file)
         self.has_been_deleted = False
+        self.create_complete = False
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
@@ -59,13 +60,15 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
-    def delete(self, extra_args=None):
+    def delete(self, keep_logs=False):
         """Delete this cluster."""
         if self.has_been_deleted:
             return
-        if extra_args is None:
-            extra_args = []
-        cmd_args = ["pcluster", "delete", "--config", self.config_file, self.name] + extra_args
+        cmd_args = ["pcluster", "delete", "--config", self.config_file]
+        if keep_logs:
+            logging.warning("CloudWatch logs for cluster %s are preserved due to failure.", self.name)
+            cmd_args.append("--keep-logs")
+        cmd_args.append(self.name)
         try:
             result = run_command(cmd_args, log_error=False)
             if "DELETE_FAILED" in result.stdout:
@@ -137,8 +140,9 @@ class Cluster:
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
 
-    def __init__(self):
+    def __init__(self, keep_logs_on_failure=False):
         self.__created_clusters = {}
+        self._keep_logs_on_failure = keep_logs_on_failure
 
     def create_cluster(self, cluster):
         """
@@ -159,6 +163,7 @@ class ClustersFactory:
             logging.error(error)
             raise Exception(error)
         logging.info("Cluster {0} created successfully".format(name))
+        cluster.create_complete = True
 
         # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
         # job submission right after creation. We need to investigate this further.
@@ -166,21 +171,22 @@ class ClustersFactory:
         time.sleep(60)
 
     @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
-    def destroy_cluster(self, name):
+    def destroy_cluster(self, name, keep_logs=False):
         """Destroy a created cluster."""
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
-            self.__created_clusters[name].delete()
+            keep_logs = keep_logs or (self._keep_logs_on_failure and not self.__created_clusters[name].create_complete)
+            self.__created_clusters[name].delete(keep_logs=keep_logs)
             del self.__created_clusters[name]
             logging.info("Cluster {0} deleted successfully".format(name))
         else:
             logging.warning("Couldn't find cluster with name {0}. Skipping deletion.".format(name))
 
-    def destroy_all_clusters(self):
+    def destroy_all_clusters(self, keep_logs=False):
         """Destroy all created clusters."""
         logging.debug("Destroying all clusters")
         for key in list(self.__created_clusters.keys()):
             try:
-                self.destroy_cluster(key)
+                self.destroy_cluster(key, keep_logs)
             except Exception as e:
                 logging.error("Failed when destroying cluster {0} with exception {1}.".format(key, e))
