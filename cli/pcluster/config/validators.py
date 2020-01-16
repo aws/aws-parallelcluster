@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import re
 import urllib.error
 import urllib.request
@@ -27,6 +28,15 @@ from pcluster.utils import (
     get_supported_instance_types,
     get_supported_os,
 )
+
+LOGFILE_LOGGER = logging.getLogger("cli_log_file")
+
+DCV_MESSAGES = {
+    "warnings": {
+        "access_from_world": "With this configuration you are opening dcv port ({port}) to the world (0.0.0.0/0). "
+        "It is recommended to use dcv access_from config option to restrict access."
+    }
+}
 
 
 def _get_sts_endpoint():
@@ -236,6 +246,13 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
 
         if get_partition() not in get_supported_dcv_partition():
             errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
+
+        if pcluster_config.get_section("dcv").get_param_value("access_from") == "0.0.0.0/0":
+            LOGFILE_LOGGER.warning(
+                DCV_MESSAGES["warnings"]["access_from_world"].format(
+                    port=pcluster_config.get_section("dcv").get_param_value("port")
+                )
+            )
 
     return errors, warnings
 
