@@ -24,6 +24,7 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
         (CLUSTER, "key_name", "test", "test"),
         (CLUSTER, "key_name", "NONE", "NONE"),
         (CLUSTER, "base_os", "alinux", None),  # alinux is the default so it will not be added to the file
+        (CLUSTER, "base_os", "alinux2", "alinux2"),
         (CLUSTER, "base_os", "ubuntu1804", "ubuntu1804"),
         (CLUSTER, "base_os", "ubuntu1404", "ubuntu1404"),  # no longer supported value
         # BoolParam

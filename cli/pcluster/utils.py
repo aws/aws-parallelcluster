@@ -279,7 +279,10 @@ def get_supported_os(scheduler):
     :param scheduler: the scheduler for which we want to know the supported os
     :return: an array of strings of the supported OSes
     """
-    return ["alinux"] if scheduler == "awsbatch" else ["alinux", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]
+    oses = ["alinux", "alinux2"]
+    if scheduler != "awsbatch":
+        oses.extend(["centos6", "centos7", "ubuntu1604", "ubuntu1804"])
+    return list(oses)
 
 
 def get_supported_schedulers():
