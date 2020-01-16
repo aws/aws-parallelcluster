@@ -56,6 +56,7 @@ from pcluster.config.validators import (
     fsx_storage_capacity_validator,
     fsx_validator,
     intel_hpc_validator,
+    kms_key_validator,
     raid_volume_iops_validator,
     scheduler_validator,
     shared_dir_validator,
@@ -255,6 +256,7 @@ EBS = {
         },
         "ebs_kms_key_id": {
             "cfn_param_mapping": "EBSKMSKeyId",
+            "validators": [kms_key_validator],
         },
         "ebs_volume_id": {
             "cfn_param_mapping": "EBSVolumeId",
@@ -284,7 +286,9 @@ EFS = {
                 "default": "generalPurpose",
                 "allowed_values": ["generalPurpose", "maxIO"],
             }),
-            ("efs_kms_key_id", {}),
+            ("efs_kms_key_id", {
+                "validators": [kms_key_validator],
+            }),
             ("provisioned_throughput", {
                 "allowed_values": r"^([0-9]{1,3}|10[0-1][0-9]|102[0-4])(\.[0-9])?$",  # 0.0 to 1024.0
                 "type": FloatParam,
@@ -337,7 +341,9 @@ RAID = {
                 "type": BoolParam,
                 "default": False,
             }),
-            ("ebs_kms_key_id", {}),
+            ("ebs_kms_key_id", {
+                "validators": [kms_key_validator],
+            }),
         ]
     )
 }
@@ -363,7 +369,9 @@ FSX = {
                 "type": IntParam,
                 "validators": [fsx_storage_capacity_validator]
             }),
-            ("fsx_kms_key_id", {}),
+            ("fsx_kms_key_id", {
+                "validators": [kms_key_validator],
+            }),
             ("imported_file_chunk_size", {
                 "type": IntParam,
                 "validators": [fsx_imported_file_chunk_size_validator]
