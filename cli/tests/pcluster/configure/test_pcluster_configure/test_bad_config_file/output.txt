@@ -38,10 +38,11 @@ Allowed values for Scheduler:
 4. awsbatch
 Allowed values for Operating System:
 1. alinux
-2. centos6
-3. centos7
-4. ubuntu1604
-5. ubuntu1804
+2. alinux2
+3. centos6
+4. centos7
+5. ubuntu1604
+6. ubuntu1804
 Allowed values for VPC ID:
 1. vpc-12345678 | ParallelClusterVPC-20190625135738 | 2 subnets inside
 2. vpc-23456789 | ParallelClusterVPC-20190624105051 | 0 subnets inside
