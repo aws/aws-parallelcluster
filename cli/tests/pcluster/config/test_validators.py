@@ -237,6 +237,7 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-north-1", "alinux", "awsbatch", None),
         ("cn-north-1", "alinux", "awsbatch", None),
         ("cn-northwest-1", "alinux", "awsbatch", None),
+        ("cn-northwest-1", "alinux2", "awsbatch", None),
         # verify traditional schedulers are supported in all the regions
         ("cn-northwest-1", "alinux", "sge", None),
         ("ap-northeast-3", "alinux", "sge", None),
@@ -250,24 +251,28 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-west-1", "ubuntu1604", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "alinux", "awsbatch", None),
+        ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
         ("eu-west-1", "centos6", "sge", None),
         ("eu-west-1", "centos7", "sge", None),
         ("eu-west-1", "ubuntu1604", "sge", None),
         ("eu-west-1", "ubuntu1804", "sge", None),
         ("eu-west-1", "alinux", "sge", None),
+        ("eu-west-1", "alinux2", "sge", None),
         # verify slurm supports all the OSes
         ("eu-west-1", "centos6", "slurm", None),
         ("eu-west-1", "centos7", "slurm", None),
         ("eu-west-1", "ubuntu1604", "slurm", None),
         ("eu-west-1", "ubuntu1804", "slurm", None),
         ("eu-west-1", "alinux", "slurm", None),
+        ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
         ("eu-west-1", "centos6", "torque", None),
         ("eu-west-1", "centos7", "torque", None),
         ("eu-west-1", "ubuntu1604", "torque", None),
         ("eu-west-1", "ubuntu1804", "torque", None),
         ("eu-west-1", "alinux", "torque", None),
+        ("eu-west-1", "alinux2", "torque", None),
     ],
 )
 def test_scheduler_validator(mocker, region, base_os, scheduler, expected_message):
@@ -956,6 +961,17 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             None,
             None,
         ),
+        (
+            {
+                "enable_efa": "compute",
+                "compute_instance_type": "t2.large",
+                "base_os": "alinux2",
+                "scheduler": "slurm",
+                "placement_group": "DYNAMIC",
+            },
+            None,
+            None,
+        ),
     ],
 )
 def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_warning):
@@ -1095,6 +1111,7 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
         ("ubuntu1804", None, None),
         ("ubuntu1804", "1.2.3.4/32", None),
         ("centos7", "0.0.0.0/0", None),
+        ("alinux2", None, None),
     ],
 )
 def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog, capsys):
