@@ -617,9 +617,7 @@ def test_cloudwatch_logging(
         cw_logs_persist_after_delete,
     )
     cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
-    _test_cw_logs_before_after_delete(
-        cluster, cw_logs_persist_after_delete, cw_logging_enabled, cluster_logs_state, test_runner
-    )
+    _test_cw_logs_before_after_delete(cluster, cw_logs_persist_after_delete, cluster_logs_state, test_runner)
 
 
 def _check_log_groups_after_test(test_func):  # noqa: D202
@@ -640,15 +638,9 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
     return wrapped_test
 
 
-def _delete_cluster(cluster, logging_enabled, keep_logs):
-    """Delete a cluster, passing it the appropriate logs."""
-    extra_delete_args = ["--keep-logs"] if keep_logs else []
-    cluster.delete(extra_args=extra_delete_args)
-
-
 @_check_log_groups_after_test
-def _test_cw_logs_before_after_delete(cluster, keep_logs, logging_enabled, cluster_logs_state, test_runner):
+def _test_cw_logs_before_after_delete(cluster, keep_logs, cluster_logs_state, test_runner):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
-    _delete_cluster(cluster, logging_enabled, keep_logs)
+    cluster.delete(keep_logs=keep_logs)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)

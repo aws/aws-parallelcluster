@@ -74,6 +74,8 @@ TEST_DEFAULTS = {
     "benchmarks_target_capacity": 200,
     "benchmarks_max_time": 30,
     "stackname_suffix": "",
+    "keep_logs_on_cluster_failure": False,
+    "keep_logs_on_test_failure": False,
 }
 
 
@@ -218,6 +220,18 @@ def _init_argparser():
         help="set a suffix in the integration tests stack names",
         default=TEST_DEFAULTS.get("stackname_suffix"),
     )
+    parser.add_argument(
+        "--keep-logs-on-cluster-failure",
+        help="preserve CloudWatch logs when a cluster fails to be created",
+        action="store_true",
+        default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
+    )
+    parser.add_argument(
+        "--keep-logs-on-test-failure",
+        help="preserve CloudWatch logs when a test fails",
+        action="store_true",
+        default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+    )
 
     return parser
 
@@ -258,6 +272,11 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.extend(["--key-name", args.key_name])
     pytest_args.extend(["--key-path", args.key_path])
     pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
+
+    if args.keep_logs_on_cluster_failure:
+        pytest_args.append("--keep-logs-on-cluster-failure")
+    if args.keep_logs_on_test_failure:
+        pytest_args.append("--keep-logs-on-test-failure")
 
     if args.credential:
         pytest_args.append("--credential")

@@ -76,6 +76,14 @@ def pytest_addoption(parser):
     parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
     parser.addoption("--benchmarks-max-time", help="set the max waiting time in minutes for benchmarks tests", type=int)
     parser.addoption("--stackname-suffix", help="set a suffix in the integration tests stack names")
+    parser.addoption(
+        "--keep-logs-on-cluster-failure",
+        help="preserve CloudWatch logs when a cluster fails to be created",
+        action="store_true",
+    )
+    parser.addoption(
+        "--keep-logs-on-test-failure", help="preserve CloudWatch logs when a test fails", action="store_true"
+    )
 
 
 def pytest_generate_tests(metafunc):
@@ -189,7 +197,7 @@ def clusters_factory(request):
 
     The configs used to create clusters are dumped to output_dir/clusters_configs/{test_name}.config
     """
-    factory = ClustersFactory()
+    factory = ClustersFactory(keep_logs_on_failure=request.config.getoption("keep_logs_on_cluster_failure"))
 
     def _cluster_factory(cluster_config):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
@@ -210,7 +218,9 @@ def clusters_factory(request):
 
     yield _cluster_factory
     if not request.config.getoption("no_delete"):
-        factory.destroy_all_clusters()
+        factory.destroy_all_clusters(
+            keep_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.failed
+        )
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -460,3 +470,14 @@ def s3_bucket_factory(region):
             delete_s3_bucket(bucket_name=bucket[0], region=bucket[1])
         except Exception as e:
             logging.error("Failed deleting bucket {0} with exception: {1}".format(bucket[0], e))
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Making test result information available in fixtures"""
+    # execute all other hooks to obtain the report object
+    outcome = yield
+    rep = outcome.get_result()
+    # set a report attribute for each phase of a call, which can
+    # be "setup", "call", "teardown"
+    setattr(item, "rep_" + rep.when, rep)
