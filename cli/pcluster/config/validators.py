@@ -136,6 +136,9 @@ def fsx_validator(section_key, section_label, pcluster_config):
     if fsx_export_path and not fsx_import_path:
         errors.append("When specifying 'export_path', the 'import_path' option must be specified")
 
+    if not fsx_section.get_param_value("storage_capacity") and not fsx_section.get_param_value("fsx_fs_id"):
+        errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
+
     return errors, warnings
 
 
