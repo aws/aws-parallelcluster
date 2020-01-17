@@ -17,6 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
+from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
     get_efs_mount_target_id,
@@ -247,7 +248,7 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
         if get_partition() not in get_supported_dcv_partition():
             errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
-        if pcluster_config.get_section("dcv").get_param_value("access_from") == "0.0.0.0/0":
+        if pcluster_config.get_section("dcv").get_param_value("access_from") == CIDR_ALL_IPS:
             LOGFILE_LOGGER.warning(
                 DCV_MESSAGES["warnings"]["access_from_world"].format(
                     port=pcluster_config.get_section("dcv").get_param_value("port")
