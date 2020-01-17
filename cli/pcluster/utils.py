@@ -27,11 +27,10 @@ import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
 
+from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX
+
 LOGGER = logging.getLogger(__name__)
 
-PCLUSTER_STACK_PREFIX = "parallelcluster-"
-CW_LOGS_SUBSTACK_PREFIX = "CloudWatchLogsSubstack-"
-PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 STACK_TYPE = "AWS::CloudFormation::Stack"
 
 
