@@ -83,6 +83,7 @@ def create_ami(args):
 
 def config_logger():
     logger = logging.getLogger("pcluster")
+    file_only_logger = logging.getLogger("cli_log_file")
     logger.setLevel(logging.DEBUG)
 
     log_stream_handler = logging.StreamHandler(sys.stdout)
@@ -99,8 +100,9 @@ def config_logger():
 
     log_file_handler = RotatingFileHandler(logfile, maxBytes=5 * 1024 * 1024, backupCount=1)
     log_file_handler.setLevel(logging.DEBUG)
-    log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(name)s - %(message)s"))
+    log_file_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
     logger.addHandler(log_file_handler)
+    file_only_logger.addHandler(log_file_handler)
 
 
 def _addarg_config(subparser):

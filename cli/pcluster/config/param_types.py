@@ -18,13 +18,8 @@ from configparser import NoSectionError
 
 import yaml
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
-from pcluster.utils import (
-    PCLUSTER_ISSUES_LINK,
-    get_avail_zone,
-    get_cfn_param,
-    get_efs_mount_target_id,
-    get_instance_vcpus,
-)
+from pcluster.constants import PCLUSTER_ISSUES_LINK
+from pcluster.utils import get_avail_zone, get_cfn_param, get_efs_mount_target_id, get_instance_vcpus
 
 LOGGER = logging.getLogger(__name__)
 

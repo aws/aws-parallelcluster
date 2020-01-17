@@ -38,6 +38,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.constants import PCLUSTER_STACK_PREFIX
 
 if sys.version_info[0] >= 3:
     from urllib.request import urlretrieve
@@ -392,11 +393,11 @@ def list_stacks(args):
     try:
         result = []
         for stack in utils.paginate_boto3(boto3.client("cloudformation").describe_stacks):
-            if stack.get("ParentId") is None and stack.get("StackName").startswith(utils.PCLUSTER_STACK_PREFIX):
+            if stack.get("ParentId") is None and stack.get("StackName").startswith(PCLUSTER_STACK_PREFIX):
                 pcluster_version = _get_pcluster_version_from_stack(stack)
                 result.append(
                     [
-                        stack.get("StackName")[len(utils.PCLUSTER_STACK_PREFIX) :],  # noqa: E203
+                        stack.get("StackName")[len(PCLUSTER_STACK_PREFIX) :],  # noqa: E203
                         _colorize(stack.get("StackStatus"), args),
                         pcluster_version,
                     ]
