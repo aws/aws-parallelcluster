@@ -61,6 +61,7 @@ from pcluster.config.validators import (
     shared_dir_validator,
     url_validator,
 )
+from pcluster.constants import CIDR_ALL_IPS
 
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
@@ -177,7 +178,7 @@ VPC = {
             "validators": [ec2_subnet_id_validator],
         },
         "ssh_from": {
-            "default": "0.0.0.0/0",
+            "default": CIDR_ALL_IPS,
             "allowed_values": ALLOWED_VALUES["cidr"],
             "cfn_param_mapping": "AccessFrom",
         },
@@ -390,7 +391,7 @@ DCV = {
                 "default": 8443,
             }),
             ("access_from", {
-                "default": "0.0.0.0/0",
+                "default": CIDR_ALL_IPS,
                 "allowed_values": ALLOWED_VALUES["cidr"],
             }),
         ]

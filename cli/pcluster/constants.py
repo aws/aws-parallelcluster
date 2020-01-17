@@ -11,3 +11,4 @@
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
+CIDR_ALL_IPS = "0.0.0.0/0"
