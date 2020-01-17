@@ -14,16 +14,9 @@ import subprocess as sub
 import webbrowser
 
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
-from pcluster.utils import (
-    PCLUSTER_ISSUES_LINK,
-    error,
-    get_cfn_param,
-    get_master_ip_and_username,
-    get_stack,
-    get_stack_name,
-    retry,
-)
+from pcluster.utils import error, get_cfn_param, get_master_ip_and_username, get_stack, get_stack_name, retry
 
 LOGGER = logging.getLogger(__name__)
 
