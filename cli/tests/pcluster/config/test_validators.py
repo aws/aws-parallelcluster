@@ -13,6 +13,8 @@ import os
 import pytest
 
 import tests.pcluster.config.utils as utils
+from assertpy import assert_that
+from pcluster.config.validators import DCV_MESSAGES
 from tests.common import MockedBoto3Request
 
 
@@ -484,16 +486,20 @@ def test_raid_validators(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"imported_file_chunk_size": 1024, "import_path": "test"}, None),
+        ({"imported_file_chunk_size": 1024, "import_path": "test", "storage_capacity": 1200}, None),
         (
-            {"imported_file_chunk_size": 1024},
+            {"imported_file_chunk_size": 1024, "storage_capacity": 1200},
             "When specifying 'imported_file_chunk_size', the 'import_path' option must be specified",
         ),
-        ({"export_path": "test", "import_path": "test"}, None),
-        ({"export_path": "test"}, "When specifying 'export_path', the 'import_path' option must be specified"),
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/fsx"}, None),
+        ({"export_path": "test", "import_path": "test", "storage_capacity": 1200}, None),
+        (
+            {"export_path": "test", "storage_capacity": 1200},
+            "When specifying 'export_path', the 'import_path' option must be specified",
+        ),
+        ({"shared_dir": "NONE", "storage_capacity": 1200}, "NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/NONE", "storage_capacity": 1200}, "/NONE cannot be used as a shared directory"),
+        ({"shared_dir": "/fsx"}, "the 'storage_capacity' option must be specified"),
+        ({"shared_dir": "/fsx", "storage_capacity": 1200}, None),
     ],
 )
 def test_fsx_validator(mocker, section_dict, expected_message):
@@ -757,14 +763,14 @@ def test_disable_hyperthreading_validator(mocker, section_dict, expected_message
     "section_dict, expected_message",
     [
         (
-            {"imported_file_chunk_size": 0, "import_path": "test-import"},
+            {"imported_file_chunk_size": 0, "import_path": "test-import", "storage_capacity": 1200},
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
-        ({"imported_file_chunk_size": 1, "import_path": "test-import"}, None),
-        ({"imported_file_chunk_size": 10, "import_path": "test-import"}, None),
-        ({"imported_file_chunk_size": 512000, "import_path": "test-import"}, None),
+        ({"imported_file_chunk_size": 1, "import_path": "test-import", "storage_capacity": 1200}, None),
+        ({"imported_file_chunk_size": 10, "import_path": "test-import", "storage_capacity": 1200}, None),
+        ({"imported_file_chunk_size": 512000, "import_path": "test-import", "storage_capacity": 1200}, None),
         (
-            {"imported_file_chunk_size": 512001, "import_path": "test-import"},
+            {"imported_file_chunk_size": 512001, "import_path": "test-import", "storage_capacity": 1200},
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
     ],
@@ -940,18 +946,25 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "base_os, expected_message",
+    "base_os, access_from, expected_message",
     [
-        ("alinux", "Please double check the 'base_os' configuration parameter"),
-        ("centos6", "Please double check the 'base_os' configuration parameter"),
-        ("ubuntu1604", "Please double check the 'base_os' configuration parameter"),
-        ("centos7", None),
-        ("ubuntu1804", None),
+        ("alinux", None, "Please double check the 'base_os' configuration parameter"),
+        ("centos6", None, "Please double check the 'base_os' configuration parameter"),
+        ("ubuntu1604", None, "Please double check the 'base_os' configuration parameter"),
+        ("centos7", None, None),
+        ("ubuntu1804", None, None),
+        ("ubuntu1804", "1.2.3.4/32", None),
+        ("centos7", "0.0.0.0/0", None),
     ],
 )
-def test_dcv_enabled_validator(mocker, base_os, expected_message):
+def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog, capsys):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
         "dcv dcv": {"enable": "master"},
     }
+    if access_from:
+        config_parser_dict["dcv dcv"]["access_from"] = access_from
+
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
+    assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
