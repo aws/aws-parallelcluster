@@ -484,15 +484,25 @@ def test_raid_validators(mocker, section_dict, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
-def test_kms_key_validator(mocker, boto3_stubber):
+@pytest.mark.parametrize(
+    "kms_key_id, expected_message",
+    [
+        ("9e8a129be-0e46-459d-865b-3a5bf974a22k", None,),
+        (
+            "9e7a129be-0e46-459d-865b-3a5bf974a22k",
+            "Key 'arn:aws:kms:us-east-1:12345678:key/9e7a129be-0e46-459d-865b-3a5bf974a22k' does not exist",
+        ),
+    ],
+)
+def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
     describe_key_response = {
         "KeyMetadata": {
             "AWSAccountId": "1234567890",
-            "Arn": "arn:aws:kms:us-east-1:1234567890:key/9e8a129be-0e46-459d-865b-3a5bf974a22k",
+            "Arn": "arn:aws:kms:us-east-1:1234567890:key/{0}".format(kms_key_id),
             "CreationDate": datetime.datetime(2019, 1, 10, 11, 25, 59, 128000),
             "Description": "",
             "Enabled": True,
-            "KeyId": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
+            "KeyId": kms_key_id,
             "KeyManager": "CUSTOMER",
             "KeyState": "Enabled",
             "KeyUsage": "ENCRYPT_DECRYPT",
@@ -502,17 +512,19 @@ def test_kms_key_validator(mocker, boto3_stubber):
     mocked_requests = [
         MockedBoto3Request(
             method="describe_key",
-            response=describe_key_response,
-            expected_params={"KeyId": "9e8a129be-0e46-459d-865b-3a5bf974a22k"},
+            response=expected_message if expected_message else describe_key_response,
+            expected_params={"KeyId": kms_key_id},
         )
     ]
-    boto3_stubber("kms", mocked_requests)
+    boto3_stubber("kms", mocked_requests, generate_errors=True if expected_message else False)
 
     config_parser_dict = {
         "cluster default": {"fsx_settings": "fsx"},
-        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k"},
+        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": kms_key_id},
     }
-    utils.assert_param_validator(mocker, config_parser_dict)
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_error=expected_message if expected_message else None
+    )
 
 
 @pytest.mark.parametrize(
