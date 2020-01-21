@@ -18,7 +18,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
-from utils import get_username_for_os, run_command
+from utils import add_keys_to_known_hosts, get_username_for_os, remove_keys_from_known_hosts, run_command
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
@@ -45,15 +45,21 @@ def test_dcv_configuration(
     # dcv connect show url
     env = operating_system.environ.copy()
     env["AWS_DEFAULT_REGION"] = region
-    # Disable StrictHostKeyChecking by adding option to end of file
-    operating_system.system(r"echo '    StrictHostKeyChecking no' >> /etc/ssh/ssh_config")
-    result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+
+    # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
+    host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
+    add_keys_to_known_hosts(cluster.master_ip, host_keys_file)
+
+    try:
+        result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
+    finally:
+        # remove ssh key from jenkins user known hosts file
+        remove_keys_from_known_hosts(cluster.master_ip, host_keys_file, env=env)
+
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
         r"https:\/\/(\b(?:\d{1,3}\.){3}\d{1,3}\b):" + str(dcv_port) + r"\?authToken=(.*)"
     )
-    # Enable StrictHostKeyChecking again by removing last line
-    operating_system.system(r"sed -i '$ d' /etc/ssh/ssh_config")
 
     # check error cases
     _check_auth_ko(

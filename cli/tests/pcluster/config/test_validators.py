@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import os
 
 import pytest
@@ -481,6 +482,37 @@ def test_efs_validator(mocker, section_dict, expected_message):
 def test_raid_validators(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"raid_settings": "default"}, "raid default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+def test_kms_key_validator(mocker, boto3_stubber):
+    describe_key_response = {
+        "KeyMetadata": {
+            "AWSAccountId": "1234567890",
+            "Arn": "arn:aws:kms:us-east-1:1234567890:key/9e8a129be-0e46-459d-865b-3a5bf974a22k",
+            "CreationDate": datetime.datetime(2019, 1, 10, 11, 25, 59, 128000),
+            "Description": "",
+            "Enabled": True,
+            "KeyId": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
+            "KeyManager": "CUSTOMER",
+            "KeyState": "Enabled",
+            "KeyUsage": "ENCRYPT_DECRYPT",
+            "Origin": "AWS_KMS",
+        },
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_key",
+            response=describe_key_response,
+            expected_params={"KeyId": "9e8a129be-0e46-459d-865b-3a5bf974a22k"},
+        )
+    ]
+    boto3_stubber("kms", mocked_requests)
+
+    config_parser_dict = {
+        "cluster default": {"fsx_settings": "fsx"},
+        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k"},
+    }
+    utils.assert_param_validator(mocker, config_parser_dict)
 
 
 @pytest.mark.parametrize(

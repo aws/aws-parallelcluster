@@ -47,7 +47,7 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
 def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
     logging.info("Testing fsx lustre is correctly mounted")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
-    assert_that(result.stdout).matches(r"[0-9\.]+@tcp:/fsx\s+3\.4T\s+{mount_dir}".format(mount_dir=mount_dir))
+    assert_that(result.stdout).matches(r"[0-9\.]+@tcp:/fsx\s+1\.1T\s+{mount_dir}".format(mount_dir=mount_dir))
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = {

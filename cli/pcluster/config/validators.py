@@ -268,6 +268,18 @@ def fsx_imported_file_chunk_size_validator(param_key, param_value, pcluster_conf
     return errors, warnings
 
 
+def kms_key_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        boto3.client("kms").describe_key(KeyId=param_value)
+    except ClientError as e:
+        errors.append(e.response.get("Error").get("Message"))
+
+    return errors, warnings
+
+
 def efa_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
