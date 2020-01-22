@@ -383,7 +383,9 @@ FSX = {
             ("import_path", {
                 "validators": [s3_bucket_validator],
             }),
-            ("weekly_maintenance_start_time", {}),  # TODO add regex
+            ("weekly_maintenance_start_time", {
+                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):?([0-5]\d)$",
+            }),
         ]
     )
 }

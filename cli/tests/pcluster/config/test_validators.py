@@ -892,7 +892,7 @@ def test_disable_hyperthreading_validator(mocker, section_dict, expected_message
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
         (
-            {"imported_file_chunk_size": 1, "import_path": "s3://test-import", "storage_capacity": 1200},q
+            {"imported_file_chunk_size": 1, "import_path": "s3://test-import", "storage_capacity": 1200},
             {"Bucket": "test-import"},
             None,
         ),
