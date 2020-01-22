@@ -148,9 +148,9 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         # TODO add regex for weekly_maintenance_start_time
         ("weekly_maintenance_start_time", None, None, None),
         ("weekly_maintenance_start_time", "", None, None),
-        ("weekly_maintenance_start_time", "fake_value", "fake_value", None),
-        ("weekly_maintenance_start_time", "start_time", "start_time", None),
-        ("weekly_maintenance_start_time", "10:00", "10:00", None),
+        ("weekly_maintenance_start_time", "fake_value", "fake_value", "has an invalid value"),
+        ("weekly_maintenance_start_time", "10:00", "10:00", "has an invalid value"),
+        ("weekly_maintenance_start_time", "1:10:00", "1:10:00", None),
         ("weekly_maintenance_start_time", "NONE", "NONE", None),
     ],
 )
