@@ -581,7 +581,7 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
             bucket = param_value.split("/")[2]
             boto3.client("s3").head_bucket(Bucket=bucket)
         except ClientError:
-            errors.append("The S3 bucket '{0}' does not exist or you do not have access to it.".format(param_value))
+            warnings.append("The S3 bucket '{0}' does not exist or you do not have access to it.".format(param_value))
     else:
         errors.append(
             "The value '{0}' used for the parameter '{1}' is not a valid S3 URI.".format(param_value, param_key)
