@@ -58,6 +58,7 @@ from pcluster.config.validators import (
     intel_hpc_validator,
     kms_key_validator,
     raid_volume_iops_validator,
+    s3_bucket_validator,
     scheduler_validator,
     shared_dir_validator,
     url_validator,
@@ -376,8 +377,12 @@ FSX = {
                 "type": IntParam,
                 "validators": [fsx_imported_file_chunk_size_validator]
             }),
-            ("export_path", {}),  # TODO add regex
-            ("import_path", {}),  # TODO add regex
+            ("export_path", {
+                "validators": [s3_bucket_validator],
+            }),
+            ("import_path", {
+                "validators": [s3_bucket_validator],
+            }),
             ("weekly_maintenance_start_time", {}),  # TODO add regex
         ]
     )
@@ -538,10 +543,12 @@ CLUSTER = {
                 "validators": [ec2_iam_role_validator],  # TODO add regex
             }),
             ("s3_read_resource", {
-                "cfn_param_mapping": "S3ReadResource",  # TODO add validator
+                "cfn_param_mapping": "S3ReadResource",
+                "validators": [s3_bucket_validator],
             }),
             ("s3_read_write_resource", {
-                "cfn_param_mapping": "S3ReadWriteResource",  # TODO add validator
+                "cfn_param_mapping": "S3ReadWriteResource",
+                "validators": [s3_bucket_validator],
             }),
             (
                 "disable_hyperthreading",

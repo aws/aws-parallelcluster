@@ -187,7 +187,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,test-export,test-import,10",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,s3://test-import,10",
                 },
             ),
         ),

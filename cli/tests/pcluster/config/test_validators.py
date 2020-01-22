@@ -319,6 +319,51 @@ def test_url_validator(mocker, boto3_stubber):
         utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
+@pytest.mark.parametrize(
+    "config, num_calls, bucket, expected_message",
+    [
+        (
+            {
+                "cluster default": {
+                    "fsx_settings": "fsx",
+                    "s3_read_write_resource": "s3://test/test1/test2",
+                    "s3_read_resource": "s3://test/test1/test2",
+                },
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                },
+            },
+            4,
+            {"Bucket": "test"},
+            None,
+        ),
+        (
+            {
+                "cluster default": {
+                    "fsx_settings": "fsx",
+                    "s3_read_write_resource": "s3://test/test1/test2",
+                    "s3_read_resource": "s3://test/test1/test2",
+                },
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "http://test/test.json",
+                    "export_path": "s3://test/test1/test2",
+                },
+            },
+            3,
+            {"Bucket": "test"},
+            "The value 'http://test/test.json' used for the parameter 'import_path' is not a valid S3 URI.",
+        ),
+    ],
+)
+def test_s3_validator(mocker, boto3_stubber, config, num_calls, bucket, expected_message):
+    if bucket:
+        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
+    utils.assert_param_validator(mocker, config, expected_message)
+
+
 def test_ec2_vpc_id_validator(mocker, boto3_stubber):
     mocked_requests = []
 
@@ -528,27 +573,62 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "section_dict, bucket, expected_message, num_calls",
     [
-        ({"imported_file_chunk_size": 1024, "import_path": "test", "storage_capacity": 1200}, None),
+        (
+            {"imported_file_chunk_size": 1024, "import_path": "s3://test", "storage_capacity": 1200},
+            {"Bucket": "test"},
+            None,
+            1,
+        ),
         (
             {"imported_file_chunk_size": 1024, "storage_capacity": 1200},
+            None,
             "When specifying 'imported_file_chunk_size', the 'import_path' option must be specified",
+            0,
         ),
-        ({"export_path": "test", "import_path": "test", "storage_capacity": 1200}, None),
         (
-            {"export_path": "test", "storage_capacity": 1200},
-            "When specifying 'export_path', the 'import_path' option must be specified",
+            {"export_path": "s3://test", "import_path": "s3://test", "storage_capacity": 1200},
+            {"Bucket": "test"},
+            None,
+            2,
         ),
-        ({"shared_dir": "NONE", "storage_capacity": 1200}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE", "storage_capacity": 1200}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/fsx"}, "the 'storage_capacity' option must be specified"),
-        ({"shared_dir": "/fsx", "storage_capacity": 1200}, None),
+        (
+            {"export_path": "s3://test", "storage_capacity": 1200},
+            {"Bucket": "test"},
+            "When specifying 'export_path', the 'import_path' option must be specified",
+            0,
+        ),
+        ({"shared_dir": "NONE", "storage_capacity": 1200}, None, "NONE cannot be used as a shared directory", 0),
+        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0),
+        ({"shared_dir": "/fsx"}, None, "the 'storage_capacity' option must be specified", 0),
+        ({"shared_dir": "/fsx", "storage_capacity": 1200}, None, None, 0),
     ],
 )
-def test_fsx_validator(mocker, section_dict, expected_message):
+def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_message, num_calls):
+    if bucket:
+        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
+    head_bucket_response = {
+        "ResponseMetadata": {
+            "AcceptRanges": "bytes",
+            "ContentType": "text/html",
+            "LastModified": "Thu, 16 Apr 2015 18:19:14 GMT",
+            "ContentLength": 77,
+            "VersionId": "null",
+            "ETag": '"30a6ec7e1a9ad79c203d05a589c8b400"',
+            "Metadata": {},
+        }
+    }
+    mocked_requests = [
+        MockedBoto3Request(method="head_bucket", response=head_bucket_response, expected_params=bucket)
+    ] * num_calls
+    boto3_stubber("s3", mocked_requests)
+    mocker.patch("pcluster.config.validators.urllib.request.urlopen")
 
 
 @pytest.mark.parametrize(
@@ -804,22 +884,38 @@ def test_disable_hyperthreading_validator(mocker, section_dict, expected_message
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "section_dict, bucket, expected_message",
     [
         (
-            {"imported_file_chunk_size": 0, "import_path": "test-import", "storage_capacity": 1200},
+            {"imported_file_chunk_size": 0, "import_path": "s3://test-import", "storage_capacity": 1200},
+            None,
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
-        ({"imported_file_chunk_size": 1, "import_path": "test-import", "storage_capacity": 1200}, None),
-        ({"imported_file_chunk_size": 10, "import_path": "test-import", "storage_capacity": 1200}, None),
-        ({"imported_file_chunk_size": 512000, "import_path": "test-import", "storage_capacity": 1200}, None),
         (
-            {"imported_file_chunk_size": 512001, "import_path": "test-import", "storage_capacity": 1200},
+            {"imported_file_chunk_size": 1, "import_path": "s3://test-import", "storage_capacity": 1200},q
+            {"Bucket": "test-import"},
+            None,
+        ),
+        (
+            {"imported_file_chunk_size": 10, "import_path": "s3://test-import", "storage_capacity": 1200},
+            {"Bucket": "test-import"},
+            None,
+        ),
+        (
+            {"imported_file_chunk_size": 512000, "import_path": "s3://test-import", "storage_capacity": 1200},
+            {"Bucket": "test-import"},
+            None,
+        ),
+        (
+            {"imported_file_chunk_size": 512001, "import_path": "s3://test-import", "storage_capacity": 1200},
+            None,
             "has a minimum size of 1 MiB, and max size of 512,000 MiB",
         ),
     ],
 )
-def test_fsx_imported_file_chunk_size_validator(mocker, section_dict, expected_message):
+def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_dict, bucket, expected_message):
+    if bucket:
+        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls=1)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
