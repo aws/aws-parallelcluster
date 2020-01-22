@@ -135,6 +135,40 @@
           ]
         }
       ]
+    },
+    "UseDeploymentType": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "8",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
+    },
+    "UsePerUnitStorageThroughput": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "9",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Outputs": {
@@ -168,7 +202,7 @@
       "Type": "String"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of fsx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
+      "Description": "Comma separated list of fsx related options, 10 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput]",
       "Type": "CommaDelimitedList"
     },
     "SubnetId": {
@@ -252,6 +286,38 @@
               {
                 "Fn::Select": [
                   "7",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "DeploymentType": {
+            "Fn::If": [
+              "UseDeploymentType",
+              {
+                "Fn::Select": [
+                  "8",
+                  {
+                    "Ref": "FSXOptions"
+                  }
+                ]
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
+          },
+          "PerUnitStorageThroughput": {
+            "Fn::If": [
+              "UsePerUnitStorageThroughput",
+              {
+                "Fn::Select": [
+                  "9",
                   {
                     "Ref": "FSXOptions"
                   }

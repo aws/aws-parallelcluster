@@ -3,7 +3,14 @@ CHANGELOG
 =========
 
 2.6.0
-====
+=====
+
+**ENHANCEMENTS**
+* Support two new Lustre Features, Scratch 2 and Persistent filesystems
+  * This adds two parameters ``deployment_type`` and ``per_unit_storage_throughput`` to the ``fsx`` section.
+  * New storage sizes ``storage_capacity``, 1,200 GiB, 2,400 GiB and multiples of 2,400 are supported with ``SCRATCH_2``
+  * In transit encryption is available via ``kms_key_id`` parameter when ``deployment_type = PERSISTENT_1``.
+  * A new parameter, ``per_unit_storage_throughput`` is available when ``deployment_type = PERSISTENT_1``.
 
 **CHANGES**
 

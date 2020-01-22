@@ -20,10 +20,10 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
     [
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
-        ({"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"}, DefaultDict["fsx"].value),
-        ({"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["fsx"].value),
+        ({"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"}, DefaultDict["fsx"].value),
+        ({"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             {
                 "shared_dir": "test",
                 "fsx_fs_id": None,
@@ -33,10 +33,12 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "export_path": None,
                 "import_path": None,
                 "weekly_maintenance_start_time": None,
+                "deployment_type": None,
+                "per_unit_storage_throughput": None,
             },
         ),
         (
-            {"FSXOptions": "test,test1,10,test2,20,test3,test4,test5"},
+            {"FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,50"},
             {
                 "shared_dir": "test",
                 "fsx_fs_id": "test1",
@@ -46,6 +48,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "export_path": "test3",
                 "import_path": "test4",
                 "weekly_maintenance_start_time": "test5",
+                "deployment_type": "SCRATCH_1",
+                "per_unit_storage_throughput": 50,
             },
         ),
     ],
@@ -65,6 +69,10 @@ def test_fsx_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
         ({"fsx default": {"storage_capacity": "wrong_value"}}, None, "must be an Integer"),
         # invalid key
         ({"fsx default": {"invalid_key": "fake_value"}}, None, "'invalid_key' is not allowed in the .* section"),
+        # invalid value
+        ({"fsx default": {"deployment_type": "BLAH"}}, None, "'deployment_type' has an invalid value 'BLAH'"),
+        # invalid value
+        ({"fsx default": {"per_unit_storage_throughput": 1000}}, None, "has an invalid value '1000'"),
     ],
 )
 def test_fsx_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
@@ -152,6 +160,19 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("weekly_maintenance_start_time", "10:00", "10:00", "has an invalid value"),
         ("weekly_maintenance_start_time", "1:10:00", "1:10:00", None),
         ("weekly_maintenance_start_time", "NONE", "NONE", None),
+        ("deployment_type", "SCRATCH_1", "SCRATCH_1", None),
+        ("deployment_type", "SCRATCH_2", "SCRATCH_2", None),
+        ("deployment_type", "PERSISTENT_1", "PERSISTENT_1", None),
+        (
+            "deployment_type",
+            "INVALID_VALUE",
+            "INVALID_VALUE",
+            " 'deployment_type' has an invalid value 'INVALID_VALUE'",
+        ),
+        ("per_unit_storage_throughput", "50", 50, None),
+        ("per_unit_storage_throughput", "100", 100, None),
+        ("per_unit_storage_throughput", "200", 200, None),
+        ("per_unit_storage_throughput", "101", 101, "'per_unit_storage_throughput' has an invalid value '101'"),
     ],
 )
 def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -176,7 +197,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),
@@ -187,7 +208,8 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,s3://test-import,10",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
+                    "s3://test-import,10,SCRATCH_1,50",
                 },
             ),
         ),

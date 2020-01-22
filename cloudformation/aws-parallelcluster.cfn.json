@@ -312,9 +312,9 @@
       "Default": "1"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of FSx related options, 8 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time]",
+      "Description": "Comma separated list of FSx related options, 10 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput]",
       "Type": "String",
-      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of efs related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
@@ -1609,6 +1609,16 @@
               "Sid": "SQSList",
               "Action": [
                 "sqs:ListQueues"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                "*"
+              ]
+            },
+            {
+              "Sid": "FSx",
+              "Action": [
+                "fsx:DescribeFileSystems"
               ],
               "Effect": "Allow",
               "Resource": [

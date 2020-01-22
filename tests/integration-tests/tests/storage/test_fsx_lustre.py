@@ -22,12 +22,24 @@ from tests.common.schedulers_common import SgeCommands
 from time_utils import minutes, seconds
 
 
+@pytest.mark.parametrize(
+    "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
+)
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge"])
-@pytest.mark.usefixtures("instance", "scheduler")
-def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, os):
+@pytest.mark.usefixtures("os", "instance", "scheduler", "deployment_type")
+def test_fsx_lustre(
+    deployment_type,
+    per_unit_storage_throughput,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    s3_bucket_factory,
+    test_datadir,
+    os,
+):
     """
     Test all FSx Lustre related features.
 
@@ -37,22 +49,30 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    cluster_config = pcluster_config_reader(bucket_name=bucket_name, mount_dir=mount_dir)
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        mount_dir=mount_dir,
+        deployment_type=deployment_type,
+        per_unit_storage_throughput=per_unit_storage_throughput,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
-    _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os)
+    _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
-def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
+def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
     logging.info("Testing fsx lustre is correctly mounted")
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
-    assert_that(result.stdout).matches(r"[0-9\.]+@tcp:/fsx\s+1\.1T\s+{mount_dir}".format(mount_dir=mount_dir))
+    mount_name = get_mount_name(fsx_fs_id, region)
+    assert_that(result.stdout).matches(
+        r"[0-9\.]+@tcp:/{mount_name}\s+1\.[12]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
+    )
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = {
@@ -62,9 +82,21 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
     }
 
     assert_that(result.stdout).matches(
-        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/fsx {mount_dir} lustre {mount_options} 0 0".format(
-            mount_dir=mount_dir, mount_options=mount_options.get(os, mount_options["default"])
+        r"fs-[0-9a-z]+\.fsx\.[a-z1-9\-]+\.amazonaws\.com@tcp:/{mount_name}"
+        r" {mount_dir} lustre {mount_options} 0 0".format(
+            mount_name=mount_name, mount_dir=mount_dir, mount_options=mount_options.get(os, mount_options["default"])
         )
+    )
+
+
+def get_mount_name(fsx_fs_id, region):
+    logging.info("Getting MountName from DescribeFilesystem API.")
+    fsx = boto3.client("fsx", region_name=region)
+    return (
+        fsx.describe_file_systems(FileSystemIds=[fsx_fs_id])
+        .get("FileSystems")[0]
+        .get("LustreConfiguration")
+        .get("MountName")
     )
 
 
