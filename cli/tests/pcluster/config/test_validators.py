@@ -537,6 +537,18 @@ def test_raid_validators(mocker, section_dict, expected_message):
     ],
 )
 def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
+    _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, 1)
+
+    config_parser_dict = {
+        "cluster default": {"fsx_settings": "fsx"},
+        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": kms_key_id, "deployment_type": "PERSISTENT_1"},
+    }
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_error=expected_message if expected_message else None
+    )
+
+
+def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_calls):
     describe_key_response = {
         "KeyMetadata": {
             "AWSAccountId": "1234567890",
@@ -558,20 +570,12 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
             expected_params={"KeyId": kms_key_id},
             generate_error=True if expected_message else False,
         )
-    ]
+    ] * num_calls
     boto3_stubber("kms", mocked_requests)
-
-    config_parser_dict = {
-        "cluster default": {"fsx_settings": "fsx"},
-        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": kms_key_id},
-    }
-    utils.assert_param_validator(
-        mocker, config_parser_dict, expected_error=expected_message if expected_message else None
-    )
 
 
 @pytest.mark.parametrize(
-    "section_dict, bucket, expected_message, num_calls",
+    "section_dict, bucket, expected_error, num_calls",
     [
         (
             {"imported_file_chunk_size": 1024, "import_path": "s3://test", "storage_capacity": 1200},
@@ -598,16 +602,91 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
             0,
         ),
         ({"shared_dir": "NONE", "storage_capacity": 1200}, None, "NONE cannot be used as a shared directory", 0),
-        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0),
+        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0,),
         ({"shared_dir": "/fsx"}, None, "the 'storage_capacity' option must be specified", 0),
         ({"shared_dir": "/fsx", "storage_capacity": 1200}, None, None, 0),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
+                "storage_capacity": 1200,
+            },
+            None,
+            None,
+            0,
+        ),
+        (
+            {"deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 200, "storage_capacity": 1200},
+            None,
+            None,
+            0,
+        ),
+        (
+            {
+                "deployment_type": "SCRATCH_2",
+                "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
+                "storage_capacity": 1200,
+            },
+            None,
+            "'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'",
+            1,
+        ),
+        (
+            {"deployment_type": "SCRATCH_1", "per_unit_storage_throughput": 200, "storage_capacity": 1200},
+            None,
+            "'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'",
+            0,
+        ),
     ],
 )
-def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_message, num_calls):
+def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):
     if bucket:
         _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
+    if "fsx_kms_key_id" in section_dict:
+        _kms_key_stubber(mocker, boto3_stubber, section_dict.get("fsx_kms_key_id"), None, 0 if expected_error else 1)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_error, expected_warning",
+    [
+        (
+            {"storage_capacity": 1, "deployment_type": "SCRATCH_1"},
+            None,
+            "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
+        ),
+        ({"storage_capacity": 1200, "deployment_type": "SCRATCH_1"}, None, None),
+        ({"storage_capacity": 2400, "deployment_type": "SCRATCH_1"}, None, None),
+        ({"storage_capacity": 3600, "deployment_type": "SCRATCH_1"}, None, None),
+        (
+            {"storage_capacity": 3600, "deployment_type": "SCRATCH_2"},
+            None,
+            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+        ),
+        (
+            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1"},
+            None,
+            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+        ),
+        (
+            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1"},
+            None,
+            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+        ),
+        ({"storage_capacity": 7200}, None, None),
+        (
+            {"deployment_type": "SCRATCH_1"},
+            "When specifying 'fsx' section, the 'storage_capacity' option must be specified",
+            None,
+        ),
+    ],
+)
+def test_fsx_storage_capacity_validator(mocker, boto3_stubber, capsys, section_dict, expected_error, expected_warning):
+    config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
+    utils.assert_param_validator(
+        mocker, config_parser_dict, capsys=capsys, expected_error=expected_error, expected_warning=expected_warning
+    )
 
 
 def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
@@ -832,25 +911,6 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
 )
 def test_intel_hpc_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"storage_capacity": 1}, "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB"),
-        ({"storage_capacity": 1200}, None),
-        ({"storage_capacity": 2400}, None),
-        ({"storage_capacity": 3600}, None),
-        (
-            {"storage_capacity": 3601},
-            "Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB",
-        ),
-        ({"storage_capacity": 7200}, None),
-    ],
-)
-def test_fsx_storage_capacity_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 

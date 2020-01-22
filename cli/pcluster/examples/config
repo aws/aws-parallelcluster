@@ -260,3 +260,21 @@ master_subnet_id = subnet-12345678
 # This is used when AWS ParallelCluster creates the security group
 # (defaults to 0.0.0.0/0)
 #access_from = 0.0.0.0/0
+
+## FSx settings
+#[fsx fsx-custom]
+# Mount Point for Shared Dir
+#shared_dir = /fsx
+# Storage Capacity in GiB
+#storage_capacity = 1200
+# Deployment type allows you to launch filesystems with different characteristics
+# Valid options are SCRATCH_1, PERSISTENT_1, SCRATCH_2
+#deployment_type = PERSISTENT_1
+# When using SCRATCH_2 or PERSISTENT_1 you can set storage throughput to 50,100,200
+#per_unit_storage_throughput = 50
+# S3 Bucket to hydrate the fs from
+#import_path = s3://import-path
+# S3 Location to backup too
+#export_path = s3://import-path/export-dir
+# For SCRATCH_2 and PERSISTENT_1 you can provide a KMS Key for in transit encryption
+#fsx_kms_key_id = XXXX-XXXXX-XXX-XXXXX

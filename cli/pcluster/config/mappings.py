@@ -108,6 +108,8 @@ ALLOWED_VALUES = {
     "volume_id": r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$",
     "volume_types": ["standard", "io1", "gp2", "st1", "sc1"],
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
+    "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
+    "per_unit_storage_throughput": [50, 100, 200],
 }
 
 AWS = {
@@ -354,7 +356,7 @@ FSX = {
     "type": Section,
     "key": "fsx",
     "default_label": "default",
-    "validators": [fsx_validator],
+    "validators": [fsx_validator, fsx_storage_capacity_validator],
     "cfn_param_mapping": "FSXOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -368,7 +370,6 @@ FSX = {
             }),
             ("storage_capacity", {
                 "type": IntParam,
-                "validators": [fsx_storage_capacity_validator]
             }),
             ("fsx_kms_key_id", {
                 "validators": [kms_key_validator],
@@ -385,6 +386,13 @@ FSX = {
             }),
             ("weekly_maintenance_start_time", {
                 "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):?([0-5]\d)$",
+            }),
+            ("deployment_type", {
+                "allowed_values": ALLOWED_VALUES["deployment_type"],
+            }),
+            ("per_unit_storage_throughput", {
+                "type": IntParam,
+                "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
             }),
         ]
     )
@@ -412,6 +420,7 @@ DCV = {
         ]
     )
 }
+
 CW_LOG = {
     "type": Section,
     "key": "cw_log",

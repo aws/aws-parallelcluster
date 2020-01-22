@@ -147,8 +147,11 @@ def fsx_validator(section_key, section_label, pcluster_config):
     if fsx_export_path and not fsx_import_path:
         errors.append("When specifying 'export_path', the 'import_path' option must be specified")
 
-    if not fsx_section.get_param_value("storage_capacity") and not fsx_section.get_param_value("fsx_fs_id"):
-        errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
+    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1":
+        if fsx_section.get_param_value("fsx_kms_key_id"):
+            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
+        if fsx_section.get_param_value("per_unit_storage_throughput"):
+            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
 
     return errors, warnings
 
@@ -205,14 +208,28 @@ def fsx_id_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def fsx_storage_capacity_validator(param_key, param_value, pcluster_config):
+def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
 
-    if int(param_value) > 0 and not (
-        int(param_value) == 1200 or int(param_value) == 2400 or int(param_value) % 3600 == 0
-    ):
-        errors.append("Capacity for FSx lustre filesystem, 1,200 GB, 2,400 GB or increments of 3,600 GB")
+    fsx_section = pcluster_config.get_section(section_key, section_label)
+    storage_capacity = fsx_section.get_param_value("storage_capacity")
+    deployment_type = fsx_section.get_param_value("deployment_type")
+
+    if fsx_section.get_param_value("fsx_fs_id"):
+        # if fsx_fs_id is provided, don't validate storage_capacity
+        return errors, warnings
+    elif not storage_capacity:
+        # if fsx_fs_id is not provided, storage_capacity must be provided
+        errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
+    elif deployment_type == "SCRATCH_1":
+        if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
+            warnings.append("Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB")
+    elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
+        if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
+            warnings.append(
+                "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB"
+            )
 
     return errors, warnings
 
