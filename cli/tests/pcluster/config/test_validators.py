@@ -324,35 +324,27 @@ def test_url_validator(mocker, boto3_stubber):
     [
         (
             {
-                "cluster default": {
-                    "fsx_settings": "fsx",
-                    "s3_read_write_resource": "s3://test/test1/test2",
-                    "s3_read_resource": "s3://test/test1/test2",
-                },
+                "cluster default": {"fsx_settings": "fsx"},
                 "fsx fsx": {
                     "storage_capacity": 1200,
                     "import_path": "s3://test/test1/test2",
                     "export_path": "s3://test/test1/test2",
                 },
             },
-            4,
+            2,
             {"Bucket": "test"},
             None,
         ),
         (
             {
-                "cluster default": {
-                    "fsx_settings": "fsx",
-                    "s3_read_write_resource": "s3://test/test1/test2",
-                    "s3_read_resource": "s3://test/test1/test2",
-                },
+                "cluster default": {"fsx_settings": "fsx"},
                 "fsx fsx": {
                     "storage_capacity": 1200,
                     "import_path": "http://test/test.json",
                     "export_path": "s3://test/test1/test2",
                 },
             },
-            3,
+            1,
             {"Bucket": "test"},
             "The value 'http://test/test.json' used for the parameter 'import_path' is not a valid S3 URI.",
         ),

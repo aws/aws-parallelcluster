@@ -546,11 +546,9 @@ CLUSTER = {
             }),
             ("s3_read_resource", {
                 "cfn_param_mapping": "S3ReadResource",
-                "validators": [s3_bucket_validator],
             }),
             ("s3_read_write_resource", {
                 "cfn_param_mapping": "S3ReadWriteResource",
-                "validators": [s3_bucket_validator],
             }),
             (
                 "disable_hyperthreading",
