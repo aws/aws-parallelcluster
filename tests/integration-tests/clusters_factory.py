@@ -162,6 +162,10 @@ class ClustersFactory:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)
             raise Exception(error)
+        elif "WARNING" in result.stdout:
+            error = "Cluster creation for {0} generated a warning: {1}".format(name, result.stdout)
+            logging.error(error)
+            raise Exception(error)
         logging.info("Cluster {0} created successfully".format(name))
         cluster.create_complete = True
 
