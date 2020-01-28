@@ -2,12 +2,14 @@
 CHANGELOG
 =========
 
-X.X.X
+2.6.0
 ====
 
 **CHANGES**
 
 * Use version 5.2 of PyYAML for python 3 versions of 3.4 or earlier.
+* Increase the total time allowed to build Docker images from 30 minutes to 60 minutes. This is done to better deal
+  with slow networking in China regions.
 
 2.5.1
 =====
