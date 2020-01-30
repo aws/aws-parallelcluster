@@ -524,7 +524,7 @@ def test_raid_validators(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "kms_key_id, expected_message",
     [
-        ("9e8a129be-0e46-459d-865b-3a5bf974a22k", None,),
+        ("9e8a129be-0e46-459d-865b-3a5bf974a22k", None),
         (
             "9e7a129be-0e46-459d-865b-3a5bf974a22k",
             "Key 'arn:aws:kms:us-east-1:12345678:key/9e7a129be-0e46-459d-865b-3a5bf974a22k' does not exist",
@@ -544,16 +544,17 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
             "KeyState": "Enabled",
             "KeyUsage": "ENCRYPT_DECRYPT",
             "Origin": "AWS_KMS",
-        },
+        }
     }
     mocked_requests = [
         MockedBoto3Request(
             method="describe_key",
             response=expected_message if expected_message else describe_key_response,
             expected_params={"KeyId": kms_key_id},
+            generate_error=True if expected_message else False,
         )
     ]
-    boto3_stubber("kms", mocked_requests, generate_errors=True if expected_message else False)
+    boto3_stubber("kms", mocked_requests)
 
     config_parser_dict = {
         "cluster default": {"fsx_settings": "fsx"},

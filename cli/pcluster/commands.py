@@ -283,7 +283,7 @@ def update(args):  # noqa: C901 FIXME!!!
         if not args.nowait:
             while stack_status == "UPDATE_IN_PROGRESS":
                 stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+                events = utils.get_stack_events(stack_name)[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
                 ).ljust(80)
@@ -350,13 +350,8 @@ def _get_batch_ce(stack_name):
     :param config: config
     :return: ce_name or exit if not found
     """
-    cfn = boto3.client("cloudformation")
-    try:
-        outputs = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("Outputs")
-        return utils.get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
+    outputs = utils.get_stack(stack_name).get("Outputs")
+    return utils.get_stack_output_value(outputs, "BatchComputeEnvironmentArn")
 
 
 def _get_pcluster_version_from_stack(stack):
@@ -448,13 +443,7 @@ def _poll_master_server_state(stack_name):
 
 
 def _get_ec2_instances(stack):
-    try:
-        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack).get("StackResources")
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-
+    resources = utils.get_stack_resources(stack)
     temp_instances = [r for r in resources if r.get("ResourceType") == "AWS::EC2::Instance"]
 
     stack_instances = []
@@ -466,12 +455,8 @@ def _get_ec2_instances(stack):
 
 def _get_asg_name(stack_name):
     try:
-        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack_name).get("StackResources")
+        resources = utils.get_stack_resources(stack_name)
         return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
     except IndexError:
         LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
         sys.exit(1)
@@ -585,11 +570,11 @@ def status(args):  # noqa: C901 FIXME!!!
 
     cfn = boto3.client("cloudformation")
     try:
-        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-        sys.stdout.write("\rStatus: %s" % stack_status)
+        stack = utils.get_stack(stack_name, cfn)
+        sys.stdout.write("\rStatus: %s" % stack.get("StackStatus"))
         sys.stdout.flush()
         if not args.nowait:
-            while stack_status not in [
+            while stack.get("StackStatus") not in [
                 "CREATE_COMPLETE",
                 "UPDATE_COMPLETE",
                 "UPDATE_ROLLBACK_COMPLETE",
@@ -598,22 +583,26 @@ def status(args):  # noqa: C901 FIXME!!!
                 "DELETE_FAILED",
             ]:
                 time.sleep(5)
-                stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+                stack = utils.get_stack(stack_name, cfn)
+                events = utils.get_stack_events(stack_name)[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
                 ).ljust(80)
                 sys.stdout.write("\r%s" % resource_status)
                 sys.stdout.flush()
-            sys.stdout.write("\rStatus: %s\n" % stack_status)
+            sys.stdout.write("\rStatus: %s\n" % stack.get("StackStatus"))
             sys.stdout.flush()
-            if stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+            if stack.get("StackStatus") in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
-                    stack = utils.get_stack(stack_name, cfn)
                     _print_stack_outputs(stack)
-            elif stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED", "UPDATE_ROLLBACK_COMPLETE"]:
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")
+            elif stack.get("StackStatus") in [
+                "ROLLBACK_COMPLETE",
+                "CREATE_FAILED",
+                "DELETE_FAILED",
+                "UPDATE_ROLLBACK_COMPLETE",
+            ]:
+                events = utils.get_stack_events(stack_name)
                 for event in events:
                     if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:
                         LOGGER.info(
@@ -683,8 +672,8 @@ def _delete_cluster(cluster_name, nowait):
         if not nowait:
             while stack_status == "DELETE_IN_PROGRESS":
                 time.sleep(5)
-                stack_status = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0].get("StackStatus")
-                events = cfn.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+                stack_status = utils.get_stack(stack_name, cfn, raise_on_error=True).get("StackStatus")
+                events = utils.get_stack_events(stack_name, raise_on_error=True)[0]
                 resource_status = (
                     "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
                 ).ljust(80)
