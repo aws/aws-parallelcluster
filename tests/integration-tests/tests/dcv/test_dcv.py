@@ -32,7 +32,16 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 @pytest.mark.instances(["c4.xlarge", "g3.8xlarge"])
 @pytest.mark.schedulers(["sge"])
 def test_dcv_configuration(
-    dcv_port, access_from, shared_dir, region, instance, os, scheduler, pcluster_config_reader, clusters_factory
+    dcv_port,
+    access_from,
+    shared_dir,
+    region,
+    instance,
+    os,
+    scheduler,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
 ):
     dcv_authenticator_port = dcv_port + 1
     cluster_config = pcluster_config_reader(dcv_port=str(dcv_port), access_from=access_from, shared_dir=shared_dir)
@@ -99,6 +108,9 @@ def test_dcv_configuration(
     # check shared dir configuration
     _check_shared_dir(remote_command_executor, shared_dir)
 
+    # Ensure no system programs crashed
+    _check_no_crashes(remote_command_executor, test_datadir)
+
     # Check that logs are stored in CloudWatch as expected
     FeatureSpecificCloudWatchLoggingTestRunner.run_tests_for_feature(
         cluster, scheduler, os, "dcv_enabled", region, shared_dir
@@ -136,3 +148,8 @@ def _check_security_group(region, cluster, port, expected_cidr):
     ips = response["SecurityGroups"][0]["IpPermissions"]
     target = next(filter(lambda x: x.get("FromPort", -1) == port, ips), {})
     assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
+
+
+def _check_no_crashes(remote_command_executor, test_datadir):
+    """Verify no core files in /var/crash, which on ubuntu18 causes a popup when logging into the 1st session."""
+    remote_command_executor.run_remote_script(str(test_datadir / "verify_no_core_files.sh"))
