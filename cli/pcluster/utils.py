@@ -302,7 +302,7 @@ def get_stack_output_value(stack_outputs, output_key):
     return next((o.get("OutputValue") for o in stack_outputs if o.get("OutputKey") == output_key), None)
 
 
-def get_stack(stack_name, cfn_client=None):
+def get_stack(stack_name, cfn_client=None, raise_on_error=False):
     """
     Get the output for a DescribeStacks action for the given Stack.
 
@@ -313,8 +313,10 @@ def get_stack(stack_name, cfn_client=None):
     try:
         if not cfn_client:
             cfn_client = boto3.client("cloudformation")
-        return cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0]
+        return retry_on_boto3_throttling(cfn_client.describe_stacks, StackName=stack_name).get("Stacks")[0]
     except ClientError as e:
+        if raise_on_error:
+            raise
         error(e.response.get("Error").get("Message"))
 
 
@@ -333,10 +335,26 @@ def get_stack_resources(stack_name):
     """Get the given stack's resources."""
     cfn_client = boto3.client("cloudformation")
     try:
-        return cfn_client.describe_stack_resources(StackName=stack_name).get("StackResources")
+        return retry_on_boto3_throttling(cfn_client.describe_stack_resources, StackName=stack_name).get(
+            "StackResources"
+        )
     except ClientError as client_err:
         error(
             "Unable to get {stack_name}'s resources: {reason}".format(
+                stack_name=stack_name, reason=client_err.response.get("Error").get("Message")
+            )
+        )
+
+
+def get_stack_events(stack_name, raise_on_error=False):
+    cfn_client = boto3.client("cloudformation")
+    try:
+        return retry_on_boto3_throttling(cfn_client.describe_stack_events, StackName=stack_name).get("StackEvents")
+    except ClientError as client_err:
+        if raise_on_error:
+            raise
+        error(
+            "Unable to get {stack_name}'s events: {reason}".format(
                 stack_name=stack_name, reason=client_err.response.get("Error").get("Message")
             )
         )
@@ -359,20 +377,20 @@ def verify_stack_creation(stack_name, cfn_client):
     status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
     while status == "CREATE_IN_PROGRESS":
-        status = get_stack(stack_name, cfn_client).get("StackStatus")
-        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")[0]
+        events = get_stack_events(stack_name, raise_on_error=True)[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
         )
         sys.stdout.write("\r%s" % resource_status)
         sys.stdout.flush()
         time.sleep(5)
+        status = get_stack(stack_name, cfn_client).get("StackStatus")
     # print the last status update in the logs
     if resource_status != "":
         LOGGER.debug(resource_status)
     if status != "CREATE_COMPLETE":
         LOGGER.critical("\nCluster creation failed.  Failed events:")
-        events = cfn_client.describe_stack_events(StackName=stack_name).get("StackEvents")
+        events = get_stack_events(stack_name, raise_on_error=True)
         for event in events:
             if event.get("ResourceStatus") == "CREATE_FAILED":
                 LOGGER.info(
@@ -579,4 +597,15 @@ def retry(func, func_args, attempts=1, wait=0):
                 raise e
 
             LOGGER.debug("{0}, retrying in {1} seconds..".format(e, wait))
+            time.sleep(wait)
+
+
+def retry_on_boto3_throttling(func, wait=5, *args, **kwargs):
+    while True:
+        try:
+            return func(*args, **kwargs)
+        except ClientError as e:
+            if e.response["Error"]["Code"] != "Throttling":
+                raise
+            LOGGER.debug("Throttling when calling %s function. Will retry in %d seconds.", func.__name__, wait)
             time.sleep(wait)

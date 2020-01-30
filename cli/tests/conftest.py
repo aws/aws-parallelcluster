@@ -87,7 +87,7 @@ def boto3_stubber(mocker, boto3_stubber_path):
     # e.g. boto3.client("ec2", region_name=region, ...) --> x = ec2
     mocked_client_factory.client.side_effect = lambda x, **kwargs: mocked_clients[x]
 
-    def _boto3_stubber(service, mocked_requests, generate_errors=False):
+    def _boto3_stubber(service, mocked_requests):
         client = boto3.client(service)
         stubber = Stubber(client)
         # Save a ref to the stubber so that we can deactivate it at the end of the test.
@@ -97,11 +97,12 @@ def boto3_stubber(mocker, boto3_stubber_path):
         if not isinstance(mocked_requests, list):
             mocked_requests = [mocked_requests]
         for mocked_request in mocked_requests:
-            if generate_errors:
+            if mocked_request.generate_error:
                 stubber.add_client_error(
                     mocked_request.method,
                     service_message=mocked_request.response,
                     expected_params=mocked_request.expected_params,
+                    service_error_code=mocked_request.error_code,
                 )
             else:
                 stubber.add_response(
