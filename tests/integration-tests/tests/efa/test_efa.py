@@ -45,6 +45,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
+    _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
@@ -84,3 +85,13 @@ def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_command
     output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
     latency = re.search(r"0\s+(\d\d)\.", output).group(1)
     assert_that(int(latency)).is_less_than_or_equal_to(24)
+
+
+def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor):
+    logging.info("Testing SHM Transfer is enabled")
+    result = scheduler_commands.submit_command("fi_info -p efa 2>&1 > /shared/fi_info.out")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    result = remote_command_executor.run_remote_command("cat /shared/fi_info.out")
+    assert_that(result.stdout).does_not_contain("SHM transfer will be disabled because of ptrace protection")
