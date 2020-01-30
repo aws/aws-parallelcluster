@@ -37,10 +37,14 @@ def test_get_stack_template(boto3_stubber, template_body, error_message):
     """Verify that utils.get_stack_template behaves as expected."""
     response = {"TemplateBody": json.dumps(template_body)} if template_body is not None else error_message
     mocked_requests = [
-        MockedBoto3Request(method="get_template", response=response, expected_params={"StackName": FAKE_STACK_NAME})
+        MockedBoto3Request(
+            method="get_template",
+            response=response,
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=template_body is None,
+        )
     ]
-    generate_errors = template_body is None
-    boto3_stubber("cloudformation", mocked_requests, generate_errors=generate_errors)
+    boto3_stubber("cloudformation", mocked_requests)
     if error_message:
         with pytest.raises(SystemExit, match=error_message) as sysexit:
             utils.get_stack_template(stack_name=FAKE_STACK_NAME)
@@ -96,9 +100,15 @@ def test_update_stack_template(mocker, boto3_stubber, error_message):
         "Capabilities": ["CAPABILITY_IAM"],
     }
     response = error_message or {"StackId": "stack ID"}
-    mocked_requests = [MockedBoto3Request(method="update_stack", response=response, expected_params=expected_params)]
-    generate_errors = error_message is not None
-    boto3_stubber("cloudformation", mocked_requests, generate_errors=generate_errors)
+    mocked_requests = [
+        MockedBoto3Request(
+            method="update_stack",
+            response=response,
+            expected_params=expected_params,
+            generate_error=error_message is not None,
+        )
+    ]
+    boto3_stubber("cloudformation", mocked_requests)
     mocker.patch("pcluster.utils._wait_for_update")
     if error_message is None or "no updates are to be performed" in error_message.lower():
         utils.update_stack_template(FAKE_STACK_NAME, template_body, cfn_params)
@@ -153,15 +163,20 @@ def test_get_cluster_substacks(mocker, resources):  # noqa: D202
 def test_stack_exists(boto3_stubber, response, is_error):
     """Verify that utils.stack_exists behaves as expected."""
     mocked_requests = [
-        MockedBoto3Request(method="describe_stacks", response=response, expected_params={"StackName": FAKE_STACK_NAME})
+        MockedBoto3Request(
+            method="describe_stacks",
+            response=response,
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=is_error,
+        )
     ]
-    boto3_stubber("cloudformation", mocked_requests, generate_errors=is_error)
+    boto3_stubber("cloudformation", mocked_requests)
     should_exist = not is_error
     assert_that(utils.stack_exists(FAKE_STACK_NAME)).is_equal_to(should_exist)
 
 
 @pytest.mark.parametrize(
-    "resources,error_message",
+    "resources, error_message",
     [
         (
             [
@@ -189,14 +204,142 @@ def test_get_stack_resources(boto3_stubber, resources, error_message):
         )
     mocked_requests = [
         MockedBoto3Request(
-            method="describe_stack_resources", response=response, expected_params={"StackName": FAKE_STACK_NAME}
+            method="describe_stack_resources",
+            response=response,
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=error_message is not None,
         )
     ]
-    generate_errors = error_message is not None
-    boto3_stubber("cloudformation", mocked_requests, generate_errors=generate_errors)
+    boto3_stubber("cloudformation", mocked_requests)
     if error_message is None:
         assert_that(utils.get_stack_resources(FAKE_STACK_NAME)).is_equal_to(resources)
     else:
         with pytest.raises(SystemExit, match=response) as sysexit:
             utils.get_stack_resources(FAKE_STACK_NAME)
         assert_that(sysexit.value.code).is_not_equal_to(0)
+
+
+def test_retry_on_boto3_throttling(boto3_stubber, mocker):
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stack_resources",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_resources",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_STACK_NAME}
+        ),
+    ]
+    client = boto3_stubber("cloudformation", mocked_requests)
+    utils.retry_on_boto3_throttling(client.describe_stack_resources, StackName=FAKE_STACK_NAME)
+    sleep_mock.assert_called_with(5)
+
+
+def test_get_stack_resources_retry(boto3_stubber, mocker):
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stack_resources",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_resources", response={}, expected_params={"StackName": FAKE_STACK_NAME}
+        ),
+    ]
+    boto3_stubber("cloudformation", mocked_requests)
+    utils.get_stack_resources(FAKE_STACK_NAME)
+    sleep_mock.assert_called_with(5)
+
+
+def test_get_stack_retry(boto3_stubber, mocker):
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    expected_stack = {"StackName": FAKE_STACK_NAME, "CreationTime": 0, "StackStatus": "CREATED"}
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stacks",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stacks",
+            response={"Stacks": [expected_stack]},
+            expected_params={"StackName": FAKE_STACK_NAME},
+        ),
+    ]
+    boto3_stubber("cloudformation", mocked_requests)
+    stack = utils.get_stack(FAKE_STACK_NAME)
+    assert_that(stack).is_equal_to(expected_stack)
+    sleep_mock.assert_called_with(5)
+
+
+def test_verify_stack_creation_retry(boto3_stubber, mocker):
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    mocker.patch(
+        "pcluster.utils.get_stack",
+        side_effect=[{"StackStatus": "CREATE_IN_PROGRESS"}, {"StackStatus": "CREATE_FAILED"}],
+    )
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stack_events",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_events",
+            response={"StackEvents": [_generate_stack_event()]},
+            expected_params={"StackName": FAKE_STACK_NAME},
+        ),
+    ]
+    client = boto3_stubber("cloudformation", mocked_requests * 2)
+    assert_that(utils.verify_stack_creation(FAKE_STACK_NAME, client)).is_false()
+    sleep_mock.assert_called_with(5)
+
+
+def test_get_stack_events_retry(boto3_stubber, mocker):
+    sleep_mock = mocker.patch("pcluster.utils.time.sleep")
+    expected_events = [_generate_stack_event()]
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stack_events",
+            response="Error",
+            expected_params={"StackName": FAKE_STACK_NAME},
+            generate_error=True,
+            error_code="Throttling",
+        ),
+        MockedBoto3Request(
+            method="describe_stack_events",
+            response={"StackEvents": expected_events},
+            expected_params={"StackName": FAKE_STACK_NAME},
+        ),
+    ]
+    boto3_stubber("cloudformation", mocked_requests)
+    assert_that(utils.get_stack_events(FAKE_STACK_NAME)).is_equal_to(expected_events)
+    sleep_mock.assert_called_with(5)
+
+
+def _generate_stack_event():
+    return {
+        "LogicalResourceId": "id",
+        "ResourceStatus": "status",
+        "StackId": "id",
+        "EventId": "id",
+        "StackName": FAKE_STACK_NAME,
+        "Timestamp": 0,
+    }
