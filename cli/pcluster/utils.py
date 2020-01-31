@@ -377,6 +377,7 @@ def verify_stack_creation(stack_name, cfn_client):
     status = get_stack(stack_name, cfn_client).get("StackStatus")
     resource_status = ""
     while status == "CREATE_IN_PROGRESS":
+        status = get_stack(stack_name, cfn_client).get("StackStatus")
         events = get_stack_events(stack_name, raise_on_error=True)[0]
         resource_status = ("Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))).ljust(
             80
@@ -384,7 +385,6 @@ def verify_stack_creation(stack_name, cfn_client):
         sys.stdout.write("\r%s" % resource_status)
         sys.stdout.flush()
         time.sleep(5)
-        status = get_stack(stack_name, cfn_client).get("StackStatus")
     # print the last status update in the logs
     if resource_status != "":
         LOGGER.debug(resource_status)
