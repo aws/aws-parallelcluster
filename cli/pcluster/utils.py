@@ -490,21 +490,6 @@ def get_avail_zone(subnet_id):
     return avail_zone
 
 
-def get_latest_alinux_ami_id():
-    """Get latest alinux ami id."""
-    try:
-        alinux_ami_id = (
-            boto3.client("ssm")
-            .get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
-            .get("Parameters")[0]
-            .get("Value")
-        )
-    except ClientError as e:
-        error("Unable to retrieve Amazon Linux AMI id.\n{0}".format(e.response.get("Error").get("Message")))
-
-    return alinux_ami_id
-
-
 def get_master_server_id(stack_name):
     """Return the physical id of the master server, or [] if no master server."""
     try:

@@ -21,7 +21,7 @@ import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import get_instance_vcpus, get_latest_alinux_ami_id, get_stack, get_stack_name, warn
+from pcluster.utils import get_instance_vcpus, get_stack, get_stack_name, warn
 
 LOGGER = logging.getLogger(__name__)
 
@@ -380,31 +380,51 @@ class PclusterConfig(object):
             {"GroupName": placement_group} if placement_group not in [None, "NONE", "DYNAMIC"] else {}
         )
 
-        # Test Master Instance Configuration
-        self.__ec2_run_instance(
-            max_size,
-            InstanceType=master_instance_type,
-            MinCount=1,
-            MaxCount=1,
-            ImageId=get_latest_alinux_ami_id(),
-            SubnetId=master_subnet,
-            CpuOptions=master_cpu_options,
-            Placement=master_placement_group,
-            DryRun=True,
-        )
+        try:
+            latest_alinux_ami_id = self.__get_latest_alinux_ami_id()
 
-        # Test Compute Instances Configuration
-        self.__ec2_run_instance(
-            max_size,
-            InstanceType=compute_instance_type,
-            MinCount=max_size,
-            MaxCount=max_size,
-            ImageId=get_latest_alinux_ami_id(),
-            SubnetId=compute_subnet,
-            CpuOptions=compute_cpu_options,
-            Placement=compute_placement_group,
-            DryRun=True,
-        )
+            # Test Master Instance Configuration
+            self.__ec2_run_instance(
+                max_size,
+                InstanceType=master_instance_type,
+                MinCount=1,
+                MaxCount=1,
+                ImageId=latest_alinux_ami_id,
+                SubnetId=master_subnet,
+                CpuOptions=master_cpu_options,
+                Placement=master_placement_group,
+                DryRun=True,
+            )
+
+            # Test Compute Instances Configuration
+            self.__ec2_run_instance(
+                max_size,
+                InstanceType=compute_instance_type,
+                MinCount=max_size,
+                MaxCount=max_size,
+                ImageId=latest_alinux_ami_id,
+                SubnetId=compute_subnet,
+                CpuOptions=compute_cpu_options,
+                Placement=compute_placement_group,
+                DryRun=True,
+            )
+        except ClientError:
+            self.error("Unable to check account capacity")
+
+    def __get_latest_alinux_ami_id(self):
+        """Get latest alinux ami id."""
+        try:
+            alinux_ami_id = (
+                boto3.client("ssm")
+                .get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
+                .get("Parameters")[0]
+                .get("Value")
+            )
+        except ClientError as e:
+            self.error("Unable to retrieve Amazon Linux AMI id.\n{0}".format(e.response.get("Error").get("Message")))
+            raise
+
+        return alinux_ami_id
 
     def __ec2_run_instance(self, max_size, **kwargs):
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
