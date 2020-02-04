@@ -13,10 +13,13 @@ import logging
 
 import boto3
 import pytest
+from retrying import retry
 
+import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import SgeCommands
+from time_utils import minutes, seconds
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -37,11 +40,13 @@ def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_
     cluster_config = pcluster_config_reader(bucket_name=bucket_name, mount_dir=mount_dir)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    fsx_fs_id = get_fsx_fs_id(cluster, region)
 
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
+    _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
 def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
@@ -61,6 +66,11 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os):
             mount_dir=mount_dir, mount_options=mount_options.get(os, mount_options["default"])
         )
     )
+
+
+def get_fsx_fs_id(cluster, region):
+    fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
+    return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
 
 
 def _test_import_path(remote_command_executor, mount_dir):
@@ -98,3 +108,57 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
     )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
+
+
+@retry(
+    retry_on_result=lambda result: result.get("Lifecycle") in ["PENDING", "EXECUTING", "CANCELLING"],
+    wait_fixed=seconds(5),
+    stop_max_delay=minutes(7),
+)
+def poll_on_data_export(task, fsx):
+    logging.info(
+        "Data Export Task {task_id}: {status}".format(task_id=task.get("TaskId"), status=task.get("Lifecycle"))
+    )
+    return fsx.describe_data_repository_tasks(TaskIds=[task.get("TaskId")]).get("DataRepositoryTasks")[0]
+
+
+def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region):
+    logging.info("Testing fsx lustre data repository task")
+    file_contents = "Exported by FSx Lustre"
+    remote_command_executor.run_remote_command(
+        "echo '{file_contents}' > {mount_dir}/file_to_export".format(file_contents=file_contents, mount_dir=mount_dir)
+    )
+
+    # set file permissions
+    remote_command_executor.run_remote_command(
+        "sudo chmod 777 {mount_dir}/file_to_export && sudo chown 6666:6666 {mount_dir}/file_to_export".format(
+            mount_dir=mount_dir
+        )
+    )
+
+    fsx = boto3.client("fsx", region_name=region)
+    task = fsx.create_data_repository_task(
+        FileSystemId=fsx_fs_id, Type="EXPORT_TO_REPOSITORY", Paths=["file_to_export"], Report={"Enabled": False}
+    ).get("DataRepositoryTask")
+
+    task = poll_on_data_export(task, fsx)
+
+    assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
+
+    remote_command_executor.run_remote_command(
+        "aws s3 cp s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(bucket_name=bucket_name)
+    )
+    result = remote_command_executor.run_remote_command("cat ./file_to_export")
+    assert_that(result.stdout).is_equal_to(file_contents)
+
+    # test s3 metadata
+    s3 = boto3.client("s3", region_name=region)
+    metadata = (
+        s3.head_object(Bucket=bucket_name, Key="export_dir/file_to_export").get("ResponseMetadata").get("HTTPHeaders")
+    )
+    file_owner = metadata.get("x-amz-meta-file-owner")
+    file_group = metadata.get("x-amz-meta-file-group")
+    file_permissions = metadata.get("x-amz-meta-file-permissions")
+    assert_that(file_owner).is_equal_to("6666")
+    assert_that(file_group).is_equal_to("6666")
+    assert_that(file_permissions).is_equal_to("0100777")
