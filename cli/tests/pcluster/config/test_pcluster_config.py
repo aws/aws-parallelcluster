@@ -39,7 +39,7 @@ def boto3_stubber_path():
             },
             None,
         ),
-        ("/aws/service/ami-amazon-linux-latest", "Generic Error", "Unable to retrieve Amazon Linux AMI id",),
+        ("/aws/service/ami-amazon-linux-latest", "Generic Error", "Unable to retrieve Amazon Linux AMI id"),
     ],
 )
 def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, expected_message):
