@@ -23,13 +23,16 @@ def readme():
 
 VERSION = "2.5.1"
 REQUIRES = [
+    "setuptools",
     "boto3>=1.10.15",
     "future>=0.16.0,<=0.18.2",
     "tabulate>=0.8.2,<=0.8.3",
     "ipaddress>=1.0.22",
-    "enum34>=1.1.6",
     "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.1.2",
 ]
+
+if sys.version_info < (3, 4):
+    REQUIRES.append("enum34>=1.1.6")
 
 if sys.version_info[0] == 2:
     REQUIRES.append("configparser>=3.5.0,<=3.8.1")
