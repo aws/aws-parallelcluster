@@ -129,18 +129,21 @@ def to_snake_case(input):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
-def create_s3_bucket(bucket_name, region):
+def create_s3_bucket(bucket_name, region, enable_versioning=True):
     """
     Create a new S3 bucket.
 
     :param bucket_name: name of the S3 bucket to create
     :param region: region where the bucket is created
+    :param enable_versioning: enable versioning for the bucket
     """
     s3_client = boto3.client("s3", region_name=region)
     if region != "us-east-1":
         s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
     else:
         s3_client.create_bucket(Bucket=bucket_name)
+    if enable_versioning:
+        boto3.resource("s3").BucketVersioning(bucket_name).enable()
 
 
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=3)
