@@ -97,6 +97,10 @@ class _InstancesConfigGenerator(_ConfigGenerator):
     def generate(self, args, region, credentials):
         pricing_file = self._read_pricing_file(PARTITION_TO_PRICING_FILE_REGION[args.partition], args.pricing_file)
         instances_config = self._parse_pricing_file(pricing_file)
+        if args.overwrite_instance_data_file_path:
+            overwrite_instance_config = self._load_overwrite_instance_data(args.overwrite_instance_data_file_path)
+            logging.info(f"Overwriting instances info with provided data: {overwrite_instance_config}")
+            instances_config.update(overwrite_instance_config)
         logging.info("Validating doc against its schema")
         validate(instance=instances_config, schema=self.SCHEMA)
         return instances_config
@@ -176,6 +180,19 @@ class _InstancesConfigGenerator(_ConfigGenerator):
         index_json = _read_json_from_url(f"{url_prefix}/offers/v1.0/aws/index.json")
         ec2_pricing_url = index_json["offers"]["AmazonEC2"]["currentVersionUrl"]
         return _read_json_from_url(f"{url_prefix}{ec2_pricing_url}")
+
+    def _load_overwrite_instance_data(self, data_path):
+        try:
+            with open(data_path) as overwrite_file:
+                overwrite_instance_config = json.load(overwrite_file)
+                logging.info("Loaded overwrite data:\n%s", json.dumps(overwrite_instance_config, indent=2))
+                logging.info("Overwrite instance data provided, validating overwrite data against schema")
+                validate(instance=overwrite_instance_config, schema=self.SCHEMA)
+                return overwrite_instance_config
+        except json.decoder.JSONDecodeError as e:
+            raise Exception(
+                f"Incorrectly formatted overwrite instance data, please check the data is in valid JSON format: {e}"
+            )
 
 
 class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
@@ -384,6 +401,12 @@ def _parse_args():
     parser.add_argument(
         "--pricing-file", type=str, help="If not specified this will be downloaded automatically", required=False
     )
+    parser.add_argument(
+        "--overwrite-instance-data-file-path",
+        type=_file_type,
+        help="Path to file containing JSON of the instance data to overwrite",
+        required=False,
+    )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--rollback-file-path", help="Path to file containing the rollback information", type=_file_type)
     group.add_argument("--config-files", choices=CONFIG_FILES, help="Configurations to update", nargs="+")
@@ -418,7 +441,7 @@ def _validate_documents_against_existing_version(args, files_to_upload, sts_cred
             logging.info("Current version: %s", current_file)
             logging.info("New version: %s", files_to_upload[file][region])
             validate_document(current_file, files_to_upload[file][region])
-            logging.info("Document is valid", files_to_upload[file][region])
+            logging.info("Document is valid")
 
 
 def _generate_rollback_data(args, files_to_upload, sts_credentials):
