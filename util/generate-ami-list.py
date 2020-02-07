@@ -30,6 +30,7 @@ from botocore.exceptions import ClientError
 DISTROS = OrderedDict(
     [
         ("alinux", "amzn"),
+        ("alinux2", "amzn2"),
         ("centos6", "centos6"),
         ("centos7", "centos7"),
         ("ubuntu1604", "ubuntu-1604"),
