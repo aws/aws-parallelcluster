@@ -24,7 +24,6 @@ from wrapt_timeout_decorator import timeout
 @pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "c5n.18xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
-@pytest.mark.oss(["alinux", "centos7", "centos6", "ubuntu1604", "ubuntu1804"])
 def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 3
@@ -90,14 +89,16 @@ def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
         str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip]
     ).stdout.splitlines()
 
-    # mpirun_out_ip = "ip-10-0-127-71"
-    assert_that(len(mpirun_out_ip)).is_equal_to(1)
+    # mpirun_out_ip = ["Warning: Permanently added '192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out_ip)).is_equal_to(3)
     assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
 
     mpirun_out = remote_command_executor.run_remote_script(
         str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host]
     ).stdout.splitlines()
 
-    # mpirun_out = "ip-10-0-127-71"
-    assert_that(len(mpirun_out)).is_equal_to(1)
+    # mpirun_out = ["Warning: Permanently added 'ip-192-168-60-89,192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out)).is_equal_to(3)
     assert_that(mpirun_out[-1]).is_equal_to(remote_host)

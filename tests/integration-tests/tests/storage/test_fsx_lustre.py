@@ -24,9 +24,9 @@ from time_utils import minutes, seconds
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.oss(["centos7", "alinux", "ubuntu1604", "ubuntu1804"])
+@pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge"])
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("instance", "scheduler")
 def test_fsx_lustre(region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, os):
     """
     Test all FSx Lustre related features.
