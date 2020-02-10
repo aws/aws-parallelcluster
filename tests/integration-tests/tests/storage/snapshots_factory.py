@@ -117,7 +117,7 @@ class EBSSnapshotsFactory:
                     host=self.instance.public_ip_address,
                     user="ec2-user",
                     forward_agent=False,
-                    connect_kwargs={"key_filename": self.config.ssh_key},
+                    connect_kwargs={"key_filename": [self.config.ssh_key]},
                 )
                 ssh_conn.open()
                 tries = 0
