@@ -89,14 +89,16 @@ def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
         str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host_ip]
     ).stdout.splitlines()
 
-    # mpirun_out_ip = "ip-10-0-127-71"
-    assert_that(len(mpirun_out_ip)).is_equal_to(1)
+    # mpirun_out_ip = ["Warning: Permanently added '192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out_ip)).is_equal_to(3)
     assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
 
     mpirun_out = remote_command_executor.run_remote_script(
         str(test_datadir / "mpi_ssh.sh"), args=[mpi_module, remote_host]
     ).stdout.splitlines()
 
-    # mpirun_out = "ip-10-0-127-71"
-    assert_that(len(mpirun_out)).is_equal_to(1)
+    # mpirun_out = ["Warning: Permanently added 'ip-192-168-60-89,192.168.60.89' (ECDSA) to the list of known hosts.",
+    # '', 'ip-192-168-60-89']
+    assert_that(len(mpirun_out)).is_equal_to(3)
     assert_that(mpirun_out[-1]).is_equal_to(remote_host)

@@ -92,14 +92,16 @@ def retrieve_cfn_resources(stack_name, region):
     return resources
 
 
-def get_substacks(stack_name, region=None):
+def get_substacks(stack_name, region=None, sub_stack_name=None):
     """Return the PhysicalResourceIds for all substacks created by the given stack."""
     if region is None:
         region = os.environ.get("AWS_DEFAULT_REGION")
     stack_resources = get_cfn_resources(stack_name, region)
-    return [
-        r.get("PhysicalResourceId") for r in stack_resources if r.get("ResourceType") == "AWS::CloudFormation::Stack"
-    ]
+
+    stacks = [r for r in stack_resources if r.get("ResourceType") == "AWS::CloudFormation::Stack"]
+    if sub_stack_name:
+        stacks = filter(lambda r: r.get("LogicalResourceId") == sub_stack_name, stacks)
+    return [r.get("PhysicalResourceId") for r in stacks]
 
 
 def get_compute_nodes_instance_ids(stack_name, region):
