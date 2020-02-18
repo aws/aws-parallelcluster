@@ -91,7 +91,7 @@ def populate_amis_json(amis_json, images, region_name):
         amis = {}
         for image in images.get("Images"):
             for key, value in DISTROS.items():
-                if value in image.get("Name"):
+                if "-{0}-".format(value) in image.get("Name"):
                     amis[key] = image.get("ImageId")
         if len(amis) == 0:
             print("Warning: there are no AMIs in the selected region (%s)" % region_name)
