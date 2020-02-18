@@ -17,6 +17,7 @@ standard_library.install_aliases()
 import json
 import logging
 import os
+import re
 import sys
 import time
 import urllib.request
@@ -393,17 +394,40 @@ def verify_stack_creation(stack_name, cfn_client):
         LOGGER.debug(resource_status)
     if status != "CREATE_COMPLETE":
         LOGGER.critical("\nCluster creation failed.  Failed events:")
-        events = get_stack_events(stack_name, raise_on_error=True)
-        for event in events:
-            if event.get("ResourceStatus") == "CREATE_FAILED":
-                LOGGER.info(
-                    "  - %s %s %s",
-                    event.get("ResourceType"),
-                    event.get("LogicalResourceId"),
-                    event.get("ResourceStatusReason"),
-                )
+        _log_stack_failure_recursive(stack_name)
         return False
     return True
+
+
+def _log_stack_failure_recursive(stack_name, indent=2):
+    """Log stack failures in recursive manner, until there is no substack layer."""
+    events = get_stack_events(stack_name, raise_on_error=True)
+    for event in events:
+        if event.get("ResourceStatus") == "CREATE_FAILED":
+            _log_failed_cfn_event(event, indent)
+            if event.get("ResourceType") == "AWS::CloudFormation::Stack":
+                # Sample substack error:
+                # "Embedded stack arn:aws:cloudformation:us-east-2:704743599507:stack/
+                # parallelcluster-fsx-fail-FSXSubstack-65ITLJEZJ0DQ/
+                # 3a4ecf00-51e7-11ea-8e3e-022fd555c652 was not successfully created:
+                # The following resource(s) failed to create: [FileSystem]."
+                substack_error = re.search(
+                    ".+/({0}.+)/".format(PCLUSTER_STACK_PREFIX), event.get("ResourceStatusReason")
+                )
+                substack_name = substack_error.group(1) if substack_error else None
+                if substack_name:
+                    _log_stack_failure_recursive(substack_name, indent=indent + 2)
+
+
+def _log_failed_cfn_event(event, indent):
+    """Log failed CFN events."""
+    LOGGER.info(
+        "%s- %s %s %s",
+        " " * indent,
+        event.get("ResourceType"),
+        event.get("LogicalResourceId"),
+        event.get("ResourceStatusReason"),
+    )
 
 
 def get_templates_bucket_path():
