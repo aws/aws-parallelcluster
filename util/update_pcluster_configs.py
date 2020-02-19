@@ -34,7 +34,7 @@ PARTITION_TO_PRICING_FILE_REGION = {"commercial": "us-east-1", "govcloud": "us-e
 FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
-def validate_document(old_doc, new_doc):
+def validate_document(args, old_doc, new_doc):
     """
     Diff's two dict object and checks the new_doc is a superset of old doc.
 
@@ -51,7 +51,13 @@ def validate_document(old_doc, new_doc):
 
     logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
     logging.info("Checking that the new configuration file includes the old entries.")
-    _assert_document_is_included(old_doc, new_doc)
+    if not args.skip_validation:
+        _assert_document_is_included(old_doc, new_doc)
+    else:
+        logging.info(
+            "Specifying skip-validation flag, skipping assertion on differences. "
+            "Please manually verify the diffs are as expected."
+        )
 
 
 def _assert_document_is_included(doc_to_be_included, doc):
@@ -440,7 +446,7 @@ def _validate_documents_against_existing_version(args, files_to_upload, sts_cred
             current_file = json.loads(doc_manager.download(args.bucket.format(region=region), FILE_TO_S3_PATH[file]))
             logging.info("Current version: %s", current_file)
             logging.info("New version: %s", files_to_upload[file][region])
-            validate_document(current_file, files_to_upload[file][region])
+            validate_document(args, current_file, files_to_upload[file][region])
             logging.info("Document is valid")
 
 
@@ -505,9 +511,8 @@ def main():
         logging.info("Generating all documents to upload")
         files_to_upload = _generate_docs(args, sts_credentials)
 
-        if not args.skip_validation:
-            logging.info("Validating all documents to upload")
-            _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
+        logging.info("Validating all documents to upload")
+        _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
 
         logging.info("Generating rollback data")
         _generate_rollback_data(args, files_to_upload, sts_credentials)
