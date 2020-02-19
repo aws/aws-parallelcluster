@@ -9,14 +9,13 @@ assignees: ''
 
 **Environment:**
  - AWS ParallelCluster / CfnCluster version [e.g. aws-parallelcluster-2.5.1]
- - Config (i.e. ~/.parallelcluster/config) with personal data removed
+ - Configuration file (i.e. ~/.parallelcluster/config) without any credentials or personal data.
 
 **Bug description and how to reproduce:**
 A clear and concise description of what the bug is and the steps to reproduce the behavior.
 
 **Additional context:**
 Any other context about the problem. E.g.:
- - configuration file without any credentials or personal data.
  - pre/post-install scripts, if any
  - screenshots, if useful
  - if the cluster fails creation, please re-execute `create` action using `--norollback` option and attach `/var/log/cfn-init.log`, `/var/log/cloud-init.log` and `/var/log/cloud-init-output.log` files from the Master node
