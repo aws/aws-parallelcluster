@@ -602,7 +602,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             0,
         ),
         ({"shared_dir": "NONE", "storage_capacity": 1200}, None, "NONE cannot be used as a shared directory", 0),
-        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0,),
+        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0),
         ({"shared_dir": "/fsx"}, None, "the 'storage_capacity' option must be specified", 0),
         ({"shared_dir": "/fsx", "storage_capacity": 1200}, None, None, 0),
         (
