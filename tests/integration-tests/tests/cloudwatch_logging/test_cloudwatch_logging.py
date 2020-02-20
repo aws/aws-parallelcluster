@@ -523,7 +523,7 @@ class CloudWatchLoggingTestRunner:
 
     def run_tests(self, logs_state, cluster_has_been_deleted=False):
         """Run all CloudWatch logging integration tests."""
-        log_groups = cw_logs_utils.get_log_groups()
+        log_groups = cw_logs_utils.get_cluster_log_groups_from_boto3(self.log_group_name)
         self.verify_log_group_exists(log_groups, cluster_has_been_deleted)
         self.verify_log_group_retention_days(log_groups, cluster_has_been_deleted)
 
@@ -629,7 +629,10 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
         try:
             test_func(cluster, keep_logs, *args, **kwargs)
             if keep_logs and pre_test_log_groups:
-                post_test_log_groups = [lg.get("logGroupName") for lg in cw_logs_utils.get_log_groups()]
+                post_test_log_groups = [
+                    lg.get("logGroupName")
+                    for lg in cw_logs_utils.get_cluster_log_groups_from_boto3(pre_test_log_groups)
+                ]
                 LOGGER.info("Log groups after deleting the cluster:\n{0}".format("\n".join(post_test_log_groups)))
                 assert_that(post_test_log_groups).contains(*pre_test_log_groups)
         finally:
