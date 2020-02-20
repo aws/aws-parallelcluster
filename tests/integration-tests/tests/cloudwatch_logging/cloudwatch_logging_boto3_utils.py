@@ -14,15 +14,21 @@ def _dumps_json(obj):
     return json.dumps(obj, indent=2)
 
 
-def get_log_groups():
+def get_cluster_log_groups_from_boto3(cluster_log_group_prefix):
     """
-    Get list of log groups.
+    Get log groups with cluster log group prefix from boto3.
 
     Raises ClientError.
     """
-    log_groups = boto3.client("logs").describe_log_groups().get("logGroups")
-    LOGGER.debug("Log groups: {0}\n".format(_dumps_json(log_groups)))
-    return log_groups
+    try:
+        log_groups = (
+            boto3.client("logs").describe_log_groups(logGroupNamePrefix=cluster_log_group_prefix).get("logGroups")
+        )
+        LOGGER.debug("Log groups: {0}\n".format(_dumps_json(log_groups)))
+        return log_groups
+    except ClientError as e:
+        LOGGER.debug("Unable to retrieve any log group with prefix {0}\nError: {1}".format(cluster_log_group_prefix, e))
+        raise ClientError
 
 
 def get_log_streams(log_group_name):
