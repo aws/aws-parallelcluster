@@ -24,7 +24,7 @@ from utils import get_compute_nodes_instance_ids
 
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
+@pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge", "inf1.24xlarge"])
 @pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge", "slurm"])
 def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
