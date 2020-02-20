@@ -24,7 +24,8 @@ from time_utils import minutes, seconds
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
-@pytest.mark.skip_instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge", "g3.8xlarge"])
+@pytest.mark.instances(["inf1.xlarge"])
+@pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     scaledown_idletime = 4

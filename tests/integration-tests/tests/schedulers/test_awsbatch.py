@@ -19,8 +19,8 @@ from tests.common.schedulers_common import AWSBatchCommands
 
 
 @pytest.mark.batch_dockerfile_deps
-@pytest.mark.skip_regions(["ap-northeast-3", "us-gov-east-1", "us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge", "t2.large"])
+@pytest.mark.regions(["us-gov-east-1", "us-gov-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.dimensions("*", "*", "alinux", "awsbatch")
 @pytest.mark.dimensions("*", "*", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
