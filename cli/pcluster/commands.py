@@ -20,9 +20,7 @@ import datetime
 import json
 import logging
 import os
-import random
 import shlex
-import string
 import subprocess as sub
 import sys
 import tarfile
@@ -48,20 +46,29 @@ else:
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_batch_resources(stack_name, resources_dir, region):
-    random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-    # bucket names must be at least 3 and no more than 63 characters long
-    s3_bucket_name = "-".join([stack_name.lower()[: 63 - len(random_string) - 1], random_string])
+def _create_bucket_with_batch_resources(stack_name, region):
+    """
+    Create a bucket associated to the given stack and upload batch resources.
+
+    Returns the bucket name if both creation and upload succeed.
+    """
+    batch_resources = pkg_resources.resource_filename(__name__, "resources/batch")
+    s3_bucket_name = utils.generate_random_bucket_name(stack_name)
+    LOGGER.debug("Creating S3 bucket for AWS Batch resources, named %s", s3_bucket_name)
 
     try:
-        utils.create_s3_bucket(bucket_name=s3_bucket_name, region=region)
-        utils.upload_resources_artifacts(bucket_name=s3_bucket_name, root=resources_dir)
-    except boto3.client("s3").exceptions.BucketAlreadyExists:
-        LOGGER.error("Bucket %s already exists. Please retry cluster creation.", s3_bucket_name)
+        utils.create_s3_bucket(s3_bucket_name, region)
+    except ClientError:
+        LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
         raise
+
+    try:
+        utils.upload_resources_artifacts(s3_bucket_name, root=batch_resources)
     except Exception:
-        utils.delete_s3_bucket(bucket_name=s3_bucket_name)
+        LOGGER.error("Unable to upload AWS Batch resources to the S3 bucket %s.", s3_bucket_name)
+        utils.delete_s3_bucket(s3_bucket_name)
         raise
+
     return s3_bucket_name
 
 
@@ -91,18 +98,15 @@ def create(args):  # noqa: C901 FIXME!!!
 
     _check_for_updates(pcluster_config)
 
-    batch_temporary_bucket = None
+    batch_bucket_name = None
     try:
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
         # If scheduler is awsbatch create bucket with resources
         if cluster_section.get_param_value("scheduler") == "awsbatch":
-            batch_resources = pkg_resources.resource_filename(__name__, "resources/batch")
-            batch_temporary_bucket = _create_bucket_with_batch_resources(
-                stack_name=stack_name, resources_dir=batch_resources, region=pcluster_config.region
-            )
-            cfn_params["ResourcesS3Bucket"] = batch_temporary_bucket
+            batch_bucket_name = _create_bucket_with_batch_resources(stack_name, pcluster_config.region)
+            cfn_params["ResourcesS3Bucket"] = batch_bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
         LOGGER.debug(cfn_params)
@@ -144,22 +148,21 @@ def create(args):  # noqa: C901 FIXME!!!
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
-        if batch_temporary_bucket:
-            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket)
+        if batch_bucket_name:
+            utils.delete_s3_bucket(batch_bucket_name)
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
     except KeyError as e:
-        LOGGER.critical("ERROR: KeyError - reason:")
-        LOGGER.critical(e)
-        if batch_temporary_bucket:
-            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket)
+        LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
+        if batch_bucket_name:
+            utils.delete_s3_bucket(batch_bucket_name)
         sys.exit(1)
     except Exception as e:
         LOGGER.critical(e)
-        if batch_temporary_bucket:
-            utils.delete_s3_bucket(bucket_name=batch_temporary_bucket)
+        if batch_bucket_name:
+            utils.delete_s3_bucket(batch_bucket_name)
         sys.exit(1)
 
 
