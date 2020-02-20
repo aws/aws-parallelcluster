@@ -3,6 +3,7 @@
 import json
 
 import pytest
+from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
 from assertpy import assert_that
@@ -343,3 +344,47 @@ def _generate_stack_event():
         "StackName": FAKE_STACK_NAME,
         "Timestamp": 0,
     }
+
+
+@pytest.mark.parametrize(
+    "bucket_prefix", ["test", "test-", "prefix-63-characters-long--------------------------------to-cut"]
+)
+def test_generate_random_bucket_name(bucket_prefix):
+    bucket_name = utils.generate_random_bucket_name(bucket_prefix)
+    max_bucket_name_length = 63
+    random_suffix_length = 17  # 16 digits + 1 separator
+
+    pruned_prefix = bucket_prefix[: max_bucket_name_length - len(bucket_prefix) - random_suffix_length]
+    assert_that(bucket_name).starts_with(pruned_prefix)
+    assert_that(len(bucket_name)).is_equal_to(len(pruned_prefix) + random_suffix_length)
+
+    # Verify bucket name limits: bucket name must be at least 3 and no more than 63 characters long
+    assert_that(len(bucket_name)).is_between(3, max_bucket_name_length)
+
+
+@pytest.mark.parametrize(
+    "region,error_message", [("eu-west-1", None), ("us-east-1", None), ("eu-west-1", "An error occurred")]
+)
+def test_create_s3_bucket(region, error_message, boto3_stubber):
+    bucket_name = "test"
+    expected_params = {"Bucket": bucket_name}
+    if region != "us-east-1":
+        # LocationConstraint specifies the region where the bucket will be created.
+        # When the region is us-east-1 we are not specifying this parameter because it's the default region.
+        expected_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
+
+    mocked_requests = [
+        MockedBoto3Request(
+            method="create_bucket",
+            expected_params=expected_params,
+            response={"Location": bucket_name},
+            generate_error=error_message is not None,
+        )
+    ]
+
+    boto3_stubber("s3", mocked_requests)
+    if error_message:
+        with pytest.raises(ClientError, match=error_message):
+            utils.create_s3_bucket(bucket_name, region)
+    else:
+        utils.create_s3_bucket(bucket_name, region)
