@@ -629,10 +629,11 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
         try:
             test_func(cluster, keep_logs, *args, **kwargs)
             if keep_logs and pre_test_log_groups:
-                post_test_log_groups = [
-                    lg.get("logGroupName")
-                    for lg in cw_logs_utils.get_cluster_log_groups_from_boto3(pre_test_log_groups)
-                ]
+                post_test_log_groups = []
+                for pre_test_lg in pre_test_log_groups:
+                    post_test_log_groups.extend(
+                        [lg.get("logGroupName") for lg in cw_logs_utils.get_cluster_log_groups_from_boto3(pre_test_lg)]
+                    )
                 LOGGER.info("Log groups after deleting the cluster:\n{0}".format("\n".join(post_test_log_groups)))
                 assert_that(post_test_log_groups).contains(*pre_test_log_groups)
         finally:
