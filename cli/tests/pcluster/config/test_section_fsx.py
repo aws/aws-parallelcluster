@@ -209,13 +209,24 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,10,SCRATCH_1,50",
+                    "s3://test-import,1:10:17,SCRATCH_1,50",
                 },
             ),
         ),
         ("test1,test2", SystemExit()),
         ("test4", SystemExit()),
         ("test5", SystemExit()),
+        (
+            "test6",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "MasterSubnetId": "subnet-12345678",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                },
+            ),
+        ),
     ],
 )
 def test_fsx_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
