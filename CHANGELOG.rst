@@ -14,7 +14,7 @@ CHANGELOG
 
   * Add `--keep-logs` flag to `pcluster delete` command to preserve logs at cluster deletion
 * Install and setup Amazon Time Sync on all OSs
-* Compile Slurm with mysql accounting plugin also on Ubuntu 18.04 and Ubuntu 16.04
+* Enabling accounting plugin in Slurm for all OSes. Note: accounting is not enabled nor configured by default
 * Add retry on throttling from CloudFormation API, happening when several compute nodes are being bootstrapped
   concurrently
 * Display detailed substack failures when `pcluster create` fails due to a substack error
