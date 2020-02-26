@@ -9,16 +9,16 @@ CHANGELOG
 
 * Add support for Amazon Linux 2
 * Add support for NICE DCV on Ubuntu 18.04
-* Install and setup Amazon Time Sync on all OSs
-* Compile Slurm with mysql accounting plugin on Ubuntu 18.04 and Ubuntu 16.04
 * Add support for FSx Lustre on Ubuntu 18.04 and Ubuntu 16.04
-* Add `--keep-logs` flag for `pcluster delete` command. When set, a cluster's CloudWatch logs will not be deleted
+* New CloudWatch logging capability to collect cluster and job scheduler logs to CloudWatch for cluster monitoring and inspection
+
+  * Add `--keep-logs` flag to `pcluster delete` command to preserve logs at cluster deletion
+* Install and setup Amazon Time Sync on all OSs
+* Compile Slurm with mysql accounting plugin also on Ubuntu 18.04 and Ubuntu 16.04
 * Add retry on throttling from CloudFormation API, happening when several compute nodes are being bootstrapped
   concurrently
-* Use sanity check logic to handle errors from getting latest Amazon Linux AMI id used for the dryrun calls
 * Display detailed substack failures when `pcluster create` fails due to a substack error
 * Create additional EFS mount target in the AZ of compute subnet, if needed
-* Add warning message in CLI logs when DCV port is open to 0.0.0.0/0
 * Add validator for FSx Lustre Weekly Maintenance Start Time parameter
 * Add validator to the KMS key provided for EBS, FSx, and EFS
 * Add validator for S3 external resource
@@ -32,14 +32,14 @@ CHANGELOG
 
 **CHANGES**
 
+* Upgrade Slurm to version 19.05.5
+* Upgrade Intel MPI to version U6
 * Upgrade EFA installer to version 1.8.3:
 
   * Kernel module: efa-1.5.1 (updated from efa-1.4.1)
   * RDMA core: rdma-core-25.0 (distributed only) (no change)
   * Libfabric: libfabric-aws-1.9.0amzn1.1 (updated from libfabric-aws-1.8.1amzn1.3)
   * Open MPI: openmpi40-aws-4.0.2 (no change)
-* Add SHA256 checksum verification to verify integrity of NICE DCV packages
-* Upgrade Slurm to version 19.05.5
 * Install Python 2.7.17 on CentOS 6 and set it as default through pyenv
 * Install Ganglia from repository on Amazon Linux, Amazon Linux 2, CentOS 6 and CentOS 7
 * Disable StrictHostKeyChecking for SSH client when target host is inside cluster VPC for all OSs except CentOS 6
@@ -49,15 +49,13 @@ CHANGELOG
   as mentioned here: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-ptrace
 * Packer version >= 1.4.0 is required for AMI creation
 * Use version 5.2 of PyYAML for python 3 versions of 3.4 or earlier.
-* Increase the total time allowed to build Docker images from 30 minutes to 60 minutes. This is done to better deal
-  with slow networking in China regions.
 
 **BUG FIXES**
 
 * Fix issue with slurmd daemon not being restarted correctly when a compute node is rebooted
 * Fix errors causing Torque not able to locate jobs, setting server_name to fqdn on master node
 * Fix Torque issue that was limiting the max number of running jobs to the max size of the cluster
-* Fix OS validation depending on the scheduler
+* Fix OS validation depending on the configured scheduler
 
 2.5.1
 =====
