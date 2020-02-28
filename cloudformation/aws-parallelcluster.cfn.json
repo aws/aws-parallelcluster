@@ -2070,11 +2070,10 @@
                   "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
                   "MIME-Version: 1.0\n\n",
                   "--==BOUNDARY==\n",
-                  "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
+                  "Content-Type: text/cloud-boothook; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
-                  "#cloud-config:\n",
-                  "runcmd:\n",
-                  " - [ sh, -c, 'which yum && echo \"proxy=",
+                  "#!/bin/bash -x\n\n",
+                  "which yum && echo \"proxy=",
                   {
                     "Fn::If": [
                       "UseProxy",
@@ -2084,8 +2083,8 @@
                       "_none_"
                     ]
                   },
-                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
-                  " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"\n\n",
+                  "which apt-get && echo \"Acquire::http::Proxy \\\"",
                   {
                     "Fn::If": [
                       "UseProxy",
@@ -2095,14 +2094,32 @@
                       "false"
                     ]
                   },
-                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"\n\n",
+                  "proxy=",
+                  {
+                    "Ref": "ProxyServer"
+                  },
+                  "\n",
+                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
+                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                  "  cat >> /etc/profile.d/proxy.sh <<PROXY\n",
+                  "export http_proxy=\"${proxy}\"\n",
+                  "export https_proxy=\"${proxy}\"\n",
+                  "export no_proxy=\"localhost,127.0.0.1,169.254.169.254\"\n",
+                  "export HTTP_PROXY=\"${proxy}\"\n",
+                  "export HTTPS_PROXY=\"${proxy}\"\n",
+                  "export NO_PROXY=\"localhost,127.0.0.1,169.254.169.254\"\n",
+                  "PROXY\n",
+                  "fi\n",
                   "--==BOUNDARY==\n",
                   "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
                   "#!/bin/bash -x\n\n",
                   "function error_exit\n",
                   "{\n",
-                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                  "  cfn-signal --exit-code=1 --reason=\"$1\" --stack=",
                   {
                     "Ref": "AWS::StackName"
                   },
@@ -2120,7 +2137,6 @@
                   "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "  HOME_BAK=\"${HOME}\"\n",
                   "  export HOME=\"/tmp\"\n",
-                  "  . /tmp/proxy.sh;\n",
                   "  for d in `ls /tmp/cookbooks`; do\n",
                   "    cd /tmp/cookbooks/$d\n",
                   "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
@@ -2148,30 +2164,13 @@
                   "  vendor_cookbook\n",
                   "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
-                  "proxy=",
-                  {
-                    "Ref": "ProxyServer"
-                  },
-                  "\n",
+                  "[ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh\n",
                   "custom_cookbook=",
                   {
                     "Ref": "CustomChefCookbook"
                   },
                   "\n",
-                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
-                  "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                  "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
-                  "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
-                  "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
-                  "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
-                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                  "else\n",
-                  "  proxy_args=\"\"\n",
-                  "  touch /tmp/proxy.sh\n",
-                  "fi\n",
-                  "  export _region=",
+                  "export _region=",
                   {
                     "Ref": "AWS::Region"
                   },
@@ -2260,7 +2259,7 @@
                   "fi\n",
                   "cd /tmp\n",
                   "# Call CloudFormation\n",
-                  "cfn-init ${proxy_args} -s ",
+                  "cfn-init -s ",
                   {
                     "Ref": "AWS::StackName"
                   },
@@ -2269,7 +2268,7 @@
                     "Ref": "AWS::Region"
                   },
                   " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
+                  "cfn-signal --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                   {
                     "Ref": "AWS::StackName"
                   },
@@ -3010,11 +3009,10 @@
                   "Content-Type: multipart/mixed; boundary=\"==BOUNDARY==\"\n",
                   "MIME-Version: 1.0\n\n",
                   "--==BOUNDARY==\n",
-                  "Content-Type: text/cloud-config; charset=\"us-ascii\"\n",
+                  "Content-Type: text/cloud-boothook; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
-                  "#cloud-config:\n",
-                  "runcmd:\n",
-                  " - [ sh, -c, 'which yum && echo \"proxy=",
+                  "#!/bin/bash -x\n\n",
+                  "which yum && echo \"proxy=",
                   {
                     "Fn::If": [
                       "UseProxy",
@@ -3024,8 +3022,8 @@
                       "_none_"
                     ]
                   },
-                  "\" >> /etc/yum.conf || echo \"Not yum system\"' ]\n",
-                  " - [ sh, -c, 'which apt-get && echo \"Acquire::http::Proxy \\\"",
+                  "\" >> /etc/yum.conf || echo \"Not yum system\"\n\n",
+                  "which apt-get && echo \"Acquire::http::Proxy \\\"",
                   {
                     "Fn::If": [
                       "UseProxy",
@@ -3035,7 +3033,25 @@
                       "false"
                     ]
                   },
-                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"' ]\n",
+                  "\\\";\" >> /etc/apt/apt.conf || echo \"Not apt system\"\n\n",
+                  "proxy=",
+                  {
+                    "Ref": "ProxyServer"
+                  },
+                  "\n",
+                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
+                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
+                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
+                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
+                  "  cat >> /etc/profile.d/proxy.sh <<PROXY\n",
+                  "export http_proxy=\"${proxy}\"\n",
+                  "export https_proxy=\"${proxy}\"\n",
+                  "export no_proxy=\"localhost,127.0.0.1,169.254.169.254\"\n",
+                  "export HTTP_PROXY=\"${proxy}\"\n",
+                  "export HTTPS_PROXY=\"${proxy}\"\n",
+                  "export NO_PROXY=\"localhost,127.0.0.1,169.254.169.254\"\n",
+                  "PROXY\n",
+                  "fi\n",
                   "--==BOUNDARY==\n",
                   "Content-Type: text/x-shellscript; charset=\"us-ascii\"\n",
                   "MIME-Version: 1.0\n\n",
@@ -3053,7 +3069,7 @@
                   "  echo \"Reporting instance as unhealthy and dumping logs to ${log_dir}/${instance_id}.tar.gz\"\n",
                   "  tar -czf ${log_dir}/${instance_id}.tar.gz /var/log\n",
                   "  aws --region ${region} autoscaling set-instance-health --instance-id ${instance_id} --health-status Unhealthy\n",
-                  "  cfn-signal ${proxy_args} --exit-code=1 --reason=\"$1\" --stack=",
+                  "  cfn-signal --exit-code=1 --reason=\"$1\" --stack=",
                   {
                     "Ref": "AWS::StackName"
                   },
@@ -3067,7 +3083,6 @@
                   "  tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz\n",
                   "  HOME_BAK=\"${HOME}\"\n",
                   "  export HOME=\"/tmp\"\n",
-                  "  . /tmp/proxy.sh;\n",
                   "  for d in `ls /tmp/cookbooks`; do\n",
                   "    cd /tmp/cookbooks/$d\n",
                   "    LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'\n",
@@ -3095,30 +3110,13 @@
                   "  vendor_cookbook\n",
                   "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
                   "}\n",
-                  "proxy=",
-                  {
-                    "Ref": "ProxyServer"
-                  },
-                  "\n",
+                  "[ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh\n",
                   "custom_cookbook=",
                   {
                     "Ref": "CustomChefCookbook"
                   },
                   "\n",
-                  "if [ \"${proxy}\" != \"NONE\" ]; then\n",
-                  "  proxy_args=\"--http-proxy=${proxy} --https-proxy=${proxy}\"\n",
-                  "  proxy_host=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f1)\n",
-                  "  proxy_port=$(echo \"${proxy}\" | awk -F/ '{print $3}' | cut -d: -f2)\n",
-                  "  export http_proxy=${proxy}; export https_proxy=${http_proxy}\n",
-                  "  export HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\n",
-                  "  export no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n",
-                  "  echo -e \"export http_proxy=${proxy}; export https_proxy=${http_proxy}\nexport HTTP_PROXY=${proxy}; export HTTPS_PROXY=${http_proxy}\nexport no_proxy=169.254.169.254; export NO_PROXY=169.254.169.254\n\" >/tmp/proxy.sh\n",
-                  "  echo -e \"[Boto]\nproxy = ${proxy_host}\nproxy_port = ${proxy_port}\n\" >/etc/boto.cfg\n",
-                  "else\n",
-                  "  proxy_args=\"\"\n",
-                  "  touch /tmp/proxy.sh\n",
-                  "fi\n",
-                  "  export _region=",
+                  "export _region=",
                   {
                     "Ref": "AWS::Region"
                   },
@@ -3222,7 +3220,7 @@
                   "done\n",
                   "\n",
                   "# Call CloudFormation\n",
-                  "cfn-init ${proxy_args} -s ",
+                  "cfn-init -s ",
                   {
                     "Ref": "AWS::StackName"
                   },
@@ -3231,7 +3229,7 @@
                     "Ref": "AWS::Region"
                   },
                   " || error_exit 'Failed to run cfn-init. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'\n",
-                  "cfn-signal ${proxy_args} --exit-code=0 --reason=\"ComputeServer setup complete\" --stack=",
+                  "cfn-signal --exit-code=0 --reason=\"ComputeServer setup complete\" --stack=",
                   {
                     "Ref": "AWS::StackName"
                   },
