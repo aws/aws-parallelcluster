@@ -30,16 +30,14 @@ import boto3
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__file__)
 
+DEFAULT_BUCKET_PREFIX_FORMAT = "{{cluster_name}}-logs-{timestamp}".format(timestamp=datetime.now().timestamp())
+DEFAULT_TARBALL_PATH_FORMAT = "{bucket_prefix_format}.tar.gz".format(bucket_prefix_format=DEFAULT_BUCKET_PREFIX_FORMAT)
+
 
 def err_and_exit(message):
     """Log the given error message and exit nonzero."""
     LOGGER.error(message)
     sys.exit(1)
-
-
-def get_default_bucket_prefix(cluster_name):
-    """Get default keypath to store logs under in an s3 bucket for the given cluster."""
-    return "{cluster_name}-logs-{timestamp}".format(cluster_name=cluster_name, timestamp=datetime.now().timestamp())
 
 
 def get_log_group(args):
@@ -52,8 +50,9 @@ def get_log_group(args):
             if group.get("logGroupName") == log_group_name:
                 return group
     err_and_exit(
-        "Unable to find log group for cluster {cluster}. Expected to find one named {log_group_name}".format(
-            cluster=args.cluster, log_group_name=log_group_name
+        "Unable to find log group in region {region} for cluster {cluster}. "
+        "Expected to find one named {log_group_name}".format(
+            region=args.region, cluster=args.cluster, log_group_name=log_group_name
         )
     )
 
@@ -93,6 +92,26 @@ def verify_times(args):
         )
 
 
+def verify_tarball_path(path):
+    """Verify that a tarball can be written to the given path."""
+    tarball_dir = os.path.dirname(path)
+    if not os.path.isdir(tarball_dir):
+        try:
+            os.makedirs(tarball_dir)
+        except Exception as exception:
+            err_and_exit(
+                "Failed to create parent directory {directory} for cluster's logs archive. Reason: {reason}".format(
+                    directory=tarball_dir, reason=exception
+                )
+            )
+    if not os.access(tarball_dir, os.W_OK):
+        err_and_exit(
+            "Cannot write cluster's log archive to {path}. {directory} isn't writeable.".format(
+                path=path, directory=tarball_dir
+            )
+        )
+
+
 def parse_args():
     """Parse command line args."""  # noqa: D202
 
@@ -104,7 +123,14 @@ def parse_args():
     parser.add_argument("--bucket", required=True, help="s3 bucket to export CloudWatch logs data to.")
     parser.add_argument("--cluster", required=True, help="Name of cluster whose logs to get.")
     parser.add_argument(
-        "--bucket-prefix", help="Keypath under which exported CloudWatch logs data will be stored in s3 bucket."
+        "--bucket-prefix",
+        help="Keypath under which exported CloudWatch logs data will be stored in s3 bucket. Also serves as top-level "
+        "directory in resulting archive.",
+    )
+    parser.add_argument(
+        "--keep-s3-objects",
+        action="store_true",
+        help="Keep the objects CloudWatch exports to S3. The default behavior is to delete them.",
     )
     parser.add_argument(
         "--from-time",
@@ -113,6 +139,7 @@ def parse_args():
         "cluster's start time.",
     )
     parser.add_argument("--region", required=True, help="Region in which the CloudWatch log group exists.")
+    parser.add_argument("--tarball-path", help="Path to save log file archive to.", type=os.path.realpath)
     parser.add_argument(
         "--to-time",
         type=timestamp_from_arg,
@@ -122,8 +149,9 @@ def parse_args():
     args = parser.parse_args()
 
     # Set defaults that require other args
-    if not args.bucket_prefix:
-        args.bucket_prefix = get_default_bucket_prefix(args.cluster)
+    # Don't set default for bucket prefix here because logic in main changes depending on if default is used
+    if not args.tarball_path:
+        args.tarball_path = os.path.realpath(DEFAULT_TARBALL_PATH_FORMAT.format(cluster_name=args.cluster))
     args.log_group = get_log_group(args)
     if args.from_time is None:
         args.from_time = datetime.fromtimestamp(args.log_group.get("creationTime") / 1000)
@@ -133,6 +161,7 @@ def parse_args():
     # Verify args
     verify_bucket_exists_in_region(args)
     verify_times(args)
+    verify_tarball_path(args.tarball_path)
 
     return args
 
@@ -209,7 +238,7 @@ def export_logs_to_s3(args):
 def download_all_objects_with_prefix(bucket, prefix, destdir):
     """Download all object in bucket with given prefix into destdir."""
     LOGGER.info(
-        "Downloading exported logs from s3 bucket {bucket} (under key prefix {prefix}) to {destdir}".format(
+        "Downloading exported logs from s3 bucket {bucket} (under key {prefix}) to {destdir}".format(
             bucket=bucket.name, prefix=prefix, destdir=destdir
         )
     )
@@ -238,35 +267,61 @@ def download_all_objects_with_prefix(bucket, prefix, destdir):
         os.remove(compressed_path)
 
 
-def archive_dir(src, dest):
+def archive_dir(src, dest, bucket_prefix):
     """Create a gzipped tarball archive for the directory at src and save it to dest."""
-    LOGGER.info("Creating archive of logs at {src} and saving it {dest}".format(src=src, dest=dest))
+    LOGGER.info("Creating archive of logs at {src} and saving it to {dest}".format(src=src, dest=dest))
     with tarfile.open(dest, "w:gz") as tar:
-        tar.add(src, arcname=os.path.basename(src))
+        tar.add(src, arcname=bucket_prefix)
 
 
 def download_and_archive_logs_from_s3(args, task_id):
     """Download logs from s3 bucket."""
     bucket = boto3.resource("s3", region_name=args.region).Bucket(args.bucket)
     prefix = "{explicit_prefix}/{task_id}".format(explicit_prefix=args.bucket_prefix, task_id=task_id)
-    archive_path = "{}.tar.gz".format(args.bucket_prefix)
     with tempfile.TemporaryDirectory() as parent_tempdir:
         tempdir = os.path.join(parent_tempdir, args.bucket_prefix)
         download_all_objects_with_prefix(bucket, prefix, tempdir)
-        archive_dir(tempdir, archive_path)
-    return archive_path
+        archive_dir(tempdir, args.tarball_path, args.bucket_prefix)
+
+
+def prefix_contains_objects(bucket, prefix):
+    """Return boolean describing whether the given bucket has any objects under the given key prefix."""
+    bucket = boto3.resource("s3").Bucket(bucket)
+    return any(bucket.objects.filter(Prefix=prefix).limit(1))
+
+
+def delete_s3_objects(bucket, key):
+    """Delete all objects in the given bucket under the given key."""
+    LOGGER.info("Deleting all objects in {bucket} under {key}".format(bucket=bucket, key=key))
+    bucket = boto3.resource("s3").Bucket(bucket).objects.filter(Prefix=key).delete()
 
 
 def main():
     """Run the script."""
     args = parse_args()
+
+    # If the default bucket prefix is being used and there's nothing underneath that prefix already then we can delete
+    # everything under that prefix after downloading the data (unless --keep-s3-objects is specified).
+    delete_everything_under_prefix = False
+    if not args.bucket_prefix:
+        args.bucket_prefix = DEFAULT_BUCKET_PREFIX_FORMAT.format(cluster_name=args.cluster)
+        delete_everything_under_prefix = not prefix_contains_objects(args.bucket, args.bucket_prefix)
+
     task_id = export_logs_to_s3(args)
-    archive_path = download_and_archive_logs_from_s3(args, task_id)
-    LOGGER.info(
-        "Archive of CloudWatch logs from cluster {cluster} saved to {archive_path}".format(
-            cluster=args.cluster, archive_path=archive_path
+    try:
+        download_and_archive_logs_from_s3(args, task_id)
+        LOGGER.info(
+            "Archive of CloudWatch logs from cluster {cluster} saved to {archive_path}".format(
+                cluster=args.cluster, archive_path=args.tarball_path
+            )
         )
-    )
+    finally:
+        if not args.keep_s3_objects:
+            if delete_everything_under_prefix:
+                delete_key = args.bucket_prefix
+            else:
+                delete_key = "/".join((args.bucket_prefix, task_id))
+            delete_s3_objects(args.bucket, delete_key)
 
 
 if __name__ == "__main__":
