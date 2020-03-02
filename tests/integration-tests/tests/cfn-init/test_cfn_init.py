@@ -40,7 +40,7 @@ def test_replace_compute_on_failure(region, pcluster_config_reader, clusters_fac
     # submit a job to spin up a compute node that will fail due to post_install script
     sge_commands = SlurmCommands(remote_command_executor)
     sge_commands.submit_command("sleep 1")
-    instance_id = wait_compute_log(remote_command_executor)
+    instance_id = wait_compute_log(remote_command_executor)[0]
 
     # extract logs and check one of them
     _assert_compute_logs(remote_command_executor, instance_id)
