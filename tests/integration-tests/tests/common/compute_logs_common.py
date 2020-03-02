@@ -17,11 +17,15 @@ from time_utils import minutes, seconds
 @retry(
     retry_on_exception=lambda exception: isinstance(exception, RemoteCommandExecutionError),
     wait_fixed=seconds(30),
-    stop_max_delay=minutes(10),
+    stop_max_delay=minutes(15),
 )
-def wait_compute_log(remote_command_executor):
+def wait_compute_log(remote_command_executor, expected_num_nodes=1):
+    """Return list of compute node instance_ids in case of failure."""
     remote_command_executor.run_remote_command("test -d /home/logs/compute", log_error=False)
-    # return instance-id
-    return remote_command_executor.run_remote_command(
-        "find /home/logs/compute/ -type f -printf '%f\\n' -quit  | head -1 | cut -d. -f1", log_error=False
-    ).stdout
+    output = remote_command_executor.run_remote_command("ls /home/logs/compute/", log_error=False).stdout
+    # sample output: "i-049ce596aa69ac988.tar.gz  i-064f07c373d926ba4.tar.gz"
+    instance_ids = [instance.replace(".tar.gz", "") for instance in output.split()]
+    # make sure we got all the expected failing compute nodes
+    if len(instance_ids) != expected_num_nodes:
+        raise RemoteCommandExecutionError(result="Not enough nodes in /home/logs/compute/")
+    return instance_ids
