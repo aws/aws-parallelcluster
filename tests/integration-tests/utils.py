@@ -125,6 +125,21 @@ def get_compute_nodes_instance_ids(stack_name, region):
         raise
 
 
+def get_instance_ids_to_compute_hostnames_dict(instance_ids):
+    """Return dict of instanceIDs to hostnames."""
+    try:
+        instance_id_to_hostname = {}
+        ec2_client = boto3.client("ec2")
+        response = ec2_client.describe_instances(InstanceIds=instance_ids).get("Reservations")
+        for reservation in response:
+            for instance in reservation.get("Instances"):
+                instance_id_to_hostname[instance.get("InstanceId")] = instance.get("PrivateDnsName").split(".")[0]
+
+        return instance_id_to_hostname
+    except Exception as e:
+        logging.error("Failed retrieving hostnames for instances {} with exception: {}".format(instance_ids, e))
+
+
 def to_snake_case(input):
     """Convert a string into its snake case representation."""
     s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", input)
