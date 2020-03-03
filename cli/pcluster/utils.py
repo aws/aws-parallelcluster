@@ -17,7 +17,9 @@ standard_library.install_aliases()
 import json
 import logging
 import os
+import random
 import re
+import string
 import sys
 import time
 import urllib.request
@@ -105,22 +107,32 @@ def paginate_boto3(method, **kwargs):
             yield result
 
 
+def generate_random_bucket_name(bucket_name_prefix):
+    """
+    Generate a random bucket name, with the given prefix.
+
+    Bucket name must be at least 3 and no more than 63 characters long.
+    Example: <bucket_name_prefix>-4htvo26lchkqeho1
+    """
+    random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+    s3_bucket_name = "-".join([bucket_name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
+    return s3_bucket_name
+
+
 def create_s3_bucket(bucket_name, region):
     """
     Create a new S3 bucket.
 
     :param bucket_name: name of the S3 bucket to create
     :param region: aws region
+    :raise ClientError if bucket creation fails
     """
     s3_client = boto3.client("s3")
     """ :type : pyboto3.s3 """
-    try:
-        if region != "us-east-1":
-            s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
-        else:
-            s3_client.create_bucket(Bucket=bucket_name)
-    except s3_client.exceptions.BucketAlreadyOwnedByYou:
-        print("Bucket already exists")
+    if region != "us-east-1":
+        s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
+    else:
+        s3_client.create_bucket(Bucket=bucket_name)
 
 
 def delete_s3_bucket(bucket_name):
@@ -135,8 +147,12 @@ def delete_s3_bucket(bucket_name):
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
-    except ClientError:
-        print("Failed to delete bucket %s. Please delete it manually." % bucket_name)
+    except ClientError as client_err:
+        LOGGER.warning(
+            "Failed to delete S3 bucket %s with error %s. Please delete it manually.",
+            bucket_name,
+            client_err.response.get("Error").get("Message"),
+        )
 
 
 def zip_dir(path):
