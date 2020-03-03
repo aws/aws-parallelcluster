@@ -555,16 +555,7 @@ class FeatureSpecificCloudWatchLoggingTestRunner(CloudWatchLoggingTestRunner):
         assert_that(observed_stream_names).contains(*expected_stream_index)
 
     @classmethod
-    def run_tests_for_feature(
-        cls,
-        cluster,
-        scheduler,
-        os,
-        feature_key,
-        region,
-        shared_dir=DEFAULT_SHARED_DIR,
-        retention_days=DEFAULT_RETENTION_DAYS,
-    ):
+    def run_tests_for_feature(cls, cluster, scheduler, os, feature_key, region, shared_dir=DEFAULT_SHARED_DIR):
         """Verify that the logs for the given feature are present on the cluster and are stored in cloudwatch."""
         environ["AWS_DEFAULT_REGION"] = region
         cluster_logs_state = CloudWatchLoggingClusterState(
@@ -574,7 +565,7 @@ class FeatureSpecificCloudWatchLoggingTestRunner(CloudWatchLoggingTestRunner):
         test_runner.run_tests(cluster_logs_state)
 
 
-def get_config_param_vals(cw_logging_enabled):
+def get_config_param_vals():
     """Return a dict used to set values for config file parameters."""
     # Allow certain params to be set via environment variable in case manually re-testing on an existing cluster
     retention_days = int(
@@ -584,51 +575,43 @@ def get_config_param_vals(cw_logging_enabled):
         )
     )
     queue_size = int(environ.get("CW_LOGGING_QUEUE_SIZE", 1))
-    return {"enable": str(cw_logging_enabled).lower(), "retention_days": retention_days, "queue_size": queue_size}
+    return {"enable": "true", "retention_days": retention_days, "queue_size": queue_size}
 
 
-@pytest.mark.parametrize("cw_logging_enabled", [True, False])
-@pytest.mark.parametrize("cw_logs_persist_after_delete", [True, False])
-@pytest.mark.regions(["us-east-1", "cn-north-1", "us-gov-west-1"])
-@pytest.mark.instances(["t2.micro", "c5.xlarge"])
-def test_cloudwatch_logging(
-    region,
-    scheduler,
-    instance,
-    os,
-    pcluster_config_reader,
-    clusters_factory,
-    cw_logging_enabled,
-    cw_logs_persist_after_delete,
-):
+# In order to limit the number of CloudWatch logging tests while still covering all the OSes...
+# 1) run the test for all of the schedulers with alinux2
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "alinux2", "*")
+# 2) run the test for all of the OSes with slurm
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "*", "slurm")
+def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """
     Test all CloudWatch logging features.
 
     All tests are grouped in a single function so that the cluster can be reused for all of them.
     """
     environ["AWS_DEFAULT_REGION"] = region  # So that it doesn't have to be passed to boto3 calls
-    config_params = get_config_param_vals(cw_logging_enabled)
+    config_params = get_config_param_vals()
     cluster_config = pcluster_config_reader(**config_params)
     cluster = clusters_factory(cluster_config)
     test_runner = CloudWatchLoggingTestRunner(
-        _get_log_group_name_for_cluster(cluster.name),
-        cw_logging_enabled,
-        config_params.get("retention_days"),
-        cw_logs_persist_after_delete,
+        log_group_name=_get_log_group_name_for_cluster(cluster.name),
+        enabled=True,
+        retention_days=config_params.get("retention_days"),
+        logs_persist_after_delete=True,
     )
     cluster_logs_state = CloudWatchLoggingClusterState(scheduler, os, cluster).get_logs_state()
-    _test_cw_logs_before_after_delete(cluster, cw_logs_persist_after_delete, cluster_logs_state, test_runner)
+    _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner)
 
 
 def _check_log_groups_after_test(test_func):  # noqa: D202
     """Verify that log groups outlive the cluster if expected."""
 
-    def wrapped_test(cluster, keep_logs, *args, **kwargs):
+    def wrapped_test(cluster, *args, **kwargs):
         pre_test_log_groups = cw_logs_utils.get_cluster_log_groups(cluster.cfn_name)
         LOGGER.info("Log groups before deleting the cluster:\n{0}".format("\n".join(pre_test_log_groups)))
         try:
-            test_func(cluster, keep_logs, *args, **kwargs)
-            if keep_logs and pre_test_log_groups:
+            test_func(cluster, *args, **kwargs)
+            if pre_test_log_groups:
                 post_test_log_groups = []
                 for pre_test_lg in pre_test_log_groups:
                     post_test_log_groups.extend(
@@ -643,8 +626,8 @@ def _check_log_groups_after_test(test_func):  # noqa: D202
 
 
 @_check_log_groups_after_test
-def _test_cw_logs_before_after_delete(cluster, keep_logs, cluster_logs_state, test_runner):
+def _test_cw_logs_before_after_delete(cluster, cluster_logs_state, test_runner):
     """Verify CloudWatch logs integration behaves as expected while a cluster is running and after it's deleted."""
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=False)
-    cluster.delete(keep_logs=keep_logs)
+    cluster.delete(keep_logs=True)
     test_runner.run_tests(cluster_logs_state, cluster_has_been_deleted=True)
