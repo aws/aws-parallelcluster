@@ -126,7 +126,7 @@ def pytest_runtest_logfinish(nodeid, location):
     set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
 
 
-def pytest_collection_modifyitems(items):
+def pytest_collection_modifyitems(config, items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
     add_default_markers(items)
 
@@ -142,6 +142,15 @@ def pytest_collection_modifyitems(items):
     check_marker_skip_dimensions(items)
 
     _add_filename_markers(items)
+
+    _log_collected_tests(config, items)
+
+
+def _log_collected_tests(config, items):
+    logging.info("Collected test=%d", len(items))
+    out_dir = config.getoption("output_dir")
+    with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
+        out_f.write("\n".join(map(lambda item: item.nodeid, items)))
 
 
 def pytest_exception_interact(node, call, report):
