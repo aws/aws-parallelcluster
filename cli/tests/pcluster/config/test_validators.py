@@ -10,12 +10,13 @@
 # limitations under the License.
 import datetime
 import os
+import re
 
 import pytest
 
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
-from pcluster.config.validators import DCV_MESSAGES
+from pcluster.config.validators import DCV_MESSAGES, FSX_MESSAGES, FSX_SUPPORTED_OSES
 from tests.common import MockedBoto3Request
 
 
@@ -1167,7 +1168,7 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
         ("alinux2", None, None),
     ],
 )
-def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog, capsys):
+def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
         "dcv dcv": {"enable": "master"},
@@ -1178,3 +1179,19 @@ def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, c
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
     access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
     assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
+
+
+@pytest.mark.parametrize(
+    "base_os, expected_message",
+    [
+        ("alinux", None),
+        ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES)),
+    ],
+)
+def test_fsx_os_support(mocker, base_os, expected_message):
+    config_parser_dict = {
+        "cluster default": {"base_os": base_os, "fsx_settings": "fsx"},
+        "fsx fsx": {"storage_capacity": 3200},
+    }
+
+    utils.assert_param_validator(mocker, config_parser_dict, re.escape(expected_message) if expected_message else None)
