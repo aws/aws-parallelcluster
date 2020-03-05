@@ -53,6 +53,7 @@ from pcluster.config.validators import (
     efs_validator,
     fsx_id_validator,
     fsx_imported_file_chunk_size_validator,
+    fsx_os_support,
     fsx_storage_capacity_validator,
     fsx_validator,
     intel_hpc_validator,
@@ -671,6 +672,7 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsParam,
                 "referred_section": FSX,
+                "validators": [fsx_os_support],
             }),
             ("dcv_settings", {
                 "type": SettingsParam,
