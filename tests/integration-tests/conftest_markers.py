@@ -25,6 +25,10 @@ UNSUPPORTED_DIMENSIONS = [
     ("us-gov-west-1", "*", "*", "awsbatch"),
     ("us-gov-east-1", "*", "*", "awsbatch"),
     ("us-gov-east-1", "*", "c4.xlarge", "*"),
+    # Disabling awsbatch tests in China.
+    # Tests are encountering sporadic failures when building Docker images due to slow networking.
+    ("cn-north-1", "*", "*", "awsbatch"),
+    ("cn-northwest-1", "*", "*", "awsbatch"),
 ]
 
 
