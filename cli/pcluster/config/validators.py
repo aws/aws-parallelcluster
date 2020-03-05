@@ -39,6 +39,15 @@ DCV_MESSAGES = {
     }
 }
 
+FSX_MESSAGES = {
+    "errors": {
+        "unsupported_os": "FSX Lustre can be used with one of the following operating systems: {supported_oses}. "
+        "Please double check the 'base_os' configuration parameter"
+    }
+}
+
+FSX_SUPPORTED_OSES = ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"]
+
 
 def _get_sts_endpoint():
     """Get regionalized STS endpoint."""
@@ -152,6 +161,17 @@ def fsx_validator(section_key, section_label, pcluster_config):
             errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
         if fsx_section.get_param_value("per_unit_storage_throughput"):
             errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
+
+    return errors, warnings
+
+
+def fsx_os_support(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_section = pcluster_config.get_section("cluster")
+    if cluster_section.get_param_value("base_os") not in FSX_SUPPORTED_OSES:
+        errors.append(FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))
 
     return errors, warnings
 
