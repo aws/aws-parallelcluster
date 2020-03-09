@@ -76,8 +76,7 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, r
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = {
-        "default": "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount,"
-        "x-systemd.requires=lnet.service",
+        "default": "defaults,_netdev,flock,user_xattr,noatime,noauto,x-systemd.automount",
         "alinux": "defaults,_netdev,flock,user_xattr,noatime",
     }
 
