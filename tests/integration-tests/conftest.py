@@ -143,7 +143,9 @@ def pytest_collection_modifyitems(config, items):
 
     _add_filename_markers(items)
 
-    _log_collected_tests(config, items)
+
+def pytest_collection_finish(session):
+    _log_collected_tests(session.config, session.items)
 
 
 def _log_collected_tests(config, items):
