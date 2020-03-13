@@ -19,7 +19,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge"])
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 def test_spot_default(scheduler, pcluster_config_reader, clusters_factory):
     """Test that a cluster with spot instances can be created with default spot_price_value."""
     cluster_config = pcluster_config_reader()
