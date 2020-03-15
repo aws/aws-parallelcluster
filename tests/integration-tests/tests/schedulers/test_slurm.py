@@ -27,8 +27,8 @@ from time_utils import minutes, seconds
 @pytest.mark.regions(["us-east-2"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_slurm(region, pcluster_config_reader, clusters_factory):
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir):
     """
     Test all AWS Slurm related features.
 
@@ -41,6 +41,11 @@ def test_slurm(region, pcluster_config_reader, clusters_factory):
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_slurm_version(remote_command_executor)
+
+    # IntelMPI not available on centos6
+    if os != "centos6":
+        _test_mpi_job_termination(remote_command_executor, test_datadir)
+
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)
     _test_cluster_limits(remote_command_executor, max_queue_size)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
@@ -77,6 +82,50 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
     _gpu_test_conflicting_options(remote_command_executor, 2)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
+
+def _test_mpi_job_termination(remote_command_executor, test_datadir):
+    """
+    Test canceling mpirun job will not leave stray processes.
+
+    IntelMPI is known to leave stray processes after job termination if slurm process tracking is not setup correctly,
+    i.e. using ProctrackType=proctrack/pgid
+    Test IntelMPI script to make sure no stray processes after the job is cancelled
+    This bug cannot be reproduced using OpenMPI
+    Test should run on all OSs except for centos6, where IntelMPI is not available
+    """
+    logging.info("Testing no stray process left behind after mpirun job is terminated")
+    slurm_commands = SlurmCommands(remote_command_executor)
+
+    # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
+    # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
+    result = slurm_commands.submit_script(str(test_datadir / "mpi_job.sh"))
+    job_id = slurm_commands.assert_job_submitted(result.stdout)
+
+    # Check that mpi processes are started
+    _assert_job_state(remote_command_executor, job_id, job_state="RUNNING")
+    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
+    slurm_commands.cancel_job(job_id)
+
+    # Make sure mpirun job is cancelled
+    _assert_job_state(remote_command_executor, job_id, job_state="CANCELLED")
+
+    # Check that mpi processes are terminated
+    _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=True)
+
+
+def _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes, after_completion):
+    """Submit script and check for MPI processes."""
+    # Clean up old datafiles
+    remote_command_executor.run_remote_command("rm -f /shared/check_proc.out")
+    result = slurm_commands.submit_command("ps aux | grep IMB | grep MPI >> /shared/check_proc.out", nodes=num_nodes)
+    job_id = slurm_commands.assert_job_submitted(result.stdout)
+    slurm_commands.wait_job_completed(job_id)
+    proc_track_result = remote_command_executor.run_remote_command("cat /shared/check_proc.out")
+    if after_completion:
+        assert_that(proc_track_result.stdout).does_not_contain("IMB-MPI1")
+    else:
+        assert_that(proc_track_result.stdout).contains("IMB-MPI1")
 
 
 def _gpu_test_cluster_limits(remote_command_executor, max_queue_size, num_gpus):
@@ -197,6 +246,11 @@ def _test_slurm_version(remote_command_executor):
 
 def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name, max_queue_size):
     logging.info("Testing max cluster size updated when ASG limits change")
+
+    # assert initial condition
+    slurm_commands = SlurmCommands(remote_command_executor)
+    _assert_no_nodes_in_scheduler(slurm_commands)
+
     asg_client = boto3.client("autoscaling", region_name=region)
 
     # Check current dummy-nodes settings
@@ -361,9 +415,14 @@ def _assert_dummy_nodes(remote_command_executor, count, slots=4, gpus=0):
 
 
 def _assert_job_completed(remote_command_executor, job_id):
+    _assert_job_state(remote_command_executor, job_id, job_state="COMPLETED")
+
+
+@retry(wait_fixed=seconds(3), stop_max_delay=seconds(15))
+def _assert_job_state(remote_command_executor, job_id, job_state):
     try:
         result = remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id), log_error=False)
-        return "JobState=COMPLETED" in result.stdout
+        assert_that(result.stdout).contains("JobState={}".format(job_state))
     except RemoteCommandExecutionError as e:
         # Handle the case when job is deleted from history
         assert_that(e.result.stdout).contains("slurm_load_jobs error: Invalid job id specified")
