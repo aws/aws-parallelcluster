@@ -328,6 +328,10 @@ class SlurmCommands(SchedulerCommands):
         """Return job details from slurm"""
         return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
 
+    def cancel_job(self, job_id):
+        """Cancel a job"""
+        return self._remote_command_executor.run_remote_command("scancel {}".format(job_id))
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
