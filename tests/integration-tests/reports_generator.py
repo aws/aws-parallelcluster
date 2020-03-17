@@ -98,7 +98,7 @@ def generate_json_report(test_results_dir, save_to_file=True):
                 for property in testcase.properties.children:
                     _record_result(results, property["name"], property["value"], label)
 
-            if "file" in testcase:
+            if testcase.get_attribute("file"):
                 feature = re.sub(r"test_|_test|.py", "", os.path.splitext(os.path.basename(testcase["file"]))[0])
                 _record_result(results, "feature", feature, label)
 
