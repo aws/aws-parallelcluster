@@ -36,14 +36,20 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     """
     scaledown_idletime = 3
     max_queue_size = 5
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
+    # IntelMPI not available on centos6
+    # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
+    # Else do not spin up compute node and start running regular slurm tests
+    does_not_support_impi = ["centos6"]
+    initial_queue_size = 2 if os not in does_not_support_impi else 0
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, initial_queue_size=initial_queue_size
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_slurm_version(remote_command_executor)
 
-    # IntelMPI not available on centos6
-    if os != "centos6":
+    if os not in does_not_support_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
 
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)
@@ -96,6 +102,8 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
     slurm_commands = SlurmCommands(remote_command_executor)
+    # Assert initial condition
+    assert_that(slurm_commands.compute_nodes_count()).is_equal_to(2)
 
     # Submit mpi_job, which runs Intel MPI benchmarks with intelmpi
     # Leaving 1 vcpu on each node idle so that the process check job can run while mpi_job is running
