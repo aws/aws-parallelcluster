@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import time
+from os import environ
 
 import boto3
 import pytest
@@ -74,6 +75,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     # slurm test use more nodes because of internal request to test in multi-node settings
     initial_queue_size = 5 if scheduler == "slurm" else 1
+    environ["AWS_DEFAULT_REGION"] = region
     cluster_config = pcluster_config_reader(initial_queue_size=initial_queue_size)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -119,6 +121,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 def test_scaling_with_manual_actions(scheduler, region, pcluster_config_reader, clusters_factory):
     """Test that slurm-specific scaling logic is resistent to manual actions and failures."""
     num_compute_nodes = 5
+    environ["AWS_DEFAULT_REGION"] = region
     cluster_config = pcluster_config_reader(initial_queue_size=num_compute_nodes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -258,7 +261,8 @@ def _assert_compute_node_states(scheduler_commands, compute_nodes, expected_stat
 
 
 def _terminate_nodes_manually(instance_ids):
-    ec2_client = boto3.client("ec2")
+    region = environ.get("AWS_DEFAULT_REGION")
+    ec2_client = boto3.client("ec2", region_name=region)
     for instance_id in instance_ids:
         instance_states = ec2_client.terminate_instances(InstanceIds=[instance_id]).get("TerminatingInstances")[0]
         assert_that(instance_states.get("InstanceId")).is_equal_to(instance_id)
