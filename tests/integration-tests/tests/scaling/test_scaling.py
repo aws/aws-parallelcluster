@@ -72,6 +72,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 @pytest.mark.usefixtures("region", "os", "instance")
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
+    # slurm test use more nodes because of internal request to test in multi-node settings
     initial_queue_size = 5 if scheduler == "slurm" else 1
     cluster_config = pcluster_config_reader(initial_queue_size=initial_queue_size)
     cluster = clusters_factory(cluster_config)
@@ -117,11 +118,11 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 @pytest.mark.scaling_with_manual_actions
 def test_scaling_with_manual_actions(scheduler, region, pcluster_config_reader, clusters_factory):
     """Test that slurm-specific scaling logic is resistent to manual actions and failures."""
-    cluster_config = pcluster_config_reader()
+    num_compute_nodes = 5
+    cluster_config = pcluster_config_reader(initial_queue_size=num_compute_nodes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    num_compute_nodes = 5
 
     instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
 
