@@ -125,11 +125,13 @@ def get_compute_nodes_instance_ids(stack_name, region):
         raise
 
 
-def get_instance_ids_to_compute_hostnames_dict(instance_ids):
+def get_instance_ids_to_compute_hostnames_dict(instance_ids, region=None):
     """Return dict of instanceIDs to hostnames."""
     try:
+        if not region:
+            region = os.environ.get("AWS_DEFAULT_REGION")
         instance_id_to_hostname = {}
-        ec2_client = boto3.client("ec2")
+        ec2_client = boto3.client("ec2", region_name=region)
         response = ec2_client.describe_instances(InstanceIds=instance_ids).get("Reservations")
         for reservation in response:
             for instance in reservation.get("Instances"):
