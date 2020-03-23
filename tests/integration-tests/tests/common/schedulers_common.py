@@ -105,6 +105,16 @@ class SchedulerCommands(metaclass=ABCMeta):
         """Get number of slots per instance."""
         pass
 
+    @abstractmethod
+    def set_nodes_state(self, compute_nodes, state):
+        """Set nodes to down state in scheduler"""
+        pass
+
+    @abstractmethod
+    def get_nodes_status(self):
+        """Retrieve node state/status from scheduler"""
+        pass
+
 
 class AWSBatchCommands(SchedulerCommands):
     """Implement commands for awsbatch scheduler."""
@@ -152,6 +162,14 @@ class AWSBatchCommands(SchedulerCommands):
         raise NotImplementedError
 
     def get_node_cores(self):  # noqa: D102
+        raise NotImplementedError
+
+    def set_nodes_state(self, compute_nodes, state):
+        """Not implemented."""
+        raise NotImplementedError
+
+    def get_nodes_status(self):
+        """Not implemented."""
         raise NotImplementedError
 
 
@@ -236,6 +254,14 @@ class SgeCommands(SchedulerCommands):
         """Return number of slots from the scheduler."""
         result = self._remote_command_executor.run_remote_command("qhost -F | grep hl:m_core")
         return re.search(r"hl:m_core=(\d+).000000", result.stdout).group(1)
+
+    def set_nodes_state(self, compute_nodes, state):
+        """Not implemented."""
+        raise NotImplementedError
+
+    def get_nodes_status(self):
+        """Not implemented."""
+        raise NotImplementedError
 
 
 class SlurmCommands(SchedulerCommands):
@@ -328,6 +354,28 @@ class SlurmCommands(SchedulerCommands):
         """Return job details from slurm"""
         return self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id)).stdout
 
+    def cancel_job(self, job_id):
+        """Cancel a job"""
+        return self._remote_command_executor.run_remote_command("scancel {}".format(job_id))
+
+    def set_nodes_state(self, compute_nodes, state):
+        """Put nodes into down state."""
+        self._remote_command_executor.run_remote_command(
+            "sudo /opt/slurm/bin/scontrol update NodeName={} state={} reason=testing".format(
+                ",".join(compute_nodes), state
+            )
+        )
+
+    def get_nodes_status(self, nodes):
+        """Retrieve node state/status from scheduler"""
+        result = self._remote_command_executor.run_remote_command(
+            "/opt/slurm/bin/sinfo -O nodehost,statelong | tail -n +2"
+        ).stdout.splitlines()
+        current_node_states = {}
+        for entry in result:
+            current_node_states[entry.split()[0]] = entry.split()[1]
+        return {node: current_node_states.get(node, "Unable to retrieve state") for node in nodes}
+
 
 class TorqueCommands(SchedulerCommands):
     """Implement commands for torque scheduler."""
@@ -402,6 +450,14 @@ class TorqueCommands(SchedulerCommands):
         """Return number of slots from the scheduler."""
         result = self._remote_command_executor.run_remote_command("pbsnodes | tail -n +10")
         return re.search(r"np = (\d+)", result.stdout).group(1)
+
+    def set_nodes_state(self, compute_nodes, state):
+        """Not implemented."""
+        raise NotImplementedError
+
+    def get_nodes_status(self):
+        """Not implemented."""
+        raise NotImplementedError
 
 
 def get_scheduler_commands(scheduler, remote_command_executor):
