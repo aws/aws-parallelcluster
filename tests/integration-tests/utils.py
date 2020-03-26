@@ -131,19 +131,24 @@ def get_compute_nodes_instance_ids(stack_name, region):
         raise
 
 
-def get_instance_ids_to_compute_hostnames_dict(instance_ids, region=None):
-    """Return dict of instanceIDs to hostnames."""
+def get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname, region=None):
+    """Return instanceIDs to hostnames dict if id_to_hostname=True, else return hostname to instanceID dict."""
     try:
         if not region:
             region = os.environ.get("AWS_DEFAULT_REGION")
-        instance_id_to_hostname = {}
+        conversion_dict = {}
         ec2_client = boto3.client("ec2", region_name=region)
         response = ec2_client.describe_instances(InstanceIds=instance_ids).get("Reservations")
         for reservation in response:
             for instance in reservation.get("Instances"):
-                instance_id_to_hostname[instance.get("InstanceId")] = instance.get("PrivateDnsName").split(".")[0]
+                instance_hostname = instance.get("PrivateDnsName").split(".")[0]
+                instance_id = instance.get("InstanceId")
+                if id_to_hostname:
+                    conversion_dict[instance_id] = instance_hostname
+                else:
+                    conversion_dict[instance_hostname] = instance_id
 
-        return instance_id_to_hostname
+        return conversion_dict
     except Exception as e:
         logging.error("Failed retrieving hostnames for instances {} with exception: {}".format(instance_ids, e))
 

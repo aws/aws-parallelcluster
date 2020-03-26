@@ -20,11 +20,10 @@ from retrying import retry
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
 from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
-from tests.common.compute_logs_common import wait_compute_log
 from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
 from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_ids_to_compute_hostnames_dict
+from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])
@@ -83,7 +82,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 
     compute_nodes = scheduler_commands.get_compute_nodes()
     instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
-    instance_ids_to_hostname = get_instance_ids_to_compute_hostnames_dict(instance_ids)
+    hostname_to_instance_id = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=False)
 
     logging.info("Testing that nodewatcher will terminate a node in failing state")
     # submit a job to run on all nodes
@@ -95,16 +94,13 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
         remote_command_executor.run_remote_script(
             str(test_datadir / "{0}_kill_scheduler_job.sh".format(scheduler)), args=[node]
         )
-    failed_instances = wait_compute_log(remote_command_executor, expected_num_nodes_killed)
 
-    for instance_id in failed_instances:
-        assert_that(nodes_to_remove).contains(instance_ids_to_hostname.get(instance_id))
-        _assert_compute_logs(remote_command_executor, instance_id)
-        assert_instance_replaced_or_terminating(instance_id, region)
-
+    # assert failing nodes are terminated according to ASG
+    _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, region)
     nodes_to_retain = [compute for compute in compute_nodes if compute not in nodes_to_remove]
     # verify that desired capacity is still the initial_queue_size
     assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(initial_queue_size)
+    # assert failing nodes are removed from scheduler config
     _assert_nodes_removed_and_replaced_in_scheduler(
         scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=initial_queue_size
     )
@@ -134,6 +130,12 @@ def test_scaling_with_manual_actions(scheduler, region, pcluster_config_reader, 
     _test_keep_or_replace_suspended_nodes(scheduler_commands, num_compute_nodes)
 
 
+@retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))
+def _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, region):
+    for node in nodes_to_remove:
+        assert_instance_replaced_or_terminating(hostname_to_instance_id.get(node), region)
+
+
 def _assert_initial_conditions(scheduler_commands, num_compute_nodes):
     """Assert cluster is in expected state before test starts; return list of compute nodes."""
     compute_nodes = scheduler_commands.get_compute_nodes()
@@ -150,7 +152,7 @@ def _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instan
     """Test that slurm nodes are replaced if instances are terminated manually."""
     logging.info("Testing that nodes are replaced when terminated manually")
     compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
-    instance_ids_to_hostname = get_instance_ids_to_compute_hostnames_dict(instance_ids)
+    instance_ids_to_hostname = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=True)
     # Run job on all nodes
     _submit_sleep_job(scheduler_commands, num_compute_nodes)
     nodes_to_retain = [instance_ids_to_hostname[instance_ids[0]]]
@@ -278,16 +280,6 @@ def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
 def _assert_num_nodes_in_scheduler(scheduler_commands, desired):
     assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
-
-
-def _assert_compute_logs(remote_command_executor, instance_id):
-    remote_command_executor.run_remote_command(
-        "tar -xf /home/logs/compute/{0}.tar.gz --directory /tmp".format(instance_id)
-    )
-    remote_command_executor.run_remote_command("test -f /tmp/var/log/nodewatcher")
-    messages_log = remote_command_executor.run_remote_command("cat /tmp/var/log/nodewatcher", hide=True).stdout
-    assert_that(messages_log).contains("Node is marked as down by scheduler or not attached correctly. Terminating...")
-    assert_that(messages_log).contains("Dumping logs to /home/logs/compute/{0}.tar.gz".format(instance_id))
 
 
 def _assert_scaling_works(
