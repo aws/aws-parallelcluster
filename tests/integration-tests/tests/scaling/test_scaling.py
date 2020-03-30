@@ -19,7 +19,14 @@ from retrying import retry
 
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
-from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
+from tests.common.assertions import (
+    assert_compute_node_states,
+    assert_initial_conditions,
+    assert_instance_replaced_or_terminating,
+    assert_no_errors_in_logs,
+    assert_nodes_not_terminated_by_nodewatcher,
+    assert_nodes_removed_and_replaced_in_scheduler,
+)
 from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
 from time_utils import minutes, seconds
@@ -101,7 +108,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     # verify that desired capacity is still the initial_queue_size
     assert_that(get_desired_asg_capacity(region, cluster.cfn_name)).is_equal_to(initial_queue_size)
     # assert failing nodes are removed from scheduler config
-    _assert_nodes_removed_and_replaced_in_scheduler(
+    assert_nodes_removed_and_replaced_in_scheduler(
         scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=initial_queue_size
     )
 
@@ -136,22 +143,10 @@ def _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, r
         assert_instance_replaced_or_terminating(hostname_to_instance_id.get(node), region)
 
 
-def _assert_initial_conditions(scheduler_commands, num_compute_nodes):
-    """Assert cluster is in expected state before test starts; return list of compute nodes."""
-    compute_nodes = scheduler_commands.get_compute_nodes()
-    logging.info(
-        "Assert initial condition, expect cluster to have {num_nodes} idle nodes".format(num_nodes=num_compute_nodes)
-    )
-    _assert_num_nodes_in_scheduler(scheduler_commands, num_compute_nodes)
-    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle"])
-
-    return compute_nodes
-
-
 def _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instance_ids):
     """Test that slurm nodes are replaced if instances are terminated manually."""
     logging.info("Testing that nodes are replaced when terminated manually")
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
+    compute_nodes = assert_initial_conditions(scheduler_commands, num_compute_nodes)
     instance_ids_to_hostname = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=True)
     # Run job on all nodes
     _submit_sleep_job(scheduler_commands, num_compute_nodes)
@@ -161,7 +156,7 @@ def _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instan
     _terminate_nodes_manually(instance_ids[1:])
     # ASG does EC2 health check and replace node 1 at a time, each node takes about 2 mins to replace
     # This process does not scale well if large number of nodes are terminated manually
-    _assert_nodes_removed_and_replaced_in_scheduler(
+    assert_nodes_removed_and_replaced_in_scheduler(
         scheduler_commands, compute_nodes, nodes_to_retain, desired_capacity=num_compute_nodes
     )
 
@@ -169,14 +164,14 @@ def _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instan
 def _test_replace_down_nodes(scheduler_commands, num_compute_nodes):
     """Test that slurm nodes are replaced if nodes are marked DOWN."""
     logging.info("Testing that nodes replaced when set to down state")
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
+    compute_nodes = assert_initial_conditions(scheduler_commands, num_compute_nodes)
     # Run job on all nodes
     _submit_sleep_job(scheduler_commands, num_compute_nodes)
     # Set n-1 nodes to down
     nodes_to_remove = compute_nodes[:-1]
     nodes_to_retain = compute_nodes[-1:]
     _set_nodes_to_down_manually(scheduler_commands, nodes_to_remove)
-    _assert_nodes_removed_and_replaced_in_scheduler(
+    assert_nodes_removed_and_replaced_in_scheduler(
         scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=num_compute_nodes
     )
 
@@ -186,7 +181,7 @@ def _test_keep_or_replace_suspended_nodes(scheduler_commands, num_compute_nodes)
     logging.info(
         "Testing that nodes are NOT terminated when set to suspend state and there is job running on the nodes"
     )
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
+    compute_nodes = assert_initial_conditions(scheduler_commands, num_compute_nodes)
     # Run job on all nodes
     job_id = _submit_sleep_job(scheduler_commands, num_compute_nodes)
     # Set n-1 nodes to drain
@@ -194,11 +189,11 @@ def _test_keep_or_replace_suspended_nodes(scheduler_commands, num_compute_nodes)
     nodes_to_retain = compute_nodes[-1:]
     _set_nodes_to_suspend_state_manually(scheduler_commands, nodes_to_remove)
     # assert all nodes are retained correctly
-    _assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, compute_nodes)
+    assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, compute_nodes)
     # wait until the job is completed and check that the drain nodes are then terminated
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
-    _assert_nodes_removed_and_replaced_in_scheduler(
+    assert_nodes_removed_and_replaced_in_scheduler(
         scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=num_compute_nodes
     )
 
@@ -215,51 +210,16 @@ def _submit_sleep_job(scheduler_commands, num_compute_nodes):
     return job_id
 
 
-def _assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, nodes, nodewatcher_timeout=7):
-    logging.info("Waiting for nodewatcher action")
-    start_time = time.time()
-    while time.time() < start_time + 60 * (nodewatcher_timeout):
-        assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
-        time.sleep(10)
-
-
-def _assert_nodes_removed_and_replaced_in_scheduler(
-    scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity
-):
-    """
-    Assert that nodes are removed from scheduler and replaced so that number of nodes in scheduler equals to desired.
-    Returns list of new nodenames in scheduler.
-    """
-    _assert_nodes_removed_from_scheduler(scheduler_commands, nodes_to_remove)
-    _assert_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
-    new_compute_nodes = scheduler_commands.get_compute_nodes()
-    if nodes_to_retain:
-        assert_that(set(nodes_to_retain) <= set(new_compute_nodes)).is_true()
-    logging.info(
-        "\nNodes removed from scheduler: {}"
-        "\nNodes retained in scheduler {}"
-        "\nNodes currently in scheduler after replacements: {}".format(
-            nodes_to_remove, nodes_to_retain, new_compute_nodes
-        )
-    )
-
-
 def _set_nodes_to_suspend_state_manually(scheduler_commands, compute_nodes):
     scheduler_commands.set_nodes_state(compute_nodes, state="drain")
     # draining means that there is job currently running on the node
     # drained would mean we placed node in drain when there is no job running on the node
-    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["draining"])
+    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["draining"])
 
 
 def _set_nodes_to_down_manually(scheduler_commands, compute_nodes):
     scheduler_commands.set_nodes_state(compute_nodes, state="down")
-    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["down"])
-
-
-def _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states):
-    node_states = scheduler_commands.get_nodes_status(compute_nodes)
-    for node in compute_nodes:
-        assert_that(expected_states).contains(node_states.get(node))
+    assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["down"])
 
 
 def _terminate_nodes_manually(instance_ids):
@@ -270,16 +230,6 @@ def _terminate_nodes_manually(instance_ids):
         assert_that(instance_states.get("InstanceId")).is_equal_to(instance_id)
         assert_that(instance_states.get("CurrentState").get("Name")).is_in("shutting-down", "terminated")
     logging.info("Terminated nodes: {}".format(instance_ids))
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
-def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
-    assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
-def _assert_num_nodes_in_scheduler(scheduler_commands, desired):
-    assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
 
 
 def _assert_scaling_works(
