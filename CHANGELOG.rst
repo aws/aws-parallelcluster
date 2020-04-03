@@ -2,6 +2,47 @@
 CHANGELOG
 =========
 
+2.6.1
+=====
+
+**ENHANCEMENTS**
+
+* Improved management of S3 bucket that gets created when ``awsbatch`` scheduler is selected.
+* Add validation for supported OSes when using FSx Lustre.
+* Change ProctrackType from proctrack/gpid to proctrack/cgroup in Slurm in order to better handle termination of
+  stray processes when running MPI applications. This also includes the creation of a cgroup Slurm configuration in
+  in order to enable the cgroup plugin.
+* Skip execution, at node bootstrap time, of all those install recipes that are already applied at AMI creation time.
+* Start CloudWatch agent earlier in the node bootstrapping phase so that cookbook execution failures are correctly
+  uploaded and are available for troubleshooting.
+* Improved the management of SQS messages and retries to speed-up recovery times when failures occur.
+
+**CHANGES**
+
+* FSx Lustre: remove ``x-systemd.requires=lnet.service`` from mount options in order to rely on default lnet setup
+  provided by Lustre.
+* Enforce Packer version to be >= 1.4.0 when building an AMI. This is also required for customers using `pcluster
+  createami` command.
+* Do not launch a replacement for an unhealthy or unresponsive node until this is terminated. This makes cluster slower
+  at provisioning new nodes when failures occur but prevents any temporary over-scaling with respect to the expected
+  capacity.
+* Increase parallelism when starting ``slurmd`` on compute nodes that join the cluster from 10 to 30.
+* Reduce the verbosity of messages logged by the node daemons.
+* Do not dump logs to `/home/logs` when nodewatcher encounters a failure and terminates the node. CloudWatch can be
+  used to debug such failures.
+* Reduce the number of retries for failed REMOVE events in sqswatcher.
+
+**BUG FIXES**
+
+* Configure proxy during cloud-init boothook in order for the proxy to be configured for all bootstrap actions.
+* Fix installation of Intel Parallel Studio XE Runtime that requires yum4 since version 2019.5.
+* Fix compilation of Torque scheduler on Ubuntu 18.04.
+* Fixed a bug in the ordering and retrying of SQS messages that was causing, under certain circumstances of heavy load,
+  the scheduler configuration to be left in an inconsistent state.
+* Delete from queue the REMOVE events that are discarded due to hostname collision with another event fetched as part
+  of the same ``sqswatcher`` iteration.
+
+
 2.6.0
 =====
 
