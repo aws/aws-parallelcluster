@@ -111,7 +111,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 @pytest.mark.regions(["us-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.os(["ubuntu1804"])
+@pytest.mark.oss(["ubuntu1804"])
 @pytest.mark.usefixtures("region", "os", "instance")
 @pytest.mark.scaling_with_manual_actions
 def test_scaling_with_manual_actions(scheduler, region, pcluster_config_reader, clusters_factory):
