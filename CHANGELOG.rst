@@ -31,6 +31,7 @@ CHANGELOG
 * Do not dump logs to `/home/logs` when nodewatcher encounters a failure and terminates the node. CloudWatch can be
   used to debug such failures.
 * Reduce the number of retries for failed REMOVE events in sqswatcher.
+* Omit cfn-init-cmd and cfn-wire from the files stored in CloudWatch logs.
 
 **BUG FIXES**
 
