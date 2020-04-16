@@ -319,6 +319,9 @@ def _add_custom_packages_configs(cluster_config, request):
             cluster = extra_json.get("cluster", {})
             if extra_json_custom_option not in cluster:
                 cluster[extra_json_custom_option] = request.config.getoption(extra_json_custom_option)
+                if extra_json_custom_option == "custom_node_package":
+                    # Do not skip install recipes so that custom node package can take effect
+                    cluster["skip_install_recipes"] = "no"
                 extra_json["cluster"] = cluster
     if extra_json:
         config[cluster_template]["extra_json"] = json.dumps(extra_json)
