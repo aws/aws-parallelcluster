@@ -110,6 +110,8 @@ def mock_pcluster_config(mocker, scheduler=None):
         ),
     )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.validators.get_supported_archs_for_inst_type", return_value=["x86_64"])
+    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 

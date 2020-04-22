@@ -21,8 +21,15 @@ import yaml
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.config.resource_map import ResourceMap
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.constants import PCLUSTER_ISSUES_LINK
-from pcluster.utils import get_avail_zone, get_cfn_param, get_efs_mount_target_id, get_instance_vcpus
+from pcluster.constants import DEFAULT_ARCH, PCLUSTER_ISSUES_LINK, SUPPORTED_ARCHS
+from pcluster.utils import (
+    error,
+    get_avail_zone,
+    get_cfn_param,
+    get_efs_mount_target_id,
+    get_instance_vcpus,
+    get_supported_archs_for_inst_type,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -433,6 +440,29 @@ class JsonParam(Param):
     def get_cfn_value(self):
         """Convert parameter value into CFN value."""
         return self.get_string_value()
+
+
+class DerivedParam(Param):
+    """
+    Class to manage configuration parameters whose values are derived from other parameters.
+
+    This class of parameters is only present in a cluster's CFN parameters, and never in the config file.
+    """
+
+    def from_file(self, config_parser):
+        """
+        Ensure this parameter is not present in the config file.
+
+        This parameter is meant to be derived from other parameters, and should not be specified in the config.
+        :param config_parser: the configparser object from which get the parameter
+        """
+        section_name = _get_file_section_name(self.section_key, self.section_label)
+        if config_parser.has_option(section_name, self.key):
+            self.pcluster_config.error(
+                "The parameter '{0}' is a derived parameter and should not be specified in the config".format(self.key)
+            )
+
+        return self
 
 
 # ---------------------- custom Parameters ---------------------- #
@@ -884,6 +914,41 @@ class ClusterConfigMetadataParam(JsonParam):
         self.__section_resources.store(section_key, section_labels)
         LOGGER.debug("Automatic labels generated: {0}".format(str(section_labels)))
         return self.__section_resources.resources(section_key)
+
+
+class ArchParam(DerivedParam):
+    """
+    Class to manage the arch configuration parameter.
+
+    We need this class in order to compute the derived value given the cluster section's configuration.
+    """
+
+    @staticmethod
+    def get_master_instance_type_arch(cluster_section):
+        """Compute cluster's 'Arch' CFN parameter based on its master server instance type."""
+        if not cluster_section:
+            return DEFAULT_ARCH
+
+        master_inst_type = cluster_section.get_param_value("master_instance_type")
+        if not master_inst_type:
+            error("Cannot infer architecture without master instance type")
+        master_inst_supported_archs = get_supported_archs_for_inst_type(master_inst_type)
+
+        # Some instance types support multiple architectures (x86_64 and i386).
+        # When this happens, only return the subset that we want to support.
+        arch = (set(master_inst_supported_archs) & set(SUPPORTED_ARCHS)).pop()
+        if not arch:
+            error("Unable to get architectures supported by instance type {0}.".format(master_inst_type))
+        return arch
+
+    def get_default_value(self):
+        """
+        Get default value from the Param definition.
+
+        The default value is only allowed to be a function, which is passed a cluster section object.
+        """
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+        return self.get_master_instance_type_arch(section)
 
 
 # ---------------------- SettingsParam ---------------------- #

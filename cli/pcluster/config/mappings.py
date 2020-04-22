@@ -12,6 +12,7 @@ from future.moves.collections import OrderedDict
 
 from pcluster.config.param_types import (
     AdditionalIamPoliciesParam,
+    ArchParam,
     BoolParam,
     ClusterConfigMetadataParam,
     ClusterSection,
@@ -34,6 +35,7 @@ from pcluster.config.param_types import (
 )
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
+    arch_os_validator,
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
@@ -54,12 +56,14 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
+    fsx_arch_support,
     fsx_id_validator,
     fsx_imported_file_chunk_size_validator,
     fsx_os_support,
     fsx_storage_capacity_validator,
     fsx_validator,
-    intel_hpc_validator,
+    intel_hpc_arch_validator,
+    intel_hpc_os_validator,
     kms_key_validator,
     maintain_initial_size_validator,
     raid_volume_iops_validator,
@@ -68,7 +72,7 @@ from pcluster.config.validators import (
     shared_dir_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS
+from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHS
 
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
@@ -117,6 +121,7 @@ ALLOWED_VALUES = {
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
     "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "per_unit_storage_throughput": [50, 100, 200],
+    "archs": SUPPORTED_ARCHS,
 }
 
 AWS = {
@@ -765,7 +770,7 @@ CLUSTER = {
                 "default": False,
                 "type": BoolParam,
                 "cfn_param_mapping": "IntelHPCPlatform",
-                "validators": [intel_hpc_validator],
+                "validators": [intel_hpc_os_validator, intel_hpc_arch_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             # Settings
@@ -803,7 +808,7 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsParam,
                 "referred_section": FSX,
-                "validators": [fsx_os_support],
+                "validators": [fsx_os_support, fsx_arch_support],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("dcv_settings", {
@@ -823,6 +828,13 @@ CLUSTER = {
                 "cfn_param_mapping": "EC2IAMPolicies",
                 "validators": [ec2_iam_policies_validator],
                 "update_policy": UpdatePolicy.SUPPORTED,
+            }),
+            # Derived parameters - present in CFN parameters but not in config file
+            ("arch", {
+                "type": ArchParam,
+                "allowed_values": ALLOWED_VALUES["archs"],
+                "cfn_param_mapping": "Arch",
+                "validators": [arch_os_validator],
             }),
         ]
     )

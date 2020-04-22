@@ -621,6 +621,23 @@ def get_master_server_state(stack_name):
     return instance.get("State").get("Name")
 
 
+def get_supported_archs_for_inst_type(instance_type):
+    """Get a list of architectures supported for the given instance type."""
+    try:
+        ec2_client = boto3.client("ec2")
+        instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+    except ClientError as e:
+        error(
+            "Unable to get architectures supported by instance type {0}: {1}".format(
+                instance_type, e.response.get("Error").get("Message")
+            )
+        )
+    supported_archs = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
+    if not supported_archs:
+        error("Unable to get architectures supported by instance type {0}".format(instance_type))
+    return supported_archs
+
+
 def get_cli_log_file():
     return os.path.expanduser(os.path.join("~", ".parallelcluster", "pcluster-cli.log"))
 
