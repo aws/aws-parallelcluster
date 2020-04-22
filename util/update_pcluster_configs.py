@@ -22,7 +22,9 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
+from common import generate_rollback_data, get_aws_regions, retrieve_sts_credentials
 from jsonschema import validate
+from rollback_s3_objects import execute_rollback
 from s3_factory import S3DocumentManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
@@ -288,51 +290,12 @@ def _read_json_from_url(url):
     return json.loads(response.read().decode("utf-8"))
 
 
-def get_aws_regions(partition):
-    ec2 = boto3.client("ec2", region_name=PARTITION_TO_MAIN_REGION[partition])
-    return set(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
-
-
 def _validate_args(args, parser):
     if args.config_files and "feature_whitelist" in args.config_files and not args.efa_instances:
         parser.error("feature_whitelist requires --efa-instances to be specified")
 
     if not args.rollback_file_path and not args.regions:
         parser.error("please specify --regions or --autodetect-regions")
-
-
-def retrieve_sts_credentials(credentials, partition):
-    """
-    Given credentials from cli, returns a json credentials object.
-
-    {
-        'us-east-1': {
-            'aws_access_key_id': 'sjkdnf',
-            'aws_secret_access_key': 'ksjdfkjsd',
-            'aws_session_token': 'skajdfksdjn'
-        }
-        ...
-    }
-
-    :param credentials: STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.
-                        Could be specified multiple times
-    :param partition: [commercial|china|govcloud]
-    :return: sts credentials json
-    """
-    sts_credentials = {}
-    for credential in credentials:
-        region, endpoint, arn, external_id = credential
-        sts = boto3.client("sts", region_name=PARTITION_TO_MAIN_REGION[partition], endpoint_url=endpoint)
-        assumed_role_object = sts.assume_role(
-            RoleArn=arn, ExternalId=external_id, RoleSessionName=region + "-upload_instance_slot_map_sts_session"
-        )
-        sts_credentials[region] = {
-            "aws_access_key_id": assumed_role_object["Credentials"].get("AccessKeyId"),
-            "aws_secret_access_key": assumed_role_object["Credentials"].get("SecretAccessKey"),
-            "aws_session_token": assumed_role_object["Credentials"].get("SessionToken"),
-        }
-
-    return sts_credentials
 
 
 def _parse_args():
@@ -450,20 +413,6 @@ def _validate_documents_against_existing_version(args, files_to_upload, sts_cred
             logging.info("Document is valid")
 
 
-def _generate_rollback_data(args, files_to_upload, sts_credentials):
-    rollback_data = {}
-    for file in files_to_upload.keys():
-        rollback_data[FILE_TO_S3_PATH[file]] = {}
-        for region in args.regions:
-            doc_manager = S3DocumentManager(region, sts_credentials.get(region))
-            rollback_data[FILE_TO_S3_PATH[file]][region] = doc_manager.get_current_version(
-                args.bucket.format(region=region), FILE_TO_S3_PATH[file], raise_on_object_not_found=False
-            )
-    logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
-    with open("rollback-data.json", "w") as outfile:
-        json.dump(rollback_data, outfile, indent=2)
-
-
 def _upload_documents(args, files_to_upload, sts_credentials):
     for file in files_to_upload.keys():
         for region in args.regions:
@@ -477,36 +426,14 @@ def _upload_documents(args, files_to_upload, sts_credentials):
             )
 
 
-def _execute_rollback(args, sts_credentials):
-    with open(args.rollback_file_path) as rollback_file:
-        rollback_data = json.load(rollback_file)
-        logging.info("Loaded rollback data:\n%s", json.dumps(rollback_data, indent=2))
-
-        # Rollback file format
-        # {
-        #     "s3_object": {
-        #         "region": "version-id",
-        #         "region": "version-id"
-        #     },
-        #     "s3_object": {
-        #         "region": "version-id",
-        #         "region": "version-id"
-        #     }
-        # }
-        for s3_object in rollback_data:
-            for region, version_id in rollback_data[s3_object].items():
-                object_manager = S3DocumentManager(region, sts_credentials.get(region))
-                object_manager.revert_object(args.bucket.format(region=region), s3_object, version_id, not args.deploy)
-
-
 def main():
     args = _parse_args()
     logging.info("Parsed cli args: %s", vars(args))
 
-    sts_credentials = retrieve_sts_credentials(args.credentials, args.partition)
+    sts_credentials = retrieve_sts_credentials(args.credentials, PARTITION_TO_MAIN_REGION[args.partition], args.regions)
 
     if args.rollback_file_path:
-        _execute_rollback(args, sts_credentials)
+        execute_rollback(args.rollback_file_path, sts_credentials, args.deploy)
     else:
         logging.info("Generating all documents to upload")
         files_to_upload = _generate_docs(args, sts_credentials)
@@ -515,7 +442,7 @@ def main():
         _validate_documents_against_existing_version(args, files_to_upload, sts_credentials)
 
         logging.info("Generating rollback data")
-        _generate_rollback_data(args, files_to_upload, sts_credentials)
+        generate_rollback_data(args.regions, args.bucket, files_to_upload, sts_credentials)
 
         logging.info("Uploading documents...")
         _upload_documents(args, files_to_upload, sts_credentials)
