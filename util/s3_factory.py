@@ -33,13 +33,12 @@ class S3DocumentManager:
             return instances_file_content
         except Exception as e:
             self.error(
-                "Failed when downloading file %s from bucket %s in region %s with error %s".format(
-                    document_s3_path, s3_bucket, self._region, e
-                )
+                f"Failed when downloading file {document_s3_path} from bucket {s3_bucket} "
+                f"in region {self._region} with error {e}"
             )
             raise
 
-    def upload(self, s3_bucket, s3_key, data, dryrun=True):
+    def upload(self, s3_bucket, s3_key, data, dryrun=True, md5=None, public_read=True):
         """
         Upload a document to S3.
 
@@ -47,11 +46,18 @@ class S3DocumentManager:
         :param s3_key: s3 key
         :param data: byte encoded data
         :param dryrun: don't actually upload, just print and exit
+        :param md5: md5 checksum of the file
+        :param public_read: make the files publicly readable
         """
         try:
             if not dryrun:
                 object = boto3.resource("s3", region_name=self._region, **self._credentials).Object(s3_bucket, s3_key)
-                object.put(Body=data, ACL="public-read")
+                extra_args = {}
+                if md5:
+                    extra_args["ContentMD5"] = md5
+                if public_read:
+                    extra_args["ACL"] = "public-read"
+                object.put(Body=data, **extra_args)
             else:
                 logging.info(
                     "Dryrun mode enabled. The following file would have been uploaded to s3://%s/%s:\n%s",
@@ -61,9 +67,7 @@ class S3DocumentManager:
                 )
         except Exception as e:
             self.error(
-                "Failed when uploading file %s to bucket %s in region %s with error %s".format(
-                    s3_key, s3_bucket, self._region, e
-                )
+                f"Failed when uploading file {s3_key} to bucket {s3_bucket} in region {self._region} with error {e}"
             )
             raise
 
@@ -103,6 +107,44 @@ class S3DocumentManager:
             else:
                 raise e
 
+    def copy(self, s3_src_bucket, s3_dest_bucket, s3_object, s3_object_version=None, dryrun=True, public_read=True):
+        """
+        Copy an S3 object between S3 buckets.
+
+        :param s3_src_bucket: Source bucket
+        :param s3_dest_bucket: Destination bucket
+        :param s3_object: Object to copy
+        :param s3_object_version: Version of the object to copy
+        :param dryrun: don't actually copy, just print and exit
+        :param public_read: make the files publicly readable
+        """
+        try:
+            if not dryrun:
+                s3 = boto3.resource("s3", region_name=self._region, **self._credentials)
+                copy_source = {"Bucket": s3_src_bucket, "Key": s3_object}
+                if s3_object_version:
+                    copy_source["VersionId"] = s3_object_version
+                extra_args = {}
+                if public_read:
+                    extra_args["ACL"] = "public-read"
+                s3.meta.client.copy(copy_source, s3_dest_bucket, s3_object, ExtraArgs=extra_args)
+            else:
+                logging.info(
+                    "Dryrun mode enabled. The following file with version %s would have been copied from s3://%s/%s "
+                    "to s3://%s/%s",
+                    s3_object_version or "latest",
+                    s3_src_bucket,
+                    s3_object,
+                    s3_dest_bucket,
+                    s3_object,
+                )
+        except Exception as e:
+            self.error(
+                f"Failed when copying file {s3_object} with version {s3_object_version or 'latest'} from bucket "
+                f"{s3_src_bucket} to bucket {s3_dest_bucket} in region {self._region} with error {e}"
+            )
+            raise
+
     def revert_object(self, s3_bucket, s3_key, version_id, dryrun=True):
         """
         Revert object to a previous version from S3.
@@ -113,13 +155,22 @@ class S3DocumentManager:
         :param dryrun: skip upload if dryrun = True
         :return:
         """
-        logging.info(f"Reverting object {s3_key} in region {self._region}")
+        logging.info(f"Reverting object {s3_key} in bucket {s3_bucket} to version {version_id}")
+        logging.info(
+            f"Revert is performed with a roll-forward. "
+            "The reverted file will have a different version id but the same ETag"
+        )
 
-        if version_id != self.get_current_version(s3_bucket, s3_key):
-            current_object = self.download(s3_bucket, s3_key)
-            logging.info(f"Current version: {current_object}")
-            reverting_object = self.download(s3_bucket, s3_key, version_id)
-            self.upload(s3_bucket, s3_key, reverting_object, dryrun=dryrun)
+        current_version = self.get_current_version(s3_bucket, s3_key)
+        logging.info(f"Current version: {current_version}")
+        if version_id != current_version:
+            self.copy(
+                s3_src_bucket=s3_bucket,
+                s3_dest_bucket=s3_bucket,
+                s3_object=s3_key,
+                s3_object_version=version_id,
+                dryrun=dryrun,
+            )
         else:
             logging.info(f"Current version is already the requested one: {version_id}")
 
