@@ -16,8 +16,19 @@ import pytest
 
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
-from pcluster.config.validators import DCV_MESSAGES, FSX_MESSAGES, FSX_SUPPORTED_OSES
+from pcluster.config.validators import (
+    DCV_MESSAGES,
+    FSX_MESSAGES,
+    FSX_SUPPORTED_ARCHITECTURES,
+    FSX_SUPPORTED_OSES,
+    architecture_os_validator,
+    disable_hyperthreading_architecture_validator,
+    fsx_architecture_validator,
+    instances_architecture_compatibility_validator,
+    intel_hpc_architecture_validator,
+)
 from tests.common import MockedBoto3Request
+from tests.pcluster.config.defaults import DefaultDict
 
 
 @pytest.fixture()
@@ -103,7 +114,23 @@ def test_ec2_key_pair_validator(mocker, boto3_stubber):
     utils.assert_param_validator(mocker, config_parser_dict)
 
 
-def test_ec2_ami_validator(mocker, boto3_stubber):
+@pytest.mark.parametrize(
+    "image_architecture, bad_ami_message, bad_architecture_message",
+    [
+        ("x86_64", None, None),
+        (
+            "arm64",
+            None,
+            "incompatible with the architecture supported by the instance type chosen for the master server",
+        ),
+        (
+            "arm64",
+            "Unable to get information for AMI",
+            "incompatible with the architecture supported by the instance type chosen for the master server",
+        ),
+    ],
+)
+def test_ec2_ami_validator(mocker, boto3_stubber, image_architecture, bad_ami_message, bad_architecture_message):
     describe_images_response = {
         "Images": [
             {
@@ -124,7 +151,7 @@ def test_ec2_ami_validator(mocker, boto3_stubber):
                         },
                     }
                 ],
-                "Architecture": "x86_64",
+                "Architecture": image_architecture,
                 "ImageLocation": "123456789012/My server",
                 "KernelId": "aki-88aa75e1",
                 "OwnerId": "123456789012",
@@ -137,14 +164,18 @@ def test_ec2_ami_validator(mocker, boto3_stubber):
     }
     mocked_requests = [
         MockedBoto3Request(
-            method="describe_images", response=describe_images_response, expected_params={"ImageIds": ["ami-12345678"]}
+            method="describe_images",
+            response=describe_images_response,
+            expected_params={"ImageIds": ["ami-12345678"]},
+            generate_error=bad_ami_message,
         )
     ]
     boto3_stubber("ec2", mocked_requests)
 
     # TODO test with invalid key
     config_parser_dict = {"cluster default": {"custom_ami": "ami-12345678"}}
-    utils.assert_param_validator(mocker, config_parser_dict)
+    expected_message = bad_ami_message or bad_architecture_message
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 def test_ec2_ebs_snapshot_validator(mocker, boto3_stubber):
@@ -951,7 +982,7 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
         ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
     ],
 )
-def test_intel_hpc_validator(mocker, section_dict, expected_message):
+def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
@@ -1250,7 +1281,7 @@ def test_dcv_enabled_validator(
     "base_os, expected_message",
     [("alinux", None), ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))],
 )
-def test_fsx_os_support(mocker, base_os, expected_message):
+def test_fsx_os_validator(mocker, base_os, expected_message):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "fsx_settings": "fsx"},
         "fsx fsx": {"storage_capacity": 3200},
@@ -1291,3 +1322,205 @@ def test_maintain_initial_size_validator(mocker, section_dict, expected_message)
 def test_base_os_validator(mocker, capsys, base_os, expected_warning):
     config_parser_dict = {"cluster default": {"base_os": base_os}}
     utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
+
+
+#########
+#
+# architecture validator tests
+#
+# Two things make it difficult to test validators that key on architecture in the same way that:
+# 1) architecture is a derived parameter and cannot be configured directly via the config file
+# 2) many validators key on the architecture, which makes it impossible to test some combinations of
+#    parameters for validators that run later than others, because those run earlier will have
+#    already raised exceptions.
+#
+# Thus, the following code mocks the pcluster_config object passed to the validator functions
+# and calls those functions directly (as opposed to patching functions and instantiating a config
+# as would be done when running `pcluster create/update`).
+#
+#########
+
+
+def get_default_pcluster_sections_dict():
+    """Return a dict similar in structure to that of a cluster config file."""
+    default_pcluster_sections_dict = {}
+    for section_default_dict in DefaultDict:
+        if section_default_dict.name == "pcluster":  # Get rid of the extra layer in this case
+            default_pcluster_sections_dict["cluster"] = section_default_dict.value.get("cluster")
+        else:
+            default_pcluster_sections_dict[section_default_dict.name] = section_default_dict.value
+    return default_pcluster_sections_dict
+
+
+def make_pcluster_config_mock(mocker, config_dict):
+    """Mock the calls that made on a pcluster_config by validator functions."""
+    cluster_config_dict = get_default_pcluster_sections_dict()
+    for section_key in config_dict:
+        cluster_config_dict = utils.merge_dicts(cluster_config_dict.get(section_key), config_dict.get(section_key))
+
+    section_to_mocks = {}
+    for section_key, section_dict in config_dict.items():
+        section_mock = mocker.MagicMock()
+        section_mock.get_param_value.side_effect = lambda param: section_dict.get(param)
+        section_to_mocks[section_key] = section_mock
+
+    pcluster_config_mock = mocker.MagicMock()
+    pcluster_config_mock.get_section.side_effect = lambda section: section_to_mocks.get(section)
+    return pcluster_config_mock
+
+
+def run_architecture_validator_test(
+    mocker,
+    config,
+    constrained_param_section,
+    constrained_param_name,
+    param_name,
+    param_val,
+    validator,
+    expected_message,
+):
+    """Run a test for a validator that's concerned with the architecture param."""
+    mocked_pcluster_config = make_pcluster_config_mock(mocker, config)
+    errors, warnings = validator(param_name, param_val, mocked_pcluster_config)
+
+    mocked_pcluster_config.get_section.assert_called_once_with(constrained_param_section)
+    mocked_pcluster_config.get_section.side_effect(constrained_param_section).get_param_value.assert_called_with(
+        constrained_param_name
+    )
+    assert_that(len(warnings)).is_equal_to(0)
+    assert_that(len(errors)).is_equal_to(0 if expected_message is None else 1)
+    if expected_message:
+        assert_that(errors[0]).matches(re.escape(expected_message))
+
+
+@pytest.mark.parametrize(
+    "enabled, architecture, expected_message",
+    [
+        (True, "x86_64", None),
+        (True, "arm64", "instance types and an AMI that support these architectures"),
+        (False, "x86_64", None),
+        (False, "arm64", None),
+    ],
+)
+def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_message):
+    """Verify that setting enable_intel_hpc_platform is invalid when architecture != x86_64."""
+    config_dict = {"cluster": {"enable_intel_hpc_platform": enabled, "architecture": architecture}}
+    run_architecture_validator_test(
+        mocker,
+        config_dict,
+        "cluster",
+        "architecture",
+        "enable_intel_hpc_platform",
+        enabled,
+        intel_hpc_architecture_validator,
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "base_os, architecture, expected_message",
+    [
+        # All OSes supported for x86_64
+        ("alinux", "x86_64", None),
+        ("alinux2", "x86_64", None),
+        ("centos6", "x86_64", None),
+        ("centos7", "x86_64", None),
+        ("ubuntu1604", "x86_64", None),
+        ("ubuntu1804", "x86_64", None),
+        # Only a subset of OSes supported for x86_64
+        ("alinux", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
+        ("alinux2", "arm64", None),
+        ("centos6", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
+        ("centos7", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
+        ("ubuntu1604", "arm64", None),
+        ("ubuntu1804", "arm64", None),
+    ],
+)
+def test_architecture_os_validator(mocker, base_os, architecture, expected_message):
+    """Verify that the correct set of OSes is supported for each supported architecture."""
+    config_dict = {"cluster": {"base_os": base_os, "architecture": architecture}}
+    run_architecture_validator_test(
+        mocker,
+        config_dict,
+        "cluster",
+        "base_os",
+        "architecture",
+        architecture,
+        architecture_os_validator,
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "architecture, expected_message",
+    [
+        ("x86_64", None),
+        (
+            "arm64",
+            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                supported_architectures=FSX_SUPPORTED_ARCHITECTURES
+            ),
+        ),
+    ],
+)
+def test_fsx_architecture_validator(mocker, architecture, expected_message):
+    run_architecture_validator_test(
+        mocker,
+        {"cluster": {"architecture": architecture}},
+        "cluster",
+        "architecture",
+        "fsx",
+        "fsx",
+        fsx_architecture_validator,
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "disable_hyperthreading, architecture, expected_message",
+    [
+        (True, "x86_64", None),
+        (False, "x86_64", None),
+        (True, "arm64", "disable_hyperthreading is only supported on instance types that support these architectures"),
+        (False, "arm64", None),
+    ],
+)
+def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthreading, architecture, expected_message):
+    config_dict = {"cluster": {"architecture": architecture, "disable_hyperthreading": disable_hyperthreading}}
+    run_architecture_validator_test(
+        mocker,
+        config_dict,
+        "cluster",
+        "architecture",
+        "disable_hyperthreading",
+        disable_hyperthreading,
+        disable_hyperthreading_architecture_validator,
+        expected_message,
+    )
+
+
+@pytest.mark.parametrize(
+    "master_architecture, compute_architecture, expected_message",
+    [
+        ("x86_64", "x86_64", None),
+        ("x86_64", "arm64", "none of which are compatible with the architecture supported by the master_instance_type"),
+        ("arm64", "x86_64", "none of which are compatible with the architecture supported by the master_instance_type"),
+        ("arm64", "arm64", None),
+    ],
+)
+def test_instances_architecture_compatibility_validator(
+    mocker, master_architecture, compute_architecture, expected_message
+):
+    mocker.patch(
+        "pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=[compute_architecture]
+    )
+    run_architecture_validator_test(
+        mocker,
+        {"cluster": {"architecture": master_architecture}},
+        "cluster",
+        "architecture",
+        "compute_instance_type",
+        "some_instance_type",
+        instances_architecture_compatibility_validator,
+        expected_message,
+    )

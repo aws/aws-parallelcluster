@@ -25,6 +25,7 @@ from pcluster.utils import (
     get_instance_vcpus,
     get_partition,
     get_region,
+    get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
     get_supported_instance_types,
     get_supported_os,
@@ -43,11 +44,15 @@ DCV_MESSAGES = {
 FSX_MESSAGES = {
     "errors": {
         "unsupported_os": "FSX Lustre can be used with one of the following operating systems: {supported_oses}. "
-        "Please double check the 'base_os' configuration parameter"
+        "Please double check the 'base_os' configuration parameter",
+        "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
+        "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
+        "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
     }
 }
 
 FSX_SUPPORTED_OSES = ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"]
+FSX_SUPPORTED_ARCHITECTURES = ["x86_64"]
 
 
 def _get_sts_endpoint():
@@ -166,13 +171,28 @@ def fsx_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
-def fsx_os_support(section_key, section_label, pcluster_config):
+def fsx_os_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
     if cluster_section.get_param_value("base_os") not in FSX_SUPPORTED_OSES:
         errors.append(FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))
+
+    return errors, warnings
+
+
+def fsx_architecture_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if architecture not in FSX_SUPPORTED_ARCHITECTURES:
+        errors.append(
+            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                supported_architectures=FSX_SUPPORTED_ARCHITECTURES
+            )
+        )
 
     return errors, warnings
 
@@ -265,6 +285,23 @@ def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
         extra_json = cluster_section.get_param_value("extra_json")
         if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
             errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
+
+    return errors, warnings
+
+
+def disable_hyperthreading_architecture_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    supported_architectures = ["x86_64"]
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if param_value and architecture not in supported_architectures:
+        errors.append(
+            "disable_hyperthreading is only supported on instance types that support these architectures: {0}".format(
+                ", ".join(supported_architectures)
+            )
+        )
 
     return errors, warnings
 
@@ -568,10 +605,28 @@ def ec2_security_group_validator(param_key, param_value, pcluster_config):
 def ec2_ami_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
+
+    # Make sure AMI exists
     try:
-        boto3.client("ec2").describe_images(ImageIds=[param_value])
+        image_info = boto3.client("ec2").describe_images(ImageIds=[param_value]).get("Images")[0]
     except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
+        errors.append(
+            "Unable to get information for AMI {0}: {1}. Check value of parameter {2}.".format(
+                param_value, e.response.get("Error").get("Message"), param_key
+            )
+        )
+
+    if not errors:
+        # Make sure architecture implied by instance types agrees with that implied by AMI
+        ami_architecture = image_info.get("Architecture")
+        cluster_section = pcluster_config.get_section("cluster")
+        if cluster_section.get_param_value("architecture") != ami_architecture:
+            errors.append(
+                "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the instance type "
+                "chosen for the master server ({2}). Use either a different AMI or a different instance type.".format(
+                    param_value, ami_architecture, cluster_section.get_param_value("architecture")
+                )
+            )
 
     return errors, warnings
 
@@ -837,6 +892,24 @@ def cluster_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
+def instances_architecture_compatibility_validator(param_key, param_value, pcluster_config):
+    """Verify that master and compute instance types imply compatible architectures."""
+    errors = []
+    warnings = []
+
+    compute_architectures = get_supported_architectures_for_instance_type(param_value)
+    master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if master_architecture not in compute_architectures:
+        errors.append(
+            "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
+            "compatible with the architecture supported by the master_instance_type ({2}).".format(
+                param_value, compute_architectures, master_architecture
+            )
+        )
+
+    return errors, warnings
+
+
 def compute_instance_type_validator(param_key, param_value, pcluster_config):
     """Validate compute instance type, calling ec2_instance_type_validator if the scheduler is not awsbatch."""
     errors = []
@@ -880,7 +953,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def intel_hpc_validator(param_key, param_value, pcluster_config):
+def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
@@ -909,6 +982,40 @@ def maintain_initial_size_validator(param_key, param_value, pcluster_config):
             errors.append("maintain_initial_size cannot be set to true if initial_queue_size is 0")
 
     return errors, []
+
+
+def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    allowed_architectures = ["x86_64"]
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if param_value and architecture not in allowed_architectures:
+        errors.append(
+            "When using enable_intel_hpc_platform = {0} it is required to use master and compute instance "
+            "types and an AMI that support these architectures: {1}".format(param_value, allowed_architectures)
+        )
+
+    return errors, warnings
+
+
+def architecture_os_validator(param_key, param_value, pcluster_config):
+    """ARM AMIs are only available for  a subset of the supported OSes."""
+    errors = []
+    warnings = []
+
+    allowed_arm_oses = ["alinux2", "ubuntu1604", "ubuntu1804"]
+
+    base_os = pcluster_config.get_section("cluster").get_param_value("base_os")
+    if param_value == "arm64" and base_os not in allowed_arm_oses:
+        errors.append(
+            "Using ARM instance types and AMIs is only supported for the following operating systems: {0}".format(
+                allowed_arm_oses
+            )
+        )
+
+    return errors, warnings
 
 
 def base_os_validator(param_key, param_value, pcluster_config):

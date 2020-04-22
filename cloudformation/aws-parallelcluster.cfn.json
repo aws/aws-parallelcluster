@@ -203,6 +203,16 @@
         "ubuntu1804"
       ]
     },
+    "Architecture": {
+      "Description": "Architecture to use when selecting default AMIs",
+      "Type": "String",
+      "Default": "x86_64",
+      "ConstraintDescription": "Must be either x86_64 or arm64",
+      "AllowedValues": [
+        "x86_64",
+        "arm64"
+      ]
+    },
     "ScaleDownIdleTime": {
       "Description": "Period in minutes without jobs after which compute node will terminate ",
       "Type": "String",
@@ -969,10 +979,180 @@
         },
         "master"
       ]
+    },
+    "UseArmAMIs": {
+      "Fn::Equals": [
+        {
+          "Ref": "Architecture"
+        },
+        "arm64"
+      ]
     }
   },
   "Mappings": {
-    "AWSRegionOS2AMI": {
+    "AWSRegionOS2AMIarm64": {
+      "ap-east-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ap-northeast-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ap-northeast-2": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ap-south-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ap-southeast-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ap-southeast-2": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "ca-central-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "cn-north-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "cn-northwest-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "eu-central-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "eu-north-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "eu-west-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "eu-west-2": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "eu-west-3": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "sa-east-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-east-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-east-2": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-gov-east-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-gov-west-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-west-1": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      },
+      "us-west-2": {
+        "alinux": "UNSUPPORTED",
+        "alinux2": "PLACEHOLDER",
+        "centos6": "UNSUPPORTED",
+        "centos7": "UNSUPPORTED",
+        "ubuntu1604": "UNSUPPORTED",
+        "ubuntu1804": "PLACEHOLDER"
+      }
+    },
+    "AWSRegionOS2AMIx86": {
       "ap-east-1": {
         "alinux": "ami-0d172afb53e47d398",
         "alinux2": "ami-04c14ffc9fd4298f6",
@@ -1160,6 +1340,16 @@
         "RootDevice": "/dev/sda1"
       }
     },
+    "PackagesVersions": {
+      "default": {
+        "parallelcluster": "2.7.0",
+        "cookbook": "aws-parallelcluster-cookbook-2.7.0",
+        "chef": "15.11.8",
+        "ridley": "5.1.1",
+        "berkshelf": "7.0.4",
+        "ami": "dev"
+      }
+    },
     "Partition2Url": {
       "aws": {
         "url": "amazonaws.com"
@@ -1169,16 +1359,6 @@
       },
       "aws-cn": {
         "url": "amazonaws.com.cn"
-      }
-    },
-    "PackagesVersions": {
-      "default": {
-        "parallelcluster": "2.7.0",
-        "cookbook": "aws-parallelcluster-cookbook-2.7.0",
-        "chef": "15.11.8",
-        "ridley": "5.1.1",
-        "berkshelf": "7.0.4",
-        "ami": "dev"
       }
     }
   },
@@ -2047,13 +2227,29 @@
                 "Ref": "CustomAMI"
               },
               {
-                "Fn::FindInMap": [
-                  "AWSRegionOS2AMI",
+                "Fn::If": [
+                  "UseArmAMIs",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIarm64",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   },
                   {
-                    "Ref": "BaseOS"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIx86",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   }
                 ]
               }
@@ -2881,13 +3077,29 @@
                 "Ref": "CustomAMI"
               },
               {
-                "Fn::FindInMap": [
-                  "AWSRegionOS2AMI",
+                "Fn::If": [
+                  "UseArmAMIs",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIarm64",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   },
                   {
-                    "Ref": "BaseOS"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIx86",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   }
                 ]
               }
