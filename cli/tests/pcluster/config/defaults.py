@@ -132,6 +132,7 @@ DEFAULT_CLUSTER_DICT = {
     "dcv_settings": None,
     "cw_log_settings": None,
     "cluster_config_metadata": {"sections": {}},
+    "architecture": "x86_64",
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -160,7 +161,7 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 58
+CFN_CONFIG_NUM_OF_PARAMS = 59
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -269,6 +270,8 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     # cw_log_settings
     "CWLogOptions": "true,14",
     "ClusterConfigMetadata": "{'sections': {}}",
+    # architecture
+    "Architecture": "x86_64",
 }
 
 
