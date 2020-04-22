@@ -144,6 +144,7 @@ def _mock_parallel_cluster_config(mocker):
         "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
     )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
 
 
 def _launch_config(mocker, path, remove_path=True):
