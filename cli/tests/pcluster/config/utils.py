@@ -168,12 +168,14 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
 
 
 def get_mocked_pcluster_config(mocker, auto_refresh=False):
+    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
     pcluster_config = PclusterConfig(config_file="wrong-file")
     pcluster_config.set_auto_refresh(auto_refresh)
     return pcluster_config
 
 
 def assert_section_from_file(mocker, section_definition, config_parser_dict, expected_dict_params, expected_message):
+    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
 
@@ -268,6 +270,7 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
 
 
 def assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
+    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):
             PclusterConfig(
