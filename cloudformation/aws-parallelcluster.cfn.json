@@ -203,6 +203,16 @@
         "ubuntu1804"
       ]
     },
+    "Arch": {
+      "Description": "Architecture to use when selecting default AMIs",
+      "Type": "String",
+      "Default": "x86_64",
+      "ConstraintDescription": "Must be either x86_64 or arm64",
+      "AllowedValues": [
+        "x86_64",
+        "arm64"
+      ]
+    },
     "ScaleDownIdleTime": {
       "Description": "Period in minutes without jobs after which compute node will terminate ",
       "Type": "String",
@@ -969,10 +979,18 @@
         },
         "master"
       ]
+    },
+    "UseArmAMIs": {
+      "Fn::Equals": [
+        {
+          "Ref": "Arch"
+        },
+        "arm64"
+      ]
     }
   },
   "Mappings": {
-    "AWSRegionOS2AMI": {
+    "AWSRegionOS2AMIx86": {
       "ap-east-1": {
         "alinux": "ami-0d172afb53e47d398",
         "alinux2": "ami-04c14ffc9fd4298f6",
@@ -1179,6 +1197,12 @@
         "ridley": "5.1.1",
         "berkshelf": "7.0.4",
         "ami": "dev"
+      }
+    },
+    "AWSRegionOS2AMIarm64": {
+      "us-east-1": {
+        "alinux2": "ami-083f07f50f42f6520",
+        "ubuntu1804": "ami-0fd0b624427599f00"
       }
     }
   },
@@ -2017,13 +2041,29 @@
                 "Ref": "CustomAMI"
               },
               {
-                "Fn::FindInMap": [
-                  "AWSRegionOS2AMI",
+                "Fn::If": [
+                  "UseArmAMIs",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIarm64",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   },
                   {
-                    "Ref": "BaseOS"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIx86",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   }
                 ]
               }
@@ -2851,13 +2891,29 @@
                 "Ref": "CustomAMI"
               },
               {
-                "Fn::FindInMap": [
-                  "AWSRegionOS2AMI",
+                "Fn::If": [
+                  "UseArmAMIs",
                   {
-                    "Ref": "AWS::Region"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIarm64",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   },
                   {
-                    "Ref": "BaseOS"
+                    "Fn::FindInMap": [
+                      "AWSRegionOS2AMIx86",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      {
+                        "Ref": "BaseOS"
+                      }
+                    ]
                   }
                 ]
               }
