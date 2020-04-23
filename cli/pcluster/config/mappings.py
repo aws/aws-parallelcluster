@@ -37,6 +37,7 @@ from pcluster.config.validators import (
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
+    compute_master_instance_arch_compatiblity_validator,
     dcv_enabled_validator,
     disable_hyperthreading_validator,
     ebs_settings_validator,
@@ -501,7 +502,7 @@ CLUSTER = {
                     lambda section:
                         "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
                 "cfn_param_mapping": "ComputeInstanceType",
-                "validators": [compute_instance_type_validator],
+                "validators": [compute_instance_type_validator, compute_master_instance_arch_compatiblity_validator],
             }),
             ("compute_root_volume_size", {
                 "type": IntParam,
