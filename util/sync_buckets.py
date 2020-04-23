@@ -16,6 +16,7 @@ import logging
 import os
 import tempfile
 import urllib
+from enum import Enum
 
 import argparse
 
@@ -29,6 +30,16 @@ from common import (
 from s3_factory import S3DocumentManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
+
+
+class HashingAlgorithm(Enum):
+    """Enum for hashing algorithms."""
+
+    MD5 = "md5"
+    SHA256 = "sha256"
+
+    def __str__(self):
+        return self.value
 
 
 def _validate_args(args, parser):
@@ -75,6 +86,15 @@ def _parse_args():
     )
     parser.add_argument("--src-files", help="Files to sync", nargs="+", required=True)
     parser.add_argument(
+        "--integrity-check",
+        help="If this option is specified, a file having the same name of the src files and as extension the hashing "
+        "algorithm is expected to be found in the source bucket. This file is used to perform checksum validation "
+        "and is also uploaded to the destination bucket",
+        choices=list(HashingAlgorithm),
+        type=lambda value: HashingAlgorithm(value),
+        required=False,
+    )
+    parser.add_argument(
         "--credentials",
         help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>."
         "Could be specified multiple times",
@@ -118,17 +138,18 @@ def _get_s3_object_metadata(s3_url):
     return metadata
 
 
-def _md5_checksum(filename):
-    m = hashlib.md5()
+def _checksum(filename, base64_encoded=True, algorithm=HashingAlgorithm.SHA256):
+    init_function = {HashingAlgorithm.SHA256: hashlib.sha256, HashingAlgorithm.MD5: hashlib.md5}
+    checksum = init_function[algorithm]()
     with open(filename, "rb") as f:
         for data in iter(lambda: f.read(1024 * 1024), b""):
-            m.update(data)
-    return base64.b64encode(m.digest()).decode("utf-8")
+            checksum.update(data)
+    return base64.b64encode(checksum.digest()).decode("utf-8") if base64_encoded else checksum.hexdigest()
 
 
-def _upload_files(args, sts_credentials, dir):
+def _upload_files(args, files, sts_credentials, dir):
     for region in args.regions:
-        for file in args.src_files:
+        for file in files:
             logging.info("Copying file %s to region %s", file, region)
             doc_manager = S3DocumentManager(region, sts_credentials.get(region))
             file_path = f"{dir}/{file}"
@@ -142,10 +163,32 @@ def _upload_files(args, sts_credentials, dir):
                 )
                 continue
 
-            md5 = _md5_checksum(file_path)
-            logging.info("Computed md5 checksum: %s", md5)
+            md5 = _checksum(file_path, base64_encoded=True, algorithm=HashingAlgorithm.MD5)
+            logging.info("Computed md5 checksum for S3 upload: %s", md5)
             with open(file_path, "rb") as data:
                 doc_manager.upload(dest_bucket, file, data, dryrun=not args.deploy, md5=md5)
+
+
+def _check_file_integrity(file, checksum_file, algorithm):
+    logging.info("Validating checksum for file %s", file)
+    with open(checksum_file, "r") as f:
+        expected_checksum = f.read().split(" ")[0]
+    file_checksum = _checksum(file, False, algorithm)
+    if expected_checksum != file_checksum:
+        raise Exception("Computed checksum %s does not match expected one %s", file_checksum, expected_checksum)
+
+
+def _download_file(url, file_path):
+    logging.info("Downloading file %s and saving it to %s", url, file_path)
+    urllib.request.urlretrieve(url, file_path)
+    logging.info("Validating size of downloaded file")
+    metadata = _get_s3_object_metadata(url)
+    downloaded_file_size = os.stat(file_path).st_size
+    if downloaded_file_size != int(metadata["size"]):
+        raise Exception(
+            f"Size of S3 object ({metadata['size']}) does not match size of downloaded file "
+            f"({downloaded_file_size})"
+        )
 
 
 def _download_files(args, dir):
@@ -154,25 +197,21 @@ def _download_files(args, dir):
         f"{'.cn' if args.src_bucket_region.startswith('cn-') else ''}"
     )
     for file in args.src_files:
-        os.makedirs(os.path.dirname(f"{dir}/{file}"), exist_ok=True)
-        url = f"{bucket_url}/{file}"
         file_path = f"{dir}/{file}"
-        urllib.request.urlretrieve(url, file_path)
-        logging.info("Validating size of downloaded file")
-        metadata = _get_s3_object_metadata(url)
-        downloaded_file_size = os.stat(file_path).st_size
-        if downloaded_file_size != int(metadata["size"]):
-            raise Exception(
-                f"Size of S3 object ({metadata['size']}) does not match size of downloaded file "
-                f"({downloaded_file_size})"
-            )
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        url = f"{bucket_url}/{file}"
+        _download_file(url, file_path)
+        if args.integrity_check:
+            checksum_file = f"{file_path}.{args.integrity_check}"
+            _download_file(f"{url}.{args.integrity_check}", checksum_file)
+            _check_file_integrity(file_path, checksum_file, args.integrity_check)
 
 
-def _validate_uploaded_files(args, rollback_data):
+def _validate_uploaded_files(args, uploaded_files, rollback_data):
     for region in args.regions:
         bucket_name = f"{args.dest_bucket.format(region=region)}"
         bucket_url = f"https://{bucket_name}.s3.{region}.amazonaws.com{'.cn' if region.startswith('cn-') else ''}"
-        for file in args.src_files:
+        for file in uploaded_files:
             url = f"{bucket_url}/{file}"
             logging.info("Validating file %s", url)
             metadata = _get_s3_object_metadata(url)
@@ -186,21 +225,27 @@ def main():
     args = _parse_args()
     logging.info("Parsed cli args: %s", vars(args))
 
+    checksum_files = []
+    if args.integrity_check:
+        checksum_files = list(map(lambda f: f"{f}.{args.integrity_check}", args.src_files))
+
     logging.info("Retrieving STS credentials")
     sts_credentials = retrieve_sts_credentials(args.credentials, PARTITION_TO_MAIN_REGION[args.partition], args.regions)
 
     logging.info("Generating rollback data")
-    rollback_data = generate_rollback_data(args.regions, args.dest_bucket, args.src_files, sts_credentials)
+    rollback_data = generate_rollback_data(
+        args.regions, args.dest_bucket, args.src_files + checksum_files, sts_credentials
+    )
 
     with tempfile.TemporaryDirectory() as temp_dir:
         logging.info("Created temporary directory %s", temp_dir)
         logging.info("Downloading the data")
         _download_files(args, temp_dir)
         logging.info("Copying files")
-        _upload_files(args, sts_credentials, temp_dir)
+        _upload_files(args, args.src_files + checksum_files, sts_credentials, temp_dir)
         if args.deploy:
             logging.info("Validating uploaded files")
-            _validate_uploaded_files(args, rollback_data)
+            _validate_uploaded_files(args, args.src_files + checksum_files, rollback_data)
 
 
 if __name__ == "__main__":
