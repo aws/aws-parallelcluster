@@ -97,25 +97,35 @@ def assert_param_from_file(
         assert_that(param.value, description="{0} assert fail".format(param.key)).is_equal_to(expected_value)
 
 
-def mock_pcluster_config(mocker, scheduler=None):
-    mocker.patch(
-        "pcluster.config.validators.get_supported_instance_types", return_value=["t2.micro", "t2.large", "c4.xlarge"]
-    )
-    mocker.patch(
-        "pcluster.config.validators.get_supported_compute_instance_types",
-        return_value=(
-            ["t2.micro", "t2.large", "t2", "optimal"]
-            if scheduler == "awsbatch"
-            else ["t2.micro", "t2.large", "c4.xlarge"]
-        ),
-    )
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
-    mocker.patch("pcluster.config.validators.get_supported_archs_for_inst_type", return_value=["x86_64"])
-    mocker.patch("pcluster.config.param_types.get_supported_archs_for_inst_type", return_value=["x86_64"])
+def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
+    """Return mocks for a set of functions that should be mocked by default because they access the network."""
+    archs = ["x86_64"]
+    master_instances = ["t2.micro", "t2.large", "c4.xlarge"]
+    compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else master_instances
+    patches = {
+        "pcluster.config.validators.get_supported_instance_types": master_instances,
+        "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
+        "pcluster.config.validators.get_supported_archs_for_inst_type": archs,
+        "pcluster.config.param_types.get_avail_zone": "mocked_avail_zone",
+        "pcluster.config.param_types.get_supported_archs_for_inst_type": archs,
+        "pcluster.config.validators.get_instance_vcpus": 1,
+    }
+    if extra_patches:
+        patches = merge_dicts(patches, extra_patches)
+    return patches
+
+
+def mock_pcluster_config(mocker, scheduler=None, extra_patches=None, patch_funcs=None):
+    """Mock various components used to instantiate an instance of PclusterConfig."""
+    mock_patches = get_mock_pcluster_config_patches(scheduler, extra_patches)
+    for function, return_value in mock_patches.items():
+        mocker.patch(function, return_value=return_value)
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
-def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):
+def assert_param_validator(
+    mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None, extra_patches=None,
+):
     config_parser = configparser.ConfigParser()
 
     # These parameters are required, meaning a value must be specified or an exception is raised.
@@ -125,7 +135,7 @@ def assert_param_validator(mocker, config_parser_dict, expected_error=None, caps
     )
     config_parser.read_dict(config_parser_dict)
 
-    mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"))
+    mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)
