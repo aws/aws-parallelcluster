@@ -29,6 +29,16 @@
               "Action": [
                 "sqs:SendMessage"
               ],
+              "Condition": {
+                "ArnEquals": {
+                  "aws:SourceArn": {
+                    "Fn::GetAtt": [
+                      "ScheduledEventRule",
+                      "Arn"
+                    ]
+                  }
+                }
+              },
               "Effect": "Allow",
               "Principal": {
                 "Service": [
@@ -36,7 +46,7 @@
                 ]
               },
               "Resource": "*",
-              "Sid": "Allow-SendMessage-From-CW-Events"
+              "Sid": "Allow-SendMessage-From-Scheduled-Events-Rule"
             }
           ]
         },

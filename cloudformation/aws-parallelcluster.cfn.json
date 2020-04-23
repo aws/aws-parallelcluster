@@ -1293,12 +1293,12 @@
         "MessageRetentionPeriod": 1209600
       }
     },
-    "CloudWatchEventsSubstack": {
+    "ScheduledEventsSubstack": {
       "Type": "AWS::CloudFormation::Stack",
       "Properties": {
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/cw-events-substack-${version}.cfn.json",
+            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/scheduled-events-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1586,7 +1586,7 @@
                 },
                 {
                   "Fn::GetAtt": [
-                    "CloudWatchEventsSubstack",
+                    "ScheduledEventsSubstack",
                     "Outputs.HealthSQSQueueARN"
                   ]
                 }
@@ -2475,7 +2475,7 @@
                     },
                     "cfn_health_sqs_queue": {
                       "Fn::GetAtt": [
-                        "CloudWatchEventsSubstack",
+                        "ScheduledEventsSubstack",
                         "Outputs.HealthSQSQueueName"
                       ]
                     },

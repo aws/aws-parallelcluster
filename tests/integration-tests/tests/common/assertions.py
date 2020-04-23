@@ -95,7 +95,7 @@ def assert_nodes_removed_and_replaced_in_scheduler(
     Returns list of new nodenames in scheduler.
     """
     assert_nodes_removed_from_scheduler(scheduler_commands, nodes_to_remove)
-    assert_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
+    wait_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
     new_compute_nodes = scheduler_commands.get_compute_nodes()
     if nodes_to_retain:
         assert_that(set(nodes_to_retain) <= set(new_compute_nodes)).is_true()
@@ -114,6 +114,10 @@ def assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(10))
+def wait_num_nodes_in_scheduler(scheduler_commands, desired):
+    assert_num_nodes_in_scheduler(scheduler_commands, desired)
+
+
 def assert_num_nodes_in_scheduler(scheduler_commands, desired):
     assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
 
