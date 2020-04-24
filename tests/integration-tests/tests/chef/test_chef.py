@@ -9,11 +9,15 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
+
 import boto3
 import pytest
 
+from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 from tests.common.schedulers_common import get_scheduler_commands
+from utils import run_command
 
 OS_TO_AMI_NAME_OWNER_MAP = {
     "alinux": {"name": "amzn-ami-hvm-*.*.*.*-x86_64-gp2", "owners": ["amazon"]},
@@ -130,3 +134,49 @@ def test_no_chef_install(scheduler, pcluster_config_reader, clusters_factory, te
 
     # Ensure no chef.io endpoint is called to download chef installer or chef packages
     _check_no_chef_install(scheduler, remote_command_executor, test_datadir)
+
+
+@pytest.fixture()
+def vpc_stack(vpc_stacks, region):
+    return vpc_stacks[region]
+
+
+@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
+@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos7", "*")
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.create_ami
+def test_create_ami(region, os, instance, vpc_stack, request, pcluster_config_reader):
+    """Test createami for given region and os"""
+    cluster_config = pcluster_config_reader()
+    vpc_id = vpc_stack.cfn_outputs["VpcId"]
+    public_subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
+    base_ami = _retrieve_latest_ami(region, os)
+    custom_cookbook = request.config.getoption("custom_chef_cookbook")
+    cc_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
+
+    result = run_command(
+        [
+            "pcluster",
+            "createami",
+            "-ai",
+            base_ami,
+            "-os",
+            os,
+            "-i",
+            instance,
+            "-r",
+            region,
+            "--vpc-id",
+            vpc_id,
+            "--subnet-id",
+            public_subnet_id,
+            "-c",
+            str(cluster_config)
+        ]
+        + cc_args
+    )
+
+    logging.info(result.stdout)
+    assert_that(result.stdout).does_not_contain("No custom AMI created")
