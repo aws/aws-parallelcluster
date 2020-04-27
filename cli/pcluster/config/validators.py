@@ -594,14 +594,10 @@ def url_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     if urlparse(param_value).scheme == "s3":
-        try:
-            match = re.match(r"s3://(.*?)/(.*)", param_value)
-            if not match or len(match.groups()) < 2:
-                errors.append("S3 url is invalid.")
-            bucket, key = match.group(1), match.group(2)
-            boto3.client("s3").head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            warnings.append("The S3 object does not exist or you do not have access to it.")
+        errors_s3, warnings_s3 = s3_uri_validator(param_key, param_value, pcluster_config)
+        errors += errors_s3
+        warnings += warnings_s3
+
     else:
         try:
             urllib.request.urlopen(param_value)
@@ -613,6 +609,47 @@ def url_validator(param_key, param_value, pcluster_config):
             errors.append(
                 "The value '{0}' used for the parameter '{1}' is not a valid URL".format(param_value, param_key)
             )
+
+    return errors, warnings
+
+
+def s3_uri_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        match = re.match(r"s3://(.*?)/(.*)", param_value)
+        if not match or len(match.groups()) < 2:
+            raise ValueError("S3 url is invalid.")
+        bucket, key = match.group(1), match.group(2)
+        boto3.client("s3").head_object(Bucket=bucket, Key=key)
+
+    except ClientError:
+
+        # Check that bucket is in s3_read_resource or s3_read_write_resource.
+        cluster_section = pcluster_config.get_section("cluster")
+        s3_read_resource = cluster_section.get_param_value("s3_read_resource")
+        s3_read_write_resource = cluster_section.get_param_value("s3_read_write_resource")
+
+        if s3_read_resource == "*" or s3_read_write_resource == "*":
+            pass
+        else:
+            # Match after arn prefix until end of line, or * or /.
+            match_bucket_from_arn = r"(?<=arn:aws:s3:::)([^*/]*)"
+            s3_read_bucket = re.search(match_bucket_from_arn, s3_read_resource).group(0) if s3_read_resource else None
+            s3_write_bucket = (
+                re.search(match_bucket_from_arn, s3_read_write_resource).group(0) if s3_read_write_resource else None
+            )
+
+            if bucket in [s3_read_bucket, s3_write_bucket]:
+                pass
+            else:
+                warnings.append(
+                    (
+                        "The S3 object does not exist or you do not have access to it.\n"
+                        "Please make sure the cluster nodes have access to it."
+                    )
+                )
 
     return errors, warnings
 
