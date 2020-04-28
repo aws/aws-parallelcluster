@@ -14,6 +14,7 @@ import base64
 import hashlib
 import logging
 import os
+import sys
 import tempfile
 import urllib
 from enum import Enum
@@ -221,6 +222,15 @@ def _validate_uploaded_files(args, uploaded_files, rollback_data):
                 logging.error(f"Current version {metadata['version_id']} is the same as previous one")
 
 
+def _check_buckets_versioning(args, sts_credentials):
+    for region in args.regions:
+        doc_manager = S3DocumentManager(region, sts_credentials.get(region))
+        bucket_name = f"{args.dest_bucket.format(region=region)}"
+        if not doc_manager.is_bucket_versioning_enabled(bucket_name):
+            logging.error("Versioning is not enabled for bucket %s. Exiting...", bucket_name)
+            sys.exit(1)
+
+
 def main():
     args = _parse_args()
     logging.info("Parsed cli args: %s", vars(args))
@@ -241,6 +251,8 @@ def main():
         logging.info("Created temporary directory %s", temp_dir)
         logging.info("Downloading the data")
         _download_files(args, temp_dir)
+        logging.info("Checking S3 versioning is enabled in destination bucket before proceeding")
+        _check_buckets_versioning(args, sts_credentials)
         logging.info("Copying files")
         _upload_files(args, args.src_files + checksum_files, sts_credentials, temp_dir)
         if args.deploy:

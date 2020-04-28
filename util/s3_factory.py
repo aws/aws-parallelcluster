@@ -174,6 +174,20 @@ class S3DocumentManager:
         else:
             logging.info(f"Current version is already the requested one: {version_id}")
 
+    def is_bucket_versioning_enabled(self, bucket_name):
+        """
+        Check if versioning is enabled on a given bucket.
+
+        :param bucket_name: name of the S3 bucket to check for versioning.
+        :return: True if versioning is enabled, False otherwise.
+        """
+        try:
+            s3 = boto3.client("s3", region_name=self._region, **self._credentials)
+            return s3.get_bucket_versioning(Bucket=bucket_name).get("Status") == "Enabled"
+        except Exception as e:
+            self.error(f"Failed when checking versioning for S3 bucket {bucket_name} with error {e}")
+            raise
+
     @staticmethod
     def error(message, fail_on_error=True):
         """Print an error message and Raise SystemExit exception to the stderr if fail_on_error is true."""
