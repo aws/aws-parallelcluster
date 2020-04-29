@@ -17,7 +17,7 @@ if [ $? -eq 0 ]; then
     echo "Chef package downloaded from chef.io"
     exit 1
 fi
-sudo grep -ir "packages/chef/chef" /var/log/cloud-init-output.log
+sudo grep -ir "archives/chef/chef" /var/log/cloud-init-output.log
 if [ $? -eq 0 ]; then
     echo "Chef package downloaded from S3"
     exit 1
