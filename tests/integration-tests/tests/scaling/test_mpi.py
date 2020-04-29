@@ -21,7 +21,7 @@ from tests.common.utils import fetch_instance_slots
 from wrapt_timeout_decorator import timeout
 
 
-@pytest.mark.regions(["us-west-2"])
+@pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "c5n.18xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
 def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
