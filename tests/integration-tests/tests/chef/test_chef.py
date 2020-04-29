@@ -96,10 +96,14 @@ def _retrieve_latest_ami(region, os):
     return amis[0]["ImageId"]
 
 
-@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("cn-north-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
-@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos7", "*")
+@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos6", "*")
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["torque"])
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
@@ -114,12 +118,9 @@ def test_chef_official(scheduler, os, region, pcluster_config_reader, clusters_f
     _check_chef_official(scheduler, remote_command_executor, test_datadir)
 
 
-@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
-@pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
-@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
-@pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos7", "*")
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
+@pytest.mark.oss(["alinux"])
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.chef_s3
 def test_chef_s3(scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir):
@@ -132,12 +133,9 @@ def test_chef_s3(scheduler, os, region, pcluster_config_reader, clusters_factory
     _check_chef_s3(scheduler, remote_command_executor, test_datadir)
 
 
-@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
-@pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
-@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
-@pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos7", "*")
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge"])
+@pytest.mark.oss(["ubuntu1604"])
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
 @pytest.mark.no_chef_install
 def test_no_chef_install(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
@@ -150,13 +148,26 @@ def test_no_chef_install(scheduler, pcluster_config_reader, clusters_factory, te
     _check_no_chef_install(scheduler, remote_command_executor, test_datadir)
 
 
-@pytest.mark.skip_dimensions("cn-north-1", "*", "centos6", "*")
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.regions(["us-east-1"])
+@pytest.mark.oss(["centos6"])
+@pytest.mark.create_ami
+def test_create_ami_centos6(region, os, instance, request, pcluster_config_reader):
+    _test_create_ami(region, os, instance, request, pcluster_config_reader)
+
+
+@pytest.mark.skip_dimensions("cn-north-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
-@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos6", "*")
+@pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("us-gov-west-1", "*", "centos7", "*")
 @pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.oss(["centos7", "ubuntu1404", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"])
 @pytest.mark.create_ami
 def test_create_ami(region, os, instance, request, pcluster_config_reader):
+    _test_create_ami(region, os, instance, request, pcluster_config_reader)
+
+
+def _test_create_ami(region, os, instance, request, pcluster_config_reader):
     """Test createami for given region and os"""
     cluster_config = pcluster_config_reader()
     base_ami = _retrieve_latest_ami(region, os)
@@ -175,10 +186,7 @@ def test_create_ami(region, os, instance, request, pcluster_config_reader):
     logging.info(pcluster_createami_result.stdout)
     assert_that(
         any(
-            "downloading https://{0}-aws-parallelcluster.s3.{1}.amazonaws.com{2}/archives/chef/chef".format(
-                region, region, "" if not region.startswith("cn-") else ".cn"
-            ).lower()
-            in s.lower()
+            "downloading https://{0}-aws-parallelcluster.s3".format(region).lower() in s.lower()
             for s in pcluster_createami_result.stdout.split("\n")
         )
     ).is_true()
@@ -187,6 +195,9 @@ def test_create_ami(region, os, instance, request, pcluster_config_reader):
     ).is_false()
     assert_that(
         any("Thank you for installing Chef".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_true()
+    assert_that(
+        any("Starting Chef Client".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
     ).is_true()
 
     # Not testing AMI creation
@@ -223,4 +234,7 @@ def test_official_chef_create_ami(region, os, instance, request, pcluster_config
     ).is_true()
     assert_that(
         any("Thank you for installing Chef".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_true()
+    assert_that(
+        any("Starting Chef Client".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
     ).is_true()
