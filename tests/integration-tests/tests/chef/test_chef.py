@@ -175,7 +175,7 @@ def test_create_ami(region, os, instance, request, pcluster_config_reader):
     logging.info(pcluster_createami_result.stdout)
     assert_that(
         any(
-            "downloading https://{0}-aws-parallelcluster.s3.{1}.amazonaws.com{2}/packages/chef/chef".format(
+            "downloading https://{0}-aws-parallelcluster.s3.{1}.amazonaws.com{2}/archives/chef/chef".format(
                 region, region, "" if not region.startswith("cn-") else ".cn"
             ).lower()
             in s.lower()
