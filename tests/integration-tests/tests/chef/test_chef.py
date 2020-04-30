@@ -96,6 +96,17 @@ def _retrieve_latest_ami(region, os):
     return amis[0]["ImageId"]
 
 
+def _retrieve_latest_custom_ami(region, os):
+    ec2_client = boto3.client("ec2", region_name=region)
+    response = ec2_client.describe_images(
+        Filters=[{"Name": "name", "Values": [OS_TO_CUSTOM_AMI_NAME_OWNER_MAP[os]["name"]]}],
+        Owners=OS_TO_CUSTOM_AMI_NAME_OWNER_MAP[os]["owners"],
+    )
+    # Sort on Creation date Desc
+    amis = sorted(response["Images"], key=lambda x: x["CreationDate"], reverse=True)
+    return amis[0]["ImageId"]
+
+
 @pytest.mark.skip_dimensions("cn-north-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("cn-northwest-1", "*", "centos7", "*")
 @pytest.mark.skip_dimensions("us-gov-east-1", "*", "centos7", "*")
@@ -125,7 +136,7 @@ def test_chef_official(scheduler, os, region, pcluster_config_reader, clusters_f
 @pytest.mark.chef_s3
 def test_chef_s3(scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir):
     """Test that a cluster download chef from ParallelCluster S3."""
-    cluster_config = pcluster_config_reader(custom_ami=_retrieve_latest_ami(region, os))
+    cluster_config = pcluster_config_reader(custom_ami=_retrieve_latest_custom_ami(region, os))
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
