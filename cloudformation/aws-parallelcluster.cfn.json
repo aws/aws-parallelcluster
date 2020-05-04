@@ -2162,7 +2162,7 @@
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
                   "  vendor_cookbook\n",
-                  "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                  "  mkdir /opt/parallelcluster\n",
                   "}\n",
                   "[ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh\n",
                   "custom_cookbook=",
@@ -2543,6 +2543,9 @@
               "chef": {
                 "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize",
                 "cwd": "/etc/chef"
+              },
+              "bootstrap": {
+                "command": "[[ ! -f /opt/parallelcluster/.bootstrapped ]] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped"
               }
             }
           }
@@ -3108,7 +3111,7 @@
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
                   "  vendor_cookbook\n",
-                  "  mkdir /opt/parallelcluster && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped\n",
+                  "  mkdir /opt/parallelcluster\n",
                   "}\n",
                   "[ -f /etc/profile.d/proxy.sh ] && . /etc/profile.d/proxy.sh\n",
                   "custom_cookbook=",
@@ -3465,6 +3468,9 @@
               "chef": {
                 "command": "chef-client --local-mode --config /etc/chef/client.rb --log_level auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize",
                 "cwd": "/etc/chef"
+              },
+              "bootstrap": {
+                "command": "[[ ! -f /opt/parallelcluster/.bootstrapped ]] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped"
               }
             }
           }
