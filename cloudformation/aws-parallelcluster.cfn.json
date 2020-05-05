@@ -2545,7 +2545,7 @@
                 "cwd": "/etc/chef"
               },
               "bootstrap": {
-                "command": "[[ ! -f /opt/parallelcluster/.bootstrapped ]] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped"
+                "command": "[ ! -f /opt/parallelcluster/.bootstrapped ] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped || exit 0"
               }
             }
           }
@@ -3470,7 +3470,7 @@
                 "cwd": "/etc/chef"
               },
               "bootstrap": {
-                "command": "[[ ! -f /opt/parallelcluster/.bootstrapped ]] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped"
+                "command": "[ ! -f /opt/parallelcluster/.bootstrapped ] && echo ${parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped || exit 0"
               }
             }
           }
