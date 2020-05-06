@@ -38,10 +38,7 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
 
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    # Private Networking
-    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PrivateSubnetId"], "--no-public-ip"]
-    # Public Networking
-    # networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
+    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
 
     # Custom Cookbook
     custom_cookbook = request.config.getoption("custom_chef_cookbook")
