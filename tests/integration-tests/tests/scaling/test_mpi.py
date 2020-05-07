@@ -18,7 +18,6 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from tests.common.mpi_common import OS_TO_OPENMPI_MODULE_MAP, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
-from wrapt_timeout_decorator import timeout
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -69,7 +68,6 @@ def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory, test_d
     _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir)
 
 
-@timeout(10, use_signals=False, timeout_exception=RemoteCommandExecutionError)
 def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
     logging.info("Testing mpi SSH")
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
