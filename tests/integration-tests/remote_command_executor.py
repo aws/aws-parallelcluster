@@ -53,6 +53,7 @@ class RemoteCommandExecutor:
         login_shell=True,
         hide=False,
         log_output=False,
+        timeout=None,
     ):
         """
         Execute remote command on the cluster master node.
@@ -64,6 +65,7 @@ class RemoteCommandExecutor:
         :param login_shell: if True prepends /bin/bash --login -c to the given command
         :param hide: do not print command output to the local stdout
         :param log_output: log the command output.
+        :param timeout: interrupt connection after N seconds, default of None = no timeout
         :return: result of the execution.
         """
         if isinstance(command, list):
@@ -73,7 +75,7 @@ class RemoteCommandExecutor:
         if login_shell:
             command = "/bin/bash --login -c {0}".format(shlex.quote(command))
 
-        result = self.__connection.run(command, warn=True, pty=True, hide=hide)
+        result = self.__connection.run(command, warn=True, pty=True, hide=hide, timeout=timeout)
         result.stdout = "\n".join(result.stdout.splitlines())
         result.stderr = "\n".join(result.stderr.splitlines())
         if log_output:
@@ -88,7 +90,9 @@ class RemoteCommandExecutor:
             raise RemoteCommandExecutionError(result)
         return result
 
-    def run_remote_script(self, script_file, args=None, log_error=True, additional_files=None, hide=False):
+    def run_remote_script(
+        self, script_file, args=None, log_error=True, additional_files=None, hide=False, timeout=None,
+    ):
         """
         Execute a script remotely on the cluster master node.
 
@@ -98,6 +102,7 @@ class RemoteCommandExecutor:
         :param log_error: log errors.
         :param additional_files: list of additional files (full path) to copy before executing script.
         :param hide: do not print command output to the local stdout
+        :param timeout: interrupt connection after N seconds, default of None = no timeout
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
@@ -109,6 +114,7 @@ class RemoteCommandExecutor:
             log_error=log_error,
             additional_files=additional_files,
             hide=hide,
+            timeout=timeout,
         )
 
     def _copy_additional_files(self, files):
