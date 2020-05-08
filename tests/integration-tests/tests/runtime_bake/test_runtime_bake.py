@@ -20,6 +20,8 @@ from tests.common.utils import retrieve_latest_ami
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "alinux", "slurm")
 @pytest.mark.dimensions("us-west-3", "c5.xlarge", "alinux2", "torque")
 @pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1604", "slurm")
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "ubuntu1804", "sge")
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "slurm")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "sge")
 @pytest.mark.usefixtures("instance", "scheduler")

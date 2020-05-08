@@ -26,6 +26,8 @@ def vpc_stack(vpc_stacks, region):
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
+@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1604", "*")
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("cn-northwest-1", "c5.xlarge", "alinux2", "*")
