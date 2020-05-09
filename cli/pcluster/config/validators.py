@@ -745,6 +745,13 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     if pcluster_config.get_section("cluster").get_param_value("base_os") not in supported_os:
         errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
 
+    will_be_deprecated = ["sge", "torque"]
+    if param_value in will_be_deprecated:
+        warnings.append(
+            "The job scheduler you are using ({0}) is scheduled to be deprecated in future releases of "
+            "ParallelCluster".format(param_value)
+        )
+
     return errors, warnings
 
 
