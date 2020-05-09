@@ -455,15 +455,15 @@ CLUSTER = {
                 "validators": [ec2_key_pair_validator],
             }),
             ("base_os", {
-                "default": "alinux",
                 "cfn_param_mapping": "BaseOS",
                 "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
+                "required": True,
             }),
             ("scheduler", {
-                "default": "sge",
                 "cfn_param_mapping": "Scheduler",
                 "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
                 "validators": [scheduler_validator],
+                "required": True,
             }),
             ("placement_group", {
                 "cfn_param_mapping": "PlacementGroup",

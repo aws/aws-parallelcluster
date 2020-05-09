@@ -13,6 +13,7 @@ from future.moves.collections import OrderedDict
 import json
 import logging
 import re
+import sys
 
 from configparser import NoSectionError
 
@@ -116,6 +117,9 @@ class Param(object):
 
     def validate(self):
         """Call validation functions for the parameter, if there."""
+        if self.definition.get("required") and self.value is None:
+            sys.exit("Configuration parameter '{0}' must have a value".format(self.key))
+
         for validation_func in self.definition.get("validators", []):
             if self.value is None:
                 LOGGER.debug("Configuration parameter '%s' has no value", self.key)

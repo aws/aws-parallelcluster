@@ -40,7 +40,31 @@ def get_pcluster_config_example():
     return os.path.join(current_dir, "..", "..", "..", "pcluster", "examples", "config")
 
 
-def assert_param_from_file(mocker, section_definition, param_key, param_value, expected_value, expected_message):
+def set_default_values_for_required_cluster_section_params(cluster_section_dict, only_if_not_present=False):
+    """
+    Provide default values for required parameters for the cluster section.
+
+    This is useful for the cluster section of the config file because, unlike the CFN template,
+    there are no default values defined in mappings.py or in the defaults module used for testing.
+
+    If only_if_not_present is set, then the default values are only added if the
+    cluster_section_dict does not contain keys for the required parameters. Otherwise a default is
+    only set if the value is None.
+    """
+    required_cluster_params = [
+        {"key": "scheduler", "value": "slurm"},
+        {"key": "base_os", "value": "alinux2"},
+    ]
+    for required_param in required_cluster_params:
+        if only_if_not_present:
+            cluster_section_dict.setdefault(required_param.get("key"), required_param.get("value"))
+        elif cluster_section_dict.get(required_param.get("key")) is None:
+            cluster_section_dict[required_param.get("key")] = required_param.get("value")
+
+
+def assert_param_from_file(
+    mocker, section_definition, param_key, param_value, expected_value, expected_message, do_validation=False
+):
     section_label = section_definition.get("default_label")
     section_name = "{0}{1}".format(section_definition.get("key"), " {0}".format(section_label) if section_label else "")
     config_parser = configparser.ConfigParser()
@@ -48,20 +72,24 @@ def assert_param_from_file(mocker, section_definition, param_key, param_value, e
 
     pcluster_config = get_mocked_pcluster_config(mocker)
 
-    if param_value:
+    if param_value is not None:
         config_parser.set(section_name, param_key, param_value)
 
     param_definition, param_type = get_param_definition(section_definition, param_key)
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
-            param_type(
+            param = param_type(
                 section_definition.get("key"), section_label, param_key, param_definition, pcluster_config
             ).from_file(config_parser)
+            if do_validation:
+                param.validate()
     else:
         param = param_type(
             section_definition.get("key"), section_label, param_key, param_definition, pcluster_config
         ).from_file(config_parser)
+        if do_validation:
+            param.validate()
         assert_that(param.value, description="{0} assert fail".format(param.key)).is_equal_to(expected_value)
 
 
@@ -83,6 +111,12 @@ def mock_pcluster_config(mocker, scheduler=None):
 
 def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):
     config_parser = configparser.ConfigParser()
+
+    # These parameters are required, meaning a value must be specified or an exception is raised.
+    # Provide the default values that `pcluster configure` would suggest.
+    set_default_values_for_required_cluster_section_params(
+        config_parser_dict.get("cluster default"), only_if_not_present=True
+    )
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"))

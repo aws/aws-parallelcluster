@@ -285,7 +285,7 @@ class SchedulerHandler:
             self.instance_size_name = "vcpus"
             self.max_size_name = "max_vcpus"
             self.min_size_name = "min_vcpus"
-            self.base_os = "alinux"
+            self.base_os = "alinux2"
             self.compute_instance_type = "optimal"
         else:
             self.instance_size_name = "instances"

@@ -193,6 +193,8 @@ def test_cluster_section_from_250_cfn(mocker, cfn_params_dict, expected_section_
 )
 def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_dict):
     """Test conversion from 2.4.1 CFN input parameters."""
+    if cfn_params_dict:
+        utils.set_default_values_for_required_cluster_section_params(expected_section_dict)
     utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
 
 
@@ -555,6 +557,9 @@ def test_cluster_section_from_200_cfn(mocker, cfn_params_dict, expected_section_
     ],
 )
 def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
+    utils.set_default_values_for_required_cluster_section_params(
+        config_parser_dict.get("cluster default"), only_if_not_present=True
+    )
     utils.assert_section_from_file(mocker, CLUSTER, config_parser_dict, expected_dict_params, expected_message)
 
 
@@ -563,28 +568,25 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
     [
         # Basic configuration
         ("key_name", None, None, None),
-        ("key_name", "", None, None),
+        ("key_name", "", "", None),
         ("key_name", "test", "test", None),
         ("key_name", "NONE", "NONE", None),
         ("key_name", "fake_value", "fake_value", None),
         # TODO add regex for template_url
         ("template_url", None, None, None),
-        ("template_url", "", None, None),
+        ("template_url", "", "", None),
         ("template_url", "test", "test", None),
         ("template_url", "NONE", "NONE", None),
         ("template_url", "fake_value", "fake_value", None),
-        ("base_os", None, "alinux", None),
-        ("base_os", "", "alinux", None),
+        ("base_os", "", None, "has an invalid value"),
         ("base_os", "wrong_value", None, "has an invalid value"),
         ("base_os", "NONE", None, "has an invalid value"),
         ("base_os", "ubuntu1804", "ubuntu1804", None),
-        ("scheduler", None, "sge", None),
-        ("scheduler", "", "sge", None),
         ("scheduler", "wrong_value", None, "has an invalid value"),
         ("scheduler", "NONE", None, "has an invalid value"),
         ("scheduler", "awsbatch", "awsbatch", None),
         ("shared_dir", None, "/shared", None),
-        ("shared_dir", "", "/shared", None),
+        ("shared_dir", "", None, "has an invalid value"),
         ("shared_dir", "fake_value", "fake_value", None),
         ("shared_dir", "/test", "/test", None),
         ("shared_dir", "/test/test2", "/test/test2", None),
@@ -596,25 +598,25 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         # Cluster configuration
         ("placement_group", None, None, None),
-        ("placement_group", "", None, None),
+        ("placement_group", "", "", None),
         ("placement_group", "test", "test", None),
         ("placement_group", "NONE", "NONE", None),
         ("placement_group", "fake_value", "fake_value", None),
         ("placement_group", "DYNAMIC", "DYNAMIC", None),
         ("placement", None, "compute", None),
-        ("placement", "", "compute", None),
+        ("placement", "", None, "has an invalid value"),
         ("placement", "wrong_value", None, "has an invalid value"),
         ("placement", "NONE", None, "has an invalid value"),
         ("placement", "cluster", "cluster", None),
         # Master
         # TODO add regex for master_instance_type
         ("master_instance_type", None, "t2.micro", None),
-        ("master_instance_type", "", "t2.micro", None),
+        ("master_instance_type", "", "", None),
         ("master_instance_type", "test", "test", None),
         ("master_instance_type", "NONE", "NONE", None),
         ("master_instance_type", "fake_value", "fake_value", None),
         ("master_root_volume_size", None, 25, None),
-        ("master_root_volume_size", "", 25, None),
+        ("master_root_volume_size", "", None, "must be an Integer"),
         ("master_root_volume_size", "NONE", None, "must be an Integer"),
         ("master_root_volume_size", "wrong_value", None, "must be an Integer"),
         ("master_root_volume_size", "19", 19, "Allowed values are"),
@@ -623,59 +625,59 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         # Compute fleet
         # TODO add regex for compute_instance_type
         ("compute_instance_type", None, "t2.micro", None),
-        ("compute_instance_type", "", "t2.micro", None),
+        ("compute_instance_type", "", "", None),
         ("compute_instance_type", "test", "test", None),
         ("compute_instance_type", "NONE", "NONE", None),
         ("compute_instance_type", "fake_value", "fake_value", None),
         ("compute_root_volume_size", None, 25, None),
-        ("compute_root_volume_size", "", 25, None),
+        ("compute_root_volume_size", "", None, "must be an Integer"),
         ("compute_root_volume_size", "NONE", None, "must be an Integer"),
         ("compute_root_volume_size", "wrong_value", None, "must be an Integer"),
         ("compute_root_volume_size", "19", 19, "Allowed values are"),
         ("compute_root_volume_size", "22", 22, "Allowed values are"),
         ("compute_root_volume_size", "31", 31, None),
         ("initial_queue_size", None, 0, None),
-        ("initial_queue_size", "", 0, None),
+        ("initial_queue_size", "", None, "must be an Integer"),
         ("initial_queue_size", "NONE", None, "must be an Integer"),
         ("initial_queue_size", "wrong_value", None, "must be an Integer"),
         ("initial_queue_size", "1", 1, None),
         ("initial_queue_size", "20", 20, None),
         ("max_queue_size", None, 10, None),
-        ("max_queue_size", "", 10, None),
+        ("max_queue_size", "", None, "must be an Integer"),
         ("max_queue_size", "NONE", None, "must be an Integer"),
         ("max_queue_size", "wrong_value", None, "must be an Integer"),
         ("max_queue_size", "1", 1, None),
         ("max_queue_size", "20", 20, None),
         ("maintain_initial_size", None, False, None),
-        ("maintain_initial_size", "", False, None),
+        ("maintain_initial_size", "", None, "must be a Boolean"),
         ("maintain_initial_size", "NONE", None, "must be a Boolean"),
         ("maintain_initial_size", "true", True, None),
         ("maintain_initial_size", "false", False, None),
         ("min_vcpus", None, 0, None),
-        ("min_vcpus", "", 0, None),
+        ("min_vcpus", "", None, "must be an Integer"),
         ("min_vcpus", "NONE", None, "must be an Integer"),
         ("min_vcpus", "wrong_value", None, "must be an Integer"),
         ("min_vcpus", "1", 1, None),
         ("min_vcpus", "20", 20, None),
         ("desired_vcpus", None, 4, None),
-        ("desired_vcpus", "", 4, None),
+        ("desired_vcpus", "", None, "must be an Integer"),
         ("desired_vcpus", "NONE", None, "must be an Integer"),
         ("desired_vcpus", "wrong_value", None, "must be an Integer"),
         ("desired_vcpus", "1", 1, None),
         ("desired_vcpus", "20", 20, None),
         ("max_vcpus", None, 10, None),
-        ("max_vcpus", "", 10, None),
+        ("max_vcpus", "", None, "must be an Integer"),
         ("max_vcpus", "NONE", None, "must be an Integer"),
         ("max_vcpus", "wrong_value", None, "must be an Integer"),
         ("max_vcpus", "1", 1, None),
         ("max_vcpus", "20", 20, None),
         ("cluster_type", None, "ondemand", None),
-        ("cluster_type", "", "ondemand", None),
+        ("cluster_type", "", None, "has an invalid value"),
         ("cluster_type", "wrong_value", None, "has an invalid value"),
         ("cluster_type", "NONE", None, "has an invalid value"),
         ("cluster_type", "spot", "spot", None),
         ("spot_price", None, 0.0, None),
-        ("spot_price", "", 0.0, None),
+        ("spot_price", "", None, "must be a Float"),
         ("spot_price", "NONE", None, "must be a Float"),
         ("spot_price", "wrong_value", None, "must be a Float"),
         ("spot_price", "0.09", 0.09, None),
@@ -687,7 +689,7 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("spot_price", "100.1", 100.1, None),
         ("spot_price", "101", 101, None),
         ("spot_bid_percentage", None, 0, None),
-        ("spot_bid_percentage", "", 0, None),
+        ("spot_bid_percentage", "", None, "must be an Integer"),
         ("spot_bid_percentage", "NONE", None, "must be an Integer"),
         ("spot_bid_percentage", "wrong_value", None, "must be an Integer"),
         ("spot_bid_percentage", "1", 1, None),
@@ -696,44 +698,44 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("spot_bid_percentage", "101", None, "has an invalid value"),
         # Access and networking
         ("proxy_server", None, None, None),
-        ("proxy_server", "", None, None),
+        ("proxy_server", "", "", None),
         ("proxy_server", "test", "test", None),
         ("proxy_server", "NONE", "NONE", None),
         ("proxy_server", "fake_value", "fake_value", None),
         # TODO add regex for ec2_iam_role
         ("ec2_iam_role", None, None, None),
-        ("ec2_iam_role", "", None, None),
+        ("ec2_iam_role", "", "", None),
         ("ec2_iam_role", "test", "test", None),
         ("ec2_iam_role", "NONE", "NONE", None),
         ("ec2_iam_role", "fake_value", "fake_value", None),
         ("additional_iam_policies", None, [], None),
-        ("additional_iam_policies", "", [], None),
+        ("additional_iam_policies", "", [""], None),
         ("additional_iam_policies", "test", ["test"], None),
         ("additional_iam_policies", "NONE", ["NONE"], None),
         ("additional_iam_policies", "fake_value", ["fake_value"], None),
         ("additional_iam_policies", "policy1,policy2", ["policy1", "policy2"], None),
         # TODO add regex for s3_read_resource
         ("s3_read_resource", None, None, None),
-        ("s3_read_resource", "", None, None),
+        ("s3_read_resource", "", "", None),
         ("s3_read_resource", "fake_value", "fake_value", None),
         ("s3_read_resource", "http://test", "http://test", None),
         ("s3_read_resource", "s3://test/test2", "s3://test/test2", None),
         ("s3_read_resource", "NONE", "NONE", None),
         # TODO add regex for s3_read_write_resource
         ("s3_read_write_resource", None, None, None),
-        ("s3_read_write_resource", "", None, None),
+        ("s3_read_write_resource", "", "", None),
         ("s3_read_write_resource", "fake_value", "fake_value", None),
         ("s3_read_write_resource", "http://test", "http://test", None),
         ("s3_read_write_resource", "s3://test/test2", "s3://test/test2", None),
         ("s3_read_write_resource", "NONE", "NONE", None),
         # Customization
         ("enable_efa", None, None, None),
-        ("enable_efa", "", None, None),
+        ("enable_efa", "", None, "has an invalid value"),
         ("enable_efa", "wrong_value", None, "has an invalid value"),
         ("enable_efa", "NONE", None, "has an invalid value"),
         ("enable_efa", "compute", "compute", None),
         ("ephemeral_dir", None, "/scratch", None),
-        ("ephemeral_dir", "", "/scratch", None),
+        ("ephemeral_dir", "", None, "has an invalid value"),
         ("ephemeral_dir", "fake_value", "fake_value", None),
         ("ephemeral_dir", "/test", "/test", None),
         ("ephemeral_dir", "/test/test2", "/test/test2", None),
@@ -744,12 +746,12 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("ephemeral_dir", ".test", None, "has an invalid value"),
         ("ephemeral_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         ("encrypted_ephemeral", None, False, None),
-        ("encrypted_ephemeral", "", False, None),
+        ("encrypted_ephemeral", "", None, "must be a Boolean"),
         ("encrypted_ephemeral", "NONE", None, "must be a Boolean"),
         ("encrypted_ephemeral", "true", True, None),
         ("encrypted_ephemeral", "false", False, None),
         ("custom_ami", None, None, None),
-        ("custom_ami", "", None, None),
+        ("custom_ami", "", None, "has an invalid value"),
         ("custom_ami", "wrong_value", None, "has an invalid value"),
         ("custom_ami", "ami-12345", None, "has an invalid value"),
         ("custom_ami", "ami-123456789", None, "has an invalid value"),
@@ -758,25 +760,25 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("custom_ami", "ami-12345678901234567", "ami-12345678901234567", None),
         # TODO add regex for pre_install
         ("pre_install", None, None, None),
-        ("pre_install", "", None, None),
+        ("pre_install", "", "", None),
         ("pre_install", "fake_value", "fake_value", None),
         ("pre_install", "http://test", "http://test", None),
         ("pre_install", "s3://test/test2", "s3://test/test2", None),
         ("pre_install", "NONE", "NONE", None),
         ("pre_install_args", None, None, None),
-        ("pre_install_args", "", None, None),
+        ("pre_install_args", "", "", None),
         ("pre_install_args", "test", "test", None),
         ("pre_install_args", "NONE", "NONE", None),
         ("pre_install_args", "fake_value", "fake_value", None),
         # TODO add regex for post_install
         ("post_install", None, None, None),
-        ("post_install", "", None, None),
+        ("post_install", "", "", None),
         ("post_install", "fake_value", "fake_value", None),
         ("post_install", "http://test", "http://test", None),
         ("post_install", "s3://test/test2", "s3://test/test2", None),
         ("post_install", "NONE", "NONE", None),
         ("post_install_args", None, None, None),
-        ("post_install_args", "", None, None),
+        ("post_install_args", "", "", None),
         ("post_install_args", "test", "test", None),
         ("post_install_args", "NONE", "NONE", None),
         ("post_install_args", "fake_value", "fake_value", None),
@@ -794,7 +796,7 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("extra_json", "fake_value", "fake_value", None),
         # TODO add regex for additional_cfn_template
         ("additional_cfn_template", None, None, None),
-        ("additional_cfn_template", "", None, None),
+        ("additional_cfn_template", "", "", None),
         ("additional_cfn_template", "fake_value", "fake_value", None),
         ("additional_cfn_template", "http://test", "http://test", None),
         ("additional_cfn_template", "s3://test/test2", "s3://test/test2", None),
@@ -805,25 +807,25 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("tags", "{'test': 'test'}", {"test": "test"}, None),
         ("tags", "{'test': 'test'", None, "Error parsing JSON parameter"),
         ("disable_hyperthreading", None, False, None),
-        ("disable_hyperthreading", "", False, None),
+        ("disable_hyperthreading", "", None, "must be a Boolean"),
         ("disable_hyperthreading", "NONE", None, "must be a Boolean"),
         ("disable_hyperthreading", "true", True, None),
         ("disable_hyperthreading", "false", False, None),
         ("enable_intel_hpc_platform", None, False, None),
-        ("enable_intel_hpc_platform", "", False, None),
+        ("enable_intel_hpc_platform", "", None, "must be a Boolean"),
         ("enable_intel_hpc_platform", "NONE", None, "must be a Boolean"),
         ("enable_intel_hpc_platform", "true", True, None),
         ("enable_intel_hpc_platform", "false", False, None),
         # TODO add regex for custom_chef_cookbook
         ("custom_chef_cookbook", None, None, None),
-        ("custom_chef_cookbook", "", None, None),
+        ("custom_chef_cookbook", "", "", None),
         ("custom_chef_cookbook", "fake_value", "fake_value", None),
         ("custom_chef_cookbook", "http://test", "http://test", None),
         ("custom_chef_cookbook", "s3://test/test2", "s3://test/test2", None),
         ("custom_chef_cookbook", "NONE", "NONE", None),
         # TODO add regex for custom_awsbatch_template_url
         ("custom_awsbatch_template_url", None, None, None),
-        ("custom_awsbatch_template_url", "", None, None),
+        ("custom_awsbatch_template_url", "", "", None),
         ("custom_awsbatch_template_url", "fake_value", "fake_value", None),
         ("custom_awsbatch_template_url", "http://test", "http://test", None),
         ("custom_awsbatch_template_url", "s3://test/test2", "s3://test/test2", None),
@@ -850,12 +852,25 @@ def test_cluster_param_from_file(mocker, param_key, param_value, expected_value,
 
 
 @pytest.mark.parametrize(
+    "param_key, param_value, expected_value, expected_message",
+    [
+        ("scheduler", None, None, "Configuration parameter 'scheduler' must have a value"),
+        ("base_os", None, None, "Configuration parameter 'base_os' must have a value"),
+    ],
+)
+def test_cluster_param_from_file_with_validation(mocker, param_key, param_value, expected_value, expected_message):
+    utils.assert_param_from_file(
+        mocker, CLUSTER, param_key, param_value, expected_value, expected_message, do_validation=True
+    )
+
+
+@pytest.mark.parametrize(
     "section_dict, expected_config_parser_dict, expected_message",
     [
         # default
         ({}, {"cluster default": {}}, None),
         # default values
-        ({"base_os": "alinux"}, {"cluster default": {"base_os": "alinux"}}, "No option .* in section: .*"),
+        ({"placement": "compute"}, {"cluster default": {"placement": "compute"}}, "No option .* in section: .*"),
         # other values
         ({"key_name": "test"}, {"cluster default": {"key_name": "test"}}, None),
         ({"base_os": "centos7"}, {"cluster default": {"base_os": "centos7"}}, None),
@@ -866,10 +881,10 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_cfn_params",
-    [(DefaultDict["cluster"].value, utils.merge_dicts(DefaultCfnParams["cluster"].value))],
+    "section_dict, expected_cfn_params", [(DefaultDict["cluster"].value, DefaultCfnParams["cluster"].value)],
 )
 def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
+    utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params)

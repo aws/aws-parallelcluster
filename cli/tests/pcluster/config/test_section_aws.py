@@ -52,15 +52,15 @@ def test_aws_section_to_file(mocker, section_dict, expected_config_parser_dict, 
     "param_key, param_value, expected_value, expected_message",
     [
         ("aws_access_key_id", None, None, None),
-        ("aws_access_key_id", "", None, None),
+        ("aws_access_key_id", "", "", None),
         ("aws_access_key_id", "NONE", "NONE", None),  # NONE is considered valid
         ("aws_access_key_id", "test", "test", None),
         ("aws_secret_access_key", None, None, None),
-        ("aws_secret_access_key", "", None, None),
+        ("aws_secret_access_key", "", "", None),
         ("aws_secret_access_key", "NONE", "NONE", None),  # NONE is considered valid
         ("aws_secret_access_key", "test", "test", None),
         ("aws_region_name", None, "us-east-1", None),
-        ("aws_region_name", "", "us-east-1", None),
+        ("aws_region_name", "", "", None),
         ("aws_region_name", "NONE", "NONE", None),  # TODO NONE is considered valid --> add regex
         ("aws_region_name", "eu-west-1", "eu-west-1", None),
     ],

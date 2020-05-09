@@ -46,7 +46,15 @@ def test_mapping_consistency():
                 assert_that(
                     param_definition_key,
                     description="{0} is not allowed in {1} param definition".format(param_definition_key, param_key),
-                ).is_in("type", "cfn_param_mapping", "allowed_values", "validators", "default", "referred_section")
+                ).is_in(
+                    "type",
+                    "cfn_param_mapping",
+                    "allowed_values",
+                    "validators",
+                    "default",
+                    "referred_section",
+                    "required",
+                )
 
 
 def test_example_config_consistency(mocker):
