@@ -26,9 +26,11 @@ def vpc_stack(vpc_stacks, region):
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
+@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1604", "*")
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
-@pytest.mark.dimensions("cn-northwest-1", "c5.xlarge", "alinux2", "*")
+@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
 def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack):
     """Test createami for given region and os"""
     cluster_config = pcluster_config_reader()
@@ -41,7 +43,7 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
     networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
 
     # Custom Cookbook
-    custom_cookbook = request.config.getoption("custom_chef_cookbook")
+    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
     custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
     # Instance type
@@ -56,5 +58,15 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
         + instance_args
         + networking_args
     )
+
+    pcluster_createami_result_stdout_list = [s.lower() for s in pcluster_createami_result.stdout.split("\n")]
+
+    assert_that(
+        any("downloading https://{0}-aws-parallelcluster.s3".format(region) in pcluster_createami_result_stdout_list)
+    ).is_true()
+    assert_that(any("chef.io/chef/install.sh" in pcluster_createami_result_stdout_list)).is_false()
+    assert_that(any("packages.chef.io" in pcluster_createami_result_stdout_list)).is_false()
+    assert_that(any("Thank you for installing Chef".lower() in pcluster_createami_result_stdout_list)).is_true()
+    assert_that(any("Starting Chef Client".lower() in pcluster_createami_result_stdout_list)).is_true()
 
     assert_that(pcluster_createami_result.stdout).does_not_contain("No custom AMI created")

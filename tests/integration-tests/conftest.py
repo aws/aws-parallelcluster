@@ -63,6 +63,9 @@ def pytest_addoption(parser):
     parser.addoption("--key-name", help="key to use for EC2 instances", type=str)
     parser.addoption("--key-path", help="key path to use for SSH connections", type=str)
     parser.addoption("--custom-chef-cookbook", help="url to a custom cookbook package")
+    parser.addoption(
+        "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
+    )
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
