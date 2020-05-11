@@ -139,6 +139,7 @@ To use custom templates or packages URLs or to run tests against a given custom 
 use the following options:
 * `--custom-node-url`: URL to a custom node package.
 * `--custom-cookbook-url`: URL to a custom cookbook package.
+* `--createami-custom-cookbook-url`: URL to a custom cookbook package for the createami command.
 * `--custom-template-url`: URL to a custom cfn template.
 * `--custom-awsbatch-template-url`: URL to a custom awsbatch cfn template.
 * `--custom-awsbatchcli-url`: URL to a custom awsbatch cli package.

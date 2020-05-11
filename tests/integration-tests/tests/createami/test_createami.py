@@ -43,7 +43,7 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
     networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
 
     # Custom Cookbook
-    custom_cookbook = request.config.getoption("custom_chef_cookbook")
+    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
     custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
     # Instance type
