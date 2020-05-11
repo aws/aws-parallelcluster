@@ -117,7 +117,9 @@ class CfnStacksFactory:
                 del self.__created_stacks[id]
                 logging.info("Stack {0} deleted successfully in region {1}".format(name, region))
             else:
-                logging.warning("Couldn't find stack with name {0} in region. Skipping deletion.".format(name, region))
+                logging.warning(
+                    "Couldn't find stack with name {0} in region {1}. Skipping deletion.".format(name, region)
+                )
         finally:
             unset_credentials()
 

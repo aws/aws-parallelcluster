@@ -323,7 +323,7 @@ class SlurmCommands(SchedulerCommands):
             submission_command += " -n {0}".format(slots)
         if nodes > 1:
             submission_command += " -N {0}".format(nodes)
-        submission_command += " {1} {2}".format(nodes, script_name, " ".join(script_args))
+        submission_command += " {0} {1}".format(script_name, " ".join(script_args))
         return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
