@@ -157,7 +157,7 @@ class S3DocumentManager:
         """
         logging.info(f"Reverting object {s3_key} in bucket {s3_bucket} to version {version_id}")
         logging.info(
-            f"Revert is performed with a roll-forward. "
+            "Revert is performed with a roll-forward. "
             "The reverted file will have a different version id but the same ETag"
         )
 
