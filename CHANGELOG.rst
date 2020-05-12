@@ -2,6 +2,36 @@
 CHANGELOG
 =========
 
+2.7.0
+=====
+
+**ENHANCEMENTS**
+
+* `sqswatcher`: The daemon is now compatible with VPC Endpoints so that SQS messages can be passed without traversing
+  the public internet.
+
+**CHANGES**
+
+* Upgrade NICE DCV to version 2020.0-8428.
+* Upgrade Intel MPI to version U7.
+* Upgrade NVIDIA driver to version 440.64.00.
+* Upgrade EFA installer to version 1.8.4:
+
+  * Kernel module: ``efa-1.5.1`` (no change)
+  * RDMA core: ``rdma-core-25.0`` (no change)
+  * Libfabric: ``libfabric-aws-1.9.0amzn1.1`` (no change)
+  * Open MPI: openmpi40-aws-4.0.3 (updated from openmpi40-aws-4.0.2)
+
+* Upgrade CentOS 7 AMI to version 7.8
+* Configuration: base_os and scheduler parameters are now mandatory and they have no longer a default value.
+
+**BUG FIXES**
+
+* Fix recipes installation at runtime by adding the bootstrapped file at the end of the last chef run.
+* Fix installation of FSx Lustre client on Centos 7
+* FSx Lustre: Exit with error when failing to retrieve FSx mountpoint
+* Fix sanity_check behavior when ``max queue_size`` > 1000
+
 2.6.1
 =====
 
