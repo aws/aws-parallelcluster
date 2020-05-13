@@ -75,7 +75,7 @@ def _test_raid_correctly_configured(remote_command_executor, raid_type, volume_s
     assert_that(result.stdout).matches(r"Array Size : .*{0}\.00 GiB".format(volume_size))
     assert_that(result.stdout).contains("Raid Devices : {0}".format(raid_devices))
     assert_that(result.stdout).contains("Active Devices : {0}".format(raid_devices))
-    assert_that(result.stdout).contains("Failed Devices : {0}".format(raid_devices))
+    assert_that(result.stdout).contains("Failed Devices : 0")
 
     # ensure that the RAID array is reassembled automatically on boot
     expected_entry = remote_command_executor.run_remote_command("sudo mdadm --detail --scan").stdout
