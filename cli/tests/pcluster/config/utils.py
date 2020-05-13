@@ -106,7 +106,7 @@ def mock_pcluster_config(mocker, scheduler=None):
         ),
     )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
-    mocker.patch.object(PclusterConfig, "_PclusterConfig__check_account_capacity")
+    mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
 def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):

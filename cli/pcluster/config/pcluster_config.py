@@ -21,7 +21,7 @@ import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import get_instance_vcpus, get_stack, get_stack_name, warn
+from pcluster.utils import get_instance_vcpus, get_stack, get_stack_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -318,8 +318,8 @@ class PclusterConfig(object):
             for _, section in sections.items():
                 section.validate()
 
-        # check AWS account limits
-        self.__check_account_capacity()
+        # test provided configuration
+        self.__test_configuration()
 
     def get_master_availability_zone(self):
         """Get the Availability zone of the Master Subnet."""
@@ -329,9 +329,13 @@ class PclusterConfig(object):
         """Get the Availability zone of the Compute Subnet."""
         return self.get_section("vpc").get_param_value("compute_availability_zone")
 
-    def __check_account_capacity(self):  # noqa: C901
-        """Try to launch the requested number of instances to verify Account limits."""
-        LOGGER.debug("Checking AWS account capacity...")
+    def __test_configuration(self):  # noqa: C901
+        """
+        Try to launch the requested instances (in dry-run mode) to verify configuration parameters.
+
+        NOTE: The number of max instances is set to 1 because run_instances in dry-mode doesn't try to allocate the
+        requested instances. The goal of the test is verify the provided configuration."""
+        LOGGER.debug("Testing configuration parameters...")
         cluster_section = self.get_section("cluster")
         vpc_section = self.get_section("vpc")
 
@@ -343,20 +347,11 @@ class PclusterConfig(object):
         ):
             return
 
+        # Retrieve instance types
         master_instance_type = cluster_section.get_param_value("master_instance_type")
         compute_instance_type = cluster_section.get_param_value("compute_instance_type")
-        # get max size
-        if cluster_section.get_param_value("scheduler") == "awsbatch":
-            max_vcpus = cluster_section.get_param_value("max_vcpus")
-            vcpus = get_instance_vcpus(self.region, compute_instance_type)
-            max_size = -(-max_vcpus // vcpus)
-        else:
-            max_size = cluster_section.get_param_value("max_queue_size")
-        if max_size < 0:
-            warn("Unable to check AWS account capacity. Skipping limits validation")
-            return
 
-        # Check for insufficient Account capacity
+        # Retrieve network parameters
         compute_subnet = vpc_section.get_param_value("compute_subnet_id")
         master_subnet = vpc_section.get_param_value("master_subnet_id")
         vpc_security_group = vpc_section.get_param_value("vpc_security_group_id")
@@ -390,7 +385,6 @@ class PclusterConfig(object):
 
             # Test Master Instance Configuration
             self.__ec2_run_instance(
-                max_size,
                 InstanceType=master_instance_type,
                 MinCount=1,
                 MaxCount=1,
@@ -404,10 +398,9 @@ class PclusterConfig(object):
 
             # Test Compute Instances Configuration
             self.__ec2_run_instance(
-                max_size,
                 InstanceType=compute_instance_type,
-                MinCount=max_size,
-                MaxCount=max_size,
+                MinCount=1,
+                MaxCount=1,
                 ImageId=latest_alinux_ami_id,
                 SubnetId=compute_subnet,
                 SecurityGroupIds=security_groups_ids,
@@ -416,8 +409,8 @@ class PclusterConfig(object):
                 DryRun=True,
             )
         except ClientError:
-            self.error("Unable to check AWS Account capacity")
-        LOGGER.debug("AWS account capacity verified correctly.")
+            self.error("Unable to validate configuration parameters.")
+        LOGGER.debug("Configuration parameters tested correctly.")
 
     def __get_latest_alinux_ami_id(self):
         """Get latest alinux ami id."""
@@ -434,7 +427,7 @@ class PclusterConfig(object):
 
         return alinux_ami_id
 
-    def __ec2_run_instance(self, max_size, **kwargs):
+    def __ec2_run_instance(self, **kwargs):
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
             boto3.client("ec2").run_instances(**kwargs)
@@ -447,27 +440,14 @@ class PclusterConfig(object):
                 if "does not support specifying CpuOptions" in message:
                     self.error(message.replace("CpuOptions", "disable_hyperthreading"))
                 self.error(message)
-            elif code == "InstanceLimitExceeded":
-                self.error(
-                    "The configured max size parameter {0} exceeds the AWS Account limit "
-                    "in the {1} region.\n{2}".format(max_size, self.region, message)
-                )
-            elif code == "InsufficientInstanceCapacity":
-                self.error(
-                    "The configured max size parameter {0} exceeds the On-Demand capacity on AWS.\n{1}".format(
-                        max_size, message
-                    )
-                )
             elif code == "InsufficientFreeAddressesInSubnet":
                 self.error(
-                    "The configured max size parameter {0} exceeds the number of free private IP addresses "
-                    "available in the Compute subnet.\n{1}".format(max_size, message)
+                    "The specified subnet does not contain enough free private IP addresses "
+                    "to fulfill your request.\n{0}".format(message)
                 )
-            elif code == "InvalidParameterCombination":
-                self.error("Unable to check AWS Account capacity. {0}".format(message))
             else:
                 self.error(
-                    "Unable to check AWS Account capacity. "
+                    "Unable to validate configuration parameters. "
                     "Please double check your cluster configuration.\n{0}".format(message)
                 )
 
