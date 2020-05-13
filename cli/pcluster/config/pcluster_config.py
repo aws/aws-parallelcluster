@@ -331,6 +331,7 @@ class PclusterConfig(object):
 
     def __check_account_capacity(self):  # noqa: C901
         """Try to launch the requested number of instances to verify Account limits."""
+        LOGGER.debug("Checking AWS account capacity...")
         cluster_section = self.get_section("cluster")
         vpc_section = self.get_section("vpc")
 
@@ -358,8 +359,12 @@ class PclusterConfig(object):
         # Check for insufficient Account capacity
         compute_subnet = vpc_section.get_param_value("compute_subnet_id")
         master_subnet = vpc_section.get_param_value("master_subnet_id")
+        vpc_security_group = vpc_section.get_param_value("vpc_security_group_id")
         if not compute_subnet:
             compute_subnet = master_subnet
+        security_groups_ids = []
+        if vpc_security_group:
+            security_groups_ids.append(vpc_security_group)
 
         # Initialize CpuOptions
         disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
@@ -391,6 +396,7 @@ class PclusterConfig(object):
                 MaxCount=1,
                 ImageId=latest_alinux_ami_id,
                 SubnetId=master_subnet,
+                SecurityGroupIds=security_groups_ids,
                 CpuOptions=master_cpu_options,
                 Placement=master_placement_group,
                 DryRun=True,
@@ -404,12 +410,14 @@ class PclusterConfig(object):
                 MaxCount=max_size,
                 ImageId=latest_alinux_ami_id,
                 SubnetId=compute_subnet,
+                SecurityGroupIds=security_groups_ids,
                 CpuOptions=compute_cpu_options,
                 Placement=compute_placement_group,
                 DryRun=True,
             )
         except ClientError:
-            self.error("Unable to check account capacity")
+            self.error("Unable to check AWS Account capacity")
+        LOGGER.debug("AWS account capacity verified correctly.")
 
     def __get_latest_alinux_ami_id(self):
         """Get latest alinux ami id."""
@@ -456,10 +464,11 @@ class PclusterConfig(object):
                     "available in the Compute subnet.\n{1}".format(max_size, message)
                 )
             elif code == "InvalidParameterCombination":
-                self.error(message)
+                self.error("Unable to check AWS Account capacity. {0}".format(message))
             else:
                 self.error(
-                    "Unable to check AWS Account limits. Please double check your cluster configuration.\n%s" % message
+                    "Unable to check AWS Account capacity. "
+                    "Please double check your cluster configuration.\n{0}".format(message)
                 )
 
     def error(self, message):

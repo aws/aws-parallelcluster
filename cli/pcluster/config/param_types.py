@@ -1118,6 +1118,7 @@ class Section(object):
         """Call the validator function of the section and of all the parameters."""
         if self.params:
             section_name = _get_file_section_name(self.key, self.label)
+            LOGGER.debug("Validating section '[%s]'...", section_name)
 
             # validate section
             for validation_func in self.definition.get("validators", []):
@@ -1134,6 +1135,7 @@ class Section(object):
                     LOGGER.debug("Section '[%s]' is valid", section_name)
 
             # validate items
+            LOGGER.debug("Validating parameters of section '[%s]'...", section_name)
             for param_key, param_definition in self.definition.get("params").items():
                 param_type = param_definition.get("type", Param)
 
@@ -1143,6 +1145,7 @@ class Section(object):
                 else:
                     # define a default param and validate it
                     param_type(self.key, self.label, param_key, param_definition, self.pcluster_config).validate()
+            LOGGER.debug("Parameters validation of section '[%s]' completed correctly.", section_name)
 
     def to_file(self, config_parser, write_defaults=False):
         """Create the section and add all the parameters in the config_parser."""
