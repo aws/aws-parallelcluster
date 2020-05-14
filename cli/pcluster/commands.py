@@ -412,7 +412,7 @@ def list_stacks(args):
 def _poll_master_server_state(stack_name):
     ec2 = boto3.client("ec2")
     try:
-        master_id = utils.get_master_server_id(stack_name)
+        master_id = utils.describe_cluster_instances(stack_name, filter_by_name="Master")[0].get("InstanceId")
         instance = ec2.describe_instance_status(InstanceIds=[master_id]).get("InstanceStatuses")[0]
         state = instance.get("InstanceState").get("Name")
         sys.stdout.write("\rMasterServer: %s" % state.upper())
@@ -445,24 +445,19 @@ def _poll_master_server_state(stack_name):
     return state
 
 
-def _get_ec2_instances(stack):
-    resources = utils.get_stack_resources(stack)
-    temp_instances = [r for r in resources if r.get("ResourceType") == "AWS::EC2::Instance"]
-
-    stack_instances = []
-    for instance in temp_instances:
-        stack_instances.append([instance.get("LogicalResourceId"), instance.get("PhysicalResourceId")])
-
-    return stack_instances
-
-
 def _get_asg_name(stack_name):
-    try:
+    outputs = utils.get_stack(stack_name).get("Outputs", [])
+    asg_name = utils.get_stack_output_value(outputs, "ASGName")
+    if not asg_name:
+        # Fallback to old behaviour to preserve backward compatibility
         resources = utils.get_stack_resources(stack_name)
-        return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
-    except IndexError:
-        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
-        sys.exit(1)
+        asg_name = next(
+            (r.get("PhysicalResourceId") for r in resources if r.get("LogicalResourceId") == "ComputeFleet"), None
+        )
+        if not asg_name:
+            LOGGER.error("Could not retrieve AutoScaling group name. Please check cluster status.")
+            sys.exit(1)
+    return asg_name
 
 
 def _set_asg_limits(asg_name, min, max, desired):
@@ -472,21 +467,9 @@ def _set_asg_limits(asg_name, min, max, desired):
     )
 
 
-def _get_asg_instances(stack):
-    asg = boto3.client("autoscaling")
-    asg_name = _get_asg_name(stack)
-    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
-    if not auto_scaling_groups:
-        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
-        sys.exit(1)
-    asg = auto_scaling_groups[0]
-    name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
-
-    temp_instances = []
-    for instance in asg.get("Instances"):
-        temp_instances.append([name, instance.get("InstanceId")])
-
-    return temp_instances
+def _get_compute_instances(stack):
+    instances = utils.describe_cluster_instances(stack, filter_by_name="Compute")
+    return map(lambda i: ("ComputeFleet", i.get("InstanceId")), instances)
 
 
 def _start_batch_ce(ce_name, min_vcpus, desired_vcpus, max_vcpus):
@@ -515,10 +498,12 @@ def instances(args):
     cluster_section = pcluster_config.get_section("cluster")
 
     instances = []
-    instances.extend(_get_ec2_instances(stack_name))
+    master_server = utils.describe_cluster_instances(stack_name, filter_by_name="Master")
+    if master_server:
+        instances.append(("MasterServer", master_server[0].get("InstanceId")))
 
     if cluster_section.get_param_value("scheduler") != "awsbatch":
-        instances.extend(_get_asg_instances(stack_name))
+        instances.extend(_get_compute_instances(stack_name))
 
     for instance in instances:
         LOGGER.info("%s         %s", instance[0], instance[1])
@@ -542,7 +527,6 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
 
     try:
         master_ip, username = utils.get_master_ip_and_username(args.cluster_name)
-
         try:
             from shlex import quote as cmd_quote
         except ImportError:

@@ -337,7 +337,11 @@ def get_stack(stack_name, cfn_client=None, raise_on_error=False):
     except ClientError as e:
         if raise_on_error:
             raise
-        error(e.response.get("Error").get("Message"))
+        error(
+            "Could not retrieve CloudFormation stack data. Failed with error: {0}".format(
+                e.response.get("Error").get("Message")
+            )
+        )
 
 
 def stack_exists(stack_name):
@@ -533,13 +537,21 @@ def get_avail_zone(subnet_id):
     return avail_zone
 
 
-def get_master_server_id(stack_name):
-    """Return the physical id of the master server, or [] if no master server."""
+def describe_cluster_instances(stack_name, filter_by_name=None):
+    """Return the cluster instances optionally filtered by Name tag."""
     try:
-        resources = boto3.client("cloudformation").describe_stack_resource(
-            StackName=stack_name, LogicalResourceId="MasterServer"
-        )
-        return resources.get("StackResourceDetail").get("PhysicalResourceId")
+        ec2 = boto3.client("ec2")
+        filters = [
+            {"Name": "tag:Application", "Values": [stack_name]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+        if filter_by_name:
+            filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
+        instances = []
+        for page in paginate_boto3(ec2.describe_instances, Filters=filters):
+            instances.extend(page.get("Instances", []))
+        return instances
+
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
 
@@ -552,16 +564,14 @@ def _get_master_server_ip(stack_name):
     :param config: Config object
     :return private/public ip address
     """
-    ec2 = boto3.client("ec2")
-
-    master_id = get_master_server_id(stack_name)
-    if not master_id:
+    instances = describe_cluster_instances(stack_name, filter_by_name="Master")
+    if not instances:
         error("MasterServer not running. Can't SSH")
-    instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
-    ip_address = instance.get("PublicIpAddress")
+    master_instance = instances[0]
+    ip_address = master_instance.get("PublicIpAddress")
     if ip_address is None:
-        ip_address = instance.get("PrivateIpAddress")
-    state = instance.get("State").get("Name")
+        ip_address = master_instance.get("PrivateIpAddress")
+    state = master_instance.get("State").get("Name")
     if state != "running" or ip_address is None:
         error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
@@ -574,17 +584,10 @@ def get_master_ip_and_username(cluster_name):
 
         stack_result = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
         stack_status = stack_result.get("StackStatus")
-        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
-        invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
 
-        if stack_status in invalid_status:
+        if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
             error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
-        elif stack_status in valid_status:
-            outputs = stack_result.get("Outputs")
-            master_ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
-            username = get_stack_output_value(outputs, "ClusterUser")
         else:
-            # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
             master_ip = _get_master_server_ip(stack_name)
             template = cfn.get_template(StackName=stack_name)
             mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
