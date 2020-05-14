@@ -37,7 +37,10 @@
     "ImageId": {
       "Type": "AWS::EC2::Image::Id"
     },
-    "IamInstanceProfile":  {
+    "IamInstanceProfile": {
+      "Type": "String"
+    },
+    "IamRoleName": {
       "Type": "String"
     },
     "PlacementGroup": {
@@ -595,6 +598,10 @@
                   {
                     "Ref": "AWS::StackName"
                   },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
+                  },
                   " --resource=ComputeFleet --region=${region}\n",
                   "  exit 1\n",
                   "}\n",
@@ -720,6 +727,10 @@
                   {
                     "Ref": "AWS::StackName"
                   },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
+                  },
                   " -v -c default -r ComputeServerLaunchTemplate --region ",
                   {
                     "Ref": "AWS::Region"
@@ -728,6 +739,10 @@
                   "cfn-signal --exit-code=0 --reason=\"ComputeServer setup complete\" --stack=",
                   {
                     "Ref": "AWS::StackName"
+                  },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
                   },
                   " --resource=ComputeFleet --region=",
                   {

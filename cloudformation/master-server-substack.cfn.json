@@ -40,7 +40,10 @@
     "ImageId": {
       "Type": "AWS::EC2::Image::Id"
     },
-    "IamInstanceProfile":  {
+    "IamInstanceProfile": {
+      "Type": "String"
+    },
+    "IamRoleName": {
       "Type": "String"
     },
     "PlacementGroup": {
@@ -664,6 +667,10 @@
                   {
                     "Ref": "MainStackName"
                   },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
+                  },
                   " --resource=MasterServerWaitCondition --region=",
                   {
                     "Ref": "AWS::Region"
@@ -778,6 +785,10 @@
                   {
                     "Ref": "AWS::StackName"
                   },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
+                  },
                   " -v -c default -r MasterServerLaunchTemplate --region ",
                   {
                     "Ref": "AWS::Region"
@@ -786,6 +797,10 @@
                   "cfn-signal --exit-code=0 --reason=\"MasterServer setup complete\" --stack=",
                   {
                     "Ref": "MainStackName"
+                  },
+                  " --role=",
+                  {
+                    "Ref": "IamRoleName"
                   },
                   " --resource=MasterServerWaitCondition --region=",
                   {
