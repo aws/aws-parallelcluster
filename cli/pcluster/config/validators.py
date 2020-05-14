@@ -746,10 +746,11 @@ def scheduler_validator(param_key, param_value, pcluster_config):
         errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
 
     will_be_deprecated = ["sge", "torque"]
+    wiki_url = "https://github.com/aws/aws-parallelcluster/wiki/Deprecation-of-SGE-and-Torque-in-ParallelCluster"
     if param_value in will_be_deprecated:
         warnings.append(
             "The job scheduler you are using ({0}) is scheduled to be deprecated in future releases of "
-            "ParallelCluster".format(param_value)
+            "ParallelCluster. More information is available here: {1}".format(param_value, wiki_url)
         )
 
     return errors, warnings
