@@ -285,6 +285,14 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
         if get_partition() not in get_supported_dcv_partition():
             errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
+        master_instance_type = cluster_section.get_param_value("master_instance_type")
+        if re.search(r"(micro)|(nano)", master_instance_type):
+            warnings.append(
+                "The packages required for desktop virtualization in the selected instance type '{0}' "
+                "may cause instability of the master instance. If you want to use NICE DCV it is recommended "
+                "to use an instance type with at least 1.7 GB of memory.".format(master_instance_type)
+            )
+
         if pcluster_config.get_section("dcv").get_param_value("access_from") == CIDR_ALL_IPS:
             LOGFILE_LOGGER.warning(
                 DCV_MESSAGES["warnings"]["access_from_world"].format(
