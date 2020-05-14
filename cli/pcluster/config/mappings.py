@@ -32,6 +32,7 @@ from pcluster.config.param_types import (
     SpotPriceParam,
 )
 from pcluster.config.validators import (
+    base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
     dcv_enabled_validator,
@@ -457,6 +458,7 @@ CLUSTER = {
             ("base_os", {
                 "cfn_param_mapping": "BaseOS",
                 "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
+                "validators": [base_os_validator],
                 "required": True,
             }),
             ("scheduler", {

@@ -1195,3 +1195,19 @@ def test_fsx_os_support(mocker, base_os, expected_message):
     }
 
     utils.assert_param_validator(mocker, config_parser_dict, re.escape(expected_message) if expected_message else None)
+
+
+@pytest.mark.parametrize(
+    "base_os, expected_warning",
+    [
+        ("alinux2", None),
+        ("centos7", None),
+        ("ubuntu1604", None),
+        ("ubuntu1804", None),
+        ("centos6", "centos6.*will reach end-of-life in late 2020"),
+        ("alinux", "alinux.*will reach end-of-life in late 2020"),
+    ],
+)
+def test_base_os_validator(mocker, capsys, base_os, expected_warning):
+    config_parser_dict = {"cluster default": {"base_os": base_os}}
+    utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
