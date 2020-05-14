@@ -334,7 +334,8 @@ class PclusterConfig(object):
         Try to launch the requested instances (in dry-run mode) to verify configuration parameters.
 
         NOTE: The number of max instances is set to 1 because run_instances in dry-mode doesn't try to allocate the
-        requested instances. The goal of the test is verify the provided configuration."""
+        requested instances. The goal of the test is verify the provided configuration.
+        """
         LOGGER.debug("Testing configuration parameters...")
         cluster_section = self.get_section("cluster")
         vpc_section = self.get_section("vpc")
@@ -440,6 +441,13 @@ class PclusterConfig(object):
                 if "does not support specifying CpuOptions" in message:
                     self.error(message.replace("CpuOptions", "disable_hyperthreading"))
                 self.error(message)
+            elif code == "InstanceLimitExceeded":
+                self.error(
+                    "You've reached the limit on the number of instances you can run concurrently "
+                    "for the configured instance type.\n{0}".format(message)
+                )
+            elif code == "InsufficientInstanceCapacity":
+                self.error("There is not enough capacity to fulfill your request.\n{0}".format(message))
             elif code == "InsufficientFreeAddressesInSubnet":
                 self.error(
                     "The specified subnet does not contain enough free private IP addresses "
