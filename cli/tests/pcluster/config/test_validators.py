@@ -1156,19 +1156,23 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "base_os, access_from, expected_message",
+    "base_os, instance_type, access_from, expected_error, expected_warning",
     [
-        ("alinux", None, "Please double check the 'base_os' configuration parameter"),
-        ("centos6", None, "Please double check the 'base_os' configuration parameter"),
-        ("ubuntu1604", None, "Please double check the 'base_os' configuration parameter"),
-        ("centos7", None, None),
-        ("ubuntu1804", None, None),
-        ("ubuntu1804", "1.2.3.4/32", None),
-        ("centos7", "0.0.0.0/0", None),
-        ("alinux2", None, None),
+        ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos6", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("ubuntu1604", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos7", "t2.medium", None, None, None),
+        ("ubuntu1804", "t2.medium", None, None, None),
+        ("ubuntu1804", "t2.medium", "1.2.3.4/32", None, None),
+        ("centos7", "t2.medium", "0.0.0.0/0", None, None),
+        ("alinux2", "t2.medium", None, None, None),
+        ("alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
+        ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
     ],
 )
-def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog):
+def test_dcv_enabled_validator(
+    mocker, base_os, instance_type, expected_error, expected_warning, access_from, caplog, capsys
+):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
         "dcv dcv": {"enable": "master"},
@@ -1176,17 +1180,17 @@ def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, c
     if access_from:
         config_parser_dict["dcv dcv"]["access_from"] = access_from
 
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    mocker.patch(
+        "pcluster.config.validators.get_supported_instance_types", return_value=["t2.nano", "t2.micro", "t2.medium"]
+    )
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
     access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
     assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
 
 
 @pytest.mark.parametrize(
     "base_os, expected_message",
-    [
-        ("alinux", None),
-        ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES)),
-    ],
+    [("alinux", None), ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))],
 )
 def test_fsx_os_support(mocker, base_os, expected_message):
     config_parser_dict = {
