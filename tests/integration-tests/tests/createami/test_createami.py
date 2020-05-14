@@ -60,14 +60,23 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
         + networking_args
     )
 
-    pcluster_createami_result_stdout_list = [s.lower() for s in pcluster_createami_result.stdout.split("\n")]
-
     assert_that(
-        any("downloading https://{0}-aws-parallelcluster.s3".format(region) in pcluster_createami_result_stdout_list)
+        any(
+            "downloading https://{0}-aws-parallelcluster.s3".format(region).lower() in s.lower()
+            for s in pcluster_createami_result.stdout.split("\n")
+        )
     ).is_true()
-    assert_that(any("chef.io/chef/install.sh" in pcluster_createami_result_stdout_list)).is_false()
-    assert_that(any("packages.chef.io" in pcluster_createami_result_stdout_list)).is_false()
-    assert_that(any("Thank you for installing Chef".lower() in pcluster_createami_result_stdout_list)).is_true()
-    assert_that(any("Starting Chef Client".lower() in pcluster_createami_result_stdout_list)).is_true()
+    assert_that(
+        any("chef.io/chef/install.sh".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_false()
+    assert_that(
+        any("packages.chef.io".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_false()
+    assert_that(
+        any("Thank you for installing Chef".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_true()
+    assert_that(
+        any("Starting Chef Client".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+    ).is_true()
 
     assert_that(pcluster_createami_result.stdout).does_not_contain("No custom AMI created")

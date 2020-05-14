@@ -192,7 +192,7 @@
     "BaseOS": {
       "Description": "Base OS type for cluster AMI",
       "Type": "String",
-      "Default": "alinux",
+      "Default": "alinux2",
       "ConstraintDescription": "must be a supported base OS",
       "AllowedValues": [
         "centos6",
@@ -211,7 +211,7 @@
     "Scheduler": {
       "Description": "Cluster scheduler",
       "Type": "String",
-      "Default": "sge",
+      "Default": "slurm",
       "ConstraintDescription": "must be a supported scheduler",
       "AllowedValues": [
         "sge",
