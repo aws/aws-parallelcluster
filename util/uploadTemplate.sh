@@ -103,6 +103,8 @@ main() {
     sed -i "s#.*aws-parallelcluster.*/templates/batch-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/batch-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/cw-logs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/cw-logs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/scheduled-events-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/scheduled-events-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/compute-fleet-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/compute-fleet-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/master-server-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/master-server-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
 
     # upload templates
     aws ${_profile} --region "${_region}" s3 cp --acl public-read ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
