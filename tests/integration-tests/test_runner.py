@@ -248,6 +248,19 @@ def _is_file(value):
     return value
 
 
+def _join_with_not(args):
+    """
+    Join 'not' with next token, so they
+    can be used together as single pytest marker
+    """
+    it = iter(args)
+    while True:
+        current = next(it)
+        if current == "not":
+            current += " " + next(it)
+        yield current
+
+
 def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args = ["-s", "-vv", "-l"]
 
@@ -264,7 +277,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     pytest_args.append("--durations=0")
     # Run only tests with the given markers
     pytest_args.append("-m")
-    pytest_args.append(" or ".join(args.features))
+    pytest_args.append(" or ".join(list(_join_with_not(args.features))))
     pytest_args.append("--regions")
     pytest_args.extend(regions)
     pytest_args.append("--instances")
