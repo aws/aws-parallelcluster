@@ -74,13 +74,13 @@ def test_cw_log_settings_section_to_file(mocker, section_dict, expected_config_p
         ("enable", "true", True, None),
         ("enable", "false", False, None),
         ("enable", "not_a_bool", None, "'enable' must be a Boolean"),
-        ("enable", "", True, None),  # Empty string gets default value
+        ("enable", "", None, "'enable' must be a Boolean"),
         # retention_days parameter
         ("retention_days", "1", 1, None),
         ("retention_days", "14", 14, None),
         ("retention_days", "3653", 3653, None),
         ("retention_days", "2", None, "'retention_days' has an invalid value"),
-        ("retention_days", "", 14, None),  # Empty string gets default value
+        ("retention_days", "", None, "must be an Integer"),
     ],
 )
 def test_cw_log_settings_param_from_file(mocker, param_key, param_value, expected_value, expected_message):

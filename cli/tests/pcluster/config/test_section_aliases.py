@@ -53,7 +53,7 @@ def test_aliases_section_to_file(mocker, section_dict, expected_config_parser_di
     [
         # default
         ("ssh", None, "ssh {CFN_USER}@{MASTER_IP} {ARGS}", None),
-        ("ssh", "", "ssh {CFN_USER}@{MASTER_IP} {ARGS}", None),
+        ("ssh", "", "", None),
         # valid values
         ("ssh", "NONE", "NONE", None),
         (

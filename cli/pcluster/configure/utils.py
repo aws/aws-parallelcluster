@@ -34,6 +34,30 @@ def handle_client_exception(func):
     return wrapper
 
 
+def get_default_suggestion(parameter, options):
+    """
+    Provide default values for parameters without one defined in the config file.
+
+    Note that options is assumed to be a list, tuple, or None.
+    """
+    # For these parameters, steer users towards a default value rather than selecting the first
+    # from the available set of options.
+    opinionated_suggestions = {
+        "Scheduler": "slurm",
+        "Operating System": "alinux2",
+    }
+
+    if parameter in opinionated_suggestions:
+        default = opinionated_suggestions.get(parameter)
+    elif isinstance(options, (list, tuple)) and isinstance(options[0], (list, tuple)):
+        default = options[0][0]
+    elif isinstance(options, (list, tuple)):
+        default = options[0]
+    else:
+        default = ""
+    return default
+
+
 def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, default_value=None, options_to_print=None):
     """
     Prompt the user a message with optionally some options.
@@ -49,7 +73,9 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
         print("Allowed values for {0}:".format(message))
         for item in options_to_print:
             print(item)
-    user_prompt = "{0} [{1}]: ".format(message, default_value if default_value is not None else "")
+    user_prompt = "{0} [{1}]: ".format(
+        message, default_value if default_value is not None else get_default_suggestion(message, options_to_print)
+    )
 
     valid_user_input = False
     result = default_value
@@ -79,8 +105,8 @@ def prompt_iterable(message, options, default_value=None):
         sys.exit(1)
     is_tuple = isinstance(options[0], (list, tuple))
 
-    if not default_value:
-        default_value = options[0][0] if is_tuple else options[0]
+    if default_value is None:
+        default_value = get_default_suggestion(message, options)
 
     def input_to_parameter(user_input):
         try:

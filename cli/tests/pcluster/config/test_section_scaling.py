@@ -75,7 +75,7 @@ def test_scaling_section_to_cfn(mocker, section_dict, expected_cfn_params):
     "param_key, param_value, expected_value, expected_message",
     [
         ("scaledown_idletime", None, 10, None),
-        ("scaledown_idletime", "", 10, None),
+        ("scaledown_idletime", "", "", "must be an Integer"),
         ("scaledown_idletime", "NONE", None, "must be an Integer"),
         ("scaledown_idletime", "wrong_value", None, "must be an Integer"),
         ("scaledown_idletime", "10", 10, None),
