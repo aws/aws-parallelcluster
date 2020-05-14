@@ -846,3 +846,16 @@ def intel_hpc_validator(param_key, param_value, pcluster_config):
         )
 
     return errors, warnings
+
+
+def base_os_validator(param_key, param_value, pcluster_config):
+    warnings = []
+
+    eol_2020 = ["centos6", "alinux"]
+    if param_value in eol_2020:
+        warnings.append(
+            "The operating system you are using ({0}) will reach end-of-life in late 2020. It will be deprecated in "
+            "future releases of ParallelCluster".format(param_value)
+        )
+
+    return [], warnings
