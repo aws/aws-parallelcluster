@@ -21,6 +21,8 @@ from tests.common.assertions import assert_no_errors_in_logs
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
+@pytest.mark.os(["alinux2"])
+@pytest.mark.usefixtures("os")
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
     cluster_config = pcluster_config_reader(
