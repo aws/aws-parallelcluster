@@ -162,9 +162,7 @@ class ClustersFactory:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)
             raise Exception(error)
-        elif "WARNING" in result.stdout:
-            error = "Cluster creation for {0} generated a warning: {1}".format(name, result.stdout)
-            logging.warning(error)
+        self.__check_create_warnings(name, result.stdout)
         logging.info("Cluster {0} created successfully".format(name))
         cluster.create_complete = True
 
@@ -193,3 +191,20 @@ class ClustersFactory:
                 self.destroy_cluster(key, keep_logs)
             except Exception as e:
                 logging.error("Failed when destroying cluster {0} with exception {1}.".format(key, e))
+
+    @staticmethod
+    def __check_create_warnings(cluster_name, output):
+        whitelisted_warnings = ["scheduler", "base_os"]
+        for line in output.splitlines():
+            if "WARNING" in line:
+                error = "Cluster creation for {0} generated a warning: {1}".format(cluster_name, output)
+                if not any(
+                    (
+                        f"The configuration parameter '{whitelisted}' generated the following warnings" in line
+                        for whitelisted in whitelisted_warnings
+                    )
+                ):
+                    logging.error(error)
+                    raise Exception(error)
+                else:
+                    logging.warning(error)
