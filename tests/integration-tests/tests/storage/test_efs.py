@@ -26,7 +26,7 @@ from utils import get_vpc_snakecase_value
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.os(["alinux2"])
+@pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stacks):
     """
@@ -49,7 +49,6 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.os(["alinux2"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stacks):
     """
