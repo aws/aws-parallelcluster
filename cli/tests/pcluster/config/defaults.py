@@ -132,7 +132,7 @@ DEFAULT_CLUSTER_DICT = {
     "dcv_settings": None,
     "cw_log_settings": None,
     "cluster_config_metadata": {"sections": {}},
-    "arch": "x86_64",
+    "architecture": "x86_64",
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -270,8 +270,8 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     # cw_log_settings
     "CWLogOptions": "true,14",
     "ClusterConfigMetadata": "{'sections': {}}",
-    # arch
-    "Arch": "x86_64",
+    # architecture
+    "Architecture": "x86_64",
 }
 
 

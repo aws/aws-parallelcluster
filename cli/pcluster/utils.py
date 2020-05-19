@@ -30,7 +30,7 @@ import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
 
-from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
 
 LOGGER = logging.getLogger(__name__)
 
@@ -621,7 +621,7 @@ def get_master_server_state(stack_name):
     return instance.get("State").get("Name")
 
 
-def get_supported_archs_for_inst_type(instance_type):
+def get_supported_architectures_for_instance_type(instance_type):
     """Get a list of architectures supported for the given instance type."""
     try:
         ec2_client = boto3.client("ec2")
@@ -632,10 +632,13 @@ def get_supported_archs_for_inst_type(instance_type):
                 instance_type, e.response.get("Error").get("Message")
             )
         )
-    supported_archs = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
-    if not supported_archs:
+    supported_architectures = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
+    if not supported_architectures:
         error("Unable to get architectures supported by instance type {0}".format(instance_type))
-    return supported_archs
+
+    # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
+    supported_architectures = list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
+    return supported_architectures
 
 
 def get_cli_log_file():
