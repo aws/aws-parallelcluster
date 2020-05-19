@@ -15,19 +15,19 @@ import boto3
 from retrying import retry
 
 OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
-    "alinux": {"name": "amzn-ami-hvm-*.*.*.*-x86_64-gp2", "owners": ["amazon"]},
-    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-x86_64-gp2", "owners": ["amazon"]},
-    "centos7": {"name": "CentOS Linux 7 x86_64 HVM EBS ENA *", "owners": ["410186602215"]},
+    "alinux": {"name": "amzn-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
+    "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
+    "centos7": {"name": "CentOS Linux 7 * HVM EBS ENA *", "owners": ["410186602215"]},
     "ubuntu1404": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-amd64-server-*",
+        "name": "ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
     },
     "ubuntu1604": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-*",
+        "name": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
     },
     "ubuntu1804": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*",
+        "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
     },
 }
@@ -46,10 +46,13 @@ AMI_TYPE_DICT = {
 }
 
 
-def retrieve_latest_ami(region, os, ami_type="official"):
+def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
     ec2_client = boto3.client("ec2", region_name=region)
     response = ec2_client.describe_images(
-        Filters=[{"Name": "name", "Values": [AMI_TYPE_DICT[ami_type][os]["name"]]}],
+        Filters=[
+            {"Name": "name", "Values": [AMI_TYPE_DICT[ami_type][os]["name"]]},
+            {"Name": "architecture", "Values": [architecture]},
+        ],
         Owners=AMI_TYPE_DICT[ami_type][os]["owners"],
     )
     # Sort on Creation date Desc
