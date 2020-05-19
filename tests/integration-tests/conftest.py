@@ -40,6 +40,7 @@ from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetCon
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    get_architecture_supported_by_instance_type,
     get_vpc_snakecase_value,
     random_alphanumeric,
     set_credentials,
@@ -369,7 +370,8 @@ def cfn_stacks_factory(request):
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
-    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
+    # "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
+    "us-east-1": ["us-east-1a", "us-east-1b"],
     # c4.xlarge is not supported in us-west-2d
     "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
     # c5.xlarge is not supported in ap-southeast-2a
@@ -499,3 +501,14 @@ def pytest_runtest_makereport(item, call):
     # set a report attribute for each phase of a call, which can
     # be "setup", "call", "teardown"
     setattr(item, "rep_" + rep.when, rep)
+
+
+@pytest.fixture()
+def architecture(request, instance, region):
+    """Return a string describing the architecture supported by the given instance type."""
+    supported_architecture = request.config.cache.get(f"{instance}/architecture", None)
+    if supported_architecture is None:
+        logging.info(f"Getting supported architecture for instance type {instance}")
+        supported_architecture = get_architecture_supported_by_instance_type(instance, region)
+        request.config.cache.set(f"{instance}/architecture", supported_architecture)
+    return supported_architecture
