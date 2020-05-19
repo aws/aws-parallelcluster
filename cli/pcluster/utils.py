@@ -450,7 +450,7 @@ def get_templates_bucket_path():
     """Return a string containing the path of bucket."""
     region = get_region()
     s3_suffix = ".cn" if region.startswith("cn") else ""
-    return "https://s3.{REGION}.amazonaws.com{S3_SUFFIX}/{REGION}-aws-parallelcluster/templates/".format(
+    return "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{S3_SUFFIX}/templates/".format(
         REGION=region, S3_SUFFIX=s3_suffix
     )
 
