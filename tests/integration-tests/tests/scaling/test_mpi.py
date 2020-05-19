@@ -15,15 +15,15 @@ import pytest
 
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from tests.common.mpi_common import OS_TO_OPENMPI_MODULE_MAP, _test_mpi
+from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge", "c5n.18xlarge"])
+@pytest.mark.instances(["c5.xlarge", "c5n.18xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
-def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory):
+def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory, architecture):
     scaledown_idletime = 3
     max_queue_size = 3
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -37,6 +37,7 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
         slots_per_instance,
         scheduler,
         os,
+        architecture,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -49,6 +50,7 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
         slots_per_instance,
         scheduler,
         os,
+        architecture,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -57,20 +59,20 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
 
 
 @pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge", "torque"])
 @pytest.mark.usefixtures("region", "instance")
-def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory, test_datadir):
+def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir)
+    _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architecture)
 
 
-def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir):
+def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architecture):
     logging.info("Testing mpi SSH")
-    mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
+    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os].get(architecture)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     compute_node = scheduler_commands.get_compute_nodes()

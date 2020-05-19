@@ -25,10 +25,10 @@ from time_utils import minutes, seconds
 
 
 @pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "scheduler")
-def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir):
+def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all AWS Slurm related features.
 
@@ -39,8 +39,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     # IntelMPI not available on centos6
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
-    does_not_support_impi = ["centos6"]
-    initial_queue_size = 2 if os not in does_not_support_impi else 0
+    supports_impi = os not in ["centos6"] and architecture == "x86_64"
+    initial_queue_size = 2 if supports_impi else 0
     cluster_config = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, initial_queue_size=initial_queue_size
     )
@@ -49,7 +49,7 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
 
     _test_slurm_version(remote_command_executor)
 
-    if os not in does_not_support_impi:
+    if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
 
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)

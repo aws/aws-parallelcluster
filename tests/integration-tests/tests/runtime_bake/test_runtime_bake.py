@@ -25,10 +25,17 @@ from tests.common.utils import retrieve_latest_ami
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "ubuntu1804", "sge")
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "slurm")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "sge")
+@pytest.mark.dimensions("us-east-1", "m6g.xlarge", "ubuntu1804", "sge")
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("us-west-2", "m6g.xlarge", "ubuntu1604", "torque")
 @pytest.mark.usefixtures("instance", "scheduler")
-def test_runtime_bake(scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir):
+def test_runtime_bake(scheduler, os, region, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """Test cluster creation with runtime bake."""
-    cluster_config = pcluster_config_reader(custom_ami=retrieve_latest_ami(region, os, ami_type="remarkable"))
+    # remarkable AMIs are not available for ARM yet
+    ami_type = "remarkable" if architecture == "x86_64" else "official"
+    cluster_config = pcluster_config_reader(
+        custom_ami=retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture)
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 

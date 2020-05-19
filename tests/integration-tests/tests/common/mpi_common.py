@@ -5,13 +5,13 @@ from assertpy import assert_that
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 
-OS_TO_OPENMPI_MODULE_MAP = {
-    "alinux": "openmpi",
-    "alinux2": "openmpi",
-    "centos7": "openmpi",
-    "ubuntu1604": "openmpi",
-    "centos6": "openmpi-x86_64",
-    "ubuntu1804": "openmpi",
+OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE = {
+    "alinux": {"x86_64": "openmpi"},
+    "alinux2": {"x86_64": "openmpi", "arm64": "openmpi"},
+    "centos7": {"x86_64": "openmpi"},
+    "ubuntu1604": {"x86_64": "openmpi", "arm64": "openmpi"},
+    "centos6": {"x86_64": "openmpi-x86_64"},
+    "ubuntu1804": {"x86_64": "openmpi", "arm64": "openmpi"},
 }
 
 
@@ -20,6 +20,7 @@ def _test_mpi(
     slots_per_instance,
     scheduler,
     os,
+    architecture,
     region=None,
     stack_name=None,
     scaledown_idletime=None,
@@ -27,7 +28,7 @@ def _test_mpi(
 ):
     logging.info("Testing mpi job")
     datadir = pathlib.Path(__file__).parent / "data/mpi/"
-    mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
+    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
     # Compile mpi script
     command = "mpicc -o ring ring.c"
     if mpi_module != "no_module_available":
