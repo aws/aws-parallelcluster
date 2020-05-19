@@ -12,7 +12,7 @@ from future.moves.collections import OrderedDict
 
 from pcluster.config.param_types import (
     AdditionalIamPoliciesParam,
-    ArchParam,
+    ArchitectureParam,
     BoolParam,
     ClusterSection,
     ComputeAvailabilityZoneParam,
@@ -33,12 +33,12 @@ from pcluster.config.param_types import (
     SpotPriceParam,
 )
 from pcluster.config.validators import (
-    arch_os_validator,
+    architecture_os_validator,
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
-    compute_master_instance_arch_compatiblity_validator,
     dcv_enabled_validator,
+    disable_hyperthreading_architecture_validator,
     disable_hyperthreading_validator,
     ebs_settings_validator,
     ec2_ami_validator,
@@ -55,13 +55,14 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
-    fsx_arch_support,
+    fsx_architecture_validator,
     fsx_id_validator,
     fsx_imported_file_chunk_size_validator,
-    fsx_os_support,
+    fsx_os_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
-    intel_hpc_arch_validator,
+    instances_architecture_compatibility_validator,
+    intel_hpc_architecture_validator,
     intel_hpc_os_validator,
     kms_key_validator,
     raid_volume_iops_validator,
@@ -70,7 +71,7 @@ from pcluster.config.validators import (
     shared_dir_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHS
+from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHITECTURES
 
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
@@ -119,7 +120,7 @@ ALLOWED_VALUES = {
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
     "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "per_unit_storage_throughput": [50, 100, 200],
-    "archs": SUPPORTED_ARCHS,
+    "architectures": SUPPORTED_ARCHITECTURES,
 }
 
 AWS = {
@@ -502,7 +503,7 @@ CLUSTER = {
                     lambda section:
                         "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
                 "cfn_param_mapping": "ComputeInstanceType",
-                "validators": [compute_instance_type_validator, compute_master_instance_arch_compatiblity_validator],
+                "validators": [compute_instance_type_validator, instances_architecture_compatibility_validator],
             }),
             ("compute_root_volume_size", {
                 "type": IntParam,
@@ -576,7 +577,7 @@ CLUSTER = {
                     "type": DisableHyperThreadingParam,
                     "default": False,
                     "cfn_param_mapping": "Cores",
-                    "validators": [disable_hyperthreading_validator],
+                    "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 },
             ),
             # Customization
@@ -653,7 +654,7 @@ CLUSTER = {
                 "default": False,
                 "type": BoolParam,
                 "cfn_param_mapping": "IntelHPCPlatform",
-                "validators": [intel_hpc_os_validator, intel_hpc_arch_validator],
+                "validators": [intel_hpc_os_validator, intel_hpc_architecture_validator],
             }),
             # Settings
             ("scaling_settings", {
@@ -682,7 +683,7 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsParam,
                 "referred_section": FSX,
-                "validators": [fsx_os_support, fsx_arch_support],
+                "validators": [fsx_os_validator, fsx_architecture_validator],
             }),
             ("dcv_settings", {
                 "type": SettingsParam,
@@ -700,11 +701,11 @@ CLUSTER = {
                 "validators": [ec2_iam_policies_validator],
             }),
             # Derived parameters - present in CFN parameters but not in config file
-            ("arch", {
-                "type": ArchParam,
-                "allowed_values": ALLOWED_VALUES["archs"],
-                "cfn_param_mapping": "Arch",
-                "validators": [arch_os_validator],
+            ("architecture", {
+                "type": ArchitectureParam,
+                "allowed_values": ALLOWED_VALUES["architectures"],
+                "cfn_param_mapping": "Architecture",
+                "validators": [architecture_os_validator],
             }),
         ]
     )

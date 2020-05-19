@@ -203,7 +203,7 @@
         "ubuntu1804"
       ]
     },
-    "Arch": {
+    "Architecture": {
       "Description": "Architecture to use when selecting default AMIs",
       "Type": "String",
       "Default": "x86_64",
@@ -983,7 +983,7 @@
     "UseArmAMIs": {
       "Fn::Equals": [
         {
-          "Ref": "Arch"
+          "Ref": "Architecture"
         },
         "arm64"
       ]

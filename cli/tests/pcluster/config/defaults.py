@@ -131,7 +131,7 @@ DEFAULT_CLUSTER_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
-    "arch": "x86_64",
+    "architecture": "x86_64",
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -269,8 +269,8 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
     "CWLogOptions": "true,14",
-    # arch
-    "Arch": "x86_64",
+    # architecture
+    "Architecture": "x86_64",
 }
 
 
