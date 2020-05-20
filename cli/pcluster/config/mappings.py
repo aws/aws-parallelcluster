@@ -99,7 +99,9 @@ from pcluster.constants import CIDR_ALL_IPS
 # Utility dictionary containing all the common regex used in the section mapping.
 ALLOWED_VALUES = {
     "ami_id": r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$",
-    "cidr": r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/(0|1[6-9]|2[0-9]|3[0-2])$",
+    "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
+            r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
+            r"(\/([0-9]|[1-2][0-9]|3[0-2]))$",
     "efs_fs_id": r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}|NONE$",
     "file_path": r"\/?[\w:]+",
     "fsx_fs_id": r"^fs-[0-9a-z]{17}|NONE$",
