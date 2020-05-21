@@ -81,6 +81,16 @@
     "MainStackUniqueId": {
       "Description": "Final 36 digits of the main CloudFormation stack id",
       "Type": "String"
+    },
+    "Architecture": {
+      "Description": "Architecture to use when selecting default AMIs",
+      "Type": "String",
+      "Default": "x86_64",
+      "ConstraintDescription": "Must be either x86_64 or arm64",
+      "AllowedValues": [
+        "x86_64",
+        "arm64"
+      ]
     }
   },
   "Conditions": {
@@ -90,6 +100,14 @@
           "Ref": "ClusterType"
         },
         "spot"
+      ]
+    },
+    "UseArmCodeBuildImage": {
+      "Fn::Equals": [
+        {
+          "Ref": "Architecture"
+        },
+        "arm64"
       ]
     }
   },
@@ -585,7 +603,13 @@
           "Type": "NO_ARTIFACTS"
         },
         "Environment": {
-          "ComputeType": "BUILD_GENERAL1_SMALL",
+          "ComputeType": {
+            "Fn::If": [
+              "UseArmCodeBuildImage",
+              "BUILD_GENERAL1_LARGE",
+              "BUILD_GENERAL1_SMALL"
+            ]
+          },
           "EnvironmentVariables": [
             {
               "Name": "AWS_REGION",
@@ -618,8 +642,20 @@
               }
             }
           ],
-          "Image": "aws/codebuild/amazonlinux2-x86_64-standard:1.0",
-          "Type": "LINUX_CONTAINER",
+          "Image": {
+            "Fn::If": [
+              "UseArmCodeBuildImage",
+              "aws/codebuild/amazonlinux2-aarch64-standard:1.0",
+              "aws/codebuild/amazonlinux2-x86_64-standard:1.0"
+            ]
+          },
+          "Type": {
+            "Fn::If": [
+              "UseArmCodeBuildImage",
+              "ARM_CONTAINER",
+              "LINUX_CONTAINER"
+            ]
+          },
           "PrivilegedMode": true
         },
         "Name": {
