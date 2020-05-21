@@ -11,12 +11,13 @@ RUN yum update -y \
     nfs-utils \
     openssh-server \
     openssh-clients \
-    openmpi.x86_64 \
-    openmpi-devel.x86_64 \
+    openmpi \
+    openmpi-devel \
     python2 \
     python2-setuptools \
     python2-pip \
     which  \
+    hostname \
     && yum clean all \
     && rm -rf /var/cache/yum \
     && mkdir /var/run/sshd \
