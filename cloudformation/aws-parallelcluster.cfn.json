@@ -4001,6 +4001,9 @@
                 ]
               }
             ]
+          },
+          "Architecture": {
+            "Ref": "Architecture"
           }
         },
         "TemplateURL": {
