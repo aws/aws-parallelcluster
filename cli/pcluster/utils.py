@@ -581,7 +581,9 @@ def get_master_ip_and_username(cluster_name):
             error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
         elif stack_status in valid_status:
             outputs = stack_result.get("Outputs")
-            master_ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
+            master_ip = get_stack_output_value(outputs, "MasterPublicIP") or get_stack_output_value(
+                outputs, "MasterPrivateIP"
+            )
             username = get_stack_output_value(outputs, "ClusterUser")
         else:
             # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running

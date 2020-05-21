@@ -388,3 +388,36 @@ def test_create_s3_bucket(region, error_message, boto3_stubber):
             utils.create_s3_bucket(bucket_name, region)
     else:
         utils.create_s3_bucket(bucket_name, region)
+
+
+@pytest.mark.parametrize(
+    "public_ip,private_ip,expected_ip",
+    [("100.25.5.183", "172.31.4.147", "100.25.5.183"), (None, "172.31.4.147", "172.31.4.147")],
+)
+def test_get_master_ip_and_username(boto3_stubber, public_ip, private_ip, expected_ip):
+    expected_username = "centos"
+
+    output = [
+        {"OutputKey": "MasterPrivateIP", "OutputValue": private_ip},
+        {"OutputKey": "ClusterUser", "OutputValue": expected_username},
+    ]
+
+    if public_ip:
+        output.append({"OutputKey": "MasterPublicIP", "OutputValue": public_ip})
+
+    expected_stack = {
+        "StackName": FAKE_STACK_NAME,
+        "CreationTime": 0,
+        "StackStatus": "CREATE_COMPLETE",
+        "Outputs": output,
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_stacks",
+            response={"Stacks": [expected_stack]},
+            expected_params={"StackName": FAKE_STACK_NAME},
+        )
+    ]
+    boto3_stubber("cloudformation", mocked_requests)
+
+    assert_that(utils.get_master_ip_and_username(FAKE_CLUSTER_NAME)).is_equal_to((expected_ip, expected_username))
