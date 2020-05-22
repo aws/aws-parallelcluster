@@ -85,6 +85,9 @@ class PclusterConfig(object):
         elif "AWS_PCLUSTER_CONFIG_FILE" in os.environ:
             self.config_file = os.environ["AWS_PCLUSTER_CONFIG_FILE"]
             default_config = False
+        elif os.path.isfile(os.path.expanduser(os.path.join("~", ".parallelcluster", "config.ini"))):
+            self.config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config.ini"))
+            default_config = True
         else:
             self.config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
             default_config = True
