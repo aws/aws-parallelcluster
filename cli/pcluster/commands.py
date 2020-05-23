@@ -834,6 +834,8 @@ def create_ami(args):
             + " --region "
             + aws_region
             + " --custom"
+            + " --arch "
+            + ami_architecture
         )
 
         results = _run_packer(packer_command, packer_env)
