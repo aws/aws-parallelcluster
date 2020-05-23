@@ -1415,10 +1415,10 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         ("ubuntu1604", "x86_64", None),
         ("ubuntu1804", "x86_64", None),
         # Only a subset of OSes supported for x86_64
-        ("alinux", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
+        ("alinux", "arm64", "arm64 is only supported for the following operating systems"),
         ("alinux2", "arm64", None),
-        ("centos6", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
-        ("centos7", "arm64", "Using ARM instance types and AMIs is only supported for the following operating systems"),
+        ("centos6", "arm64", "arm64 is only supported for the following operating systems"),
+        ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
         ("ubuntu1604", "arm64", None),
         ("ubuntu1804", "arm64", None),
     ],

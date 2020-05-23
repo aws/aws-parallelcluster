@@ -778,6 +778,14 @@ def create_ami(args):
         )
         sys.exit(1)
 
+    if args.base_ami_os not in utils.get_supported_os_for_architecture(ami_architecture):
+        LOGGER.error(
+            "ParallelCluster does not currently support the OS {0} on the base AMI's architecture {1}".format(
+                args.base_ami_os, ami_architecture
+            )
+        )
+        sys.exit(1)
+
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}
 

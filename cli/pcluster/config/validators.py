@@ -29,7 +29,8 @@ from pcluster.utils import (
     get_supported_compute_instance_types,
     get_supported_features,
     get_supported_instance_types,
-    get_supported_os,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -843,7 +844,7 @@ def scheduler_validator(param_key, param_value, pcluster_config):
         if pcluster_config.region in ["ap-northeast-3", "us-gov-east-1", "us-gov-west-1"]:
             errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
 
-    supported_os = get_supported_os(param_value)
+    supported_os = get_supported_os_for_scheduler(param_value)
     if pcluster_config.get_section("cluster").get_param_value("base_os") not in supported_os:
         errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
 
@@ -1005,13 +1006,12 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    allowed_arm_oses = ["alinux2", "ubuntu1604", "ubuntu1804"]
-
+    allowed_oses = get_supported_os_for_architecture(param_value)
     base_os = pcluster_config.get_section("cluster").get_param_value("base_os")
-    if param_value == "arm64" and base_os not in allowed_arm_oses:
+    if base_os not in allowed_oses:
         errors.append(
-            "Using ARM instance types and AMIs is only supported for the following operating systems: {0}".format(
-                allowed_arm_oses
+            "The architecture {0} is only supported for the following operating systems: {1}".format(
+                param_value, allowed_oses
             )
         )
 
