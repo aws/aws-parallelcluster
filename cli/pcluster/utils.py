@@ -294,7 +294,7 @@ def get_supported_compute_instance_types(scheduler):
     return instances
 
 
-def get_supported_os(scheduler):
+def get_supported_os_for_scheduler(scheduler):
     """
     Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
 
@@ -305,6 +305,14 @@ def get_supported_os(scheduler):
     if scheduler != "awsbatch":
         oses.extend(["centos6", "centos7", "ubuntu1604", "ubuntu1804"])
     return list(oses)
+
+
+def get_supported_os_for_architecture(architecture):
+    """Return list of supported OSes for the specified architecture."""
+    oses = ["alinux2", "ubuntu1604", "ubuntu1804"]
+    if architecture == "x86_64":
+        oses.extend(["centos6", "centos7", "alinux"])
+    return oses
 
 
 def get_supported_schedulers():
