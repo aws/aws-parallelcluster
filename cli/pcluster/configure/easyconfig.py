@@ -32,7 +32,7 @@ from pcluster.utils import (
     get_region,
     get_supported_compute_instance_types,
     get_supported_instance_types,
-    get_supported_os,
+    get_supported_os_for_scheduler,
     get_supported_schedulers,
 )
 
@@ -302,7 +302,7 @@ class SchedulerHandler:
         if not self.is_aws_batch:
             self.base_os = prompt_iterable(
                 "Operating System",
-                get_supported_os(self.scheduler),
+                get_supported_os_for_scheduler(self.scheduler),
                 default_value=self.cluster_section.get_param_value("base_os"),
             )
 
