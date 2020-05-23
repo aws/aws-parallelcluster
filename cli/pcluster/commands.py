@@ -751,8 +751,33 @@ def _print_create_ami_results(results):
         LOGGER.info("\nNo custom AMI created")
 
 
+def _get_default_createami_instance_type(ami_architecture):
+    """Return instance type to build AMI on based on architecture supported by base AMI."""
+    ami_architecture_to_instance_type = {
+        "x86_64": "t2.xlarge",
+        "arm64": "m6g.xlarge",
+    }
+    try:
+        return ami_architecture_to_instance_type[ami_architecture]
+    except KeyError:
+        LOGGER.error("Base AMI used in createami has an unsupported architecture: {0}".format(ami_architecture))
+        sys.exit(1)
+
+
 def create_ami(args):
     LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
+
+    ami_architecture = utils.get_info_for_amis([args.base_ami_id])[0].get("Architecture")
+    if not args.instance_type:
+        args.instance_type = _get_default_createami_instance_type(ami_architecture)
+    elif ami_architecture not in utils.get_supported_architectures_for_instance_type(args.instance_type):
+        LOGGER.error(
+            "Instance type used in createami, {0}, does not support the specified AMI's architecture, {1}".format(
+                args.instance_type, ami_architecture
+            )
+        )
+        sys.exit(1)
+
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}
 
