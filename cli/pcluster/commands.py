@@ -764,9 +764,8 @@ def _get_default_createami_instance_type(ami_architecture):
         sys.exit(1)
 
 
-def create_ami(args):
-    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
-
+def _validate_createami_args_architecture_compatibility(args):
+    """Validate the compatibility of the implied architectures for the args passed to the createami command."""
     ami_architecture = utils.get_info_for_amis([args.base_ami_id])[0].get("Architecture")
     if not args.instance_type:
         args.instance_type = _get_default_createami_instance_type(ami_architecture)
@@ -785,6 +784,14 @@ def create_ami(args):
             )
         )
         sys.exit(1)
+
+    return ami_architecture
+
+
+def create_ami(args):
+    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
+
+    ami_architecture = _validate_createami_args_architecture_compatibility(args)
 
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}

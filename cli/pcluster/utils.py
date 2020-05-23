@@ -629,8 +629,22 @@ def get_master_server_state(stack_name):
     return instance.get("State").get("Name")
 
 
+def get_info_for_amis(ami_ids):
+    """Get information returned by EC2's describe-images API for the given list of AMIs."""
+    try:
+        return boto3.client("ec2").describe_images(ImageIds=ami_ids).get("Images")
+    except ClientError as e:
+        error(e.response.get("Error").get("Message"))
+
+
 def get_supported_architectures_for_instance_type(instance_type):
     """Get a list of architectures supported for the given instance type."""
+    # "optimal" compute instance type (when using batch) implies the use of instances from the
+    # C, M, and R instance families, and thus an x86_64 architecture.
+    # see https://docs.aws.amazon.com/batch/latest/userguide/compute_environment_parameters.html
+    if instance_type == "optimal":
+        return ["x86_64"]
+
     try:
         ec2_client = boto3.client("ec2")
         instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
