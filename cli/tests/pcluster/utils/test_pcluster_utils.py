@@ -388,3 +388,99 @@ def test_create_s3_bucket(region, error_message, boto3_stubber):
             utils.create_s3_bucket(bucket_name, region)
     else:
         utils.create_s3_bucket(bucket_name, region)
+
+
+@pytest.mark.parametrize(
+    "architecture, supported_oses",
+    [
+        ("x86_64", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
+        ("arm64", ["alinux2", "ubuntu1604", "ubuntu1804"]),
+        # doesn't check architecture's validity, only whether it's x86_64 or not
+        ("madeup-architecture", ["alinux2", "ubuntu1604", "ubuntu1804"]),
+    ],
+)
+def test_get_supported_os_for_architecture(architecture, supported_oses):
+    """Verify that the expected OSes are supported based on a given architecture."""
+    assert_that(utils.get_supported_os_for_architecture(architecture)).contains_only(
+        *supported_oses
+    ).does_not_contain_duplicates()
+
+
+@pytest.mark.parametrize(
+    "scheduler, supported_oses",
+    [
+        ("sge", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
+        ("slurm", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
+        ("torque", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
+        ("awsbatch", ["alinux2", "alinux"]),
+        # doesn't check architecture's validity, only whether it's awsbatch or not
+        ("madeup-scheduler", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
+    ],
+)
+def test_get_supported_os_for_scheduler(scheduler, supported_oses):
+    """Verify that the expected OSes are supported based on a given architecture."""
+    assert_that(utils.get_supported_os_for_scheduler(scheduler)).contains_only(
+        *supported_oses
+    ).does_not_contain_duplicates()
+
+
+@pytest.mark.parametrize(
+    "image_ids, response, error_message",
+    [(["ami-1"], [{"ImageId": "ami-1"}], None), (["ami-1"], [{"ImageId": "ami-1"}], "Some error message")],
+)
+def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
+    """Verify get_info_for_amis returns the expected portion of the response, and that errors cause nonzero exit."""
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_images",
+            response=error_message or {"Images": response},
+            expected_params={"ImageIds": image_ids},
+            generate_error=error_message is not None,
+        ),
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    if error_message is None:
+        assert_that(utils.get_info_for_amis(image_ids)).is_equal_to(response)
+    else:
+        with pytest.raises(SystemExit, match=error_message) as sysexit:
+            utils.get_info_for_amis(image_ids)
+        assert_that(sysexit.value.code).is_not_equal_to(0)
+
+
+@pytest.mark.parametrize(
+    "instance_type, response, error_message",
+    [
+        ("optimal", ["x86_64"], None),
+        ("t2.micro", ["x86_64"], None),
+        ("a1.medium", ["arm64"], None),
+        ("bad.instance.type", ["x86_64"], None),
+        ("valid.exotic.arch.instance", ["exoticArch"], None),
+        ("valid.instance.with.no.archs", [], "valid.instance.with.no.archs"),
+    ],
+)
+def test_get_supported_architectures_for_instance_type(boto3_stubber, instance_type, response, error_message):
+    """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
+    if instance_type == "optimal":
+        mocked_requests = []
+    else:
+        response_dict = {"InstanceTypes": [{"ProcessorInfo": {"SupportedArchitectures": response}}]}
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response=response_dict if response is not None else error_message,
+                expected_params={"InstanceTypes": [instance_type]},
+                generate_error=response is None,
+            )
+        ]
+    boto3_stubber("ec2", mocked_requests)
+    expected_architectures = list(set(response) & set(["x86_64", "arm64"]))
+    if error_message is None and expected_architectures:
+        assert_that(utils.get_supported_architectures_for_instance_type(instance_type)).contains_only(
+            *expected_architectures
+        ).does_not_contain_duplicates()
+    elif error_message is None:
+        assert_that(utils.get_supported_architectures_for_instance_type(instance_type)).is_empty()
+    else:
+        with pytest.raises(SystemExit, match=error_message) as sysexit:
+            utils.get_supported_architectures_for_instance_type(instance_type)
+        assert_that(sysexit.value.code).is_not_equal_to(0)
