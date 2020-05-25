@@ -237,6 +237,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
     parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
+    parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=True)
     parser.add_argument(
         "--cloudformation-template",
         type=str,
@@ -247,13 +248,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.partition == "commercial":
-        account_id = "247102896272"
         region = "us-east-1"
     elif args.partition == "govcloud":
-        account_id = "124026578433"
         region = "us-gov-west-1"
     elif args.partition == "china":
-        account_id = "036028979999"
         region = "cn-north-1"
     else:
         print("Unsupported partition %s" % args.partition)
@@ -277,7 +275,7 @@ if __name__ == "__main__":
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
             version=args.version,
-            owner=account_id,
+            owner=args.account_id,
             credentials=credentials,
         )
     else:
