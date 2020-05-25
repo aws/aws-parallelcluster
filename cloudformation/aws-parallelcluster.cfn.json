@@ -3415,6 +3415,12 @@
                         "PrivateDnsName"
                       ]
                     },
+                    "cfn_master_privateip": {
+                      "Fn::GetAtt": [
+                        "MasterServer",
+                        "PrivateIp"
+                      ]
+                    },
                     "cfn_node_type": "ComputeFleet",
                     "cfn_cluster_user": {
                       "Fn::FindInMap": [
