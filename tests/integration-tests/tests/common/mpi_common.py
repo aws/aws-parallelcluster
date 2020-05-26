@@ -29,10 +29,10 @@ def _test_mpi(
     datadir = pathlib.Path(__file__).parent / "data/mpi/"
     mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
     # Compile mpi script
-    command = "mpicc -o mpi_hello_world mpi_hello_world.c"
+    command = "mpicc -o ring ring.c"
     if mpi_module != "no_module_available":
         command = "module load {0} && {1}".format(mpi_module, command)
-    remote_command_executor.run_remote_command(command, additional_files=[str(datadir / "mpi_hello_world.c")])
+    remote_command_executor.run_remote_command(command, additional_files=[str(datadir / "ring.c")])
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     # submit script using additional files
@@ -51,8 +51,15 @@ def _test_mpi(
         scheduler_commands.assert_job_succeeded(job_id)
 
     mpi_out = remote_command_executor.run_remote_command("cat /shared/mpi.out").stdout
-    assert_that(mpi_out.splitlines()).is_length(2)
+    # mpi_out expected output
+    # Hello world from processor ip-192-168-53-169, rank 0 out of 2 processors
+    # Process 0 received token -1 from process 1
+    # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
+    # Process 1 received token -1 from process 0
+    assert_that(mpi_out.splitlines()).is_length(4)
     assert_that(mpi_out).matches(r"Hello world from processor ip-.+, rank 0 out of 2 processors")
     assert_that(mpi_out).matches(r"Hello world from processor ip-.+, rank 1 out of 2 processors")
+    assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
+    assert_that(mpi_out).matches("Process 1 received token -1 from process 0")
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
