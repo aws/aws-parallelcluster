@@ -339,7 +339,7 @@ class SchedulerHandler:
         }
         if self.is_aws_batch:
             scheduler_parameters["desired_vcpus"] = self.min_cluster_size
-        else:
+        elif int(self.min_cluster_size) > 0:
             scheduler_parameters["maintain_initial_size"] = "true"
         return scheduler_parameters
 

@@ -225,10 +225,10 @@
       "Type": "String",
       "Default": "/shared"
     },
-    "CLITemplate": {
-      "Description": "cluster_template section used in the config.",
+    "ClusterConfigMetadata": {
+      "Description": "Cluster configuration metadata.",
       "Type": "String",
-      "Default": "default"
+      "Default": "{}"
     },
     "AdditionalSG": {
       "Description": "Additional VPC security group to be added to instances. Defaults to NONE",
@@ -969,6 +969,23 @@
         },
         "master"
       ]
+    },
+    "CreateScheduledEventsSubstack": {
+      "Fn::Not": [
+        {
+          "Condition": "CreateAWSBatchStack"
+        }
+      ]
+    },
+    "CreateScheduledEventsIAMPolicy": {
+      "Fn::And": [
+        {
+          "Condition": "CreateScheduledEventsSubstack"
+        },
+        {
+          "Condition": "CreateEC2IAMRole"
+        }
+      ]
     }
   },
   "Mappings": {
@@ -1210,7 +1227,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/efs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1264,7 +1281,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/cw-logs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/cw-logs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1298,7 +1315,7 @@
       "Properties": {
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/scheduled-events-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/scheduled-events-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1319,7 +1336,8 @@
             }
           ]
         }
-      }
+      },
+      "Condition": "CreateScheduledEventsSubstack"
     },
     "FSXSubstack": {
       "Type": "AWS::CloudFormation::Stack",
@@ -1356,7 +1374,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/fsx-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1583,12 +1601,6 @@
                     "SQS",
                     "Arn"
                   ]
-                },
-                {
-                  "Fn::GetAtt": [
-                    "ScheduledEventsSubstack",
-                    "Outputs.HealthSQSQueueARN"
-                  ]
                 }
               ]
             },
@@ -1711,6 +1723,41 @@
         ]
       },
       "Condition": "CreateEC2IAMRole"
+    },
+    "ParallelClusterScheduledEventsPolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "parallelcluster-scheduled-events",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "SQSQueue",
+              "Action": [
+                "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ScheduledEventsSubstack",
+                    "Outputs.HealthSQSQueueARN"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "RootRole"
+          }
+        ]
+      },
+      "Condition": "CreateScheduledEventsIAMPolicy"
     },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2478,9 +2525,15 @@
                       ]
                     },
                     "cfn_health_sqs_queue": {
-                      "Fn::GetAtt": [
-                        "ScheduledEventsSubstack",
-                        "Outputs.HealthSQSQueueName"
+                      "Fn::If": [
+                        "CreateScheduledEventsSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "ScheduledEventsSubstack",
+                            "Outputs.HealthSQSQueueName"
+                          ]
+                        },
+                        ""
                       ]
                     },
                     "dcv_enabled": {
@@ -3995,7 +4048,7 @@
             },
             {
               "Fn::Sub": [
-                "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
+                "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
                 {
                   "s3_url": {
                     "Fn::FindInMap": [
@@ -4167,7 +4220,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/raid-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4225,7 +4278,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/ebs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4370,9 +4423,9 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
-    "CLITemplate": {
+    "ClusterConfigMetadata": {
       "Value": {
-        "Ref": "CLITemplate"
+        "Ref": "ClusterConfigMetadata"
       }
     }
   }

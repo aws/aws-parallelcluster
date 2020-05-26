@@ -289,9 +289,8 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
 
     :return: a _config_renderer(**kwargs) function which gets as input a dictionary of values to replace in the template
     """
-    config_file = "pcluster.config.ini"
 
-    def _config_renderer(**kwargs):
+    def _config_renderer(config_file="pcluster.config.ini", **kwargs):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
