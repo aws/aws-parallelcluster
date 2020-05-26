@@ -969,6 +969,23 @@
         },
         "master"
       ]
+    },
+    "CreateScheduledEventsSubstack": {
+      "Fn::Not": [
+        {
+          "Condition": "CreateAWSBatchStack"
+        }
+      ]
+    },
+    "CreateScheduledEventsIAMPolicy": {
+      "Fn::And": [
+        {
+          "Condition": "CreateScheduledEventsSubstack"
+        },
+        {
+          "Condition": "CreateEC2IAMRole"
+        }
+      ]
     }
   },
   "Mappings": {
@@ -1319,7 +1336,8 @@
             }
           ]
         }
-      }
+      },
+      "Condition": "CreateScheduledEventsSubstack"
     },
     "FSXSubstack": {
       "Type": "AWS::CloudFormation::Stack",
@@ -1583,12 +1601,6 @@
                     "SQS",
                     "Arn"
                   ]
-                },
-                {
-                  "Fn::GetAtt": [
-                    "ScheduledEventsSubstack",
-                    "Outputs.HealthSQSQueueARN"
-                  ]
                 }
               ]
             },
@@ -1711,6 +1723,41 @@
         ]
       },
       "Condition": "CreateEC2IAMRole"
+    },
+    "ParallelClusterScheduledEventsPolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "parallelcluster-scheduled-events",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "SQSQueue",
+              "Action": [
+                "sqs:SendMessage",
+                "sqs:ReceiveMessage",
+                "sqs:ChangeMessageVisibility",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "ScheduledEventsSubstack",
+                    "Outputs.HealthSQSQueueARN"
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "RootRole"
+          }
+        ]
+      },
+      "Condition": "CreateScheduledEventsIAMPolicy"
     },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2478,9 +2525,15 @@
                       ]
                     },
                     "cfn_health_sqs_queue": {
-                      "Fn::GetAtt": [
-                        "ScheduledEventsSubstack",
-                        "Outputs.HealthSQSQueueName"
+                      "Fn::If": [
+                        "CreateScheduledEventsSubstack",
+                        {
+                          "Fn::GetAtt": [
+                            "ScheduledEventsSubstack",
+                            "Outputs.HealthSQSQueueName"
+                          ]
+                        },
+                        ""
                       ]
                     },
                     "dcv_enabled": {
