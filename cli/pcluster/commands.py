@@ -727,12 +727,9 @@ def _get_cookbook_url(region, template_url, args, tmpdir):
 
     cookbook_version = _get_cookbook_version(template_url, tmpdir)
     s3_suffix = ".cn" if region.startswith("cn") else ""
-    return "https://s3.%s.amazonaws.com%s/%s-aws-parallelcluster/cookbooks/%s.tgz" % (
-        region,
-        s3_suffix,
-        region,
-        cookbook_version,
-    )
+    return (
+        "https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}/cookbooks/{cookbook_version}.tgz"
+    ).format(region=region, suffix=s3_suffix, cookbook_version=cookbook_version)
 
 
 def _get_cookbook_version(template_url, tmpdir):
@@ -926,7 +923,7 @@ def create_ami(args):
 
 def _get_default_template_url(region):
     return (
-        "https://s3.{REGION}.amazonaws.com{SUFFIX}/{REGION}-aws-parallelcluster/templates/"
+        "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{SUFFIX}/templates/"
         "aws-parallelcluster-{VERSION}.cfn.json".format(
             REGION=region, SUFFIX=".cn" if region.startswith("cn") else "", VERSION=utils.get_installed_version()
         )

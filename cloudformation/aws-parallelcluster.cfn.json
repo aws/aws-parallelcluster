@@ -1227,7 +1227,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/efs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/efs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1281,7 +1281,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/cw-logs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/cw-logs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1315,7 +1315,7 @@
       "Properties": {
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/scheduled-events-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/scheduled-events-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -1374,7 +1374,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/fsx-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/fsx-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4048,7 +4048,7 @@
             },
             {
               "Fn::Sub": [
-                "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/batch-substack-${version}.cfn.json",
+                "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
                 {
                   "s3_url": {
                     "Fn::FindInMap": [
@@ -4220,7 +4220,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/raid-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/raid-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4278,7 +4278,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://s3.${AWS::Region}.${s3_url}/${AWS::Region}-aws-parallelcluster/templates/ebs-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/ebs-substack-${version}.cfn.json",
             {
               "s3_url": {
                 "Fn::FindInMap": [
