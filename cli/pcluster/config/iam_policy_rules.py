@@ -12,7 +12,7 @@
 import abc
 import sys
 
-from pcluster.utils import get_partition
+from pcluster.utils import policy_name_to_arn
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
@@ -41,11 +41,6 @@ class EC2IAMPolicyInclusionRule(ABC):
         """Return the ARN for the polciy that must be included."""
         return cls("Policy getter not implemented.")
 
-    @staticmethod
-    def policy_name_to_arn(policy_name):
-        """Return an ARN for the given IAM policy."""
-        return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
-
 
 class CloudWatchAgentServerPolicyInclusionRule(EC2IAMPolicyInclusionRule):
     """Include the CloudWatchServerAgentPolicy when CloudWatch logging is enabled."""
@@ -60,14 +55,14 @@ class CloudWatchAgentServerPolicyInclusionRule(EC2IAMPolicyInclusionRule):
             cw_log_section = pcluster_config.get_section("cw_log", cw_log_settings.value)
             should_include_policy = cw_log_section and cw_log_section.get_param_value("enable")
         else:
-            # A cw_log section was referenced from the config file's cluster section
+            # A cw_log section was not referenced from the config file's cluster section
             should_include_policy = cw_log_settings.referred_section_definition["params"]["enable"]["default"]
         return should_include_policy
 
     @classmethod
     def get_policy(cls):
         """Return the ARN for the polciy that must be included."""
-        return cls.policy_name_to_arn("CloudWatchAgentServerPolicy")
+        return policy_name_to_arn("CloudWatchAgentServerPolicy")
 
 
 class AWSBatchFullAccessInclusionRule(EC2IAMPolicyInclusionRule):
@@ -81,4 +76,4 @@ class AWSBatchFullAccessInclusionRule(EC2IAMPolicyInclusionRule):
     @classmethod
     def get_policy(cls):
         """Return the ARN for the polciy that must be included."""
-        return cls.policy_name_to_arn("AWSBatchFullAccess")
+        return policy_name_to_arn("AWSBatchFullAccess")
