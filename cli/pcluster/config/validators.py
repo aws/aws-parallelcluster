@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
+    get_base_additional_iam_policies,
     get_efs_mount_target_id,
     get_instance_vcpus,
     get_partition,
@@ -445,9 +446,10 @@ def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
     warnings = []
     try:
         if param_value:
-            iam = boto3.client("iam")
             for iam_policy in param_value:
-                iam.get_policy(PolicyArn=iam_policy.strip())
+                if iam_policy not in get_base_additional_iam_policies():
+                    iam = boto3.client("iam")
+                    iam.get_policy(PolicyArn=iam_policy.strip())
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 

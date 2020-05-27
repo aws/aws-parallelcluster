@@ -111,17 +111,6 @@ def mock_pcluster_config(mocker, scheduler=None):
     )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
-    # Mock IAM policies validator to prevent boto3 calls in tests
-    accepted_policies = [
-        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-        "arn:aws:iam::aws:policy/AWSBatchFullAccess",
-    ]
-
-    def mock_iam_policies_validate(self):
-        """Mock validation: just check that the policy is among the accepted ones."""
-        assert set(self.value).issubset(accepted_policies)
-
-    mocker.patch("pcluster.config.param_types.AdditionalIamPoliciesParam.validate", new=mock_iam_policies_validate)
 
 
 def assert_param_validator(mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None):

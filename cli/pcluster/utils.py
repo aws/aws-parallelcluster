@@ -93,7 +93,8 @@ def get_region():
 
 def get_partition():
     """Get partition for the AWS_DEFAULT_REGION set in the environment."""
-    return "aws-us-gov" if get_region().startswith("us-gov") else "aws"
+    region = get_region()
+    return next(("aws-" + partition for partition in ["us-gov", "cn"] if region.startswith(partition)), "aws")
 
 
 def paginate_boto3(method, **kwargs):
@@ -732,3 +733,14 @@ def ellipsize(text, max_length):
     # Convert input text to string, just in case
     text = str(text)
     return (text[: max_length - 3] + "...") if len(text) > max_length else text
+
+
+def policy_name_to_arn(policy_name):
+    return "arn:{0}:iam::aws:policy/{1}".format(get_partition(), policy_name)
+
+
+def get_base_additional_iam_policies():
+    return [
+        policy_name_to_arn("CloudWatchAgentServerPolicy"),
+        policy_name_to_arn("AWSBatchFullAccess"),
+    ]
