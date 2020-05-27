@@ -44,7 +44,7 @@ scheduled_event_substack_generator = __import__("generate-scheduled-events-subst
 @pytest.mark.usefixtures("os", "instance")
 def test_scheduled_events(scheduler, region, pcluster_config_reader, clusters_factory, stack_factory, test_datadir):
     """Test handling of EC2 health scheduled events."""
-    num_compute_nodes = 2
+    num_compute_nodes = 3
     cluster_config = pcluster_config_reader(initial_queue_size=num_compute_nodes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -143,23 +143,22 @@ def _push_scheduled_event(region, instance_ids):
     logging.info("Pushing fake scheduled events for instances: {}".format(instance_ids))
     events_client = boto3.client("events", region_name=region)
     entries = []
-    for instance_id in instance_ids:
-        entries.append(
-            {
-                "Source": "fake.aws.health",
-                "Resources": [instance_id],
-                "DetailType": "Fake AWS Health Event",
-                "Detail": (
-                    '{"eventArn": "arn:aws:health:region::event/id",'
-                    '"service": "EC2","eventTypeCode": "AWS_EC2_DEDICATED_HOST_NETWORK_MAINTENANCE_SCHEDULED",'
-                    '"eventTypeCategory": "scheduledChange","startTime": "Sat, 05 Jun 2019 15:10:09 GMT",'
-                    '"eventDescription": [{"language": "en_US",'
-                    '"latestDescription": "A description of the event will be provided here"}],'
-                    '"affectedEntities": [{"entityValue": "some_instance_id",'
-                    '"tags": {"Stage": "prod","App": "my-app"}}]}"'
-                ),
-            },
-        )
+    entries.append(
+        {
+            "Source": "fake.aws.health",
+            "Resources": instance_ids,
+            "DetailType": "Fake AWS Health Event",
+            "Detail": (
+                '{"eventArn": "arn:aws:health:region::event/id",'
+                '"service": "EC2","eventTypeCode": "AWS_EC2_DEDICATED_HOST_NETWORK_MAINTENANCE_SCHEDULED",'
+                '"eventTypeCategory": "scheduledChange","startTime": "Sat, 05 Jun 2019 15:10:09 GMT",'
+                '"eventDescription": [{"language": "en_US",'
+                '"latestDescription": "A description of the event will be provided here"}],'
+                '"affectedEntities": [{"entityValue": "some_instance_id",'
+                '"tags": {"Stage": "prod","App": "my-app"}}]}"'
+            ),
+        },
+    )
     response = events_client.put_events(Entries=entries)
     assert_that(response.get("FailedEntryCount")).is_equal_to(0)
     logging.info("Successfully pushed fake scheduled events for instances: {}".format(instance_ids))

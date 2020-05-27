@@ -31,7 +31,7 @@ def generate_scheduled_event_rule(output_path, make_real_rule=True, input_parame
         Id="sqswatcher_target",
         InputTransformer=events.InputTransformer(
             title="ScheduledEventInputeTransformer",
-            InputPathsMap={"Instances": "$.resources[0]"},
+            InputPathsMap={"Instances": "$.resources"},
             InputTemplate=(
                 '"{\\"Type\\" : \\"Notification\\", \\"Message\\" : '
                 '\\"{\\\\\\"StatusCode\\\\\\":\\\\\\"Scheduled_Events\\\\\\",\\\\\\"Description\\\\\\":'

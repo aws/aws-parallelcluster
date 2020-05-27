@@ -94,7 +94,7 @@
             "Id": "sqswatcher_target",
             "InputTransformer": {
               "InputPathsMap": {
-                "Instances": "$.resources[0]"
+                "Instances": "$.resources"
               },
               "InputTemplate": "\"{\\\"Type\\\" : \\\"Notification\\\", \\\"Message\\\" : \\\"{\\\\\\\"StatusCode\\\\\\\":\\\\\\\"Scheduled_Events\\\\\\\",\\\\\\\"Description\\\\\\\":\\\\\\\"Detected scheduled events for instance <Instances>\\\\\\\",\\\\\\\"Event\\\\\\\":\\\\\\\"parallelcluster:EC2_SCHEDULED_EVENT\\\\\\\",\\\\\\\"EC2InstanceId\\\\\\\":\\\\\\\"<Instances>\\\\\\\"}\\\"}\""
             }
