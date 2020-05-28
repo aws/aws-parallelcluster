@@ -173,13 +173,19 @@ class ClustersFactory:
         logging.info("Sleeping for 60 seconds in case cluster is not ready yet")
         time.sleep(60)
 
-    @retry(stop_max_attempt_number=10, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
+    @retry(stop_max_attempt_number=5, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name, keep_logs=False):
         """Destroy a created cluster."""
         logging.info("Destroying cluster {0}".format(name))
         if name in self.__created_clusters:
             keep_logs = keep_logs or (self._keep_logs_on_failure and not self.__created_clusters[name].create_complete)
-            self.__created_clusters[name].delete(keep_logs=keep_logs)
+            try:
+                self.__created_clusters[name].delete(keep_logs=keep_logs)
+            except subprocess.CalledProcessError as e:
+                logging.error(
+                    "Failed when deleting cluster %s with error %s. Retrying deletion without --keep-logs.", name, e
+                )
+                self.__created_clusters[name].delete(keep_logs=False)
             del self.__created_clusters[name]
             logging.info("Cluster {0} deleted successfully".format(name))
         else:
