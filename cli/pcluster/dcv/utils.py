@@ -20,4 +20,4 @@ def get_supported_dcv_os():
 
 def get_supported_dcv_partition():
     """Return a list of all the partition supported by DCV."""
-    return ["aws"]  # NICE DCV license bucket is not present in us-gov
+    return ["aws", "aws-cn"]  # NICE DCV license bucket is not present in us-gov
