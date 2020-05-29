@@ -423,8 +423,12 @@ class JsonParam(Param):
         return self.definition.get("default", {})
 
     def get_string_value(self):
-        """Convert internal representation into JSON."""
-        return json.dumps(self.value)
+        """
+        Convert the internal representation into JSON.
+
+        The keys in the Json are sorted alphabetically to produce a predictable and easy to test output.
+        """
+        return json.dumps(self.value, sort_keys=True)
 
     def get_cfn_value(self):
         """Convert parameter value into CFN value."""
@@ -447,7 +451,7 @@ class ExtraJsonParam(JsonParam):
         recipes require "cfncluster" as key.
         """
         if self.value and "cluster" in self.value:
-            self.value = {"cfncluster": self.value.pop("cluster")}
+            self.value["cfncluster"] = self.value.pop("cluster")
         return self.get_string_value()
 
     def to_file(self, config_parser, write_defaults=False):
@@ -457,7 +461,7 @@ class ExtraJsonParam(JsonParam):
         we are writing "cluster" in the file to suggest the users the recommended syntax.
         """
         if self.value and "cfncluster" in self.value:
-            self.value = {"cluster": self.value.pop("cfncluster")}
+            self.value["cluster"] = self.value.pop("cfncluster")
         super(ExtraJsonParam, self).to_file(config_parser)
 
 
@@ -850,14 +854,6 @@ class ClusterConfigMetadataParam(JsonParam):
     def get_default_value(self):
         """Get default value from the Param definition."""
         return self.definition.get("default", {"sections": {}})
-
-    def get_string_value(self):
-        """
-        Convert the internal representation into JSON.
-
-        The keys in the Json are sorted alphabetically to produce a predictable and easy to test output.
-        """
-        return json.dumps(self.value, sort_keys=True)
 
     def refresh(self):
         """
