@@ -75,7 +75,7 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
-    scaledown_idletime = 3
+    scaledown_idletime = 1
     max_queue_size = 4
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
     cluster = clusters_factory(cluster_config)
