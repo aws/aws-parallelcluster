@@ -744,3 +744,13 @@ def get_base_additional_iam_policies():
         policy_name_to_arn("CloudWatchAgentServerPolicy"),
         policy_name_to_arn("AWSBatchFullAccess"),
     ]
+
+
+def get_cluster_capacity(stack_name):
+    stack = get_stack(stack_name)
+    scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
+    return (
+        get_batch_ce_capacity(stack_name)
+        if scheduler == "awsbatch"
+        else get_asg_settings(stack_name).get("DesiredCapacity")
+    )
