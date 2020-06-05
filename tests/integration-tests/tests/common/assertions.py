@@ -8,15 +8,11 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import logging
-import time
-
 import boto3
-from retrying import retry
 
 from assertpy import assert_that, soft_assertions
 from tests.common.scaling_common import get_compute_nodes_allocation
-from time_utils import minutes, seconds
+from time_utils import minutes
 
 
 def assert_instance_replaced_or_terminating(instance_id, region):
@@ -85,67 +81,3 @@ def assert_scaling_worked(
             assert_that(compute_nodes_time_series[-1]).described_as(compute_nodes_time_series_str).is_equal_to(
                 expected_final
             )
-
-
-def assert_nodes_removed_and_replaced_in_scheduler(
-    scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity
-):
-    """
-    Assert that nodes are removed from scheduler and replaced so that number of nodes in scheduler equals to desired.
-    Returns list of new nodenames in scheduler.
-    """
-    assert_nodes_removed_from_scheduler(scheduler_commands, nodes_to_remove)
-    wait_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
-    new_compute_nodes = scheduler_commands.get_compute_nodes()
-    if nodes_to_retain:
-        assert_that(set(nodes_to_retain) <= set(new_compute_nodes)).is_true()
-    logging.info(
-        "\nNodes removed from scheduler: {}"
-        "\nNodes retained in scheduler {}"
-        "\nNodes currently in scheduler after replacements: {}".format(
-            nodes_to_remove, nodes_to_retain, new_compute_nodes
-        )
-    )
-
-
-@retry(wait_fixed=seconds(30), stop_max_delay=minutes(10))
-def assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
-    assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
-
-
-@retry(wait_fixed=seconds(30), stop_max_delay=minutes(10))
-def wait_num_nodes_in_scheduler(scheduler_commands, desired):
-    assert_num_nodes_in_scheduler(scheduler_commands, desired)
-
-
-def assert_num_nodes_in_scheduler(scheduler_commands, desired):
-    assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
-
-
-def assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, nodes, nodewatcher_timeout=7):
-    logging.info("Waiting for nodewatcher action")
-    start_time = time.time()
-    while time.time() < start_time + 60 * (nodewatcher_timeout):
-        assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
-        time.sleep(30)
-
-
-def assert_initial_conditions(scheduler_commands, num_compute_nodes, assert_state=True):
-    """Assert cluster is in expected state before test starts; return list of compute nodes."""
-    compute_nodes = scheduler_commands.get_compute_nodes()
-    logging.info(
-        "Assert initial condition, expect cluster to have {num_nodes} idle nodes".format(num_nodes=num_compute_nodes)
-    )
-    assert_num_nodes_in_scheduler(scheduler_commands, num_compute_nodes)
-    if assert_state:
-        assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle"])
-
-    return compute_nodes
-
-
-def assert_compute_node_states(scheduler_commands, compute_nodes, expected_states):
-    # Assert state currently only work for slurm
-    # To-do: add support for sge and torque
-    node_states = scheduler_commands.get_nodes_status(compute_nodes)
-    for node in compute_nodes:
-        assert_that(expected_states).contains(node_states.get(node))
