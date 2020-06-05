@@ -16,7 +16,38 @@ import boto3
 import pytest
 
 from assertpy import assert_that
+from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from conftest import AVAILABILITY_ZONE_OVERRIDES
+from utils import random_alphanumeric
+
+
+@pytest.fixture()
+def networking_stack_factory(request):
+    """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
+    factory = CfnStacksFactory(request.config.getoption("credential"))
+
+    def _create_network(region, template_path, parameters):
+        file_content = extract_template(template_path)
+        stack = CfnStack(
+            name="integ-tests-networking-{0}{1}{2}".format(
+                random_alphanumeric(),
+                "-" if request.config.getoption("stackname_suffix") else "",
+                request.config.getoption("stackname_suffix"),
+            ),
+            region=region,
+            template=file_content,
+            parameters=parameters,
+        )
+        factory.create_stack(stack)
+        return stack
+
+    def extract_template(template_path):
+        with open(template_path) as cfn_file:
+            file_content = cfn_file.read()
+        return file_content
+
+    yield _create_network
+    factory.delete_all_stacks()
 
 
 @pytest.fixture()
@@ -26,7 +57,7 @@ def vpc_stack(vpc_stacks, region):
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
-def test_public_network_topology(region, vpc_stack, stack_factory):
+def test_public_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "192.168.3.0/24"
@@ -37,8 +68,7 @@ def test_public_network_topology(region, vpc_stack, stack_factory):
         availability_zone, internet_gateway_id=internet_gateway_id, vpc_id=vpc_id, public_cidr=public_subnet_cidr
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public.cfn.json")
-    stack_name = "networking"
-    stack = stack_factory(region, stack_name, path, parameters)
+    stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     _assert_subnet_cidr(ec2_client, public_subnet_id, expected_subnet_cidr=public_subnet_cidr)
@@ -51,7 +81,7 @@ def test_public_network_topology(region, vpc_stack, stack_factory):
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
-def test_public_private_network_topology(region, vpc_stack, stack_factory):
+def test_public_private_network_topology(region, vpc_stack, networking_stack_factory):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "192.168.5.0/24"
@@ -67,8 +97,7 @@ def test_public_private_network_topology(region, vpc_stack, stack_factory):
         private_cidr=private_subnet_cidr,
     )
     path = os.path.join("..", "..", "cloudformation", "networking", "public-private.cfn.json")
-    stack_name = "networking"
-    stack = stack_factory(region, stack_name, path, parameters)
+    stack = networking_stack_factory(region, path, parameters)
 
     public_subnet_id = stack.cfn_outputs["PublicSubnetId"]
     private_subnet_id = stack.cfn_outputs["PrivateSubnetId"]
