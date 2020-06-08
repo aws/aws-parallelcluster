@@ -132,6 +132,8 @@ DEFAULT_CLUSTER_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "queue_settings": None,
+    "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
 }
 

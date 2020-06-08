@@ -18,17 +18,21 @@ import pytest
 from configparser import NoOptionError, NoSectionError
 
 from assertpy import assert_that
-from pcluster.config.param_types import Param
+from pcluster.config.cfn_param_types import CfnParam
+from pcluster.config.param_types import StorageData
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict
 
 # List of parameters ignored by default when comparing sections
-COMPARATION_IGNORED_PARAMS = ["ClusterConfigMetadata"]
+COMPARATION_IGNORED_PARAMS = [
+    "ClusterConfigMetadata",  # Difficult to test among the other params. Has a specifically dedicated test
+    "_scaledown_idletime",  # Automatically managed, contains just a copy of scaledown_idletime for S3 configuration
+]
 
 
-def get_param_definition(section_definition, param_key):
+def get_cfnparam_definition(section_definition, param_key):
     param_definition = section_definition.get("params").get(param_key)
-    return param_definition, param_definition.get("type", Param)
+    return param_definition, param_definition.get("type", CfnParam)
 
 
 def merge_dicts(*args):
@@ -79,7 +83,7 @@ def assert_param_from_file(
     if param_value is not None:
         config_parser.set(section_name, param_key, param_value)
 
-    param_definition, param_type = get_param_definition(section_definition, param_key)
+    param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
@@ -109,7 +113,7 @@ def mock_pcluster_config(mocker, scheduler=None):
             else ["t2.micro", "t2.large", "c4.xlarge"]
         ),
     )
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
@@ -139,7 +143,7 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
         # Mock az detection by returning a mock az if subnet has a value
         return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
 
-    mocker.patch("pcluster.config.param_types.get_avail_zone", mock_get_avail_zone)
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", mock_get_avail_zone)
     cfn_params = []
     for cfn_key, cfn_value in cfn_params_dict.items():
         cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
@@ -147,7 +151,8 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
     pcluster_config = get_mocked_pcluster_config(mocker)
 
     section_type = section_definition.get("type")
-    section = section_type(section_definition, pcluster_config).from_cfn_params(cfn_params)
+    storage_params = StorageData(cfn_params, None)
+    section = section_type(section_definition, pcluster_config).from_storage(storage_params)
 
     if section.label:
         assert_that(section.label).is_equal_to("default")
@@ -160,14 +165,17 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
 
     section_dict = {}
     for param_key, param in section.params.items():
-        section_dict[param_key] = param.value
+        if not param_key.startswith("_"):
+            section_dict[param_key] = param.value
+
+    remove_ignored_params(section_dict)
 
     assert_that(section_dict).is_equal_to(expected_dict)
 
 
 def get_mocked_pcluster_config(mocker, auto_refresh=False):
     pcluster_config = PclusterConfig(config_file="wrong-file")
-    pcluster_config.set_auto_refresh(auto_refresh)
+    pcluster_config.auto_refresh = auto_refresh
     return pcluster_config
 
 
@@ -194,7 +202,8 @@ def assert_section_from_file(mocker, section_definition, config_parser_dict, exp
         section = section_type(section_definition, pcluster_config).from_file(config_parser)
         section_dict = {}
         for param_key, param in section.params.items():
-            section_dict[param_key] = param.value
+            if not param_key.startswith("_"):
+                section_dict[param_key] = param.value
 
         assert_that(section_dict).is_equal_to(expected_dict)
 
@@ -210,7 +219,7 @@ def assert_section_to_file(mocker, section_definition, section_dict, expected_co
     section = section_type(section_definition, pcluster_config, section_label="default")
 
     for param_key, param_value in section_dict.items():
-        param_definition, param_type = get_param_definition(section.definition, param_key)
+        param_definition, param_type = get_cfnparam_definition(section.definition, param_key)
         param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
         param.value = param_value
         section.add_param(param)
@@ -251,13 +260,13 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
     section_type = section_definition.get("type")
     section = section_type(section_definition, pcluster_config)
     for param_key, param_value in section_dict.items():
-        param_definition, param_type = get_param_definition(section_definition, param_key)
+        param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
         param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
         param.value = param_value
         section.add_param(param)
     pcluster_config.add_section(section)
 
-    cfn_params = section.to_cfn()
+    cfn_params = section.to_storage().cfn_params
     if ignore_metadata:
         remove_ignored_params(cfn_params)
         remove_ignored_params(expected_cfn_params)

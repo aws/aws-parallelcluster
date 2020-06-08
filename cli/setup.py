@@ -24,7 +24,7 @@ def readme():
 VERSION = "2.7.0"
 REQUIRES = [
     "setuptools",
-    "boto3>=1.10.15",
+    "boto3>=1.14.3",
     "future>=0.16.0,<=0.18.2",
     "tabulate>=0.8.2,<=0.8.3",
     "ipaddress>=1.0.22",

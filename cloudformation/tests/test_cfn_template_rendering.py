@@ -58,7 +58,7 @@ def test_hit_substack_rendering(tmp_path):
                     "compute_type": "ondemand",
                     "enable_efa": True,
                     "disable_hyperthreading": True,
-                    "placement_group": "AUTO",
+                    "placement_group": "DYNAMIC",
                 },
                 "gpu": {
                     "compute_resource_settings": {

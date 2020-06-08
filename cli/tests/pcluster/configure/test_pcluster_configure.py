@@ -143,7 +143,7 @@ def _mock_parallel_cluster_config(mocker):
     mocker.patch(
         "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
     )
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
 
 
 def _launch_config(mocker, path, remove_path=True):

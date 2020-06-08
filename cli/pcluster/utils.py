@@ -14,6 +14,7 @@ from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
 
+import hashlib
 import json
 import logging
 import os
@@ -26,11 +27,13 @@ import urllib.request
 import zipfile
 from enum import Enum
 from io import BytesIO
+from urllib.parse import urlparse
 
 import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
 
+from jinja2 import BaseLoader, Environment
 from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX
 
 LOGGER = logging.getLogger(__name__)
@@ -766,5 +769,56 @@ def get_cluster_capacity(stack_name):
     )
 
 
+def get_instance_type(instance_type):
+    ec2_client = boto3.client("ec2")
+    try:
+        return ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+    except Exception as e:
+        LOGGER.error("Failed when retrieving instance type data for instance type %s: %s", instance_type, e)
+        raise e
+
+
 def is_hit_enabled_cluster(scheduler):
     return scheduler in ["slurm"]
+
+
+def read_remote_file(url):
+    """Read a remote file from an HTTP or S3 url."""
+    try:
+        if urlparse(url).scheme == "s3":
+            match = re.match(r"s3://(.*?)/(.*)", url)
+            bucket, key = match.group(1), match.group(2)
+            file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
+        else:
+            with urllib.request.urlopen(url) as f:
+                file_contents = f.read().decode("utf-8")
+        return file_contents
+    except Exception as e:
+        LOGGER.error("Failed when reading remote file from url %s: %s", url, e)
+        raise e
+
+
+def render_template(template_str, params_dict):
+    """
+    Render a Jinjia template and return the rendered output.
+
+    :param template_str: Template file contents as a string
+    :param params_dict: Template parameters dict
+    """
+    try:
+        environment = Environment(loader=BaseLoader)
+        environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
+        template = environment.from_string(template_str)
+        output_from_parsed_template = template.render(config=params_dict)
+        return output_from_parsed_template
+    except Exception as e:
+        LOGGER.error("Error when rendering template: %s", e)
+        raise e
+
+
+def get_bucket_url(region):
+    """Return the ParallelCluster's bucket url for the provided region."""
+    s3_suffix = ".cn" if region.startswith("cn") else ""
+    return ("https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}").format(
+        region=region, suffix=s3_suffix
+    )

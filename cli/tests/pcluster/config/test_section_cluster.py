@@ -378,19 +378,13 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("custom_awsbatch_template_url", "NONE", "NONE", None),
         # Settings
         ("scaling_settings", "test1", None, "Section .* not found in the config file"),
-        ("scaling_settings", "test1,test2", None, "is invalid. It can only contains a single .* section label"),
         ("vpc_settings", "test1", None, "Section .* not found in the config file"),
-        ("vpc_settings", "test1,test2", None, "is invalid. It can only contains a single .* section label"),
-        ("vpc_settings", "test1, test2", None, "is invalid. It can only contains a single .* section label"),
         ("ebs_settings", "test1", None, "Section .* not found in the config file"),
         ("ebs_settings", "test1,test2", None, "Section .* not found in the config file"),
         ("ebs_settings", "test1, test2", None, "Section .* not found in the config file"),
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
-        ("efs_settings", "test1,test2", None, "is invalid. It can only contains a single .* section label"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
-        ("raid_settings", "test1,test2", None, "is invalid. It can only contains a single .* section label"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
-        ("fsx_settings", "test1,test2", None, "is invalid. It can only contains a single .* section label"),
     ],
 )
 def test_cluster_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -432,7 +426,7 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
 def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
     utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
+    mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params)
 
 
@@ -818,18 +812,18 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
 def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing Cluster related options."""
     mocker.patch(
-        "pcluster.config.param_types.get_efs_mount_target_id",
+        "pcluster.config.cfn_param_types.get_efs_mount_target_id",
         side_effect=lambda efs_fs_id, avail_zone: "master_mt" if avail_zone == "mocked_avail_zone" else None,
     )
     mocker.patch(
-        "pcluster.config.param_types.get_avail_zone",
+        "pcluster.config.cfn_param_types.get_avail_zone",
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
     mocker.patch(
         "pcluster.config.validators.get_supported_features",
         return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},
     )
-    mocker.patch("pcluster.config.param_types.get_instance_vcpus", return_value=2)
+    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
 
 
@@ -852,5 +846,5 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
 )
 def test_cluster_config_metadata_to_cfn(mocker, section_dict, expected_cfn_params):
     utils.mock_pcluster_config(mocker)
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
+    mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params, ignore_metadata=False)

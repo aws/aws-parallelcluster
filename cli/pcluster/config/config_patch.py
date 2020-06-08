@@ -68,8 +68,8 @@ class ConfigPatch(object):
         self.target_config = copy.deepcopy(target_config)
 
         # Disable autorefresh to avoid breakages due to changes made to the configurations when creating the patch
-        self.base_config.set_auto_refresh(False)
-        self.target_config.set_auto_refresh(False)
+        self.base_config.auto_refresh = False
+        self.target_config.auto_refresh = False
 
         self.changes = []
         self._compare()

@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
 from assertpy import assert_that
+from pcluster.utils import get_bucket_url
 from tests.common import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster_name"
@@ -470,3 +471,14 @@ def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
     else:
         assert_that(utils._get_master_server_ip("stack-name")).is_equal_to(expected_ip)
         describe_cluster_instances_mock.assert_called_with("stack-name", node_type=utils.NodeType.master)
+
+
+@pytest.mark.parametrize(
+    "region, expected_url",
+    [
+        ("us-east-1", "https://us-east-1-aws-parallelcluster.s3.us-east-1.amazonaws.com"),
+        ("cn-north-1", "https://cn-north-1-aws-parallelcluster.s3.cn-north-1.amazonaws.com.cn"),
+    ],
+)
+def test_get_bucket_url(region, expected_url):
+    assert_that(get_bucket_url(region)).is_equal_to(expected_url)

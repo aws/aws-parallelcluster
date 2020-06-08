@@ -13,7 +13,7 @@ import pytest
 
 from assertpy import assert_that
 from pcluster.config.mappings import CLUSTER, SCALING
-from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_definition
+from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pcluster_config
 
 
 @pytest.mark.parametrize(
@@ -59,7 +59,7 @@ def test_param_to_file(mocker, section_definition, param_key, param_value, expec
 
     pcluster_config = get_mocked_pcluster_config(mocker)
 
-    param_definition, param_type = get_param_definition(section_definition, param_key)
+    param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
     param = param_type(section_definition.get("key"), section_label, param_key, param_definition, pcluster_config)
     param.value = param_value or param_definition.get("default")
     param.to_file(config_parser)

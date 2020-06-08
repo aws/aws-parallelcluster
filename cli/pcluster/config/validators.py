@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
+    ellipsize,
     get_base_additional_iam_policies,
     get_efs_mount_target_id,
     get_instance_vcpus,
@@ -48,6 +49,10 @@ FSX_MESSAGES = {
 }
 
 FSX_SUPPORTED_OSES = ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"]
+
+# Constants for section labels
+LABELS_MAX_LENGTH = 64
+LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
 
 
 def _get_sts_endpoint():
@@ -922,3 +927,78 @@ def base_os_validator(param_key, param_value, pcluster_config):
         )
 
     return [], warnings
+
+
+def queue_settings_validator(param_key, param_value, pcluster_config):
+    errors = []
+    cluster_section = pcluster_config.get_section("cluster")
+    scheduler = cluster_section.get_param_value("scheduler")
+
+    if scheduler != "slurm":
+        errors.append("queue_settings is supported only with slurm scheduler")
+
+    return errors, []
+
+
+def queue_validator(section_key, section_label, pcluster_config):
+    errors = []
+    section = pcluster_config.get_section(section_key, section_label)
+    compute_resource_labels = str(section.get_param_value("compute_resource_settings") or "").split(",")
+
+    instance_types = []
+    for compute_resource_label in compute_resource_labels:
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
+        if compute_resource:
+            instance_type = compute_resource.get_param_value("instance_type")
+            if instance_type in instance_types:
+                errors.append(
+                    "Duplicate instance type '{0}' found in queue '{1}'. "
+                    "Compute resources in the same queue must use different instance types".format(
+                        instance_type, section_label
+                    )
+                )
+            else:
+                instance_types.append(instance_type)
+    return errors, []
+
+
+def settings_validator(param_key, param_value, pcluster_config):
+    errors = []
+    if param_value:
+        for label in param_value.split(","):
+            label = label.strip()
+            match = re.match(LABELS_REGEX, label)
+            if not match:
+                errors.append(
+                    "Invalid label '{0}' in param '{1}'. Section labels can only contain alphanumeric characters, "
+                    "dashes or underscores.".format(ellipsize(label, 20), param_key)
+                )
+            else:
+                if len(label) > LABELS_MAX_LENGTH:
+                    errors.append(
+                        "Invalid label '{0}' in param '{1}'. The maximum length allowed for section labels is "
+                        "{2} characters".format(ellipsize(label, 20), param_key, LABELS_MAX_LENGTH)
+                    )
+    return errors, []
+
+
+def compute_resource_validator(section_key, section_label, pcluster_config):
+    errors = []
+    section = pcluster_config.get_section(section_key, section_label)
+
+    min_count = section.get_param_value("min_count")
+    max_count = section.get_param_value("max_count")
+
+    if min_count < 0:
+        errors.append("Parameter 'min_count' must be 0 or greater than 0")
+
+    if max_count < 1:
+        errors.append("Parameter 'max_count' must be 1 or greater than 1")
+
+    if section.get_param_value("max_count") < min_count:
+        errors.append("Parameter 'max_count' must be greater than or equal to min_count")
+
+    if section.get_param_value("spot_price") < 0:
+        errors.append("Parameter 'spot_price' must be 0 or greater than 0")
+
+    return errors, []
