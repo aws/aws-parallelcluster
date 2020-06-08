@@ -104,7 +104,7 @@ Resources:
             AssociatePublicIpAddress: !Ref 'AssociatePublicIpAddress'
             SubnetId: !Ref 'ComputeSubnetId'
         Placement:
-          GroupName: {% if queue_config.placement_group == "AUTO" %}!Ref 'PlacementGroup{{ queue | sha1 | truncate(16, True, "") | capitalize }}'{% elif queue_config.placement_group %}{{ queue_config.placement_group }}{% else %}!Ref 'AWS::NoValue'{% endif %}
+          GroupName: {% if queue_config.placement_group == "DYNAMIC" %}!Ref 'PlacementGroup{{ queue | sha1 | truncate(16, True, "") | capitalize }}'{% elif queue_config.placement_group %}{{ queue_config.placement_group }}{% else %}!Ref 'AWS::NoValue'{% endif %}
         KeyName: !Ref 'KeyName'
         IamInstanceProfile:
           Name: !Ref 'IamInstanceProfile'
@@ -387,7 +387,7 @@ Resources:
   {%- endfor %}
 {%- endfor %}
 {%- for queue, queue_config in queues.items() %}
-  {%- if queue_config.placement_group == "AUTO" %}
+  {%- if queue_config.placement_group == "DYNAMIC" %}
   PlacementGroup{{ queue | sha1 | truncate(16, True, "") | capitalize }}:
     Type: AWS::EC2::PlacementGroup
     Properties:

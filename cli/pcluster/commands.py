@@ -17,11 +17,9 @@
 from __future__ import absolute_import, print_function
 
 import datetime
-import hashlib
 import json
 import logging
 import os
-import re
 import shlex
 import subprocess as sub
 import sys
@@ -37,7 +35,6 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
-from jinja2 import BaseLoader, Environment
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 
@@ -49,7 +46,7 @@ else:
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(stack_name, pcluster_config):
+def _create_bucket_with_resources(stack_name, pcluster_config, json_params):
     """Create a bucket associated to the given stack and upload specified resources."""
     scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
     if scheduler not in ["awsbatch", "slurm"]:
@@ -72,7 +69,7 @@ def _create_bucket_with_resources(stack_name, pcluster_config):
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
         if scheduler == "slurm":
-            _upload_hit_resources(s3_bucket_name, pcluster_config)
+            _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -81,100 +78,30 @@ def _create_bucket_with_resources(stack_name, pcluster_config):
     return s3_bucket_name
 
 
-# FIXME: this is a temporary prototype that needs to be properly implemented once the cluster config is ready
-def _upload_hit_resources(bucket_name, pcluster_config):
+def _upload_hit_resources(bucket_name, pcluster_config, json_params):
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
-    ) or "s3://{region}-aws-parallelcluster/templates/aws-parallelcluster-{version}.cfn.json".format(
-        region=pcluster_config.region, version=utils.get_installed_version()
+    ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
+        bucket_url=utils.get_bucket_url(pcluster_config.region), version=utils.get_installed_version(),
     )
-    match = re.match(r"s3://(.*?)/(.*)", hit_template_url)
-    bucket, key = match.group(1), match.group(2)
-    file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
 
-    hit_config = {
-        "cluster": {
-            "label": "default",
-            "default_queue": "multiple_spot",
-            "queue_settings": {
-                "multiple_spot": {
-                    "compute_type": "spot",
-                    "enable_efa": False,
-                    "disable_hyperthreading": True,
-                    "placement_group": None,
-                    "compute_resource_settings": {
-                        "multiple_spot_c4.xlarge": {
-                            "instance_type": "c4.xlarge",
-                            "min_count": 0,
-                            "max_count": 10,
-                            "spot_price": None,
-                            "vcpus": 2,
-                            "gpus": 0,
-                            "enable_efa": False,
-                        },
-                        "multiple_spot_c5.2xlarge": {
-                            "instance_type": "c5.2xlarge",
-                            "min_count": 1,
-                            "max_count": 5,
-                            "spot_price": 1.5,
-                            "vcpus": 4,
-                            "gpus": 0,
-                            "enable_efa": False,
-                        },
-                    },
-                },
-                "efa": {
-                    "compute_resource_settings": {
-                        "efa_c5n.18xlarge": {
-                            "instance_type": "c5n.18xlarge",
-                            "min_count": 0,
-                            "max_count": 5,
-                            "spot_price": None,
-                            "vcpus": 36,
-                            "gpus": 0,
-                            "enable_efa": True,
-                        },
-                    },
-                    "compute_type": "ondemand",
-                    "enable_efa": True,
-                    "disable_hyperthreading": True,
-                    "placement_group": "AUTO",
-                },
-                "gpu": {
-                    "compute_resource_settings": {
-                        "gpu_g3.8xlarge": {
-                            "instance_type": "g3.8xlarge",
-                            "min_count": 0,
-                            "max_count": 5,
-                            "spot_price": None,
-                            "vcpus": 16,
-                            "gpus": 2,
-                            "enable_efa": False,
-                        },
-                    },
-                    "compute_type": "ondemand",
-                    "enable_efa": False,
-                    "disable_hyperthreading": True,
-                    "placement_group": None,
-                },
-            },
-            "scaling": {"scaledown_idletime": 10},
-        }
-    }
+    try:
+        file_contents = utils.read_remote_file(hit_template_url)
+        rendered_template = utils.render_template(file_contents, json_params)
+    except Exception as e:
+        LOGGER.error("Error when generating hit template from url %s: %s", hit_template_url, e)
+        raise
 
-    environment = Environment(loader=BaseLoader)
-    environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
-    template = environment.from_string(file_contents)
-    output_from_parsed_template = template.render(config=hit_config)
-    s3_client = boto3.client("s3")
-    s3_client.put_object(
-        Bucket=bucket_name,
-        Body=output_from_parsed_template,
-        Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
-    )
-    s3_client.put_object(
-        Bucket=bucket_name, Body=json.dumps(hit_config), Key="configs/cluster-config.json",
-    )
+    try:
+        s3_client = boto3.client("s3")
+        s3_client.put_object(
+            Bucket=bucket_name, Body=rendered_template, Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+        )
+        s3_client.put_object(
+            Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json",
+        )
+    except Exception as e:
+        LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)
 
 
 def version():
@@ -198,7 +125,8 @@ def create(args):  # noqa: C901 FIXME!!!
     )
     pcluster_config.validate()
     # get CFN parameters, template url and tags from config
-    cfn_params = pcluster_config.to_cfn()
+    storage_data = pcluster_config.to_storage()
+    cfn_params = storage_data.cfn_params
 
     _check_for_updates(pcluster_config)
 
@@ -207,7 +135,7 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        bucket_name = _create_bucket_with_resources(stack_name, pcluster_config)
+        bucket_name = _create_bucket_with_resources(stack_name, pcluster_config, storage_data.json_params)
         if bucket_name:
             cfn_params["ResourcesS3Bucket"] = bucket_name
 

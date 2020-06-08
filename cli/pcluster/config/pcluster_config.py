@@ -11,17 +11,27 @@
 from future.moves.collections import OrderedDict
 
 import errno
+import json
 import logging
 import os
 import stat
 import sys
+from tempfile import mkdtemp
 
 import boto3
 import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import get_installed_version, get_instance_vcpus, get_stack, get_stack_name, get_stack_version
+from pcluster.config.param_types import StorageData
+from pcluster.utils import (
+    get_cfn_param,
+    get_installed_version,
+    get_instance_vcpus,
+    get_stack,
+    get_stack_name,
+    get_stack_version,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -287,7 +297,18 @@ class PclusterConfig(object):
 
         :return: a dict containing the cfn parameters associated with the cluster configuration
         """
-        return self.get_section("cluster").to_cfn()
+        return self.to_storage().cfn_params
+
+    def to_storage(self):
+        """
+        Get a data structure with all the information needed to persist the configuration.
+
+        The internal representation of the cluster is converted into a data structure containing the information to be
+        stored into all the storage mechanisms used by the CLI (currently CloudFormation parameters and Json).
+
+        :return: a dict containing the cfn parameters and the json dict associated with the cluster configuration
+        """
+        return self.get_section("cluster").to_storage()
 
     def __init_sections_from_file(self, cluster_label=None, config_parser=None, fail_on_absence=False):
         """
@@ -326,7 +347,13 @@ class PclusterConfig(object):
         except configparser.NoSectionError as e:
             self.error("Section '[{0}]' not found in the config file.".format(e.section))
 
-    def set_auto_refresh(self, refresh_enabled):
+    @property
+    def auto_refresh(self):
+        """Return the configuration autorefresh."""
+        return self.__autorefresh
+
+    @auto_refresh.setter
+    def auto_refresh(self, refresh_enabled):
         """Enable or disable the configuration autorefresh."""
         self.__autorefresh = refresh_enabled
 
@@ -378,7 +405,10 @@ class PclusterConfig(object):
             section_type = CLUSTER.get("type")
             section = section_type(section_definition=CLUSTER, pcluster_config=self)
             self.add_section(section)
-            section.from_cfn_params(cfn_params=stack.get("Parameters", []))
+
+            cfn_params = stack.get("Parameters")
+            json_params = self.__load_json_config(cfn_params)
+            section.from_storage(StorageData(cfn_params, json_params))
 
         except ClientError as e:
             self.error(
@@ -403,6 +433,31 @@ class PclusterConfig(object):
     def get_compute_availability_zone(self):
         """Get the Availability zone of the Compute Subnet."""
         return self.get_section("vpc").get_param_value("compute_availability_zone")
+
+    def __load_json_config(self, cfn_params):
+        """Retrieve Json configuration params from the S3 bucket linked from the cfn params."""
+        s3_bucket_name = get_cfn_param(cfn_params, "ResourcesS3Bucket")
+        if s3_bucket_name and s3_bucket_name != "NONE":
+            tmp_s3_config_path = os.path.join(mkdtemp(), "s3_config.json")
+            try:
+                s3 = boto3.client("s3")
+                s3.download_file(s3_bucket_name, "configs/cluster-config.json", tmp_s3_config_path)
+
+                with open(tmp_s3_config_path) as s3_config_file:
+                    return json.load(s3_config_file, object_pairs_hook=OrderedDict)
+            except ClientError as e:
+                self.error(
+                    "Unable to retrieve configuration from bucket '{0}'.\n{1}".format(
+                        s3_bucket_name, e.response.get("Error").get("Message")
+                    )
+                )
+                raise
+            except Exception as e:
+                self.error(
+                    "Unable to parse configuration from bucket '{0}'.\n{1}".format(
+                        s3_bucket_name, e.response.get("Error").get("Message")
+                    )
+                )
 
     def __test_configuration(self):  # noqa: C901
         """

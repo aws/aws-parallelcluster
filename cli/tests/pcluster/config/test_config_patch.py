@@ -37,7 +37,7 @@ def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
 
 
 def test_config_patch(mocker):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     src_conf = PclusterConfig()
     dst_conf = PclusterConfig()
     # Two new configs must always be equal
@@ -66,7 +66,7 @@ def test_single_param_change(
     dst_param_value,
     change_update_policy,
 ):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
@@ -90,7 +90,7 @@ def test_single_param_change(
 
 
 def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
@@ -256,7 +256,7 @@ def _test_different_labels(base_conf, target_conf):
     ],
 )
 def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     base_config_file_name = "pcluster.config.base.ini"
     duplicate_config_file(base_config_file_name, test_datadir)
     target_config_file_name = "pcluster.config.dst.ini"

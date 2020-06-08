@@ -10,33 +10,46 @@
 # limitations under the License.
 from future.moves.collections import OrderedDict
 
-from pcluster.config.param_types import (
-    AdditionalIamPoliciesParam,
-    BoolParam,
-    ClusterConfigMetadataParam,
-    ClusterSection,
-    ComputeAvailabilityZoneParam,
-    DisableHyperThreadingParam,
-    EBSSettingsParam,
-    EFSSection,
-    ExtraJsonParam,
-    FloatParam,
-    IntParam,
-    JsonParam,
-    MaintainInitialSizeParam,
-    MasterAvailabilityZoneParam,
-    QueueSizeParam,
-    Section,
-    SettingsParam,
-    SharedDirParam,
-    SpotBidPercentageParam,
-    SpotPriceParam,
+from pcluster.config.cfn_param_types import (
+    AdditionalIamPoliciesCfnParam,
+    BoolCfnParam,
+    CfnSection,
+    ClusterCfnSection,
+    ClusterConfigMetadataCfnParam,
+    ComputeAvailabilityZoneCfnParam,
+    DisableHyperThreadingCfnParam,
+    EBSSettingsCfnParam,
+    EFSCfnSection,
+    ExtraJsonCfnParam,
+    FloatCfnParam,
+    IntCfnParam,
+    JsonCfnParam,
+    MaintainInitialSizeCfnParam,
+    MasterAvailabilityZoneCfnParam,
+    QueueSizeCfnParam,
+    SettingsCfnParam,
+    SharedDirCfnParam,
+    SpotBidPercentageCfnParam,
+    SpotPriceCfnParam,
 )
+from pcluster.config.json_param_types import (
+    BooleanJsonParam,
+    ComputeInstanceTypeJsonParam,
+    DefaultComputeQueueJsonParam,
+    FloatJsonParam,
+    IntJsonParam,
+    JsonParam,
+    JsonSection,
+    ScaleDownIdleTimeJsonParam,
+    SettingsJsonParam,
+)
+from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
+    compute_resource_validator,
     dcv_enabled_validator,
     disable_hyperthreading_validator,
     ebs_settings_validator,
@@ -62,6 +75,8 @@ from pcluster.config.validators import (
     intel_hpc_validator,
     kms_key_validator,
     maintain_initial_size_validator,
+    queue_settings_validator,
+    queue_validator,
     raid_volume_iops_validator,
     s3_bucket_validator,
     scheduler_validator,
@@ -120,7 +135,7 @@ ALLOWED_VALUES = {
 }
 
 AWS = {
-    "type": Section,
+    "type": CfnSection,
     "key": "aws",
     "params": {
         "aws_access_key_id": {
@@ -137,7 +152,7 @@ AWS = {
 }
 
 GLOBAL = {
-    "type": Section,
+    "type": CfnSection,
     "key": "global",
     "params": {
         "cluster_template": {
@@ -146,12 +161,12 @@ GLOBAL = {
             "update_policy": UpdatePolicy.IGNORED
         },
         "update_check": {
-            "type": BoolParam,
+            "type": BoolCfnParam,
             "default": True,
             "update_policy": UpdatePolicy.IGNORED
         },
         "sanity_check": {
-            "type": BoolParam,
+            "type": BoolCfnParam,
             "default": True,
             "update_policy": UpdatePolicy.IGNORED
         },
@@ -159,7 +174,7 @@ GLOBAL = {
 }
 
 ALIASES = {
-    "type": Section,
+    "type": CfnSection,
     "key": "aliases",
     "params": {
         "ssh": {
@@ -170,21 +185,28 @@ ALIASES = {
 }
 
 SCALING = {
-    "type": Section,
+    "type": CfnSection,
     "key": "scaling",
     "default_label": "default",
     "params": {
         "scaledown_idletime": {
-            "type": IntParam,
+            "type": IntCfnParam,
             "default": 10,
             "cfn_param_mapping": "ScaleDownIdleTime",
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
-        }
+        },
+        "_scaledown_idletime": {
+            "type": ScaleDownIdleTimeJsonParam,
+            "default": 10,
+            # This param is managed automatically (it's a copy of scaledown_idletime for Json param types)
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE
+        },
     }
 }
 
 VPC = {
-    "type": Section,
+    "type": CfnSection,
     "key": "vpc",
     "default_label": "default",
     "params": {
@@ -224,7 +246,7 @@ VPC = {
             "update_policy": UpdatePolicy.UNSUPPORTED
         },
         "use_public_ips": {
-            "type": BoolParam,
+            "type": BoolCfnParam,
             "default": True,
             "cfn_param_mapping": "UsePublicIps",
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
@@ -237,20 +259,22 @@ VPC = {
         },
         "master_availability_zone": {
             # NOTE: this is not exposed as a configuration parameter
-            "type": MasterAvailabilityZoneParam,
+            "type": MasterAvailabilityZoneCfnParam,
             "cfn_param_mapping": "AvailabilityZone",
-            "update_policy": UpdatePolicy.IGNORED
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE
         },
         "compute_availability_zone": {
             # NOTE: this is not exposed as a configuration parameter
-            "type": ComputeAvailabilityZoneParam,
+            "type": ComputeAvailabilityZoneCfnParam,
             "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE
         }
     },
 }
 
 EBS = {
-    "type": Section,
+    "type": CfnSection,
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
@@ -277,7 +301,7 @@ EBS = {
             )
         },
         "volume_size": {
-            "type": IntParam,
+            "type": IntCfnParam,
             "default": 20,
             "cfn_param_mapping": "VolumeSize",
             "update_policy": UpdatePolicy(
@@ -287,13 +311,13 @@ EBS = {
             )
         },
         "volume_iops": {
-            "type": IntParam,
+            "type": IntCfnParam,
             "default": 100,
             "cfn_param_mapping": "VolumeIOPS",
             "update_policy": UpdatePolicy.SUPPORTED
         },
         "encrypted": {
-            "type": BoolParam,
+            "type": BoolCfnParam,
             "cfn_param_mapping": "EBSEncryption",
             "default": False,
             "update_policy": UpdatePolicy.UNSUPPORTED
@@ -314,7 +338,7 @@ EBS = {
 
 EFS = {
     "key": "efs",
-    "type": EFSSection,
+    "type": EFSCfnSection,
     "default_label": "default",
     "validators": [efs_validator],
     "cfn_param_mapping": "EFSOptions",  # All the parameters in the section are converted into a single CFN parameter
@@ -341,11 +365,11 @@ EFS = {
             }),
             ("provisioned_throughput", {
                 "allowed_values": r"^([0-9]{1,3}|10[0-1][0-9]|102[0-4])(\.[0-9])?$",  # 0.0 to 1024.0
-                "type": FloatParam,
+                "type": FloatCfnParam,
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("encrypted", {
-                "type": BoolParam,
+                "type": BoolCfnParam,
                 "default": False,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -359,7 +383,7 @@ EFS = {
 }
 
 RAID = {
-    "type": Section,
+    "type": CfnSection,
     "key": "raid",
     "default_label": "default",
     "cfn_param_mapping": "RAIDOptions",  # All the parameters in the section are converted into a single CFN parameter
@@ -371,12 +395,12 @@ RAID = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("raid_type", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "allowed_values": [0, 1],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("num_of_raid_volumes", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "allowed_values": "^[1-5]$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
 
@@ -387,18 +411,18 @@ RAID = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("volume_size", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "default": 20,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("volume_iops", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "default": 100,
                 "validators": [raid_volume_iops_validator],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("encrypted", {
-                "type": BoolParam,
+                "type": BoolCfnParam,
                 "default": False,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -412,7 +436,7 @@ RAID = {
 
 
 FSX = {
-    "type": Section,
+    "type": CfnSection,
     "key": "fsx",
     "default_label": "default",
     "validators": [fsx_validator, fsx_storage_capacity_validator],
@@ -430,7 +454,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("storage_capacity", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("fsx_kms_key_id", {
@@ -438,7 +462,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("imported_file_chunk_size", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "validators": [fsx_imported_file_chunk_size_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -459,7 +483,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("per_unit_storage_throughput", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -468,7 +492,7 @@ FSX = {
 }
 
 DCV = {
-    "type": Section,
+    "type": CfnSection,
     "key": "dcv",
     "default_label": "default",
     "cfn_param_mapping": "DCVOptions",  # All the parameters in the section are converted into a single CFN parameter
@@ -480,7 +504,7 @@ DCV = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("port", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "default": 8443,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -494,18 +518,18 @@ DCV = {
 }
 
 CW_LOG = {
-    "type": Section,
+    "type": CfnSection,
     "key": "cw_log",
     "default_label": "default",
     "cfn_param_mapping": "CWLogOptions",  # Stringify params into single CFN parameter
     "params": OrderedDict([
         ("enable", {
-            "type": BoolParam,
+            "type": BoolCfnParam,
             "default": True,
             "update_policy": UpdatePolicy.UNSUPPORTED,
         }),
         ("retention_days", {
-            "type": IntParam,
+            "type": IntCfnParam,
             "default": 14,
             "cfn_param_mapping": "CWLogEventRententionDays",
             "allowed_values": [
@@ -516,8 +540,97 @@ CW_LOG = {
     ])
 }
 
+COMPUTE_RESOURCE = {
+    "type": JsonSection,
+    "key": "compute_resource",
+    "default_label": "default",
+    "validators": [compute_resource_validator],
+    "max_resources": 3,
+    "params": OrderedDict([
+        ("instance_type", {
+            "type": ComputeInstanceTypeJsonParam,
+            "validators": [ec2_instance_type_validator],
+            "required": True,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("min_count", {
+            "type": IntJsonParam,
+            "default": 0,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("max_count", {
+            "type": IntJsonParam,
+            "default": 10,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("spot_price", {
+            "type": FloatJsonParam,
+            "default": 0,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("vcpus", {
+            "type": IntJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": 0
+        }),
+        ("gpus", {
+            "type": IntJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": 0
+        }),
+        ("enable_efa", {
+            "type": BooleanJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": False
+        }),
+    ])
+}
+
+QUEUE = {
+    "type": JsonSection,
+    "key": "queue",
+    "default_label": "default",
+    "validators": [queue_validator],
+    "max_resources": 5,
+    "params": OrderedDict([
+        ("compute_type", {
+            "type": JsonParam,
+            "default": "ondemand",
+            "allowed_values": ["ondemand", "spot"],
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("enable_efa", {
+            "type": BooleanJsonParam,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+            "default": False
+        }),
+        ("disable_hyperthreading", {
+            "type": BooleanJsonParam,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+            "default": False
+        }),
+        ("placement_group", {
+            "type": JsonParam,
+            "validators": [ec2_placement_group_validator],
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
+        ("compute_resource_settings", {
+            "type": SettingsJsonParam,
+            "referred_section": COMPUTE_RESOURCE,
+            "required": True,
+            "update_policy": UpdatePolicy.UNSUPPORTED,
+        }),
+    ])
+}
+
 CLUSTER = {
-    "type": ClusterSection,
+    "type": ClusterCfnSection,
     "key": "cluster",
     "default_label": "default",
     "validators": [cluster_validator],
@@ -525,7 +638,7 @@ CLUSTER = {
         [  # OrderedDict due to conditional defaults values
             ("cluster_config_metadata", {
                 # NOTE: this is not exposed as a configuration parameter
-                "type": ClusterConfigMetadataParam,
+                "type": ClusterConfigMetadataCfnParam,
                 "cfn_param_mapping": "ClusterConfigMetadata",
                 "update_policy": UpdatePolicy.IGNORED,
             }),
@@ -567,7 +680,7 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("master_root_volume_size", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "default": 25,
                 "allowed_values": ALLOWED_VALUES["greater_than_25"],
                 "cfn_param_mapping": "MasterRootVolumeSize",
@@ -587,46 +700,46 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("compute_root_volume_size", {
-                "type": IntParam,
+                "type": IntCfnParam,
                 "default": 25,
                 "allowed_values": ALLOWED_VALUES["greater_than_25"],
                 "cfn_param_mapping": "ComputeRootVolumeSize",
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("initial_queue_size", {
-                "type": QueueSizeParam,
+                "type": QueueSizeCfnParam,
                 "default": 0,
                 "cfn_param_mapping": "DesiredSize",  # TODO verify the update case
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("max_queue_size", {
-                "type": QueueSizeParam,
+                "type": QueueSizeCfnParam,
                 "default": 10,
                 "cfn_param_mapping": "MaxSize",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("maintain_initial_size", {
-                "type": MaintainInitialSizeParam,
+                "type": MaintainInitialSizeCfnParam,
                 "default": False,
                 "cfn_param_mapping": "MinSize",
                 "validators": [maintain_initial_size_validator],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("min_vcpus", {
-                "type": QueueSizeParam,
+                "type": QueueSizeCfnParam,
                 "default": 0,
                 "cfn_param_mapping": "MinSize",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("desired_vcpus", {
-                "type": QueueSizeParam,
+                "type": QueueSizeCfnParam,
                 "default": 4,
                 "cfn_param_mapping": "DesiredSize",
                 # Desired size is automatically managed during the update
                 "update_policy": UpdatePolicy.IGNORED
             }),
             ("max_vcpus", {
-                "type": QueueSizeParam,
+                "type": QueueSizeCfnParam,
                 "default": 10,
                 "cfn_param_mapping": "MaxSize",
                 "update_policy": UpdatePolicy.AWSBATCH_CE_MAX_RESIZE
@@ -638,13 +751,13 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("spot_price", {
-                "type": SpotPriceParam,
+                "type": SpotPriceCfnParam,
                 "default": 0,
                 "cfn_param_mapping": "SpotPrice",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("spot_bid_percentage", {
-                "type": SpotBidPercentageParam,
+                "type": SpotBidPercentageCfnParam,
                 "default": 0,
                 "cfn_param_mapping": "SpotPrice",
                 "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
@@ -669,7 +782,7 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("disable_hyperthreading", {
-                "type": DisableHyperThreadingParam,
+                "type": DisableHyperThreadingCfnParam,
                 "default": False,
                 "cfn_param_mapping": "Cores",
                 "validators": [disable_hyperthreading_validator],
@@ -688,7 +801,7 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.IGNORED
             }),
             ("shared_dir", {
-                "type": SharedDirParam,
+                "type": SharedDirCfnParam,
                 "allowed_values": ALLOWED_VALUES["file_path"],
                 "cfn_param_mapping": "SharedDir",
                 "default": "/shared",
@@ -709,7 +822,7 @@ CLUSTER = {
             }),
             ("encrypted_ephemeral", {
                 "default": False,
-                "type": BoolParam,
+                "type": BoolCfnParam,
                 "cfn_param_mapping": "EncryptedEphemeral",
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
@@ -740,7 +853,7 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
             }),
             ("extra_json", {
-                "type": ExtraJsonParam,
+                "type": ExtraJsonCfnParam,
                 "cfn_param_mapping": "ExtraJson",
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
             }),
@@ -751,7 +864,7 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("tags", {
-                "type": JsonParam,
+                "type": JsonCfnParam,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("custom_chef_cookbook", {
@@ -768,26 +881,32 @@ CLUSTER = {
             }),
             ("enable_intel_hpc_platform", {
                 "default": False,
-                "type": BoolParam,
+                "type": BoolCfnParam,
                 "cfn_param_mapping": "IntelHPCPlatform",
                 "validators": [intel_hpc_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
+            ("default_queue", {
+                "type": DefaultComputeQueueJsonParam,
+                # This param is managed automatically
+                "visibility": Visibility.PRIVATE,
+                "update_policy": UpdatePolicy.IGNORED
+            }),
             # Settings
             ("scaling_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "default": "default",  # set a value to create always the internal structure for the scaling section
                 "referred_section": SCALING,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("vpc_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "default": "default",  # set a value to create always the internal structure for the vpc section
                 "referred_section": VPC,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("ebs_settings", {
-                "type": EBSSettingsParam,
+                "type": EBSSettingsCfnParam,
                 "referred_section": EBS,
                 "validators": [ebs_settings_validator],
                 "update_policy": UpdatePolicy(
@@ -796,35 +915,41 @@ CLUSTER = {
                 )
             }),
             ("efs_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "referred_section": EFS,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("raid_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "referred_section": RAID,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("fsx_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "referred_section": FSX,
                 "validators": [fsx_os_support],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("dcv_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "referred_section": DCV,
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("cw_log_settings", {
-                "type": SettingsParam,
+                "type": SettingsCfnParam,
                 "referred_section": CW_LOG,
+                "update_policy": UpdatePolicy.UNSUPPORTED,
+            }),
+            ("queue_settings", {
+                "type": SettingsJsonParam,
+                "referred_section": QUEUE,
+                "validators": [queue_settings_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             # Moved from the "Access and Networking" section because its configuration is
             # dependent on multiple other parameters from within this section.
             ("additional_iam_policies", {
-                "type": AdditionalIamPoliciesParam,
+                "type": AdditionalIamPoliciesCfnParam,
                 "cfn_param_mapping": "EC2IAMPolicies",
                 "validators": [ec2_iam_policies_validator],
                 "update_policy": UpdatePolicy.SUPPORTED,
