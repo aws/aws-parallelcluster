@@ -499,29 +499,3 @@ def pytest_runtest_makereport(item, call):
     # set a report attribute for each phase of a call, which can
     # be "setup", "call", "teardown"
     setattr(item, "rep_" + rep.when, rep)
-
-
-@pytest.fixture()
-def stack_factory(request):
-    """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
-    factory = CfnStacksFactory(request.config.getoption("credential"))
-
-    def _create_cfn_stack(region, stack_name, template_path, parameters):
-        with open(template_path) as cfn_file:
-            file_content = cfn_file.read()
-            stack = CfnStack(
-                name="integ-tests-{}-{}{}{}".format(
-                    stack_name,
-                    random_alphanumeric(),
-                    "-" if request.config.getoption("stackname_suffix") else "",
-                    request.config.getoption("stackname_suffix"),
-                ),
-                region=region,
-                template=file_content,
-                parameters=parameters,
-            )
-            factory.create_stack(stack)
-            return stack
-
-    yield _create_cfn_stack
-    factory.delete_all_stacks()

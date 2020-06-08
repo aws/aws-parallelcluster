@@ -969,23 +969,6 @@
         },
         "master"
       ]
-    },
-    "CreateScheduledEventsSubstack": {
-      "Fn::Not": [
-        {
-          "Condition": "CreateAWSBatchStack"
-        }
-      ]
-    },
-    "CreateScheduledEventsIAMPolicy": {
-      "Fn::And": [
-        {
-          "Condition": "CreateScheduledEventsSubstack"
-        },
-        {
-          "Condition": "CreateEC2IAMRole"
-        }
-      ]
     }
   },
   "Mappings": {
@@ -1309,35 +1292,6 @@
       "Properties": {
         "MessageRetentionPeriod": 1209600
       }
-    },
-    "ScheduledEventsSubstack": {
-      "Type": "AWS::CloudFormation::Stack",
-      "Properties": {
-        "TemplateURL": {
-          "Fn::Sub": [
-            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/scheduled-events-substack-${version}.cfn.json",
-            {
-              "s3_url": {
-                "Fn::FindInMap": [
-                  "Partition2Url",
-                  {
-                    "Ref": "AWS::Partition"
-                  },
-                  "url"
-                ]
-              },
-              "version": {
-                "Fn::FindInMap": [
-                  "PackagesVersions",
-                  "default",
-                  "parallelcluster"
-                ]
-              }
-            }
-          ]
-        }
-      },
-      "Condition": "CreateScheduledEventsSubstack"
     },
     "FSXSubstack": {
       "Type": "AWS::CloudFormation::Stack",
@@ -1723,41 +1677,6 @@
         ]
       },
       "Condition": "CreateEC2IAMRole"
-    },
-    "ParallelClusterScheduledEventsPolicies": {
-      "Type": "AWS::IAM::Policy",
-      "Properties": {
-        "PolicyName": "parallelcluster-scheduled-events",
-        "PolicyDocument": {
-          "Statement": [
-            {
-              "Sid": "SQSQueue",
-              "Action": [
-                "sqs:SendMessage",
-                "sqs:ReceiveMessage",
-                "sqs:ChangeMessageVisibility",
-                "sqs:DeleteMessage",
-                "sqs:GetQueueUrl"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::GetAtt": [
-                    "ScheduledEventsSubstack",
-                    "Outputs.HealthSQSQueueARN"
-                  ]
-                }
-              ]
-            }
-          ]
-        },
-        "Roles": [
-          {
-            "Ref": "RootRole"
-          }
-        ]
-      },
-      "Condition": "CreateScheduledEventsIAMPolicy"
     },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
@@ -2522,18 +2441,6 @@
                       "Fn::GetAtt": [
                         "SQS",
                         "QueueName"
-                      ]
-                    },
-                    "cfn_health_sqs_queue": {
-                      "Fn::If": [
-                        "CreateScheduledEventsSubstack",
-                        {
-                          "Fn::GetAtt": [
-                            "ScheduledEventsSubstack",
-                            "Outputs.HealthSQSQueueName"
-                          ]
-                        },
-                        ""
                       ]
                     },
                     "dcv_enabled": {
