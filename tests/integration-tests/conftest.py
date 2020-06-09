@@ -168,12 +168,16 @@ def pytest_exception_interact(node, call, report):
     )
 
 
+def _extract_tested_component_from_filename(item):
+    """Extract portion of test item's filename identifying the component it tests."""
+    test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
+    return re.sub(r"test_|_test", "", test_location)
+
+
 def _add_filename_markers(items):
     """Add a marker based on the name of the file where the test case is defined."""
     for item in items:
-        test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
-        marker = re.sub(r"test_|_test", "", test_location)
-        item.add_marker(marker)
+        item.add_marker(_extract_tested_component_from_filename(item))
 
 
 def _parametrize_from_option(metafunc, test_arg_name, option_name):
@@ -197,10 +201,20 @@ def _setup_custom_logger(log_file):
 
 
 def _add_properties_to_report(item):
+    props = []
+
+    # Add properties for test dimensions, obtained from fixtures passed to tests
     for dimension in DIMENSIONS_MARKER_ARGS:
         value = item.funcargs.get(dimension)
-        if value and (dimension, value) not in item.user_properties:
-            item.user_properties.append((dimension, value))
+        if value:
+            props.append((dimension, value))
+
+    # Add property for feature tested, obtained from filename containing the test
+    props.append(("feature", _extract_tested_component_from_filename(item)))
+
+    for dimension_value_pair in props:
+        if dimension_value_pair not in item.user_properties:
+            item.user_properties.append(dimension_value_pair)
 
 
 @pytest.fixture(scope="class")
