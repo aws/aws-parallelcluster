@@ -370,12 +370,16 @@ def cfn_stacks_factory(request):
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
-    # "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
-    "us-east-1": ["us-east-1a", "us-east-1b"],
+    # m6g.xlarge is not supported in us-east-1c or us-east-1e
+    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1d", "us-east-1f"],
+    # m6g.xlarge is not supported in us-east-2a
+    "us-east-2": ["us-east-2b", "us-east-2c"],
     # c4.xlarge is not supported in us-west-2d
     "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
     # c5.xlarge is not supported in ap-southeast-2a
     "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
+    # m6g.xlarge is not supported in ap-northeast-1d
+    "ap-northeast-1": ["ap-northeast-1a", "ap-northeast-1c"],
     # c4.xlarge is not supported in ap-northeast-2b
     "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
     # c5.xlarge is not supported in ap-southeast-1c
@@ -384,6 +388,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "ap-south-1": ["ap-south-1a", "ap-south-1b"],
     # NAT Gateway not available in sa-east-1b
     "sa-east-1": ["sa-east-1a", "sa-east-1c"],
+    # m6g.xlarge instances not available in eu-west-1c
+    "eu-west-1": ["eu-west-1a", "eu-west-1b"],
 }
 
 

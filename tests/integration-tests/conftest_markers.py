@@ -34,12 +34,41 @@ class InvalidMarkerError(Exception):
     pass
 
 
+def _add_unsupported_arm_dimensions():
+    """Add invalid dimensions due to lack of ARM instance types in some regions and ARM AMIs for certain OSes."""
+    arm_instance_types = ["m6g.xlarge"]
+    oses_unsupported_by_arm = ["centos6", "centos7", "alinux"]
+    regions_unsupported_by_arm = [
+        "us-west-1",
+        "ca-central-1",
+        "eu-west-2",
+        "eu-west-3",
+        "sa-east-1",
+        "ap-east-1",
+        "ap-northeast-2",
+        "ap-south-1",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "eu-north-1",
+        "us-gov-west-1",
+        "us-gov-east-1",
+        "cn-north-1",
+        "cn-northwest-1",
+    ]
+    for instance_type in arm_instance_types:
+        for unsupported_os in oses_unsupported_by_arm:
+            UNSUPPORTED_DIMENSIONS.append(("*", instance_type, unsupported_os, "*"))
+        for unsupported_region in regions_unsupported_by_arm:
+            UNSUPPORTED_DIMENSIONS.append((unsupported_region, instance_type, "*", "*"))
+
+
 def add_default_markers(items):
     """
     Add default markers for dimensions that need to be skipped by default for all tests.
 
     :param items: pytest Item object markers are applied to.
     """
+    _add_unsupported_arm_dimensions()
     for item in items:
         for dimensions in UNSUPPORTED_DIMENSIONS:
             item.add_marker(pytest.mark.skip_dimensions(*dimensions))

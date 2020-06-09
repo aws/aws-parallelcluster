@@ -26,7 +26,7 @@ from time_utils import minutes
 
 
 @pytest.mark.regions(["us-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["torque"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_torque(region, pcluster_config_reader, clusters_factory):
