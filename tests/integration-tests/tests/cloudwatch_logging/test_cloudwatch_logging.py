@@ -580,9 +580,11 @@ def get_config_param_vals():
 
 # In order to limit the number of CloudWatch logging tests while still covering all the OSes...
 # 1) run the test for all of the schedulers with alinux2
-@pytest.mark.dimensions("us-east-1", "c5.xlarge", "alinux2", "*")
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "*")
 # 2) run the test for all of the OSes with slurm
-@pytest.mark.dimensions("us-east-1", "c5.xlarge", "*", "slurm")
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "*", "slurm")
+# 3) run the test for a single scheduler-OS combination on an ARM instance
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
 def test_cloudwatch_logging(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """
     Test all CloudWatch logging features.
