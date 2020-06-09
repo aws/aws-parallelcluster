@@ -907,7 +907,7 @@ class ArchitectureParam(Param):
         This parameter is meant to be derived from other parameters, and should not be specified in the config.
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             self.pcluster_config.error(
                 "The parameter '{0}' is a derived parameter and should not be specified in the config".format(self.key)

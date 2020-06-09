@@ -837,6 +837,7 @@ CLUSTER = {
                 "allowed_values": ALLOWED_VALUES["architectures"],
                 "cfn_param_mapping": "Architecture",
                 "validators": [architecture_os_validator],
+                "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
         ]
     )
