@@ -533,20 +533,27 @@ def _persist_stack_resources(stack, template, keys):
     """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
     for key in keys:
         template["Resources"][key]["DeletionPolicy"] = "Retain"
-    utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
+    try:
+        utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
+    except ClientError as client_err:
+        utils.error(
+            "Unable to persist logs on cluster deletion, failed with error: {emsg}.\n"
+            "If you want to continue, please retry without the --keep-logs flag.".format(
+                emsg=client_err.response.get("Error").get("Message")
+            )
+        )
 
 
 def _persist_cloudwatch_log_groups(cluster_name):
     """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
     LOGGER.info("Configuring {0}'s CloudWatch log groups to persist past cluster deletion.".format(cluster_name))
     substacks = utils.get_cluster_substacks(cluster_name)
-    substack_template_pairs = [(stack, utils.get_stack_template(stack.get("StackName"))) for stack in substacks]
-    substack_template_keys_triplets = [
-        (s, t, _get_unretained_cw_log_group_resource_keys(t)) for s, t in substack_template_pairs
-    ]
-    for stack, template, keys in substack_template_keys_triplets:
-        if keys:  # Only persist the CloudWatch group
-            _persist_stack_resources(stack, template, keys)
+    cw_substack = next((stack for stack in substacks if "CloudWatchLogsSubstack" in stack.get("StackName")), None)
+    if cw_substack:
+        cw_substack_template = utils.get_stack_template(cw_substack.get("StackName"))
+        log_group_keys = _get_unretained_cw_log_group_resource_keys(cw_substack_template)
+        if log_group_keys:  # Only persist the CloudWatch group
+            _persist_stack_resources(cw_substack, cw_substack_template, log_group_keys)
 
 
 def _delete_cluster(cluster_name, nowait):
