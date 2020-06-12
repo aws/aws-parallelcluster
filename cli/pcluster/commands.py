@@ -791,6 +791,12 @@ def _validate_createami_args_architecture_compatibility(args):
 def create_ami(args):
     LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
 
+    # Ensure AWS_DEFAULT_REGION env is set.
+    # Set it explicitly if the CLI arg was passed. Otherwise let the config object do it.
+    if args.region:
+        os.environ["AWS_DEFAULT_REGION"] = args.region
+    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
+
     ami_architecture = _validate_createami_args_architecture_compatibility(args)
 
     LOGGER.debug("Building AMI based on args %s", str(args))
@@ -798,9 +804,6 @@ def create_ami(args):
 
     instance_type = args.instance_type
     try:
-        # FIXME it doesn't work if there is no a default section
-        pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
-
         vpc_section = pcluster_config.get_section("vpc")
         vpc_id = args.vpc_id if args.vpc_id else vpc_section.get_param_value("vpc_id")
         subnet_id = args.subnet_id if args.subnet_id else vpc_section.get_param_value("master_subnet_id")
