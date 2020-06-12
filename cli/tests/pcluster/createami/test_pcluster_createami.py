@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-import pcluster.commands as commands
+import pcluster.createami as createami
 from assertpy import assert_that
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from recordclass import recordclass
@@ -30,16 +30,16 @@ def test_get_default_createami_instance_type(
 ):
     """Verify that the function to select default instance types for the createami command behaves as expected."""
     instance_type_info_patch = mocker.patch(
-        "pcluster.commands.utils.get_instance_types_info",
+        "pcluster.createami.utils.get_instance_types_info",
         side_effect=SystemExit(instance_info_err) if instance_info_err else None,
     )
-    logger_error_patch = mocker.patch("pcluster.commands.LOGGER.error")
+    logger_error_patch = mocker.patch("pcluster.createami.LOGGER.error")
     mocked_region = "MockedRegion"
     mocker.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "MockedRegion"})
     if ami_architecture not in SUPPORTED_ARCHITECTURES:
         error_message = "unsupported architecture: {0}".format(ami_architecture)
         with pytest.raises(SystemExit) as sysexit:
-            commands._get_default_createami_instance_type(ami_architecture)
+            createami._get_default_createami_instance_type(ami_architecture)
         assert_that(sysexit.value.code).is_not_equal_to(0)
         instance_type_info_patch.assert_not_called()
         assert_that(logger_error_patch.call_count).is_equal_to(1)
@@ -54,7 +54,7 @@ def test_get_default_createami_instance_type(
             error_message = instance_info_err
 
         with pytest.raises(SystemExit) as sysexit:
-            commands._get_default_createami_instance_type(ami_architecture)
+            createami._get_default_createami_instance_type(ami_architecture)
         assert_that(sysexit.value.code).is_not_equal_to(0)
         instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
 
@@ -62,7 +62,7 @@ def test_get_default_createami_instance_type(
             assert_that(logger_error_patch.call_count).is_equal_to(1)
             assert_that(logger_error_patch.call_args[0][0]).matches(error_message)
     else:
-        assert_that(commands._get_default_createami_instance_type(ami_architecture)).is_equal_to(
+        assert_that(createami._get_default_createami_instance_type(ami_architecture)).is_equal_to(
             expected_default_instance_type
         )
         instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
@@ -84,12 +84,12 @@ def test_validate_createami_args_architecture_compatibility(
     mocker, base_ami_id, instance_type, base_ami_os, base_ami_architecture, supported_instance_archs, supported_os
 ):
     """Verify that parameter validation works as expected in the function that implements the createami command."""
-    mocker.patch("pcluster.commands.utils.get_info_for_amis").return_value = [{"Architecture": base_ami_architecture}]
-    mocker.patch("pcluster.commands._get_default_createami_instance_type")
+    mocker.patch("pcluster.createami.utils.get_info_for_amis").return_value = [{"Architecture": base_ami_architecture}]
+    mocker.patch("pcluster.createami._get_default_createami_instance_type")
     mocker.patch(
-        "pcluster.commands.utils.get_supported_architectures_for_instance_type"
+        "pcluster.createami.utils.get_supported_architectures_for_instance_type"
     ).return_value = supported_instance_archs
-    mocker.patch("pcluster.commands.utils.get_supported_os_for_architecture").return_value = supported_os
+    mocker.patch("pcluster.createami.utils.get_supported_os_for_architecture").return_value = supported_os
 
     args = MockedCreateAmiArgs(base_ami_id, instance_type, base_ami_os)
     error_expected = any(
@@ -100,19 +100,19 @@ def test_validate_createami_args_architecture_compatibility(
     )
     if error_expected:
         with pytest.raises(SystemExit) as sysexit:
-            commands._validate_createami_args_architecture_compatibility(args)
+            createami._validate_createami_args_architecture_compatibility(args)
         assert_that(sysexit.value.code).is_not_equal_to(0)
     else:
-        assert_that(commands._validate_createami_args_architecture_compatibility(args)).is_equal_to(
+        assert_that(createami._validate_createami_args_architecture_compatibility(args)).is_equal_to(
             base_ami_architecture
         )
 
-    commands.utils.get_info_for_amis.assert_called_with([base_ami_id])
+    createami.utils.get_info_for_amis.assert_called_with([base_ami_id])
 
     if instance_type is None:
-        commands._get_default_createami_instance_type.assert_called_with(base_ami_architecture)
+        createami._get_default_createami_instance_type.assert_called_with(base_ami_architecture)
     else:
-        commands.utils.get_supported_architectures_for_instance_type.assert_called_with(instance_type)
+        createami.utils.get_supported_architectures_for_instance_type.assert_called_with(instance_type)
 
     if instance_type is None or base_ami_architecture in supported_instance_archs:
-        commands.utils.get_supported_os_for_architecture.assert_called_with(base_ami_architecture)
+        createami.utils.get_supported_os_for_architecture.assert_called_with(base_ami_architecture)
