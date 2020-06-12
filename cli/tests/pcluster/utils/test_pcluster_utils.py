@@ -448,39 +448,66 @@ def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
 
 
 @pytest.mark.parametrize(
-    "instance_type, response, error_message",
+    "instance_types, error_message, fail_on_error",
     [
-        ("optimal", ["x86_64"], None),
-        ("t2.micro", ["x86_64"], None),
-        ("a1.medium", ["arm64"], None),
-        ("bad.instance.type", ["x86_64"], None),
-        ("valid.exotic.arch.instance", ["exoticArch"], None),
-        ("valid.instance.with.no.archs", [], "valid.instance.with.no.archs"),
+        # Test when calling for single instance types
+        (["t2.micro"], None, None),
+        (["bad.instance.type"], "some error message", True),
+        (["bad.instance.type"], "some error message", False),
+        # Test when calling for multiple instance types
+        (["t2.micro", "t2.xlarge"], None, None),
+        (["a1.medium", "m6g.xlarge"], None, None),
+        (["bad.instance.type1", "bad.instance.type2"], "some error message", True),
+        (["bad.instance.type1", "bad.instance.type2"], "some error message", False),
     ],
 )
-def test_get_supported_architectures_for_instance_type(boto3_stubber, instance_type, response, error_message):
-    """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
-    if instance_type == "optimal":
-        mocked_requests = []
-    else:
-        response_dict = {"InstanceTypes": [{"ProcessorInfo": {"SupportedArchitectures": response}}]}
-        mocked_requests = [
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response=response_dict if response is not None else error_message,
-                expected_params={"InstanceTypes": [instance_type]},
-                generate_error=response is None,
-            )
-        ]
+def test_get_instance_types_info(boto3_stubber, capsys, instance_types, error_message, fail_on_error):
+    """Verify that get_instance_types_info makes the expected API call."""
+    response_dict = {"InstanceTypes": [{"InstanceType": instance_type} for instance_type in instance_types]}
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_instance_types",
+            response=response_dict if error_message is None else error_message,
+            expected_params={"InstanceTypes": instance_types},
+            generate_error=error_message,
+        )
+    ]
     boto3_stubber("ec2", mocked_requests)
-    expected_architectures = list(set(response) & set(["x86_64", "arm64"]))
-    if error_message is None and expected_architectures:
-        assert_that(utils.get_supported_architectures_for_instance_type(instance_type)).contains_only(
-            *expected_architectures
-        ).does_not_contain_duplicates()
-    elif error_message is None:
-        assert_that(utils.get_supported_architectures_for_instance_type(instance_type)).is_empty()
-    else:
-        with pytest.raises(SystemExit, match=error_message) as sysexit:
-            utils.get_supported_architectures_for_instance_type(instance_type)
+    if error_message and fail_on_error:
+        full_error_message = "calling DescribeInstanceTypes for instances {0}: {1}".format(
+            ", ".join(instance_types), error_message
+        )
+        with pytest.raises(SystemExit, match=full_error_message) as sysexit:
+            utils.get_instance_types_info(instance_types, fail_on_error)
         assert_that(sysexit.value.code).is_not_equal_to(0)
+    elif error_message:
+        utils.get_instance_types_info(instance_types, fail_on_error)
+        assert_that(capsys.readouterr().out).matches(error_message)
+    else:
+        instance_types_info = utils.get_instance_types_info(instance_types, fail_on_error)
+        assert_that(instance_types_info).is_equal_to(response_dict.get("InstanceTypes"))
+
+
+@pytest.mark.parametrize(
+    "instance_type, supported_architectures, error_message",
+    [
+        ("optimal", ["x86_64"], None),
+        ("t2.micro", ["x86_64", "i386"], None),
+        ("a1.medium", ["arm64"], None),
+        ("valid.exotic.arch.instance", ["exoticArch"], None),
+    ],
+)
+def test_get_supported_architectures_for_instance_type(mocker, instance_type, supported_architectures, error_message):
+    """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
+    get_instance_types_info_patch = mocker.patch(
+        "pcluster.utils.get_instance_types_info",
+        return_value=[{"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}],
+    )
+    observed_architectures = utils.get_supported_architectures_for_instance_type(instance_type)
+    expected_architectures = list(set(supported_architectures) & set(["x86_64", "arm64"]))
+    assert_that(observed_architectures).is_equal_to(expected_architectures)
+    # optimal case is handled separately; DescribeInstanceTypes shouldn't be called
+    if instance_type == "optimal":
+        get_instance_types_info_patch.assert_not_called()
+    else:
+        get_instance_types_info_patch.assert_called_with([instance_type])
