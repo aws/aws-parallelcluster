@@ -1,9 +1,12 @@
 """This module provides unit tests for (portions of) the `pcluster createami` code."""
 
+import os
+
 import pytest
 
 import pcluster.commands as commands
 from assertpy import assert_that
+from pcluster.constants import SUPPORTED_ARCHITECTURES
 from recordclass import recordclass
 
 MockedCreateAmiArgs = recordclass(
@@ -12,19 +15,57 @@ MockedCreateAmiArgs = recordclass(
 
 
 @pytest.mark.parametrize(
-    "ami_architecture, expected_default_instance_type, exception_expected",
-    [("x86_64", "t2.xlarge", False), ("arm64", "m6g.xlarge", False), ("notARealArch", None, True)],
+    "ami_architecture, expected_default_instance_type, instance_info_err",
+    [
+        ("x86_64", "t2.xlarge", None),
+        ("arm64", "m6g.xlarge", None),
+        ("arm64", "m6g.xlarge", None),
+        ("arm64", "m6g.xlarge", "instance types do not exist"),
+        ("arm64", "m6g.xlarge", "failure unrelated to instance types"),
+        ("notARealArch", None, None),
+    ],
 )
-def test_get_default_createami_instance_type(ami_architecture, expected_default_instance_type, exception_expected):
+def test_get_default_createami_instance_type(
+    mocker, ami_architecture, expected_default_instance_type, instance_info_err
+):
     """Verify that the function to select default instance types for the createami command behaves as expected."""
-    if exception_expected:
+    instance_type_info_patch = mocker.patch(
+        "pcluster.commands.utils.get_instance_types_info",
+        side_effect=SystemExit(instance_info_err) if instance_info_err else None,
+    )
+    logger_error_patch = mocker.patch("pcluster.commands.LOGGER.error")
+    mocked_region = "MockedRegion"
+    mocker.patch.dict(os.environ, {"AWS_DEFAULT_REGION": "MockedRegion"})
+    if ami_architecture not in SUPPORTED_ARCHITECTURES:
+        error_message = "unsupported architecture: {0}".format(ami_architecture)
         with pytest.raises(SystemExit) as sysexit:
             commands._get_default_createami_instance_type(ami_architecture)
         assert_that(sysexit.value.code).is_not_equal_to(0)
+        instance_type_info_patch.assert_not_called()
+        assert_that(logger_error_patch.call_count).is_equal_to(1)
+        assert_that(logger_error_patch.call_args[0][0]).matches(error_message)
+    elif instance_info_err:
+        instance_unavailable_in_region = "instance types do not exit" in instance_info_err
+        if instance_unavailable_in_region:
+            error_message = "architecture {0} is {1}.*not available in {2}".format(
+                ami_architecture, expected_default_instance_type, mocked_region
+            )
+        else:
+            error_message = instance_info_err
+
+        with pytest.raises(SystemExit) as sysexit:
+            commands._get_default_createami_instance_type(ami_architecture)
+        assert_that(sysexit.value.code).is_not_equal_to(0)
+        instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
+
+        if instance_unavailable_in_region:
+            assert_that(logger_error_patch.call_count).is_equal_to(1)
+            assert_that(logger_error_patch.call_args[0][0]).matches(error_message)
     else:
         assert_that(commands._get_default_createami_instance_type(ami_architecture)).is_equal_to(
             expected_default_instance_type
         )
+        instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
 
 
 @pytest.mark.parametrize(
