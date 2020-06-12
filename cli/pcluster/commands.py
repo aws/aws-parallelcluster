@@ -757,11 +757,24 @@ def _get_default_createami_instance_type(ami_architecture):
         "x86_64": "t2.xlarge",
         "arm64": "m6g.xlarge",
     }
-    try:
-        return ami_architecture_to_instance_type[ami_architecture]
-    except KeyError:
+    instance_type = ami_architecture_to_instance_type.get(ami_architecture)
+    if instance_type is None:
         LOGGER.error("Base AMI used in createami has an unsupported architecture: {0}".format(ami_architecture))
         sys.exit(1)
+
+    # Ensure instance type is avaiable in the selected region
+    try:
+        utils.get_instance_types_info([instance_type], fail_on_error=True)
+    except SystemExit as system_exit:
+        if "instance types do not exist" in str(system_exit):
+            LOGGER.error(
+                "The default instance type to build on for architecture {0} is {1}. This instance type is not "
+                "available in {2}. Please specify a different region or an instance type in the region that supports "
+                "the AMI's architecture.".format(ami_architecture, instance_type, os.environ.get("AWS_DEFAULT_REGION"))
+            )
+            sys.exit(1)
+        raise
+    return instance_type
 
 
 def _validate_createami_args_architecture_compatibility(args):
