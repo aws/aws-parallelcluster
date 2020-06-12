@@ -637,6 +637,20 @@ def get_info_for_amis(ami_ids):
         error(e.response.get("Error").get("Message"))
 
 
+def get_instance_types_info(instance_types, fail_on_error=True):
+    """Return InstanceTypes list returned by EC2's DescribeInstanceTypes API."""
+    try:
+        ec2_client = boto3.client("ec2")
+        return ec2_client.describe_instance_types(InstanceTypes=instance_types).get("InstanceTypes")
+    except ClientError as e:
+        error(
+            "Error when calling DescribeInstanceTypes for instances {0}: {1}".format(
+                ", ".join(instance_types), e.response.get("Error").get("Message")
+            ),
+            fail_on_error,
+        )
+
+
 def get_supported_architectures_for_instance_type(instance_type):
     """Get a list of architectures supported for the given instance type."""
     # "optimal" compute instance type (when using batch) implies the use of instances from the
@@ -645,18 +659,8 @@ def get_supported_architectures_for_instance_type(instance_type):
     if instance_type == "optimal":
         return ["x86_64"]
 
-    try:
-        ec2_client = boto3.client("ec2")
-        instance_info = ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-    except ClientError as e:
-        error(
-            "Unable to get architectures supported by instance type {0}: {1}".format(
-                instance_type, e.response.get("Error").get("Message")
-            )
-        )
+    instance_info = get_instance_types_info([instance_type])[0]
     supported_architectures = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
-    if not supported_architectures:
-        error("Unable to get architectures supported by instance type {0}".format(instance_type))
 
     # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
     supported_architectures = list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
