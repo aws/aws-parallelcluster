@@ -25,10 +25,6 @@ def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
 
 
-def _mock_efa_supported_instances(mocker):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
-
-
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
@@ -1073,8 +1069,16 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
         ),
     ],
 )
-def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_warning):
-    _mock_efa_supported_instances(mocker)
+def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_error, expected_warning):
+    if section_dict.get("enable_efa") != "NONE":
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response={"InstanceTypes": [{"InstanceType": "t2.large"}]},
+                expected_params={"Filters": [{"Name": "network-info.efa-supported", "Values": ["true"]}]},
+            )
+        ]
+        boto3_stubber("ec2", mocked_requests)
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
 
@@ -1112,8 +1116,6 @@ def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_wa
 def test_efa_validator_with_vpc_security_group(
     boto3_stubber, mocker, ip_permissions, ip_permissions_egress, expected_message
 ):
-    _mock_efa_supported_instances(mocker)
-
     describe_security_groups_response = {
         "SecurityGroups": [
             {
@@ -1131,8 +1133,19 @@ def test_efa_validator_with_vpc_security_group(
             method="describe_security_groups",
             response=describe_security_groups_response,
             expected_params={"GroupIds": ["sg-12345678"]},
-        )
-    ] * 2  # it is called two times, for vpc_security_group_id validation and to validate efa
+        ),
+        MockedBoto3Request(
+            method="describe_instance_types",
+            response={"InstanceTypes": [{"InstanceType": "t2.large"}]},
+            expected_params={"Filters": [{"Name": "network-info.efa-supported", "Values": ["true"]}]},
+        ),
+        MockedBoto3Request(
+            method="describe_security_groups",
+            response=describe_security_groups_response,
+            expected_params={"GroupIds": ["sg-12345678"]},
+        ),  # it is called two times, for vpc_security_group_id validation and to validate efa
+    ]
+
     boto3_stubber("ec2", mocked_requests)
 
     config_parser_dict = {
