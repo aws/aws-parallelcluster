@@ -26,9 +26,9 @@ from pcluster.utils import (
     get_partition,
     get_region,
     get_supported_compute_instance_types,
-    get_supported_features,
     get_supported_instance_types,
     get_supported_os,
+    paginate_boto3,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -331,8 +331,8 @@ def efa_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
-    supported_features = get_supported_features(pcluster_config.region, "efa")
-    allowed_instances = supported_features.get("instances")
+
+    allowed_instances = _get_efa_enabled_instance_types(errors)
     if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
         errors.append(
             "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
@@ -922,3 +922,20 @@ def base_os_validator(param_key, param_value, pcluster_config):
         )
 
     return [], warnings
+
+
+def _get_efa_enabled_instance_types(errors):
+    instance_types = []
+
+    try:
+        for response in paginate_boto3(
+            boto3.client("ec2").describe_instance_types,
+            Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
+        ):
+            instance_types.append(response.get("InstanceType"))
+    except ClientError as e:
+        errors.append(
+            "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
+        )
+
+    return instance_types

@@ -825,10 +825,7 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
         "pcluster.config.param_types.get_avail_zone",
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
-    mocker.patch(
-        "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},
-    )
+
     mocker.patch("pcluster.config.param_types.get_instance_vcpus", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
 
