@@ -79,11 +79,7 @@ def update_stack_template(stack_name, updated_template, cfn_parameters):
     except ClientError as client_err:
         if "no updates are to be performed" in client_err.response.get("Error").get("Message").lower():
             return  # If updated_template was the same as the stack's current one, consider the update a success
-        error(
-            "Unable to update stack template for stack {stack_name}: {emsg}".format(
-                stack_name=stack_name, emsg=client_err.response.get("Error").get("Message")
-            )
-        )
+        raise
 
 
 def get_region():

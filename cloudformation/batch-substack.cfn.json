@@ -77,6 +77,10 @@
     "S3Url": {
       "Description": "amazonaws.com or amazonaws.com.cn",
       "Type": "String"
+    },
+    "MainStackUniqueId": {
+      "Description": "Final 12 digits of the main CloudFormation stack id",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -632,16 +636,15 @@
             "Fn::Sub": "${ResourcesS3Bucket}/docker/artifacts.zip"
           },
           "Type": "S3"
-        }
-      }
-    },
-    "CodeBuildLogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": {
-          "Fn::Sub": "/aws/codebuild/${CodeBuildDockerImageBuilderProject}"
         },
-        "RetentionInDays": 14
+        "LogsConfig": {
+          "CloudWatchLogs": {
+            "GroupName": {
+              "Fn::Sub": "/aws/codebuild/${ClusterName}-CodeBuildDockerImageBuilderProject-${MainStackUniqueId}"
+            },
+            "Status": "ENABLED"
+          }
+        }
       }
     },
     "CodeBuildPolicy": {
@@ -748,6 +751,9 @@
     "ManageDockerImagesFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "parallelcluster-ManageDockerImages-${MainStackUniqueId}"
+        },
         "Code": {
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
@@ -835,15 +841,6 @@
         ]
       }
     },
-    "ManageDockerImagesFunctionLogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": {
-          "Fn::Sub": "/aws/lambda/${ManageDockerImagesFunction}"
-        },
-        "RetentionInDays": 14
-      }
-    },
     "DockerBuildWaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle",
       "Properties": {}
@@ -902,6 +899,9 @@
     "SendBuildNotificationFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
+        "FunctionName": {
+          "Fn::Sub": "parallelcluster-SendBuildNotification-${MainStackUniqueId}"
+        },
         "Code": {
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
@@ -920,15 +920,6 @@
         "Timeout": 60
       },
       "DependsOn": "DockerBuildWaitHandle"
-    },
-    "SendBuildNotificationFunctionLogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": {
-          "Fn::Sub": "/aws/lambda/${SendBuildNotificationFunction}"
-        },
-        "RetentionInDays": 14
-      }
     },
     "SendBuildNotificationFunctionInvokePermission": {
       "Type": "AWS::Lambda::Permission",

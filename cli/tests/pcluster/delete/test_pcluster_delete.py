@@ -3,6 +3,7 @@
 from collections import namedtuple
 
 import pytest
+from botocore.exceptions import ClientError
 
 import pcluster.commands as commands
 import pcluster.utils as utils
@@ -62,36 +63,64 @@ def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called
 
 
 @pytest.mark.parametrize(
-    "stacks,template",
+    "stacks, template, expected_retain, fail_on_persist",
     [
-        ([], {}),
+        ([], {}, False, False),
         (
-            [{"StackName": FAKE_STACK_NAME}, {"StackName": "substack_one"}],
+            [{"StackName": FAKE_STACK_NAME}, {"StackName": "cluster-CloudWatchLogsSubstack-1395RJR972JUT"}],
             {"Resources": {"key": {"DeletionPolicy": "Retain"}}},
+            True,
+            False,
         ),
-        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}}),
-        ([{"StackName": FAKE_STACK_NAME}], {"Resources": {"key": {"DeletionPolicy": "Delete"}}}),
+        (
+            [{"StackName": FAKE_STACK_NAME}, {"StackName": "cluster-CloudWatchLogsSubstack-1395RJR972JUT"}],
+            {"Resources": {"key": {"DeletionPolicy": "Retain"}}},
+            True,
+            True,
+        ),
+        (
+            [{"StackName": FAKE_STACK_NAME}, {"StackName": "cluster-CloudWatchLogsSubstack-1395RJR972JUT"}],
+            {"Resources": {"key": {"DeletionPolicy": "Don't Retain"}}},
+            False,
+            False,
+        ),
+        (
+            [{"StackName": FAKE_STACK_NAME}, {"StackName": "cluster-CloudWatchLogsSubstack-1395RJR972JUT"}],
+            {"Resources": {"key": {"DeletionPolicy": "Delete"}}},
+            False,
+            False,
+        ),
     ],
 )
-def test_persist_cloudwatch_log_groups(mocker, stacks, template):
+def test_persist_cloudwatch_log_groups(mocker, caplog, stacks, template, expected_retain, fail_on_persist):
     """Verify that commands._persist_cloudwatch_log_groups behaves as expected."""
-    mocker.patch("pcluster.commands.utils.get_cluster_substacks").return_value = stacks
-    mocker.patch("pcluster.commands.utils.get_stack_template").return_value = template
-    mocker.patch("pcluster.commands._persist_stack_resources")
-    if template.get("Resources", {}).get("key", {}).get("DeletionPolicy") == "Retain":
+    get_cluster_substacks_mock = mocker.patch("pcluster.commands.utils.get_cluster_substacks", return_value=stacks)
+    get_stack_template_mock = mocker.patch("pcluster.commands.utils.get_stack_template", return_value=template)
+    client_error = ClientError({"Error": {"Code": "error"}}, "failed")
+    update_stack_template_mock = mocker.patch(
+        "pcluster.commands.utils.update_stack_template", side_effect=client_error if fail_on_persist else None
+    )
+    if expected_retain:
         keys = ["key"]
-        expected_persist_cloudwatch_log_groups_call_count = len(stacks)
     else:
         keys = []
-        expected_persist_cloudwatch_log_groups_call_count = 0
-    mocker.patch("pcluster.commands._get_unretained_cw_log_group_resource_keys").return_value = keys
-    commands._persist_cloudwatch_log_groups(FAKE_CLUSTER_NAME)
-    commands.utils.get_cluster_substacks.assert_called_with(FAKE_CLUSTER_NAME)
-    assert_that(commands.utils.get_stack_template.call_count).is_equal_to(len(stacks))
-    assert_that(commands._get_unretained_cw_log_group_resource_keys.call_count).is_equal_to(len(stacks))
-    assert_that(commands._persist_stack_resources.call_count).is_equal_to(
-        expected_persist_cloudwatch_log_groups_call_count
+    has_cw_substack = any("CloudWatchLogsSubstack" in stack.get("StackName") for stack in stacks)
+    get_unretained_cw_log_group_resource_keys_mock = mocker.patch(
+        "pcluster.commands._get_unretained_cw_log_group_resource_keys", return_value=keys
     )
+
+    if fail_on_persist:
+        with pytest.raises(SystemExit) as e:
+            commands._persist_cloudwatch_log_groups(FAKE_CLUSTER_NAME)
+        assert_that(e.value.code).contains("Unable to persist logs")
+        assert_that(e.type).is_equal_to(SystemExit)
+    else:
+        commands._persist_cloudwatch_log_groups(FAKE_CLUSTER_NAME)
+
+    get_cluster_substacks_mock.assert_called_with(FAKE_CLUSTER_NAME)
+    assert_that(get_stack_template_mock.call_count).is_equal_to(1 if has_cw_substack else 0)
+    assert_that(get_unretained_cw_log_group_resource_keys_mock.call_count).is_equal_to(1 if has_cw_substack else 0)
+    assert_that(update_stack_template_mock.call_count).is_equal_to(1 if expected_retain else 0)
 
 
 @pytest.mark.parametrize(

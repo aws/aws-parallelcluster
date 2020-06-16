@@ -1260,6 +1260,46 @@
                 }
               }
             ]
+          },
+          "MainStackName": {
+            "Ref": "AWS::StackName"
+          },
+          "MainStackUniqueId": {
+            "Fn::Select": [
+              "4",
+              {
+                "Fn::Split": [
+                  "-",
+                  {
+                    "Fn::Select": [
+                      "2",
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "AWS::StackId"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "CreateCleanupResourcesFunctionLogGroup": {
+            "Fn::If": [
+              "HasResourcesS3Bucket",
+              "true",
+              "false"
+            ]
+          },
+          "CreateAWSBatchLogGroups": {
+            "Fn::If": [
+              "CreateAWSBatchStack",
+              "true",
+              "false"
+            ]
           }
         },
         "TemplateURL": {
@@ -3758,7 +3798,8 @@
     "AWSBatchStack": {
       "Type": "AWS::CloudFormation::Stack",
       "DependsOn": [
-        "CleanupResourcesCustomResource"
+        "CleanupResourcesCustomResource",
+        "CloudWatchLogsSubstack"
       ],
       "Properties": {
         "Parameters": {
@@ -3945,6 +3986,29 @@
                 ]
               }
             ]
+          },
+          "MainStackUniqueId": {
+            "Fn::Select": [
+              "4",
+              {
+                "Fn::Split": [
+                  "-",
+                  {
+                    "Fn::Select": [
+                      "2",
+                      {
+                        "Fn::Split": [
+                          "/",
+                          {
+                            "Ref": "AWS::StackId"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         },
         "TemplateURL": {
@@ -4078,13 +4142,43 @@
         }
       },
       "DependsOn": [
-        "CleanupResourcesFunctionLogGroup"
+        "CloudWatchLogsSubstack"
       ],
       "Condition": "HasResourcesS3Bucket"
     },
     "CleanupResourcesFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
+        "FunctionName": {
+          "Fn::Sub": [
+            "parallelcluster-CleanupResources-${StackId}",
+            {
+              "StackId": {
+                "Fn::Select": [
+                  "4",
+                  {
+                    "Fn::Split": [
+                      "-",
+                      {
+                        "Fn::Select": [
+                          "2",
+                          {
+                            "Fn::Split": [
+                              "/",
+                              {
+                                "Ref": "AWS::StackId"
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
         "Code": {
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
@@ -4101,16 +4195,6 @@
         },
         "Runtime": "python3.6",
         "Timeout": 60
-      },
-      "Condition": "HasResourcesS3Bucket"
-    },
-    "CleanupResourcesFunctionLogGroup": {
-      "Type": "AWS::Logs::LogGroup",
-      "Properties": {
-        "LogGroupName": {
-          "Fn::Sub": "/aws/lambda/${CleanupResourcesFunction}"
-        },
-        "RetentionInDays": 14
       },
       "Condition": "HasResourcesS3Bucket"
     },
