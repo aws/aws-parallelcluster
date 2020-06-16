@@ -6,6 +6,7 @@
 # usage: ami_convert.py <path to amis.txt>
 #
 
+import json
 import re
 import sys
 
@@ -15,8 +16,14 @@ if len(sys.argv) != 2:
 
 amis = sys.argv[1]
 
-regions = {}
+ARCHITECTURES_TO_MAPPING_NAME = {
+    "x86_64": "AWSRegionOS2AMIx86",
+    "arm64": "AWSRegionOS2AMIarm64",
+}
+mappings_to_regions = {}
 current_os = ""
+current_architecture = ""
+current_mapping = ""
 
 with open(amis, "r") as f:
     for line in f:
@@ -28,6 +35,11 @@ with open(amis, "r") as f:
             # new OS block
             current_os = re.sub(r"#\s*(\w+).*", r"\1", line)
             continue
+        elif re.match("## ", line):
+            # new architecture block
+            current_architecture = re.sub(r"##\s*(\w+).*", r"\1", line)
+            current_mapping = ARCHITECTURES_TO_MAPPING_NAME.get(current_architecture)
+            continue
 
         pair = re.split(":", line)
         if len(pair) != 2:
@@ -36,24 +48,11 @@ with open(amis, "r") as f:
         region = pair[0].strip()
         ami = pair[1].strip()
 
-        if region not in regions:
-            regions[region] = {}
+        if current_mapping not in mappings_to_regions:
+            mappings_to_regions[current_mapping] = {}
+        if region not in mappings_to_regions[current_mapping]:
+            mappings_to_regions[current_mapping][region] = {}
 
-        regions[region][current_os] = ami
+        mappings_to_regions[current_mapping][region][current_os] = ami
 
-first_region = 1
-for region in sorted(regions):
-    if first_region == 1:
-        first_region = 0
-    else:
-        sys.stdout.write(",\n")
-    sys.stdout.write('      "%s" : {\n' % region)
-    first_os = 1
-    for os in sorted(regions[region]):
-        if first_os == 1:
-            first_os = 0
-        else:
-            sys.stdout.write(",\n")
-        sys.stdout.write('        "%s" : "%s"' % (os, regions[region][os]))
-    sys.stdout.write("\n      }")
-sys.stdout.write("\n")
+print(json.dumps(mappings_to_regions, indent=2))
