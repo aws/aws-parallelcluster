@@ -636,6 +636,16 @@
         "NONE"
       ]
     },
+    "AddHITIamPolicies": {
+      "Fn::And": [
+        {
+          "Condition": "CreateEC2IAMRole"
+        },
+        {
+          "Condition": "CreateHITSubstack"
+        }
+      ]
+    },
     "UseExistingSecurityGroup": {
       "Fn::Not": [
         {
@@ -680,6 +690,13 @@
         },
         {
           "Condition": "UsePlacementGroup"
+        },
+        {
+          "Fn::Not": [
+            {
+              "Condition": "CreateHITSubstack"
+            }
+          ]
         }
       ]
     },
@@ -694,16 +711,23 @@
     "CreateComputeFleet": {
       "Fn::Not": [
         {
-          "Fn::Equals": [
+          "Fn::Or": [
             {
-              "Ref": "Scheduler"
+              "Fn::Equals": [
+                {
+                  "Ref": "Scheduler"
+                },
+                "awsbatch"
+              ]
             },
-            "awsbatch"
+            {
+              "Condition": "CreateHITSubstack"
+            }
           ]
         }
       ]
     },
-    "CreateHITComputeFleet": {
+    "CreateHITSubstack": {
       "Fn::Equals": [
         {
           "Ref": "Scheduler"
@@ -767,7 +791,7 @@
           "Condition": "HasResourcesS3Bucket"
         },
         {
-          "Condition": "CreateHITComputeFleet"
+          "Condition": "CreateHITSubstack"
         }
       ]
     }
@@ -1520,6 +1544,62 @@
       },
       "Condition": "CreateEC2IAMRole"
     },
+    "ParallelClusterHITPolicies": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "parallelcluster-hit",
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Sid": "EC2Terminate",
+              "Effect": "Allow",
+              "Action": [
+                "ec2:TerminateInstances"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "StringEquals": {
+                  "ec2:ResourceTag/Application": {
+                    "Ref": "AWS::StackName"
+                  }
+                }
+              }
+            },
+            {
+              "Sid": "EC2",
+              "Effect": "Allow",
+              "Action": [
+                "ec2:DescribeInstances",
+                "ec2:DescribeLaunchTemplates",
+                "ec2:RunInstances",
+                "ec2:DescribeInstanceStatus",
+                "ec2:RunInstances"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Sid": "ResourcesS3Bucket",
+              "Effect": "Allow",
+              "Action": "s3:*",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
+                }
+              ]
+            }
+          ]
+        },
+        "Roles": [
+          {
+            "Ref": "RootRole"
+          }
+        ]
+      },
+      "Condition": "AddHITIamPolicies"
+    },
     "S3ReadRolePolicies": {
       "Type": "AWS::IAM::Policy",
       "Properties": {
@@ -1859,7 +1939,7 @@
     "AWSBatchStack": {
       "Type": "AWS::CloudFormation::Stack",
       "DependsOn": [
-        "CleanupResourcesCustomResource",
+        "CleanupResourcesS3BucketCustomResource",
         "CloudWatchLogsSubstack"
       ],
       "Properties": {
@@ -2243,9 +2323,10 @@
         }
       },
       "DependsOn": [
-        "CleanupResourcesFunctionLogGroup"
+        "CloudWatchLogsSubstack",
+        "HITSubstack"
       ],
-      "Condition": "CreateHITComputeFleet"
+      "Condition": "CreateHITSubstack"
     },
     "CleanupResourcesFunction": {
       "Type": "AWS::Lambda::Function",
@@ -2718,6 +2799,18 @@
               "default",
               "berkshelf"
             ]
+          },
+          "ResourcesS3Bucket": {
+            "Ref": "ResourcesS3Bucket"
+          },
+          "DependsOnTerminateComputeFleetCustomResource": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              {
+                "Ref": "TerminateComputeFleetCustomResource"
+              },
+              ""
+            ]
           }
         },
         "TemplateURL": {
@@ -3132,6 +3225,309 @@
         }
       },
       "Condition": "CreateComputeFleet"
+    },
+    "HITSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "ComputeSubnetId": {
+            "Fn::If": [
+              "UseMasterSubnetForCompute",
+              {
+                "Ref": "MasterSubnetId"
+              },
+              {
+                "Fn::If": [
+                  "CreateComputeSubnetForCompute",
+                  {
+                    "Ref": "ComputeSubnet"
+                  },
+                  {
+                    "Ref": "ComputeSubnetId"
+                  }
+                ]
+              }
+            ]
+          },
+          "RootDevice": {
+            "Fn::FindInMap": [
+              "OSFeatures",
+              {
+                "Ref": "BaseOS"
+              },
+              "RootDevice"
+            ]
+          },
+          "RootVolumeSize": {
+            "Ref": "ComputeRootVolumeSize"
+          },
+          "KeyName": {
+            "Ref": "KeyName"
+          },
+          "MainStackName": {
+            "Ref": "AWS::StackName"
+          },
+          "AttributesTagValue": {
+            "Fn::Sub": [
+              "${BaseOS}, ${Scheduler}, ${version}",
+              {
+                "version": {
+                  "Fn::FindInMap": [
+                    "PackagesVersions",
+                    "default",
+                    "parallelcluster"
+                  ]
+                }
+              }
+            ]
+          },
+          "NetworkingTagValue": {
+            "Fn::Sub": "EFA=${EFA}"
+          },
+          "FilesystemTagValue": {
+            "Fn::Sub": [
+              "efs=${efs}, multiebs=${NumberOfEBSVol}, raid=${raid}, fsx=${fsx}",
+              {
+                "efs": {
+                  "Fn::If": [
+                    "CreateEFSSubstack",
+                    "1",
+                    "0"
+                  ]
+                },
+                "raid": {
+                  "Fn::If": [
+                    "CreateRAIDSubstack",
+                    "1",
+                    "0"
+                  ]
+                },
+                "fsx": {
+                  "Fn::If": [
+                    "CreateFSXSubstack",
+                    "1",
+                    "0"
+                  ]
+                }
+              }
+            ]
+          },
+          "ImageId": {
+            "Fn::If": [
+              "UseCustomAMI",
+              {
+                "Ref": "CustomAMI"
+              },
+              {
+                "Fn::FindInMap": [
+                  "AWSRegionOS2AMI",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  {
+                    "Ref": "BaseOS"
+                  }
+                ]
+              }
+            ]
+          },
+          "IamInstanceProfile": {
+            "Ref": "RootInstanceProfile"
+          },
+          "OSUser": {
+            "Fn::FindInMap": [
+              "OSFeatures",
+              {
+                "Ref": "BaseOS"
+              },
+              "User"
+            ]
+          },
+          "PreInstallScript": {
+            "Ref": "PreInstallScript"
+          },
+          "PreInstallArgs": {
+            "Ref": "PreInstallArgs"
+          },
+          "PostInstallScript": {
+            "Ref": "PostInstallScript"
+          },
+          "PostInstallArgs": {
+            "Ref": "PostInstallArgs"
+          },
+          "RAIDOptions": {
+            "Ref": "RAIDOptions"
+          },
+          "EFSId": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              {
+                "Fn::GetAtt": [
+                  "EFSSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              ""
+            ]
+          },
+          "EFSOptions": {
+            "Ref": "EFSOptions"
+          },
+          "FSXId": {
+            "Fn::If": [
+              "CreateFSXSubstack",
+              {
+                "Fn::GetAtt": [
+                  "FSXSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              ""
+            ]
+          },
+          "FSXOptions": {
+            "Ref": "FSXOptions"
+          },
+          "Scheduler": {
+            "Ref": "Scheduler"
+          },
+          "EncryptedEphemeral": {
+            "Ref": "EncryptedEphemeral"
+          },
+          "EphemeralDir": {
+            "Ref": "EphemeralDir"
+          },
+          "SharedDir": {
+            "Ref": "SharedDir"
+          },
+          "ProxyServer": {
+            "Ref": "ProxyServer"
+          },
+          "IntelHPCPlatform": {
+            "Ref": "IntelHPCPlatform"
+          },
+          "CWLoggingEnabled": {
+            "Fn::GetAtt": [
+              "CloudWatchLogsSubstack",
+              "Outputs.Enabled"
+            ]
+          },
+          "ExtraJson": {
+            "Ref": "ExtraJson"
+          },
+          "CustomChefCookbook": {
+            "Ref": "CustomChefCookbook"
+          },
+          "AWSDomain": {
+            "Fn::FindInMap": [
+              "Partition2Url",
+              {
+                "Ref": "AWS::Partition"
+              },
+              "url"
+            ]
+          },
+          "ParallelClusterVersion": {
+            "Fn::FindInMap": [
+              "PackagesVersions",
+              "default",
+              "parallelcluster"
+            ]
+          },
+          "CookbookVersion": {
+            "Fn::FindInMap": [
+              "PackagesVersions",
+              "default",
+              "cookbook"
+            ]
+          },
+          "ChefVersion": {
+            "Fn::FindInMap": [
+              "PackagesVersions",
+              "default",
+              "chef"
+            ]
+          },
+          "RidleyVersion": {
+            "Fn::FindInMap": [
+              "PackagesVersions",
+              "default",
+              "ridley"
+            ]
+          },
+          "BerkshelfVersion": {
+            "Fn::FindInMap": [
+              "PackagesVersions",
+              "default",
+              "berkshelf"
+            ]
+          },
+          "ComputeSecurityGroups": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::If": [
+                    "CreateSecurityGroups",
+                    {
+                      "Ref": "ComputeSecurityGroup"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "AddAdditionalSG",
+                    {
+                      "Ref": "AdditionalSG"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "UseExistingSecurityGroup",
+                    {
+                      "Ref": "VPCSecurityGroupId"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
+          "AssociatePublicIpAddress": {
+            "Fn::If": [
+              "ComputePublicIps",
+              true,
+              false
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+            {
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "url"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "Condition": "CreateHITSubstack"
     }
   },
   "Outputs": {
