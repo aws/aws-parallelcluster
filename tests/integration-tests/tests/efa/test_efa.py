@@ -42,7 +42,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
 
     _test_efa_installed(scheduler_commands, remote_command_executor)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, os)
-    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
+    logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.asg, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)

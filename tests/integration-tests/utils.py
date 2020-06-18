@@ -110,11 +110,8 @@ def get_substacks(stack_name, region=None, sub_stack_name=None):
     return [r.get("PhysicalResourceId") for r in stacks]
 
 
-def get_compute_nodes_instance_ids(stack_name, region):
+def get_compute_nodes_instance_ids(asg_name, region):
     """Return a list of Compute Instances Id's."""
-    resources = retrieve_cfn_resources(stack_name, region)
-    asg_name = resources.get("ComputeFleet")
-
     try:
         asg = boto3.client("autoscaling", region_name=region)
         instances = (
@@ -127,7 +124,7 @@ def get_compute_nodes_instance_ids(stack_name, region):
             instance_ids.append(instance.get("InstanceId"))
         return instance_ids
     except Exception as e:
-        logging.error("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        logging.error("Failed retrieving instance ids from ASG {} with exception: {}".format(asg_name, e))
         raise
 
 

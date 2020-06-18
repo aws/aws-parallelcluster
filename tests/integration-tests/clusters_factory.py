@@ -101,8 +101,12 @@ class Cluster:
             return self.cfn_outputs["MasterPublicIP"]
         else:
             ec2 = boto3.client("ec2", region_name=self.region)
-            master_server = self.cfn_resources["MasterServer"]
-            instance = ec2.describe_instances(InstanceIds=[master_server]).get("Reservations")[0].get("Instances")[0]
+            filters = [
+                {"Name": "tag:Application", "Values": [self.cfn_name]},
+                {"Name": "instance-state-name", "Values": ["running"]},
+                {"Name": "tag:Name", "Values": ["Master"]},
+            ]
+            instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
             return instance.get("PublicIpAddress")
 
     @property
@@ -114,7 +118,7 @@ class Cluster:
     @property
     def asg(self):
         """Return the asg name for the ComputeFleet."""
-        return self.cfn_resources["ComputeFleet"]
+        return self.cfn_outputs["ASGName"]
 
     @property
     def cfn_outputs(self):
