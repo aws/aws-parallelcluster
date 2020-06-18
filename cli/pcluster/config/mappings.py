@@ -682,6 +682,11 @@ CLUSTER = {
                 # Ignored during update since we force using previous template
                 "update_policy": UpdatePolicy.IGNORED
             }),
+            ("hit_template_url", {
+                # TODO add regex
+                "validators": [url_validator],
+                "update_policy": UpdatePolicy.IGNORED
+            }),
             ("shared_dir", {
                 "type": SharedDirParam,
                 "allowed_values": ALLOWED_VALUES["file_path"],

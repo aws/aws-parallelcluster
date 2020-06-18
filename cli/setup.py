@@ -29,6 +29,7 @@ REQUIRES = [
     "tabulate>=0.8.2,<=0.8.3",
     "ipaddress>=1.0.22",
     "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.1.2",
+    "jinja2==2.10.1" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "jinja2>=2.11.0",
 ]
 
 if sys.version_info < (3, 4):
