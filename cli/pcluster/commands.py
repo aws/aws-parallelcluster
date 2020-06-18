@@ -46,15 +46,10 @@ else:
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_batch_resources(stack_name, region):
-    """
-    Create a bucket associated to the given stack and upload batch resources.
-
-    Returns the bucket name if both creation and upload succeed.
-    """
-    batch_resources = pkg_resources.resource_filename(__name__, "resources/batch")
+def _create_bucket_with_resources(stack_name, region, resources_dirs):
+    """Create a bucket associated to the given stack and upload specified resources."""
     s3_bucket_name = utils.generate_random_bucket_name(stack_name)
-    LOGGER.debug("Creating S3 bucket for AWS Batch resources, named %s", s3_bucket_name)
+    LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
 
     try:
         utils.create_s3_bucket(s3_bucket_name, region)
@@ -63,9 +58,11 @@ def _create_bucket_with_batch_resources(stack_name, region):
         raise
 
     try:
-        utils.upload_resources_artifacts(s3_bucket_name, root=batch_resources)
+        for resources_dir in resources_dirs:
+            resources = pkg_resources.resource_filename(__name__, resources_dir)
+            utils.upload_resources_artifacts(s3_bucket_name, root=resources)
     except Exception:
-        LOGGER.error("Unable to upload AWS Batch resources to the S3 bucket %s.", s3_bucket_name)
+        LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
         raise
 
@@ -103,9 +100,12 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        # If scheduler is awsbatch create bucket with resources
+        # If scheduler is awsbatch or Slurm create bucket with resources
         if cluster_section.get_param_value("scheduler") == "awsbatch":
-            batch_bucket_name = _create_bucket_with_batch_resources(stack_name, pcluster_config.region)
+            batch_bucket_name = _create_bucket_with_resources(stack_name, pcluster_config.region, resources_dirs=["resources/batch", "resources/custom_resources"])
+            cfn_params["ResourcesS3Bucket"] = batch_bucket_name
+        elif cluster_section.get_param_value("scheduler") == "slurm":
+            batch_bucket_name = _create_bucket_with_resources(stack_name, pcluster_config.region, resources_dirs=["resources/custom_resources"])
             cfn_params["ResourcesS3Bucket"] = batch_bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
@@ -255,7 +255,7 @@ def start(args):
         ce_name = utils.get_batch_ce(stack_name)
         _start_batch_ce(ce_name=ce_name, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus)
     else:
-        LOGGER.info("Starting compute fleet : %s", args.cluster_name)
+        LOGGER.info("Starting compute fleet: %s", args.cluster_name)
         max_queue_size = cluster_section.get_param_value("max_queue_size")
         min_desired_size = (
             cluster_section.get_param_value("initial_queue_size")
@@ -277,7 +277,7 @@ def stop(args):
         ce_name = utils.get_batch_ce(stack_name)
         _stop_batch_ce(ce_name=ce_name)
     else:
-        LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
+        LOGGER.info("Stopping compute fleet: %s", args.cluster_name)
         asg_name = utils.get_asg_name(stack_name)
         utils.set_asg_limits(asg_name=asg_name, min=0, max=0, desired=0)
 
