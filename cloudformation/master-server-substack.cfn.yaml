@@ -256,6 +256,8 @@ Resources:
                 Value: !Ref 'MainStackName'
               - Key: Name
                 Value: Master
+              - Key: aws-parallelcluster-node-type
+                Value: Master
               - Key: ClusterName
                 Value: !Select
                   - '1'
