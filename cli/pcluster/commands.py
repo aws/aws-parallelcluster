@@ -17,9 +17,11 @@
 from __future__ import absolute_import, print_function
 
 import datetime
+import hashlib
 import json
 import logging
 import os
+import re
 import shlex
 import subprocess as sub
 import sys
@@ -35,6 +37,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from jinja2 import BaseLoader, Environment
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 
@@ -67,6 +70,70 @@ def _create_bucket_with_resources(stack_name, region, resources_dirs):
         raise
 
     return s3_bucket_name
+
+
+def _upload_hit_resources(bucket_name, pcluster_config):
+    hit_template_url = pcluster_config.get_section("cluster").get_param_value(
+        "hit_template_url"
+    ) or "s3://{region}-aws-parallelcluster/templates/aws-parallelcluster-{version}.cfn.json".format(
+        region=pcluster_config.region, version=utils.get_installed_version()
+    )
+    match = re.match(r"s3://(.*?)/(.*)", hit_template_url)
+    bucket, key = match.group(1), match.group(2)
+    file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
+
+    hit_config = {
+        "queues_config": {
+            "multiple": {
+                "instances": {
+                    "c5.xlarge": {
+                        "static_size": 1,
+                        "dynamic_size": 20,
+                        "spot_price": 1.5,
+                        "vcpus": 4,
+                        "gpus": 0,
+                        "enable_efa": False,
+                    },
+                    "c5.2xlarge": {"static_size": 1, "dynamic_size": 10, "vcpus": 8, "gpus": 0, "enable_efa": False},
+                },
+                "placement_group": "AUTO",
+                "disable_hyperthreading": False,
+                "compute_type": "spot",
+                "is_default": True,
+            },
+            "gpu": {
+                "instances": {
+                    "g3.8xlarge": {"static_size": 0, "dynamic_size": 20, "vcpus": 16, "gpus": 2, "enable_efa": False}
+                },
+                "placement_group": None,
+                "disable_hyperthreading": True,
+                "compute_type": "ondemand",
+            },
+            "efa": {
+                "instances": {
+                    "c5n.18xlarge": {"static_size": 0, "dynamic_size": 20, "vcpus": 36, "gpus": 0, "enable_efa": True}
+                },
+                "placement_group": "AUTO",
+                "disable_hyperthreading": True,
+                "compute_type": "ondemand",
+            },
+        },
+        "scaling_config": {"scaledown_idletime": 10},
+    }
+
+    environment = Environment(loader=BaseLoader)
+    environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
+    template = environment.from_string(file_contents)
+    output_from_parsed_template = template.render(hit_config=hit_config)
+    s3_client = boto3.client("s3")
+    s3_client.put_object(
+        Bucket=bucket_name,
+        Body=output_from_parsed_template,
+        Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+    )
+    s3_client.put_object(
+        Bucket=bucket_name, Body=json.dumps(hit_config), Key="configs/hit-config.json",
+    )
 
 
 def version():
@@ -108,6 +175,10 @@ def create(args):  # noqa: C901 FIXME!!!
                 stack_name, pcluster_config.region, resources_dirs=resources_dirs
             )
             cfn_params["ResourcesS3Bucket"] = bucket_name
+
+        # TODO: to refactor
+        if cluster_section.get_param_value("scheduler") == "slurm":
+            _upload_hit_resources(bucket_name, pcluster_config)
 
         LOGGER.info("Creating stack named: %s", stack_name)
         LOGGER.debug(cfn_params)
@@ -255,6 +326,9 @@ def start(args):
         min_vcpus = cluster_section.get_param_value("min_vcpus")
         ce_name = utils.get_batch_ce(stack_name)
         _start_batch_ce(ce_name=ce_name, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus)
+    elif cluster_section.get_param_value("scheduler") == "slurm":
+        # TODO: to be implemented
+        raise NotImplementedError()
     else:
         LOGGER.info("Starting compute fleet: %s", args.cluster_name)
         max_queue_size = cluster_section.get_param_value("max_queue_size")
@@ -277,6 +351,9 @@ def stop(args):
         LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
         ce_name = utils.get_batch_ce(stack_name)
         _stop_batch_ce(ce_name=ce_name)
+    elif cluster_section.get_param_value("scheduler") == "slurm":
+        # TODO: to be implemented
+        raise NotImplementedError()
     else:
         LOGGER.info("Stopping compute fleet: %s", args.cluster_name)
         asg_name = utils.get_asg_name(stack_name)
