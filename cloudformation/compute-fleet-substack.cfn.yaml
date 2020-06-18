@@ -146,6 +146,9 @@ Resources:
         - Key: Name
           Value: Compute
           PropagateAtLaunch: true
+        - Key: aws-parallelcluster-node-type
+          Value: Compute
+          PropagateAtLaunch: true
         - Key: ClusterName
           Value: !Select
             - '1'
