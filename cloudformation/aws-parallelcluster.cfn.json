@@ -1568,18 +1568,6 @@
       },
       "Condition": "MasterPublicIp"
     },
-    "MasterServerWaitCondition": {
-      "Type": "AWS::CloudFormation::WaitCondition",
-      "DependsOn": [
-        "MasterServerSubstack"
-      ],
-      "CreationPolicy": {
-        "ResourceSignal": {
-          "Count": "1",
-          "Timeout": "PT30M"
-        }
-      }
-    },
     "ComputeSubnet": {
       "Type": "AWS::EC2::Subnet",
       "Properties": {
