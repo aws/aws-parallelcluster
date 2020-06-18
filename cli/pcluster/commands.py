@@ -95,18 +95,19 @@ def create(args):  # noqa: C901 FIXME!!!
 
     _check_for_updates(pcluster_config)
 
-    batch_bucket_name = None
+    bucket_name = None
     try:
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        # If scheduler is awsbatch or Slurm create bucket with resources
-        if cluster_section.get_param_value("scheduler") == "awsbatch":
-            batch_bucket_name = _create_bucket_with_resources(stack_name, pcluster_config.region, resources_dirs=["resources/batch", "resources/custom_resources"])
-            cfn_params["ResourcesS3Bucket"] = batch_bucket_name
-        elif cluster_section.get_param_value("scheduler") == "slurm":
-            batch_bucket_name = _create_bucket_with_resources(stack_name, pcluster_config.region, resources_dirs=["resources/custom_resources"])
-            cfn_params["ResourcesS3Bucket"] = batch_bucket_name
+        if cluster_section.get_param_value("scheduler") in ["awsbatch", "slurm"]:
+            resources_dirs = ["resources/custom_resources"]
+            if cluster_section.get_param_value("scheduler") == "awsbatch":
+                resources_dirs.append("resources/batch")
+            bucket_name = _create_bucket_with_resources(
+                stack_name, pcluster_config.region, resources_dirs=resources_dirs
+            )
+            cfn_params["ResourcesS3Bucket"] = bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
         LOGGER.debug(cfn_params)
@@ -148,21 +149,21 @@ def create(args):  # noqa: C901 FIXME!!!
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
     except KeyError as e:
         LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
     except Exception as e:
         LOGGER.critical(e)
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
 
 
