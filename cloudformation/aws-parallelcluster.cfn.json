@@ -2673,7 +2673,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/master-server-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/master-server-substack-${version}.cfn.yaml",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -3040,13 +3040,7 @@
             "Ref": "ClusterType"
           },
           "SpotPrice": {
-            "Fn::If": [
-              "UseSpotPrice",
-              {
-                "Ref": "SpotPrice"
-              },
-              ""
-            ]
+            "Ref": "SpotPrice"
           },
           "ScaleDownIdleTime": {
             "Ref": "ScaleDownIdleTime"
@@ -3060,7 +3054,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/compute-fleet-substack-${version}.cfn.json",
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/compute-fleet-substack-${version}.cfn.yaml",
             {
               "s3_url": {
                 "Fn::FindInMap": [
