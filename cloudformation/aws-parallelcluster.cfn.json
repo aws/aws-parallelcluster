@@ -1400,12 +1400,13 @@
               "Sid": "Cloudformation",
               "Action": [
                 "cloudformation:DescribeStacks",
-                "cloudformation:DescribeStackResource"
+                "cloudformation:DescribeStackResource",
+                "cloudformation:SignalResource"
               ],
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}/*"
+                  "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AWS::StackName}*/*"
                 }
               ]
             },
@@ -2457,6 +2458,17 @@
           "IamInstanceProfile": {
             "Ref": "RootInstanceProfile"
           },
+          "IamRoleName": {
+            "Fn::If": [
+              "UseEC2IAMRole",
+              {
+                "Ref": "EC2IAMRoleName"
+              },
+              {
+                "Ref": "RootRole"
+              }
+            ]
+          },
           "PlacementGroup": {
             "Fn::If": [
               "UseClusterPlacement",
@@ -2805,6 +2817,17 @@
           },
           "IamInstanceProfile": {
             "Ref": "RootInstanceProfile"
+          },
+          "IamRoleName": {
+            "Fn::If": [
+              "UseEC2IAMRole",
+              {
+                "Ref": "EC2IAMRoleName"
+              },
+              {
+                "Ref": "RootRole"
+              }
+            ]
           },
           "PlacementGroup": {
             "Fn::If": [
