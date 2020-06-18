@@ -22,10 +22,8 @@ def _send_response(response_url, response_body):
     logger.debug("CFN response URL: {}".format(response_url))
     logger.debug(json_response_body)
     headers = {'content-type': '', 'content-length': str(len(json_response_body))}
-    # This function returns a 5-tuple: (addressing scheme, network location, path, query, fragment identifier)
     split_url = urlsplit(response_url)
     host = split_url.netloc
-    # Building the url without scheme and hostname
     url = urlunsplit(("", "", *split_url[2:]))
     while True:
         try:
