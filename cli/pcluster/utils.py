@@ -24,6 +24,7 @@ import sys
 import time
 import urllib.request
 import zipfile
+from enum import Enum
 from io import BytesIO
 
 import boto3
@@ -35,6 +36,16 @@ from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX
 LOGGER = logging.getLogger(__name__)
 
 STACK_TYPE = "AWS::CloudFormation::Stack"
+
+
+class NodeType(Enum):
+    """Enum that identifies the cluster node type."""
+
+    master = "Master"
+    compute = "Compute"
+
+    def __str__(self):
+        return str(self.value)
 
 
 def get_stack_name(cluster_name):
@@ -338,7 +349,11 @@ def get_stack(stack_name, cfn_client=None, raise_on_error=False):
     except ClientError as e:
         if raise_on_error:
             raise
-        error(e.response.get("Error").get("Message"))
+        error(
+            "Could not retrieve CloudFormation stack data. Failed with error: {0}".format(
+                e.response.get("Error").get("Message")
+            )
+        )
 
 
 def stack_exists(stack_name):
@@ -534,15 +549,35 @@ def get_avail_zone(subnet_id):
     return avail_zone
 
 
-def get_master_server_id(stack_name):
-    """Return the physical id of the master server, or [] if no master server."""
+def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_name=None):
     try:
-        resources = boto3.client("cloudformation").describe_stack_resource(
-            StackName=stack_name, LogicalResourceId="MasterServer"
-        )
-        return resources.get("StackResourceDetail").get("PhysicalResourceId")
+        ec2 = boto3.client("ec2")
+        filters = [
+            {"Name": "tag:Application", "Values": [stack_name]},
+            {"Name": "instance-state-name", "Values": ["running"]},
+        ]
+        if filter_by_node_type:
+            filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
+        if filter_by_name:
+            filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
+        instances = []
+        for page in paginate_boto3(ec2.describe_instances, Filters=filters):
+            instances.extend(page.get("Instances", []))
+        return instances
+
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
+
+
+def describe_cluster_instances(stack_name, node_type):
+    """Return the cluster instances optionally filtered by tag."""
+    instances = _describe_cluster_instances(stack_name, filter_by_node_type=str(node_type))
+    if not instances:
+        # Support for cluster that do not have aws-parallelcluster-node-type tag
+        LOGGER.debug("Falling back to Name tag when describing cluster instances")
+        instances = _describe_cluster_instances(stack_name, filter_by_name=str(node_type))
+
+    return instances
 
 
 def _get_master_server_ip(stack_name):
@@ -553,16 +588,14 @@ def _get_master_server_ip(stack_name):
     :param config: Config object
     :return private/public ip address
     """
-    ec2 = boto3.client("ec2")
-
-    master_id = get_master_server_id(stack_name)
-    if not master_id:
+    instances = describe_cluster_instances(stack_name, node_type=NodeType.master)
+    if not instances:
         error("MasterServer not running. Can't SSH")
-    instance = ec2.describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
-    ip_address = instance.get("PublicIpAddress")
+    master_instance = instances[0]
+    ip_address = master_instance.get("PublicIpAddress")
     if ip_address is None:
-        ip_address = instance.get("PrivateIpAddress")
-    state = instance.get("State").get("Name")
+        ip_address = master_instance.get("PrivateIpAddress")
+    state = master_instance.get("State").get("Name")
     if state != "running" or ip_address is None:
         error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
@@ -575,17 +608,10 @@ def get_master_ip_and_username(cluster_name):
 
         stack_result = cfn.describe_stacks(StackName=stack_name).get("Stacks")[0]
         stack_status = stack_result.get("StackStatus")
-        valid_status = ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]
-        invalid_status = ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]
 
-        if stack_status in invalid_status:
+        if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
             error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
-        elif stack_status in valid_status:
-            outputs = stack_result.get("Outputs")
-            master_ip = get_stack_output_value(outputs, "MasterPublicIP") or _get_master_server_ip(stack_name)
-            username = get_stack_output_value(outputs, "ClusterUser")
         else:
-            # Stack is in CREATING, CREATED_FAILED, or ROLLBACK_COMPLETE but MasterServer is running
             master_ip = _get_master_server_ip(stack_name)
             template = cfn.get_template(StackName=stack_name)
             mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
@@ -610,11 +636,10 @@ def get_master_server_state(stack_name):
     :param stack_name: The name of the cloudformation stack
     :return master server state name
     """
-    master_id = get_master_server_id(stack_name)
-    instance = (
-        boto3.client("ec2").describe_instances(InstanceIds=[master_id]).get("Reservations")[0].get("Instances")[0]
-    )
-    return instance.get("State").get("Name")
+    instances = describe_cluster_instances(stack_name, filter_by_name="Master")
+    if not instances:
+        error("MasterServer not running.")
+    return instances[0].get("State").get("Name")
 
 
 def get_cli_log_file():
@@ -644,16 +669,18 @@ def retry(func, func_args, attempts=1, wait=0):
 
 
 def get_asg_name(stack_name):
-    try:
-        resources = boto3.client("cloudformation").describe_stack_resources(StackName=stack_name).get("StackResources")
-        return [r for r in resources if r.get("LogicalResourceId") == "ComputeFleet"][0].get("PhysicalResourceId")
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-    except IndexError:
-        LOGGER.critical("Stack %s does not have a ComputeFleet", stack_name)
-        sys.exit(1)
+    outputs = get_stack(stack_name).get("Outputs", [])
+    asg_name = get_stack_output_value(outputs, "ASGName")
+    if not asg_name:
+        # Fallback to old behaviour to preserve backward compatibility
+        resources = get_stack_resources(stack_name)
+        asg_name = next(
+            (r.get("PhysicalResourceId") for r in resources if r.get("LogicalResourceId") == "ComputeFleet"), None
+        )
+        if not asg_name:
+            LOGGER.error("Could not retrieve AutoScaling group name. Please check cluster status.")
+            sys.exit(1)
+    return asg_name
 
 
 def set_asg_limits(asg_name, min, max, desired):
@@ -661,23 +688,6 @@ def set_asg_limits(asg_name, min, max, desired):
     asg.update_auto_scaling_group(
         AutoScalingGroupName=asg_name, MinSize=int(min), MaxSize=int(max), DesiredCapacity=int(desired)
     )
-
-
-def get_asg_instances(stack):
-    asg = boto3.client("autoscaling")
-    asg_name = get_asg_name(stack)
-    auto_scaling_groups = asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name]).get("AutoScalingGroups")
-    if not auto_scaling_groups:
-        LOGGER.error("Unable to retrieve ASG info. Please check cluster status.")
-        sys.exit(1)
-    asg = auto_scaling_groups[0]
-    name = [tag.get("Value") for tag in asg.get("Tags") if tag.get("Key") == "aws:cloudformation:logical-id"][0]
-
-    temp_instances = []
-    for instance in asg.get("Instances"):
-        temp_instances.append([name, instance.get("InstanceId")])
-
-    return temp_instances
 
 
 def get_batch_ce(stack_name):

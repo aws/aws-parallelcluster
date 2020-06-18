@@ -388,3 +388,85 @@ def test_create_s3_bucket(region, error_message, boto3_stubber):
             utils.create_s3_bucket(bucket_name, region)
     else:
         utils.create_s3_bucket(bucket_name, region)
+
+
+@pytest.mark.parametrize(
+    "node_type, expected_fallback, expected_response, expected_instances",
+    [
+        (utils.NodeType.master, False, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.master, True, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.master, True, {"Reservations": []}, 0),
+        (utils.NodeType.compute, False, {"Reservations": [{"Groups": [], "Instances": [{}, {}, {}]}]}, 3),
+        (utils.NodeType.compute, True, {"Reservations": [{"Groups": [], "Instances": [{}, {}]}]}, 2),
+        (utils.NodeType.compute, True, {"Reservations": []}, 0),
+    ],
+)
+def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback, expected_response, expected_instances):
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_instances",
+            expected_params={
+                "Filters": [
+                    {"Name": "tag:Application", "Values": ["test-cluster"]},
+                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(node_type)]},
+                ]
+            },
+            response=expected_response if not expected_fallback else {"Reservations": []},
+        )
+    ]
+    if expected_fallback:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_instances",
+                expected_params={
+                    "Filters": [
+                        {"Name": "tag:Application", "Values": ["test-cluster"]},
+                        {"Name": "instance-state-name", "Values": ["running"]},
+                        {"Name": "tag:Name", "Values": [str(node_type)]},
+                    ]
+                },
+                response=expected_response,
+            )
+        )
+    boto3_stubber("ec2", mocked_requests)
+    instances = utils.describe_cluster_instances("test-cluster", node_type=node_type)
+    assert_that(instances).is_length(expected_instances)
+
+
+@pytest.mark.parametrize(
+    "master_instance, expected_ip, error",
+    [
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "running"},
+            },
+            "18.188.93.193",
+            None,
+        ),
+        ({"PrivateIpAddress": "10.0.16.17", "State": {"Code": 16, "Name": "running"}}, "10.0.16.17", None),
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "stopped"},
+            },
+            "18.188.93.193",
+            "MasterServer: STOPPED",
+        ),
+    ],
+    ids=["public_ip", "private_ip", "stopped"],
+)
+def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
+    describe_cluster_instances_mock = mocker.patch(
+        "pcluster.utils.describe_cluster_instances", return_value=[master_instance]
+    )
+
+    if error:
+        with pytest.raises(SystemExit, match=error):
+            utils._get_master_server_ip("stack-name")
+    else:
+        assert_that(utils._get_master_server_ip("stack-name")).is_equal_to(expected_ip)
+        describe_cluster_instances_mock.assert_called_with("stack-name", node_type=utils.NodeType.master)
