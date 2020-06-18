@@ -3206,6 +3206,15 @@
       },
       "Condition": "CreateAWSBatchStack"
     },
+    "ASGName": {
+      "Value": {
+        "Fn::GetAtt": [
+          "ComputeFleetSubstack",
+          "Outputs.ASGName"
+        ]
+      },
+      "Condition": "CreateComputeFleet"
+    },
     "ClusterConfigMetadata": {
       "Value": {
         "Ref": "ClusterConfigMetadata"
