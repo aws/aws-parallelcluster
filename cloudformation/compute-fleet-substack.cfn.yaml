@@ -305,6 +305,57 @@ Resources:
               export NO_PROXY="localhost,127.0.0.1,169.254.169.254"
               PROXY
               fi
+
+              --==BOUNDARY==
+              Content-Type: text/cloud-config; charset=us-ascii
+              MIME-Version: 1.0
+
+              write_files:
+                - path: /tmp/dna.json
+                  permissions: '0644'
+                  owner: root:root
+                  content: |
+                    {
+                      "cfncluster": {
+                        "stack_name": "${MainStackName}",
+                        "enable_efa": "${EFA}",
+                        "cfn_raid_parameters": "${RAIDOptions}",
+                        "cfn_preinstall": "${PreInstallScript}",
+                        "cfn_preinstall_args": "${PreInstallArgs}",
+                        "cfn_postinstall": "${PostInstallScript}",
+                        "cfn_postinstall_args": "${PostInstallArgs}",
+                        "cfn_region": "${AWS::Region}",
+                        "cfn_efs": "${EFSId}",
+                        "cfn_efs_shared_dir": "${EFSOptions}",
+                        "cfn_fsx_fs_id": "${FSXId}",
+                        "cfn_fsx_options": "${FSXOptions}",
+                        "cfn_scheduler": "${Scheduler}",
+                        "cfn_scheduler_slots": "${SchedulerSlots}",
+                        "cfn_scaledown_idletime": "${ScaleDownIdleTime}",
+                        "cfn_encrypted_ephemeral": "${EncryptedEphemeral}",
+                        "cfn_ephemeral_dir": "${EphemeralDir}",
+                        "cfn_shared_dir": "${SharedDir}",
+                        "cfn_proxy": "${ProxyServer}",
+                        "cfn_sqs_queue": "${SQSQueue}",
+                        "cfn_master": "${MasterPrivateDnsName}",
+                        "cfn_node_type": "ComputeFleet",
+                        "cfn_cluster_user": "${OSUser}",
+                        "enable_intel_hpc_platform": "${IntelHPCPlatform}",
+                        "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}"
+                      },
+                      "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
+                    }
+
+                - path: /etc/chef/client.rb
+                  permissions: '0644'
+                  owner: root:root
+                  content: cookbook_path ['/etc/chef/cookbooks']
+                - path: /tmp/extra.json
+                  permissions: '0644'
+                  owner: root:root
+                  content: |
+                    ${ExtraJson}
+
               --==BOUNDARY==
               Content-Type: text/x-shellscript; charset="us-ascii"
               MIME-Version: 1.0
@@ -409,6 +460,10 @@ Resources:
                 - UseProxy
                 - !Ref 'ProxyServer'
                 - 'false'
+              SchedulerSlots: !If
+                - DisableComputeHyperthreading
+                - !Ref 'ComputeCoreCount'
+                - ''
     Metadata:
       Comment: AWS ParallelCluster Compute server
       AWS::CloudFormation::Init:
@@ -421,52 +476,6 @@ Resources:
             - shellRunPostInstall
             - chefFinalize
         deployConfigFiles:
-          files:
-            /tmp/dna.json:
-              mode: '000644'
-              owner: root
-              group: root
-              content:
-                cfncluster:
-                  stack_name: !Ref 'MainStackName'
-                  enable_efa: !Ref 'EFA'
-                  cfn_raid_parameters: !Ref 'RAIDOptions'
-                  cfn_preinstall: !Ref 'PreInstallScript'
-                  cfn_preinstall_args: !Ref 'PreInstallArgs'
-                  cfn_postinstall: !Ref 'PostInstallScript'
-                  cfn_postinstall_args: !Ref 'PostInstallArgs'
-                  cfn_region: !Ref 'AWS::Region'
-                  cfn_efs: !Ref 'EFSId'
-                  cfn_efs_shared_dir: !Ref 'EFSOptions'
-                  cfn_fsx_fs_id: !Ref 'FSXId'
-                  cfn_fsx_options: !Ref 'FSXOptions'
-                  cfn_scheduler: !Ref 'Scheduler'
-                  cfn_scheduler_slots: !If
-                    - DisableComputeHyperthreading
-                    - !Ref 'ComputeCoreCount'
-                    - !Ref 'AWS::NoValue'
-                  cfn_scaledown_idletime: !Ref 'ScaleDownIdleTime'
-                  cfn_encrypted_ephemeral: !Ref 'EncryptedEphemeral'
-                  cfn_ephemeral_dir: !Ref 'EphemeralDir'
-                  cfn_shared_dir: !Ref 'SharedDir'
-                  cfn_proxy: !Ref 'ProxyServer'
-                  cfn_sqs_queue: !Ref 'SQSQueue'
-                  cfn_master: !Ref 'MasterPrivateDnsName'
-                  cfn_node_type: ComputeFleet
-                  cfn_cluster_user: !Ref 'OSUser'
-                  enable_intel_hpc_platform: !Ref 'IntelHPCPlatform'
-                  cfn_cluster_cw_logging_enabled: !Ref 'CWLoggingEnabled'
-                run_list: !Sub 'recipe[aws-parallelcluster::${Scheduler}_config]'
-            /etc/chef/client.rb:
-              mode: '000644'
-              owner: root
-              group: root
-              content: cookbook_path ['/etc/chef/cookbooks']
-            /tmp/extra.json:
-              mode: '000644'
-              owner: root
-              group: root
-              content: !Ref 'ExtraJson'
           commands:
             mkdir:
               command: mkdir -p /etc/chef/ohai/hints
