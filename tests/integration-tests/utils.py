@@ -308,3 +308,25 @@ def remove_keys_from_known_hosts(hostname, host_keys_file, env):
     """Remove ssh key for a host from a known_hosts file."""
     for host in hostname, "{0}.".format(hostname), socket.gethostbyname(hostname):
         run_command("ssh-keygen -R {0} -f {1}".format(host, host_keys_file), env=env)
+
+
+def get_architecture_supported_by_instance_type(instance_type, region_name=None):
+    """Return the architecture supported by the given instance type (which is also supported by ParallelCluster)."""
+    pcluster_architectures = ["x86_64", "arm64"]
+    instance_architectures = []
+    ec2 = boto3.client("ec2", region_name=region_name)
+    try:
+        response = ec2.describe_instance_types(InstanceTypes=[instance_type])
+        instance_architectures = response.get("InstanceTypes")[0].get("ProcessorInfo").get("SupportedArchitectures")
+    except Exception as e:
+        logging.error(f"Failed to get supported architecture for instance type: {e}")
+        raise
+
+    # Some instance types support architectures that ParallelCluster does not (e.g., i386). Filter those out.
+    instance_architectures = list(set(instance_architectures) & set(pcluster_architectures))
+
+    # It's not possible for an instance type to support both arm64 and x86_64, and to be used with ParallelCluster
+    # it must support one of those two.
+    assert_that(len(instance_architectures)).is_equal_to(1)
+
+    return instance_architectures[0]
