@@ -37,29 +37,52 @@ DISTROS = OrderedDict(
         ("ubuntu1804", "ubuntu-1804"),
     ]
 )
+ARCHITECTURES_TO_MAPPING_NAME = {
+    "x86_64": "AWSRegionOS2AMIx86",
+    "arm64": "AWSRegionOS2AMIarm64",
+}
+
+
+def get_initialized_mappings_dicts():
+    """
+    Get dict with two keys initialized to empty dicts.
+
+    This is the same structure as the portion of the CFN template's Mappings that contains default AMIs.
+    """
+    return {mapping_name: {} for _, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items()}
 
 
 def get_ami_list_from_file(regions, cfn_template_file):
-    amis_json = {}
+    """Read the AMI mappings from cfn_template_file for the given regions."""
+    amis_json = get_initialized_mappings_dicts()
 
     with open(cfn_template_file) as cfn_file:
         # object_pairs_hook=OrderedDict allows to preserve input order
         cfn_data = json.load(cfn_file, object_pairs_hook=OrderedDict)
 
-    current_amis = cfn_data.get("Mappings").get("AWSRegionOS2AMI")
-
-    for region_name in regions:
-        if region_name in current_amis:
-            amis_json[region_name] = OrderedDict(sorted(current_amis.get(region_name).items()))
-        else:
-            print("Warning: there are no AMIs in the region (%s)" % region_name)
+    current_amis = {}
+    for mapping_name in amis_json:
+        current_amis[mapping_name] = cfn_data.get("Mappings").get(mapping_name, {})
+        for region_name in regions:
+            if region_name in current_amis.get(mapping_name, []):
+                # Ensure mapping for the region_name is sorted by OS name
+                amis_json[mapping_name][region_name] = OrderedDict(
+                    sorted(current_amis.get(mapping_name).get(region_name).items())
+                )
+            else:
+                print(
+                    "Warning: there are no AMIs in the region ({region}) within the mapping ({mapping})".format(
+                        region=region_name, mapping=mapping_name
+                    )
+                )
     return amis_json
 
 
 def get_ami_list_from_ec2(
     main_region, regions, date, build_date, cookbook_git_ref, node_git_ref, version, owner, credentials
 ):
-    amis_json = {}
+    """Get the AMI mappings structure given the constraints represented by the args."""
+    amis_json = get_initialized_mappings_dicts()
 
     for region_name in regions:
         filters = []
@@ -87,19 +110,35 @@ def get_ami_list_from_ec2(
 
 
 def populate_amis_json(amis_json, images, region_name):
+    """Update amis_json in-place with the given list of images (from region_name)."""
     if images:
-        amis = {}
+        amis = get_initialized_mappings_dicts()
         for image in images.get("Images"):
-            for key, value in DISTROS.items():
-                if "-{0}-".format(value) in image.get("Name"):
-                    amis[key] = image.get("ImageId")
+            for distro_mapping_key, distro_image_name_query_string in DISTROS.items():
+                if "-{0}-".format(distro_image_name_query_string) in image.get("Name"):
+                    mapping = ARCHITECTURES_TO_MAPPING_NAME.get(image.get("Architecture"))
+                    if mapping is None:
+                        print(
+                            "Warning: unable to get mapping name for AMI {name} (region={region}, ID={ami_id}, "
+                            "architecture={architecture})".format(
+                                name=image.get("Name"),
+                                region=region_name,
+                                ami_id=image.get("ImageId"),
+                                architecture=image.get("Architecture"),
+                            )
+                        )
+                        continue
+                    amis[mapping][distro_mapping_key] = image.get("ImageId")
         if len(amis) == 0:
             print("Warning: there are no AMIs in the selected region (%s)" % region_name)
         else:
-            amis_json[region_name] = OrderedDict(sorted(amis.items()))
+            # Ensure mapping for the region_name is sorted by OS name
+            for mapping_name in amis:
+                amis_json[mapping_name][region_name] = OrderedDict(sorted(amis.get(mapping_name, {}).items()))
 
 
 def get_images_ec2_credential(filters, main_region, credential):
+    """Get list of AMIs subject to filters after assuming the identity represented by credential."""
     credential_region = credential[0]
     credential_endpoint = credential[1]
     credential_arn = credential[2]
@@ -132,6 +171,11 @@ def get_images_ec2_credential(filters, main_region, credential):
 
 
 def get_images_ec2(filters, owner, region_name):
+    """
+    Get the list of AMIs owned by owner, present in region_name, and subject to filters.
+
+    NOTE: this call to describe_images is not paginated.
+    """
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
         images = ec2.describe_images(Owners=[owner], Filters=filters)
@@ -142,58 +186,83 @@ def get_images_ec2(filters, owner, region_name):
 
 
 def get_latest_images(images):
-    # filter for the latest image per OS
+    """Return a list containing the latest images for each <OS>-<architecture> combination."""
     images_filtered = {"Images": []}
-    for _key, value in DISTROS.items():
-        ami_filtered_and_sorted = sorted(
-            filter(lambda ami: "-{0}-".format(value) in ami["Name"], images["Images"]),
-            key=lambda ami: ami["CreationDate"],
-            reverse=True,
-        )
-        if ami_filtered_and_sorted:
-            images_filtered["Images"].append(ami_filtered_and_sorted[0])
+    for architecture in ARCHITECTURES_TO_MAPPING_NAME:
+        for _key, value in DISTROS.items():
+            ami_filtered_and_sorted = sorted(
+                filter(
+                    lambda ami: "-{0}-".format(value) in ami["Name"] and ami["Architecture"] == architecture,
+                    images["Images"],
+                ),
+                key=lambda ami: ami["CreationDate"],
+                reverse=True,
+            )
+            if ami_filtered_and_sorted:
+                images_filtered["Images"].append(ami_filtered_and_sorted[0])
     return images_filtered
 
 
 def convert_json_to_txt(amis_json):
+    """
+    Convert amis_json to a string suitable to writing to the amis text file.
+
+    That format is as follows:
+    ## <architecture>
+    # <OS>
+    <region>: <ami-id>
+    <region>: <ami-id>
+    """
     amis_txt = ""
-    for key, _value in DISTROS.items():
-        amis_txt += "# " + key + "\n"
-        for region, amis in amis_json.items():
-            if key in amis:
-                amis_txt += region + ": " + amis[key] + "\n"
+    for architecture, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items():
+        amis_txt += "## " + architecture + "\n"
+        for key, _value in DISTROS.items():
+            amis_txt += "# " + key + "\n"
+            for region, amis in amis_json.get(mapping_name, {}).items():
+                if key in amis:
+                    amis_txt += region + ": " + amis[key] + "\n"
 
     return amis_txt
 
 
 def get_aws_regions_from_file(region_file):
-    # Region file format
-    # {
-    #    "regions": [
-    #        "cn-north-1",
-    #        "cn-northwest-1"
-    #    ]
-    # }
+    """
+    Return the list of region names read from region_file.
+
+    The format of region_file is as follows:
+    {
+       "regions": [
+           "cn-north-1",
+           "cn-northwest-1"
+       ]
+    }
+    """
     with open(region_file) as r_file:
         region_data = json.load(r_file)
     return sorted(r for r in region_data.get("regions"))
 
 
 def get_all_aws_regions_from_ec2(region):
+    """Return a list of all available regions for the partition in which the region arg resides in."""
     ec2 = boto3.client("ec2", region_name=region)
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
 def update_cfn_template(cfn_template_file, amis_to_update):
+    """Update in-place the mappings section of cfn_template_file with the AMI IDs contained in amis_to_update."""
     with open(cfn_template_file) as cfn_file:
         # object_pairs_hook=OrderedDict allows to preserve input order
         cfn_data = json.load(cfn_file, object_pairs_hook=OrderedDict)
     # update id for new amis without removing regions that are not in the amis_to_update dict
-    current_amis = cfn_data.get("Mappings").get("AWSRegionOS2AMI")
-    current_amis.update(amis_to_update)
-    # enforce alphabetical regions order
-    ordered_amis = OrderedDict(sorted(current_amis.items()))
-    cfn_data.get("Mappings")["AWSRegionOS2AMI"] = ordered_amis
+    current_amis = get_initialized_mappings_dicts()
+    for mapping_name in current_amis:
+        current_amis_for_mapping = cfn_data.get("Mappings").get(mapping_name, {})
+        for region in current_amis_for_mapping:
+            current_amis_for_mapping[region].update(amis_to_update.get(mapping_name, {}).get(region, {}))
+        # enforce alphabetical regions order
+        current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
+        cfn_data.get("Mappings")[mapping_name] = current_amis_for_mapping
+        current_amis[mapping_name] = current_amis_for_mapping
     with open(cfn_template_file, "w") as cfn_file:
         # setting separators to (',', ': ') to avoid trailing spaces after commas
         json.dump(cfn_data, cfn_file, indent=2, separators=(",", ": "))
@@ -201,10 +270,11 @@ def update_cfn_template(cfn_template_file, amis_to_update):
         cfn_file.write("\n")
 
     # returns the updated amis dict
-    return ordered_amis
+    return current_amis
 
 
 def update_amis_txt(amis_txt_file, amis):
+    """Write samis_txt_file using the information contained in amis."""
     amis_txt = convert_json_to_txt(amis_json=amis)
     with open(amis_txt_file, "w") as f:
         f.write("%s" % amis_txt)
