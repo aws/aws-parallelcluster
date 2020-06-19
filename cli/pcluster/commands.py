@@ -83,48 +83,79 @@ def _upload_hit_resources(bucket_name, pcluster_config):
     file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
 
     hit_config = {
-        "queues_config": {
-            "multiple": {
-                "instances": {
-                    "c5.xlarge": {
-                        "static_size": 1,
-                        "dynamic_size": 20,
-                        "spot_price": 1.5,
-                        "vcpus": 4,
-                        "gpus": 0,
-                        "enable_efa": False,
+        "cluster": {
+            "label": "default",
+            "default_queue": "multiple_spot",
+            "queue_settings": {
+                "multiple_spot": {
+                    "compute_type": "spot",
+                    "enable_efa": False,
+                    "disable_hyperthreading": True,
+                    "placement_group": None,
+                    "compute_resource_settings": {
+                        "multiple_spot_c4.xlarge": {
+                            "instance_type": "c4.xlarge",
+                            "min_count": 0,
+                            "max_count": 10,
+                            "spot_price": None,
+                            "vcpus": 2,
+                            "gpus": 0,
+                            "enable_efa": False,
+                        },
+                        "multiple_spot_c5.2xlarge": {
+                            "instance_type": "c5.2xlarge",
+                            "min_count": 1,
+                            "max_count": 5,
+                            "spot_price": 1.5,
+                            "vcpus": 4,
+                            "gpus": 0,
+                            "enable_efa": False,
+                        },
                     },
-                    "c5.2xlarge": {"static_size": 1, "dynamic_size": 10, "vcpus": 8, "gpus": 0, "enable_efa": False},
                 },
-                "placement_group": "AUTO",
-                "disable_hyperthreading": False,
-                "compute_type": "spot",
-                "is_default": True,
-            },
-            "gpu": {
-                "instances": {
-                    "g3.8xlarge": {"static_size": 0, "dynamic_size": 20, "vcpus": 16, "gpus": 2, "enable_efa": False}
+                "efa": {
+                    "compute_resource_settings": {
+                        "efa_c5n.18xlarge": {
+                            "instance_type": "c5n.18xlarge",
+                            "min_count": 0,
+                            "max_count": 5,
+                            "spot_price": None,
+                            "vcpus": 36,
+                            "gpus": 0,
+                            "enable_efa": True,
+                        },
+                    },
+                    "compute_type": "ondemand",
+                    "enable_efa": True,
+                    "disable_hyperthreading": True,
+                    "placement_group": "AUTO",
                 },
-                "placement_group": None,
-                "disable_hyperthreading": True,
-                "compute_type": "ondemand",
-            },
-            "efa": {
-                "instances": {
-                    "c5n.18xlarge": {"static_size": 0, "dynamic_size": 20, "vcpus": 36, "gpus": 0, "enable_efa": True}
+                "gpu": {
+                    "compute_resource_settings": {
+                        "gpu_g3.8xlarge": {
+                            "instance_type": "g3.8xlarge",
+                            "min_count": 0,
+                            "max_count": 5,
+                            "spot_price": None,
+                            "vcpus": 16,
+                            "gpus": 2,
+                            "enable_efa": False,
+                        },
+                    },
+                    "compute_type": "ondemand",
+                    "enable_efa": False,
+                    "disable_hyperthreading": True,
+                    "placement_group": None,
                 },
-                "placement_group": "AUTO",
-                "disable_hyperthreading": True,
-                "compute_type": "ondemand",
             },
-        },
-        "scaling_config": {"scaledown_idletime": 10},
+            "scaling": {"scaledown_idletime": 10},
+        }
     }
 
     environment = Environment(loader=BaseLoader)
     environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
     template = environment.from_string(file_contents)
-    output_from_parsed_template = template.render(hit_config=hit_config)
+    output_from_parsed_template = template.render(config=hit_config)
     s3_client = boto3.client("s3")
     s3_client.put_object(
         Bucket=bucket_name,
@@ -132,7 +163,7 @@ def _upload_hit_resources(bucket_name, pcluster_config):
         Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
     )
     s3_client.put_object(
-        Bucket=bucket_name, Body=json.dumps(hit_config), Key="configs/hit-config.json",
+        Bucket=bucket_name, Body=json.dumps(hit_config), Key="configs/cluster-config.json",
     )
 
 
