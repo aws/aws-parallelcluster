@@ -154,6 +154,7 @@ def delete_s3_bucket(bucket_name):
     :param bucket_name: name of the S3 bucket to delete
     """
     try:
+        LOGGER.info("Deleting bucket %s", bucket_name)
         bucket = boto3.resource("s3").Bucket(bucket_name)
         bucket.objects.all().delete()
         bucket.delete()

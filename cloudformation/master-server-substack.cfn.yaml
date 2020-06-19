@@ -468,8 +468,7 @@ Resources:
                   dcv_port: !Ref 'DCVPort'
                   enable_intel_hpc_platform: !Ref 'IntelHPCPlatform'
                   cfn_cluster_cw_logging_enabled: !Ref 'CWLoggingEnabled'
-                  slurm:
-                    queue_config_s3_uri: !Sub 's3://${ResourcesS3Bucket}/configs/hit-config.json'
+                  cluster_config_s3_uri: !Sub 's3://${ResourcesS3Bucket}/configs/cluster-config.json'
                 run_list: !Sub 'recipe[aws-parallelcluster::${Scheduler}_config]'
             /etc/chef/client.rb:
               mode: '000644'

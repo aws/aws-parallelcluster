@@ -1,5 +1,5 @@
-{%- set queues = hit_config.queues_config -%}
-{%- set scaling_config = hit_config.scaling_config -%}
+{%- set queues = config.cluster.queue_settings -%}
+{%- set scaling_config = config.cluster.scaling -%}
 AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   ComputeSubnetId:
@@ -83,7 +83,8 @@ Conditions:
       - NONE
 Resources:
 {%- for queue, queue_config in queues.items() %}
-  {%- for instance_type, instance_config in queue_config.instances.items() %}
+  {%- for compute_resource in queue_config.compute_resource_settings.values() %}
+    {%- set instance_type = compute_resource.instance_type %}
   ComputeServerLaunchTemplate{{ (queue + instance_type) | sha1 | truncate(16, True, "") | capitalize }}:
     Type: AWS::EC2::LaunchTemplate
     Properties:
@@ -98,7 +99,7 @@ Resources:
         InstanceType: {{ instance_type }}
         NetworkInterfaces:
           - DeviceIndex: 0
-            InterfaceType: {{ 'efa' if queue_config.enable_efa else "!Ref 'AWS::NoValue'" }}
+            InterfaceType: {{ 'efa' if compute_resource.enable_efa else "!Ref 'AWS::NoValue'" }}
             Groups: !Ref 'ComputeSecurityGroups'
             AssociatePublicIpAddress: !Ref 'AssociatePublicIpAddress'
             SubnetId: !Ref 'ComputeSubnetId'
@@ -112,12 +113,12 @@ Resources:
           SpotOptions:
             SpotInstanceType: one-time
             InstanceInterruptionBehavior: terminate
-            MaxPrice: {% if instance_config.spot_price %}'{{ instance_config.spot_price }}'{% else %}!Ref 'AWS::NoValue'{% endif %}
+            MaxPrice: {% if compute_resource.spot_price %}'{{ compute_resource.spot_price }}'{% else %}!Ref 'AWS::NoValue'{% endif %}
           MarketType: spot
   {%- endif %}
         ImageId: !Ref 'ImageId'
         CpuOptions:
-          CoreCount: {{ instance_config.vcpus if queue_config.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
+          CoreCount: {{ compute_resource.vcpus if queue_config.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
           ThreadsPerCore: {{ 1 if queue_config.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
         Monitoring:
           Enabled: false
@@ -240,7 +241,7 @@ Resources:
                     {
                       "cfncluster": {
                         "stack_name": "${MainStackName}",
-                        "enable_efa": "{{ 'efa' if queue_config.enable_efa else 'NONE' }}",
+                        "enable_efa": "{{ 'efa' if compute_resource.enable_efa else 'NONE' }}",
                         "cfn_raid_parameters": "${RAIDOptions}",
                         "cfn_preinstall": "${PreInstallScript}",
                         "cfn_preinstall_args": "${PreInstallArgs}",
