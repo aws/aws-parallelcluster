@@ -19,6 +19,8 @@ from configparser import NoSectionError
 
 import yaml
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
+from pcluster.config.resource_map import ResourceMap
+from pcluster.config.update_policy import UpdatePolicy
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.utils import get_avail_zone, get_cfn_param, get_efs_mount_target_id, get_instance_vcpus
 
@@ -61,7 +63,7 @@ class Param(object):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             self.value = config_parser.get(section_name, self.key)
             self._check_allowed_values()
@@ -142,8 +144,12 @@ class Param(object):
 
     def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser in the right section."""
-        section_name = _get_file_section_name(self.section_key, self.section_label)
-        if self.value is not None and (write_defaults or self.value != self.get_default_value()):
+        section_name = get_file_section_name(self.section_key, self.section_label)
+        if (
+            self.value is not None
+            and (write_defaults or self.value != self.get_default_value())
+            and self.get_string_value()
+        ):
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.get_string_value())
         else:
@@ -194,6 +200,28 @@ class Param(object):
         """
         return str(self.value if self.value is not None else self.definition.get("default", "NONE"))
 
+    def refresh(self):
+        """
+        Refresh the parameter's value.
+
+        Does nothing by default. Subclasses can implement this method by updating parameter's value based on
+        PClusterConfig status.
+        """
+        pass
+
+    def get_update_policy(self):
+        """Get the update policy of the parameter."""
+        return self.definition.get("update_policy", UpdatePolicy.UNKNOWN)
+
+    def __eq__(self, other):
+        return other and (self.key == other.key) and self._value_eq(other)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def _value_eq(self, other):
+        return self.value == other.value
+
 
 class CommaSeparatedParam(Param):
     """Class to manage comma separated parameters. E.g. additional_iam_policies."""
@@ -204,7 +232,7 @@ class CommaSeparatedParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             config_value = config_parser.get(section_name, self.key)
             self.value = list(map(lambda x: x.strip(), config_value.split(",")))
@@ -247,7 +275,7 @@ class FloatParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             try:
                 self.value = config_parser.getfloat(section_name, self.key)
@@ -284,7 +312,7 @@ class BoolParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             try:
                 self.value = config_parser.getboolean(section_name, self.key)
@@ -331,7 +359,7 @@ class IntParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             try:
                 self.value = config_parser.getint(section_name, self.key)
@@ -367,7 +395,7 @@ class JsonParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             config_value = config_parser.get(section_name, self.key)
             self.value = self.get_value_from_string(config_value)
@@ -395,8 +423,12 @@ class JsonParam(Param):
         return self.definition.get("default", {})
 
     def get_string_value(self):
-        """Convert internal representation into JSON."""
-        return json.dumps(self.value)
+        """
+        Convert the internal representation into JSON.
+
+        The keys in the Json are sorted alphabetically to produce a predictable and easy to test output.
+        """
+        return json.dumps(self.value, sort_keys=True)
 
     def get_cfn_value(self):
         """Convert parameter value into CFN value."""
@@ -419,7 +451,7 @@ class ExtraJsonParam(JsonParam):
         recipes require "cfncluster" as key.
         """
         if self.value and "cluster" in self.value:
-            self.value = {"cfncluster": self.value.pop("cluster")}
+            self.value["cfncluster"] = self.value.pop("cluster")
         return self.get_string_value()
 
     def to_file(self, config_parser, write_defaults=False):
@@ -429,7 +461,7 @@ class ExtraJsonParam(JsonParam):
         we are writing "cluster" in the file to suggest the users the recommended syntax.
         """
         if self.value and "cfncluster" in self.value:
-            self.value = {"cluster": self.value.pop("cfncluster")}
+            self.value["cluster"] = self.value.pop("cfncluster")
         super(ExtraJsonParam, self).to_file(config_parser)
 
 
@@ -461,7 +493,7 @@ class SharedDirParam(Param):
     def to_file(self, config_parser, write_defaults=False):
         """Set parameter in the config_parser only if the PclusterConfig object does not contains ebs sections."""
         # if not contains ebs_settings --> single SharedDir
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if not self.pcluster_config.get_section("ebs") and (write_defaults or self.value != self.get_default_value()):
             _ensure_section_existence(config_parser, section_name)
             config_parser.set(section_name, self.key, self.value)
@@ -645,45 +677,33 @@ class AdditionalIamPoliciesParam(CommaSeparatedParam):
       during CFN conversion.
     """
 
+    policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
+
     def __init__(self, section_key, section_label, param_key, param_definition, pcluster_config):
         super(AdditionalIamPoliciesParam, self).__init__(
             section_key, section_label, param_key, param_definition, pcluster_config
         )
-        self.policy_inclusion_rules = [CloudWatchAgentServerPolicyInclusionRule, AWSBatchFullAccessInclusionRule]
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section."""
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        super(AdditionalIamPoliciesParam, self).to_file(config_parser)
+    def get_string_value(self):
+        """Convert internal representation into string. Conditionally enabled policies are not written."""
+        non_conditional_iam_policies = self._non_conditional_iam_policies()
+        return str(",".join(non_conditional_iam_policies)) if non_conditional_iam_policies else None
 
-    def from_cfn_params(self, cfn_params):
-        """
-        Initialize parameter value by parsing CFN input parameters.
+    def refresh(self):
+        """Refresh the additional IAM policies by adding conditional policies, if needed."""
+        additional_policies = set(self.value)
+        for rule in AdditionalIamPoliciesParam.policy_inclusion_rules:
+            if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in additional_policies:
+                additional_policies.add(rule.get_policy())
+        self.value = sorted(additional_policies)
 
-        :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
-        """
-        super(AdditionalIamPoliciesParam, self).from_cfn_params(cfn_params)
-        # remove conditional policies, if there
-        self._remove_conditional_policies()
-        return self
-
-    def to_cfn(self):
-        """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
-        # Add conditional policies if appropriate
+    def _non_conditional_iam_policies(self):
+        """Given a list of IAM policies return a new list containing only the non conditional ones."""
+        policies = set(self.value)  # List is cloned to avoid modifying self value
         for rule in self.policy_inclusion_rules:
-            if rule.policy_is_required(self.pcluster_config) and rule.get_policy() not in self.value:
-                self.value.append(rule.get_policy())
-
-        cfn_params = super(AdditionalIamPoliciesParam, self).to_cfn()
-
-        return cfn_params
-
-    def _remove_conditional_policies(self):
-        """Remove any of the policy ARNs in self.conditional_policies from self.value."""
-        for rule in self.policy_inclusion_rules:
-            if rule.get_policy() in self.value:
-                self.value.remove(rule.get_policy())
+            if rule.policy_is_required(self.pcluster_config):
+                policies.discard(rule.get_policy())
+        return sorted(policies)
 
 
 class AvailabilityZoneParam(Param):
@@ -695,7 +715,7 @@ class AvailabilityZoneParam(Param):
     """
 
     def _init_az(self, config_parser, subnet_parameter):
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, subnet_parameter):
             subnet_id = config_parser.get(section_name, subnet_parameter)
             self.value = get_avail_zone(subnet_id)
@@ -720,6 +740,12 @@ class MasterAvailabilityZoneParam(AvailabilityZoneParam):
 
         return self
 
+    def from_cfn_params(self, cfn_params):
+        """Initialize the Availability zone by checking the Compute Subnet from cfn."""
+        master_subnet_id = get_cfn_param(cfn_params, "MasterSubnetId")
+        self.value = get_avail_zone(master_subnet_id)
+        return self
+
 
 class ComputeAvailabilityZoneParam(AvailabilityZoneParam):
     """
@@ -733,6 +759,12 @@ class ComputeAvailabilityZoneParam(AvailabilityZoneParam):
         """Initialize the Availability zone of the cluster by checking the Compute Subnet."""
         self._init_az(config_parser, "compute_subnet_id")
 
+        return self
+
+    def from_cfn_params(self, cfn_params):
+        """Initialize the Availability zone by checking the Compute Subnet from cfn."""
+        compute_subnet_id = get_cfn_param(cfn_params, "ComputeSubnetId")
+        self.value = get_avail_zone(compute_subnet_id)
         return self
 
 
@@ -785,6 +817,75 @@ class DisableHyperThreadingParam(BoolParam):
         return cfn_params
 
 
+class ClusterConfigMetadataParam(JsonParam):
+    """
+    Class to manage configuration metadata.
+
+    Uses an internal ResourceMap to manage section labels in order to ensure proper correspondence between the section
+    labels and their corresponding CloudFormation resources.
+    """
+
+    def _from_definition(self):
+        self.value = self.get_default_value()
+        self.__section_resources = ResourceMap(self.value.get("sections"))
+
+    def from_cfn_params(self, cfn_params):
+        """Initialize parameter by parsing CFN parameters."""
+        super(JsonParam, self).from_cfn_params(cfn_params)
+        self.__section_resources = ResourceMap(self.value.get("sections"))
+        return self
+
+    def __store_section_labels(self, section_key):
+        """Store all the section labels corresponding to the provided section key into the internal ResourceMap."""
+        section = self.pcluster_config.get_section(section_key)
+        if section:
+            labels = [section.label for section in self.pcluster_config.get_sections(section.key).values()]
+
+            if not self.__section_resources.resources(section.key):
+                # Allocating more resources than allowed is fine here. Integrity check is performed by validation.
+                self.__section_resources.alloc(section.key, max(section.max_resources, len(labels)))
+
+            self.__section_resources.store(section.key, labels)
+
+    def get_cfn_value(self):
+        """Get value to store in CloudFormation."""
+        return self.get_string_value()
+
+    def get_default_value(self):
+        """Get default value from the Param definition."""
+        return self.definition.get("default", {"sections": {}})
+
+    def refresh(self):
+        """
+        Refresh the configuration metadata.
+
+        The operation is done by storing all section labels of the parent PClusterConfig instance into the internal
+        ResourceMap and then setting them back into the "sections" key of the parameter's Json value.
+        This allows the original order of the labels to be maintained when the configuration has been loaded from cfn.
+        """
+        for section_key in self.pcluster_config.get_section_keys():
+            self.__store_section_labels(section_key)
+        self.value["sections"] = self.__section_resources.resources()
+
+    def get_section_resources(self, section_key):
+        """Get the resources linked to a specific section key in the configuration metadata."""
+        return self.__section_resources.resources(section_key)
+
+    def create_section_resources(self, section_key, num_labels, max_resources):
+        """
+        Create automatic section resource labels for the provided section key.
+
+        :param section_key The section key
+        :param num_labels The number of labels to create
+        :param max_resources The max number of resources to allocate for this section key
+        """
+        self.__section_resources.alloc(section_key, max_resources)
+        section_labels = ["{0}{1}".format(section_key, str(index + 1)) for index in range(num_labels)]
+        self.__section_resources.store(section_key, section_labels)
+        LOGGER.debug("Automatic labels generated: {0}".format(str(section_labels)))
+        return self.__section_resources.resources(section_key)
+
+
 # ---------------------- SettingsParam ---------------------- #
 
 
@@ -804,7 +905,7 @@ class SettingsParam(Param):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             self.value = config_parser.get(section_name, self.key)
             if self.value:
@@ -818,24 +919,23 @@ class SettingsParam(Param):
                     section = self.referred_section_type(
                         self.referred_section_definition, self.pcluster_config, section_label=self.value
                     ).from_file(config_parser, fail_on_absence=True)
-
-                    # Remove default section and replace with the new one.
-                    # We can only have a single section of this kind of settings
-                    self.pcluster_config.remove_section(
-                        self.referred_section_key, self.referred_section_definition.get("default_label")
-                    )
-                    self.pcluster_config.add_section(section)
+                    self._replace_default_section(section)
 
         return self
 
     def from_cfn_params(self, cfn_params):
         """Initialize section configuration parameters referred by the settings value by parsing CFN parameters."""
         self.value = self.definition.get("default", None)
-        if cfn_params:
-            section = self.referred_section_type(
-                self.referred_section_definition, self.pcluster_config, section_label=self.value
-            ).from_cfn_params(cfn_params)
-            self.pcluster_config.add_section(section)
+        section_labels = self.get_labels_by_cfn_order()
+        label = section_labels[0] if section_labels else None
+
+        # Section if rebuilt only if section label is found in cluster metadata
+        if label:
+            if cfn_params:
+                section = self.referred_section_type(
+                    self.referred_section_definition, self.pcluster_config, section_label=label
+                ).from_cfn_params(cfn_params)
+                self._replace_default_section(section)
 
         return self
 
@@ -868,7 +968,7 @@ class SettingsParam(Param):
             for param_key, param_definition in self.referred_section_definition.get("params").items():
                 param_value = section.get_param_value(param_key)
 
-                section_name = _get_file_section_name(self.section_key, self.section_label)
+                section_name = get_file_section_name(self.section_key, self.section_label)
                 if not config_parser.has_option(section_name, self.key) and (
                     write_defaults or (param_value != param_definition.get("default", None))
                 ):
@@ -890,6 +990,73 @@ class SettingsParam(Param):
 
         return cfn_params
 
+    def refresh(self):
+        """Update SettingsParam value to make it match actual sections in config."""
+        sections_labels = [
+            section.label for _, section in self.pcluster_config.get_sections(self.referred_section_key).items()
+        ]
+
+        self.value = ",".join(sorted(sections_labels)) if sections_labels else None
+
+    def get_labels_by_cfn_order(self, expected_num_labels=0, include_none_values=True):
+        """
+        Return the sections labels of this Settings param respecting their order in the cluster config metadata.
+
+        If the config metadata has been restored from CloudFormation, for instance in the context of a pcluster update
+        operation, this method ensures that the labels already stored in metadata will maintain their positions, so that
+        their correspondence with the existing CloudFormation resources is respected.
+        Important: calling this method is safe from all stages of configuration loading / writing  because the
+        CloudFormationMetadata parameter is the first to be loaded.
+
+        :param expected_num_labels: number of expected labels
+        :param include_none_values: Include None values in the result
+        :returns: The labels list as stored in config metadata
+        """
+        metadata = self.pcluster_config.get_section("cluster").get_param("cluster_config_metadata")
+        section_labels = metadata.get_section_resources(self.referred_section_key)
+        if not section_labels:
+            section_labels = self.value.split(",") if self.value else None
+
+        # Automatic section labels creation if no metadata information is found.
+        # This condition is expected in two cases:
+        #   1) when loading sections from cfn which where not present in the original config file (these sections will
+        #      contain all default parameter values)
+        #   2) in unit tests that build the configuration on the fly
+        if not section_labels:
+            max_resources = int(self.referred_section_definition.get("max_resources", "1"))
+            section_labels = metadata.create_section_resources(
+                self.referred_section_key, expected_num_labels, max_resources
+            )
+
+        if not include_none_values:
+            section_labels = [label for label in section_labels if label is not None]
+
+        return section_labels
+
+    def _value_eq(self, other):
+        """Compare settings labels ignoring positions and extra spaces."""
+        value1 = self.value
+        value2 = other.value if other else None
+        if value1:
+            value1 = ",".join(sorted([x.strip() for x in value1.split(",")]))
+        if value2:
+            value2 = ",".join(sorted([x.strip() for x in value2.split(",")]))
+        return value1 == value2
+
+    def _replace_default_section(self, section):
+        """
+        Remove default section and replace with the new one.
+
+        Apart from multiple sections, which are managed in a specific way, normally only one section per key is allowed.
+        Since some sections are created by default to make sure they are always present, calling this method ensures
+        that any existing default section of the same type will be removed from the configuration before adding the new
+        one.
+        """
+        self.pcluster_config.remove_section(
+            self.referred_section_key, self.referred_section_definition.get("default_label")
+        )
+        self.pcluster_config.add_section(section)
+
 
 class EBSSettingsParam(SettingsParam):
     """
@@ -906,7 +1073,7 @@ class EBSSettingsParam(SettingsParam):
 
         :param config_parser: the configparser object from which get the parameter
         """
-        section_name = _get_file_section_name(self.section_key, self.section_label)
+        section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             self.value = config_parser.get(section_name, self.key)
             if self.value:
@@ -922,20 +1089,19 @@ class EBSSettingsParam(SettingsParam):
         """Init ebs section only if there are more than one ebs (the default one)."""
         labels = []
         if cfn_params:
+            # FIXME: remove NumberOfEBSVol Parameter and use EBS section params to manage EBS Volumes in cfn template
+            # fix ebs substack - this code can be reused for back compatibility
             num_of_ebs = int(get_cfn_param(cfn_params, "NumberOfEBSVol"))
             if num_of_ebs >= 1 and "," in get_cfn_param(cfn_params, "SharedDir"):
                 # When the SharedDir doesn't contain commas, it has been created from a single EBS volume
                 # specified through the shared_dir configuration parameter only
                 # If SharedDir contains comma, we need to create at least one ebs section
-                for index in range(num_of_ebs):
-                    # TODO Use the label when will be available
-                    label = "{0}{1}".format(self.referred_section_key, str(index + 1))
-                    labels.append(label)
-
+                labels = self.get_labels_by_cfn_order(expected_num_labels=num_of_ebs, include_none_values=False)
+                for index in range(len(labels)):
                     # create empty section
                     referred_section_type = self.referred_section_definition.get("type", Section)
                     referred_section = referred_section_type(
-                        self.referred_section_definition, self.pcluster_config, label
+                        self.referred_section_definition, self.pcluster_config, labels[index]
                     )
 
                     for param_key, param_definition in self.referred_section_definition.get("params").items():
@@ -963,7 +1129,7 @@ class EBSSettingsParam(SettingsParam):
                 sections.update(self.pcluster_config.get_section(self.referred_section_key, section_label.strip()))
 
         if sections:
-            section_name = _get_file_section_name(self.section_key, self.section_label)
+            section_name = get_file_section_name(self.section_key, self.section_label)
             # add "*_settings = *" to the parent section
             _ensure_section_existence(config_parser, section_name)
             config_parser.add_section(section_name)
@@ -975,12 +1141,14 @@ class EBSSettingsParam(SettingsParam):
     def to_cfn(self):
         """Convert a list of sections to multiple CFN params."""
         sections = OrderedDict({})
-        if self.value:
-            for section_label in self.value.split(","):
-                section = self.pcluster_config.get_section(self.referred_section_key, section_label.strip())
-                sections[section_label] = section
 
-        max_number_of_ebs_volumes = 5
+        # Section labels are retrieved from configuration metadata rather than directly from the ebs_settings param
+        # to respect the original order of Cfn resources
+        section_labels = self.get_labels_by_cfn_order()
+
+        for section_label in [section_label for section_label in section_labels if section_label is not None]:
+            section = self.pcluster_config.get_section(self.referred_section_key, section_label.strip())
+            sections[section_label] = section
 
         cfn_params = {}
         number_of_ebs_sections = len(sections)
@@ -998,31 +1166,23 @@ class EBSSettingsParam(SettingsParam):
             if cfn_converter:
 
                 cfn_value_list = []
-                for section_label, section in sections.items():
-                    param = section.get_param(param_key)
-                    if param:
-                        cfn_value_list.append(param.to_cfn().get(cfn_converter))
+                for section_label in section_labels:
+                    if section_label:
+                        section = sections[section_label]
+                        param = section.get_param(param_key)
                     else:
-                        # define a "default" param and convert it to cfn
+                        # Create a default param
                         param_type = param_definition.get("type", Param)
                         param = param_type(
-                            section.key, section_label, param_key, param_definition, self.pcluster_config
+                            self.referred_section_key, "default", param_key, param_definition, self.pcluster_config
                         )
-                        cfn_value_list.append(param.to_cfn().get(cfn_converter))
-
-                # add missing items until the max, with a default param
-                param_type = param_definition.get("type", Param)
-                param = param_type(
-                    self.referred_section_key, "default", param_key, param_definition, self.pcluster_config
-                )
-                cfn_value_list.extend(
-                    [param.to_cfn().get(cfn_converter)] * (max_number_of_ebs_volumes - number_of_ebs_sections)
-                )
+                    cfn_value_list.append(param.to_cfn().get(cfn_converter))
 
                 cfn_value = ",".join(cfn_value_list)
                 cfn_params[cfn_converter] = cfn_value
 
         # We always have at least one EBS volume
+        # FIXME: remove NumberOfEBSVol Parameter and use EBS section params to manage EBS Volumes in cfn template
         cfn_params["NumberOfEBSVol"] = str(max(number_of_ebs_sections, 1))
 
         return cfn_params
@@ -1038,17 +1198,31 @@ class Section(object):
     def __init__(self, section_definition, pcluster_config, section_label=None):
         self.definition = section_definition
         self.key = section_definition.get("key")
-        self.label = section_label or self.definition.get("default_label", "")
+        self._label = section_label or self.definition.get("default_label", "")
+        # All sections have only 1 resource by default, which means they refer to a single Cfn resource or set
+        # of resources
+        self.max_resources = int(section_definition.get("max_resources", "1"))
         self.pcluster_config = pcluster_config
 
         # initialize section parameters with default values
         self.params = {}
         self._from_definition()
 
+    @property
+    def label(self):
+        """Get the section label."""
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        """Set the section label. Marks the PclusterConfig parent for refreshing if called."""
+        self._label = label
+        self.pcluster_config._config_updated()
+
     def from_file(self, config_parser, fail_on_absence=False):
         """Initialize section configuration parameters by parsing config file."""
         params_definitions = self.definition.get("params")
-        section_name = _get_file_section_name(self.key, self.label)
+        section_name = get_file_section_name(self.key, self.label)
 
         if config_parser.has_section(section_name):
             for param_key, param_definition in params_definitions.items():
@@ -1117,7 +1291,7 @@ class Section(object):
     def validate(self):
         """Call the validator function of the section and of all the parameters."""
         if self.params:
-            section_name = _get_file_section_name(self.key, self.label)
+            section_name = get_file_section_name(self.key, self.label)
             LOGGER.debug("Validating section '[%s]'...", section_name)
 
             # validate section
@@ -1149,7 +1323,7 @@ class Section(object):
 
     def to_file(self, config_parser, write_defaults=False):
         """Create the section and add all the parameters in the config_parser."""
-        section_name = _get_file_section_name(self.key, self.label)
+        section_name = get_file_section_name(self.key, self.label)
 
         for param_key, param_definition in self.definition.get("params").items():
             param = self.get_param(param_key)
@@ -1223,10 +1397,19 @@ class Section(object):
         """
         Return the Param object corresponding to the given key.
 
-        :param param_key: yhe key to identify the Param object in the internal dictionary
+        :param param_key: the key to identify the Param object in the internal dictionary
         :return: a Param object
         """
         return self.params[param_key]
+
+    def set_param(self, param_key, param_obj):
+        """
+        Set a new Param object at the given key.
+
+        :param param_key: the key to identify the Param object in the internal dictionary
+        :param param_obj: a Param object
+        """
+        self.params[param_key] = param_obj
 
     def get_param_value(self, param_key):
         """
@@ -1236,6 +1419,11 @@ class Section(object):
         :return: the value of the Param object or None if the param is not present in the Section
         """
         return self.get_param(param_key).value if self.get_param(param_key) else None
+
+    def refresh(self):
+        """Refresh all parameters."""
+        for _, param in self.params.items():
+            param.refresh()
 
 
 class EFSSection(Section):
@@ -1306,24 +1494,20 @@ class ClusterSection(Section):
         """Initialize section configuration parameters by parsing CFN parameters."""
         if cfn_params:
             super(ClusterSection, self).from_cfn_params(cfn_params)
-            self.label = get_cfn_param(cfn_params, "CLITemplate")
+
+        # Update section label from metadata
+        section_metadata = self.get_param_value("cluster_config_metadata").get("sections").get("cluster")
+        self.label = section_metadata[0] if section_metadata else "default"
 
         return self
 
     def to_cfn(self):
-        """
-        Convert section to CFN representation.
-
-        In addition to the conversion of the parameter contained in the section definition,
-        it also add a CFN param that identifies the label in the template.
-        [cluster test] --> test will be the CLITemplate CFN parameter.
-        """
+        """Convert section to CFN representation."""
         cfn_params = super(ClusterSection, self).to_cfn()
-        cfn_params["CLITemplate"] = self.label
         return cfn_params
 
 
-def _get_file_section_name(section_key, section_label=None):
+def get_file_section_name(section_key, section_label=None):
     return section_key + (" {0}".format(section_label) if section_label else "")
 
 

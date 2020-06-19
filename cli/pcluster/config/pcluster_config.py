@@ -21,7 +21,7 @@ import configparser
 from botocore.exceptions import ClientError
 
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
-from pcluster.utils import get_instance_vcpus, get_stack, get_stack_name
+from pcluster.utils import get_installed_version, get_instance_vcpus, get_stack, get_stack_name, get_stack_version
 
 LOGGER = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ class PclusterConfig(object):
 
     This class contains a dictionary of sections associated to the given cluster
     """
+
+    GLOBAL_SECTIONS = ["aws", "global", "aliases"]
 
     def __init__(
         self,
@@ -56,8 +58,9 @@ class PclusterConfig(object):
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
         """
+        self.__autorefresh = False  # Initialization in progress
         self.fail_on_error = fail_on_error
-        self.sections = OrderedDict({})
+        self.__sections = OrderedDict({})
 
         # always parse the configuration file if there, to get AWS section
         self._init_config_parser(config_file, fail_on_file_absence)
@@ -69,8 +72,14 @@ class PclusterConfig(object):
         # init pcluster_config object, from cfn or from config_file
         if cluster_name:
             self.__init_sections_from_cfn(cluster_name)
+            self.cluster_name = cluster_name
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
+
+        self.__autorefresh = True  # Initialization completed
+
+        # Refresh sections and parameters
+        self._config_updated()
 
     def _init_config_parser(self, config_file, fail_on_config_file_absence=True):
         """
@@ -110,6 +119,15 @@ class PclusterConfig(object):
         except (configparser.ParsingError, configparser.DuplicateOptionError) as e:
             self.error("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
+    def get_section_keys(self, include_global_sections=False):
+        """Return the section keys."""
+        section_keys = self.__sections.keys()
+        if not include_global_sections:
+            section_keys = [
+                section_key for section_key in section_keys if section_key not in PclusterConfig.GLOBAL_SECTIONS
+            ]
+        return section_keys
+
     def get_sections(self, section_key):
         """
         Get the Section(s) identified by the given key.
@@ -124,7 +142,7 @@ class PclusterConfig(object):
         :param section_key: the identifier of the section type
         :return a dictionary containing the section
         """
-        return self.sections.get(section_key, {})
+        return self.__sections.get(section_key, {})
 
     def get_section(self, section_key, section_label=None):
         """
@@ -157,21 +175,33 @@ class PclusterConfig(object):
 
         :param section, a Section object
         """
-        if section.key not in self.sections:
-            self.sections[section.key] = {}
+        if section.key not in self.__sections:
+            self.__sections[section.key] = OrderedDict({})
 
         section_label = section.label if section.label else section.definition.get("default_label", "default")
-        self.sections[section.key][section_label] = section
+        self.__sections[section.key][section_label] = section
+        self._config_updated()
 
-    def remove_section(self, section_key, section_label):
+    def remove_section(self, section_key, section_label=None):
         """
         Remove a section from the PclusterConfig object, if there.
 
         :param section_key: the identifier of the section type
         :param section_label: the label of the section to delete.
         """
-        if section_key in self.sections:
-            self.sections[section_key].pop(section_label, None)
+        if section_key in self.__sections:
+            sections = self.__sections[section_key]
+
+            if section_label:
+                # If section label is specified, remove it directly
+                sections.pop(section_label)
+            else:
+                # If no label is specified, check that no more than one section exists with the provided key
+                if len(sections) > 1:
+                    raise Exception("More than one section with key {0}".format(section_key))
+                else:
+                    self.__sections.pop(section_key)
+        self._config_updated()
 
     def __init_aws_credentials(self):
         """Set credentials in the environment to be available for all the boto3 calls."""
@@ -296,15 +326,60 @@ class PclusterConfig(object):
         except configparser.NoSectionError as e:
             self.error("Section '[{0}]' not found in the config file.".format(e.section))
 
+    def set_auto_refresh(self, refresh_enabled):
+        """Enable or disable the configuration autorefresh."""
+        self.__autorefresh = refresh_enabled
+
+    def _config_updated(self):
+        """
+        Notify the PclusterConfig instance that the configuration structure has changed.
+
+        The purpose of this method is to allow internal configuration objects such as Param, Section etc to notify the
+        parent PclusterConfig when something structural has changed. The configuration will be reloaded based on whether
+        or not the autofresh function is enabled.
+        """
+        if self.__autorefresh:
+            self.refresh()
+
+    def refresh(self):
+        """
+        Reload the sections structure and refresh all configuration sections and parameters.
+
+        This method must be called if structural configuration changes have been applied, like updating a section
+        label, adding or removing a section etc.
+        """
+        # Rebuild the new sections structure
+        new_sections = OrderedDict({})
+        for key, sections in self.__sections.items():
+            new_sections_map = OrderedDict({})
+            for _, section in sections.items():
+                new_sections_map[section.label] = section
+            new_sections[key] = new_sections_map
+        self.__sections = new_sections
+
+        # Refresh all sections
+        for _, sections in self.__sections.items():
+            for _, section in sections.items():
+                section.refresh()
+
     def __init_sections_from_cfn(self, cluster_name):
         try:
             stack = get_stack(get_stack_name(cluster_name))
 
+            if get_stack_version(stack) != get_installed_version():
+                self.error(
+                    "The cluster {0} was created with a different version of ParallelCluster: {1}. "
+                    "Installed version is {2}. Update operations may only be performed using the same ParallelCluster "
+                    "version used to create the cluster.".format(
+                        cluster_name, get_stack_version(stack), get_installed_version()
+                    )
+                )
+
             section_type = CLUSTER.get("type")
-            section = section_type(section_definition=CLUSTER, pcluster_config=self).from_cfn_params(
-                cfn_params=stack.get("Parameters", [])
-            )
+            section = section_type(section_definition=CLUSTER, pcluster_config=self)
             self.add_section(section)
+            section.from_cfn_params(cfn_params=stack.get("Parameters", []))
+
         except ClientError as e:
             self.error(
                 "Unable to retrieve the configuration of the cluster '{0}'.\n{1}".format(
@@ -314,7 +389,7 @@ class PclusterConfig(object):
 
     def validate(self):
         """Validate the configuration."""
-        for _, sections in self.sections.items():
+        for _, sections in self.__sections.items():
             for _, section in sections.items():
                 section.validate()
 
@@ -348,7 +423,6 @@ class PclusterConfig(object):
         ):
             return
 
-        # Retrieve instance types
         master_instance_type = cluster_section.get_param_value("master_instance_type")
         compute_instance_type = cluster_section.get_param_value("compute_instance_type")
 
@@ -480,3 +554,18 @@ class PclusterConfig(object):
         :param config_file: pcluster config file - None to use default
         """
         PclusterConfig(config_file=config_file, fail_on_error=False, fail_on_file_absence=False)
+
+    def update(self, pcluster_config):
+        """
+        Update the entire configuration structure taking the data from the provided pcluster_config instance.
+
+        This operation allows the configuration metadata to be correctly updated before being sent back to
+        CloudFormation.
+
+        :param pcluster_config: The new configuration containing the updated settings.
+        """
+        # When the configuration is updated, all parameters are replaced except config metadata
+        # which is needed to keep the right linking between sections and CloudFormation resources
+        config_metadata_param = self.get_section("cluster").get_param("cluster_config_metadata")
+        self.__sections = pcluster_config.__sections
+        self.get_section("cluster").set_param("cluster_config_metadata", config_metadata_param)

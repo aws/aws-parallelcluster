@@ -14,16 +14,17 @@ import os
 
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
-from pcluster.config.mappings import ALIASES, AWS, CLUSTER, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
+from pcluster.config.mappings import ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
 from pcluster.config.param_types import BoolParam
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
 
-EXISTING_SECTIONS = [ALIASES, AWS, CLUSTER, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC]
+EXISTING_SECTIONS = [ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC]
 
 
 def test_mapping_consistency():
     """Verify for typos or wrong keys in the mappings.py file."""
+    # TODO: use jsonschema to validate mappings dict.
     for section_definition in EXISTING_SECTIONS:
         for section_key, _ in section_definition.items():
             assert_that(
@@ -31,7 +32,7 @@ def test_mapping_consistency():
                 description="{0} is not allowed in {1} section definition".format(
                     section_key, section_definition.get("key")
                 ),
-            ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators")
+            ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators", "max_resources")
 
         for param_key, param_definition in section_definition.get("params").items():
 
@@ -53,8 +54,14 @@ def test_mapping_consistency():
                     "validators",
                     "default",
                     "referred_section",
+                    "update_policy",
                     "required",
                 )
+                # Update policy must be always specified
+                assert_that(
+                    param_definition.get("update_policy"),
+                    description="Missing update policy for parameter '{0}'".format(param_key),
+                ).is_not_none()
 
 
 def test_example_config_consistency(mocker):
@@ -86,6 +93,10 @@ def test_defaults_consistency():
     # CFN template. This is because CloudWatch logging is enabled by default, and the appropriate
     # policy is added to this parameter in a transparent fashion.
     ignored_params = CFN_CLI_RESERVED_PARAMS + ["EC2IAMPolicies"]
+
+    # ClusterConfigMetadata parameter is expected to differ from the default value in the CFN template because config
+    # metadata is generated dynamically based on user's configuration.
+    ignored_params += ["ClusterConfigMetadata"]
 
     cfn_params = [section_cfn_params.value for section_cfn_params in DefaultCfnParams]
     default_cfn_values = utils.merge_dicts(*cfn_params)

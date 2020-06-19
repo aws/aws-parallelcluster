@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
+
 import pytest
 
 import tests.pcluster.config.utils as utils
@@ -18,104 +20,37 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict",
     [
+        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": []}),),
         (
-            {
-                "AccessFrom": "0.0.0.0/0",
-                "AdditionalCfnTemplate": "NONE",
-                "AdditionalSG": "NONE",
-                "AvailabilityZone": "eu-west-1a",
-                "BaseOS": "alinux",
-                "CLITemplate": "default",
-                "ClusterType": "ondemand",
-                "ComputeInstanceType": "c4.large",
-                "ComputeRootVolumeSize": "15",
-                "ComputeSubnetCidr": "NONE",
-                "ComputeSubnetId": "subnet-0436191fe84fcff4c",
-                "ComputeWaitConditionCount": "1",
-                "CustomAMI": "NONE",
-                "CustomAWSBatchTemplateURL": "NONE",
-                "CustomChefCookbook": "NONE",
-                "CustomChefRunList": "NONE",
-                "DesiredSize": "1",
-                "EBSEncryption": "false, false, false, false, false",
-                "EBSKMSKeyId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
-                "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
-                "EncryptedEphemeral": "false",
-                "EphemeralDir": "/scratch",
-                "ExtraJson": "{}",
-                "KeyName": "test",
-                "MasterInstanceType": "c4.large",
-                "MasterRootVolumeSize": "15",
-                "MasterSubnetId": "subnet-03bfbc8d4e2e3a8f6",
-                "MaxSize": "3",
-                "MinSize": "1",
-                "NumberOfEBSVol": "1",
-                "Placement": "cluster",
-                "PlacementGroup": "NONE",
-                "PostInstallArgs": "NONE",
-                "PostInstallScript": "NONE",
-                "PreInstallArgs": "NONE",
-                "PreInstallScript": "NONE",
-                "ProxyServer": "NONE",
-                "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-                "ResourcesS3Bucket": "NONE",
-                "S3ReadResource": "NONE",
-                "S3ReadWriteResource": "NONE",
-                "ScaleDownIdleTime": "10",
-                "Scheduler": "torque",
-                "SharedDir": "/shared",
-                "SpotPrice": "0.00",
-                "Tenancy": "default",
-                "UsePublicIps": "true",
-                "VPCId": "vpc-004aabeb385513a0d",
-                "VPCSecurityGroupId": "NONE",
-                "VolumeIOPS": "100, 100, 100, 100, 100",
-                "VolumeSize": "20, 20, 20, 20, 20",
-                "VolumeType": "gp2, gp2, gp2, gp2, gp2",
-                "Cores": "-1,-1",
-                "EC2IAMPolicies": "NONE",
-                "IntelHPCPlatform": "true",
-            },
+            DefaultCfnParams["cluster"].value,
             utils.merge_dicts(
                 DefaultDict["cluster"].value,
                 {
-                    "key_name": "test",
-                    "scheduler": "torque",
-                    "master_instance_type": "c4.large",
-                    "master_root_volume_size": 15,
-                    "compute_instance_type": "c4.large",
-                    "compute_root_volume_size": 15,
-                    "initial_queue_size": 1,
-                    "max_queue_size": 3,
-                    "placement": "cluster",
-                    "maintain_initial_size": True,
-                    "enable_intel_hpc_platform": True,
-                    "base_os": "alinux",
+                    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
+                    "base_os": "alinux2",
+                    "scheduler": "slurm",
                 },
             ),
-        )
-    ],
-)
-def test_cluster_section_from_250_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.5.0 CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        ({}, DefaultDict["cluster"].value),
-        (DefaultCfnParams["cluster"].value, DefaultDict["cluster"].value),
+        ),
         # awsbatch defaults
         (
-            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"Scheduler": "awsbatch"}),
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "Scheduler": "awsbatch",
+                    "EC2IAMPolicies": ",".join(
+                        [
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                        ]
+                    ),
+                },
+            ),
             utils.merge_dicts(
                 DefaultDict["cluster"].value,
                 {
                     "scheduler": "awsbatch",
+                    "base_os": "alinux2",
                     "min_vcpus": 0,
                     "desired_vcpus": 0,
                     "max_vcpus": 10,
@@ -125,415 +60,17 @@ def test_cluster_section_from_250_cfn(mocker, cfn_params_dict, expected_section_
                     "max_queue_size": 10,
                     "maintain_initial_size": False,
                     "spot_price": 0,
+                    "additional_iam_policies": [
+                        "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                    ],
                 },
             ),
         ),
-        # awsbatch custom
-        (
-            utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
-                {"Scheduler": "awsbatch", "MinSize": "2", "DesiredSize": "4", "MaxSize": "8", "SpotPrice": "25"},
-            ),
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "scheduler": "awsbatch",
-                    "min_vcpus": 2,
-                    "desired_vcpus": 4,
-                    "max_vcpus": 8,
-                    "spot_bid_percentage": 25,
-                    # verify also not awsbatch values
-                    "initial_queue_size": 0,
-                    "max_queue_size": 10,
-                    "maintain_initial_size": False,
-                    "spot_price": 0.0,
-                },
-            ),
-        ),
-        # traditional scheduler custom
-        (
-            utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
-                {"Scheduler": "slurm", "MinSize": "2", "DesiredSize": "2", "MaxSize": "8", "SpotPrice": "0.9"},
-            ),
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "scheduler": "slurm",
-                    "initial_queue_size": 2,
-                    "max_queue_size": 8,
-                    "maintain_initial_size": True,
-                    "spot_price": 0.9,
-                    # verify also awsbatch values
-                    "min_vcpus": 0,
-                    "desired_vcpus": 4,
-                    "max_vcpus": 10,
-                    "spot_bid_percentage": 0,
-                },
-            ),
-        ),
-        # single ebs specified through shared_dir only
-        (
-            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"SharedDir": "test"}),
-            utils.merge_dicts(DefaultDict["cluster"].value, {"shared_dir": "test"}),
-        ),
-        # single ebs specified through ebs setting
-        (
-            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"SharedDir": "/test,NONE,NONE,NONE,NONE"}),
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "shared_dir": "/shared",  # it is the default value, "/test" will be in the ebs section
-                    "ebs_settings": "ebs1",
-                },
-            ),
-        ),
-        # TODO test all cluster parameters
     ],
 )
-def test_cluster_section_from_241_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.4.1 CFN input parameters."""
-    if cfn_params_dict:
-        utils.set_default_values_for_required_cluster_section_params(expected_section_dict)
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        (
-            {
-                "AccessFrom": "0.0.0.0/0",
-                "AdditionalCfnTemplate": "NONE",
-                "AdditionalSG": "NONE",
-                "AvailabilityZone": "eu-west-1a",
-                "BaseOS": "alinux",
-                "CLITemplate": "default",
-                "ClusterType": "ondemand",
-                "ComputeInstanceType": "c4.large",
-                "ComputeRootVolumeSize": "15",
-                "ComputeSubnetCidr": "NONE",
-                "ComputeSubnetId": "subnet-0436191fe84fcff4c",
-                "ComputeWaitConditionCount": "1",
-                "CustomAMI": "NONE",
-                "CustomAWSBatchTemplateURL": "NONE",
-                "CustomChefCookbook": "NONE",
-                "CustomChefRunList": "NONE",
-                "DesiredSize": "1",
-                "EBSEncryption": "false, false, false, false, false",
-                "EBSKMSKeyId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
-                "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
-                "EncryptedEphemeral": "false",
-                "EphemeralDir": "/scratch",
-                "ExtraJson": "{}",
-                "KeyName": "test",
-                "MasterInstanceType": "c4.large",
-                "MasterRootVolumeSize": "15",
-                "MasterSubnetId": "subnet-03bfbc8d4e2e3a8f6",
-                "MaxSize": "3",
-                "MinSize": "1",
-                "NumberOfEBSVol": "1",
-                "Placement": "cluster",
-                "PlacementGroup": "NONE",
-                "PostInstallArgs": "NONE",
-                "PostInstallScript": "NONE",
-                "PreInstallArgs": "NONE",
-                "PreInstallScript": "NONE",
-                "ProxyServer": "NONE",
-                "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-                "ResourcesS3Bucket": "NONE",
-                "S3ReadResource": "NONE",
-                "S3ReadWriteResource": "NONE",
-                "ScaleDownIdleTime": "10",
-                "Scheduler": "torque",
-                "SharedDir": "/shared",
-                "SpotPrice": "0.00",
-                "Tenancy": "default",
-                "UsePublicIps": "true",
-                "VPCId": "vpc-004aabeb385513a0d",
-                "VPCSecurityGroupId": "NONE",
-                "VolumeIOPS": "100, 100, 100, 100, 100",
-                "VolumeSize": "20, 20, 20, 20, 20",
-                "VolumeType": "gp2, gp2, gp2, gp2, gp2",
-            },
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "key_name": "test",
-                    "scheduler": "torque",
-                    "master_instance_type": "c4.large",
-                    "master_root_volume_size": 15,
-                    "compute_instance_type": "c4.large",
-                    "compute_root_volume_size": 15,
-                    "initial_queue_size": 1,
-                    "max_queue_size": 3,
-                    "placement": "cluster",
-                    "maintain_initial_size": True,
-                    "base_os": "alinux",
-                },
-            ),
-        )
-    ],
-)
-def test_cluster_section_from_240_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.4.0 CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        # 2.3.1 CFN inputs
-        (
-            {
-                "AccessFrom": "0.0.0.0/0",
-                "AdditionalCfnTemplate": "NONE",
-                "AdditionalSG": "NONE",
-                "AvailabilityZone": "eu-west-1a",
-                "BaseOS": "centos7",
-                "CLITemplate": "default",
-                "ClusterType": "ondemand",
-                "ComputeInstanceType": "t2.micro",
-                "ComputeRootVolumeSize": "250",
-                "ComputeSubnetCidr": "NONE",
-                "ComputeSubnetId": "subnet-0436191fe84fcff4c",
-                "ComputeWaitConditionCount": "2",
-                "CustomAMI": "NONE",
-                "CustomAWSBatchTemplateURL": "NONE",
-                "CustomChefCookbook": "NONE",
-                "CustomChefRunList": "NONE",
-                "DesiredSize": "2",
-                "EBSEncryption": "NONE,NONE,NONE,NONE,NONE",
-                "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
-                "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
-                "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
-                "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
-                "EncryptedEphemeral": "false",
-                "EphemeralDir": "/scratch",
-                "ExtraJson": "{}",
-                "FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
-                "KeyName": "test",
-                "MasterInstanceType": "t2.micro",
-                "MasterRootVolumeSize": "250",
-                "MasterSubnetId": "subnet-03bfbc8d4e2e3a8f6",
-                "MaxSize": "2",
-                "MinSize": "0",
-                "NumberOfEBSVol": "1",
-                "Placement": "compute",
-                "PlacementGroup": "NONE",
-                "PostInstallArgs": "NONE",
-                "PostInstallScript": "NONE",
-                "PreInstallArgs": "NONE",
-                "PreInstallScript": "NONE",
-                "ProxyServer": "NONE",
-                "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-                "ResourcesS3Bucket": "NONE",
-                "S3ReadResource": "NONE",
-                "S3ReadWriteResource": "NONE",
-                "ScaleDownIdleTime": "10",
-                "Scheduler": "slurm",
-                "SharedDir": "/shared",
-                "SpotPrice": "0.00",
-                "Tenancy": "default",
-                "UsePublicIps": "true",
-                "VPCId": "vpc-004aabeb385513a0d",
-                "VPCSecurityGroupId": "NONE",
-                "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
-                "VolumeSize": "20,NONE,NONE,NONE,NONE",
-                "VolumeType": "gp2,NONE,NONE,NONE,NONE",
-            },
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "key_name": "test",
-                    "scheduler": "slurm",
-                    "master_instance_type": "t2.micro",
-                    "master_root_volume_size": 250,
-                    "compute_instance_type": "t2.micro",
-                    "compute_root_volume_size": 250,
-                    "initial_queue_size": 2,
-                    "max_queue_size": 2,
-                    "placement": "compute",
-                    "base_os": "centos7",
-                },
-            ),
-        )
-    ],
-)
-def test_cluster_section_from_231_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.3.1 CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        (
-            {
-                "AccessFrom": "0.0.0.0/0",
-                "AdditionalCfnTemplate": "NONE",
-                "AdditionalSG": "NONE",
-                "AvailabilityZone": "eu-west-1a",
-                "BaseOS": "ubuntu1404",  # NOTE: ubuntu1404 is no longer supported, but we convert it anyway
-                "CLITemplate": "default",
-                "ClusterType": "ondemand",
-                "ComputeInstanceType": "c4.large",
-                "ComputeRootVolumeSize": "15",
-                "ComputeSubnetCidr": "NONE",
-                "ComputeSubnetId": "subnet-0436191fe84fcff4c",
-                "ComputeWaitConditionCount": "0",
-                "CustomAMI": "NONE",
-                "CustomAWSBatchTemplateURL": "NONE",
-                "CustomChefCookbook": "NONE",
-                "CustomChefRunList": "NONE",
-                "DesiredSize": "0",
-                "EBSEncryption": "false, false, false, false, false",
-                "EBSKMSKeyId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
-                "EC2IAMRoleName": "NONE",
-                "EFSOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE",
-                "EncryptedEphemeral": "false",
-                "EphemeralDir": "/scratch",
-                "ExtraJson": "{}",
-                "KeyName": "test",
-                "MasterInstanceType": "c4.large",
-                "MasterRootVolumeSize": "15",
-                "MasterSubnetId": "subnet-03bfbc8d4e2e3a8f6",
-                "MaxSize": "3",
-                "MinSize": "0",
-                "NumberOfEBSVol": "1",
-                "Placement": "cluster",
-                "PlacementGroup": "NONE",
-                "PostInstallArgs": "NONE",
-                "PostInstallScript": "NONE",
-                "PreInstallArgs": "NONE",
-                "PreInstallScript": "NONE",
-                "ProxyServer": "NONE",
-                "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-                "ResourcesS3Bucket": "NONE",
-                "S3ReadResource": "NONE",
-                "S3ReadWriteResource": "NONE",
-                "ScaleDownIdleTime": "10",
-                "Scheduler": "torque",
-                "SharedDir": "/shared",
-                "SpotPrice": "0.00",
-                "Tenancy": "default",
-                "UsePublicIps": "true",
-                "VPCId": "vpc-004aabeb385513a0d",
-                "VPCSecurityGroupId": "NONE",
-                "VolumeIOPS": "100, 100, 100, 100, 100",
-                "VolumeSize": "20, 20, 20, 20, 20",
-                "VolumeType": "gp2, gp2, gp2, gp2, gp2",
-            },
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "key_name": "test",
-                    "scheduler": "torque",
-                    "master_instance_type": "c4.large",
-                    "master_root_volume_size": 15,
-                    "compute_instance_type": "c4.large",
-                    "compute_root_volume_size": 15,
-                    "initial_queue_size": 0,
-                    "max_queue_size": 3,
-                    "placement": "cluster",
-                    "base_os": "ubuntu1404",  # NOTE: We create the config with the old base_os (no longer supported)
-                },
-            ),
-        )
-    ],
-)
-def test_cluster_section_from_210_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.1.0 CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
-
-
-@pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
-    [
-        (
-            {
-                "AccessFrom": "0.0.0.0/0",
-                "AdditionalCfnTemplate": "NONE",
-                "AdditionalSG": "NONE",
-                "AvailabilityZone": "eu-west-1a",
-                "BaseOS": "alinux",
-                "CLITemplate": "default",
-                "ClusterReadyScript": "NONE",
-                "ClusterType": "ondemand",
-                "ComputeInstanceType": "c4.large",
-                "ComputeRootVolumeSize": "15",
-                "ComputeSubnetCidr": "NONE",
-                "ComputeSubnetId": "subnet-0436191fe84fcff4c",
-                "ComputeWaitConditionCount": "2",
-                "CustomAMI": "NONE",
-                "CustomAWSBatchTemplateURL": "NONE",
-                "CustomChefCookbook": "NONE",
-                "CustomChefRunList": "NONE",
-                "DesiredSize": "0",
-                "EBSEncryption": "false, false, false, false, false",
-                "EBSKMSKeyId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSSnapshotId": "NONE, NONE, NONE, NONE, NONE",
-                "EBSVolumeId": "NONE, NONE, NONE, NONE, NONE",
-                "EC2IAMRoleName": "NONE",
-                "EncryptedEphemeral": "false",
-                "EphemeralDir": "/scratch",
-                "EphemeralKMSKeyId": "NONE",
-                "ExtraJson": "{}",
-                "KeyName": "test",
-                "MasterInstanceType": "c5.large",
-                "MasterRootVolumeSize": "15",
-                "MasterSubnetId": "subnet-03bfbc8d4e2e3a8f6",
-                "MaxSize": "10",
-                "MinSize": "0",
-                "NumberOfEBSVol": "1",
-                "Placement": "cluster",
-                "PlacementGroup": "NONE",
-                "PostInstallArgs": "NONE",
-                "PostInstallScript": "NONE",
-                "PreInstallArgs": "NONE",
-                "PreInstallScript": "NONE",
-                "ProxyServer": "NONE",
-                "ResourcesS3Bucket": "NONE",
-                "S3ReadResource": "NONE",
-                "S3ReadWriteResource": "NONE",
-                "ScaleDownIdleTime": "10",
-                "Scheduler": "torque",
-                "SharedDir": "/shared",
-                "SpotPrice": "0.00",
-                "Tenancy": "default",
-                "UsePublicIps": "true",
-                "VPCId": "vpc-004aabeb385513a0d",
-                "VPCSecurityGroupId": "NONE",
-                "VolumeIOPS": "100, 100, 100, 100, 100",
-                "VolumeSize": "20, 20, 20, 20, 20",
-                "VolumeType": "gp2, gp2, gp2, gp2, gp2",
-            },
-            utils.merge_dicts(
-                DefaultDict["cluster"].value,
-                {
-                    "key_name": "test",
-                    "scheduler": "torque",
-                    "master_instance_type": "c5.large",
-                    "master_root_volume_size": 15,
-                    "compute_instance_type": "c4.large",
-                    "compute_root_volume_size": 15,
-                    "initial_queue_size": 0,
-                    "max_queue_size": 10,
-                    "placement": "cluster",
-                    "base_os": "alinux",
-                },
-            ),
-        )
-    ],
-)
-def test_cluster_section_from_200_cfn(mocker, cfn_params_dict, expected_section_dict):
-    """Test conversion from 2.0.0 CFN input parameters."""
+def test_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
+    """Test conversion from CFN input parameters."""
     utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
 
 
@@ -541,10 +78,18 @@ def test_cluster_section_from_200_cfn(mocker, cfn_params_dict, expected_section_
     "config_parser_dict, expected_dict_params, expected_message",
     [
         # default
-        ({"cluster default": {}}, {}, None),
+        ({"cluster default": {}}, {"additional_iam_policies": [], "scheduler": "slurm", "base_os": "alinux2"}, None),
         # right value
-        ({"cluster default": {"key_name": "test"}}, {"key_name": "test"}, None),
-        ({"cluster default": {"base_os": "alinux"}}, {"base_os": "alinux"}, None),
+        (
+            {"cluster default": {"key_name": "test"}},
+            {"key_name": "test", "additional_iam_policies": [], "scheduler": "slurm", "base_os": "alinux2"},
+            None,
+        ),
+        (
+            {"cluster default": {"base_os": "alinux"}},
+            {"base_os": "alinux", "additional_iam_policies": [], "scheduler": "slurm"},
+            None,
+        ),
         # invalid value
         ({"cluster default": {"base_os": "wrong_value"}}, None, "has an invalid value"),
         # invalid key
@@ -794,6 +339,7 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ),  # WARNING it is considered a valid value by yaml.safe_load
         ("extra_json", "{'test': 'test'", None, "Error parsing JSON parameter"),
         ("extra_json", "fake_value", "fake_value", None),
+        ("cluster_config_metadata", None, {"sections": {}}, None),
         # TODO add regex for additional_cfn_template
         ("additional_cfn_template", None, None, None),
         ("additional_cfn_template", "", "", None),
@@ -899,7 +445,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "custom1",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -920,7 +465,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "5.5",
                     "ProxyServer": "proxy",
                     "EC2IAMRoleName": "role",
-                    "EC2IAMPolicies": "policy1,policy2,arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                    "EC2IAMPolicies": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy,policy1,policy2",
                     "S3ReadResource": "s3://url",
                     "S3ReadWriteResource": "s3://url",
                     "EFA": "compute",
@@ -947,7 +492,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "batch",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -958,8 +502,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "0",
                     "EC2IAMPolicies": ",".join(
                         [
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",
@@ -971,7 +515,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "batch-custom1",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -983,10 +526,10 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "25",
                     "EC2IAMPolicies": ",".join(
                         [
+                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "policy1",
                             "policy2",
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
-                            "arn:aws:iam::aws:policy/AWSBatchFullAccess",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",
@@ -998,7 +541,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "batch-no-cw-logging",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1019,7 +561,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "wrong_mix_traditional",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1037,7 +578,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "wrong_mix_batch",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1049,8 +589,8 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "SpotPrice": "25",
                     "EC2IAMPolicies": ",".join(
                         [
-                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                             "arn:aws:iam::aws:policy/AWSBatchFullAccess",
+                            "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                         ]
                     ),
                     "ComputeInstanceType": "optimal",
@@ -1062,7 +602,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "efs",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1075,7 +614,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "dcv",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1088,7 +626,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "ebs",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1108,7 +645,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "ebs-multiple",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1128,7 +664,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "ebs-shareddir-cluster1",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1148,7 +683,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "ebs-shareddir-cluster2",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1168,7 +702,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "ebs-shareddir-ebs",
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
@@ -1183,16 +716,12 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                 },
             ),
         ),
-        (
-            "cw_log",
-            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CLITemplate": "cw_log", "CWLogOptions": "true,1"}),
-        ),
+        ("cw_log", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1"}),),
         (
             "all-settings",
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "all-settings",
                     "AvailabilityZone": "mocked_avail_zone",
                     # scaling
                     "ScaleDownIdleTime": "15",
@@ -1224,7 +753,6 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
             utils.merge_dicts(
                 DefaultCfnParams["cluster"].value,
                 {
-                    "CLITemplate": "random-order",
                     "AvailabilityZone": "mocked_avail_zone",
                     "KeyName": "key",
                     "BaseOS": "ubuntu1804",
@@ -1297,9 +825,29 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
         "pcluster.config.param_types.get_avail_zone",
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
-    mocker.patch(
-        "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},
-    )
+
     mocker.patch("pcluster.config.param_types.get_instance_vcpus", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_cfn_params",
+    [
+        (
+            DefaultDict["cluster"].value,
+            utils.merge_dicts(
+                DefaultCfnParams["cluster"].value,
+                {
+                    "ClusterConfigMetadata": json.dumps(
+                        {"sections": {"scaling": ["default"], "vpc": ["default"], "cluster": ["default"]}},
+                        sort_keys=True,
+                    )
+                },
+            ),
+        )
+    ],
+)
+def test_cluster_config_metadata_to_cfn(mocker, section_dict, expected_cfn_params):
+    utils.mock_pcluster_config(mocker)
+    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
+    utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params, ignore_metadata=False)

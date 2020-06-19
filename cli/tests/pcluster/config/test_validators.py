@@ -25,10 +25,6 @@ def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
 
 
-def _mock_efa_supported_instances(mocker):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
-
-
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
@@ -306,7 +302,7 @@ def test_placement_group_validator(mocker, boto3_stubber):
     utils.assert_param_validator(mocker, config_parser_dict)
 
 
-def test_url_validator(mocker, boto3_stubber):
+def test_url_validator(mocker, boto3_stubber, capsys):
     head_object_response = {
         "AcceptRanges": "bytes",
         "ContentType": "text/html",
@@ -328,6 +324,46 @@ def test_url_validator(mocker, boto3_stubber):
     for template_url, expected_message in tests:
         config_parser_dict = {"cluster default": {"template_url": template_url}}
         utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+    # Test S3 URI in custom_chef_cookbook.
+    tests = [
+        (
+            "s3://test/cookbook.tgz",
+            None,
+            MockedBoto3Request(
+                method="head_object",
+                response=head_object_response,
+                expected_params={"Bucket": "test", "Key": "cookbook.tgz"},
+            ),
+        ),
+        (
+            "s3://failure/cookbook.tgz",
+            (
+                "WARNING: The configuration parameter 'custom_chef_cookbook' generated the following warnings:\n"
+                "The S3 object does not exist or you do not have access to it.\n"
+                "Please make sure the cluster nodes have access to it."
+            ),
+            MockedBoto3Request(
+                method="head_object",
+                response=head_object_response,
+                expected_params={"Bucket": "failure", "Key": "cookbook.tgz"},
+                generate_error=True,
+                error_code=404,
+            ),
+        ),
+    ]
+
+    for custom_chef_cookbook_url, expected_message, mocked_request in tests:
+        boto3_stubber("s3", mocked_request)
+        mocker.patch("pcluster.config.validators.urllib.request.urlopen")
+        config_parser_dict = {
+            "cluster default": {
+                "scheduler": "slurm",
+                "s3_read_resource": "arn:aws:s3:::test*",
+                "custom_chef_cookbook": custom_chef_cookbook_url,
+            }
+        }
+        utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
 
 
 @pytest.mark.parametrize(
@@ -1033,8 +1069,16 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
         ),
     ],
 )
-def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_warning):
-    _mock_efa_supported_instances(mocker)
+def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_error, expected_warning):
+    if section_dict.get("enable_efa") != "NONE":
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response={"InstanceTypes": [{"InstanceType": "t2.large"}]},
+                expected_params={"Filters": [{"Name": "network-info.efa-supported", "Values": ["true"]}]},
+            )
+        ]
+        boto3_stubber("ec2", mocked_requests)
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
 
@@ -1072,8 +1116,6 @@ def test_efa_validator(mocker, capsys, section_dict, expected_error, expected_wa
 def test_efa_validator_with_vpc_security_group(
     boto3_stubber, mocker, ip_permissions, ip_permissions_egress, expected_message
 ):
-    _mock_efa_supported_instances(mocker)
-
     describe_security_groups_response = {
         "SecurityGroups": [
             {
@@ -1091,8 +1133,19 @@ def test_efa_validator_with_vpc_security_group(
             method="describe_security_groups",
             response=describe_security_groups_response,
             expected_params={"GroupIds": ["sg-12345678"]},
-        )
-    ] * 2  # it is called two times, for vpc_security_group_id validation and to validate efa
+        ),
+        MockedBoto3Request(
+            method="describe_instance_types",
+            response={"InstanceTypes": [{"InstanceType": "t2.large"}]},
+            expected_params={"Filters": [{"Name": "network-info.efa-supported", "Values": ["true"]}]},
+        ),
+        MockedBoto3Request(
+            method="describe_security_groups",
+            response=describe_security_groups_response,
+            expected_params={"GroupIds": ["sg-12345678"]},
+        ),  # it is called two times, for vpc_security_group_id validation and to validate efa
+    ]
+
     boto3_stubber("ec2", mocked_requests)
 
     config_parser_dict = {
@@ -1161,19 +1214,23 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "base_os, access_from, expected_message",
+    "base_os, instance_type, access_from, expected_error, expected_warning",
     [
-        ("alinux", None, "Please double check the 'base_os' configuration parameter"),
-        ("centos6", None, "Please double check the 'base_os' configuration parameter"),
-        ("ubuntu1604", None, "Please double check the 'base_os' configuration parameter"),
-        ("centos7", None, None),
-        ("ubuntu1804", None, None),
-        ("ubuntu1804", "1.2.3.4/32", None),
-        ("centos7", "0.0.0.0/0", None),
-        ("alinux2", None, None),
+        ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos6", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("ubuntu1604", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
+        ("centos7", "t2.medium", None, None, None),
+        ("ubuntu1804", "t2.medium", None, None, None),
+        ("ubuntu1804", "t2.medium", "1.2.3.4/32", None, None),
+        ("centos7", "t2.medium", "0.0.0.0/0", None, None),
+        ("alinux2", "t2.medium", None, None, None),
+        ("alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
+        ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
     ],
 )
-def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, caplog):
+def test_dcv_enabled_validator(
+    mocker, base_os, instance_type, expected_error, expected_warning, access_from, caplog, capsys
+):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
         "dcv dcv": {"enable": "master"},
@@ -1181,17 +1238,17 @@ def test_dcv_enabled_validator(mocker, base_os, expected_message, access_from, c
     if access_from:
         config_parser_dict["dcv dcv"]["access_from"] = access_from
 
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    mocker.patch(
+        "pcluster.config.validators.get_supported_instance_types", return_value=["t2.nano", "t2.micro", "t2.medium"]
+    )
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
     access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
     assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
 
 
 @pytest.mark.parametrize(
     "base_os, expected_message",
-    [
-        ("alinux", None),
-        ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES)),
-    ],
+    [("alinux", None), ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))],
 )
 def test_fsx_os_support(mocker, base_os, expected_message):
     config_parser_dict = {
@@ -1200,6 +1257,24 @@ def test_fsx_os_support(mocker, base_os, expected_message):
     }
 
     utils.assert_param_validator(mocker, config_parser_dict, re.escape(expected_message) if expected_message else None)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        (
+            {"initial_queue_size": "0", "maintain_initial_size": True},
+            "maintain_initial_size cannot be set to true if initial_queue_size is 0",
+        ),
+        (
+            {"scheduler": "awsbatch", "maintain_initial_size": True},
+            "maintain_initial_size is not supported when using awsbatch as scheduler",
+        ),
+    ],
+)
+def test_maintain_initial_size_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 @pytest.mark.parametrize(

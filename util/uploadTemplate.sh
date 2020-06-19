@@ -83,26 +83,29 @@ main() {
 
     _bucket_region=$(aws ${_profile} s3api get-bucket-location --bucket ${_bucket} --output text)
     if [[ ${_bucket_region} == "None" ]]; then
-        _bucket_region=""
-    else
-        _bucket_region=".${_bucket_region}"
+        _bucket_region="us-east-1"
     fi
 
     # Change links to substacks
-    _templates_folder="${_bucket}/templates/${_version}"
-    _s3_folder_url="s3${_bucket_region}.amazonaws.com/${_templates_folder}"
+    _templates_folder="templates/${_version}"
+    _s3_domain="amazonaws.com"
+    if [ "${_bucket_region}" != "${_bucket_region#cn-*}" ]; then
+      _s3_domain="${_s3_domain}.cn"
+    fi
+    _s3_url="${_bucket}.s3.${_bucket_region}.${_s3_domain}"
+    _s3_folder_url="${_s3_url}/${_templates_folder}"
     _temp_dir=$(mktemp -d)
     cp ${_srcdir}/cloudformation/aws-parallelcluster.cfn.json ${_temp_dir}/
-    sed -i "s#.*aws-parallelcluster/templates/ebs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/ebs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster/templates/raid-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/raid-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster/templates/efs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/efs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster/templates/fsx-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/fsx-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster/templates/batch-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/batch-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-    sed -i "s#.*aws-parallelcluster/templates/cw-logs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/cw-logs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/ebs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/ebs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/raid-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/raid-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/efs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/efs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/fsx-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/fsx-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/batch-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/batch-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
+    sed -i "s#.*aws-parallelcluster.*/templates/cw-logs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/cw-logs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
 
     # upload templates
-    aws ${_profile} --region "${_region}" s3 cp --acl public-read ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
-    aws ${_profile} --region "${_region}" s3 cp --acl public-read --recursive --exclude "*" --include "*substack.cfn.json" ${_srcdir}/cloudformation/ s3://${_templates_folder}/ || _error_exit 'Failed to push substack cfn templates to S3'
+    aws ${_profile} --region "${_region}" s3 cp --acl public-read ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
+    aws ${_profile} --region "${_region}" s3 cp --acl public-read --recursive --exclude "*" --include "*substack.cfn.json" ${_srcdir}/cloudformation/ s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push substack cfn templates to S3'
 
     echo ""
     echo "Done. Add the following variables to the pcluster config file, under the [cluster ...] section"

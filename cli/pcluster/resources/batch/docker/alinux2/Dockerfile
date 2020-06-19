@@ -23,8 +23,6 @@ RUN yum update -y \
     && mkdir -p /parallelcluster/bin \
     && export DEBIAN_FRONTEND=noninteractive
 
-RUN pip install supervisor
-
 # Setup passwordless ssh
 ENV NOTVISIBLE "in users profile"
 RUN sed -i 's/PermitRootLogin without-password/PermitRootLogin yes/' /etc/ssh/sshd_config \

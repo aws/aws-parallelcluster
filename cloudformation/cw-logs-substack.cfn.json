@@ -17,6 +17,22 @@
         },
         "true"
       ]
+    },
+    "CreateCleanupResourcesFunctionLogGroup": {
+      "Fn::Equals": [
+        {
+          "Ref": "CreateCleanupResourcesFunctionLogGroup"
+        },
+        "true"
+      ]
+    },
+    "CreateAWSBatchLogGroups": {
+      "Fn::Equals": [
+        {
+          "Ref": "CreateAWSBatchLogGroups"
+        },
+        "true"
+      ]
     }
   },
   "Parameters": {
@@ -26,6 +42,22 @@
     },
     "CWLogGroupName": {
       "Description": "Name of the CloudWatch Log Group to be created",
+      "Type": "String"
+    },
+    "MainStackName": {
+      "Description": "Name of the main CloudFormation stack",
+      "Type": "String"
+    },
+    "MainStackUniqueId": {
+      "Description": "Final 12 digits of the main CloudFormation stack id",
+      "Type": "String"
+    },
+    "CreateCleanupResourcesFunctionLogGroup": {
+      "Description": "Set to true in order to create the log group for CreateCleanupResourcesFunction",
+      "Type": "String"
+    },
+    "CreateAWSBatchLogGroups": {
+      "Description": "Set to true in order to create the log groups for AWS Batch scheduler",
       "Type": "String"
     }
   },
@@ -51,6 +83,94 @@
           ]
         }
       }
+    },
+    "CleanupResourcesFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/parallelcluster-CleanupResources-${MainStackUniqueId}"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Condition": "CreateCleanupResourcesFunctionLogGroup"
+    },
+    "CodeBuildLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/codebuild/${MainStackName}-CodeBuildDockerImageBuilderProject-${MainStackUniqueId}"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Condition": "CreateAWSBatchLogGroups"
+    },
+    "ManageDockerImagesFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/parallelcluster-ManageDockerImages-${MainStackUniqueId}"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Condition": "CreateAWSBatchLogGroups"
+    },
+    "SendBuildNotificationFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/parallelcluster-SendBuildNotification-${MainStackUniqueId}"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Condition": "CreateAWSBatchLogGroups"
     }
   },
   "Outputs": {

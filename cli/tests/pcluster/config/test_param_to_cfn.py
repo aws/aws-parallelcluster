@@ -33,14 +33,14 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_de
         (
             CLUSTER,
             "extra_json",
-            {"cluster": {"cfn_scheduler_slots": "cores"}},
-            '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
+            {"cluster": {"cfn_scheduler_slots": "cores"}, "extra_key": "extra_value"},
+            '{"cfncluster": {"cfn_scheduler_slots": "cores"}, "extra_key": "extra_value"}',
         ),
         (
             CLUSTER,
             "extra_json",
-            {"cfncluster": {"cfn_scheduler_slots": "cores"}},
-            '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
+            {"cfncluster": {"cfn_scheduler_slots": "cores"}, "extra_key": "extra_value"},
+            '{"cfncluster": {"cfn_scheduler_slots": "cores"}, "extra_key": "extra_value"}',
         ),
         # SpotPriceParam --> FloatParam
         (CLUSTER, "spot_price", None, "0"),

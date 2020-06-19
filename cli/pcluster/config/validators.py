@@ -20,14 +20,15 @@ from botocore.exceptions import ClientError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
+    get_base_additional_iam_policies,
     get_efs_mount_target_id,
     get_instance_vcpus,
     get_partition,
     get_region,
     get_supported_compute_instance_types,
-    get_supported_features,
     get_supported_instance_types,
     get_supported_os,
+    paginate_boto3,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -285,6 +286,14 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
         if get_partition() not in get_supported_dcv_partition():
             errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
+        master_instance_type = cluster_section.get_param_value("master_instance_type")
+        if re.search(r"(micro)|(nano)", master_instance_type):
+            warnings.append(
+                "The packages required for desktop virtualization in the selected instance type '{0}' "
+                "may cause instability of the master instance. If you want to use NICE DCV it is recommended "
+                "to use an instance type with at least 1.7 GB of memory.".format(master_instance_type)
+            )
+
         if pcluster_config.get_section("dcv").get_param_value("access_from") == CIDR_ALL_IPS:
             LOGFILE_LOGGER.warning(
                 DCV_MESSAGES["warnings"]["access_from_world"].format(
@@ -322,8 +331,8 @@ def efa_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
-    supported_features = get_supported_features(pcluster_config.region, "efa")
-    allowed_instances = supported_features.get("instances")
+
+    allowed_instances = _get_efa_enabled_instance_types(errors)
     if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
         errors.append(
             "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
@@ -437,9 +446,10 @@ def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
     warnings = []
     try:
         if param_value:
-            iam = boto3.client("iam")
             for iam_policy in param_value:
-                iam.get_policy(PolicyArn=iam_policy.strip())
+                if iam_policy not in get_base_additional_iam_policies():
+                    iam = boto3.client("iam")
+                    iam.get_policy(PolicyArn=iam_policy.strip())
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 
@@ -586,14 +596,10 @@ def url_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     if urlparse(param_value).scheme == "s3":
-        try:
-            match = re.match(r"s3://(.*?)/(.*)", param_value)
-            if not match or len(match.groups()) < 2:
-                errors.append("S3 url is invalid.")
-            bucket, key = match.group(1), match.group(2)
-            boto3.client("s3").head_object(Bucket=bucket, Key=key)
-        except ClientError:
-            warnings.append("The S3 object does not exist or you do not have access to it.")
+        errors_s3, warnings_s3 = s3_uri_validator(param_key, param_value, pcluster_config)
+        errors += errors_s3
+        warnings += warnings_s3
+
     else:
         try:
             urllib.request.urlopen(param_value)
@@ -605,6 +611,47 @@ def url_validator(param_key, param_value, pcluster_config):
             errors.append(
                 "The value '{0}' used for the parameter '{1}' is not a valid URL".format(param_value, param_key)
             )
+
+    return errors, warnings
+
+
+def s3_uri_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        match = re.match(r"s3://(.*?)/(.*)", param_value)
+        if not match or len(match.groups()) < 2:
+            raise ValueError("S3 url is invalid.")
+        bucket, key = match.group(1), match.group(2)
+        boto3.client("s3").head_object(Bucket=bucket, Key=key)
+
+    except ClientError:
+
+        # Check that bucket is in s3_read_resource or s3_read_write_resource.
+        cluster_section = pcluster_config.get_section("cluster")
+        s3_read_resource = cluster_section.get_param_value("s3_read_resource")
+        s3_read_write_resource = cluster_section.get_param_value("s3_read_write_resource")
+
+        if s3_read_resource == "*" or s3_read_write_resource == "*":
+            pass
+        else:
+            # Match after arn prefix until end of line, or * or /.
+            match_bucket_from_arn = r"(?<=arn:aws:s3:::)([^*/]*)"
+            s3_read_bucket = re.search(match_bucket_from_arn, s3_read_resource).group(0) if s3_read_resource else None
+            s3_write_bucket = (
+                re.search(match_bucket_from_arn, s3_read_write_resource).group(0) if s3_read_write_resource else None
+            )
+
+            if bucket in [s3_read_bucket, s3_write_bucket]:
+                pass
+            else:
+                warnings.append(
+                    (
+                        "The S3 object does not exist or you do not have access to it.\n"
+                        "Please make sure the cluster nodes have access to it."
+                    )
+                )
 
     return errors, warnings
 
@@ -849,6 +896,21 @@ def intel_hpc_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def maintain_initial_size_validator(param_key, param_value, pcluster_config):
+    errors = []
+    cluster_section = pcluster_config.get_section("cluster")
+    scheduler = cluster_section.get_param_value("scheduler")
+    initial_queue_size = cluster_section.get_param_value("initial_queue_size")
+
+    if param_value:
+        if scheduler == "awsbatch":
+            errors.append("maintain_initial_size is not supported when using awsbatch as scheduler")
+        elif initial_queue_size == 0:
+            errors.append("maintain_initial_size cannot be set to true if initial_queue_size is 0")
+
+    return errors, []
+
+
 def base_os_validator(param_key, param_value, pcluster_config):
     warnings = []
 
@@ -860,3 +922,20 @@ def base_os_validator(param_key, param_value, pcluster_config):
         )
 
     return [], warnings
+
+
+def _get_efa_enabled_instance_types(errors):
+    instance_types = []
+
+    try:
+        for response in paginate_boto3(
+            boto3.client("ec2").describe_instance_types,
+            Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
+        ):
+            instance_types.append(response.get("InstanceType"))
+    except ClientError as e:
+        errors.append(
+            "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
+        )
+
+    return instance_types

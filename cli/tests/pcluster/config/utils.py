@@ -10,6 +10,7 @@
 # limitations under the License.
 
 import os
+import shutil
 import tempfile
 
 import configparser
@@ -20,6 +21,9 @@ from assertpy import assert_that
 from pcluster.config.param_types import Param
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict
+
+# List of parameters ignored by default when comparing sections
+COMPARATION_IGNORED_PARAMS = ["ClusterConfigMetadata"]
 
 
 def get_param_definition(section_definition, param_key):
@@ -131,7 +135,11 @@ def assert_param_validator(mocker, config_parser_dict, expected_error=None, caps
 
 
 def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expected_section_dict):
+    def mock_get_avail_zone(subnet_id):
+        # Mock az detection by returning a mock az if subnet has a value
+        return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
 
+    mocker.patch("pcluster.config.param_types.get_avail_zone", mock_get_avail_zone)
     cfn_params = []
     for cfn_key, cfn_value in cfn_params_dict.items():
         cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
@@ -157,8 +165,10 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
     assert_that(section_dict).is_equal_to(expected_dict)
 
 
-def get_mocked_pcluster_config(mocker):
-    return PclusterConfig(config_file="wrong-file")
+def get_mocked_pcluster_config(mocker, auto_refresh=False):
+    pcluster_config = PclusterConfig(config_file="wrong-file")
+    pcluster_config.set_auto_refresh(auto_refresh)
+    return pcluster_config
 
 
 def assert_section_from_file(mocker, section_definition, config_parser_dict, expected_dict_params, expected_message):
@@ -223,9 +233,20 @@ def assert_section_to_file(mocker, section_definition, section_dict, expected_co
                 assert_that(output_config_parser.get(section_key, param_key)).is_equal_to(param_value)
 
 
-def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn_params):
+def remove_ignored_params(dict, ignored_params=COMPARATION_IGNORED_PARAMS):
+    """
+    Remove ignored parameters from a dict of params.
 
-    pcluster_config = get_mocked_pcluster_config(mocker)
+    :param dict: The parameters dictionary
+    :param ignored_params: The parameters keys to remove
+    """
+    for ignored_param in ignored_params:
+        dict.pop(ignored_param, None)
+
+
+def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn_params, ignore_metadata=True):
+    # auto_refresh is disabled if config metadata is ignored to save unnecessary cycles
+    pcluster_config = get_mocked_pcluster_config(mocker, auto_refresh=not ignore_metadata)
 
     section_type = section_definition.get("type")
     section = section_type(section_definition, pcluster_config)
@@ -237,6 +258,10 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
     pcluster_config.add_section(section)
 
     cfn_params = section.to_cfn()
+    if ignore_metadata:
+        remove_ignored_params(cfn_params)
+        remove_ignored_params(expected_cfn_params)
+
     assert_that(cfn_params).is_equal_to(expected_cfn_params)
 
 
@@ -258,6 +283,8 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
 
         assert_that(len(cfn_params)).is_equal_to(CFN_CONFIG_NUM_OF_PARAMS)
 
+        remove_ignored_params(cfn_params)
+
         for param_key, _ in cfn_params.items():
             assert_that(cfn_params.get(param_key), description=param_key).is_equal_to(
                 expected_cfn_params.get(param_key)
@@ -276,3 +303,11 @@ def init_pcluster_config_from_configparser(config_parser, validate=True):
         if validate:
             pcluster_config.validate()
     return pcluster_config
+
+
+def duplicate_config_file(dst_config_file, test_datadir):
+    # Make a copy of the src template to the target file.
+    # The two resulting PClusterConfig instances will be identical
+    src_config_file_path = os.path.join(str(test_datadir), "pcluster.config.ini")
+    dst_config_file_path = os.path.join(str(test_datadir), dst_config_file)
+    shutil.copy(src_config_file_path, dst_config_file_path)
