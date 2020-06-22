@@ -305,9 +305,9 @@ def get_supported_os_for_scheduler(scheduler):
 
 def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
-    oses = ["alinux2", "ubuntu1604", "ubuntu1804"]
+    oses = ["alinux2", "ubuntu1804"]
     if architecture == "x86_64":
-        oses.extend(["centos6", "centos7", "alinux"])
+        oses.extend(["centos6", "centos7", "alinux", "ubuntu1604"])
     return oses
 
 

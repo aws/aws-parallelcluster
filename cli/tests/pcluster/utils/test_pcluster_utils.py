@@ -394,9 +394,9 @@ def test_create_s3_bucket(region, error_message, boto3_stubber):
     "architecture, supported_oses",
     [
         ("x86_64", ["alinux", "alinux2", "centos6", "centos7", "ubuntu1604", "ubuntu1804"]),
-        ("arm64", ["alinux2", "ubuntu1604", "ubuntu1804"]),
+        ("arm64", ["alinux2", "ubuntu1804"]),
         # doesn't check architecture's validity, only whether it's x86_64 or not
-        ("madeup-architecture", ["alinux2", "ubuntu1604", "ubuntu1804"]),
+        ("madeup-architecture", ["alinux2", "ubuntu1804"]),
     ],
 )
 def test_get_supported_os_for_architecture(architecture, supported_oses):

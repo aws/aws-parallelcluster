@@ -9,7 +9,7 @@ OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE = {
     "alinux": {"x86_64": "openmpi"},
     "alinux2": {"x86_64": "openmpi", "arm64": "openmpi"},
     "centos7": {"x86_64": "openmpi"},
-    "ubuntu1604": {"x86_64": "openmpi", "arm64": "openmpi"},
+    "ubuntu1604": {"x86_64": "openmpi"},
     "centos6": {"x86_64": "openmpi-x86_64"},
     "ubuntu1804": {"x86_64": "openmpi", "arm64": "openmpi"},
 }

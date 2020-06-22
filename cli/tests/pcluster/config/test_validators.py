@@ -1432,7 +1432,7 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         ("alinux2", "arm64", None),
         ("centos6", "arm64", "arm64 is only supported for the following operating systems"),
         ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
-        ("ubuntu1604", "arm64", None),
+        ("ubuntu1604", "arm64", "arm64 is only supported for the following operating systems"),
         ("ubuntu1804", "arm64", None),
     ],
 )
