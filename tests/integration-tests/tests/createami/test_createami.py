@@ -34,7 +34,6 @@ def vpc_stack(vpc_stacks, region):
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-east-1", "m6g.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "*")
-@pytest.mark.dimensions("us-west-2", "m6g.xlarge", "ubuntu1604", "*")
 def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack, architecture):
     """Test createami for given region and os"""
     cluster_config = pcluster_config_reader()
