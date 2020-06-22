@@ -102,6 +102,8 @@ Parameters:
     Type: String
   MasterPrivateDnsName:
     Type: String
+  MasterPrivateIP:
+    Type: String
 Conditions:
   EnableEFA: !Not
     - !Equals
@@ -340,6 +342,7 @@ Resources:
                         "cfn_proxy": "${ProxyServer}",
                         "cfn_sqs_queue": "${SQSQueue}",
                         "cfn_master": "${MasterPrivateDnsName}",
+                        "cfn_master_private_ip": "${MasterPrivateIP}",
                         "cfn_node_type": "ComputeFleet",
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
