@@ -3038,6 +3038,12 @@
               "MasterServerSubstack",
               "Outputs.MasterPrivateDnsName"
             ]
+          },
+          "MasterPrivateIP": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterPrivateIP"
+            ]
           }
         },
         "TemplateURL": {
