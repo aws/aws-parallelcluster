@@ -78,6 +78,9 @@ DEFAULT_FSX_DICT = {
     "weekly_maintenance_start_time": None,
     "deployment_type": None,
     "per_unit_storage_throughput": None,
+    "daily_automatic_backup_start_time": None,
+    "automatic_backup_retention_days": None,
+    "copy_tags_to_backups": False,
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
@@ -195,7 +198,7 @@ DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
@@ -263,7 +266,7 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
