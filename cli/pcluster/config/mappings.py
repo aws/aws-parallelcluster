@@ -457,7 +457,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
-                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):?([0-5]\d)$",
+                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):([0-5]\d)$",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
@@ -468,6 +468,20 @@ FSX = {
                 "type": IntParam,
                 "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("daily_automatic_backup_start_time", {
+                "allowed_values": r"NONE|^([01]\d|2[0-3]):([0-5]\d)$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("automatic_backup_retention_days", {
+                "type": IntParam,
+                "allowed_values": "^(3[0-5]|[0-2][0-9]|[0-9])$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("copy_tags_to_backups", {
+                "type": BoolParam,
+                "default": False,
+                "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
     )
