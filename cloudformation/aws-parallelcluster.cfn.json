@@ -1266,22 +1266,12 @@
           },
           "MainStackUniqueId": {
             "Fn::Select": [
-              "4",
+              "2",
               {
                 "Fn::Split": [
-                  "-",
+                  "/",
                   {
-                    "Fn::Select": [
-                      "2",
-                      {
-                        "Fn::Split": [
-                          "/",
-                          {
-                            "Ref": "AWS::StackId"
-                          }
-                        ]
-                      }
-                    ]
+                    "Ref": "AWS::StackId"
                   }
                 ]
               }
@@ -3989,22 +3979,12 @@
           },
           "MainStackUniqueId": {
             "Fn::Select": [
-              "4",
+              "2",
               {
                 "Fn::Split": [
-                  "-",
+                  "/",
                   {
-                    "Fn::Select": [
-                      "2",
-                      {
-                        "Fn::Split": [
-                          "/",
-                          {
-                            "Ref": "AWS::StackId"
-                          }
-                        ]
-                      }
-                    ]
+                    "Ref": "AWS::StackId"
                   }
                 ]
               }

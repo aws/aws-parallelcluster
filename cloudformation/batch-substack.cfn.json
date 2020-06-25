@@ -79,7 +79,7 @@
       "Type": "String"
     },
     "MainStackUniqueId": {
-      "Description": "Final 12 digits of the main CloudFormation stack id",
+      "Description": "Final 36 digits of the main CloudFormation stack id",
       "Type": "String"
     }
   },
@@ -640,7 +640,7 @@
         "LogsConfig": {
           "CloudWatchLogs": {
             "GroupName": {
-              "Fn::Sub": "/aws/codebuild/${ClusterName}-CodeBuildDockerImageBuilderProject-${MainStackUniqueId}"
+              "Fn::Sub": "/aws/codebuild/${ClusterName}-CodeBuildDockerImageBuilderProject"
             },
             "Status": "ENABLED"
           }
@@ -752,7 +752,7 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "FunctionName": {
-          "Fn::Sub": "parallelcluster-ManageDockerImages-${MainStackUniqueId}"
+          "Fn::Sub": "pcluster-ManageDockerImages-${MainStackUniqueId}"
         },
         "Code": {
           "S3Bucket": {
@@ -900,7 +900,7 @@
       "Type": "AWS::Lambda::Function",
       "Properties": {
         "FunctionName": {
-          "Fn::Sub": "parallelcluster-SendBuildNotification-${MainStackUniqueId}"
+          "Fn::Sub": "pcluster-SendBuildNotificat-${MainStackUniqueId}"
         },
         "Code": {
           "S3Bucket": {
