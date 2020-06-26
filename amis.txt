@@ -122,4 +122,3 @@ us-gov-east-1: ami-0d73342637d63fc4a
 us-gov-west-1: ami-0be79e59ca6f3fb63
 us-west-1: ami-02e2b20f713b3dbe6
 us-west-2: ami-0bfa6d39eca600496
-
