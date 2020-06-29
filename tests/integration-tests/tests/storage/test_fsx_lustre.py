@@ -26,10 +26,16 @@ from time_utils import minutes, seconds
     "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
 )
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.skip_oss(["centos6"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "deployment_type")
+# FSx is not supported on CentOS 6
+@pytest.mark.skip_oss(["centos6"])
+# FSx is only supported on ARM instances for Ubuntu 18.04
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux2", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(
     deployment_type,
     per_unit_storage_throughput,

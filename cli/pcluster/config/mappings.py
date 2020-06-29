@@ -57,10 +57,9 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
-    fsx_architecture_validator,
+    fsx_architecture_os_validator,
     fsx_id_validator,
     fsx_imported_file_chunk_size_validator,
-    fsx_os_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
     instances_architecture_compatibility_validator,
@@ -810,7 +809,7 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsParam,
                 "referred_section": FSX,
-                "validators": [fsx_os_validator, fsx_architecture_validator],
+                "validators": [fsx_architecture_os_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("dcv_settings", {

@@ -44,16 +44,18 @@ DCV_MESSAGES = {
 
 FSX_MESSAGES = {
     "errors": {
-        "unsupported_os": "FSX Lustre can be used with one of the following operating systems: {supported_oses}. "
-        "Please double check the 'base_os' configuration parameter",
+        "unsupported_os": "On {architecture} instance types FSX Lustre can be used with one of the following operating "
+        "systems: {supported_oses}. Please double check the 'base_os' configuration parameter",
         "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
         "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
         "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
     }
 }
 
-FSX_SUPPORTED_OSES = ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"]
-FSX_SUPPORTED_ARCHITECTURES = ["x86_64"]
+FSX_SUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "arm64": ["ubuntu1804"],
+}
 
 
 def _get_sts_endpoint():
@@ -172,26 +174,24 @@ def fsx_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
-def fsx_os_validator(section_key, section_label, pcluster_config):
+def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
-    if cluster_section.get_param_value("base_os") not in FSX_SUPPORTED_OSES:
-        errors.append(FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))
+    architecture = cluster_section.get_param_value("architecture")
+    base_os = cluster_section.get_param_value("base_os")
 
-    return errors, warnings
-
-
-def fsx_architecture_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if architecture not in FSX_SUPPORTED_ARCHITECTURES:
+    if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
         errors.append(
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(
-                supported_architectures=FSX_SUPPORTED_ARCHITECTURES
+                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
+            )
+        )
+    elif base_os not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
+        errors.append(
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
             )
         )
 
