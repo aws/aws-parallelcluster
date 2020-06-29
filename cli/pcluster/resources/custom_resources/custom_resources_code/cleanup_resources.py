@@ -59,7 +59,8 @@ def _terminate_cluster_nodes(event):
                     except Exception as e:
                         logger.error("Failed when terminating instances with error %s", e)
                         continue
-            time.sleep(30)
+            logger.info("Sleeping for 10 seconds to allow all instances to initiate shut-down")
+            time.sleep(10)
 
         while len(next(_describe_instance_ids_iterator(stack_name, ["shutting-down"]))) > 0:
             logger.info("Waiting for all nodes to shut-down...")

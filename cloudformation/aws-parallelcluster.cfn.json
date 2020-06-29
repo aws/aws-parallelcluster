@@ -2324,7 +2324,7 @@
       },
       "DependsOn": [
         "CloudWatchLogsSubstack",
-        "HITSubstack"
+        "ComputeFleetHITSubstack"
       ],
       "Condition": "CreateHITSubstack"
     },
@@ -3226,7 +3226,7 @@
       },
       "Condition": "CreateComputeFleet"
     },
-    "HITSubstack": {
+    "ComputeFleetHITSubstack": {
       "Type": "AWS::CloudFormation::Stack",
       "Properties": {
         "Parameters": {

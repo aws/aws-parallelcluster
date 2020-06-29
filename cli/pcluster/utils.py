@@ -756,7 +756,7 @@ def get_base_additional_iam_policies():
 def get_cluster_capacity(stack_name):
     stack = get_stack(stack_name)
     scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
-    if scheduler == "slurm":
+    if is_hit_enabled_cluster(scheduler):
         # TODO: to be implemented
         raise NotImplementedError()
     return (
@@ -764,3 +764,7 @@ def get_cluster_capacity(stack_name):
         if scheduler == "awsbatch"
         else get_asg_settings(stack_name).get("DesiredCapacity")
     )
+
+
+def is_hit_enabled_cluster(scheduler):
+    return scheduler in ["slurm"]

@@ -84,7 +84,7 @@ main() {
     fi
     _info "Detected version ${_version}"
 
-    _bucket_region=$(aws ${_profile} s3api get-bucket-location --bucket ${_bucket} --output text)
+    _bucket_region=$(aws ${_profile} s3api get-bucket-location --bucket ${_bucket} --output text  --region "${_region}")
     if [[ ${_bucket_region} == "None" ]]; then
         _bucket_region="us-east-1"
     fi
