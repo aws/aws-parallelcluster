@@ -19,11 +19,9 @@ from assertpy import assert_that
 from pcluster.config.validators import (
     DCV_MESSAGES,
     FSX_MESSAGES,
-    FSX_SUPPORTED_ARCHITECTURES,
-    FSX_SUPPORTED_OSES,
+    FSX_SUPPORTED_ARCHITECTURES_OSES,
     architecture_os_validator,
     disable_hyperthreading_architecture_validator,
-    fsx_architecture_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
 )
@@ -1278,16 +1276,78 @@ def test_dcv_enabled_validator(
 
 
 @pytest.mark.parametrize(
-    "base_os, expected_message",
-    [("alinux", None), ("centos6", FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))],
+    "architecture, base_os, expected_message",
+    [
+        # Supported combinations
+        ("x86_64", "alinux", None),
+        ("x86_64", "alinux2", None),
+        ("x86_64", "centos7", None),
+        ("x86_64", "ubuntu1604", None),
+        ("x86_64", "ubuntu1804", None),
+        ("arm64", "ubuntu1804", None),
+        # Unsupported combinations
+        (
+            "UnsupportedArchitecture",
+            "alinux2",
+            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
+            ),
+        ),
+        (
+            "x86_64",
+            "centos6",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
+            ),
+        ),
+        (
+            "arm64",
+            "centos6",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "centos7",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "alinux",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "alinux2",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "ubuntu1604",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+    ],
 )
-def test_fsx_os_validator(mocker, base_os, expected_message):
+def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_message):
     config_parser_dict = {
         "cluster default": {"base_os": base_os, "fsx_settings": "fsx"},
         "fsx fsx": {"storage_capacity": 3200},
     }
-
-    utils.assert_param_validator(mocker, config_parser_dict, re.escape(expected_message) if expected_message else None)
+    expected_message = re.escape(expected_message) if expected_message else None
+    extra_patches = {
+        "pcluster.config.param_types.get_supported_architectures_for_instance_type": [architecture],
+        "pcluster.config.validators.get_supported_architectures_for_instance_type": [architecture],
+    }
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 
 
 @pytest.mark.parametrize(
@@ -1447,31 +1507,6 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
         "architecture",
         architecture,
         architecture_os_validator,
-        expected_message,
-    )
-
-
-@pytest.mark.parametrize(
-    "architecture, expected_message",
-    [
-        ("x86_64", None),
-        (
-            "arm64",
-            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
-                supported_architectures=FSX_SUPPORTED_ARCHITECTURES
-            ),
-        ),
-    ],
-)
-def test_fsx_architecture_validator(mocker, architecture, expected_message):
-    run_architecture_validator_test(
-        mocker,
-        {"cluster": {"architecture": architecture}},
-        "cluster",
-        "architecture",
-        "fsx",
-        "fsx",
-        fsx_architecture_validator,
         expected_message,
     )
 
