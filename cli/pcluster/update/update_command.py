@@ -179,7 +179,7 @@ def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, tar
 
     scheduler = cluster_section.get_param_value("scheduler")
     # Autofill DesiredSize cfn param
-    if not args.reset_desired and scheduler != "slurm":
+    if not args.reset_desired and not utils.is_hit_enabled_cluster(scheduler):
         _restore_desired_size(cfn_params, stack_name, scheduler)
     elif scheduler == "awsbatch":
         LOGGER.info("reset_desired flag does not work with awsbatch scheduler")

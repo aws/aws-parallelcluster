@@ -49,21 +49,30 @@ else:
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(stack_name, region, resources_dirs):
+def _create_bucket_with_resources(stack_name, pcluster_config):
     """Create a bucket associated to the given stack and upload specified resources."""
+    scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
+    if scheduler not in ["awsbatch", "slurm"]:
+        return None
+
     s3_bucket_name = utils.generate_random_bucket_name(stack_name)
     LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
 
     try:
-        utils.create_s3_bucket(s3_bucket_name, region)
+        utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
     except ClientError:
         LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
         raise
 
     try:
+        resources_dirs = ["resources/custom_resources"]
+        if scheduler == "awsbatch":
+            resources_dirs.append("resources/batch")
         for resources_dir in resources_dirs:
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
+        if scheduler == "slurm":
+            _upload_hit_resources(s3_bucket_name, pcluster_config)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -72,6 +81,7 @@ def _create_bucket_with_resources(stack_name, region, resources_dirs):
     return s3_bucket_name
 
 
+# FIXME: this is a temporary prototype that needs to be properly implemented once the cluster config is ready
 def _upload_hit_resources(bucket_name, pcluster_config):
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
@@ -188,7 +198,6 @@ def create(args):  # noqa: C901 FIXME!!!
     )
     pcluster_config.validate()
     # get CFN parameters, template url and tags from config
-    cluster_section = pcluster_config.get_section("cluster")
     cfn_params = pcluster_config.to_cfn()
 
     _check_for_updates(pcluster_config)
@@ -198,18 +207,9 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        if cluster_section.get_param_value("scheduler") in ["awsbatch", "slurm"]:
-            resources_dirs = ["resources/custom_resources"]
-            if cluster_section.get_param_value("scheduler") == "awsbatch":
-                resources_dirs.append("resources/batch")
-            bucket_name = _create_bucket_with_resources(
-                stack_name, pcluster_config.region, resources_dirs=resources_dirs
-            )
+        bucket_name = _create_bucket_with_resources(stack_name, pcluster_config)
+        if bucket_name:
             cfn_params["ResourcesS3Bucket"] = bucket_name
-
-        # TODO: to refactor
-        if cluster_section.get_param_value("scheduler") == "slurm":
-            _upload_hit_resources(bucket_name, pcluster_config)
 
         LOGGER.info("Creating stack named: %s", stack_name)
         LOGGER.debug(cfn_params)
