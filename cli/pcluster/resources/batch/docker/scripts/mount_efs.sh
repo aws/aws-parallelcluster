@@ -80,7 +80,11 @@ mount_nfs() {
 main() {
     efs_fs_id=${1}
     aws_region=${2}
-    efs_dir="${efs_fs_id}.efs.${aws_region}.amazonaws.com:/"
+    aws_domain="amazonaws.com"
+    if [[ ${aws_region} == cn-* ]]; then
+        aws_domain="amazonaws.com.cn"
+    fi
+    efs_dir="${efs_fs_id}.efs.${aws_region}.${aws_domain}:/"
     shared_dir="/${3}"
 
     check_arguments_valid
