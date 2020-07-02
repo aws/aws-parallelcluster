@@ -371,7 +371,9 @@ Resources:
                 popd
               } || error_exit 'Failed to run bootstrap recipes. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
 
-              [ ! -f /opt/parallelcluster/.bootstrapped ] && echo ${!parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped
+              if [ ! -f /opt/parallelcluster/.bootstrapped ]; then
+                echo ${!parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped
+              fi
               # End of file
               --==BOUNDARY==
             - YumProxy: !If
