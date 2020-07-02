@@ -86,7 +86,7 @@ class _InstancesConfigGenerator(_ConfigGenerator):
     SCHEMA = {
         "type": "object",
         "patternProperties": {
-            r"^[a-z0-9-]+\.[a-z0-9]+$": {
+            r"^[a-z0-9-]+\.[a-z0-9-]+$": {
                 "type": "object",
                 "properties": {
                     "vcpus": {"type": "string", "pattern": r"^\d+$"},
@@ -215,7 +215,7 @@ class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
                         "properties": {
                             "instances": {
                                 "type": "array",
-                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+\.[a-z0-9]+$"},
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+\.[a-z0-9-]+$"},
                             }
                         },
                         "required": ["instances"],
@@ -225,7 +225,7 @@ class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
                         "properties": {
                             "instances": {
                                 "type": "array",
-                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+(\.[a-z0-9]+)?$"},
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+(\.[a-z0-9-]+)?$"},
                             }
                         },
                         "required": ["instances"],
