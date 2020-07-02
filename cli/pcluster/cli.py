@@ -23,6 +23,7 @@ from botocore.exceptions import NoCredentialsError
 
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
+import pcluster.createami as createami
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
 from pcluster.update import update_command
@@ -79,7 +80,7 @@ def stop(args):
 
 
 def create_ami(args):
-    pcluster.create_ami(args)
+    createami.create_ami(args)
 
 
 def config_logger():

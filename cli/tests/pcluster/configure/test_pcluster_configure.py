@@ -144,6 +144,10 @@ def _mock_parallel_cluster_config(mocker):
         "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
     )
     mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+    # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
+    #       but it's being included in case that changes in the future.
+    mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
 
 
 def _launch_config(mocker, path, remove_path=True):

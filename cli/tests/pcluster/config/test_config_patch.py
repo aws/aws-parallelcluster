@@ -27,6 +27,12 @@ default_cluster_params = {
 }
 
 
+def _do_mocking_for_tests(mocker):
+    """Perform the mocking common to all of these test cases."""
+    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+
+
 def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
     patch = ConfigPatch(base_config=src_conf, target_config=dst_conf)
     ignored_params = ["cluster_config_metadata"]
@@ -37,7 +43,7 @@ def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
 
 
 def test_config_patch(mocker):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    _do_mocking_for_tests(mocker)
     src_conf = PclusterConfig()
     dst_conf = PclusterConfig()
     # Two new configs must always be equal
@@ -66,7 +72,7 @@ def test_single_param_change(
     dst_param_value,
     change_update_policy,
 ):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    _do_mocking_for_tests(mocker)
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
@@ -90,7 +96,7 @@ def test_single_param_change(
 
 
 def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    _do_mocking_for_tests(mocker)
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
@@ -256,7 +262,7 @@ def _test_different_labels(base_conf, target_conf):
     ],
 )
 def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    _do_mocking_for_tests(mocker)
     base_config_file_name = "pcluster.config.base.ini"
     duplicate_config_file(base_config_file_name, test_datadir)
     target_config_file_name = "pcluster.config.dst.ini"
