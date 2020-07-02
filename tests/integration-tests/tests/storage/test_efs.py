@@ -46,8 +46,8 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.regions(["us-east-1", "cn-north-1"])
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stacks):
