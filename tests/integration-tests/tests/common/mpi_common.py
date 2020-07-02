@@ -30,9 +30,7 @@ def _test_mpi(
     datadir = pathlib.Path(__file__).parent / "data/mpi/"
     mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
     # Compile mpi script
-    command = "mpicc -o ring ring.c"
-    if mpi_module != "no_module_available":
-        command = "module load {0} && {1}".format(mpi_module, command)
+    command = "module load {0} && mpicc -o ring ring.c".format(mpi_module)
     remote_command_executor.run_remote_command(command, additional_files=[str(datadir / "ring.c")])
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
