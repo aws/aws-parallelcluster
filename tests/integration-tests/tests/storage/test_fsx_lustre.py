@@ -31,9 +31,8 @@ from time_utils import minutes, seconds
 @pytest.mark.usefixtures("os", "instance", "scheduler", "deployment_type")
 # FSx is not supported on CentOS 6
 @pytest.mark.skip_oss(["centos6"])
-# FSx is only supported on ARM instances for Ubuntu 18.04
+# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux2", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(

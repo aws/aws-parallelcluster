@@ -1285,6 +1285,7 @@ def test_dcv_enabled_validator(
         ("x86_64", "ubuntu1604", None),
         ("x86_64", "ubuntu1804", None),
         ("arm64", "ubuntu1804", None),
+        ("arm64", "alinux2", None),
         # Unsupported combinations
         (
             "UnsupportedArchitecture",
@@ -1317,13 +1318,6 @@ def test_dcv_enabled_validator(
         (
             "arm64",
             "alinux",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "alinux2",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),

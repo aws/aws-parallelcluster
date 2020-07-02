@@ -54,7 +54,7 @@ FSX_MESSAGES = {
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
-    "arm64": ["ubuntu1804"],
+    "arm64": ["ubuntu1804", "alinux2"],
 }
 
 
