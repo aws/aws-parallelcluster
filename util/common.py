@@ -20,6 +20,7 @@ from s3_factory import S3DocumentManager
 
 PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}
 PARTITIONS = ["commercial", "china", "govcloud"]
+FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
 def get_aws_regions(partition):
@@ -72,11 +73,11 @@ def generate_rollback_data(regions, dest_bucket, files, sts_credentials):
         bucket_name = dest_bucket.format(region=region)
         rollback_data[bucket_name] = {"region": region, "files": {}}
         doc_manager = S3DocumentManager(region, sts_credentials.get(region))
-        for file in files:
+        for file_type in files:
             version = doc_manager.get_current_version(
-                dest_bucket.format(region=region), file, raise_on_object_not_found=False
+                dest_bucket.format(region=region), FILE_TO_S3_PATH[file_type], raise_on_object_not_found=False
             )
-            rollback_data[bucket_name]["files"][file] = version
+            rollback_data[bucket_name]["files"][FILE_TO_S3_PATH[file_type]] = version
 
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
     rollback_file_name = "rollback-data.json"
