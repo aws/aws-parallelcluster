@@ -36,13 +36,6 @@ def test_mapping_consistency():
 
         for param_key, param_definition in section_definition.get("params").items():
 
-            # Boolean params must have a default value
-            if param_definition.get("type") is BoolParam:
-                assert_that(
-                    param_definition.get("default"),
-                    description="BoolParam '{0}' must have a default value".format(param_key),
-                ).is_not_none()
-
             for param_definition_key, _ in param_definition.items():
                 assert_that(
                     param_definition_key,
