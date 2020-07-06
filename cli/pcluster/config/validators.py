@@ -171,6 +171,24 @@ def fsx_validator(section_key, section_label, pcluster_config):
         if fsx_section.get_param_value("per_unit_storage_throughput"):
             errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
 
+    fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
+    fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
+    fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
+
+    if not fsx_automatic_backup_retention_days and (
+        fsx_daily_automatic_backup_start_time or fsx_copy_tags_to_backups is not None
+    ):
+        errors.append(
+            "'automatic_backup_retention_days' must be greater than 0 if "
+            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided."
+        )
+
+    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
+        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
+
+    if (fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path) and fsx_automatic_backup_retention_days:
+        errors.append("Backups cannot be created on S3-linked file systems")
+
     return errors, warnings
 
 
