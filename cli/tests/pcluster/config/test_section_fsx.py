@@ -190,7 +190,7 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("automatic_backup_retention_days", "0", 0, None),
         ("automatic_backup_retention_days", "35", 35, None),
         ("automatic_backup_retention_days", "36", 36, "'automatic_backup_retention_days' has an invalid value '36'"),
-        ("copy_tags_to_backups", None, False, None),
+        ("copy_tags_to_backups", None, None, None),
         ("copy_tags_to_backups", "", None, "must be a Boolean"),
         ("copy_tags_to_backups", "NONE", None, "must be a Boolean"),
         ("copy_tags_to_backups", "true", True, None),
@@ -219,7 +219,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,false",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),
@@ -245,7 +245,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,false",
+                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),

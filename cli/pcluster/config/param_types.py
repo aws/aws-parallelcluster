@@ -342,6 +342,9 @@ class BoolParam(Param):
 
     def get_string_value(self):
         """Convert internal representation into string."""
+        if self.value is None:
+            return "NONE"
+
         return "true" if self.value else "false"
 
     def get_cfn_value(self):
@@ -351,10 +354,6 @@ class BoolParam(Param):
         Used when the parameter must go into a comma separated CFN parameter.
         """
         return self.get_string_value()
-
-    def get_default_value(self):
-        """Get default value from the Param definition if there, False otherwise."""
-        return self.definition.get("default", False)
 
 
 class IntParam(Param):
