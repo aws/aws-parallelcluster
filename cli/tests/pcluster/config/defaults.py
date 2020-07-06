@@ -80,7 +80,7 @@ DEFAULT_FSX_DICT = {
     "per_unit_storage_throughput": None,
     "daily_automatic_backup_start_time": None,
     "automatic_backup_retention_days": None,
-    "copy_tags_to_backups": False,
+    "copy_tags_to_backups": None,
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}

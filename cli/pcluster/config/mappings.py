@@ -474,7 +474,6 @@ FSX = {
             }),
             ("copy_tags_to_backups", {
                 "type": BoolParam,
-                "default": False,
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
