@@ -22,7 +22,7 @@ import argparse
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
 
-from common import generate_rollback_data, get_aws_regions, retrieve_sts_credentials
+from common import FILE_TO_S3_PATH, generate_rollback_data, get_aws_regions, retrieve_sts_credentials
 from jsonschema import validate
 from rollback_s3_objects import execute_rollback
 from s3_factory import S3DocumentManager
@@ -33,7 +33,6 @@ PARTITIONS = ["commercial", "china", "govcloud"]
 CONFIG_FILES = ["instances", "feature_whitelist"]
 PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}
 PARTITION_TO_PRICING_FILE_REGION = {"commercial": "us-east-1", "govcloud": "us-east-1", "china": "cn-north-1"}
-FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
 def validate_document(args, old_doc, new_doc):
