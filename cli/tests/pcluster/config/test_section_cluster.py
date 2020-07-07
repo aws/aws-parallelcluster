@@ -742,7 +742,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },
@@ -807,7 +807,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },
