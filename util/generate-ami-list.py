@@ -53,6 +53,20 @@ def get_initialized_mappings_dicts():
     return {mapping_name: {} for _, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items()}
 
 
+def get_placeholder_region_dict():
+    """
+    Return a dict with keys equal to those in DISTROS and with values of "UNSUPPORTED".
+
+    The placeholder string expresses the fact that there's no AMI available for the given OS in that region.
+
+    This is necessary to support ARM because of the way CloudFormation evaluates the template. A conditional expression
+    chooses an AMI from either the x86_64 or ARM mappings. CloudFormation evaluates both of these expressions before
+    choosing one. If one of the mappings doesn't contain a result (as would be expected for OSes for which we don't
+    build ARM AMIs) then cluster creation fails if placeholders aren't used.
+    """
+    return {distro_mapping_key: "UNSUPPORTED" for distro_mapping_key in DISTROS}
+
+
 def get_ami_list_from_file(regions, cfn_template_file):
     """Read the AMI mappings from cfn_template_file for the given regions."""
     amis_json = get_initialized_mappings_dicts()
@@ -99,43 +113,28 @@ def get_ami_list_from_ec2(
             exit(1)
 
         images = get_images_ec2(filters, owner, region_name)
-        populate_amis_json(amis_json, images, region_name)
+        for architecture, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items():
+            amis_json[mapping_name][region_name] = get_amis_for_architecture(images, architecture)
 
-        if main_region == region_name:
-            for credential in credentials:
-                credential_region = credential[0]
-                images = get_images_ec2_credential(filters, main_region, credential)
-                populate_amis_json(amis_json, images, credential_region)
+            if main_region == region_name:
+                for credential in credentials:
+                    credential_region = credential[0]
+                    images = get_images_ec2_credential(filters, main_region, credential)
+                    amis_json[mapping_name][credential_region] = get_amis_for_architecture(images, architecture)
 
     return amis_json
 
 
-def populate_amis_json(amis_json, images, region_name):
-    """Update amis_json in-place with the given list of images (from region_name)."""
-    if images:
-        amis = get_initialized_mappings_dicts()
-        for image in images.get("Images"):
-            for distro_mapping_key, distro_image_name_query_string in DISTROS.items():
-                if "-{0}-".format(distro_image_name_query_string) in image.get("Name"):
-                    mapping = ARCHITECTURES_TO_MAPPING_NAME.get(image.get("Architecture"))
-                    if mapping is None:
-                        print(
-                            "Warning: unable to get mapping name for AMI {name} (region={region}, ID={ami_id}, "
-                            "architecture={architecture})".format(
-                                name=image.get("Name"),
-                                region=region_name,
-                                ami_id=image.get("ImageId"),
-                                architecture=image.get("Architecture"),
-                            )
-                        )
-                        continue
-                    amis[mapping][distro_mapping_key] = image.get("ImageId")
-        if len(amis) == 0:
-            print("Warning: there are no AMIs in the selected region (%s)" % region_name)
-        else:
-            # Ensure mapping for the region_name is sorted by OS name
-            for mapping_name in amis:
-                amis_json[mapping_name][region_name] = OrderedDict(sorted(amis.get(mapping_name, {}).items()))
+def get_amis_for_architecture(images, architecture):
+    """Select the subset of images that have the given architecture."""
+    distro_to_image_id = get_placeholder_region_dict()
+    for image in images.get("Images"):
+        for distro_mapping_key, distro_image_name_query_string in DISTROS.items():
+            name_query_string = "-{0}-".format(distro_image_name_query_string)
+            if name_query_string in image.get("Name") and image.get("Architecture") == architecture:
+                distro_to_image_id[distro_mapping_key] = image.get("ImageId")
+    # Ensure mapping is sorted by OS name before returning
+    return OrderedDict(sorted(distro_to_image_id.items()))
 
 
 def get_images_ec2_credential(filters, main_region, credential):
@@ -249,28 +248,6 @@ def get_all_aws_regions_from_ec2(region):
     return sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions"))
 
 
-def populate_unsupported_mappings(amis_dict):
-    """
-    Write a placeholder string for distros not in the mappings for a region in amis_dict.
-
-    The placeholder string expresses the fact that there's no AMI available for the given OS in that region.
-
-    This is necessary to support ARM because of the way CloudFormation evaluates the template. A conditional expression
-    chooses an AMI from either the x86_64 or ARM mappings. CloudFormation evaluates both of these expressions before
-    choosing one. If one of the mappings doesn't contain a result (as would be expected for OSes for which we don't
-    build ARM AMIs) then cluster creation fails if placeholders aren't used.
-    """
-    for _, mapping in amis_dict.items():
-        for region in regions:
-            if region not in mapping:
-                mapping[region] = {}
-            for distro in DISTROS:
-                if distro not in mapping[region]:
-                    mapping[region][distro] = "UNSUPPORTED"
-            mapping[region] = OrderedDict(sorted(mapping[region].items()))
-    return amis_dict
-
-
 def read_cfn_template(template_path):
     """Read the existing CFN template from the given path."""
     with open(template_path) as cfn_file:
@@ -310,8 +287,6 @@ def update_cfn_template(cfn_template_file, amis_to_update):
         current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
         cfn_data.get("Mappings")[mapping_name] = current_amis_for_mapping
         current_amis[mapping_name] = current_amis_for_mapping
-    # Add placeholders for region-distro mappings that don't exist
-    populate_unsupported_mappings(cfn_data.get("Mappings"))
     # Ensure mappings are sorted
     cfn_data["Mappings"] = OrderedDict(sorted(cfn_data["Mappings"].items()))
     # Write back modified CFN template
