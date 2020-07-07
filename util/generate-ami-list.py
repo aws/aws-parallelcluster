@@ -20,12 +20,13 @@
 
 import json
 import re
-import sys
 from collections import OrderedDict
 
 import argparse
 import boto3
 from botocore.exceptions import ClientError
+
+from common import PARTITION_TO_MAIN_REGION, PARTITIONS
 
 DISTROS = OrderedDict(
     [
@@ -341,7 +342,9 @@ def parse_args():
         "--json-regions", type=str, help="path to input json file containing the regions", required=False
     )
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
-    parser.add_argument("--partition", type=str, help="commercial | china | govcloud", required=True)
+    parser.add_argument(
+        "--partition", type=str, help="commercial | china | govcloud", required=True, choices=PARTITIONS
+    )
     parser.add_argument("--account-id", type=str, help="AWS account id owning the AMIs", required=True)
     parser.add_argument(
         "--cloudformation-template",
@@ -356,16 +359,7 @@ def parse_args():
 def main():
     """Run the script."""
     args = parse_args()
-
-    if args.partition == "commercial":
-        region = "us-east-1"
-    elif args.partition == "govcloud":
-        region = "us-gov-west-1"
-    elif args.partition == "china":
-        region = "cn-north-1"
-    else:
-        print("Unsupported partition %s" % args.partition)
-        sys.exit(1)
+    region = PARTITION_TO_MAIN_REGION.get(args.partition)
 
     credentials = []
     if args.credential:
