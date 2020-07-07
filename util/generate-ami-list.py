@@ -315,9 +315,8 @@ def update_amis_txt(amis_txt_file, amis):
         f.write("%s" % amis_txt)
 
 
-def main():
-    """Run the script."""
-    # parse inputs
+def parse_args():
+    """Parse command line args."""
     parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
     group1 = parser.add_argument_group("Retrieve instances from EC2 searching by version and date")
     group1.add_argument("--version", type=str, help="release version", required=False)
@@ -351,7 +350,12 @@ def main():
         required=False,
         default="cloudformation/aws-parallelcluster.cfn.json",
     )
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """Run the script."""
+    args = parse_args()
 
     if args.partition == "commercial":
         region = "us-east-1"
