@@ -271,11 +271,26 @@ def populate_unsupported_mappings(amis_dict):
     return amis_dict
 
 
+def read_cfn_template(template_path):
+    """Read the existing CFN template from the given path."""
+    with open(template_path) as cfn_file:
+        # object_pairs_hook=OrderedDict allows to preserve input order
+        return json.load(cfn_file, object_pairs_hook=OrderedDict)
+
+
+def write_cfn_template(template_path, cfn_data):
+    """Write the CFN template represented by cfn_data to the given path."""
+    with open(template_path, "w") as cfn_file:
+        # setting separators to (',', ': ') to avoid trailing spaces after commas
+        json.dump(cfn_data, cfn_file, indent=2, separators=(",", ": "))
+        # add new line at the end of the file
+        cfn_file.write("\n")
+
+
 def update_cfn_template(cfn_template_file, amis_to_update):
     """Update in-place the mappings section of cfn_template_file with the AMI IDs contained in amis_to_update."""
-    with open(cfn_template_file) as cfn_file:
-        # object_pairs_hook=OrderedDict allows to preserve input order
-        cfn_data = json.load(cfn_file, object_pairs_hook=OrderedDict)
+    # Read in existing CFN template
+    cfn_data = read_cfn_template(cfn_template_file)
     # update id for new amis without removing regions that are not in the amis_to_update dict
     current_amis = get_initialized_mappings_dicts()
     for mapping_name in current_amis:
@@ -299,11 +314,8 @@ def update_cfn_template(cfn_template_file, amis_to_update):
     populate_unsupported_mappings(cfn_data.get("Mappings"))
     # Ensure mappings are sorted
     cfn_data["Mappings"] = OrderedDict(sorted(cfn_data["Mappings"].items()))
-    with open(cfn_template_file, "w") as cfn_file:
-        # setting separators to (',', ': ') to avoid trailing spaces after commas
-        json.dump(cfn_data, cfn_file, indent=2, separators=(",", ": "))
-        # add new line at the end of the file
-        cfn_file.write("\n")
+    # Write back modified CFN template
+    write_cfn_template(cfn_template_file, cfn_data)
 
     # returns the updated amis dict
     return current_amis
