@@ -706,29 +706,25 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
         (
             {"daily_automatic_backup_start_time": "03:00"},
             None,
-            "'automatic_backup_retention_days' must be greater than 0 if "
-            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided.",
+            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (
             {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": True},
             None,
-            "'automatic_backup_retention_days' must be greater than 0 if "
-            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided.",
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (
             {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": False},
             None,
-            "'automatic_backup_retention_days' must be greater than 0 if "
-            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided.",
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (
             {"daily_automatic_backup_start_time": "03:00", "copy_tags_to_backups": True},
             None,
-            "'automatic_backup_retention_days' must be greater than 0 if "
-            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided.",
+            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (

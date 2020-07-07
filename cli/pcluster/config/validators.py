@@ -167,12 +167,14 @@ def fsx_validator(section_key, section_label, pcluster_config):
     fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
     fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
 
-    if not fsx_automatic_backup_retention_days and (
-        fsx_daily_automatic_backup_start_time or fsx_copy_tags_to_backups is not None
-    ):
+    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
         errors.append(
-            "'automatic_backup_retention_days' must be greater than 0 if "
-            + "'daily_automatic_backup_start_time' or 'copy_tags_to_backups' parameters are provided."
+            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified"
+        )
+
+    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
+        errors.append(
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
         )
 
     if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:

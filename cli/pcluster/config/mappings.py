@@ -476,6 +476,10 @@ FSX = {
                 "type": BoolParam,
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
+            ("backup_id", {
+                "allowed_values": "^(backup-[0-9a-f]{8,})$",
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
         ]
     )
 }
