@@ -220,6 +220,23 @@
           ]
         }
       ]
+    },
+    "UseBackupId": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "13",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Outputs": {
@@ -436,6 +453,22 @@
               }
             ]
           }
+        },
+        "BackupId": {
+          "Fn::If": [
+            "UseBackupId",
+            {
+              "Fn::Select": [
+                "13",
+                {
+                  "Ref": "FSXOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
         },
         "SecurityGroupIds": [
           {

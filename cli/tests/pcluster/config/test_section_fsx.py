@@ -21,16 +21,21 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"},
+            {"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"},
             DefaultDict["fsx"].value,
         ),
-        ({"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE, NONE"},
+            DefaultDict["fsx"].value,
+        ),
+        (
+            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
         ),
         (
-            {"FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,50,01:00,5,false"},
+            {
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8"
+            },
             {
                 "shared_dir": "test",
                 "fsx_fs_id": "test1",
@@ -45,6 +50,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "daily_automatic_backup_start_time": "01:00",
                 "automatic_backup_retention_days": 5,
                 "copy_tags_to_backups": False,
+                "backup_id": "backup-0a1b2c3d4e5f6a7b8",
             },
         ),
     ],
@@ -195,6 +201,11 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("copy_tags_to_backups", "NONE", None, "must be a Boolean"),
         ("copy_tags_to_backups", "true", True, None),
         ("copy_tags_to_backups", "false", False, None),
+        ("backup_id", None, None, None),
+        ("backup_id", "", None, "'backup_id' has an invalid value ''"),
+        ("backup_id", "back-0a1b2c3d4e5f6a7b8", None, "'backup_id' has an invalid value 'back-0a1b2c3d4e5f6a7b8'"),
+        ("backup_id", "backup-0A1B2C3d4e5f6a7b8", None, "'backup_id' has an invalid value 'backup-0A1B2C3d4e5f6a7b8'"),
+        ("backup_id", "backup-0a1b2c3d4e5f6a7b8", "backup-0a1b2c3d4e5f6a7b8", None),
     ],
 )
 def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -219,7 +230,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),
@@ -231,7 +242,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE",
                 },
             ),
         ),
@@ -245,7 +256,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),
