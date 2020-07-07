@@ -315,7 +315,8 @@ def update_amis_txt(amis_txt_file, amis):
         f.write("%s" % amis_txt)
 
 
-if __name__ == "__main__":
+def main():
+    """Run the script."""
     # parse inputs
     parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
     group1 = parser.add_argument_group("Retrieve instances from EC2 searching by version and date")
@@ -389,3 +390,7 @@ if __name__ == "__main__":
 
     cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
     update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
+
+
+if __name__ == "__main__":
+    main()
