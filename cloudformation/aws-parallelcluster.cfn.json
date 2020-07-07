@@ -2158,7 +2158,7 @@
                   "Key": "aws-parallelcluster-attributes",
                   "Value": {
                     "Fn::Sub": [
-                      "${BaseOS}, ${Scheduler}, ${version}",
+                      "${BaseOS}, ${Scheduler}, ${version}, ${Architecture}",
                       {
                         "version": {
                           "Fn::FindInMap": [
@@ -2875,7 +2875,7 @@
             "Key": "aws-parallelcluster-attributes",
             "Value": {
               "Fn::Sub": [
-                "${BaseOS}, ${Scheduler}, ${version}",
+                "${BaseOS}, ${Scheduler}, ${version}, ${Architecture}",
                 {
                   "version": {
                     "Fn::FindInMap": [
@@ -3988,7 +3988,7 @@
         "Parameters": {
           "AttributeTags": {
             "Fn::Sub": [
-              "${BaseOS}, ${Scheduler}, ${version}",
+              "${BaseOS}, ${Scheduler}, ${version}, ${Architecture}",
               {
                 "version": {
                   "Fn::FindInMap": [
