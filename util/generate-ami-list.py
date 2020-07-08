@@ -270,8 +270,7 @@ def update_cfn_template(cfn_template_file, amis_to_update):
     # Read in existing CFN template
     cfn_data = read_cfn_template(cfn_template_file)
     # update id for new amis without removing regions that are not in the amis_to_update dict
-    current_amis = get_initialized_mappings_dicts()
-    for mapping_name in current_amis:
+    for mapping_name in ARCHITECTURES_TO_MAPPING_NAME.values():
         current_amis_for_mapping = cfn_data.get("Mappings").get(mapping_name, {})
         for region, amis_to_update_region_mapping in amis_to_update.get(mapping_name, {}).items():
             if not amis_to_update_region_mapping:
@@ -287,14 +286,10 @@ def update_cfn_template(cfn_template_file, amis_to_update):
         # enforce alphabetical regions order
         current_amis_for_mapping = OrderedDict(sorted(current_amis_for_mapping.items()))
         cfn_data.get("Mappings")[mapping_name] = current_amis_for_mapping
-        current_amis[mapping_name] = current_amis_for_mapping
     # Ensure mappings are sorted
     cfn_data["Mappings"] = OrderedDict(sorted(cfn_data["Mappings"].items()))
     # Write back modified CFN template
     write_cfn_template(cfn_template_file, cfn_data)
-
-    # returns the updated amis dict
-    return current_amis
 
 
 def update_amis_txt(amis_txt_file, cfn_template_file):
