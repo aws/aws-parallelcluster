@@ -1345,7 +1345,6 @@
         "parallelcluster": "2.7.0",
         "cookbook": "aws-parallelcluster-cookbook-2.7.0",
         "chef": "15.11.8",
-        "ridley": "5.1.1",
         "berkshelf": "7.0.4",
         "ami": "dev"
       }
@@ -2383,7 +2382,7 @@
                   "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://${_region}-aws-parallelcluster.s3.${_region}.amazonaws.com$([ \"${_region}\" != \"${_region#cn-*}\" ] && echo \".cn\" || exit 0)/archives/cinc/cinc-install.sh | bash -s -- -v ${chef_version}\n",
-                  "  /opt/cinc/embedded/bin/gem install --no-document ridley:${ridley_version} berkshelf:${berkshelf_version} ffi-libarchive\n",
+                  "  /opt/cinc/embedded/bin/gem install --no-document berkshelf:${berkshelf_version} ffi-libarchive\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
@@ -2454,15 +2453,6 @@
                       "PackagesVersions",
                       "default",
                       "chef"
-                    ]
-                  },
-                  "\n",
-                  "export ridley_version=",
-                  {
-                    "Fn::FindInMap": [
-                      "PackagesVersions",
-                      "default",
-                      "ridley"
                     ]
                   },
                   "\n",
@@ -3352,7 +3342,7 @@
                   "  which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)\n",
                   "  mkdir -p /etc/chef && chown -R root:root /etc/chef\n",
                   "  curl --retry 3 -L https://${_region}-aws-parallelcluster.s3.${_region}.amazonaws.com$([ \"${_region}\" != \"${_region#cn-*}\" ] && echo \".cn\" || exit 0)/archives/cinc/cinc-install.sh | bash -s -- -v ${chef_version}\n",
-                  "  /opt/cinc/embedded/bin/gem install --no-document ridley:${ridley_version} berkshelf:${berkshelf_version} ffi-libarchive\n",
+                  "  /opt/cinc/embedded/bin/gem install --no-document berkshelf:${berkshelf_version} ffi-libarchive\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${cookbook_url}\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${cookbook_url}.date\n",
                   "  curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${cookbook_url}.md5\n",
@@ -3423,15 +3413,6 @@
                       "PackagesVersions",
                       "default",
                       "chef"
-                    ]
-                  },
-                  "\n",
-                  "export ridley_version=",
-                  {
-                    "Fn::FindInMap": [
-                      "PackagesVersions",
-                      "default",
-                      "ridley"
                     ]
                   },
                   "\n",
