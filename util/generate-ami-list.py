@@ -349,6 +349,10 @@ def main():
         ]
 
     if args.cookbook_git_ref and args.node_git_ref:
+        # This path is used by the build_and_test and retrive_ami_list pipelines.
+        # Requiring all of the AMIs in the resulting mappings (for the applicable regions)
+        # to be created from the same cookbook and node repo git refs on the same date
+        # ensures that the AMIs were all produced by the same run of the build pipeline.
         amis_dict = get_ami_list_by_git_refs(
             main_region=region,
             regions=get_all_aws_regions_from_ec2(region),
@@ -359,6 +363,10 @@ def main():
             credentials=credentials,
         )
     else:
+        # This path is used by the pre_release_flow pipleine, which uses the
+        # retrive_ami_list pipeline to generate CFN templates with updated mappings
+        # for each partition and then aggregates the mappings from each those files
+        # into a single CFN template.
         regions = get_aws_regions_from_file(args.json_regions)
         amis_dict = get_ami_list_from_file(regions, args.json_template)
 
