@@ -93,25 +93,10 @@ def get_ami_list_from_file(regions, cfn_template_file):
     return amis_json
 
 
-def get_ami_list_from_ec2(
-    main_region, regions, date, build_date, cookbook_git_ref, node_git_ref, version, owner, credentials
-):
+def get_ami_list_from_ec2(main_region, regions, owner, credentials, filters):
     """Get the AMI mappings structure given the constraints represented by the args."""
     amis_json = get_initialized_mappings_dicts()
-
     for region_name in regions:
-        filters = []
-        if version and date:
-            filters.append({"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]})
-        elif cookbook_git_ref and node_git_ref:
-            filters.append({"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]})
-            filters.append({"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]})
-            filters.append({"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]})
-
-        else:
-            print("Error: you can search for version and date or cookbook and node git reference")
-            exit(1)
-
         images = get_images_ec2(filters, owner, region_name)
         for architecture, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items():
             amis_json[mapping_name][region_name] = get_amis_for_architecture(images, architecture)
@@ -135,6 +120,22 @@ def get_amis_for_architecture(images, architecture):
                 distro_to_image_id[distro_mapping_key] = image.get("ImageId")
     # Ensure mapping is sorted by OS name before returning
     return OrderedDict(sorted(distro_to_image_id.items()))
+
+
+def get_ami_list_by_version_date(main_region, regions, date, version, owner, credentials):
+    """Get the ParallelCluster AMIs by querying EC2 based on version and date."""
+    filters = [{"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]}]
+    return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
+
+
+def get_ami_list_by_git_refs(main_region, regions, cookbook_git_ref, node_git_ref, build_date, owner, credentials):
+    """Get the ParallelCluster AMIs by querying EC2 based on git refs and build date."""
+    filters = [
+        {"Name": "tag:parallelcluster_cookbook_ref", "Values": ["%s" % cookbook_git_ref]},
+        {"Name": "tag:parallelcluster_node_ref", "Values": ["%s" % node_git_ref]},
+        {"Name": "name", "Values": ["aws-parallelcluster-*%s" % (build_date if build_date else "")]},
+    ]
+    return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
 
 
 def get_images_ec2_credential(filters, main_region, credential):
@@ -356,16 +357,22 @@ def main():
             if credential_tuple.strip()
         ]
 
-    if (args.version and args.date) or (args.cookbook_git_ref and args.node_git_ref):
-        regions = get_all_aws_regions_from_ec2(region)
-        amis_dict = get_ami_list_from_ec2(
+    if args.version and args.date:
+        amis_dict = get_ami_list_by_version_date(
             main_region=region,
-            regions=regions,
+            regions=get_all_aws_regions_from_ec2(region),
             date=args.date,
-            build_date=args.build_date,
+            version=args.version,
+            owner=args.account_id,
+            credentials=credentials,
+        )
+    elif args.cookbook_git_ref and args.node_git_ref:
+        amis_dict = get_ami_list_by_git_refs(
+            main_region=region,
+            regions=get_all_aws_regions_from_ec2(region),
             cookbook_git_ref=args.cookbook_git_ref,
             node_git_ref=args.node_git_ref,
-            version=args.version,
+            build_date=args.build_date,
             owner=args.account_id,
             credentials=credentials,
         )
