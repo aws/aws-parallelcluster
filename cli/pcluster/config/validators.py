@@ -49,6 +49,8 @@ FSX_MESSAGES = {
         "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
         "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
         "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
+        "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
+        "cannot be specified.",
     }
 }
 
@@ -177,7 +179,8 @@ def fsx_validator(section_key, section_label, pcluster_config):
 
     if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
         errors.append(
-            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified"
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified"
         )
 
     if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
@@ -280,6 +283,9 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
 
     if fsx_section.get_param_value("fsx_fs_id"):
         # if fsx_fs_id is provided, don't validate storage_capacity
+        return errors, warnings
+    elif fsx_section.get_param_value("backup_id"):
+        # if backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
         return errors, warnings
     elif not storage_capacity:
         # if fsx_fs_id is not provided, storage_capacity must be provided
@@ -1066,3 +1072,31 @@ def _get_efa_enabled_instance_types(errors):
         )
 
     return instance_types
+
+
+def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        boto3.client("fsx").describe_backups(BackupIds=[param_value]).get("Backups")[0]
+    except ClientError as e:
+        errors.append(
+            "Failed to retrieve backup with Id '{0}': {1}".format(param_value, e.response.get("Error").get("Message"))
+        )
+
+    fsx_section = pcluster_config.get_section("fsx")
+    unsupported_config_param_names = [
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "storage_capacity",
+        "import_path",
+        "export_path",
+        "imported_file_chunk_size",
+    ]
+
+    for config_param_name in unsupported_config_param_names:
+        if fsx_section.get_param_value(config_param_name) is not None:
+            errors.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=config_param_name))
+
+    return errors, warnings
