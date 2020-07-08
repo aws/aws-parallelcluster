@@ -60,6 +60,7 @@ from pcluster.config.validators import (
     fsx_architecture_os_validator,
     fsx_id_validator,
     fsx_imported_file_chunk_size_validator,
+    fsx_lustre_backup_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
     instances_architecture_compatibility_validator,
@@ -483,6 +484,7 @@ FSX = {
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("backup_id", {
+                "validators": [fsx_lustre_backup_validator],
                 "allowed_values": "^(backup-[0-9a-f]{8,})$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
