@@ -1345,7 +1345,7 @@
         "parallelcluster": "2.7.0",
         "cookbook": "aws-parallelcluster-cookbook-2.7.0",
         "chef": "15.11.8",
-        "berkshelf": "7.0.4",
+        "berkshelf": "7.0.10",
         "ami": "dev"
       }
     },
