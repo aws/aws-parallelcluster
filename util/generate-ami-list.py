@@ -297,9 +297,10 @@ def update_cfn_template(cfn_template_file, amis_to_update):
     return current_amis
 
 
-def update_amis_txt(amis_txt_file, amis):
-    """Write samis_txt_file using the information contained in amis."""
-    amis_txt = convert_json_to_txt(amis_json=amis)
+def update_amis_txt(amis_txt_file, cfn_template_file):
+    """Write amis_txt_file using the updated information contained in cfn_template_file."""
+    cfn_data = read_cfn_template(cfn_template_file)
+    amis_txt = convert_json_to_txt(cfn_data.get("Mappings"))
     with open(amis_txt_file, "w") as f:
         f.write("%s" % amis_txt)
 
@@ -380,8 +381,8 @@ def main():
         regions = get_aws_regions_from_file(args.json_regions)
         amis_dict = get_ami_list_from_file(regions, args.json_template)
 
-    cfn_amis = update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
-    update_amis_txt(amis_txt_file=args.txt_file, amis=cfn_amis)
+    update_cfn_template(cfn_template_file=args.cloudformation_template, amis_to_update=amis_dict)
+    update_amis_txt(amis_txt_file=args.txt_file, cfn_template_file=args.cloudformation_template)
 
 
 if __name__ == "__main__":
