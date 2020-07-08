@@ -34,7 +34,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         ),
         (
             {
-                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8"
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8"
             },
             {
                 "shared_dir": "test",

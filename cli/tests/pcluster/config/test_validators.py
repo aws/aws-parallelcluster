@@ -735,7 +735,8 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
         (
             {"daily_automatic_backup_start_time": "03:00"},
             None,
-            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified",
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (
@@ -753,7 +754,8 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
         (
             {"daily_automatic_backup_start_time": "03:00", "copy_tags_to_backups": True},
             None,
-            "When specifying 'daily_automatic_backup_start_time', the 'automatic_backup_retention_days' option must be specified",
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified",
             0,
         ),
         (
@@ -1626,3 +1628,75 @@ def test_instances_architecture_compatibility_validator(
         instances_architecture_compatibility_validator,
         expected_message,
     )
+
+
+@pytest.mark.parametrize(
+    "section_dict, bucket, num_calls, expected_error",
+    [
+        (
+            {"backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
+        ),
+        (
+            {"backup_id": "backup-0ff8da96d57f3b4e3", "storage_capacity": 7200},
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'storage_capacity' cannot be specified.",
+        ),
+        (
+            {
+                "backup_id": "backup-0ff8da96d57f3b4e3",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 100,
+            },
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'per_unit_storage_throughput' cannot be specified.",
+        ),
+        (
+            {
+                "backup_id": "backup-0ff8da96d57f3b4e3",
+                "imported_file_chunk_size": 1024,
+                "export_path": "s3://test",
+                "import_path": "s3://test",
+            },
+            {"Bucket": "test"},
+            2,
+            "When restoring an FSx Lustre file system from backup, 'imported_file_chunk_size' cannot be specified.",
+        ),
+    ],
+)
+def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket, num_calls, expected_error):
+    describe_backups_response = {
+        "Backups": [
+            {
+                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "Lifecycle": "AVAILABLE",
+                "Type": "USER_INITIATED",
+                "CreationTime": 1594159673.559,
+                "FileSystem": {
+                    "StorageCapacity": 7200,
+                    "StorageType": "SSD",
+                    "LustreConfiguration": {"DeploymentType": "PERSISTENT_1", "PerUnitStorageThroughput": 200},
+                },
+            },
+        ]
+    }
+
+    if bucket:
+        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
+    fsx_mocked_requests = [
+        MockedBoto3Request(
+            method="describe_backups",
+            response=describe_backups_response
+            if section_dict.get("backup_id") == "backup-0ff8da96d57f3b4e3"
+            else {"Backups": []},
+            expected_params={"BackupIds": [section_dict.get("backup_id")]},
+        )
+    ]
+    boto3_stubber("fsx", fsx_mocked_requests)
+
+    config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
