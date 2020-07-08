@@ -122,12 +122,6 @@ def get_amis_for_architecture(images, architecture):
     return OrderedDict(sorted(distro_to_image_id.items()))
 
 
-def get_ami_list_by_version_date(main_region, regions, date, version, owner, credentials):
-    """Get the ParallelCluster AMIs by querying EC2 based on version and date."""
-    filters = [{"Name": "name", "Values": ["aws-parallelcluster-%s*%s" % (version, date)]}]
-    return get_ami_list_from_ec2(main_region, regions, owner, credentials, filters)
-
-
 def get_ami_list_by_git_refs(main_region, regions, cookbook_git_ref, node_git_ref, build_date, owner, credentials):
     """Get the ParallelCluster AMIs by querying EC2 based on git refs and build date."""
     filters = [
@@ -303,16 +297,15 @@ def update_amis_txt(amis_txt_file, cfn_template_file):
 def parse_args():
     """Parse command line args."""
     parser = argparse.ArgumentParser(description="Get AWS ParallelCluster instances and generate a json and txt file")
-    group1 = parser.add_argument_group("Retrieve instances from EC2 searching by version and date")
-    group1.add_argument("--version", type=str, help="release version", required=False)
-    group1.add_argument("--date", type=str, help="release date [timestamp] (e.g. 201801112350)", required=False)
-    group2 = parser.add_argument_group("Retrieve instances from EC2 searching by cookbook and node git reference")
-    group2.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
-    group2.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
-    group2.add_argument(
+    git_ref_group = parser.add_argument_group(
+        "Retrieve instances from EC2 searching by cookbook and node git reference"
+    )
+    git_ref_group.add_argument("--cookbook-git-ref", type=str, help="cookbook git hash reference", required=False)
+    git_ref_group.add_argument("--node-git-ref", type=str, help="node git hash reference", required=False)
+    git_ref_group.add_argument(
         "--build-date", type=str, help="(optional) build date [timestamp] (e.g. 201801112350)", required=False
     )
-    group2.add_argument(
+    git_ref_group.add_argument(
         "--credential",
         type=str,
         action="append",
@@ -320,9 +313,11 @@ def parse_args():
         "Could be specified multiple times",
         required=False,
     )
-    group3 = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
-    group3.add_argument("--json-template", type=str, help="path to input json cloudformation template", required=False)
-    group3.add_argument(
+    local_file_group = parser.add_argument_group("Retrieve instances from local cfn template for given regions")
+    local_file_group.add_argument(
+        "--json-template", type=str, help="path to input json cloudformation template", required=False
+    )
+    local_file_group.add_argument(
         "--json-regions", type=str, help="path to input json file containing the regions", required=False
     )
     parser.add_argument("--txt-file", type=str, help="txt output file path", required=False, default="amis.txt")
@@ -353,16 +348,7 @@ def main():
             if credential_tuple.strip()
         ]
 
-    if args.version and args.date:
-        amis_dict = get_ami_list_by_version_date(
-            main_region=region,
-            regions=get_all_aws_regions_from_ec2(region),
-            date=args.date,
-            version=args.version,
-            owner=args.account_id,
-            credentials=credentials,
-        )
-    elif args.cookbook_git_ref and args.node_git_ref:
+    if args.cookbook_git_ref and args.node_git_ref:
         amis_dict = get_ami_list_by_git_refs(
             main_region=region,
             regions=get_all_aws_regions_from_ec2(region),
