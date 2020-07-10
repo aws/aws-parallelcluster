@@ -97,15 +97,17 @@ def get_ami_list_from_ec2(main_region, regions, owner, credentials, filters):
     """Get the AMI mappings structure given the constraints represented by the args."""
     amis_json = get_initialized_mappings_dicts()
     for region_name in regions:
-        images = get_images_ec2(filters, owner, region_name)
+        images_for_region = get_images_ec2(filters, owner, region_name)
         for architecture, mapping_name in ARCHITECTURES_TO_MAPPING_NAME.items():
-            amis_json[mapping_name][region_name] = get_amis_for_architecture(images, architecture)
+            amis_json[mapping_name][region_name] = get_amis_for_architecture(images_for_region, architecture)
 
             if main_region == region_name:
                 for credential in credentials:
                     credential_region = credential[0]
-                    images = get_images_ec2_credential(filters, main_region, credential)
-                    amis_json[mapping_name][credential_region] = get_amis_for_architecture(images, architecture)
+                    images_for_credential_region = get_images_ec2_credential(filters, main_region, credential)
+                    amis_json[mapping_name][credential_region] = get_amis_for_architecture(
+                        images_for_credential_region, architecture
+                    )
 
     return amis_json
 
