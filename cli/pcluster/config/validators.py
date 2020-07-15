@@ -284,8 +284,8 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
     if fsx_section.get_param_value("fsx_fs_id"):
         # if fsx_fs_id is provided, don't validate storage_capacity
         return errors, warnings
-    elif fsx_section.get_param_value("backup_id"):
-        # if backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
+    elif fsx_section.get_param_value("fsx_backup_id"):
+        # if fsx_backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
         return errors, warnings
     elif not storage_capacity:
         # if fsx_fs_id is not provided, storage_capacity must be provided
