@@ -1634,20 +1634,20 @@ def test_instances_architecture_compatibility_validator(
     "section_dict, bucket, num_calls, expected_error",
     [
         (
-            {"backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
+            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
         ),
         (
-            {"backup_id": "backup-0ff8da96d57f3b4e3", "storage_capacity": 7200},
+            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "storage_capacity": 7200},
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'storage_capacity' cannot be specified.",
         ),
         (
             {
-                "backup_id": "backup-0ff8da96d57f3b4e3",
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
                 "deployment_type": "PERSISTENT_1",
                 "per_unit_storage_throughput": 100,
             },
@@ -1657,7 +1657,7 @@ def test_instances_architecture_compatibility_validator(
         ),
         (
             {
-                "backup_id": "backup-0ff8da96d57f3b4e3",
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
                 "imported_file_chunk_size": 1024,
                 "export_path": "s3://test",
                 "import_path": "s3://test",
@@ -1691,9 +1691,9 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
         MockedBoto3Request(
             method="describe_backups",
             response=describe_backups_response
-            if section_dict.get("backup_id") == "backup-0ff8da96d57f3b4e3"
+            if section_dict.get("fsx_backup_id") == "backup-0ff8da96d57f3b4e3"
             else {"Backups": []},
-            expected_params={"BackupIds": [section_dict.get("backup_id")]},
+            expected_params={"BackupIds": [section_dict.get("fsx_backup_id")]},
         )
     ]
     boto3_stubber("fsx", fsx_mocked_requests)

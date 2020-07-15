@@ -81,7 +81,7 @@ DEFAULT_FSX_DICT = {
     "daily_automatic_backup_start_time": None,
     "automatic_backup_retention_days": None,
     "copy_tags_to_backups": None,
-    "backup_id": None,
+    "fsx_backup_id": None,
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
