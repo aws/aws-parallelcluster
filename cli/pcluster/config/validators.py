@@ -1100,3 +1100,24 @@ def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
             errors.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=config_param_name))
 
     return errors, warnings
+
+
+def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config):
+    """Return errors for parameters in the FSx config section that would be ignored."""
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section(section_key, section_label)
+
+    # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
+    relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
+    if fsx_section.get_param_value("fsx_fs_id") is not None:
+        for fsx_param in fsx_section.params:
+            if fsx_param not in relevant_when_using_existing_fsx and fsx_section.get_param_value(fsx_param) is not None:
+                errors.append(
+                    "{fsx_param} is ignored when specifying an existing Lustre file system via fsx_fs_id.".format(
+                        fsx_param=fsx_param
+                    )
+                )
+
+    return errors, warnings
