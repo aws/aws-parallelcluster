@@ -404,6 +404,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "sa-east-1": ["sa-east-1a", "sa-east-1c"],
     # m6g.xlarge instances not available in eu-west-1c
     "eu-west-1": ["eu-west-1a", "eu-west-1b"],
+    # provide AZs to enforce networking setup used for EFS test
+    "cn-north-1": ["cn-north-1a", "cn-north-1b"],
 }
 
 
