@@ -802,7 +802,7 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
             {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
             "storage_capacity is ignored when specifying an existing Lustre file system",
         ),
-    ]
+    ],
 )
 def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, expected_error):
     # It's necessary to mock the boto3 calls made when validating an fsx_fs_id
@@ -822,7 +822,9 @@ def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, e
         fsx_fs_id = section_dict.get("fsx_fs_id")
         network_interface = "eni-09b9460295ddd4e5f"
 
-        describe_file_systems_response = {"FileSystems": [{"VpcId": fsx_vpc, "NetworkInterfaceIds": [network_interface]}]}
+        describe_file_systems_response = {
+            "FileSystems": [{"VpcId": fsx_vpc, "NetworkInterfaceIds": [network_interface]}]
+        }
         fsx_mocked_requests = [
             MockedBoto3Request(
                 method="describe_file_systems",
@@ -856,14 +858,11 @@ def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, e
             )
         )
 
-        ip_permissions = [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}]
+        ip_permissions = [
+            {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}
+        ]
         describe_security_groups_response = {
-            "SecurityGroups": [
-                {
-                    "IpPermissionsEgress": ip_permissions,
-                    "IpPermissions": ip_permissions,
-                }
-            ]
+            "SecurityGroups": [{"IpPermissionsEgress": ip_permissions, "IpPermissions": ip_permissions}]
         }
         ec2_mocked_requests.append(
             MockedBoto3Request(
@@ -876,7 +875,7 @@ def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, e
     config_parser_dict = {
         "cluster default": {"fsx_settings": "default", "vpc_settings": "default"},
         "vpc default": {"master_subnet_id": fsx_subnet_id},
-        "fsx default": section_dict
+        "fsx default": section_dict,
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
 
@@ -1753,6 +1752,12 @@ def test_instances_architecture_compatibility_validator(
             2,
             "When restoring an FSx Lustre file system from backup, 'imported_file_chunk_size' cannot be specified.",
         ),
+        (
+            {"backup_id": "backup-0ff8da96d57f3b4e3", "fsx_kms_key_id": "somekey", "deployment_type": "PERSISTENT_1"},
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
+        ),
     ],
 )
 def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket, num_calls, expected_error):
@@ -1784,6 +1789,17 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
         )
     ]
     boto3_stubber("fsx", fsx_mocked_requests)
+
+    if "fsx_kms_key_id" in section_dict:
+        describe_key_response = {"KeyMetadata": {"KeyId": section_dict.get("fsx_kms_key_id")}}
+        kms_mocked_requests = [
+            MockedBoto3Request(
+                method="describe_key",
+                response=describe_key_response,
+                expected_params={"KeyId": section_dict.get("fsx_kms_key_id")},
+            )
+        ]
+        boto3_stubber("kms", kms_mocked_requests)
 
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)

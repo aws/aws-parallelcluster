@@ -1093,6 +1093,7 @@ def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
         "import_path",
         "export_path",
         "imported_file_chunk_size",
+        "fsx_kms_key_id",
     ]
 
     for config_param_name in unsupported_config_param_names:
