@@ -795,6 +795,93 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
 
 
 @pytest.mark.parametrize(
+    "section_dict, expected_error",
+    [
+        ({"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx"}, None),
+        (
+            {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
+            "storage_capacity is ignored when specifying an existing Lustre file system",
+        ),
+    ]
+)
+def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, expected_error):
+    # It's necessary to mock the boto3 calls made when validating an fsx_fs_id
+    fsx_subnet_id = "subnet-12345678"
+    fsx_vpc = "vpc-06e4ab6c6cEXAMPLE"
+    describe_subnets_response = {"Subnets": [{"VpcId": fsx_vpc}]}
+    ec2_mocked_requests = [
+        MockedBoto3Request(
+            method="describe_subnets",
+            response=describe_subnets_response,
+            expected_params={"SubnetIds": [fsx_subnet_id]},
+        )
+    ]
+    # Only do the portion carried out by fsx_fs_id validator if no error is expected (in which case validation exits
+    # before boto3 calls are made)
+    if expected_error is None:
+        fsx_fs_id = section_dict.get("fsx_fs_id")
+        network_interface = "eni-09b9460295ddd4e5f"
+
+        describe_file_systems_response = {"FileSystems": [{"VpcId": fsx_vpc, "NetworkInterfaceIds": [network_interface]}]}
+        fsx_mocked_requests = [
+            MockedBoto3Request(
+                method="describe_file_systems",
+                response=describe_file_systems_response,
+                expected_params={"FileSystemIds": [fsx_fs_id]},
+            )
+        ]
+        boto3_stubber("fsx", fsx_mocked_requests)
+
+        ec2_mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_subnets",
+                response=describe_subnets_response,
+                expected_params={"SubnetIds": [fsx_subnet_id]},
+            )
+        )
+
+        network_interfaces_in_response = [
+            {
+                "Groups": [{"GroupName": "default", "GroupId": "sg-12345678"}],
+                "NetworkInterfaceId": network_interface,
+                "VpcId": fsx_vpc,
+            }
+        ]
+        describe_network_interfaces_response = {"NetworkInterfaces": network_interfaces_in_response}
+        ec2_mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_network_interfaces",
+                response=describe_network_interfaces_response,
+                expected_params={"NetworkInterfaceIds": [network_interface]},
+            )
+        )
+
+        ip_permissions = [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}]
+        describe_security_groups_response = {
+            "SecurityGroups": [
+                {
+                    "IpPermissionsEgress": ip_permissions,
+                    "IpPermissions": ip_permissions,
+                }
+            ]
+        }
+        ec2_mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_security_groups",
+                response=describe_security_groups_response,
+                expected_params={"GroupIds": ["sg-12345678"]},
+            )
+        )
+    boto3_stubber("ec2", ec2_mocked_requests)
+    config_parser_dict = {
+        "cluster default": {"fsx_settings": "default", "vpc_settings": "default"},
+        "vpc default": {"master_subnet_id": fsx_subnet_id},
+        "fsx default": section_dict
+    }
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
+
+
+@pytest.mark.parametrize(
     "section_dict, expected_error, expected_warning",
     [
         (
