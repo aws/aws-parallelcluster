@@ -90,10 +90,8 @@ def test_fsx_lustre_backup(
     - Create a cluster with FSx automatic backups feature enabled.
     - Mount the file system and create a test file in it.
     - Wait for automatic backup to be created.
-    - Delete the original cluster.
     - Restore a cluster from the automatic backup taken in step 3. Verify whether test file
       created in step 2 exists in the restored file system.
-    - Delete the backup and verify whether the backup is deleted.
     """
     mount_dir = "/fsx_mount_dir"
     utc_now_plus_15 = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
@@ -117,12 +115,6 @@ def test_fsx_lustre_backup(
     # Wait for the creation of automatic backup
     backup = monitor_fs_backup(remote_command_executor, fsx_fs_id, region)
 
-    # Delete the cluster
-    cluster.delete(keep_logs=True)
-
-    # Validate whether backup exists after the cluster is deleted
-    _test_backup_exist_after_cluster_deletion(remote_command_executor, backup, region)
-
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
         config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=backup.get("BackupId"),
@@ -137,9 +129,6 @@ def test_fsx_lustre_backup(
 
     # Validate whether text file created in the original file system is present in the restored file system.
     _test_restore_from_backup(remote_command_executor_restore, mount_dir)
-
-    # Delete backup
-    delete_backup(backup, region)
 
 
 def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
@@ -313,19 +302,3 @@ def _test_restore_from_backup(remote_command_executor, mount_dir):
     logging.info("Testing fsx lustre correctly restored from backup")
     result = remote_command_executor.run_remote_command("cat {mount_dir}/file_to_backup".format(mount_dir=mount_dir))
     assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
-
-
-def delete_backup(backup, region):
-    logging.info("Deleting backup with id: '{0}'".format(backup.get("BackupId")))
-    fsx = boto3.client("fsx", region_name=region)
-    deleted_backup = fsx.delete_backup(BackupId=backup.get("BackupId"))
-    assert_that(deleted_backup.get("Lifecycle")).is_equal_to("DELETED")
-
-
-def _test_backup_exist_after_cluster_deletion(remote_command_executor, backup, region):
-    logging.info(
-        "Verifying whether backup '{0}' exists after the original cluster was deleted.".format(backup.get("BackupId"))
-    )
-    fsx = boto3.client("fsx", region_name=region)
-    backup = fsx.describe_backups(BackupIds=[backup.get("BackupId")]).get("Backups")[0]
-    assert_that(backup.get("Lifecycle")).is_equal_to("AVAILABLE")
