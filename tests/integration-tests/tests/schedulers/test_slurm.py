@@ -113,8 +113,8 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
     # srun: pmix
     # srun: pmix_v3
     mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
-    assert_that(mpi_list_output).matches(r"\s+pmix\s($|\s+)")
-    assert_that(mpi_list_output).matches(r"\s+pmix_v3\s($|\s+)")
+    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+    assert_that(mpi_list_output).matches(r"\s+pmix_v3($|\s+)")
 
     # Compile and run an MPI program interactively
     mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
