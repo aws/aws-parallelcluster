@@ -16,12 +16,15 @@ import pytest
 
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
+from pcluster.config.mappings import FSX
+from pcluster.config.param_types import Param, Section
 from pcluster.config.validators import (
     DCV_MESSAGES,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     architecture_os_validator,
     disable_hyperthreading_architecture_validator,
+    fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
 )
@@ -791,92 +794,6 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
     if "fsx_kms_key_id" in section_dict:
         _kms_key_stubber(mocker, boto3_stubber, section_dict.get("fsx_kms_key_id"), None, 0 if expected_error else 1)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_error",
-    [
-        ({"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx"}, None),
-        (
-            {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
-            "storage_capacity is ignored when specifying an existing Lustre file system",
-        ),
-    ],
-)
-def test_fsx_ignored_parameters_validator(mocker, boto3_stubber, section_dict, expected_error):
-    # It's necessary to mock the boto3 calls made when validating an fsx_fs_id
-    fsx_subnet_id = "subnet-12345678"
-    fsx_vpc = "vpc-06e4ab6c6cEXAMPLE"
-    describe_subnets_response = {"Subnets": [{"VpcId": fsx_vpc}]}
-    ec2_mocked_requests = [
-        MockedBoto3Request(
-            method="describe_subnets",
-            response=describe_subnets_response,
-            expected_params={"SubnetIds": [fsx_subnet_id]},
-        )
-    ]
-    # Only do the portion carried out by fsx_fs_id validator if no error is expected (in which case validation exits
-    # before boto3 calls are made)
-    if expected_error is None:
-        fsx_fs_id = section_dict.get("fsx_fs_id")
-        network_interface = "eni-09b9460295ddd4e5f"
-
-        describe_file_systems_response = {
-            "FileSystems": [{"VpcId": fsx_vpc, "NetworkInterfaceIds": [network_interface]}]
-        }
-        fsx_mocked_requests = [
-            MockedBoto3Request(
-                method="describe_file_systems",
-                response=describe_file_systems_response,
-                expected_params={"FileSystemIds": [fsx_fs_id]},
-            )
-        ]
-        boto3_stubber("fsx", fsx_mocked_requests)
-
-        ec2_mocked_requests.append(
-            MockedBoto3Request(
-                method="describe_subnets",
-                response=describe_subnets_response,
-                expected_params={"SubnetIds": [fsx_subnet_id]},
-            )
-        )
-
-        network_interfaces_in_response = [
-            {
-                "Groups": [{"GroupName": "default", "GroupId": "sg-12345678"}],
-                "NetworkInterfaceId": network_interface,
-                "VpcId": fsx_vpc,
-            }
-        ]
-        describe_network_interfaces_response = {"NetworkInterfaces": network_interfaces_in_response}
-        ec2_mocked_requests.append(
-            MockedBoto3Request(
-                method="describe_network_interfaces",
-                response=describe_network_interfaces_response,
-                expected_params={"NetworkInterfaceIds": [network_interface]},
-            )
-        )
-
-        ip_permissions = [
-            {"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}
-        ]
-        describe_security_groups_response = {
-            "SecurityGroups": [{"IpPermissionsEgress": ip_permissions, "IpPermissions": ip_permissions}]
-        }
-        ec2_mocked_requests.append(
-            MockedBoto3Request(
-                method="describe_security_groups",
-                response=describe_security_groups_response,
-                expected_params={"GroupIds": ["sg-12345678"]},
-            )
-        )
-    boto3_stubber("ec2", ec2_mocked_requests)
-    config_parser_dict = {
-        "cluster default": {"fsx_settings": "default", "vpc_settings": "default"},
-        "vpc default": {"master_subnet_id": fsx_subnet_id},
-        "fsx default": section_dict,
-    }
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
 
 
@@ -1814,3 +1731,42 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
 
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
+
+
+#########
+#
+# ignored FSx params validator test
+#
+# Testing a validator that requires the fsx_fs_id parameter to be specified requires a lot of
+# boto3 stubbing due to the complexity contained in the fsx_id_validator.
+#
+# Thus, the following code mocks the pcluster_config object passed to the validator functions
+# and calls the validator directly.
+#
+#########
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_error",
+    [
+        ({"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx"}, None),
+        (
+            {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
+            "storage_capacity is ignored when specifying an existing Lustre file system",
+        ),
+    ],
+)
+def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
+    mocked_pcluster_config = utils.get_mocked_pcluster_config(mocker)
+    fsx_section = Section(FSX, mocked_pcluster_config, "default")
+    for param_key, param_value in section_dict.items():
+        param = FSX.get("params").get(param_key).get("type", Param)
+        param.value = param_value
+        fsx_section.set_param(param_key, param)
+    mocked_pcluster_config.add_section(fsx_section)
+    errors, warnings = fsx_ignored_parameters_validator("fsx", "default", mocked_pcluster_config)
+    assert_that(warnings).is_empty()
+    if expected_error:
+        assert_that(errors[0]).matches(expected_error)
+    else:
+        assert_that(errors).is_empty()
