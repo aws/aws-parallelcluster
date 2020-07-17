@@ -51,6 +51,8 @@ FSX_MESSAGES = {
         "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
         "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
         "cannot be specified.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
+        "fsx_fs_id.",
     }
 }
 
@@ -1115,10 +1117,6 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
     if fsx_section.get_param_value("fsx_fs_id") is not None:
         for fsx_param in fsx_section.params:
             if fsx_param not in relevant_when_using_existing_fsx and fsx_section.get_param_value(fsx_param) is not None:
-                errors.append(
-                    "{fsx_param} is ignored when specifying an existing Lustre file system via fsx_fs_id.".format(
-                        fsx_param=fsx_param
-                    )
-                )
+                errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
 
     return errors, warnings
