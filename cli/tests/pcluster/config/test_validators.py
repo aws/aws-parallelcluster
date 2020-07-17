@@ -1753,7 +1753,11 @@ def test_instances_architecture_compatibility_validator(
             "When restoring an FSx Lustre file system from backup, 'imported_file_chunk_size' cannot be specified.",
         ),
         (
-            {"backup_id": "backup-0ff8da96d57f3b4e3", "fsx_kms_key_id": "somekey", "deployment_type": "PERSISTENT_1"},
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "fsx_kms_key_id": "somekey",
+                "deployment_type": "PERSISTENT_1",
+            },
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
