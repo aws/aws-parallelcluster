@@ -342,10 +342,7 @@ class BoolParam(Param):
 
     def get_string_value(self):
         """Convert internal representation into string."""
-        if self.value is None:
-            return "NONE"
-
-        return "true" if self.value else "false"
+        return "NONE" if self.value is None else str(self.value).lower()
 
     def get_cfn_value(self):
         """
