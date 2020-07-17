@@ -16,12 +16,15 @@ import pytest
 
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
+from pcluster.config.mappings import FSX
+from pcluster.config.param_types import Param, Section
 from pcluster.config.validators import (
     DCV_MESSAGES,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     architecture_os_validator,
     disable_hyperthreading_architecture_validator,
+    fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
 )
@@ -706,6 +709,81 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             {"deployment_type": "SCRATCH_1", "per_unit_storage_throughput": 200, "storage_capacity": 1200},
             None,
             "'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'",
+            0,
+        ),
+        (
+            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "automatic_backup_retention_days": 2},
+            None,
+            None,
+            0,
+        ),
+        (
+            {
+                "storage_capacity": 1200,
+                "deployment_type": "PERSISTENT_1",
+                "automatic_backup_retention_days": 2,
+                "daily_automatic_backup_start_time": "03:00",
+                "copy_tags_to_backups": True,
+            },
+            None,
+            None,
+            0,
+        ),
+        (
+            {"automatic_backup_retention_days": 2, "deployment_type": "SCRATCH_1"},
+            None,
+            "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems",
+            0,
+        ),
+        (
+            {"daily_automatic_backup_start_time": "03:00"},
+            None,
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified",
+            0,
+        ),
+        (
+            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": True},
+            None,
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
+            0,
+        ),
+        (
+            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": False},
+            None,
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
+            0,
+        ),
+        (
+            {"daily_automatic_backup_start_time": "03:00", "copy_tags_to_backups": True},
+            None,
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "automatic_backup_retention_days": 2,
+                "imported_file_chunk_size": 1024,
+                "export_path": "s3://test",
+                "import_path": "s3://test",
+                "storage_capacity": 1200,
+            },
+            {"Bucket": "test"},
+            "Backups cannot be created on S3-linked file systems",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "automatic_backup_retention_days": 2,
+                "export_path": "s3://test",
+                "import_path": "s3://test",
+                "storage_capacity": 1200,
+            },
+            {"Bucket": "test"},
+            "Backups cannot be created on S3-linked file systems",
             0,
         ),
     ],
@@ -1553,3 +1631,142 @@ def test_instances_architecture_compatibility_validator(
         instances_architecture_compatibility_validator,
         expected_message,
     )
+
+
+@pytest.mark.parametrize(
+    "section_dict, bucket, num_calls, expected_error",
+    [
+        (
+            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
+        ),
+        (
+            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "storage_capacity": 7200},
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'storage_capacity' cannot be specified.",
+        ),
+        (
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 100,
+            },
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'per_unit_storage_throughput' cannot be specified.",
+        ),
+        (
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "imported_file_chunk_size": 1024,
+                "export_path": "s3://test",
+                "import_path": "s3://test",
+            },
+            {"Bucket": "test"},
+            2,
+            "When restoring an FSx Lustre file system from backup, 'imported_file_chunk_size' cannot be specified.",
+        ),
+        (
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "fsx_kms_key_id": "somekey",
+                "deployment_type": "PERSISTENT_1",
+            },
+            None,
+            0,
+            "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
+        ),
+        (
+            {"fsx_backup_id": "backup-00000000000000000", "deployment_type": "PERSISTENT_1"},
+            None,
+            0,
+            "Failed to retrieve backup with Id 'backup-00000000000000000'",
+        ),
+    ],
+)
+def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket, num_calls, expected_error):
+    valid_key_id = "backup-0ff8da96d57f3b4e3"
+    describe_backups_response = {
+        "Backups": [
+            {
+                "BackupId": valid_key_id,
+                "Lifecycle": "AVAILABLE",
+                "Type": "USER_INITIATED",
+                "CreationTime": 1594159673.559,
+                "FileSystem": {
+                    "StorageCapacity": 7200,
+                    "StorageType": "SSD",
+                    "LustreConfiguration": {"DeploymentType": "PERSISTENT_1", "PerUnitStorageThroughput": 200},
+                },
+            },
+        ]
+    }
+
+    if bucket:
+        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
+    generate_describe_backups_error = section_dict.get("fsx_backup_id") != valid_key_id
+    fsx_mocked_requests = [
+        MockedBoto3Request(
+            method="describe_backups",
+            response=expected_error if generate_describe_backups_error else describe_backups_response,
+            expected_params={"BackupIds": [section_dict.get("fsx_backup_id")]},
+            generate_error=generate_describe_backups_error,
+        )
+    ]
+    boto3_stubber("fsx", fsx_mocked_requests)
+
+    if "fsx_kms_key_id" in section_dict:
+        describe_key_response = {"KeyMetadata": {"KeyId": section_dict.get("fsx_kms_key_id")}}
+        kms_mocked_requests = [
+            MockedBoto3Request(
+                method="describe_key",
+                response=describe_key_response,
+                expected_params={"KeyId": section_dict.get("fsx_kms_key_id")},
+            )
+        ]
+        boto3_stubber("kms", kms_mocked_requests)
+
+    config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
+
+
+#########
+#
+# ignored FSx params validator test
+#
+# Testing a validator that requires the fsx_fs_id parameter to be specified requires a lot of
+# boto3 stubbing due to the complexity contained in the fsx_id_validator.
+#
+# Thus, the following code mocks the pcluster_config object passed to the validator functions
+# and calls the validator directly.
+#
+#########
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_error",
+    [
+        ({"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx"}, None),
+        (
+            {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
+            "storage_capacity is ignored when specifying an existing Lustre file system",
+        ),
+    ],
+)
+def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
+    mocked_pcluster_config = utils.get_mocked_pcluster_config(mocker)
+    fsx_section = Section(FSX, mocked_pcluster_config, "default")
+    for param_key, param_value in section_dict.items():
+        param = FSX.get("params").get(param_key).get("type", Param)
+        param.value = param_value
+        fsx_section.set_param(param_key, param)
+    mocked_pcluster_config.add_section(fsx_section)
+    errors, warnings = fsx_ignored_parameters_validator("fsx", "default", mocked_pcluster_config)
+    assert_that(warnings).is_empty()
+    if expected_error:
+        assert_that(errors[0]).matches(expected_error)
+    else:
+        assert_that(errors).is_empty()

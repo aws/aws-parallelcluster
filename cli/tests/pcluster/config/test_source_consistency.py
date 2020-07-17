@@ -15,7 +15,6 @@ import os
 import tests.pcluster.config.utils as utils
 from assertpy import assert_that
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
-from pcluster.config.param_types import BoolParam
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
 
@@ -35,13 +34,6 @@ def test_mapping_consistency():
             ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators", "max_resources")
 
         for param_key, param_definition in section_definition.get("params").items():
-
-            # Boolean params must have a default value
-            if param_definition.get("type") is BoolParam:
-                assert_that(
-                    param_definition.get("default"),
-                    description="BoolParam '{0}' must have a default value".format(param_key),
-                ).is_not_none()
 
             for param_definition_key, _ in param_definition.items():
                 assert_that(

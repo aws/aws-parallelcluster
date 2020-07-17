@@ -94,6 +94,7 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
+@pytest.mark.skip_oss(["centos6"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
     """Test interactive job submission using PMIx."""
