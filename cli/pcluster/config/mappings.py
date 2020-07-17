@@ -473,12 +473,12 @@ FSX = {
             }),
             ("daily_automatic_backup_start_time", {
                 "allowed_values": r"NONE|^([01]\d|2[0-3]):([0-5]\d)$",
-                "update_policy": UpdatePolicy.UNSUPPORTED
+                "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("automatic_backup_retention_days", {
                 "type": IntParam,
                 "allowed_values": "^(3[0-5]|[0-2][0-9]|[0-9])$",
-                "update_policy": UpdatePolicy.UNSUPPORTED
+                "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("copy_tags_to_backups", {
                 "type": BoolParam,
