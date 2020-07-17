@@ -1762,13 +1762,20 @@ def test_instances_architecture_compatibility_validator(
             0,
             "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
         ),
+        (
+            {"fsx_backup_id": "backup-00000000000000000", "deployment_type": "PERSISTENT_1"},
+            None,
+            0,
+            "Failed to retrieve backup with Id 'backup-00000000000000000'",
+        ),
     ],
 )
 def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket, num_calls, expected_error):
+    valid_key_id = "backup-0ff8da96d57f3b4e3"
     describe_backups_response = {
         "Backups": [
             {
-                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "BackupId": valid_key_id,
                 "Lifecycle": "AVAILABLE",
                 "Type": "USER_INITIATED",
                 "CreationTime": 1594159673.559,
@@ -1783,13 +1790,13 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
 
     if bucket:
         _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
+    generate_describe_backups_error = section_dict.get("fsx_backup_id") != valid_key_id
     fsx_mocked_requests = [
         MockedBoto3Request(
             method="describe_backups",
-            response=describe_backups_response
-            if section_dict.get("fsx_backup_id") == "backup-0ff8da96d57f3b4e3"
-            else {"Backups": []},
+            response=expected_error if generate_describe_backups_error else describe_backups_response,
             expected_params={"BackupIds": [section_dict.get("fsx_backup_id")]},
+            generate_error=generate_describe_backups_error,
         )
     ]
     boto3_stubber("fsx", fsx_mocked_requests)
