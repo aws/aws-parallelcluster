@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import re
+import traceback
 from abc import ABC, abstractmethod
 from urllib.request import urlopen
 
@@ -53,7 +54,16 @@ def validate_document(args, old_doc, new_doc):
     logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
     logging.info("Checking that the new configuration file includes the old entries.")
     if not args.skip_validation:
-        _assert_document_is_included(old_doc, new_doc)
+        try:
+            _assert_document_is_included(old_doc, new_doc)
+        except Exception:
+            # If this is a dry run, continue so that other validation
+            # errors may be found.
+            if not args.deploy:
+                logging.warning("Document validation error")
+                traceback.print_exc()
+            else:
+                raise
     else:
         logging.info(
             "Specifying skip-validation flag, skipping assertion on differences. "
