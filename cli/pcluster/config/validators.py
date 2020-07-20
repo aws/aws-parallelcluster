@@ -49,6 +49,10 @@ FSX_MESSAGES = {
         "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
         "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
         "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
+        "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
+        "cannot be specified.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
+        "fsx_fs_id.",
     }
 }
 
@@ -171,6 +175,27 @@ def fsx_validator(section_key, section_label, pcluster_config):
         if fsx_section.get_param_value("per_unit_storage_throughput"):
             errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
 
+    fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
+    fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
+    fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
+
+    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
+        errors.append(
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified"
+        )
+
+    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
+        errors.append(
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
+        )
+
+    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
+        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
+
+    if (fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path) and fsx_automatic_backup_retention_days:
+        errors.append("Backups cannot be created on S3-linked file systems")
+
     return errors, warnings
 
 
@@ -260,6 +285,9 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
 
     if fsx_section.get_param_value("fsx_fs_id"):
         # if fsx_fs_id is provided, don't validate storage_capacity
+        return errors, warnings
+    elif fsx_section.get_param_value("fsx_backup_id"):
+        # if fsx_backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
         return errors, warnings
     elif not storage_capacity:
         # if fsx_fs_id is not provided, storage_capacity must be provided
@@ -1046,3 +1074,49 @@ def _get_efa_enabled_instance_types(errors):
         )
 
     return instance_types
+
+
+def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        boto3.client("fsx").describe_backups(BackupIds=[param_value]).get("Backups")[0]
+    except ClientError as e:
+        errors.append(
+            "Failed to retrieve backup with Id '{0}': {1}".format(param_value, e.response.get("Error").get("Message"))
+        )
+
+    fsx_section = pcluster_config.get_section("fsx")
+    unsupported_config_param_names = [
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "storage_capacity",
+        "import_path",
+        "export_path",
+        "imported_file_chunk_size",
+        "fsx_kms_key_id",
+    ]
+
+    for config_param_name in unsupported_config_param_names:
+        if fsx_section.get_param_value(config_param_name) is not None:
+            errors.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=config_param_name))
+
+    return errors, warnings
+
+
+def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config):
+    """Return errors for parameters in the FSx config section that would be ignored."""
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section(section_key, section_label)
+
+    # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
+    relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
+    if fsx_section.get_param_value("fsx_fs_id") is not None:
+        for fsx_param in fsx_section.params:
+            if fsx_param not in relevant_when_using_existing_fsx and fsx_section.get_param_value(fsx_param) is not None:
+                errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
+
+    return errors, warnings

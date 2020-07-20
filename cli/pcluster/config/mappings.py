@@ -59,7 +59,9 @@ from pcluster.config.validators import (
     efs_validator,
     fsx_architecture_os_validator,
     fsx_id_validator,
+    fsx_ignored_parameters_validator,
     fsx_imported_file_chunk_size_validator,
+    fsx_lustre_backup_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
     instances_architecture_compatibility_validator,
@@ -421,7 +423,7 @@ FSX = {
     "type": Section,
     "key": "fsx",
     "default_label": "default",
-    "validators": [fsx_validator, fsx_storage_capacity_validator],
+    "validators": [fsx_validator, fsx_storage_capacity_validator, fsx_ignored_parameters_validator],
     "cfn_param_mapping": "FSXOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -457,7 +459,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
-                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):?([0-5]\d)$",
+                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):([0-5]\d)$",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
@@ -467,6 +469,24 @@ FSX = {
             ("per_unit_storage_throughput", {
                 "type": IntParam,
                 "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("daily_automatic_backup_start_time", {
+                "allowed_values": r"NONE|^([01]\d|2[0-3]):([0-5]\d)$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("automatic_backup_retention_days", {
+                "type": IntParam,
+                "allowed_values": "^(3[0-5]|[0-2][0-9]|[0-9])$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("copy_tags_to_backups", {
+                "type": BoolParam,
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("fsx_backup_id", {
+                "validators": [fsx_lustre_backup_validator],
+                "allowed_values": "^(backup-[0-9a-f]{8,})$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
         ]
