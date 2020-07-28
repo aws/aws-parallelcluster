@@ -14,9 +14,10 @@ import time
 import boto3
 import configparser
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from time_utils import minutes
+
 from tests.common.scaling_common import (
     get_batch_ce_max_size,
     get_batch_ce_min_size,
@@ -25,7 +26,6 @@ from tests.common.scaling_common import (
     watch_compute_nodes,
 )
 from tests.common.schedulers_common import SlurmCommands
-from time_utils import minutes
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")

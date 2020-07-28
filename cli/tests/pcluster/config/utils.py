@@ -15,9 +15,9 @@ import tempfile
 
 import configparser
 import pytest
+from assertpy import assert_that
 from configparser import NoOptionError, NoSectionError
 
-from assertpy import assert_that
 from pcluster.config.param_types import Param
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict

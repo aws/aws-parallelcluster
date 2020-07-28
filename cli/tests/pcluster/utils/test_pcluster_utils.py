@@ -3,10 +3,10 @@
 import json
 
 import pytest
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
-from assertpy import assert_that
 from tests.common import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster_name"

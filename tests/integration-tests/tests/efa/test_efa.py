@@ -13,14 +13,14 @@ import logging
 import re
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import get_compute_nodes_instance_ids
+
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
-from utils import get_compute_nodes_instance_ids
 
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])

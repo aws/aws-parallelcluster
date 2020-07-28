@@ -14,15 +14,15 @@ import time
 
 import boto3
 import pytest
-from retrying import retry
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
+
 from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, compile_mpi_ring
 from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
-from time_utils import minutes, seconds
 
 
 @pytest.mark.regions(["us-east-2"])

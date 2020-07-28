@@ -9,10 +9,10 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import boto3
-
 from assertpy import assert_that, soft_assertions
-from tests.common.scaling_common import get_compute_nodes_allocation
 from time_utils import minutes
+
+from tests.common.scaling_common import get_compute_nodes_allocation
 
 
 def assert_instance_replaced_or_terminating(instance_id, region):

@@ -12,9 +12,9 @@
 import logging
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.schedulers_common import AWSBatchCommands
 
 

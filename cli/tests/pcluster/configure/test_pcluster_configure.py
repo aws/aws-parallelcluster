@@ -2,9 +2,9 @@ import os
 import tempfile
 
 import pytest
+from assertpy import assert_that
 from configparser import ConfigParser
 
-from assertpy import assert_that
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
 

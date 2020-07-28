@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import pytest
-
 from assertpy import assert_that
 from packaging import version
-from tests.common.utils import retrieve_latest_ami
 from utils import run_command
+
+from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.fixture()

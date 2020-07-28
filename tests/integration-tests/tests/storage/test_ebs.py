@@ -12,9 +12,9 @@
 import logging
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared

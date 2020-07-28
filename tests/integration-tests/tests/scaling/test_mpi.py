@@ -12,9 +12,9 @@
 import logging
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots

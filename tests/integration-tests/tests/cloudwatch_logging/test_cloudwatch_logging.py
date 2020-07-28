@@ -18,10 +18,10 @@ from os import environ
 from pathlib import Path
 
 import pytest
-from retrying import retry
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from retrying import retry
+
 from tests.cloudwatch_logging import cloudwatch_logging_boto3_utils as cw_logs_utils
 from tests.common.schedulers_common import get_scheduler_commands
 
