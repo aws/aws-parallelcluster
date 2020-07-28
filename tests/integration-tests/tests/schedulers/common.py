@@ -12,6 +12,7 @@
 import logging
 
 from assertpy import assert_that
+
 from tests.common.assertions import assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 

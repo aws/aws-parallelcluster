@@ -15,9 +15,8 @@ import os
 import time
 
 import boto3
-from junitparser import JUnitXml
-
 import untangle
+from junitparser import JUnitXml
 
 
 def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_start=False, start_timestamp=None):

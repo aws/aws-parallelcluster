@@ -14,9 +14,8 @@ import time
 from collections import namedtuple
 
 import boto3
-from retrying import retry
-
 from fabric import Connection
+from retrying import retry
 from utils import random_alphanumeric
 
 SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "master_subnet_id"])

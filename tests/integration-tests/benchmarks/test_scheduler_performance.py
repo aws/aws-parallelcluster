@@ -15,7 +15,6 @@ import threading
 from concurrent.futures.thread import ThreadPoolExecutor
 
 import pytest
-
 from assertpy import assert_that
 from benchmarks.common.metrics_reporter import (
     enable_asg_metrics,
@@ -24,9 +23,10 @@ from benchmarks.common.metrics_reporter import (
 )
 from benchmarks.common.util import get_instance_vcpus
 from remote_command_executor import RemoteCommandExecutor
+from time_utils import minutes
+
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.schedulers_common import get_scheduler_commands
-from time_utils import minutes
 
 
 @pytest.mark.schedulers(["slurm", "sge", "torque"])

@@ -12,8 +12,9 @@
 import json
 import os
 
-import tests.pcluster.config.utils as utils
 from assertpy import assert_that
+
+import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_CONFIG_NUM_OF_PARAMS, DefaultCfnParams

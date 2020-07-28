@@ -15,15 +15,15 @@ from os import environ
 
 import boto3
 import pytest
-from retrying import retry
-
 from assertpy import assert_that, soft_assertions
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
+from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
+
 from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
 from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
-from time_utils import minutes, seconds
-from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
 
 @pytest.mark.skip_schedulers(["awsbatch"])

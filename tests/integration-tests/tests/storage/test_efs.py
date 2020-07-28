@@ -13,12 +13,12 @@ import logging
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import get_vpc_snakecase_value
+
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.storage_common import verify_directory_correctly_shared
-from utils import get_vpc_snakecase_value
 
 
 # For EFS tests, only use regions defined in AVAILABILITY_ZONE_OVERRIDES in conftest
