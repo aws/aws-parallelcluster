@@ -11,8 +11,8 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import pytest
-
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import retrieve_latest_ami
 

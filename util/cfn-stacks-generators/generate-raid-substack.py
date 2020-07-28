@@ -1,5 +1,4 @@
 import argparse
-
 import troposphere.ec2 as ec2
 from troposphere import And, Condition, Equals, If, Join, Not, NoValue, Output, Parameter, Ref, Select, Template
 

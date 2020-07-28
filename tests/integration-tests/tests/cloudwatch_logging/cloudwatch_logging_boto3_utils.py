@@ -2,9 +2,8 @@ import json
 import logging
 
 import boto3
-from botocore.exceptions import ClientError
-
 import utils
+from botocore.exceptions import ClientError
 
 LOGGER = logging.getLogger(__name__)
 

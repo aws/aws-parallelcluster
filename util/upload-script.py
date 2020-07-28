@@ -3,7 +3,6 @@ import logging
 import os
 
 import argparse
-
 from s3_factory import S3DocumentManager
 from update_pcluster_configs import get_aws_regions, retrieve_sts_credentials
 

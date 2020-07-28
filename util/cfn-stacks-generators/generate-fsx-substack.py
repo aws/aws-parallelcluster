@@ -1,5 +1,4 @@
 import argparse
-
 from troposphere import And, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
 from troposphere.fsx import FileSystem, LustreConfiguration
 

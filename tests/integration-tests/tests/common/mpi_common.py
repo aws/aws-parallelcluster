@@ -2,6 +2,7 @@ import logging
 import pathlib
 
 from assertpy import assert_that
+
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 

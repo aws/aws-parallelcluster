@@ -15,7 +15,6 @@ import logging
 import os
 
 import boto3
-
 from s3_factory import S3DocumentManager
 
 PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}

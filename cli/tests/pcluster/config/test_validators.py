@@ -13,9 +13,9 @@ import os
 import re
 
 import pytest
+from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from assertpy import assert_that
 from pcluster.config.mappings import FSX
 from pcluster.config.param_types import Param, Section
 from pcluster.config.validators import (

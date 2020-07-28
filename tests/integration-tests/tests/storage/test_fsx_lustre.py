@@ -14,14 +14,14 @@ import logging
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
-from retrying import retry
-
 import utils
 from assertpy import assert_that
+from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
-from tests.common.schedulers_common import SgeCommands
+from retrying import retry
 from time_utils import minutes, seconds
+
+from tests.common.schedulers_common import SgeCommands
 
 
 @pytest.mark.parametrize(

@@ -13,7 +13,6 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 from retrying import retry
-
 from utils import retrieve_cfn_outputs, retrieve_cfn_resources, set_credentials, unset_credentials
 
 

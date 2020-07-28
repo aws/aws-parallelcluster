@@ -19,9 +19,8 @@ import string
 import subprocess
 
 import boto3
-from retrying import retry
-
 from assertpy import assert_that
+from retrying import retry
 
 
 def retry_if_subprocess_error(exception):
