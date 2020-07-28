@@ -23,8 +23,6 @@ from traceback import format_tb
 
 import configparser
 import pytest
-from retrying import retry
-
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -37,6 +35,7 @@ from conftest_markers import (
 )
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
+from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,

@@ -3,11 +3,11 @@
 import os
 
 import pytest
+from assertpy import assert_that
+from recordclass import recordclass
 
 import pcluster.createami as createami
-from assertpy import assert_that
 from pcluster.constants import SUPPORTED_ARCHITECTURES
-from recordclass import recordclass
 
 MockedCreateAmiArgs = recordclass(
     "MockedCreateAmiArgs", ["base_ami_id", "instance_type", "base_ami_os"], rename=False, defaults=None, module=None

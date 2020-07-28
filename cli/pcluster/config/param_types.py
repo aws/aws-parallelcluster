@@ -15,9 +15,9 @@ import logging
 import re
 import sys
 
+import yaml
 from configparser import NoSectionError
 
-import yaml
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.config.resource_map import ResourceMap
 from pcluster.config.update_policy import UpdatePolicy

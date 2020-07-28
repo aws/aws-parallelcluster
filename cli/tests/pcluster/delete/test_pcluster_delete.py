@@ -3,11 +3,11 @@
 from collections import namedtuple
 
 import pytest
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.commands as commands
 import pcluster.utils as utils
-from assertpy import assert_that
 
 FakePdeleteArgs = namedtuple("FakePdeleteArgs", "cluster_name config_file nowait keep_logs region")
 FAKE_CLUSTER_NAME = "cluster_name"

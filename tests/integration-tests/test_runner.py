@@ -19,7 +19,6 @@ from tempfile import TemporaryDirectory
 
 import argparse
 import pytest
-
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
 
 logger = logging.getLogger()

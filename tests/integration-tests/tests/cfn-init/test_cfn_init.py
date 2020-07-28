@@ -12,9 +12,9 @@
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.assertions import assert_instance_replaced_or_terminating
 from tests.common.compute_logs_common import wait_compute_log
 from tests.common.schedulers_common import SlurmCommands

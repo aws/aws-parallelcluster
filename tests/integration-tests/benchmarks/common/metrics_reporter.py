@@ -16,7 +16,6 @@ from time import sleep
 
 import boto3
 from retrying import RetryError, retry
-
 from time_utils import seconds
 
 METRIC_WIDGET_TEMPLATE = """

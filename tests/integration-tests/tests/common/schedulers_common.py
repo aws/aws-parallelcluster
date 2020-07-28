@@ -12,9 +12,8 @@ import os
 import re
 from abc import ABCMeta, abstractmethod
 
-from retrying import retry
-
 from assertpy import assert_that
+from retrying import retry
 from time_utils import minutes, seconds
 
 

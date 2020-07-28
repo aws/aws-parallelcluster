@@ -1,5 +1,4 @@
 import argparse
-
 from troposphere import And, Condition, Equals, If, Not, NoValue, Output, Parameter, Ref, Select, Template
 from troposphere.efs import FileSystem, MountTarget
 

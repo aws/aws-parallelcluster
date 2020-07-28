@@ -1,4 +1,5 @@
 from assertpy import assert_that
+
 from pcluster.configure.subnet_computation import evaluate_cidr, get_subnet_cidr
 
 
