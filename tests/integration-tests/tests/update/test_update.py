@@ -166,7 +166,7 @@ def _add_compute_nodes(slurm_commands, number_of_nodes=1):
 
 
 def _get_instance(region, stack_name, host, none_expected=False):
-    hostname = "{0}.{1}.compute.internal".format(host, region)
+    hostname = f"{host}.ec2.internal" if region == "us-east-1" else "{0}.{1}.compute.internal".format(host, region)
     ec2_resource = boto3.resource("ec2", region_name=region)
     instance = next(
         iter(
