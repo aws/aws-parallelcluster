@@ -40,6 +40,7 @@ CHANGELOG
 * Install third-party cookbook dependencies via local source, rather than using the Chef supermarket.
 * Use https wherever possible in download URLs.
 * Install glibc-static, which is required to support certain options for the Intel MPI compiler.
+* Require an initial cluster size greater than zero when the option to maintain the initial cluster size is used.
 
 **BUG FIXES**
 
