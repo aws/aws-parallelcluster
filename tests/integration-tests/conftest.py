@@ -21,6 +21,7 @@ import re
 from shutil import copyfile
 from traceback import format_tb
 
+import boto3
 import configparser
 import pytest
 from retrying import retry
@@ -404,8 +405,6 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "sa-east-1": ["sa-east-1a", "sa-east-1c"],
     # m6g.xlarge instances not available in eu-west-1c
     "eu-west-1": ["eu-west-1a", "eu-west-1b"],
-    # provide AZs to enforce networking setup used for EFS test
-    "cn-north-1": ["cn-north-1a", "cn-north-1b"],
 }
 
 
@@ -422,11 +421,33 @@ def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
     regions = request.config.getoption("regions")
     vpc_stacks = {}
+
     for region in regions:
-        # Randomly select 2 AZs from list WITHOUT replacement, hence the need for [None, None].
         # Creating private_subnet_different_cidr in a different AZ for test_efs
         # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
-        availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region, [None, None]), k=2)
+
+        # if region in AVAILABILITY_ZONE_OVERRIDES keys, find the availability_zones
+        if region in AVAILABILITY_ZONE_OVERRIDES:
+            availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region), k=2)
+        # else if region is not in AVAILABILITY_ZONE_OVERRIDES keys, find available zones mapping to the region
+        else:
+            # get ec2 client
+            client = boto3.client("ec2", region_name=region)
+            response_az = client.describe_availability_zones(
+                Filters=[
+                    {"Name": "region-name", "Values": [str(region)]},
+                    {"Name": "zone-type", "Values": ["availability-zone"]},
+                ]
+            )
+            az_list = []
+            for az in response_az.get("AvailabilityZones"):
+                az_list.append(az.get("ZoneName"))
+            # if number of available zones is smaller than 2, available zones should be [None, None]
+            if len(az_list) < 2:
+                availability_zones = [None, None]
+            else:
+                availability_zones = random.sample(az_list, k=2)
+
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
