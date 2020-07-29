@@ -72,7 +72,10 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
 def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
     logging.info("Running OSU benchmarks for {0}".format(mpi_version))
     remote_command_executor.run_remote_script(
-        str(test_datadir / "init_osu_benchmarks.sh"), args=[mpi_version], hide=True
+        str(test_datadir / "init_osu_benchmarks.sh"),
+        args=[mpi_version],
+        hide=True,
+        additional_files=[str(test_datadir / "osu-micro-benchmarks-5.6.3.tar.gz")],
     )
 
     result = scheduler_commands.submit_script(
