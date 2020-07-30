@@ -967,7 +967,7 @@ class SettingsParam(Param):
                 if "," in self.value:
                     self.pcluster_config.error(
                         "The value of '{0}' parameter is invalid. "
-                        "It can only contains a single {1} section label.".format(self.key, self.referred_section_key)
+                        "It can only contain a single {1} section label.".format(self.key, self.referred_section_key)
                     )
                 else:
                     # Calls the "from_file" of the Section
@@ -1004,7 +1004,7 @@ class SettingsParam(Param):
             if "," in self.value:
                 self.pcluster_config.error(
                     "The default value of '{0}' parameter is invalid. "
-                    "It can only contains a single {1} section label.".format(self.key, self.referred_section_key)
+                    "It can only contain a single {1} section label.".format(self.key, self.referred_section_key)
                 )
             else:
                 # initialize related section with default values
