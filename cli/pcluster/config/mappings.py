@@ -12,6 +12,7 @@ from future.moves.collections import OrderedDict
 
 from pcluster.config.cfn_param_types import (
     AdditionalIamPoliciesCfnParam,
+    BaseOSCfnParam,
     BoolCfnParam,
     CfnSection,
     ClusterCfnSection,
@@ -46,11 +47,13 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
+    architecture_os_validator,
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
     compute_resource_validator,
     dcv_enabled_validator,
+    disable_hyperthreading_architecture_validator,
     disable_hyperthreading_validator,
     ebs_settings_validator,
     ec2_ami_validator,
@@ -67,12 +70,16 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
+    fsx_architecture_os_validator,
     fsx_id_validator,
+    fsx_ignored_parameters_validator,
     fsx_imported_file_chunk_size_validator,
-    fsx_os_support,
+    fsx_lustre_backup_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
-    intel_hpc_validator,
+    instances_architecture_compatibility_validator,
+    intel_hpc_architecture_validator,
+    intel_hpc_os_validator,
     kms_key_validator,
     maintain_initial_size_validator,
     queue_settings_validator,
@@ -83,7 +90,7 @@ from pcluster.config.validators import (
     shared_dir_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS
+from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHITECTURES
 
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
@@ -132,6 +139,7 @@ ALLOWED_VALUES = {
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
     "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "per_unit_storage_throughput": [50, 100, 200],
+    "architectures": SUPPORTED_ARCHITECTURES,
 }
 
 AWS = {
@@ -439,7 +447,7 @@ FSX = {
     "type": CfnSection,
     "key": "fsx",
     "default_label": "default",
-    "validators": [fsx_validator, fsx_storage_capacity_validator],
+    "validators": [fsx_validator, fsx_storage_capacity_validator, fsx_ignored_parameters_validator],
     "cfn_param_mapping": "FSXOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -475,7 +483,7 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
-                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):?([0-5]\d)$",
+                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):([0-5]\d)$",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
@@ -485,6 +493,24 @@ FSX = {
             ("per_unit_storage_throughput", {
                 "type": IntCfnParam,
                 "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("daily_automatic_backup_start_time", {
+                "allowed_values": r"NONE|^([01]\d|2[0-3]):([0-5]\d)$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("automatic_backup_retention_days", {
+                "type": IntCfnParam,
+                "allowed_values": "^(3[0-5]|[0-2][0-9]|[0-9])$",
+                "update_policy": UpdatePolicy.SUPPORTED
+            }),
+            ("copy_tags_to_backups", {
+                "type": BoolCfnParam,
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("fsx_backup_id", {
+                "validators": [fsx_lustre_backup_validator],
+                "allowed_values": "^(backup-[0-9a-f]{8,})$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
         ]
@@ -648,9 +674,10 @@ CLUSTER = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("base_os", {
+                "type": BaseOSCfnParam,
                 "cfn_param_mapping": "BaseOS",
                 "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
-                "validators": [base_os_validator],
+                "validators": [base_os_validator, architecture_os_validator],
                 "required": True,
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -696,7 +723,7 @@ CLUSTER = {
                     lambda section:
                         "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
                 "cfn_param_mapping": "ComputeInstanceType",
-                "validators": [compute_instance_type_validator],
+                "validators": [compute_instance_type_validator, instances_architecture_compatibility_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("compute_root_volume_size", {
@@ -785,7 +812,7 @@ CLUSTER = {
                 "type": DisableHyperThreadingCfnParam,
                 "default": False,
                 "cfn_param_mapping": "Cores",
-                "validators": [disable_hyperthreading_validator],
+                "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             # Customization
@@ -883,7 +910,7 @@ CLUSTER = {
                 "default": False,
                 "type": BoolCfnParam,
                 "cfn_param_mapping": "IntelHPCPlatform",
-                "validators": [intel_hpc_validator],
+                "validators": [intel_hpc_os_validator, intel_hpc_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("default_queue", {
@@ -927,7 +954,7 @@ CLUSTER = {
             ("fsx_settings", {
                 "type": SettingsCfnParam,
                 "referred_section": FSX,
-                "validators": [fsx_os_support],
+                "validators": [fsx_architecture_os_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("dcv_settings", {
@@ -953,6 +980,12 @@ CLUSTER = {
                 "cfn_param_mapping": "EC2IAMPolicies",
                 "validators": [ec2_iam_policies_validator],
                 "update_policy": UpdatePolicy.SUPPORTED,
+            }),
+            # Derived parameters - present in CFN parameters but not in config file
+            ("architecture", {
+                "cfn_param_mapping": "Architecture",
+                "update_policy": UpdatePolicy.IGNORED,
+                "visibility": Visibility.PRIVATE,
             }),
         ]
     )

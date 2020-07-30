@@ -13,12 +13,12 @@ import logging
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import get_vpc_snakecase_value
+
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.storage_common import verify_directory_correctly_shared
-from utils import get_vpc_snakecase_value
 
 
 # For EFS tests, only use regions defined in AVAILABILITY_ZONE_OVERRIDES in conftest
@@ -46,8 +46,8 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.regions(["us-east-1", "cn-north-1"])
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stacks):

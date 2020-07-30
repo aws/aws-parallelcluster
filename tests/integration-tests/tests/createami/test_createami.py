@@ -11,11 +11,11 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import pytest
-
 from assertpy import assert_that
 from packaging import version
-from tests.common.utils import retrieve_latest_ami
 from utils import run_command
+
+from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.fixture()
@@ -32,12 +32,16 @@ def vpc_stack(vpc_stacks, region):
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
-def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack):
+@pytest.mark.dimensions("us-east-1", "m6g.xlarge", "ubuntu1804", "*")
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "*")
+def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack, architecture):
     """Test createami for given region and os"""
     cluster_config = pcluster_config_reader()
 
     # Get base AMI
-    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable")
+    # remarkable AMIs are not available for ARM yet
+    ami_type = "remarkable" if architecture == "x86_64" else "official"
+    base_ami = retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture)
 
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]

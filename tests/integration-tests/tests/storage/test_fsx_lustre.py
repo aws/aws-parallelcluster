@@ -9,27 +9,34 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import datetime
 import logging
 
 import boto3
 import pytest
-from retrying import retry
-
 import utils
 from assertpy import assert_that
+from botocore.exceptions import ClientError
 from remote_command_executor import RemoteCommandExecutor
-from tests.common.schedulers_common import SgeCommands
+from retrying import retry
 from time_utils import minutes, seconds
+
+from tests.common.schedulers_common import SgeCommands
 
 
 @pytest.mark.parametrize(
     "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
 )
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.skip_oss(["centos6"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler", "deployment_type")
+# FSx is not supported on CentOS 6
+@pytest.mark.skip_oss(["centos6"])
+# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(
     deployment_type,
     per_unit_storage_throughput,
@@ -64,6 +71,84 @@ def test_fsx_lustre(
     _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
+
+
+@pytest.mark.regions(["us-east-1"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
+@pytest.mark.schedulers(["sge"])
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+# FSx is not supported on CentOS 6
+@pytest.mark.skip_oss(["centos6"])
+# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
+def test_fsx_lustre_backup(
+    region, pcluster_config_reader, clusters_factory, test_datadir, os,
+):
+    """
+    Test FSx Lustre backup feature. As part of this test, following steps are performed
+    1. Create a cluster with FSx automatic backups feature enabled.
+    2. Mount the file system and create a test file in it.
+    3. Wait for automatic backup to be created.
+    4. Create a manual FSx Lustre backup of the file system.
+    5. Delete the cluster.
+    6. Verify whether automatic backup is deleted. NOTE: FSx team is planning to change this
+       behavior to retain automatic backups upon filesystem deletion. The test case should
+       be update when this change is in place.
+    7. Restore a cluster from the manual backup taken in step 4. Verify whether test file
+       created in step 2 exists in the restored file system.
+    8. Delete manual backup created in step 4.
+
+    """
+    mount_dir = "/fsx_mount_dir"
+    utc_now_plus_15 = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    daily_automatic_backup_start_time = utc_now_plus_15.strftime("%H:%M")
+    logging.info("daily_automatic_backup_start_time" + daily_automatic_backup_start_time)
+    cluster_config = pcluster_config_reader(
+        mount_dir=mount_dir, daily_automatic_backup_start_time=daily_automatic_backup_start_time
+    )
+
+    # Create a cluster with automatic backup parameters.
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    fsx_fs_id = get_fsx_fs_id(cluster, region)
+
+    # Mount file system
+    _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
+
+    # Create a text file in the mount directory.
+    create_backup_test_file(remote_command_executor, mount_dir)
+
+    # Wait for the creation of automatic backup and assert if it is in available state.
+    automatic_backup = monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region)
+
+    # Create a manual FSx Lustre backup using boto3 client.
+    manual_backup = create_manual_fs_backup(remote_command_executor, fsx_fs_id, region)
+
+    # Delete original cluster.
+    cluster.delete()
+
+    # Verify whether automatic backup is also deleted along with the cluster.
+    _test_automatic_backup_deletion(remote_command_executor, automatic_backup, region)
+
+    # Restore backup into a new cluster
+    cluster_config_restore = pcluster_config_reader(
+        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId"),
+    )
+
+    cluster_restore = clusters_factory(cluster_config_restore)
+    remote_command_executor_restore = RemoteCommandExecutor(cluster_restore)
+    fsx_fs_id_restore = get_fsx_fs_id(cluster_restore, region)
+
+    # Mount the restored file system
+    _test_fsx_lustre_correctly_mounted(remote_command_executor_restore, mount_dir, os, region, fsx_fs_id_restore)
+
+    # Validate whether text file created in the original file system is present in the restored file system.
+    _test_restore_from_backup(remote_command_executor_restore, mount_dir)
+
+    # Test deletion of manual backup
+    _test_delete_manual_backup(remote_command_executor, manual_backup, region)
 
 
 def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
@@ -193,3 +278,85 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(file_owner).is_equal_to("6666")
     assert_that(file_group).is_equal_to("6666")
     assert_that(file_permissions).is_equal_to("0100777")
+
+
+def create_backup_test_file(remote_command_executor, mount_dir):
+    logging.info("Creating a backup test file in fsx lustre mount directory")
+    sge_commands = SgeCommands(remote_command_executor)
+    remote_command_executor.run_remote_command(
+        "echo 'FSx Lustre Backup test file' > {mount_dir}/file_to_backup".format(mount_dir=mount_dir)
+    )
+    job_command = "cat {mount_dir}/file_to_backup ".format(mount_dir=mount_dir)
+    result = sge_commands.submit_command(job_command)
+    job_id = sge_commands.assert_job_submitted(result.stdout)
+    sge_commands.wait_job_completed(job_id)
+    sge_commands.assert_job_succeeded(job_id)
+    result = remote_command_executor.run_remote_command("cat {mount_dir}/file_to_backup".format(mount_dir=mount_dir))
+    assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
+
+
+def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region):
+    logging.info("Monitoring automatic backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
+    fsx = boto3.client("fsx", region_name=region)
+    backup = poll_on_automatic_backup_creation(fsx_fs_id, fsx)
+    assert_that(backup.get("Lifecycle")).is_equal_to("AVAILABLE")
+    return backup
+
+
+@retry(
+    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING", "NOT_STARTED"],
+    wait_fixed=seconds(5),
+    stop_max_delay=minutes(7),
+)
+def poll_on_automatic_backup_creation(fsx_fs_id, fsx):
+    backups = fsx.describe_backups(Filters=[{"Name": "file-system-id", "Values": [fsx_fs_id]}]).get("Backups")
+    backup = backups[0] if len(backups) > 0 else {"BackupId": "NA", "Lifecycle": "NOT_STARTED"}
+    logging.info(
+        "Backup {backup_id}: {status}".format(backup_id=backup.get("BackupId"), status=backup.get("Lifecycle"))
+    )
+
+    return backup
+
+
+def _test_automatic_backup_deletion(remote_command_executor, automatic_backup, region):
+    backup_id = automatic_backup.get("BackupId")
+    logging.info("Verifying whether automatic backup '{0}' was deleted".format(backup_id))
+    error_message = "Backup '{backup_id}' does not exist.".format(backup_id=backup_id)
+    fsx = boto3.client("fsx", region_name=region)
+    with pytest.raises(ClientError, match=error_message):
+        return fsx.describe_backups(BackupIds=[backup_id])
+
+
+def create_manual_fs_backup(remote_command_executor, fsx_fs_id, region):
+    logging.info("Create manual backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
+    fsx = boto3.client("fsx", region_name=region)
+    backup = fsx.create_backup(FileSystemId=fsx_fs_id).get("Backup")
+    backup = poll_on_manual_backup_creation(backup, fsx)
+    assert_that(backup.get("Lifecycle")).is_equal_to("AVAILABLE")
+    return backup
+
+
+@retry(
+    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING"],
+    wait_fixed=seconds(5),
+    stop_max_delay=minutes(7),
+)
+def poll_on_manual_backup_creation(backup, fsx):
+    logging.info(
+        "Backup {backup_id}: {status}".format(backup_id=backup.get("BackupId"), status=backup.get("Lifecycle"))
+    )
+    return fsx.describe_backups(BackupIds=[backup.get("BackupId")]).get("Backups")[0]
+
+
+def _test_restore_from_backup(remote_command_executor, mount_dir):
+    logging.info("Testing fsx lustre correctly restored from backup")
+    result = remote_command_executor.run_remote_command("cat {mount_dir}/file_to_backup".format(mount_dir=mount_dir))
+    assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
+
+
+def _test_delete_manual_backup(remote_command_executor, backup, region):
+    backup_id = backup.get("BackupId")
+    logging.info("Testing deletion of manual backup {0}".format(backup_id))
+    fsx = boto3.client("fsx", region_name=region)
+    response = fsx.delete_backup(BackupId=backup_id)
+    assert_that(response.get("Lifecycle")).is_equal_to("DELETED")

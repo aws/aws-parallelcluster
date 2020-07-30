@@ -14,21 +14,22 @@ import time
 
 import boto3
 import pytest
-from retrying import retry
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from retrying import retry
+from time_utils import minutes, seconds
+
 from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
+from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, compile_mpi_ring
 from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
-from time_utils import minutes, seconds
 
 
 @pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "scheduler")
-def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir):
+def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all AWS Slurm related features.
 
@@ -39,8 +40,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     # IntelMPI not available on centos6
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
-    does_not_support_impi = ["centos6"]
-    initial_queue_size = 2 if os not in does_not_support_impi else 0
+    supports_impi = os not in ["centos6"] and architecture == "x86_64"
+    initial_queue_size = 2 if supports_impi else 0
     cluster_config = pcluster_config_reader(
         scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, initial_queue_size=initial_queue_size
     )
@@ -49,7 +50,7 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
 
     _test_slurm_version(remote_command_executor)
 
-    if os not in does_not_support_impi:
+    if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
 
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)
@@ -88,6 +89,40 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
     _gpu_test_conflicting_options(remote_command_executor, 2)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+
+
+@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.skip_oss(["centos6"])
+@pytest.mark.usefixtures("os", "instance", "scheduler")
+def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
+    """Test interactive job submission using PMIx."""
+    num_computes = 2
+    cluster_config = pcluster_config_reader(queue_size=num_computes)
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+
+    # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
+    # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
+    # Sample output:
+    # [ec2-user@ip-172-31-33-187 ~]$ srun 2>&1 --mpi=list
+    # srun: MPI types are...
+    # srun: none
+    # srun: openmpi
+    # srun: pmi2
+    # srun: pmix
+    # srun: pmix_v3
+    mpi_list_output = remote_command_executor.run_remote_command("srun 2>&1 --mpi=list").stdout
+    assert_that(mpi_list_output).matches(r"\s+pmix($|\s+)")
+    assert_that(mpi_list_output).matches(r"\s+pmix_v3($|\s+)")
+
+    # Compile and run an MPI program interactively
+    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
+    binary_path = "/shared/ring"
+    compile_mpi_ring(mpi_module, remote_command_executor, binary_path=binary_path)
+    interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} {binary_path}"
+    remote_command_executor.run_remote_command(interactive_command)
 
 
 def _test_mpi_job_termination(remote_command_executor, test_datadir):

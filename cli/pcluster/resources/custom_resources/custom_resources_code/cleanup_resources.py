@@ -13,7 +13,6 @@ import time
 
 import boto3
 from botocore.config import Config
-
 from crhelper import CfnResource
 
 helper = CfnResource(json_logging=False, log_level="INFO", boto_level="ERROR", sleep_on_delete=0)

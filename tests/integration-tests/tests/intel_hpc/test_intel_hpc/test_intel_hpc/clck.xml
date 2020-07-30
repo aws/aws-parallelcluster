@@ -64,7 +64,7 @@
     <!-- This tag can be used to set the network interface used for
          accumulating data collected on-demand.
     -->
-    <network_interface>ens5</network_interface>
+    <network_interface>eth0</network_interface>
 
     <!-- This tag can be used to override the default location for
          data provider helper files.

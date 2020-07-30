@@ -2,6 +2,52 @@
 CHANGELOG
 =========
 
+2.8.0
+=====
+
+**ENHANCEMENTS**
+
+* Enable support for ARM instances on Ubuntu 18.04 and Amazon Linux 2.
+* Add support for the automatic backup features of FSx file systems.
+* Renewed user experience and robustness of cluster update functionality.
+* Support DCV and EFS in China regions.
+* Use DescribeInstanceTypes API to validate whether an instance type is EFA-enabled so that new EFA instances can
+  be used without requiring an update to the ParallelCluster configuration files.
+* Enable Slurm to directly launch tasks and initialize communications through PMIx v3.1.5 on all supported
+  operating systems except for CentOS 6.
+* Print a warning when using NICE DCV on micro or nano instances.
+
+**CHANGES**
+
+* Remove the client requirement to have Berkshelf to build a custom AMI.
+* Upgrade EFA installer to version 1.9.4:
+  * Kernel module: ``efa-1.6.0`` (from efa-1.5.1)
+  * RDMA core: ``rdma-core-28.amzn0`` (from rdma-core-25.0)
+  * Libfabric: ``libfabric-1.10.1amazon1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
+  * Open MPI: openmpi40-aws-4.0.3 (no change)
+* Avoid unnecessary validation of IAM policies.
+* Removed unused dependency on supervisor from the Batch Dockerfile.
+* Move all LogGroup definitions in the CloudFormation templates into the CloudWatch substack.
+* Disable libvirtd service on CentOS 7. Virtual bridge interfaces are incorrectly detected by Open MPI and
+  cause MPI applications to hang, see https://www.open-mpi.org/faq/?category=tcp#tcp-selection for details 
+* Use CINC instead of Chef for provisioning instances. See https://cinc.sh/about/ for details.
+* Retry when mounting an NFS mount fails.
+* Install the `pyenv` virtual environments used by ParallelCluster cookbook and node daemon code under
+  /opt/parallelcluster instead of under /usr/local.
+* Use the new official CentOS 7 AMI as the base images for ParallelCluster AMI.
+* Upgrade NVIDIA driver to Tesla version 440.95.01 on CentOS 6 and version 450.51.05 on all other distros.
+* Upgrade CUDA library to version 11.0 on all distros besides CentOS 6.
+* Install third-party cookbook dependencies via local source, rather than using the Chef supermarket.
+* Use https wherever possible in download URLs.
+* Install glibc-static, which is required to support certain options for the Intel MPI compiler.
+* Require an initial cluster size greater than zero when the option to maintain the initial cluster size is used.
+
+**BUG FIXES**
+
+* Fix validator for CIDR-formatted IP range parameters.
+* Fix issue that was preventing concurrent use of custom node and pcluster CLI packages.
+* Use the correct domain name when contacting AWS services from the China partition.
+
 2.7.0
 =====
 

@@ -12,13 +12,11 @@
 import datetime
 import json
 import os
-import re
 import time
 
 import boto3
-from junitparser import JUnitXml
-
 import untangle
+from junitparser import JUnitXml
 
 
 def generate_cw_report(test_results_dir, namespace, aws_region, timestamp_day_start=False, start_timestamp=None):
@@ -97,10 +95,6 @@ def generate_json_report(test_results_dir, save_to_file=True):
             if hasattr(testcase, "properties"):
                 for property in testcase.properties.children:
                     _record_result(results, property["name"], property["value"], label)
-
-            if testcase.get_attribute("file"):
-                feature = re.sub(r"test_|_test|.py", "", os.path.splitext(os.path.basename(testcase["file"]))[0])
-                _record_result(results, "feature", feature, label)
 
     if save_to_file:
         with open("{0}/test_report.json".format(test_results_dir), "w") as out_f:

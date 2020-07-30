@@ -14,9 +14,9 @@ import time
 from collections import namedtuple
 
 import boto3
-from retrying import retry
-
 from fabric import Connection
+from retrying import retry
+from utils import random_alphanumeric
 
 SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "master_subnet_id"])
 
@@ -153,22 +153,16 @@ class EBSSnapshotsFactory:
         return vol
 
     def _get_security_group_id(self):
-        response = self.boto_client.describe_security_groups(
-            Filters=[{"Name": "group-name", "Values": ["snapshot"]}, {"Name": "vpc-id", "Values": [self.config.vpc_id]}]
-        )
-        if len(response["SecurityGroups"]) == 0:
-            security_group_id = self.boto_client.create_security_group(
-                Description="security group for snapshot instance node", GroupName="snapshot", VpcId=self.config.vpc_id
-            )["GroupId"]
+        security_group_id = self.boto_client.create_security_group(
+            Description="security group for snapshot instance node",
+            GroupName="snapshot-" + random_alphanumeric(),
+            VpcId=self.config.vpc_id,
+        )["GroupId"]
 
-            self.boto_client.authorize_security_group_ingress(
-                GroupId=security_group_id,
-                IpPermissions=[
-                    {"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}
-                ],
-            )
-        else:
-            security_group_id = response["SecurityGroups"][0]["GroupId"]
+        self.boto_client.authorize_security_group_ingress(
+            GroupId=security_group_id,
+            IpPermissions=[{"IpProtocol": "tcp", "FromPort": 22, "ToPort": 22, "IpRanges": [{"CidrIp": "0.0.0.0/0"}]}],
+        )
 
         return security_group_id
 
@@ -184,7 +178,7 @@ class EBSSnapshotsFactory:
                     "SubnetId": subnet.id,
                     "DeviceIndex": 0,
                     "AssociatePublicIpAddress": True,
-                    "Groups": [self._get_security_group_id()],
+                    "Groups": [self.security_group_id],
                 }
             ],
             TagSpecifications=[

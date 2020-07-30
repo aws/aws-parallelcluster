@@ -17,7 +17,6 @@ import time
 import boto3
 import configparser
 from retrying import retry
-
 from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
 
 

@@ -13,8 +13,8 @@ import os
 from collections import OrderedDict
 
 import pytest
-
 from assertpy import assert_that
+
 from pcluster.config.cfn_param_types import CfnSection
 from pcluster.config.mappings import CLUSTER
 from pcluster.config.param_types import SettingsParam, StorageData

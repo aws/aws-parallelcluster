@@ -12,9 +12,9 @@
 import json
 import os
 
-import tests.pcluster.config.utils as utils
 from assertpy import assert_that
-from pcluster.config.cfn_param_types import BoolCfnParam
+
+import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
@@ -35,13 +35,6 @@ def test_mapping_consistency():
             ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators", "max_resources")
 
         for param_key, param_definition in section_definition.get("params").items():
-
-            # Boolean params must have a default value
-            if param_definition.get("type") is BoolCfnParam:
-                assert_that(
-                    param_definition.get("default"),
-                    description="BoolParam '{0}' must have a default value".format(param_key),
-                ).is_not_none()
 
             for param_definition_key, _ in param_definition.items():
                 assert_that(
@@ -68,6 +61,9 @@ def test_mapping_consistency():
 def test_example_config_consistency(mocker):
     """Validate example file and try to convert to CFN."""
     mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
     pcluster_config = PclusterConfig(config_file=utils.get_pcluster_config_example(), fail_on_file_absence=True)
 
     cfn_params = pcluster_config.to_cfn()

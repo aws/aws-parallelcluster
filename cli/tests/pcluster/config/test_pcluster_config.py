@@ -9,8 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
-
 from assertpy import assert_that
+
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import get_mocked_pcluster_config
 

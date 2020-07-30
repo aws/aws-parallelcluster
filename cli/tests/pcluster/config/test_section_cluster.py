@@ -736,7 +736,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },
@@ -801,7 +801,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # raid
                     "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },
@@ -819,10 +819,7 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
         "pcluster.config.cfn_param_types.get_avail_zone",
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
-    mocker.patch(
-        "pcluster.config.validators.get_supported_features",
-        return_value={"instances": ["t2.large"], "baseos": ["ubuntu1804"], "schedulers": ["slurm"]},
-    )
+
     mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
 

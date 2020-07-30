@@ -14,7 +14,6 @@ import random
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from conftest import AVAILABILITY_ZONE_OVERRIDES

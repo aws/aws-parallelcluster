@@ -14,11 +14,11 @@ import re
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 from utils import add_keys_to_known_hosts, get_username_for_os, remove_keys_from_known_hosts, run_command
+
+from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 
 SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"

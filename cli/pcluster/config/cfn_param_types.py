@@ -13,6 +13,7 @@ import json
 from collections import OrderedDict
 
 import yaml
+
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
 from pcluster.config.param_types import (
     LOGGER,
@@ -25,7 +26,14 @@ from pcluster.config.param_types import (
 )
 from pcluster.config.resource_map import ResourceMap
 from pcluster.constants import PCLUSTER_ISSUES_LINK
-from pcluster.utils import get_avail_zone, get_cfn_param, get_efs_mount_target_id, get_instance_vcpus
+from pcluster.utils import (
+    error,
+    get_avail_zone,
+    get_cfn_param,
+    get_efs_mount_target_id,
+    get_instance_vcpus,
+    get_supported_architectures_for_instance_type,
+)
 
 
 # ---------------------- Params ---------------------- #
@@ -196,7 +204,7 @@ class BoolCfnParam(CfnParam):
 
     def get_string_value(self):
         """Convert internal representation into string."""
-        return "true" if self.value else "false"
+        return "NONE" if self.value is None else str(bool(self.value)).lower()
 
     def get_cfn_value(self):
         """
@@ -205,10 +213,6 @@ class BoolCfnParam(CfnParam):
         Used when the parameter must go into a comma separated CFN parameter.
         """
         return self.get_string_value()
-
-    def get_default_value(self):
-        """Get default value from the Param definition if there, False otherwise."""
-        return self.definition.get("default", False)
 
 
 class IntCfnParam(CfnParam):
@@ -742,6 +746,37 @@ class ClusterConfigMetadataCfnParam(JsonCfnParam):
         # Refresh param value
         self.refresh()
         return self.__section_resources.resources(section_key)
+
+
+class BaseOSCfnParam(CfnParam):
+    """
+    Class to manage the base_os configuration parameter.
+
+    We need this class in order to initialize the private architecture param.
+    """
+
+    @staticmethod
+    def get_instance_type_architecture(instance_type):
+        """Compute cluster's 'Architecture' CFN parameter based on its master server instance type."""
+        if not instance_type:
+            error("Cannot infer architecture without master instance type")
+        master_inst_supported_architectures = get_supported_architectures_for_instance_type(instance_type)
+
+        if not master_inst_supported_architectures:
+            error("Unable to get architectures supported by instance type {0}.".format(instance_type))
+        # If the instance type supports multiple architectures, choose the first one.
+        # TODO: this is currently not an issue because none of the instance types we support more than one of the
+        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
+        #       probably need to choose based on the subset of the architecutres supported by both the master and
+        #       compute instance types.
+        return master_inst_supported_architectures[0]
+
+    def refresh(self):
+        """Initialize the private architecture param"""
+        if self.value:
+            master_inst_type = self.owner_section.get_param_value("master_instance_type")
+            architecture = self.get_instance_type_architecture(master_inst_type)
+            self.owner_section.get_param("architecture").value = architecture
 
 
 # ---------------------- SettingsParams ---------------------- #

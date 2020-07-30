@@ -21,10 +21,9 @@ import re
 from shutil import copyfile
 from traceback import format_tb
 
+import boto3
 import configparser
 import pytest
-from retrying import retry
-
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
 from conftest_markers import (
@@ -37,9 +36,11 @@ from conftest_markers import (
 )
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
+from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    get_architecture_supported_by_instance_type,
     get_vpc_snakecase_value,
     random_alphanumeric,
     set_credentials,
@@ -168,12 +169,16 @@ def pytest_exception_interact(node, call, report):
     )
 
 
+def _extract_tested_component_from_filename(item):
+    """Extract portion of test item's filename identifying the component it tests."""
+    test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
+    return re.sub(r"test_|_test", "", test_location)
+
+
 def _add_filename_markers(items):
     """Add a marker based on the name of the file where the test case is defined."""
     for item in items:
-        test_location = os.path.splitext(os.path.basename(item.location[0]))[0]
-        marker = re.sub(r"test_|_test", "", test_location)
-        item.add_marker(marker)
+        item.add_marker(_extract_tested_component_from_filename(item))
 
 
 def _parametrize_from_option(metafunc, test_arg_name, option_name):
@@ -197,10 +202,20 @@ def _setup_custom_logger(log_file):
 
 
 def _add_properties_to_report(item):
+    props = []
+
+    # Add properties for test dimensions, obtained from fixtures passed to tests
     for dimension in DIMENSIONS_MARKER_ARGS:
         value = item.funcargs.get(dimension)
-        if value and (dimension, value) not in item.user_properties:
-            item.user_properties.append((dimension, value))
+        if value:
+            props.append((dimension, value))
+
+    # Add property for feature tested, obtained from filename containing the test
+    props.append(("feature", _extract_tested_component_from_filename(item)))
+
+    for dimension_value_pair in props:
+        if dimension_value_pair not in item.user_properties:
+            item.user_properties.append(dimension_value_pair)
 
 
 @pytest.fixture(scope="class")
@@ -369,11 +384,16 @@ def cfn_stacks_factory(request):
 AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in us-east-1e
     # FSx Lustre file system creation is currently not supported for us-east-1e
-    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1c", "us-east-1d", "us-east-1f"],
+    # m6g.xlarge is not supported in us-east-1c or us-east-1e
+    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1d", "us-east-1f"],
+    # m6g.xlarge is not supported in us-east-2a
+    "us-east-2": ["us-east-2b", "us-east-2c"],
     # c4.xlarge is not supported in us-west-2d
     "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
     # c5.xlarge is not supported in ap-southeast-2a
     "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
+    # m6g.xlarge is not supported in ap-northeast-1d
+    "ap-northeast-1": ["ap-northeast-1a", "ap-northeast-1c"],
     # c4.xlarge is not supported in ap-northeast-2b
     "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
     # c5.xlarge is not supported in ap-southeast-1c
@@ -382,6 +402,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "ap-south-1": ["ap-south-1a", "ap-south-1b"],
     # NAT Gateway not available in sa-east-1b
     "sa-east-1": ["sa-east-1a", "sa-east-1c"],
+    # m6g.xlarge instances not available in eu-west-1c
+    "eu-west-1": ["eu-west-1a", "eu-west-1b"],
 }
 
 
@@ -398,11 +420,33 @@ def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
     regions = request.config.getoption("regions")
     vpc_stacks = {}
+
     for region in regions:
-        # Randomly select 2 AZs from list WITHOUT replacement, hence the need for [None, None].
         # Creating private_subnet_different_cidr in a different AZ for test_efs
         # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
-        availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region, [None, None]), k=2)
+
+        # if region in AVAILABILITY_ZONE_OVERRIDES keys, find the availability_zones
+        if region in AVAILABILITY_ZONE_OVERRIDES:
+            availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region), k=2)
+        # else if region is not in AVAILABILITY_ZONE_OVERRIDES keys, find available zones mapping to the region
+        else:
+            # get ec2 client
+            client = boto3.client("ec2", region_name=region)
+            response_az = client.describe_availability_zones(
+                Filters=[
+                    {"Name": "region-name", "Values": [str(region)]},
+                    {"Name": "zone-type", "Values": ["availability-zone"]},
+                ]
+            )
+            az_list = []
+            for az in response_az.get("AvailabilityZones"):
+                az_list.append(az.get("ZoneName"))
+            # if number of available zones is smaller than 2, available zones should be [None, None]
+            if len(az_list) < 2:
+                availability_zones = [None, None]
+            else:
+                availability_zones = random.sample(az_list, k=2)
+
         # defining subnets per region to allow AZs override
         public_subnet = SubnetConfig(
             name="Public",
@@ -499,3 +543,14 @@ def pytest_runtest_makereport(item, call):
     # set a report attribute for each phase of a call, which can
     # be "setup", "call", "teardown"
     setattr(item, "rep_" + rep.when, rep)
+
+
+@pytest.fixture()
+def architecture(request, instance, region):
+    """Return a string describing the architecture supported by the given instance type."""
+    supported_architecture = request.config.cache.get(f"{instance}/architecture", None)
+    if supported_architecture is None:
+        logging.info(f"Getting supported architecture for instance type {instance}")
+        supported_architecture = get_architecture_supported_by_instance_type(instance, region)
+        request.config.cache.set(f"{instance}/architecture", supported_architecture)
+    return supported_architecture

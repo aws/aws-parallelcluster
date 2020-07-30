@@ -68,8 +68,6 @@ Parameters:
     Type: String
   ChefVersion:
     Type: String
-  RidleyVersion:
-    Type: String
   BerkshelfVersion:
     Type: String
   ComputeSecurityGroups:
@@ -304,7 +302,7 @@ Resources:
                 export HOME="/tmp"
                 for d in `ls /tmp/cookbooks`; do
                   cd /tmp/cookbooks/$d
-                  LANG=en_US.UTF-8 /opt/chef/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'
+                  LANG=en_US.UTF-8 /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete || error_exit 'Vendoring cookbook failed.'
                 done;
                 export HOME="${!HOME_BAK}"
               }
@@ -322,7 +320,7 @@ Resources:
                 which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
                 mkdir -p /etc/chef && chown -R root:root /etc/chef
                 curl --retry 3 -L https://${!_region}-aws-parallelcluster.s3.${!_region}.amazonaws.com$([ "${!_region}" != "${!_region#cn-*}" ] && echo ".cn")/archives/chef/chef-install.sh | bash -s -- -v ${!chef_version}
-                /opt/chef/embedded/bin/gem install --no-rdoc --no-ri ridley:${!ridley_version} berkshelf:${!berkshelf_version} ffi-libarchive
+                /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
                 curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
                 curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${!cookbook_url}.date
                 curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${!cookbook_url}.md5
@@ -342,7 +340,6 @@ Resources:
               export parallelcluster_version=aws-parallelcluster-${ParallelClusterVersion}
               export cookbook_version=${CookbookVersion}
               export chef_version=${ChefVersion}
-              export ridley_version=${RidleyVersion}
               export berkshelf_version=${BerkshelfVersion}
               if [ -f /opt/parallelcluster/.bootstrapped ]; then
                 installed_version=$(cat /opt/parallelcluster/.bootstrapped)

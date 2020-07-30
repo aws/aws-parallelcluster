@@ -20,25 +20,23 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
     [
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
-        ({"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"}, DefaultDict["fsx"].value),
-        ({"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
-            {
-                "shared_dir": "test",
-                "fsx_fs_id": None,
-                "storage_capacity": None,
-                "fsx_kms_key_id": None,
-                "imported_file_chunk_size": None,
-                "export_path": None,
-                "import_path": None,
-                "weekly_maintenance_start_time": None,
-                "deployment_type": None,
-                "per_unit_storage_throughput": None,
-            },
+            {"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"},
+            DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,50"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE, NONE"},
+            DefaultDict["fsx"].value,
+        ),
+        (
+            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
+        ),
+        (
+            {
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8"
+            },
             {
                 "shared_dir": "test",
                 "fsx_fs_id": "test1",
@@ -50,6 +48,10 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "weekly_maintenance_start_time": "test5",
                 "deployment_type": "SCRATCH_1",
                 "per_unit_storage_throughput": 50,
+                "daily_automatic_backup_start_time": "01:00",
+                "automatic_backup_retention_days": 5,
+                "copy_tags_to_backups": False,
+                "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
             },
         ),
     ],
@@ -160,6 +162,7 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("weekly_maintenance_start_time", "10:00", "10:00", "has an invalid value"),
         ("weekly_maintenance_start_time", "1:10:00", "1:10:00", None),
         ("weekly_maintenance_start_time", "NONE", "NONE", None),
+        ("weekly_maintenance_start_time", "1:1000", "1:1000", "has an invalid value"),
         ("deployment_type", "SCRATCH_1", "SCRATCH_1", None),
         ("deployment_type", "SCRATCH_2", "SCRATCH_2", None),
         ("deployment_type", "PERSISTENT_1", "PERSISTENT_1", None),
@@ -173,6 +176,47 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("per_unit_storage_throughput", "100", 100, None),
         ("per_unit_storage_throughput", "200", 200, None),
         ("per_unit_storage_throughput", "101", 101, "'per_unit_storage_throughput' has an invalid value '101'"),
+        ("daily_automatic_backup_start_time", None, None, None),
+        ("daily_automatic_backup_start_time", "", "", "'daily_automatic_backup_start_time' has an invalid value ''"),
+        ("daily_automatic_backup_start_time", "01:00", "01:00", None),
+        ("daily_automatic_backup_start_time", "23:00", "23:00", None),
+        (
+            "daily_automatic_backup_start_time",
+            "25:00",
+            "25:00",
+            "'daily_automatic_backup_start_time' has an invalid value '25:00'",
+        ),
+        (
+            "daily_automatic_backup_start_time",
+            "2300",
+            "2300",
+            "'daily_automatic_backup_start_time' has an invalid value '2300'",
+        ),
+        ("automatic_backup_retention_days", None, None, None),
+        ("automatic_backup_retention_days", "", None, "must be an Integer"),
+        ("automatic_backup_retention_days", "0", 0, None),
+        ("automatic_backup_retention_days", "35", 35, None),
+        ("automatic_backup_retention_days", "36", 36, "'automatic_backup_retention_days' has an invalid value '36'"),
+        ("copy_tags_to_backups", None, None, None),
+        ("copy_tags_to_backups", "", None, "must be a Boolean"),
+        ("copy_tags_to_backups", "NONE", None, "must be a Boolean"),
+        ("copy_tags_to_backups", "true", True, None),
+        ("copy_tags_to_backups", "false", False, None),
+        ("fsx_backup_id", None, None, None),
+        ("fsx_backup_id", "", None, "'fsx_backup_id' has an invalid value ''"),
+        (
+            "fsx_backup_id",
+            "back-0a1b2c3d4e5f6a7b8",
+            None,
+            "'fsx_backup_id' has an invalid value 'back-0a1b2c3d4e5f6a7b8'",
+        ),
+        (
+            "fsx_backup_id",
+            "backup-0A1B2C3d4e5f6a7b8",
+            None,
+            "'fsx_backup_id' has an invalid value 'backup-0A1B2C3d4e5f6a7b8'",
+        ),
+        ("fsx_backup_id", "backup-0a1b2c3d4e5f6a7b8", "backup-0a1b2c3d4e5f6a7b8", None),
     ],
 )
 def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -197,7 +241,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),
@@ -209,7 +253,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE",
                 },
             ),
         ),
@@ -223,7 +267,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                 },
             ),
         ),

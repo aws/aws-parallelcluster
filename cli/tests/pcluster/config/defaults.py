@@ -78,6 +78,10 @@ DEFAULT_FSX_DICT = {
     "weekly_maintenance_start_time": None,
     "deployment_type": None,
     "per_unit_storage_throughput": None,
+    "daily_automatic_backup_start_time": None,
+    "automatic_backup_retention_days": None,
+    "copy_tags_to_backups": None,
+    "fsx_backup_id": None,
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
@@ -135,6 +139,7 @@ DEFAULT_CLUSTER_DICT = {
     "queue_settings": None,
     "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
+    "architecture": "x86_64",
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -163,7 +168,7 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 58
+CFN_CONFIG_NUM_OF_PARAMS = 59
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -198,7 +203,7 @@ DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
@@ -266,12 +271,14 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
     "CWLogOptions": "true,14",
     "ClusterConfigMetadata": "{'sections': {}}",
+    # architecture
+    "Architecture": "x86_64",
 }
 
 

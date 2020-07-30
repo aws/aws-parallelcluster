@@ -10,8 +10,8 @@
 # limitations under the License.
 import configparser
 import pytest
-
 from assertpy import assert_that
+
 from pcluster.config.mappings import CLUSTER, SCALING
 from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pcluster_config
 

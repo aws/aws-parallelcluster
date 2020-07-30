@@ -13,21 +13,21 @@ import logging
 import re
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from utils import get_compute_nodes_instance_ids
+
 from tests.common.assertions import assert_no_errors_in_logs
 from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
-from utils import get_compute_nodes_instance_ids
 
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
 @pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge", "slurm"])
-def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
+def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all EFA Features.
 
@@ -41,7 +41,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_efa_installed(scheduler_commands, remote_command_executor)
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, os)
+    _test_mpi(remote_command_executor, slots_per_instance, scheduler, os, architecture)
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.asg, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
@@ -72,7 +72,10 @@ def _test_efa_installed(scheduler_commands, remote_command_executor):
 def _test_osu_benchmarks(mpi_version, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance):
     logging.info("Running OSU benchmarks for {0}".format(mpi_version))
     remote_command_executor.run_remote_script(
-        str(test_datadir / "init_osu_benchmarks.sh"), args=[mpi_version], hide=True
+        str(test_datadir / "init_osu_benchmarks.sh"),
+        args=[mpi_version],
+        hide=True,
+        additional_files=[str(test_datadir / "osu-micro-benchmarks-5.6.3.tar.gz")],
     )
 
     result = scheduler_commands.submit_script(

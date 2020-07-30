@@ -10,8 +10,8 @@
 # limitations under the License.
 import configparser
 import pytest
-
 from assertpy import assert_that
+
 from pcluster.config.hit_converter import HitConverter
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import init_pcluster_config_from_configparser

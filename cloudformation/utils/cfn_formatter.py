@@ -4,7 +4,6 @@ from collections import OrderedDict
 from glob import glob
 
 import argparse
-
 from cfn_flip import dump_yaml, load_yaml
 
 

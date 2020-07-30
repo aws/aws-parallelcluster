@@ -15,14 +15,14 @@ import json
 import logging
 import os
 import re
+import traceback
 from abc import ABC, abstractmethod
 from urllib.request import urlopen
 
 import argparse
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
-
-from common import generate_rollback_data, get_aws_regions, retrieve_sts_credentials
+from common import FILE_TO_S3_PATH, generate_rollback_data, get_aws_regions, retrieve_sts_credentials
 from jsonschema import validate
 from rollback_s3_objects import execute_rollback
 from s3_factory import S3DocumentManager
@@ -33,7 +33,6 @@ PARTITIONS = ["commercial", "china", "govcloud"]
 CONFIG_FILES = ["instances", "feature_whitelist"]
 PARTITION_TO_MAIN_REGION = {"commercial": "us-east-1", "govcloud": "us-gov-west-1", "china": "cn-north-1"}
 PARTITION_TO_PRICING_FILE_REGION = {"commercial": "us-east-1", "govcloud": "us-east-1", "china": "cn-north-1"}
-FILE_TO_S3_PATH = {"instances": "instances/instances.json", "feature_whitelist": "features/feature_whitelist.json"}
 
 
 def validate_document(args, old_doc, new_doc):
@@ -54,7 +53,16 @@ def validate_document(args, old_doc, new_doc):
     logging.info("Found the following new root keys: %s", new_doc.keys() - old_doc.keys())
     logging.info("Checking that the new configuration file includes the old entries.")
     if not args.skip_validation:
-        _assert_document_is_included(old_doc, new_doc)
+        try:
+            _assert_document_is_included(old_doc, new_doc)
+        except Exception:
+            # If this is a dry run, continue so that other validation
+            # errors may be found.
+            if not args.deploy:
+                logging.warning("Document validation error")
+                traceback.print_exc()
+            else:
+                raise
     else:
         logging.info(
             "Specifying skip-validation flag, skipping assertion on differences. "
@@ -86,7 +94,7 @@ class _InstancesConfigGenerator(_ConfigGenerator):
     SCHEMA = {
         "type": "object",
         "patternProperties": {
-            r"^[a-z0-9-]+\.[a-z0-9]+$": {
+            r"^[a-z0-9-]+\.[a-z0-9-]+$": {
                 "type": "object",
                 "properties": {
                     "vcpus": {"type": "string", "pattern": r"^\d+$"},
@@ -215,7 +223,7 @@ class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
                         "properties": {
                             "instances": {
                                 "type": "array",
-                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+\.[a-z0-9]+$"},
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+\.[a-z0-9-]+$"},
                             }
                         },
                         "required": ["instances"],
@@ -225,7 +233,7 @@ class _FeatureWhitelistConfigGenerator(_ConfigGenerator):
                         "properties": {
                             "instances": {
                                 "type": "array",
-                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+(\.[a-z0-9]+)?$"},
+                                "items": {"type": "string", "pattern": r"^[a-z0-9-]+(\.[a-z0-9-]+)?$"},
                             }
                         },
                         "required": ["instances"],

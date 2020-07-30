@@ -2,11 +2,12 @@
 # The file has been modified to drop dependency on requests package
 # flake8: noqa
 from __future__ import print_function
+
 import json
 import logging as logging
 import time
-from urllib.parse import urlsplit, urlunsplit
 from http.client import HTTPSConnection
+from urllib.parse import urlsplit, urlunsplit
 
 logger = logging.getLogger(__name__)
 

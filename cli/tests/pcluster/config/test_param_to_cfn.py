@@ -9,8 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
-
 from assertpy import assert_that
+
 from pcluster.config.mappings import CLUSTER, SCALING
 from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pcluster_config
 
@@ -23,7 +23,7 @@ from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pclu
         (CLUSTER, "key_name", "test", "test"),
         (CLUSTER, "key_name", "NONE", "NONE"),
         # BoolParam
-        (CLUSTER, "encrypted_ephemeral", None, "false"),
+        (CLUSTER, "encrypted_ephemeral", None, "NONE"),
         (CLUSTER, "encrypted_ephemeral", True, "true"),
         (CLUSTER, "encrypted_ephemeral", False, "false"),
         # IntParam
@@ -76,7 +76,7 @@ def test_param_to_cfn_value(mocker, section_definition, param_key, param_value, 
         (CLUSTER, "key_name", "NONE", {"KeyName": "NONE"}),
         (CLUSTER, "key_name", "test", {"KeyName": "test"}),
         # BoolParam
-        (CLUSTER, "encrypted_ephemeral", None, {"EncryptedEphemeral": "false"}),
+        (CLUSTER, "encrypted_ephemeral", None, {"EncryptedEphemeral": "NONE"}),
         (CLUSTER, "encrypted_ephemeral", True, {"EncryptedEphemeral": "true"}),
         (CLUSTER, "encrypted_ephemeral", False, {"EncryptedEphemeral": "false"}),
         # IntParam

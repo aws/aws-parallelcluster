@@ -32,9 +32,9 @@ from urllib.parse import urlparse
 import boto3
 import pkg_resources
 from botocore.exceptions import ClientError
-
 from jinja2 import BaseLoader, Environment
-from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX
+
+from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
 
 LOGGER = logging.getLogger(__name__)
 
@@ -305,7 +305,7 @@ def get_supported_compute_instance_types(scheduler):
     return instances
 
 
-def get_supported_os(scheduler):
+def get_supported_os_for_scheduler(scheduler):
     """
     Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
 
@@ -316,6 +316,14 @@ def get_supported_os(scheduler):
     if scheduler != "awsbatch":
         oses.extend(["centos6", "centos7", "ubuntu1604", "ubuntu1804"])
     return list(oses)
+
+
+def get_supported_os_for_architecture(architecture):
+    """Return list of supported OSes for the specified architecture."""
+    oses = ["alinux2", "ubuntu1804"]
+    if architecture == "x86_64":
+        oses.extend(["centos6", "centos7", "alinux", "ubuntu1604"])
+    return oses
 
 
 def get_supported_schedulers():
@@ -644,6 +652,44 @@ def get_master_server_state(stack_name):
     if not instances:
         error("MasterServer not running.")
     return instances[0].get("State").get("Name")
+
+
+def get_info_for_amis(ami_ids):
+    """Get information returned by EC2's describe-images API for the given list of AMIs."""
+    try:
+        return boto3.client("ec2").describe_images(ImageIds=ami_ids).get("Images")
+    except ClientError as e:
+        error(e.response.get("Error").get("Message"))
+
+
+def get_instance_types_info(instance_types, fail_on_error=True):
+    """Return InstanceTypes list returned by EC2's DescribeInstanceTypes API."""
+    try:
+        ec2_client = boto3.client("ec2")
+        return ec2_client.describe_instance_types(InstanceTypes=instance_types).get("InstanceTypes")
+    except ClientError as e:
+        error(
+            "Error when calling DescribeInstanceTypes for instances {0}: {1}".format(
+                ", ".join(instance_types), e.response.get("Error").get("Message")
+            ),
+            fail_on_error,
+        )
+
+
+def get_supported_architectures_for_instance_type(instance_type):
+    """Get a list of architectures supported for the given instance type."""
+    # "optimal" compute instance type (when using batch) implies the use of instances from the
+    # C, M, and R instance families, and thus an x86_64 architecture.
+    # see https://docs.aws.amazon.com/batch/latest/userguide/compute_environment_parameters.html
+    if instance_type == "optimal":
+        return ["x86_64"]
+
+    instance_info = get_instance_types_info([instance_type])[0]
+    supported_architectures = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
+
+    # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
+    supported_architectures = list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
+    return supported_architectures
 
 
 def get_cli_log_file():

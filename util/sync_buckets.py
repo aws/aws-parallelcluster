@@ -20,7 +20,6 @@ import urllib
 from enum import Enum
 
 import argparse
-
 from common import (
     PARTITION_TO_MAIN_REGION,
     PARTITIONS,

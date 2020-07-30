@@ -12,10 +12,10 @@
 """This module provides unit tests for the functions in the pcluster.commands module."""
 import pkg_resources
 import pytest
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
-from assertpy import assert_that
 from pcluster.commands import _create_bucket_with_resources
 
 

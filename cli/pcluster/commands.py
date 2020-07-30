@@ -16,18 +16,12 @@
 
 from __future__ import absolute_import, print_function
 
-import datetime
 import json
 import logging
 import os
-import shlex
-import subprocess as sub
 import sys
-import tarfile
 import time
 from builtins import str
-from shutil import rmtree
-from tempfile import mkdtemp, mkstemp
 
 import boto3
 import pkg_resources
@@ -37,11 +31,6 @@ from tabulate import tabulate
 import pcluster.utils as utils
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_STACK_PREFIX
-
-if sys.version_info[0] >= 3:
-    from urllib.request import urlretrieve
-else:
-    from urllib import urlretrieve  # pylint: disable=no-name-in-module
 
 LOGGER = logging.getLogger(__name__)
 
@@ -654,206 +643,6 @@ def delete(args):
     elif args.keep_logs:
         _persist_cloudwatch_log_groups(args.cluster_name)
     _delete_cluster(args.cluster_name, args.nowait)
-
-
-def _get_cookbook_url(region, template_url, args, tmpdir):
-    if args.custom_ami_cookbook is not None:
-        return args.custom_ami_cookbook
-
-    cookbook_version = _get_cookbook_version(template_url, tmpdir)
-    s3_suffix = ".cn" if region.startswith("cn") else ""
-    return (
-        "https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}/cookbooks/{cookbook_version}.tgz"
-    ).format(region=region, suffix=s3_suffix, cookbook_version=cookbook_version)
-
-
-def _get_cookbook_version(template_url, tmpdir):
-    tmp_template_file = os.path.join(tmpdir, "aws-parallelcluster-template.json")
-    try:
-        LOGGER.info("Template: %s", template_url)
-        urlretrieve(url=template_url, filename=tmp_template_file)
-
-        with open(tmp_template_file) as cfn_file:
-            cfn_data = json.load(cfn_file)
-
-        return cfn_data.get("Mappings").get("PackagesVersions").get("default").get("cookbook")
-
-    except IOError as e:
-        LOGGER.error("Unable to download template at URL %s", template_url)
-        LOGGER.critical("Error: %s", str(e))
-        sys.exit(1)
-    except (ValueError, AttributeError) as e:
-        LOGGER.error("Unable to parse template at URL %s", template_url)
-        LOGGER.critical("Error: %s", str(e))
-        sys.exit(1)
-
-
-def _get_cookbook_dir(region, template_url, args, tmpdir):
-    cookbook_url = ""
-    try:
-        tmp_cookbook_archive = os.path.join(tmpdir, "aws-parallelcluster-cookbook.tgz")
-
-        cookbook_url = _get_cookbook_url(region, template_url, args, tmpdir)
-        LOGGER.info("Cookbook: %s", cookbook_url)
-
-        urlretrieve(url=cookbook_url, filename=tmp_cookbook_archive)
-        tar = tarfile.open(tmp_cookbook_archive)
-        cookbook_archive_root = tar.firstmember.path
-        tar.extractall(path=tmpdir)
-        tar.close()
-
-        return os.path.join(tmpdir, cookbook_archive_root)
-    except (IOError, tarfile.ReadError) as e:
-        LOGGER.error("Unable to download cookbook at URL %s", cookbook_url)
-        LOGGER.critical("Error: %s", str(e))
-        sys.exit(1)
-
-
-def _dispose_packer_instance(results):
-    time.sleep(2)
-    try:
-        ec2_client = boto3.client("ec2")
-        instance = ec2_client.describe_instance_status(
-            InstanceIds=[results["PACKER_INSTANCE_ID"]], IncludeAllInstances=True
-        ).get("InstanceStatuses")[0]
-        instance_state = instance.get("InstanceState").get("Name")
-        if instance_state in ["running", "pending", "stopping", "stopped"]:
-            LOGGER.info("Terminating Instance %s created by Packer", results["PACKER_INSTANCE_ID"])
-            ec2_client.terminate_instances(InstanceIds=[results["PACKER_INSTANCE_ID"]])
-
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
-
-
-def _run_packer(packer_command, packer_env):
-    erase_line = "\x1b[2K"
-    _command = shlex.split(packer_command)
-    results = {}
-    _, path_log = mkstemp(prefix="packer.log." + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + "."), text=True)
-    LOGGER.info("Packer log: %s", path_log)
-    try:
-        dev_null = open(os.devnull, "rb")
-        packer_env.update(os.environ.copy())
-        process = sub.Popen(
-            _command, env=packer_env, stdout=sub.PIPE, stderr=sub.STDOUT, stdin=dev_null, universal_newlines=True
-        )
-
-        with open(path_log, "w") as packer_log:
-            while process.poll() is None:
-                output_line = process.stdout.readline().strip()
-                packer_log.write("\n%s" % output_line)
-                packer_log.flush()
-                sys.stdout.write(erase_line)
-                sys.stdout.write("\rPacker status: %s" % output_line[:90] + (output_line[90:] and ".."))
-                sys.stdout.flush()
-
-                if output_line.find("packer build") > 0:
-                    results["PACKER_COMMAND"] = output_line
-                if output_line.find("Instance ID:") > 0:
-                    results["PACKER_INSTANCE_ID"] = output_line.rsplit(":", 1)[1].strip(" \n\t")
-                    sys.stdout.write(erase_line)
-                    sys.stdout.write("\rPacker Instance ID: %s\n" % results["PACKER_INSTANCE_ID"])
-                    sys.stdout.flush()
-                if output_line.find("AMI:") > 0:
-                    results["PACKER_CREATED_AMI"] = output_line.rsplit(":", 1)[1].strip(" \n\t")
-                if output_line.find("Prevalidating AMI Name:") > 0:
-                    results["PACKER_CREATED_AMI_NAME"] = output_line.rsplit(":", 1)[1].strip(" \n\t")
-        sys.stdout.write("\texit code %s\n" % process.returncode)
-        sys.stdout.flush()
-        return results
-    except sub.CalledProcessError:
-        sys.stdout.flush()
-        LOGGER.error("Failed to run %s\n", _command)
-        sys.exit(1)
-    except (IOError, OSError):  # noqa: B014
-        sys.stdout.flush()
-        LOGGER.error("Failed to run %s\nCommand not found", packer_command)
-        sys.exit(1)
-    except KeyboardInterrupt:
-        sys.stdout.flush()
-        LOGGER.info("\nExiting...")
-        sys.exit(0)
-    finally:
-        dev_null.close()
-        if results.get("PACKER_INSTANCE_ID"):
-            _dispose_packer_instance(results)
-
-
-def _print_create_ami_results(results):
-    if results.get("PACKER_CREATED_AMI"):
-        LOGGER.info(
-            "\nCustom AMI %s created with name %s", results["PACKER_CREATED_AMI"], results["PACKER_CREATED_AMI_NAME"]
-        )
-        print(
-            "\nTo use it, add the following variable to the AWS ParallelCluster config file, "
-            "under the [cluster ...] section"
-        )
-        print("custom_ami = %s" % results["PACKER_CREATED_AMI"])
-    else:
-        LOGGER.info("\nNo custom AMI created")
-
-
-def create_ami(args):
-    LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
-    LOGGER.debug("Building AMI based on args %s", str(args))
-    results = {}
-
-    instance_type = args.instance_type
-    try:
-        # FIXME it doesn't work if there is no a default section
-        pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
-
-        vpc_section = pcluster_config.get_section("vpc")
-        vpc_id = args.vpc_id if args.vpc_id else vpc_section.get_param_value("vpc_id")
-        subnet_id = args.subnet_id if args.subnet_id else vpc_section.get_param_value("master_subnet_id")
-
-        packer_env = {
-            "CUSTOM_AMI_ID": args.base_ami_id,
-            "AWS_FLAVOR_ID": instance_type,
-            "AMI_NAME_PREFIX": args.custom_ami_name_prefix,
-            "AWS_VPC_ID": vpc_id,
-            "AWS_SUBNET_ID": subnet_id,
-            "ASSOCIATE_PUBLIC_IP": "true" if args.associate_public_ip else "false",
-        }
-
-        aws_section = pcluster_config.get_section("aws")
-        aws_region = aws_section.get_param_value("aws_region_name")
-        if aws_section and aws_section.get_param_value("aws_access_key_id"):
-            packer_env["AWS_ACCESS_KEY_ID"] = aws_section.get_param_value("aws_access_key_id")
-        if aws_section and aws_section.get_param_value("aws_secret_access_key"):
-            packer_env["AWS_SECRET_ACCESS_KEY"] = aws_section.get_param_value("aws_secret_access_key")
-
-        LOGGER.info("Base AMI ID: %s", args.base_ami_id)
-        LOGGER.info("Base AMI OS: %s", args.base_ami_os)
-        LOGGER.info("Instance Type: %s", instance_type)
-        LOGGER.info("Region: %s", aws_region)
-        LOGGER.info("VPC ID: %s", vpc_id)
-        LOGGER.info("Subnet ID: %s", subnet_id)
-
-        template_url = _evaluate_pcluster_template_url(pcluster_config)
-
-        tmp_dir = mkdtemp()
-        cookbook_dir = _get_cookbook_dir(aws_region, template_url, args, tmp_dir)
-
-        packer_command = (
-            cookbook_dir
-            + "/amis/build_ami.sh --os "
-            + args.base_ami_os
-            + " --partition region"
-            + " --region "
-            + aws_region
-            + " --custom"
-        )
-
-        results = _run_packer(packer_command, packer_env)
-    except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
-        sys.exit(0)
-    finally:
-        _print_create_ami_results(results)
-        if "tmp_dir" in locals() and tmp_dir:
-            rmtree(tmp_dir)
 
 
 def _get_default_template_url(region):

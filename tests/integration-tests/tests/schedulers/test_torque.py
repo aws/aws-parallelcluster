@@ -15,18 +15,18 @@ import time
 
 import boto3
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutionError, RemoteCommandExecutor
+from time_utils import minutes
+
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.scaling_common import watch_compute_nodes
 from tests.common.schedulers_common import TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
-from time_utils import minutes
 
 
 @pytest.mark.regions(["us-west-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["torque"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_torque(region, pcluster_config_reader, clusters_factory):

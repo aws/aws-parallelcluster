@@ -2,17 +2,30 @@ import logging
 import pathlib
 
 from assertpy import assert_that
+
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 
-OS_TO_OPENMPI_MODULE_MAP = {
-    "alinux": "openmpi",
-    "alinux2": "openmpi",
-    "centos7": "openmpi",
-    "ubuntu1604": "openmpi",
-    "centos6": "openmpi-x86_64",
-    "ubuntu1804": "openmpi",
+OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE = {
+    "alinux": {"x86_64": "openmpi"},
+    "alinux2": {"x86_64": "openmpi", "arm64": "openmpi"},
+    "centos7": {"x86_64": "openmpi"},
+    "ubuntu1604": {"x86_64": "openmpi"},
+    "centos6": {"x86_64": "openmpi-x86_64"},
+    "ubuntu1804": {"x86_64": "openmpi", "arm64": "openmpi"},
 }
+
+MPI_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/mpi/"
+
+
+def compile_mpi_ring(mpi_module, remote_command_executor, binary_path="ring"):
+    """
+    Copy the source for an MPI ring program to a running cluster and compile the program.
+
+    By default the resulting binary is written to ${HOME}/ring. This can be changed via the binary_path arg.
+    """
+    command = f"module load {mpi_module} && mpicc -o {binary_path} ring.c"
+    remote_command_executor.run_remote_command(command, additional_files=[str(MPI_COMMON_DATADIR / "ring.c")])
 
 
 def _test_mpi(
@@ -20,24 +33,21 @@ def _test_mpi(
     slots_per_instance,
     scheduler,
     os,
+    architecture,
     region=None,
     stack_name=None,
     scaledown_idletime=None,
     verify_scaling=False,
 ):
     logging.info("Testing mpi job")
-    datadir = pathlib.Path(__file__).parent / "data/mpi/"
-    mpi_module = OS_TO_OPENMPI_MODULE_MAP[os]
+    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
     # Compile mpi script
-    command = "mpicc -o ring ring.c"
-    if mpi_module != "no_module_available":
-        command = "module load {0} && {1}".format(mpi_module, command)
-    remote_command_executor.run_remote_command(command, additional_files=[str(datadir / "ring.c")])
+    compile_mpi_ring(mpi_module, remote_command_executor)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     # submit script using additional files
     result = scheduler_commands.submit_script(
-        str(datadir / "mpi_submit_{0}.sh".format(mpi_module)), slots=2 * slots_per_instance
+        str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)), slots=2 * slots_per_instance
     )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
 

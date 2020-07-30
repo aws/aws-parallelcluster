@@ -1,6 +1,6 @@
 import pytest
-
 from assertpy import assert_that
+
 from pcluster.configure.utils import get_default_suggestion
 
 

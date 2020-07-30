@@ -15,7 +15,6 @@ import logging
 import os
 
 import argparse
-
 from common import PARTITION_TO_MAIN_REGION, PARTITIONS, retrieve_sts_credentials
 from s3_factory import S3DocumentManager
 

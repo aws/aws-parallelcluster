@@ -10,16 +10,18 @@ TODO:
 """
 
 from __future__ import print_function
-import threading
-from crhelper.utils import _send_response
-from crhelper import log_helper
-import logging
-import random
-import boto3
-import string
+
 import json
+import logging
 import os
+import random
+import string
+import threading
 from time import sleep
+
+import boto3
+from crhelper import log_helper
+from crhelper.utils import _send_response
 
 logger = logging.getLogger(__name__)
 

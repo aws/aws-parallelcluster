@@ -14,16 +14,16 @@ import math
 import re
 
 import pytest
-
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import SgeCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
-@pytest.mark.regions(["ap-southeast-1"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.regions(["eu-central-1"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_sge(region, pcluster_config_reader, clusters_factory):

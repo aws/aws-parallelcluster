@@ -10,7 +10,6 @@ import os
 import boto3
 import pytest
 from botocore.stub import Stubber
-
 from jinja2 import Environment, FileSystemLoader
 
 
@@ -53,8 +52,9 @@ def convert_to_date_mock(request, mocker):
     module_under_test = request.module.__name__.replace("test_", "")
 
     def _convert_to_date_utc(*args, **kwargs):
-        from awsbatch.utils import convert_to_date
         from dateutil import tz
+
+        from awsbatch.utils import convert_to_date
 
         # executes convert_to_date but overrides arguments so that timezone is enforced to utc
         if "timezone" in kwargs:

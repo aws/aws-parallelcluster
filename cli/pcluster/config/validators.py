@@ -26,10 +26,12 @@ from pcluster.utils import (
     get_instance_vcpus,
     get_partition,
     get_region,
+    get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
-    get_supported_features,
     get_supported_instance_types,
-    get_supported_os,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
+    paginate_boto3,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -43,12 +45,22 @@ DCV_MESSAGES = {
 
 FSX_MESSAGES = {
     "errors": {
-        "unsupported_os": "FSX Lustre can be used with one of the following operating systems: {supported_oses}. "
-        "Please double check the 'base_os' configuration parameter"
+        "unsupported_os": "On {architecture} instance types FSX Lustre can be used with one of the following operating "
+        "systems: {supported_oses}. Please double check the 'base_os' configuration parameter",
+        "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
+        "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
+        "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
+        "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
+        "cannot be specified.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
+        "fsx_fs_id.",
     }
 }
 
-FSX_SUPPORTED_OSES = ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"]
+FSX_SUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "arm64": ["ubuntu1804", "alinux2"],
+}
 
 # Constants for section labels
 LABELS_MAX_LENGTH = 64
@@ -168,16 +180,50 @@ def fsx_validator(section_key, section_label, pcluster_config):
         if fsx_section.get_param_value("per_unit_storage_throughput"):
             errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
 
+    fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
+    fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
+    fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
+
+    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
+        errors.append(
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified"
+        )
+
+    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
+        errors.append(
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
+        )
+
+    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
+        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
+
+    if (fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path) and fsx_automatic_backup_retention_days:
+        errors.append("Backups cannot be created on S3-linked file systems")
+
     return errors, warnings
 
 
-def fsx_os_support(section_key, section_label, pcluster_config):
+def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
-    if cluster_section.get_param_value("base_os") not in FSX_SUPPORTED_OSES:
-        errors.append(FSX_MESSAGES["errors"]["unsupported_os"].format(supported_oses=FSX_SUPPORTED_OSES))
+    architecture = cluster_section.get_param_value("architecture")
+    base_os = cluster_section.get_param_value("base_os")
+
+    if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
+        errors.append(
+            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
+            )
+        )
+    elif base_os not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
+        errors.append(
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
+            )
+        )
 
     return errors, warnings
 
@@ -245,6 +291,9 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
     if fsx_section.get_param_value("fsx_fs_id"):
         # if fsx_fs_id is provided, don't validate storage_capacity
         return errors, warnings
+    elif fsx_section.get_param_value("fsx_backup_id"):
+        # if fsx_backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
+        return errors, warnings
     elif not storage_capacity:
         # if fsx_fs_id is not provided, storage_capacity must be provided
         errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
@@ -270,6 +319,23 @@ def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
         extra_json = cluster_section.get_param_value("extra_json")
         if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
             errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
+
+    return errors, warnings
+
+
+def disable_hyperthreading_architecture_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    supported_architectures = ["x86_64"]
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if param_value and architecture not in supported_architectures:
+        errors.append(
+            "disable_hyperthreading is only supported on instance types that support these architectures: {0}".format(
+                ", ".join(supported_architectures)
+            )
+        )
 
     return errors, warnings
 
@@ -336,8 +402,8 @@ def efa_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     cluster_section = pcluster_config.get_section("cluster")
-    supported_features = get_supported_features(pcluster_config.region, "efa")
-    allowed_instances = supported_features.get("instances")
+
+    allowed_instances = _get_efa_enabled_instance_types(errors)
     if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
         errors.append(
             "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
@@ -573,10 +639,28 @@ def ec2_security_group_validator(param_key, param_value, pcluster_config):
 def ec2_ami_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
+
+    # Make sure AMI exists
     try:
-        boto3.client("ec2").describe_images(ImageIds=[param_value])
+        image_info = boto3.client("ec2").describe_images(ImageIds=[param_value]).get("Images")[0]
     except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
+        errors.append(
+            "Unable to get information for AMI {0}: {1}. Check value of parameter {2}.".format(
+                param_value, e.response.get("Error").get("Message"), param_key
+            )
+        )
+
+    if not errors:
+        # Make sure architecture implied by instance types agrees with that implied by AMI
+        ami_architecture = image_info.get("Architecture")
+        cluster_section = pcluster_config.get_section("cluster")
+        if cluster_section.get_param_value("architecture") != ami_architecture:
+            errors.append(
+                "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the instance type "
+                "chosen for the master server ({2}). Use either a different AMI or a different instance type.".format(
+                    param_value, ami_architecture, cluster_section.get_param_value("architecture")
+                )
+            )
 
     return errors, warnings
 
@@ -793,7 +877,7 @@ def scheduler_validator(param_key, param_value, pcluster_config):
         if pcluster_config.region in ["ap-northeast-3", "us-gov-east-1", "us-gov-west-1"]:
             errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
 
-    supported_os = get_supported_os(param_value)
+    supported_os = get_supported_os_for_scheduler(param_value)
     if pcluster_config.get_section("cluster").get_param_value("base_os") not in supported_os:
         errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
 
@@ -842,6 +926,24 @@ def cluster_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
+def instances_architecture_compatibility_validator(param_key, param_value, pcluster_config):
+    """Verify that master and compute instance types imply compatible architectures."""
+    errors = []
+    warnings = []
+
+    compute_architectures = get_supported_architectures_for_instance_type(param_value)
+    master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if master_architecture not in compute_architectures:
+        errors.append(
+            "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
+            "compatible with the architecture supported by the master_instance_type ({2}).".format(
+                param_value, compute_architectures, master_architecture
+            )
+        )
+
+    return errors, warnings
+
+
 def compute_instance_type_validator(param_key, param_value, pcluster_config):
     """Validate compute instance type, calling ec2_instance_type_validator if the scheduler is not awsbatch."""
     errors = []
@@ -885,7 +987,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def intel_hpc_validator(param_key, param_value, pcluster_config):
+def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
@@ -914,6 +1016,39 @@ def maintain_initial_size_validator(param_key, param_value, pcluster_config):
             errors.append("maintain_initial_size cannot be set to true if initial_queue_size is 0")
 
     return errors, []
+
+
+def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    allowed_architectures = ["x86_64"]
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    if param_value and architecture not in allowed_architectures:
+        errors.append(
+            "When using enable_intel_hpc_platform = {0} it is required to use master and compute instance "
+            "types and an AMI that support these architectures: {1}".format(param_value, allowed_architectures)
+        )
+
+    return errors, warnings
+
+
+def architecture_os_validator(param_key, param_value, pcluster_config):
+    """ARM AMIs are only available for  a subset of the supported OSes."""
+    errors = []
+    warnings = []
+
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    allowed_oses = get_supported_os_for_architecture(architecture)
+    if param_value not in allowed_oses:
+        errors.append(
+            "The architecture {0} is only supported for the following operating systems: {1}".format(
+                architecture, allowed_oses
+            )
+        )
+
+    return errors, warnings
 
 
 def base_os_validator(param_key, param_value, pcluster_config):
@@ -1002,3 +1137,66 @@ def compute_resource_validator(section_key, section_label, pcluster_config):
         errors.append("Parameter 'spot_price' must be 0 or greater than 0")
 
     return errors, []
+
+
+def _get_efa_enabled_instance_types(errors):
+    instance_types = []
+
+    try:
+        for response in paginate_boto3(
+            boto3.client("ec2").describe_instance_types,
+            Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
+        ):
+            instance_types.append(response.get("InstanceType"))
+    except ClientError as e:
+        errors.append(
+            "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
+        )
+
+    return instance_types
+
+
+def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    try:
+        boto3.client("fsx").describe_backups(BackupIds=[param_value]).get("Backups")[0]
+    except ClientError as e:
+        errors.append(
+            "Failed to retrieve backup with Id '{0}': {1}".format(param_value, e.response.get("Error").get("Message"))
+        )
+
+    fsx_section = pcluster_config.get_section("fsx")
+    unsupported_config_param_names = [
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "storage_capacity",
+        "import_path",
+        "export_path",
+        "imported_file_chunk_size",
+        "fsx_kms_key_id",
+    ]
+
+    for config_param_name in unsupported_config_param_names:
+        if fsx_section.get_param_value(config_param_name) is not None:
+            errors.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=config_param_name))
+
+    return errors, warnings
+
+
+def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config):
+    """Return errors for parameters in the FSx config section that would be ignored."""
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section(section_key, section_label)
+
+    # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
+    relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
+    if fsx_section.get_param_value("fsx_fs_id") is not None:
+        for fsx_param in fsx_section.params:
+            if fsx_param not in relevant_when_using_existing_fsx and fsx_section.get_param_value(fsx_param) is not None:
+                errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
+
+    return errors, warnings
