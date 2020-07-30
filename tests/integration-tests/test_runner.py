@@ -254,9 +254,15 @@ def _join_with_not(args):
     """
     it = iter(args)
     while True:
-        current = next(it)
+        try:
+            current = next(it)
+        except StopIteration:
+            break
         if current == "not":
-            current += " " + next(it)
+            try:
+                current += " " + next(it)
+            except StopIteration:
+                raise Exception("'not' needs to be always followed by an item")
         yield current
 
 
