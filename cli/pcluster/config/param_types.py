@@ -888,6 +888,15 @@ class ClusterConfigMetadataParam(JsonParam):
         LOGGER.debug("Automatic labels generated: {0}".format(str(section_labels)))
         return self.__section_resources.resources(section_key)
 
+    def to_file(self, config_parser, write_defaults=False):
+        """Ensure cluster_config_metadata_param is not exposed in the config file."""
+        LOGGER.debug("Ensuring cluster_config_metadata_param parameter is not written to configuration file.")
+        section_name = get_file_section_name(self.section_key, self.section_label)
+        try:
+            config_parser.remove_option(section_name, self.key)
+        except NoSectionError:
+            pass
+
 
 class ArchitectureParam(Param):
     """
@@ -910,6 +919,15 @@ class ArchitectureParam(Param):
             )
 
         return self
+
+    def to_file(self, config_parser, write_defaults=False):
+        """Do nothing because architecture is not exposed in the config file."""
+        LOGGER.debug("Ensuring architecture parameter is not written to configuration file.")
+        section_name = get_file_section_name(self.section_key, self.section_label)
+        try:
+            config_parser.remove_option(section_name, self.key)
+        except NoSectionError:
+            pass
 
     @staticmethod
     def get_master_instance_type_architecture(cluster_section):
