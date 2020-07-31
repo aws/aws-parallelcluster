@@ -45,17 +45,6 @@ def _mock_efa_supported_instances(mocker):
     mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
 
 
-def mock_get_instance_type(mocker, instance_type):
-    mocker.patch(
-        "pcluster.utils.get_instance_type",
-        return_value={
-            "InstanceType": instance_type,
-            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-            "NetworkInfo": {"EfaSupported": False},
-        },
-    )
-
-
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
@@ -1150,14 +1139,14 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
     "section_dict, expected_error, expected_warning",
     [
         ({"enable_efa": "NONE"}, "invalid value", None),
-        ({"enable_efa": "compute"}, "is required to set the 'compute_instance_type'", None),
+        ({"enable_efa": "compute", "scheduler": "sge"}, "is required to set the 'compute_instance_type'", None),
         (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large"},
+            {"enable_efa": "compute", "compute_instance_type": "t2.large", "scheduler": "sge"},
             None,
             "You may see better performance using a cluster placement group",
         ),
         (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6"},
+            {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6", "scheduler": "sge"},
             "it is required to set the 'base_os'",
             None,
         ),
@@ -1176,7 +1165,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "centos7",
-                "scheduler": "slurm",
+                "scheduler": "sge",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1187,7 +1176,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "alinux2",
-                "scheduler": "slurm",
+                "scheduler": "sge",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1280,6 +1269,7 @@ def test_efa_validator_with_vpc_security_group(
             "compute_instance_type": "t2.large",
             "placement_group": "DYNAMIC",
             "vpc_settings": "default",
+            "scheduler": "sge",
         },
         "vpc default": {"vpc_security_group_id": "sg-12345678"},
     }
@@ -1497,7 +1487,6 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
         config_parser_dict["queue queue{0}".format(i)] = {"compute_resource_settings": "cr{0}".format(i)}
         config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
 
-    mock_get_instance_type(mocker, "t2.micro")
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
@@ -1536,8 +1525,8 @@ def test_queue_validator(mocker, section_dict, expected_message):
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
     mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
-    mock_get_instance_type(mocker, "t2.micro")
-    mock_get_instance_type(mocker, "c4.xlarge")
+    utils.mock_get_instance_type(mocker, "t2.micro")
+    utils.mock_get_instance_type(mocker, "c4.xlarge")
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)
 

@@ -12,7 +12,6 @@ import configparser
 import pytest
 from assertpy import assert_that
 
-from pcluster.config.hit_converter import HitConverter
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import init_pcluster_config_from_configparser
 
@@ -120,8 +119,6 @@ def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
 
     config_parser.read_dict(src_config_dict)
     src_pcluster_config = init_pcluster_config_from_configparser(config_parser, validate=False)
-
-    HitConverter(src_pcluster_config).convert()
 
     for section_key_label, section in dst_config_dict.items():
         section_key, section_label = section_key_label.split(" ")

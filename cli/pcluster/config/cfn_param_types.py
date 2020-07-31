@@ -772,7 +772,7 @@ class BaseOSCfnParam(CfnParam):
         return master_inst_supported_architectures[0]
 
     def refresh(self):
-        """Initialize the private architecture param"""
+        """Initialize the private architecture param."""
         if self.value:
             master_inst_type = self.owner_section.get_param_value("master_instance_type")
             architecture = self.get_instance_type_architecture(master_inst_type)

@@ -22,6 +22,7 @@ import boto3
 import configparser
 from botocore.exceptions import ClientError
 
+from pcluster.config.hit_converter import HitConverter
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
@@ -85,6 +86,8 @@ class PclusterConfig(object):
             self.cluster_name = cluster_name
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
+
+        HitConverter(self).convert()
 
         self.__autorefresh = True  # Initialization completed
 

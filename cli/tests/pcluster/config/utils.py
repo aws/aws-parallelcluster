@@ -127,6 +127,17 @@ def mock_pcluster_config(mocker, scheduler=None, extra_patches=None, patch_funcs
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
+def mock_get_instance_type(mocker, instance_type="t2.micro"):
+    mocker.patch(
+        "pcluster.utils.get_instance_type",
+        return_value={
+            "InstanceType": instance_type,
+            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+            "NetworkInfo": {"EfaSupported": False},
+        },
+    )
+
+
 def assert_param_validator(
     mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None, extra_patches=None,
 ):
@@ -140,6 +151,7 @@ def assert_param_validator(
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
+    mock_get_instance_type(mocker)
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)
@@ -279,7 +291,14 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
     section = section_type(section_definition, pcluster_config)
     for param_key, param_value in section_dict.items():
         param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
-        param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
+        param = param_type(
+            section_definition.get("key"),
+            "default",
+            param_key,
+            param_definition,
+            pcluster_config,
+            owner_section=section,
+        )
         param.value = param_value
         section.add_param(param)
     pcluster_config.add_section(section)
@@ -295,6 +314,14 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
 def assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
+    mocker.patch(
+        "pcluster.utils.get_instance_type",
+        return_value={
+            "InstanceType": "t2.micro",
+            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+            "NetworkInfo": {"EfaSupported": False},
+        },
     )
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):

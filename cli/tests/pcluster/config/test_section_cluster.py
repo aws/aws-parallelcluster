@@ -20,7 +20,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict",
     [
-        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": []}),),
+        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": [], "architecture": None}),),
         (
             DefaultCfnParams["cluster"].value,
             utils.merge_dicts(
@@ -78,16 +78,26 @@ def test_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict
     "config_parser_dict, expected_dict_params, expected_message",
     [
         # default
-        ({"cluster default": {}}, {"additional_iam_policies": [], "scheduler": "slurm", "base_os": "alinux2"}, None),
+        (
+            {"cluster default": {}},
+            {"additional_iam_policies": [], "architecture": None, "scheduler": "slurm", "base_os": "alinux2"},
+            None,
+        ),
         # right value
         (
             {"cluster default": {"key_name": "test"}},
-            {"key_name": "test", "additional_iam_policies": [], "scheduler": "slurm", "base_os": "alinux2"},
+            {
+                "key_name": "test",
+                "additional_iam_policies": [],
+                "architecture": None,
+                "scheduler": "slurm",
+                "base_os": "alinux2",
+            },
             None,
         ),
         (
             {"cluster default": {"base_os": "alinux"}},
-            {"base_os": "alinux", "additional_iam_policies": [], "scheduler": "slurm"},
+            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
             None,
         ),
         # invalid value
@@ -433,7 +443,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
 @pytest.mark.parametrize(
     "settings_label, expected_cfn_params",
     [
-        ("default", utils.merge_dicts(DefaultCfnParams["cluster"].value)),
+        ("default", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"Scheduler": "sge"})),
         (
             "custom1",
             utils.merge_dicts(
@@ -444,7 +454,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "MasterSubnetId": "subnet-12345678",
                     "KeyName": "key",
                     "BaseOS": "ubuntu1804",
-                    "Scheduler": "slurm",
+                    "Scheduler": "sge",
                     "SharedDir": "/test",
                     "PlacementGroup": "NONE",
                     "Placement": "cluster",
@@ -558,7 +568,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
-                    "Scheduler": "slurm",
+                    "Scheduler": "sge",
                     "DesiredSize": "1",
                     "MaxSize": "2",
                     "MinSize": "1",
@@ -600,6 +610,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -612,6 +623,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
                     "DCVOptions": "master,8555,10.0.0.0/0",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -631,6 +643,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -650,6 +663,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -669,6 +683,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -688,6 +703,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -707,10 +723,11 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
+                    "Scheduler": "sge"
                 },
             ),
         ),
-        ("cw_log", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1"}),),
+        ("cw_log", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1", "Scheduler": "sge"}),),
         (
             "all-settings",
             utils.merge_dicts(
@@ -739,6 +756,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
+                    "Scheduler": "sge"
                 },
             ),
         ),
@@ -750,7 +768,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "AvailabilityZone": "mocked_avail_zone",
                     "KeyName": "key",
                     "BaseOS": "ubuntu1804",
-                    "Scheduler": "slurm",
+                    "Scheduler": "sge",
                     # "SharedDir": "/test",  # we have ebs volumes, see below
                     "PlacementGroup": "NONE",
                     "Placement": "cluster",

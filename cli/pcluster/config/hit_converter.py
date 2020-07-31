@@ -30,6 +30,7 @@ class HitConverter:
 
         if scheduler == "slurm" and not queue_settings:
             auto_refresh = self.pcluster_config.auto_refresh
+            # Autorefresh is disabled during conversion
             self.pcluster_config.auto_refresh = False
 
             # Default single queue
@@ -74,7 +75,6 @@ class HitConverter:
                     cluster_section.get_param("initial_queue_size"), compute_resource_section.get_param("min_count")
                 )
 
-            self.pcluster_config.refresh()
             self.pcluster_config.auto_refresh = auto_refresh
 
     def _move_param_value(self, old_param, new_param, new_value=None):
