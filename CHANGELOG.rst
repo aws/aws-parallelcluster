@@ -2,6 +2,17 @@
 CHANGELOG
 =========
 
+2.8.1
+=====
+
+**CHANGES**
+
+* Disable screen lock for DCV desktop sessions to prevent users from being locked out.
+
+**BUG FIXES**
+
+* Fix `pcluster configure` command to avoid writing unexpected configuration parameters.
+
 2.8.0
 =====
 
@@ -21,6 +32,7 @@ CHANGELOG
 
 * Remove the client requirement to have Berkshelf to build a custom AMI.
 * Upgrade EFA installer to version 1.9.4:
+
   * Kernel module: ``efa-1.6.0`` (from efa-1.5.1)
   * RDMA core: ``rdma-core-28.amzn0`` (from rdma-core-25.0)
   * Libfabric: ``libfabric-1.10.1amazon1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
