@@ -35,13 +35,13 @@ from pcluster.constants import PCLUSTER_STACK_PREFIX
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(stack_name, pcluster_config, json_params):
+def _create_bucket_with_resources(pcluster_config, json_params):
     """Create a bucket associated to the given stack and upload specified resources."""
     scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
     if scheduler not in ["awsbatch", "slurm"]:
         return None
 
-    s3_bucket_name = utils.generate_random_bucket_name(stack_name)
+    s3_bucket_name = utils.generate_random_bucket_name("parallelcluster")
     LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
 
     try:
@@ -124,7 +124,7 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        bucket_name = _create_bucket_with_resources(stack_name, pcluster_config, storage_data.json_params)
+        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data.json_params)
         if bucket_name:
             cfn_params["ResourcesS3Bucket"] = bucket_name
 

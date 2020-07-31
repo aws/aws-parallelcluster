@@ -45,7 +45,6 @@ def test_create_bucket_with_resources_success(
     mocker, scheduler, expected_dirs, expect_upload_hit_resources, expected_bucket_name
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
-    stack_name = "test"
     region = "us-east-1"
     hit_template_url = "s3://{region}-aws-parallelcluster/templates/aws-parallelcluster-{version}.cfn.json"
 
@@ -58,7 +57,7 @@ def test_create_bucket_with_resources_success(
 
     storage_data = pcluster_config_mock.to_storage()
 
-    bucket_name = _create_bucket_with_resources(stack_name, pcluster_config_mock, storage_data.json_params)
+    bucket_name = _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
 
     delete_s3_bucket_mock.assert_not_called()
     upload_resources_artifacts_mock.assert_has_calls(
@@ -72,8 +71,7 @@ def test_create_bucket_with_resources_success(
 def test_create_bucket_with_resources_creation_failure(mocker, caplog):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket creation failure."""
     region = "eu-west-1"
-    stack_name = "test"
-    bucket_name = stack_name + "-123"
+    bucket_name = "parallelcluster-123"
     error = "BucketAlreadyExists"
     client_error = ClientError({"Error": {"Code": error}}, "create_bucket")
 
@@ -86,7 +84,7 @@ def test_create_bucket_with_resources_creation_failure(mocker, caplog):
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(stack_name, pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
     delete_s3_bucket_mock.assert_not_called()
     assert_that(caplog.text).contains("Unable to create S3 bucket")
 
@@ -94,8 +92,7 @@ def test_create_bucket_with_resources_creation_failure(mocker, caplog):
 def test_create_bucket_with_resources_upload_failure(mocker, caplog):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of upload failure."""
     region = "eu-west-1"
-    stack_name = "test"
-    bucket_name = stack_name + "-123"
+    bucket_name = "parallelcluster-123"
     error = "ExpiredToken"
     client_error = ClientError({"Error": {"Code": error}}, "upload_fileobj")
 
@@ -108,7 +105,7 @@ def test_create_bucket_with_resources_upload_failure(mocker, caplog):
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(stack_name, pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
     # if resource upload fails we delete the bucket
     delete_s3_bucket_mock.assert_called_with(bucket_name)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
@@ -117,8 +114,7 @@ def test_create_bucket_with_resources_upload_failure(mocker, caplog):
 def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of deletion failure."""
     region = "eu-west-1"
-    stack_name = "test"
-    bucket_name = stack_name + "-123"
+    bucket_name = "parallelcluster-123"
     error = "AccessDenied"
     client_error = ClientError({"Error": {"Code": error}}, "delete")
 
@@ -133,6 +129,6 @@ def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
 
     # force upload failure to trigger a bucket deletion and then check the behaviour when the deletion fails
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(stack_name, pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
     delete_s3_bucket_mock.assert_called_with(bucket_name)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
