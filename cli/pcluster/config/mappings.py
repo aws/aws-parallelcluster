@@ -208,7 +208,7 @@ SCALING = {
             "default": 10,
             # This param is managed automatically (it's a copy of scaledown_idletime for Json param types)
             "update_policy": UpdatePolicy.IGNORED,
-            "visibility": Visibility.PRIVATE
+            "visibility": Visibility.PRIVATE,
         },
     }
 }
@@ -667,6 +667,7 @@ CLUSTER = {
                 "type": ClusterConfigMetadataCfnParam,
                 "cfn_param_mapping": "ClusterConfigMetadata",
                 "update_policy": UpdatePolicy.IGNORED,
+                "visibility": Visibility.PRIVATE,
             }),
             ("key_name", {
                 "cfn_param_mapping": "KeyName",
