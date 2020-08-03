@@ -107,7 +107,7 @@ main() {
     sed -i "s#.*aws-parallelcluster.*/templates/cw-logs-substack-\${version}.cfn.json.*#\"https://${_s3_folder_url}/cw-logs-substack.cfn.json\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/compute-fleet-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/compute-fleet-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     sed -i "s#.*aws-parallelcluster.*/templates/master-server-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/master-server-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
-
+    # sed -i "s#.*aws-parallelcluster.*/templates/cw-dashboard-substack-\${version}.cfn.yaml.*#\"https://${_s3_folder_url}/cw-dashboard-substack.cfn.yaml\",#" ${_temp_dir}/aws-parallelcluster.cfn.json
     # upload templates
     aws ${_profile} --region "${_region}" s3 cp --acl public-read ${_temp_dir}/aws-parallelcluster.cfn.json s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push cloudformation template to S3'
     aws ${_profile} --region "${_region}" s3 cp --acl public-read --recursive --exclude "*" --include "*substack.cfn.json" --include "*substack.cfn.yaml" ${_srcdir}/cloudformation/ s3://${_bucket}/${_templates_folder}/ || _error_exit 'Failed to push substack cfn templates to S3'
@@ -116,6 +116,7 @@ main() {
     echo "Done. Add the following variables to the pcluster config file, under the [cluster ...] section"
     echo "template_url = https://${_s3_folder_url}/aws-parallelcluster.cfn.json"
     echo "hit_template_url = s3://${_bucket}/${_templates_folder}/compute-fleet-hit-substack.cfn.yaml"
+    echo "cw_dashboard_template_url = s3://${_bucket}/${_templates_folder}/cw-dashboard-substack.cfn.yaml"
     echo "custom_awsbatch_template_url = https://${_s3_folder_url}/batch-substack.cfn.json"
 }
 

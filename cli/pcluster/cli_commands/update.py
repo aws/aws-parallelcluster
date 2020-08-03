@@ -22,7 +22,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.cluster_model import ClusterModel
-from pcluster.commands import _evaluate_pcluster_template_url, _upload_hit_resources
+from pcluster.commands import _evaluate_pcluster_template_url, _upload_dashboard_resource, _upload_hit_resources
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.config.update_policy import UpdatePolicy
@@ -54,18 +54,18 @@ def execute(args):
         cfn_client = boto3.client("cloudformation")
         _restore_cfn_only_params(cfn_client, args, cfn_params, stack_name, target_config)
 
+        s3_bucket_name = cfn_params["ResourcesS3Bucket"]
+
         is_hit = utils.is_hit_enabled_cluster(base_config.cfn_stack)
         template_url = None
         if is_hit:
             try:
-                _upload_hit_resources(
-                    cfn_params["ResourcesS3Bucket"], target_config, target_config.to_storage().json_params
-                )
+                _upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params)
             except Exception:
-                utils.error(
-                    "Failed when uploading resources to cluster S3 bucket {0}".format(cfn_params["ResourcesS3Bucket"])
-                )
+                utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
             template_url = _evaluate_pcluster_template_url(target_config)
+
+        _upload_dashboard_resource(s3_bucket_name, target_config, target_config.to_storage().cfn_params)
 
         _update_cluster(
             args, cfn_client, cfn_params, stack_name, use_previous_template=not is_hit, template_url=template_url
