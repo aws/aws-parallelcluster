@@ -633,6 +633,9 @@ Resources:
       ServiceToken: !Ref 'UpdateWaiterFunctionArn'
     Condition: HasUpdateWaiterFunction
 Outputs:
+  MasterInstanceID:
+    Description: ID of the Master instance
+    Value: !Ref 'MasterServer'
   MasterPrivateIP:
     Description: Private IP Address of the Master host
     Value: !GetAtt 'MasterServer.PrivateIp'

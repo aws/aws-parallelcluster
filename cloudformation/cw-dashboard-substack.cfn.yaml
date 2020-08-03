@@ -1,0 +1,245 @@
+{#- Automatically updated variable to define graph/header section position #}
+{%- set coord = {'x': 0, 'y': 0} %}
+
+{#- Macro to calculate coordinates for the new graph #}
+{#- It updates both x and y values if the graph doesn't fit in the given line #}
+{%- macro update_coord(dx, dy) %}
+  {%- if coord.update({'x': (coord.x+dx)}) %} {%- endif %}
+  {%- if coord.x+dx > 24 %} {#- the longest width allowed is 24 #}
+    {%- if coord.update({'x': 0, 'y': coord.y+dy}) %} {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+{#- Macro to calculate section header coordinates #}
+{%- macro update_coord_after_section(dy) %}
+  {%- if coord.update({'x': 0, 'y': coord.y+dy}) %} {%- endif %}
+{%- endmacro %}
+
+{%- set graph_width = 6 %}
+{%- set graph_height = 6 -%}
+Parameters:
+  {#- Cluster parameters #}
+  PclusterStackName:
+    Description: Name of the cluster to which this dashboard belongs
+    Type: String
+  {#- EC2 parameters #}
+  MasterInstanceId:
+    Description: ID of the Master instance
+    Type: AWS::EC2::Instance::Id
+  {#- EBS parameters #}
+  EBSVolumesIds:
+    Description: IDs of the EBS volumes used
+    Type: CommaDelimitedList
+  {#- RAID parameters #}
+  RAIDVolumesIds:
+    Description: Volume IDs of the resulted RAID EBS volumes
+    Type: CommaDelimitedList
+  {#- EFS parameters #}
+  EFSFileSystemId:
+    Description: ID of the EFS volume used
+    Type: String
+  {#- FSx parameters #}
+  FSXFileSystemId:
+    Description: ID of the FSx volume used
+    Type: String
+Resources:
+  HeadNodeDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Join
+        - '-'
+        - - !Ref 'PclusterStackName'
+          - HeadNode
+      DashboardBody: !Join
+        - ''
+        - - '{"widgets":['
+          {#- Head Node Instance Metrics #}
+          - '{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            Head Node Instance Metrics\n"}}'
+          {%- set ec2_metrics = [{'metrics': ["CPUUtilization"], 'extra_params': ['"title":"CPU Utilization"']},
+                                 {'metrics': ["NetworkPacketsIn", "NetworkPacketsOut"], 'extra_params': ['"title":"Network Packets In/Out"']},
+                                 {'metrics': ["NetworkIn", "NetworkOut"], 'extra_params': ['"title":"Network In and Out"']},
+                                 {'metrics': ["DiskReadBytes", "DiskWriteBytes"], 'extra_params': ['"title":"Disk Read/Write Bytes"']},
+                                 {'metrics': ["DiskReadOps", "DiskWriteOps"], 'extra_params': ['"title":"Disk Read/Write Ops"']}]
+          %}
+          {{- update_coord_after_section(1) }}
+          {%- for metrics_param in ec2_metrics %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metrics_param.extra_params|join(',') }}{% if metrics_param.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+            {%- for metric in metrics_param.metrics %}
+          - !Sub '{{ '[' if loop.first else ',' }}["AWS/EC2","{{ metric }}","InstanceId","${MasterInstanceId}"]{{ ']}}' if loop.last else '' }}'
+            {%- endfor -%}
+            {{- update_coord(graph_width, graph_height) }}
+          {%- endfor -%}
+          {{- update_coord_after_section(graph_height) }}
+
+          {#- EBS metrics graphs #}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            EBS Metrics\n"}}'
+          {{- update_coord_after_section(1) }}
+
+          {#- Unconditional EBS metrics #}
+          {%- set ebs_metrics = [{'metrics': ["VolumeReadOps", "VolumeWriteOps"], 'extra_params': ['"title":"Read/Write Ops"']},
+                                 {'metrics': ["VolumeReadBytes", "VolumeWriteBytes"], 'extra_params': ['"title":"Read/Write Bytes"']},
+                                 {'metrics': ["VolumeTotalReadTime", "VolumeTotalWriteTime"], 'extra_params': ['"title":"Total Read/Write Time"']},
+                                 {'metrics': ["VolumeQueueLength"], 'extra_params': ['"title":"Queue Length"']},
+                                 {'metrics': ["VolumeIdleTime"], 'extra_params': ['"title":"Idle Time"']}]
+          -%}
+          {%- set number_of_ebs_volumes = config.NumberOfEBSVol|int -%}
+          {%- set ebs_volume_types = config.VolumeType.split(',') %}
+
+          {%- for metrics_param in ebs_metrics %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metrics_param.extra_params|join(',') }}{% if metrics_param.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+            {%- for i in range(number_of_ebs_volumes) %}
+              {%- set volume_loop = loop %}
+              {%- for metric in metrics_param.metrics %}
+          - !Sub
+            - '{% if volume_loop.first and loop.first %}[{% else %},{% endif %}["AWS/EBS","{{ metric }}","VolumeId","${EBS_Volume{{ i|int +1 }}}"]{% if volume_loop.last and loop.last %}]}}{% endif %}'
+            - EBS_Volume{{ i|int +1 }}: !Select
+                - '{{ i|int }}'
+                - !Ref 'EBSVolumesIds'
+              {%- endfor %}
+            {%- endfor %}
+          {{- update_coord(graph_width, graph_height) -}}
+          {%- endfor %}
+
+          {#- Conditional EBS metrics #}
+          {%- set ebs_metrics_conditions = [{'metric': 'VolumeConsumedReadWriteOps', 'supported_vol_types': ["io1"], 'extra_params': ['"title":"Consumed Read/Write Ops"']},
+                                            {'metric': 'VolumeThroughputPercentage', 'supported_vol_types': ["io1"], 'extra_params': ['"title":"Throughput Percentage"']},
+                                            {'metric': 'BurstBalance', 'supported_vol_types': ["gp2", "st1", "sc1"], 'extra_params': ['"title":"Burst Balance"']}]
+          %}
+          {%- for metric_condition_params in ebs_metrics_conditions %}
+            {%- set is_supported_vol_present = {'bool': False} %}
+            {%- for i in range(number_of_ebs_volumes) if not is_supported_vol_present.bool %}
+              {%- if ebs_volume_types[i] in metric_condition_params.supported_vol_types %} {#- TODO we should break, needs Loop Controls extension #}
+                {%- if is_supported_vol_present.update({'bool': True}) %} {% endif %}
+              {%- endif %}
+            {%- endfor %}
+            {%- if is_supported_vol_present.bool %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metric_condition_params.extra_params|join(',') }}{% if metric_condition_params.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+              {%- set first_metric = {'bool': True} %}
+              {%- for i in range(number_of_ebs_volumes) %}
+                {%- if ebs_volume_types[i] in metric_condition_params.supported_vol_types %}
+          - !Sub
+            - '{% if first_metric.bool %}{{ first_metric.update({'bool': False}) or "" }}[{% else %},{% endif %}["AWS/EBS","{{ metric_condition_params.metric }}","VolumeId","${EBS_Volume{{ i|int +1 }}}"]'
+            - EBS_Volume{{ i|int +1 }}: !Select
+                - '{{ i|int }}'
+                - !Ref 'EBSVolumesIds'
+                {%- endif %}
+              {%- endfor -%}
+              {{- update_coord(graph_width, graph_height) }}
+          - ']}}'
+            {%- endif %} {#- if is_supported_vol_present.bool #}
+          {%- endfor -%}
+          {{ update_coord_after_section(graph_height) }}
+
+          {#- RAID metrics graphs #}
+          {#- Unconditional RAID metrics #}
+          {%- set number_of_raid_volumes = config.RAIDOptions.split(',')[2]|int -%} {#- if NONE, converts to 0! #}
+          {%- if number_of_raid_volumes > 0 %}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            RAID Metrics\n"}}'
+              {{- update_coord_after_section(1) }}
+              {%- set raid_metrics = [{'metrics': ["VolumeReadOps", "VolumeWriteOps"], 'extra_params': ['"title":"Read/Write Ops"']},
+                                     {'metrics': ["VolumeReadBytes", "VolumeWriteBytes"], 'extra_params': ['"title":"Read/Write Bytes"']},
+                                     {'metrics': ["VolumeTotalReadTime", "VolumeTotalWriteTime"], 'extra_params': ['"title":"Total Read/Write Time"']},
+                                     {'metrics': ["VolumeQueueLength"], 'extra_params': ['"title":"Queue Length"']},
+                                     {'metrics': ["VolumeIdleTime"], 'extra_params': ['"title":"Idle Time"']}]
+              %}
+              {%- set raid_volume_type = config.RAIDOptions.split(',')[3] %}
+
+              {%- for metrics_param in raid_metrics %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metrics_param.extra_params|join(',') }}{% if metrics_param.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+                {%- for i in range(number_of_raid_volumes) %}
+                  {%- set volume_loop = loop %}
+                  {%- for metric in metrics_param.metrics %}
+          - !Sub
+            - '{% if volume_loop.first and loop.first %}[{% else %},{% endif %}["AWS/EBS","{{ metric }}","VolumeId","${RAID_Volume{{ i|int +1 }}}"]{% if volume_loop.last and loop.last %}]}}{% endif %}'
+            - RAID_Volume{{ i|int +1 }}: !Select
+                - '{{ i|int }}'
+                - !Ref 'RAIDVolumesIds'
+                  {%- endfor %}
+                {%- endfor %}
+                {{- update_coord(graph_width, graph_height) -}}
+              {%- endfor %}
+
+              {#- Conditional RAID metrics #}
+              {%- set raid_metrics_conditions_params = [{'metric': 'VolumeConsumedReadWriteOps', 'supported_vol_types': ["io1"], 'extra_params': ['"title":"Consumed Read/Write Ops"']},
+                                                {'metric': 'VolumeThroughputPercentage', 'supported_vol_types': ["io1"], 'extra_params': ['"title":"Throughput Percentage"']},
+                                                {'metric': 'BurstBalance', 'supported_vol_types': ["gp2", "st1", "sc1"], 'extra_params': ['"title":"Burst Balance"']}]
+              %}
+              {%- for metric_condition_params in raid_metrics_conditions_params %}
+                {%- if raid_volume_type in metric_condition_params.supported_vol_types %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metric_condition_params.extra_params|join(',') }}{% if metric_condition_params.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+                  {%- for i in range(number_of_raid_volumes) %}
+          - !Sub
+            - '{{ '[' if loop.first else ',' }}["AWS/EBS","{{ metric_condition_params.metric }}","VolumeId","${RAID_Volume{{ i|int +1 }}}"]{{ ']}}' if loop.last else '' }}'
+            - RAID_Volume{{ i|int +1 }}: !Select
+                - '{{ i|int }}'
+                - !Ref 'RAIDVolumesIds'
+                  {%- endfor %}
+                  {{- update_coord(graph_width, graph_height) -}}
+                {%- endif %} {#- if raid_volume_type in metric_condition_params.supported_vol_types #}
+              {%- endfor -%}
+          {%- endif %} {#- if number_of_raid_volumes > 0 #}
+          {%- set efs_shared_dir = config.EFSOptions.split(',')[0] %}
+          {%- if efs_shared_dir not in ["NONE", "/NONE"] %}
+          {# EFS metrics graphs -#}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            EFS Metrics\n"}}'
+            {%- set efs_metrics = [{'metrics': ["BurstCreditBalance"], 'extra_params': ['"title":"Burst Credit Balance"']},
+                                   {'metrics': ["ClientConnections"], 'extra_params': ['"title":"Client Connections"']},
+                                   {'metrics': ["TotalIOBytes"], 'extra_params': ['"title":"Total IO Bytes"']},
+                                   {'metrics': ["PermittedThroughput"], 'extra_params': ['"title":"Permitted Throughput"']},
+                                   {'metrics': ["DataReadIOBytes", "DataWriteIOBytes"], 'extra_params': ['"title":"Data Read/Write IO Bytes"']}]
+            -%}
+            {{ update_coord_after_section(1) }}
+            {%- for metrics_param in efs_metrics %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metrics_param.extra_params|join(',') }}{% if metrics_param.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+              {%- for metric in metrics_param.metrics %}
+          - !Sub '{% if not loop.first %},{% else %}[{% endif %}["AWS/EFS","{{ metric }}","FileSystemId","${EFSFileSystemId}"]{{ ']}}' if loop.last else '' }}'
+              {%- endfor -%}
+              {{ update_coord(graph_width, graph_height) }}
+            {%- endfor %}
+
+            {#- Conditional EFS metrics #}
+            {%- set efs_metrics_conditions_params = [{'metric': 'PercentIOLimit', 'supported_vol_types': ["generalPurpose"], 'extra_params': ['"title":"Percent IO Limit"']}] %}
+            {%- set efs_volume_type = config.EFSOptions.split(',')[2] %}
+            {%- for metric_condition_params in efs_metrics_conditions_params %}
+              {%- if efs_volume_type in metric_condition_params.supported_vol_types %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metric_condition_params.extra_params|join(',') }}{% if metric_condition_params.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+          - !Sub '[["AWS/EFS","{{ metric_condition_params.metric }}","FileSystemId","${EFSFileSystemId}"]]}}'
+              {%- endif %}
+            {%- endfor -%}
+            {{ update_coord(graph_width, graph_height) }}
+
+          {%- endif -%} {#- if efs_shared_dir not in ["NONE", "/NONE"] -#}
+          {{ update_coord_after_section(graph_height) }}
+
+          {%- set fsx_shared_dir = config.FSXOptions.split(',')[0] %}
+          {%- if fsx_shared_dir not in ["NONE", "/NONE"] %}
+          {#- FSx metrics graphs #}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            FSx Metrics\n"}}'
+            {%- set fsx_metrics = [{'metrics': ["DataReadOperations","DataWriteOperations"], 'extra_params': ['"title":"Data Read/Write Ops"','"period":300']},
+                                   {'metrics': ["DataReadBytes","DataWriteBytes"], 'extra_params': ['"title":"Data Read/Write Bytes"','"period":300']},
+                                   {'metrics': ["FreeDataStorageCapacity"], 'extra_params': ['"title":"Free Data Storage Capacity"']}]
+            -%}
+            {{ update_coord_after_section(1) }}
+            {%- for metrics_param in fsx_metrics %}
+          - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
+            {{ metrics_param.extra_params|join(',') }}{% if metrics_param.extra_params|length > 0 %},{% endif %}"region":"${AWS::Region}","metrics":'
+              {%- for metric in metrics_param.metrics %}
+          - !Sub '{{ '[' if loop.first else ',' }}["AWS/FSx","{{ metric }}","FileSystemId","${FSXFileSystemId}"]{{ ']}}' if loop.last else '' }}'
+              {%- endfor -%}
+              {{- update_coord(graph_width, graph_height) }}
+            {%- endfor %}
+          {%- endif %}
+          - ']}'
+
