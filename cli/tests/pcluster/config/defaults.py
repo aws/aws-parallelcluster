@@ -93,6 +93,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "key_name": None,
     "template_url": None,
     "hit_template_url": None,
+    "cw_dashboard_template_url": None,
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
@@ -146,6 +147,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "key_name": None,
     "template_url": None,
     "hit_template_url": None,
+    "cw_dashboard_template_url": None,
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",

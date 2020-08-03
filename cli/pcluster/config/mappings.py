@@ -927,6 +927,11 @@ CLUSTER_COMMON_PARAMS = [
         "validators": [url_validator],
         "update_policy": UpdatePolicy.IGNORED
     }),
+    ("cw_dashboard_template_url", {
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.IGNORED
+    }),
 ]
 
 

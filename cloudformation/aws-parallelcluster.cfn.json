@@ -3876,6 +3876,80 @@
         }
       },
       "Condition": "CreateHITSubstack"
+    },
+    "CloudWatchDashboardSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "PclusterStackName": {
+            "Ref": "AWS::StackName"
+          },
+          "MasterInstanceId": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterInstanceID"
+            ]
+          },
+          "EBSVolumesIds": {
+            "Fn::GetAtt": [
+              "EBSCfnStack",
+              "Outputs.Volumeids"
+            ]
+          },
+          "RAIDVolumesIds": {
+            "Fn::If": [
+              "CreateRAIDSubstack",
+              {
+                "Fn::GetAtt": [
+                  "RAIDSubstack",
+                  "Outputs.Volumeids"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "EFSFileSystemId": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              {
+                "Fn::GetAtt": [
+                  "EFSSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "FSXFileSystemId": {
+            "Fn::If": [
+              "CreateFSXSubstack",
+              {
+                "Fn::GetAtt": [
+                  "FSXSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/templates/cw-dashboard-substack.rendered.cfn.yaml",
+            {
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "url"
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
