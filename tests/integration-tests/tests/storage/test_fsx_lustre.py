@@ -23,6 +23,8 @@ from time_utils import minutes, seconds
 
 from tests.common.schedulers_common import SgeCommands
 
+BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING"}
+
 
 @pytest.mark.parametrize(
     "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
@@ -304,7 +306,7 @@ def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region
 
 
 @retry(
-    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING", "NOT_STARTED"],
+    retry_on_result=lambda result: result.get("Lifecycle") in BACKUP_NOT_YET_AVAILABLE_STATES | {"NOT_STARTED"},
     wait_fixed=seconds(5),
     stop_max_delay=minutes(7),
 )
@@ -337,7 +339,7 @@ def create_manual_fs_backup(remote_command_executor, fsx_fs_id, region):
 
 
 @retry(
-    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING"],
+    retry_on_result=lambda result: result.get("Lifecycle") in BACKUP_NOT_YET_AVAILABLE_STATES,
     wait_fixed=seconds(5),
     stop_max_delay=minutes(7),
 )
