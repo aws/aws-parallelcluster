@@ -415,6 +415,31 @@ def setup_sts_credentials(region, request):
     unset_credentials()
 
 
+def get_availability_zones(region, credential):
+    """
+    Return a list of availability zones for the given region.
+
+    Note that this function is called by the vpc_stacks fixture. Because vcp_stacks is session-scoped,
+    it cannot utilize setup_sts_credentials, which is required in opt-in regions in order to call
+    describe_availability_zones.
+    """
+    set_credentials(region, credential)
+    az_list = []
+    try:
+        client = boto3.client("ec2", region_name=region)
+        response_az = client.describe_availability_zones(
+            Filters=[
+                {"Name": "region-name", "Values": [str(region)]},
+                {"Name": "zone-type", "Values": ["availability-zone"]},
+            ]
+        )
+        for az in response_az.get("AvailabilityZones"):
+            az_list.append(az.get("ZoneName"))
+    finally:
+        unset_credentials()
+    return az_list
+
+
 @pytest.fixture(scope="session", autouse=True)
 def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
@@ -430,17 +455,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region), k=2)
         # else if region is not in AVAILABILITY_ZONE_OVERRIDES keys, find available zones mapping to the region
         else:
-            # get ec2 client
-            client = boto3.client("ec2", region_name=region)
-            response_az = client.describe_availability_zones(
-                Filters=[
-                    {"Name": "region-name", "Values": [str(region)]},
-                    {"Name": "zone-type", "Values": ["availability-zone"]},
-                ]
-            )
-            az_list = []
-            for az in response_az.get("AvailabilityZones"):
-                az_list.append(az.get("ZoneName"))
+            az_list = get_availability_zones(region, request.config.getoption("credential"))
             # if number of available zones is smaller than 2, available zones should be [None, None]
             if len(az_list) < 2:
                 availability_zones = [None, None]
