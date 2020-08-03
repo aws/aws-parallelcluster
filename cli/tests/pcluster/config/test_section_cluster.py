@@ -610,7 +610,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -623,7 +623,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "VPCId": "vpc-12345678",
                     "MasterSubnetId": "subnet-12345678",
                     "DCVOptions": "master,8555,10.0.0.0/0",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -643,7 +643,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -663,7 +663,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -683,7 +683,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -703,7 +703,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
@@ -723,11 +723,14 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),
-        ("cw_log", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1", "Scheduler": "sge"}),),
+        (
+            "cw_log",
+            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1", "Scheduler": "sge"}),
+        ),
         (
             "all-settings",
             utils.merge_dicts(
@@ -756,7 +759,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
-                    "Scheduler": "sge"
+                    "Scheduler": "sge",
                 },
             ),
         ),

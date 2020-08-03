@@ -73,10 +73,10 @@
           }
         }
       }
+    },
+    "scaling": {
+      "label": "default",
+      "scaledown_idletime": 10
     }
-  },
-  "scaling": {
-    "label": "default",
-    "scaledown_idletime": 10
   }
 }

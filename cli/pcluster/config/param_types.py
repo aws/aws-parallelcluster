@@ -258,7 +258,10 @@ class SettingsParam(Param):
             else:
                 # initialize related section with default values
                 section = self.referred_section_type(
-                    self.referred_section_definition, self.pcluster_config, section_label=self.value
+                    self.referred_section_definition,
+                    self.pcluster_config,
+                    section_label=self.value,
+                    parent_section=self.owner_section,
                 )
                 self.pcluster_config.add_section(section)
 
