@@ -1,0 +1,615 @@
+Parameters:
+  # Cluster parameters
+  PclusterStackName:
+    Description: Name of the cluster to which this dashboard belongs
+    Type: String
+  # EC2 parameters
+  MasterInstanceID:
+    Description: ID of the Master instance
+    Type: AWS::EC2::Instance::Id
+  # EBS parameters
+  NumberOfEBSVol:
+    Description: Number of EBS Volumes the user requested, up to 5
+    Type: Number
+  EBSVolumesIDs:
+    Description: IDs of the EBS volumes used
+    Type: CommaDelimitedList
+  # RAID parameters
+  CreateRAIDSubstack:
+    Description: Parameter telling if a RAID Substack has been created
+    Type: String
+  RAIDOptions:
+    Description: Comma Separated List of RAID related options, 8 parameters in total, [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,ebs_kms_key_id]
+    Type: CommaDelimitedList
+  RAIDVolumesIDs:
+    Description: Volume IDs of the resulted RAID EBS volumes
+    Type: CommaDelimitedList
+  # EFS parameters
+  CreateEFSSubstack:
+    Description: Parameter telling if an EFS Substack has been created
+    Type: String
+  EFSFileSystemID:
+    Description: ID of the EFS volume used
+    Type: String
+  # FSx parameters
+  CreateFSXSubstack:
+    Description: Parameter telling if a FSx Substack has been created
+    Type: String
+  FSXFileSystemId:
+    Description: ID of the FSx volume used
+    Type: String
+Conditions:
+  # EBS conditions
+  # Duplicate of the ebs-substack code
+  UseEBSVol2: !Not
+    - !Equals
+      - !Ref 'NumberOfEBSVol'
+      - '1'
+  UseEBSVol3: !And
+    - !Not
+      - !Equals
+        - !Ref 'NumberOfEBSVol'
+        - '2'
+    - !Condition 'UseEBSVol2'
+  UseEBSVol4: !And
+    - !Not
+      - !Equals
+        - !Ref 'NumberOfEBSVol'
+        - '3'
+    - !Condition 'UseEBSVol3'
+  UseEBSVol5: !And
+    - !Not
+      - !Equals
+        - !Ref 'NumberOfEBSVol'
+        - '4'
+    - !Condition 'UseEBSVol4'
+  # RAID conditions
+  CreateRAIDSubstack: !Equals
+    - !Ref 'CreateRAIDSubstack'
+    - 'true'
+  # Duplicate of the raid-substack code
+  UseRAIDVol1: !Not
+    - !Equals
+      - !Select
+        - '0'
+        - !Ref 'RAIDOptions'
+      - NONE
+  UseRAIDVol2: !And
+    - !Not
+      - !Equals
+        - !Select
+          - '2'
+          - !Ref 'RAIDOptions'
+        - '1'
+    - !Condition 'UseRAIDVol1'
+  UseRAIDVol3: !And
+    - !Not
+      - !Equals
+        - !Select
+          - '2'
+          - !Ref 'RAIDOptions'
+        - '2'
+    - !Condition 'UseRAIDVol2'
+  UseRAIDVol4: !And
+    - !Not
+      - !Equals
+        - !Select
+          - '2'
+          - !Ref 'RAIDOptions'
+        - '3'
+    - !Condition 'UseRAIDVol3'
+  UseRAIDVol5: !And
+    - !Not
+      - !Equals
+        - !Select
+          - '2'
+          - !Ref 'RAIDOptions'
+        - '4'
+    - !Condition 'UseRAIDVol4'
+  # EFS conditions
+  CreateEFSSubstack: !Equals
+    - !Ref 'CreateEFSSubstack'
+    - 'true'
+  # FSx conditions
+  CreateFSXSubstack: !Equals
+    - !Ref 'CreateFSXSubstack'
+    - 'true'
+Resources:
+  MasterCloudWatchDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Join
+        - '-'
+        - - !Ref 'PclusterStackName'
+          - 'Master'
+      DashboardBody: !Join
+        - ''
+        - - '{"widgets":['
+          - !Join # TODO: delete this join (since the one before is the same) if we do not change it back
+            - '' # Do not use comma join: Would make a problem when using If statements as Join(',', ['a','','b'])='a,,b'
+            - # Head Node Instance Metrics
+              - '{"type":"text","x":0,"y":2,"width":24,"height":1,"properties":{"markdown":"\n#
+                      Head Node Instance Metrics\n"}}'
+              - !Sub ',{"type":"metric","x":0,"y":3,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","CPUUtilization","InstanceId","${MasterInstanceID}"]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":6,"y":3,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","NetworkPacketsIn","InstanceId","${MasterInstanceID}"],[".","NetworkPacketsOut",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":12,"y":3,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","NetworkIn","InstanceId","${MasterInstanceID}"],[".","NetworkOut",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":18,"y":3,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","StatusCheckFailed","InstanceId","${MasterInstanceID}"],[".","StatusCheckFailed_Instance",".","."],[".","StatusCheckFailed_System",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":0,"y":9,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":true,"metrics":[["AWS/EC2","CPUCreditUsage","InstanceId","${MasterInstanceID}"],[".","CPUCreditBalance",".","."]],"region":"${AWS::Region}","setPeriodToTimeRange":true}}'
+              - !Sub ',{"type":"metric","x":6,"y":9,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","CPUSurplusCreditBalance","InstanceId","${MasterInstanceID}"],[".","CPUSurplusCreditsCharged",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":12,"y":9,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","DiskReadBytes","InstanceId","${MasterInstanceID}"],[".","DiskWriteBytes",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":18,"y":9,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","DiskReadOps","InstanceId","${MasterInstanceID}"],[".","DiskWriteOps",".","."]],"region":"${AWS::Region}"}}'
+              - !Sub ',{"type":"metric","x":0,"y":15,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EC2","MetadataNoToken","InstanceId","${MasterInstanceID}"]],"region":"${AWS::Region}"}}'
+
+              # EBS metrics graphs
+              - ',{"type":"text","x":0,"y":21,"width":24,"height":1,"properties":{"markdown":"\n# EBS Metrics\n"}}'
+              # EBS VolumeReadOps, VolumeWriteOps graph
+              - !Sub
+                - ',{"type":"metric","x":0,"y":22,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeReadOps","VolumeId","${EBS_Volume1}"],[".","VolumeWriteOps",".","."]'
+                - EBS_Volume1: !Select
+                      - '0'
+                      - !Ref 'EBSVolumesIDs'
+              - !If
+                - UseEBSVol2 # If we have a second EBS volume
+                - !Sub
+                  - ',[".","VolumeReadOps",".","${EBS_Volume2}"],[".","VolumeWriteOps",".","."]'
+                  - EBS_Volume2: !Select
+                      - '1'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol3 # If we have a third EBS volume
+                - !Sub
+                  - ',[".","VolumeReadOps",".","${EBS_Volume3}"],[".","VolumeWriteOps",".","."]'
+                  - EBS_Volume3: !Select
+                      - '2'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol4 # If we have a fourth EBS volume
+                - !Sub
+                  - ',[".","VolumeReadOps",".","${EBS_Volume4}"],[".","VolumeWriteOps",".","."]'
+                  - EBS_Volume4: !Select
+                      - '3'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol5 # If we have a fifth EBS volume
+                - !Sub
+                  - ',[".","VolumeReadOps",".","${EBS_Volume5}"],[".","VolumeWriteOps",".","."]'
+                  - EBS_Volume5: !Select
+                      - '4'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+                # TODO put those only if the previous cond is true? Better to execute less but
+                # we would have to make a join every time between the result and the new if
+                # Note: seems like I can not use !Join inside !Sub which is boring because it
+                # would have been nice to replace EBS_VolumeX inside only one Sub (instead of
+                # for every graph and every X)
+              - !Sub '],"region":"${AWS::Region}"}}'
+
+              # EBS VolumeReadBytes, VolumeWriteBytes graph
+              - !Sub
+                - ',{"type":"metric","x":6,"y":22,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeReadBytes","VolumeId","${EBS_Volume1}"],[".","VolumeWriteBytes",".","."]'
+                - EBS_Volume1: !Select
+                      - '0'
+                      - !Ref 'EBSVolumesIDs'
+              - !If
+                - UseEBSVol2 # If we have a second EBS volume
+                - !Sub
+                  - ',[".","VolumeReadBytes",".","${EBS_Volume2}"],[".","VolumeWriteBytes",".","."]'
+                  - EBS_Volume2: !Select
+                      - '1'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol3 # If we have a third EBS volume
+                - !Sub
+                  - ',[".","VolumeReadBytes",".","${EBS_Volume3}"],[".","VolumeWriteBytes",".","."]'
+                  - EBS_Volume3: !Select
+                      - '2'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol4 # If we have a fourth EBS volume
+                - !Sub
+                  - ',[".","VolumeReadBytes",".","${EBS_Volume4}"],[".","VolumeWriteBytes",".","."]'
+                  - EBS_Volume4: !Select
+                      - '3'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol5 # If we have a fifth EBS volume
+                - !Sub
+                  - ',[".","VolumeReadBytes",".","${EBS_Volume5}"],[".","VolumeWriteBytes",".","."]'
+                  - EBS_Volume5: !Select
+                      - '4'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+                # TODO same as previous one
+              - !Sub '],"region":"${AWS::Region}"}}'
+
+              # EBS VolumeTotalReadTime, VolumeTotalWriteTime graph
+              - !Sub
+                - ',{"type":"metric","x":12,"y":22,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeTotalReadTime","VolumeId","${EBS_Volume1}"],[".","VolumeTotalWriteTime",".","."]'
+                - EBS_Volume1: !Select
+                      - '0'
+                      - !Ref 'EBSVolumesIDs'
+              - !If
+                - UseEBSVol2 # If we have a second EBS volume
+                - !Sub
+                  - ',[".","VolumeTotalReadTime",".","${EBS_Volume2}"],[".","VolumeTotalWriteTime",".","."]'
+                  - EBS_Volume2: !Select
+                      - '1'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol3 # If we have a third EBS volume
+                - !Sub
+                  - ',[".","VolumeTotalReadTime",".","${EBS_Volume3}"],[".","VolumeTotalWriteTime",".","."]'
+                  - EBS_Volume3: !Select
+                      - '2'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol4 # If we have a fourth EBS volume
+                - !Sub
+                  - ',[".","VolumeTotalReadTime",".","${EBS_Volume4}"],[".","VolumeTotalWriteTime",".","."]'
+                  - EBS_Volume4: !Select
+                      - '3'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol5 # If we have a fifth EBS volume
+                - !Sub
+                  - ',[".","VolumeTotalReadTime",".","${EBS_Volume5}"],[".","VolumeTotalWriteTime",".","."]'
+                  - EBS_Volume5: !Select
+                      - '4'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+                # TODO same as previous one
+              - !Sub '],"region":"${AWS::Region}"}}'
+
+              # EBS VolumeQueueLength graph
+              - !Sub
+                - ',{"type":"metric","x":18,"y":22,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeQueueLength","VolumeId","${EBS_Volume1}"]'
+                - EBS_Volume1: !Select
+                      - '0'
+                      - !Ref 'EBSVolumesIDs'
+              - !If
+                - UseEBSVol2 # If we have a second EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume2}"]'
+                  - EBS_Volume2: !Select
+                      - '1'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol3 # If we have a third EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume3}"]'
+                  - EBS_Volume3: !Select
+                      - '2'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol4 # If we have a fourth EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume4}"]'
+                  - EBS_Volume4: !Select
+                      - '3'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol5 # If we have a fifth EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume5}"]'
+                  - EBS_Volume5: !Select
+                      - '4'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+                # TODO same as previous one
+              - !Sub '],"region":"${AWS::Region}"}}'
+
+              # EBS VolumeIdleTime graph
+              - !Sub
+                - ',{"type":"metric","x":0,"y":28,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeIdleTime","VolumeId","${EBS_Volume1}"]'
+                - EBS_Volume1: !Select
+                      - '0'
+                      - !Ref 'EBSVolumesIDs'
+              - !If
+                - UseEBSVol2 # If we have a second EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume2}"]'
+                  - EBS_Volume2: !Select
+                      - '1'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol3 # If we have a third EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume3}"]'
+                  - EBS_Volume3: !Select
+                      - '2'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol4 # If we have a fourth EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume4}"]'
+                  - EBS_Volume4: !Select
+                      - '3'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+              - !If
+                - UseEBSVol5 # If we have a fifth EBS volume
+                - !Sub
+                  - ',["...","${EBS_Volume5}"]'
+                  - EBS_Volume5: !Select
+                      - '4'
+                      - !Ref 'EBSVolumesIDs'
+                - ''
+                # TODO same as previous one
+              - !Sub '],"region":"${AWS::Region}"}}'
+
+              # RAID metrics graphs
+              - !If
+                - CreateRAIDSubstack
+                - !Join
+                  - ''
+                  - - ',{"type":"text","x":0,"y":34,"width":24,"height":1,"properties":{"markdown":"\n# RAID Metrics\n"}}'
+
+                    # RAID VolumeReadOps, VolumeWriteOps graph
+                    - !If
+                      - UseRAIDVol1 # Should always be true with CreateRAIDSubstack true, if not, problem here will happen (empty section)
+                      - !Sub
+                        - ',{"type":"metric","x":0,"y":35,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeReadOps","VolumeId","${RAID_Volume1}"],[".","VolumeWriteOps",".","."]'
+                        - RAID_Volume1: !Select
+                            - '0'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol2 # If we have a second RAID volume, should always be true though.
+                      - !Sub
+                        - ',[".","VolumeReadOps",".","${RAID_Volume2}"],[".","VolumeWriteOps",".","."]'
+                        - RAID_Volume2: !Select
+                            - '1'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol3 # If we have a third RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadOps",".","${RAID_Volume3}"],[".","VolumeWriteOps",".","."]'
+                        - RAID_Volume3: !Select
+                            - '2'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol4 # If we have a fourth RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadOps",".","${RAID_Volume4}"],[".","VolumeWriteOps",".","."]'
+                        - RAID_Volume4: !Select
+                            - '3'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol5 # If we have a fifth RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadOps",".","${RAID_Volume5}"],[".","VolumeWriteOps",".","."]'
+                        - RAID_Volume5: !Select
+                            - '4'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                      # TODO put those only if the previous cond is true? Better to execute less but
+                      # we would have to make a join every time between the result and the new if
+                      # Note: seems like I can not use !Join inside !Sub which is boring because it
+                      # would have been nice to replace EBS_VolumeX inside only one Sub (instead of
+                      # for every graph and every X)
+                    - !Sub '],"region":"${AWS::Region}"}}'
+
+                    # RAID VolumeReadBytes, VolumeWriteBytes graph
+                    - !If
+                      - UseRAIDVol1 # Should always be true with CreateRAIDSubstack true, if not, problem here will happen (empty section)
+                      - !Sub
+                        - ',{"type":"metric","x":6,"y":35,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeReadBytes","VolumeId","${RAID_Volume1}"],[".","VolumeWriteBytes",".","."]'
+                        - RAID_Volume1: !Select
+                            - '0'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol2 # If we have a second RAID volume, should always be true though.
+                      - !Sub
+                        - ',[".","VolumeReadBytes",".","${RAID_Volume2}"],[".","VolumeWriteBytes",".","."]'
+                        - RAID_Volume2: !Select
+                            - '1'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol3 # If we have a third RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadBytes",".","${RAID_Volume3}"],[".","VolumeWriteBytes",".","."]'
+                        - RAID_Volume3: !Select
+                            - '2'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol4 # If we have a fourth RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadBytes",".","${RAID_Volume4}"],[".","VolumeWriteBytes",".","."]'
+                        - RAID_Volume4: !Select
+                            - '3'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol5 # If we have a fifth RAID volume
+                      - !Sub
+                        - ',[".","VolumeReadBytes",".","${RAID_Volume5}"],[".","VolumeWriteBytes",".","."]'
+                        - RAID_Volume5: !Select
+                            - '4'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                      # TODO same as previous one
+                    - !Sub '],"region":"${AWS::Region}"}}'
+
+                    # RAID VolumeTotalReadTime, VolumeTotalWriteTime graph
+                    - !If
+                      - UseRAIDVol1 # Should always be true with CreateRAIDSubstack true, if not, problem here will happen (empty section)
+                      - !Sub
+                        - ',{"type":"metric","x":12,"y":35,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeTotalReadTime","VolumeId","${RAID_Volume1}"],[".","VolumeTotalWriteTime",".","."]'
+                        - RAID_Volume1: !Select
+                            - '0'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol2 # If we have a second RAID volume, should always be true though.
+                      - !Sub
+                        - ',[".","VolumeTotalReadTime",".","${RAID_Volume2}"],[".","VolumeTotalWriteTime",".","."]'
+                        - RAID_Volume2: !Select
+                            - '1'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol3 # If we have a third RAID volume
+                      - !Sub
+                        - ',[".","VolumeTotalReadTime",".","${RAID_Volume3}"],[".","VolumeTotalWriteTime",".","."]'
+                        - RAID_Volume3: !Select
+                            - '2'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol4 # If we have a fourth RAID volume
+                      - !Sub
+                        - ',[".","VolumeTotalReadTime",".","${RAID_Volume4}"],[".","VolumeTotalWriteTime",".","."]'
+                        - RAID_Volume4: !Select
+                            - '3'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol5 # If we have a fifth RAID volume
+                      - !Sub
+                        - ',[".","VolumeTotalReadTime",".","${RAID_Volume5}"],[".","VolumeTotalWriteTime",".","."]'
+                        - RAID_Volume5: !Select
+                            - '4'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                      # TODO same as previous one
+                    - !Sub '],"region":"${AWS::Region}"}}'
+
+                    # RAID VolumeQueueLength graph
+                    - !If
+                      - UseRAIDVol1 # Should always be true with CreateRAIDSubstack true, if not, problem here will happen (empty section)
+                      - !Sub
+                        - ',{"type":"metric","x":18,"y":35,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeQueueLength","VolumeId","${RAID_Volume1}"]'
+                        - RAID_Volume1: !Select
+                            - '0'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol2 # If we have a second RAID volume, should always be true though.
+                      - !Sub
+                        - ',["...","${RAID_Volume2}"]'
+                        - RAID_Volume2: !Select
+                            - '1'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol3 # If we have a third RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume3}"]'
+                        - RAID_Volume3: !Select
+                            - '2'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol4 # If we have a fourth RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume4}"]'
+                        - RAID_Volume4: !Select
+                            - '3'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol5 # If we have a fifth RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume5}"]'
+                        - RAID_Volume5: !Select
+                            - '4'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                      # TODO same as previous one
+                    - !Sub '],"region":"${AWS::Region}"}}'
+
+                    # RAID VolumeIdleTime graph
+                    - !If
+                      - UseRAIDVol1 # Should always be true with CreateRAIDSubstack true, if not, problem here will happen (empty section)
+                      - !Sub
+                        - ',{"type":"metric","x":0,"y":41,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EBS","VolumeIdleTime","VolumeId","${RAID_Volume1}"]'
+                        - RAID_Volume1: !Select
+                            - '0'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol2 # If we have a second RAID volume, should always be true though.
+                      - !Sub
+                        - ',["...","${RAID_Volume2}"]'
+                        - RAID_Volume2: !Select
+                            - '1'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol3 # If we have a third RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume3}"]'
+                        - RAID_Volume3: !Select
+                            - '2'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol4 # If we have a fourth RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume4}"]'
+                        - RAID_Volume4: !Select
+                            - '3'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                    - !If
+                      - UseRAIDVol5 # If we have a fifth RAID volume
+                      - !Sub
+                        - ',["...","${RAID_Volume5}"]'
+                        - RAID_Volume5: !Select
+                            - '4'
+                            - !Ref 'RAIDVolumesIDs'
+                      - ''
+                      # TODO same as previous one
+                    - !Sub '],"region":"${AWS::Region}"}}'
+
+                - ''
+
+              # EFS metrics graphs
+              - !If
+                - CreateEFSSubstack
+                - !Join
+                  - ''
+                  - - ',{"type":"text","x":0,"y":47,"width":24,"height":1,"properties":{"markdown":"\n#
+                                EFS Metrics\n"}}' # beginning comma was hard-coded
+                    - !Sub ',{"type":"metric","x":0,"y":48,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","BurstCreditBalance","FileSystemId","${EFSFileSystemID}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":6,"y":48,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","MetadataIOBytes","FileSystemId","${EFSFileSystemID}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":12,"y":48,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","ClientConnections","FileSystemId","${EFSFileSystemID}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":18,"y":48,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","TotalIOBytes","FileSystemId","${EFSFileSystemID}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":0,"y":54,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","PermittedThroughput","FileSystemId","${EFSFileSystemID}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":6,"y":54,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/EFS","DataReadIOBytes","FileSystemId","${EFSFileSystemID}"],[".","DataWriteIOBytes",".","."]],"region":"eu-west-1"}}'
+                - ''
+
+              # FSx metrics graphs
+              - !If
+                - CreateFSXSubstack
+                - !Join
+                  - ''
+                  - - ',{"type":"text","x":0,"y":60,"width":24,"height":1,"properties":{"markdown":"\n# FSx Metrics\n"}}'
+                    # FSx FreeDataStorageCapacity
+                    - !Sub ',{"type":"metric","x":0,"y":61,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/FSx","DataReadOperations","FileSystemId","${FSXFileSystemId}"],[".","DataWriteOperations",".","."]],"region":"${AWS::Region}","period":300}}'
+                    - !Sub ',{"type":"metric","x":6,"y":61,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/FSx","DataReadBytes","FileSystemId","${FSXFileSystemId}"],[".","DataWriteBytes",".","."]],"region":"${AWS::Region}","period":300}}'
+                    - !Sub ',{"type":"metric","x":12,"y":61,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/FSx","MetadataOperations","FileSystemId","${FSXFileSystemId}"]],"region":"${AWS::Region}"}}'
+                    - !Sub ',{"type":"metric","x":18,"y":61,"width":6,"height":6,"properties":{"view":"timeSeries","stacked":false,"metrics":[["AWS/FSx","FreeDataStorageCapacity","FileSystemId","${FSXFileSystemId}"]],"region":"${AWS::Region}"}}'
+                - ''
+          - ']}'
+Outputs: {}

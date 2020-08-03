@@ -4499,6 +4499,111 @@
           ]
         }
       }
+    },
+    "CloudWatchDashboardSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "PclusterStackName": {
+            "Ref": "AWS::StackName"
+          },
+          "MasterInstanceID": {
+            "Ref": "MasterServer"
+          },
+          "NumberOfEBSVol": {
+            "Ref": "NumberOfEBSVol"
+          },
+          "EBSVolumesIDs": {
+            "Fn::GetAtt": [
+              "EBSCfnStack",
+              "Outputs.Volumeids"
+            ]
+          },
+          "CreateRAIDSubstack": {
+            "Fn::If": [
+              "CreateRAIDSubstack",
+              "true",
+              "false"
+            ]
+          },
+          "RAIDOptions": {
+            "Ref": "RAIDOptions"
+          },
+          "RAIDVolumesIDs": {
+            "Fn::If": [
+              "CreateRAIDSubstack",
+              {
+                "Fn::GetAtt": [
+                  "RAIDSubstack",
+                  "Outputs.Volumeids"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "CreateEFSSubstack": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              "true",
+              "false"
+            ]
+          },
+          "EFSFileSystemID": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              {
+                "Fn::GetAtt": [
+                  "EFSSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "CreateFSXSubstack": {
+            "Fn::If": [
+              "CreateFSXSubstack",
+              "true",
+              "false"
+            ]
+          },
+          "FSXFileSystemId": {
+            "Fn::If": [
+              "CreateFSXSubstack",
+              {
+                "Fn::GetAtt": [
+                  "FSXSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/cw-dashboard-substack-${version}.cfn.yaml",
+            {
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "url"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "parallelcluster"
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
