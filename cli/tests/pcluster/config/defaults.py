@@ -86,10 +86,9 @@ DEFAULT_FSX_DICT = {
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
 
-DEFAULT_CLUSTER_DICT = {
+DEFAULT_CLUSTER_SIT_DICT = {
     "key_name": None,
     "template_url": None,
-    "hit_template_url": None,
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
@@ -136,6 +135,47 @@ DEFAULT_CLUSTER_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "cluster_config_metadata": {"sections": {}},
+    "architecture": "x86_64",
+}
+
+DEFAULT_CLUSTER_HIT_DICT = {
+    "key_name": None,
+    "template_url": None,
+    "hit_template_url": None,
+    "base_os": None,  # base_os does not have a default, but this is here to make testing easier
+    "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
+    "shared_dir": "/shared",
+    "master_instance_type": "t2.micro",
+    "master_root_volume_size": 25,
+    "compute_root_volume_size": 25,
+    "proxy_server": None,
+    "ec2_iam_role": None,
+    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
+    "s3_read_resource": None,
+    "s3_read_write_resource": None,
+    "enable_efa": None,
+    "ephemeral_dir": "/scratch",
+    "encrypted_ephemeral": False,
+    "custom_ami": None,
+    "pre_install": None,
+    "pre_install_args": None,
+    "post_install": None,
+    "post_install_args": None,
+    "extra_json": {},
+    "additional_cfn_template": None,
+    "tags": {},
+    "custom_chef_cookbook": None,
+    "disable_hyperthreading": None,
+    "enable_intel_hpc_platform": False,
+    "scaling_settings": "default",
+    "vpc_settings": "default",
+    "ebs_settings": None,
+    "efs_settings": None,
+    "raid_settings": None,
+    "fsx_settings": None,
+    "dcv_settings": None,
+    "cw_log_settings": None,
     "queue_settings": None,
     "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
@@ -144,7 +184,7 @@ DEFAULT_CLUSTER_DICT = {
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
 
-DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_DICT}
+DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_SIT_DICT}
 
 
 class DefaultDict(Enum):
@@ -153,7 +193,8 @@ class DefaultDict(Enum):
     aws = DEFAULT_AWS_DICT
     global_ = DEFAULT_GLOBAL_DICT
     aliases = DEFAULT_ALIASES_DICT
-    cluster = DEFAULT_CLUSTER_DICT
+    cluster_sit = DEFAULT_CLUSTER_SIT_DICT
+    cluster_hit = DEFAULT_CLUSTER_HIT_DICT
     scaling = DEFAULT_SCALING_DICT
     vpc = DEFAULT_VPC_DICT
     ebs = DEFAULT_EBS_DICT
@@ -168,7 +209,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_CONFIG_NUM_OF_PARAMS = 59
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 59
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 51
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -208,7 +250,7 @@ DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
 
-DEFAULT_CLUSTER_CFN_PARAMS = {
+DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "KeyName": "NONE",
     "BaseOS": "alinux2",
     "Scheduler": "slurm",
@@ -242,7 +284,72 @@ DEFAULT_CLUSTER_CFN_PARAMS = {
     "CustomChefCookbook": "NONE",
     "CustomAWSBatchTemplateURL": "NONE",
     "NumberOfEBSVol": "1",
-    "Cores": "-1,-1",
+    "Cores": "NONE,NONE",
+    "IntelHPCPlatform": "false",
+    # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
+    # scaling
+    "ScaleDownIdleTime": "10",
+    # vpc
+    "VPCId": "NONE",
+    "MasterSubnetId": "NONE",
+    "AccessFrom": "0.0.0.0/0",
+    "AdditionalSG": "NONE",
+    "ComputeSubnetId": "NONE",
+    "ComputeSubnetCidr": "NONE",
+    "UsePublicIps": "true",
+    "VPCSecurityGroupId": "NONE",
+    "AvailabilityZone": "NONE",
+    # ebs
+    # "SharedDir": "NONE,NONE,NONE,NONE,NONE",  # not existing with single ebs volume
+    "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeType": "gp2,gp2,gp2,gp2,gp2",
+    "VolumeSize": "20,20,20,20,20",
+    "VolumeIOPS": "100,100,100,100,100",
+    "EBSEncryption": "false,false,false,false,false",
+    "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
+    "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    # efs
+    "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    # raid
+    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    # fsx
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    # dcv
+    "DCVOptions": "NONE,NONE,NONE",
+    # cw_log_settings
+    "CWLogOptions": "true,14",
+    "ClusterConfigMetadata": "{'sections': {}}",
+    # architecture
+    "Architecture": "x86_64",
+}
+
+
+DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
+    "KeyName": "NONE",
+    "BaseOS": "alinux2",
+    "Scheduler": "slurm",
+    "SharedDir": "/shared",
+    "MasterInstanceType": "t2.micro",
+    "MasterRootVolumeSize": "25",
+    "ComputeRootVolumeSize": "25",
+    "ProxyServer": "NONE",
+    "EC2IAMRoleName": "NONE",
+    "EC2IAMPolicies": "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+    "S3ReadResource": "NONE",
+    "S3ReadWriteResource": "NONE",
+    "EFA": "NONE",
+    "EphemeralDir": "/scratch",
+    "EncryptedEphemeral": "false",
+    "CustomAMI": "NONE",
+    "PreInstallScript": "NONE",
+    "PreInstallArgs": "NONE",
+    "PostInstallScript": "NONE",
+    "PostInstallArgs": "NONE",
+    "ExtraJson": "{}",
+    "AdditionalCfnTemplate": "NONE",
+    "CustomChefCookbook": "NONE",
+    "NumberOfEBSVol": "1",
+    "Cores": "NONE,NONE",
     "IntelHPCPlatform": "false",
     # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # scaling
@@ -293,4 +400,5 @@ class DefaultCfnParams(Enum):
     fsx = DEFAULT_FSX_CFN_PARAMS
     dcv = DEFAULT_DCV_CFN_PARAMS
     cw_log = DEFAULT_CW_LOG_CFN_PARAMS
-    cluster = DEFAULT_CLUSTER_CFN_PARAMS
+    cluster_sit = DEFAULT_CLUSTER_SIT_CFN_PARAMS
+    cluster_hit = DEFAULT_CLUSTER_HIT_CFN_PARAMS

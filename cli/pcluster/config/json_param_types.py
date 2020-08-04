@@ -95,52 +95,6 @@ class FloatJsonParam(JsonParam):
         return config_parser.getfloat(section_name, self.key)
 
 
-class ComputeInstanceTypeJsonParam(JsonParam):
-    """JsonParam to manage compute instance type in compute_resource sections."""
-
-    def refresh(self):
-        """
-        Populate additional settings needed for the linked compute resource like vcpus, gpus etc.
-
-        These parameters are set according to queue settings and instance type capabilities.
-        """
-        if self.value:
-            instance_type = utils.get_instance_type(self.value)
-
-            # Set vcpus according to queue's disable_hyperthreading and instance features
-            queue_section = self.owner_section.parent_section
-            ht_disabled = queue_section.get_param_value("disable_hyperthreading") if queue_section else None
-            vcpus_info = instance_type.get("VCpuInfo")
-            default_cores = vcpus_info.get("DefaultCores")
-            vcpus = default_cores if ht_disabled and default_cores else vcpus_info.get("DefaultVCpus")
-            self.owner_section.get_param("vcpus").value = vcpus
-
-            # Set gpus according to instance features
-            gpu_info = instance_type.get("GpuInfo", None)
-            if gpu_info:
-                # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
-                self.owner_section.get_param("gpus").value = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")])
-
-            # Set enable_efa according to queues' enable_efa and instance features
-            enable_efa = queue_section.get_param_value("enable_efa") if queue_section else None
-            self.owner_section.get_param("enable_efa").value = enable_efa and instance_type.get("NetworkInfo").get(
-                "EfaSupported"
-            )
-
-            # print warnings if any configuration fallback has occurred
-            if ht_disabled and not default_cores:
-                self.pcluster_config.warn(
-                    "Hyperthreading was disabled on queue '{0}', but disabling hyperthreading on instance type '{1}' "
-                    "is not currently supported by ParallelCluster.".format(queue_section.label, self.value)
-                )
-
-            if enable_efa and not self.owner_section.get_param("enable_efa").value:
-                self.pcluster_config.warn(
-                    "EFA was enabled on queue '{0}', but instance type '{1}' "
-                    "does not support EFA.".format(queue_section.label, self.value)
-                )
-
-
 class ScaleDownIdleTimeJsonParam(JsonParam):
     """JsonParam to manage scaledown_idletime for Json configuration."""
 
@@ -250,6 +204,83 @@ class JsonSection(Section):
     def get_default_param_type(self):
         """Get the default Param type managed by the Section type."""
         return JsonParam
+
+    def refresh(self):
+        """Refresh the Json section."""
+        self.refresh_section()
+        super(JsonSection, self).refresh()
+
+    def refresh_section(self):
+        """Perform custom refresh operations."""
+        pass
+
+
+class QueueJsonSection(JsonSection):
+    """JSon Section for queues."""
+
+    def refresh_section(self):
+        """Take values of disable_hyperthreading and enable_efa from cluster section if not specified."""
+        if self.get_param_value("disable_hyperthreading") is None:
+            self.get_param("disable_hyperthreading").value = self.pcluster_config.get_section(
+                "cluster"
+            ).get_param_value("disable_hyperthreading")
+
+        if self.get_param_value("enable_efa") is None:
+            cluster_enable_efa = self.pcluster_config.get_section("cluster").get_param_value("enable_efa")
+            # enable_efa is of string type in cluster section and of bool type in queue section
+            if cluster_enable_efa is not None:
+                self.get_param("enable_efa").value = cluster_enable_efa == "compute"
+
+        compute_resource_labels = self.get_param_value("compute_resource_settings")
+        if compute_resource_labels:
+            for compute_resource_label in compute_resource_labels.split(","):
+                compute_resource_section = self.pcluster_config.get_section("compute_resource", compute_resource_label)
+                self.refresh_compute_resource(compute_resource_section)
+
+    def refresh_compute_resource(self, compute_resource_section):
+        """
+        Populate additional settings needed for the linked compute resource like vcpus, gpus etc.
+
+        These parameters are set according to queue settings and instance type capabilities.
+        """
+        instance_type_param = compute_resource_section.get_param("instance_type")
+
+        if instance_type_param.value:
+            instance_type = utils.get_instance_type(instance_type_param.value)
+
+            # Set vcpus according to queue's disable_hyperthreading and instance features
+            ht_disabled = self.get_param_value("disable_hyperthreading")
+            vcpus_info = instance_type.get("VCpuInfo")
+            default_cores = vcpus_info.get("DefaultCores")
+            vcpus = default_cores if ht_disabled and default_cores else vcpus_info.get("DefaultVCpus")
+            compute_resource_section.get_param("vcpus").value = vcpus
+
+            # Set gpus according to instance features
+            gpu_info = instance_type.get("GpuInfo", None)
+            if gpu_info:
+                # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
+                compute_resource_section.get_param("gpus").value = sum(
+                    [gpus.get("Count") for gpus in gpu_info.get("Gpus")]
+                )
+
+            # Set enable_efa according to queues' enable_efa and instance features
+            enable_efa = self.get_param_value("enable_efa")
+            compute_resource_section.get_param("enable_efa").value = enable_efa and instance_type.get(
+                "NetworkInfo"
+            ).get("EfaSupported")
+
+            # Printing warnings here to spare additional boto3 calls from validation.
+            if ht_disabled and not default_cores:
+                self.pcluster_config.warn(
+                    "Hyperthreading was disabled on queue '{0}', but disabling hyperthreading on instance type '{1}' "
+                    "is not currently supported by ParallelCluster.".format(self.label, instance_type_param.value)
+                )
+
+            if enable_efa and not instance_type_param.owner_section.get_param("enable_efa").value:
+                self.pcluster_config.warn(
+                    "EFA was enabled on queue '{0}', but instance type '{1}' "
+                    "does not support EFA.".format(self.label, instance_type_param.value)
+                )
 
 
 # ---------------------- Common functions ---------------------- #

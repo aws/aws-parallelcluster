@@ -72,6 +72,23 @@
             "enable_efa": false
           }
         }
+      },
+      "queue3": {
+        "compute_type": "spot",
+        "enable_efa": true,
+        "disable_hyperthreading": false,
+        "placement_group": "DYNAMIC",
+        "compute_resource_settings": {
+          "q3-i1": {
+            "instance_type": "i3en.24xlarge",
+            "min_count": 0,
+            "max_count": 10,
+            "spot_price": 0.4,
+            "vcpus": 96,
+            "gpus": 0,
+            "enable_efa": true
+          }
+        }
       }
     },
     "scaling": {

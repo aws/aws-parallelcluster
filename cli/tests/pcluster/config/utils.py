@@ -18,10 +18,11 @@ import pytest
 from assertpy import assert_that
 from configparser import NoOptionError, NoSectionError
 
+from pcluster.cluster_model import ClusterModel
 from pcluster.config.cfn_param_types import CfnParam
 from pcluster.config.param_types import StorageData
 from pcluster.config.pcluster_config import PclusterConfig
-from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict
+from tests.pcluster.config.defaults import CFN_HIT_CONFIG_NUM_OF_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultDict
 
 # List of parameters ignored by default when comparing sections
 COMPARATION_IGNORED_PARAMS = [
@@ -182,7 +183,7 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
         assert_that(section.label).is_equal_to("default")
 
     # update expected dictionary
-    default_dict = DefaultDict[section_definition.get("key")].value
+    default_dict = get_default_dict(section_definition)
     expected_dict = default_dict.copy()
     if isinstance(expected_section_dict, dict):
         expected_dict.update(expected_section_dict)
@@ -195,6 +196,19 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
     remove_ignored_params(section_dict)
 
     assert_that(section_dict).is_equal_to(expected_dict)
+
+
+def get_default_dict(section_definition):
+    section_key = section_definition.get("key")
+
+    if section_key == "global":
+        section_key += "_"
+
+    if "cluster" == section_key:
+        section_key += "_sit" if section_definition.get("cluster_model") == ClusterModel.SIT.name else "_hit"
+
+    default_dict = DefaultDict[section_key].value
+    return default_dict
 
 
 def get_mocked_pcluster_config(mocker, auto_refresh=False):
@@ -214,10 +228,7 @@ def assert_section_from_file(mocker, section_definition, config_parser_dict, exp
     config_parser.read_dict(config_parser_dict)
 
     # update expected dictionary
-    default_dict_key = section_definition.get("key")
-    if default_dict_key == "global":
-        default_dict_key += "_"
-    default_dict = DefaultDict[default_dict_key].value
+    default_dict = get_default_dict(section_definition)
     expected_dict = default_dict.copy()
     if isinstance(expected_dict_params, dict):
         expected_dict.update(expected_dict_params)
@@ -338,7 +349,7 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
 
         cfn_params = pcluster_config.to_cfn()
 
-        assert_that(len(cfn_params)).is_equal_to(CFN_CONFIG_NUM_OF_PARAMS)
+        assert_that(len(cfn_params)).is_equal_to(get_cfn_config_num_of_params(pcluster_config))
 
         remove_ignored_params(cfn_params)
 
@@ -348,14 +359,14 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
             )
 
 
-def init_pcluster_config_from_configparser(config_parser, validate=True):
+def init_pcluster_config_from_configparser(config_parser, validate=True, auto_refresh=True):
     with tempfile.NamedTemporaryFile(delete=False) as config_file:
 
         with open(config_file.name, "w") as cf:
             config_parser.write(cf)
 
         pcluster_config = PclusterConfig(
-            config_file=config_file.name, cluster_label="default", fail_on_file_absence=True
+            config_file=config_file.name, cluster_label="default", fail_on_file_absence=True, auto_refresh=auto_refresh
         )
         if validate:
             pcluster_config.validate()
@@ -368,3 +379,22 @@ def duplicate_config_file(dst_config_file, test_datadir):
     src_config_file_path = os.path.join(str(test_datadir), "pcluster.config.ini")
     dst_config_file_path = os.path.join(str(test_datadir), dst_config_file)
     shutil.copy(src_config_file_path, dst_config_file_path)
+
+
+def get_cfn_config_num_of_params(pcluster_config):
+    return (
+        CFN_SIT_CONFIG_NUM_OF_PARAMS
+        if pcluster_config.cluster_model == ClusterModel.SIT
+        else CFN_HIT_CONFIG_NUM_OF_PARAMS
+    )
+
+
+def dict_to_cfn_params(cfn_params_dict):
+    """Convert a dictionary to a list of CloudFormation params."""
+    if cfn_params_dict:
+        cfn_params = []
+        for cfn_key, cfn_value in cfn_params_dict.items():
+            cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
+    else:
+        cfn_params = None
+    return cfn_params

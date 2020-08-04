@@ -17,17 +17,16 @@ import os
 import stat
 import sys
 
-import boto3
 import configparser
 from botocore.exceptions import ClientError
 
-from pcluster.config.hit_converter import HitConverter
-from pcluster.config.mappings import ALIASES, AWS, CLUSTER, GLOBAL
+from pcluster.cluster_model import ClusterModel, get_cluster_model, infer_cluster_model
+from pcluster.config.cfn_param_types import ClusterCfnSection
+from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
     get_cfn_param,
     get_installed_version,
-    get_instance_vcpus,
     get_stack,
     get_stack_name,
     get_stack_version,
@@ -54,6 +53,7 @@ class PclusterConfig(object):
         fail_on_file_absence=False,
         fail_on_error=None,
         cluster_name=None,
+        auto_refresh=True,
     ):
         """
         Initialize object, from file, from a CFN Stack or from the internal mapping.
@@ -69,6 +69,8 @@ class PclusterConfig(object):
         # "From Stack" initialization parameters:
         :param cluster_name: the cluster name associated to a running Stack,
         if specified the initialization will start from the running Stack
+        :param auto_refresh: if set, refresh() method will be called every time something changes in the structure of
+        the configuration, like a section being added, removed or renamed.
         """
         self.__autorefresh = False  # Initialization in progress
         self.fail_on_error = fail_on_error
@@ -88,9 +90,7 @@ class PclusterConfig(object):
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
 
-        HitConverter(self).convert()
-
-        self.__autorefresh = True  # Initialization completed
+        self.__autorefresh = auto_refresh  # Initialization completed
 
         # Refresh sections and parameters
         self._config_updated()
@@ -235,6 +235,15 @@ class PclusterConfig(object):
             pass
 
     @property
+    def cluster_model(self):
+        """Get the cluster model used in the configuration."""
+        cluster_model = ClusterModel.SIT
+        cluster_section = self.get_section("cluster")
+        if cluster_section:
+            cluster_model = get_cluster_model(cluster_section.definition.get("cluster_model"))
+        return cluster_model
+
+    @property
     def region(self):
         """Get the region. The value is stored inside the aws_region_name of the aws section."""
         return self.get_section("aws").get_param_value("aws_region_name")
@@ -330,8 +339,15 @@ class PclusterConfig(object):
             cluster_label = (
                 self.get_section("global").get_param_value("cluster_template") if self.get_section("global") else None
             )
+
+        # Infer cluster model and load cluster section accordingly
+        cluster_model = infer_cluster_model(config_parser=config_parser, cluster_label=cluster_label)
+
         self.__init_section_from_file(
-            CLUSTER, config_parser, section_label=cluster_label, fail_on_absence=fail_on_absence
+            cluster_model.get_cluster_section_definition(),
+            config_parser,
+            section_label=cluster_label,
+            fail_on_absence=fail_on_absence,
         )
 
     def __init_section_from_file(self, section_definition, config_parser, section_label=None, fail_on_absence=False):
@@ -406,12 +422,17 @@ class PclusterConfig(object):
                     )
                 )
 
-            section_type = CLUSTER.get("type")
-            section = section_type(section_definition=CLUSTER, pcluster_config=self)
-            self.add_section(section)
-
             cfn_params = stack.get("Parameters")
             json_params = self.__load_json_config(cfn_params)
+
+            # Infer cluster model and load cluster section accordingly
+            cluster_model = infer_cluster_model(cfn_params=cfn_params)
+            section = ClusterCfnSection(
+                section_definition=cluster_model.get_cluster_section_definition(), pcluster_config=self
+            )
+
+            self.add_section(section)
+
             section.from_storage(StorageData(cfn_params, json_params))
 
         except ClientError as e:
@@ -458,132 +479,13 @@ class PclusterConfig(object):
 
     def __test_configuration(self):  # noqa: C901
         """
-        Try to launch the requested instances (in dry-run mode) to verify configuration parameters.
+        Perform global tests to verify that the wanted cluster configuration can be deployed in the user's account.
 
-        NOTE: The number of max instances is set to 1 because run_instances in dry-mode doesn't try to allocate the
-        requested instances. The goal of the test is verify the provided configuration.
+        Check operations may involve dryrun tests and/or other AWS calls and depend on the current cluster model.
         """
         LOGGER.debug("Testing configuration parameters...")
-        cluster_section = self.get_section("cluster")
-        vpc_section = self.get_section("vpc")
-
-        if (
-            not cluster_section
-            or cluster_section.get_param_value("scheduler") == "awsbatch"
-            or cluster_section.get_param_value("cluster_type") == "spot"
-            or not vpc_section
-        ):
-            return
-
-        master_instance_type = cluster_section.get_param_value("master_instance_type")
-        compute_instance_type = cluster_section.get_param_value("compute_instance_type")
-
-        # Retrieve network parameters
-        compute_subnet = vpc_section.get_param_value("compute_subnet_id")
-        master_subnet = vpc_section.get_param_value("master_subnet_id")
-        vpc_security_group = vpc_section.get_param_value("vpc_security_group_id")
-        if not compute_subnet:
-            compute_subnet = master_subnet
-        security_groups_ids = []
-        if vpc_security_group:
-            security_groups_ids.append(vpc_security_group)
-
-        # Initialize CpuOptions
-        disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
-        master_vcpus = get_instance_vcpus(self.region, master_instance_type)
-        compute_vcpus = get_instance_vcpus(self.region, compute_instance_type)
-        master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-        compute_cpu_options = {"CoreCount": compute_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-
-        # Initialize Placement Group Logic
-        placement_group = cluster_section.get_param_value("placement_group")
-        placement = cluster_section.get_param_value("placement")
-        master_placement_group = (
-            {"GroupName": placement_group}
-            if placement_group not in [None, "NONE", "DYNAMIC"] and placement == "cluster"
-            else {}
-        )
-        compute_placement_group = (
-            {"GroupName": placement_group} if placement_group not in [None, "NONE", "DYNAMIC"] else {}
-        )
-
-        try:
-            latest_alinux_ami_id = self.__get_latest_alinux_ami_id()
-
-            # Test Master Instance Configuration
-            self.__ec2_run_instance(
-                InstanceType=master_instance_type,
-                MinCount=1,
-                MaxCount=1,
-                ImageId=latest_alinux_ami_id,
-                SubnetId=master_subnet,
-                SecurityGroupIds=security_groups_ids,
-                CpuOptions=master_cpu_options,
-                Placement=master_placement_group,
-                DryRun=True,
-            )
-
-            # Test Compute Instances Configuration
-            self.__ec2_run_instance(
-                InstanceType=compute_instance_type,
-                MinCount=1,
-                MaxCount=1,
-                ImageId=latest_alinux_ami_id,
-                SubnetId=compute_subnet,
-                SecurityGroupIds=security_groups_ids,
-                CpuOptions=compute_cpu_options,
-                Placement=compute_placement_group,
-                DryRun=True,
-            )
-        except ClientError:
-            self.error("Unable to validate configuration parameters.")
+        self.cluster_model.test_configuration(self)
         LOGGER.debug("Configuration parameters tested correctly.")
-
-    def __get_latest_alinux_ami_id(self):
-        """Get latest alinux ami id."""
-        try:
-            alinux_ami_id = (
-                boto3.client("ssm")
-                .get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
-                .get("Parameters")[0]
-                .get("Value")
-            )
-        except ClientError as e:
-            self.error("Unable to retrieve Amazon Linux AMI id.\n{0}".format(e.response.get("Error").get("Message")))
-            raise
-
-        return alinux_ami_id
-
-    def __ec2_run_instance(self, **kwargs):
-        """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
-        try:
-            boto3.client("ec2").run_instances(**kwargs)
-        except ClientError as e:
-            code = e.response.get("Error").get("Code")
-            message = e.response.get("Error").get("Message")
-            if code == "DryRunOperation":
-                pass
-            elif code == "UnsupportedOperation":
-                if "does not support specifying CpuOptions" in message:
-                    self.error(message.replace("CpuOptions", "disable_hyperthreading"))
-                self.error(message)
-            elif code == "InstanceLimitExceeded":
-                self.error(
-                    "You've reached the limit on the number of instances you can run concurrently "
-                    "for the configured instance type.\n{0}".format(message)
-                )
-            elif code == "InsufficientInstanceCapacity":
-                self.error("There is not enough capacity to fulfill your request.\n{0}".format(message))
-            elif code == "InsufficientFreeAddressesInSubnet":
-                self.error(
-                    "The specified subnet does not contain enough free private IP addresses "
-                    "to fulfill your request.\n{0}".format(message)
-                )
-            else:
-                self.error(
-                    "Unable to validate configuration parameters. "
-                    "Please double check your cluster configuration.\n{0}".format(message)
-                )
 
     def error(self, message):
         """Print an error message and Raise SystemExit exception to the stderr if fail_on_error is true."""

@@ -19,7 +19,7 @@ from tests.pcluster.config.utils import get_mocked_pcluster_config
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "pcluster.config.pcluster_config.boto3"
+    return "pcluster.cluster_model.boto3"
 
 
 @pytest.mark.parametrize(
@@ -59,9 +59,9 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
-            _ = pcluster_config._PclusterConfig__get_latest_alinux_ami_id()
+            _ = pcluster_config.cluster_model._get_latest_alinux_ami_id()
     else:
-        latest_linux_ami_id = pcluster_config._PclusterConfig__get_latest_alinux_ami_id()
+        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux_ami_id()
         assert_that(latest_linux_ami_id).is_equal_to(boto3_response.get("Parameters")[0].get("Value"))
 
 

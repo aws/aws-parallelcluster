@@ -113,8 +113,8 @@ def test_dcv_param_from_file(mocker, param_key, param_value, expected_value, exp
     "settings_label, expected_cfn_params",
     [
         ("test1", SystemExit()),
-        ("test2", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"DCVOptions": "master,8443,0.0.0.0/0"})),
-        ("test3", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"DCVOptions": "master,8555,10.0.0.0/0"})),
+        ("test2", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"DCVOptions": "master,8443,0.0.0.0/0"})),
+        ("test3", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"DCVOptions": "master,8555,10.0.0.0/0"})),
         ("test1,test2", SystemExit()),
         ("test4", SystemExit()),
         ("test5", SystemExit()),

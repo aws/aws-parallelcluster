@@ -195,7 +195,7 @@ def test_ebs_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "ebs1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
@@ -211,7 +211,7 @@ def test_ebs_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "ebs2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs2,NONE,NONE,NONE,NONE",

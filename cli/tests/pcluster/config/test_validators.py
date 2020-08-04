@@ -1469,7 +1469,9 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
 @pytest.mark.parametrize(
     "cluster_section_dict, expected_message",
     [
-        ({"scheduler": "sge", "queue_settings": "queue1"}, "queue_settings is supported only with slurm scheduler",),
+        # SIT cluster, perfectly fine
+        ({"scheduler": "slurm"}, None),
+        # HIT cluster with one queue
         ({"scheduler": "slurm", "queue_settings": "queue1"}, None),
         ({"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5"}, None,),
         (
@@ -1484,34 +1486,72 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
     }
 
     for i in range(1, 7):
-        config_parser_dict["queue queue{0}".format(i)] = {"compute_resource_settings": "cr{0}".format(i)}
+        config_parser_dict["queue queue{0}".format(i)] = {
+            "compute_resource_settings": "cr{0}".format(i),
+            "disable_hyperthreading": True,
+            "enable_efa": True,
+        }
         config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
 
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "cluster_dict, queue_dict, expected_messages",
     [
         (
-            {"compute_resource_settings": "cr1,cr2"},
-            "Duplicate instance type 't2.micro' found in queue 'default'. "
-            "Compute resources in the same queue must use different instance types",
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1,cr2", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Duplicate instance type 't2.micro' found in queue 'default'. "
+                "Compute resources in the same queue must use different instance types"
+            ],
         ),
         (
-            {"compute_resource_settings": "cr3,cr4"},
-            "Duplicate instance type 'c4.xlarge' found in queue 'default'. "
-            "Compute resources in the same queue must use different instance types",
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr3,cr4", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Duplicate instance type 'c4.xlarge' found in queue 'default'. "
+                "Compute resources in the same queue must use different instance types"
+            ],
         ),
-        ({"compute_resource_settings": "cr1,cr3"}, ""),
-        ({"compute_resource_settings": "cr2,cr4"}, ""),
-        ({"compute_resource_settings": ""}, ""),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1,cr3", "enable_efa": True, "disable_hyperthreading": True},
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1"},
+            [
+                "Parameter 'enable_efa' must be specified in 'cluster' or in 'queue' section",
+                "Parameter 'disable_hyperthreading' must be specified in 'cluster' or in 'queue' section",
+            ],
+        ),
+        (
+            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
+            {"compute_resource_settings": "cr1"},
+            None,
+        ),
+        (
+            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
+            {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
+                "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+        ),
     ],
 )
-def test_queue_validator(mocker, section_dict, expected_message):
+def test_queue_validator(mocker, cluster_dict, queue_dict, expected_messages):
     config_parser_dict = {
-        "cluster default": {"queue_settings": "default"},
-        "queue default": section_dict,
+        "cluster default": cluster_dict,
+        "queue default": queue_dict,
         "compute_resource cr1": {"instance_type": "t2.micro"},
         "compute_resource cr2": {"instance_type": "t2.micro"},
         "compute_resource cr3": {"instance_type": "c4.xlarge"},
@@ -1521,19 +1561,12 @@ def test_queue_validator(mocker, section_dict, expected_message):
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
 
-    mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
-    )
-    mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
-    utils.mock_get_instance_type(mocker, "t2.micro")
-    utils.mock_get_instance_type(mocker, "c4.xlarge")
-
-    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
 
     errors, warnings = queue_validator("queue", "default", pcluster_config)
 
-    if expected_message:
-        assert_that(expected_message in errors)
+    if expected_messages:
+        assert_that(expected_messages).is_equal_to(errors)
     else:
         assert_that(errors).is_empty()
 
