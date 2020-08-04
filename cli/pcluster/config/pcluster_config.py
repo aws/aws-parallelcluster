@@ -16,7 +16,6 @@ import logging
 import os
 import stat
 import sys
-from tempfile import mkdtemp
 
 import boto3
 import configparser
@@ -32,6 +31,8 @@ from pcluster.utils import (
     get_stack,
     get_stack_name,
     get_stack_version,
+    is_hit_enabled_cluster,
+    read_remote_file,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -439,28 +440,21 @@ class PclusterConfig(object):
 
     def __load_json_config(self, cfn_params):
         """Retrieve Json configuration params from the S3 bucket linked from the cfn params."""
-        s3_bucket_name = get_cfn_param(cfn_params, "ResourcesS3Bucket")
-        if s3_bucket_name and s3_bucket_name != "NONE":
-            tmp_s3_config_path = os.path.join(mkdtemp(), "s3_config.json")
-            try:
-                s3 = boto3.client("s3")
-                s3.download_file(s3_bucket_name, "configs/cluster-config.json", tmp_s3_config_path)
+        json_config = None
+        scheduler = get_cfn_param(cfn_params, "Scheduler")
+        if is_hit_enabled_cluster(scheduler):
+            s3_bucket_name = get_cfn_param(cfn_params, "ResourcesS3Bucket")
 
-                with open(tmp_s3_config_path) as s3_config_file:
-                    return json.load(s3_config_file, object_pairs_hook=OrderedDict)
-            except ClientError as e:
-                self.error(
-                    "Unable to retrieve configuration from bucket '{0}'.\n{1}".format(
-                        s3_bucket_name, e.response.get("Error").get("Message")
-                    )
-                )
-                raise
+            if not s3_bucket_name or s3_bucket_name == "NONE":
+                self.error("Unable to retrieve configuration: ResourceS3Bucket not available.")
+
+            try:
+                json_str = read_remote_file("s3://{0}/{1}".format(s3_bucket_name, "configs/cluster-config.json"))
+                json_config = json.loads(json_str, object_pairs_hook=OrderedDict)
             except Exception as e:
-                self.error(
-                    "Unable to parse configuration from bucket '{0}'.\n{1}".format(
-                        s3_bucket_name, e.response.get("Error").get("Message")
-                    )
-                )
+                self.error("Unable to load configuration from bucket '{0}'.\n{1}".format(s3_bucket_name, e))
+
+        return json_config
 
     def __test_configuration(self):  # noqa: C901
         """
