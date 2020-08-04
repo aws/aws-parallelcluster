@@ -141,6 +141,8 @@ Resources:
                 Value: !Ref 'NetworkingTagValue'
               - Key: aws-parallelcluster-filesystem
                 Value: !Ref 'FilesystemTagValue'
+              - Key: aws-parallelcluster-node-type
+                Value: Compute
         BlockDeviceMappings:
           - DeviceName: /dev/xvdba
             VirtualName: ephemeral0
