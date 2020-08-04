@@ -11,7 +11,9 @@
 import pytest
 from assertpy import assert_that
 
+from pcluster.config.mappings import CLUSTER_SIT
 from pcluster.config.pcluster_config import PclusterConfig
+from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pcluster_config
 
 
 def test_update_sections(mocker, pcluster_config_reader):
@@ -52,3 +54,17 @@ def test_update_sections(mocker, pcluster_config_reader):
     # Removing sections by key should be prevented if there are multiple sections with the same key
     with pytest.raises(Exception):
         pcluster_config.remove_section("ebs")
+
+
+@pytest.mark.parametrize(
+    "section_definition, param_key, value", [(CLUSTER_SIT, "spot_price", 10), (CLUSTER_SIT, "shared_dir", "new_dir")]
+)
+def test_reset_param_value(mocker, section_definition, param_key, value):
+    param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
+
+    pcluster_config = get_mocked_pcluster_config(mocker)
+
+    param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
+    param.value = value
+    param.reset_value()
+    assert_that(param.value).is_equal_to(param.get_default_value())

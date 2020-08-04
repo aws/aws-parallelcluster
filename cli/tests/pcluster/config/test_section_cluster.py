@@ -13,18 +13,21 @@ import json
 import pytest
 
 import tests.pcluster.config.utils as utils
-from pcluster.config.mappings import CLUSTER
+from pcluster.config.mappings import CLUSTER_HIT, CLUSTER_SIT
 from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 
 
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict",
     [
-        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": [], "architecture": None}),),
         (
-            DefaultCfnParams["cluster"].value,
+            {},
+            utils.merge_dicts(DefaultDict["cluster_sit"].value, {"additional_iam_policies": [], "architecture": None}),
+        ),
+        (
+            DefaultCfnParams["cluster_sit"].value,
             utils.merge_dicts(
-                DefaultDict["cluster"].value,
+                DefaultDict["cluster_sit"].value,
                 {
                     "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
                     "base_os": "alinux2",
@@ -35,7 +38,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         # awsbatch defaults
         (
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "Scheduler": "awsbatch",
                     "EC2IAMPolicies": ",".join(
@@ -47,7 +50,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 },
             ),
             utils.merge_dicts(
-                DefaultDict["cluster"].value,
+                DefaultDict["cluster_sit"].value,
                 {
                     "scheduler": "awsbatch",
                     "base_os": "alinux2",
@@ -69,9 +72,9 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         ),
     ],
 )
-def test_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
+def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
     """Test conversion from CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER, cfn_params_dict, expected_section_dict)
+    utils.assert_section_from_cfn(mocker, CLUSTER_SIT, cfn_params_dict, expected_section_dict)
 
 
 @pytest.mark.parametrize(
@@ -109,13 +112,87 @@ def test_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict
             None,
             "'invalid_key.*,invalid_key.*' are not allowed in the .* section",
         ),
+        # CLUSTER_HIT parameters must not be allowed in CLUSTER_SIT
+        (
+            {"cluster default": {"queue_settings": "fake_value"}},
+            None,
+            "'queue_settings' is not allowed in the .* section",
+        ),
+        (
+            {"cluster default": {"default_queue": "fake_value"}},
+            None,
+            "'default_queue' is not allowed in the .* section",
+        ),
     ],
 )
-def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
+def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
     utils.set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
-    utils.assert_section_from_file(mocker, CLUSTER, config_parser_dict, expected_dict_params, expected_message)
+    utils.assert_section_from_file(mocker, CLUSTER_SIT, config_parser_dict, expected_dict_params, expected_message)
+
+
+@pytest.mark.parametrize(
+    "config_parser_dict, expected_dict_params, expected_message",
+    [
+        # default
+        (
+            {"cluster default": {}},
+            {"additional_iam_policies": [], "architecture": None, "scheduler": "slurm", "base_os": "alinux2"},
+            None,
+        ),
+        # right value
+        (
+            {"cluster default": {"key_name": "test"}},
+            {
+                "key_name": "test",
+                "additional_iam_policies": [],
+                "architecture": None,
+                "scheduler": "slurm",
+                "base_os": "alinux2",
+            },
+            None,
+        ),
+        (
+            {"cluster default": {"base_os": "alinux"}},
+            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
+            None,
+        ),
+        # invalid value
+        ({"cluster default": {"base_os": "wrong_value"}}, {}, "has an invalid value"),
+        # invalid key
+        ({"cluster default": {"invalid_key": "fake_value"}}, {}, "'invalid_key' is not allowed in the .* section"),
+        # CLUSTER_SIT parameters must not be allowed in CLUSTER_HIT
+        (
+            {"cluster default": {"placement_group": "fake_value"}},
+            {},
+            "'placement_group' is not allowed in the .* section",
+        ),
+        ({"cluster default": {"placement": "ondemand"}}, {}, "'placement' is not allowed in the .* section"),
+        (
+            {"cluster default": {"compute_instance_type": "t2.micro"}},
+            {},
+            "'compute_instance_type' is not allowed in the .* section",
+        ),
+        ({"cluster default": {"initial_queue_size": 0}}, {}, "'initial_queue_size' is not allowed in the .* section"),
+        ({"cluster default": {"max_queue_size": 10}}, {}, "'max_queue_size' is not allowed in the .* section"),
+        (
+            {"cluster default": {"maintain_initial_size": True}},
+            {},
+            "'maintain_initial_size' is not allowed in the .* section",
+        ),
+        ({"cluster default": {"cluster_type": "ondemand"}}, {}, "'cluster_type' is not allowed in the .* section"),
+        ({"cluster default": {"spot_price": 0}}, {}, "'spot_price' is not allowed in the .* section"),
+    ],
+)
+def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
+    config_parser_dict["cluster default"]["queue_settings"] = "queue1"
+    config_parser_dict["queue queue1"] = {}
+    utils.set_default_values_for_required_cluster_section_params(
+        config_parser_dict.get("cluster default"), only_if_not_present=True
+    )
+    expected_dict_params["queue_settings"] = "queue1"
+    utils.assert_section_from_file(mocker, CLUSTER_HIT, config_parser_dict, expected_dict_params, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -397,8 +474,10 @@ def test_cluster_section_from_file(mocker, config_parser_dict, expected_dict_par
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
     ],
 )
-def test_cluster_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
-    utils.assert_param_from_file(mocker, CLUSTER, param_key, param_value, expected_value, expected_message)
+def test_sit_cluster_param_from_file(
+    mocker, param_key, param_value, expected_value, expected_message, expected_key_error=None
+):
+    utils.assert_param_from_file(mocker, CLUSTER_SIT, param_key, param_value, expected_value, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -408,9 +487,9 @@ def test_cluster_param_from_file(mocker, param_key, param_value, expected_value,
         ("base_os", None, None, "Configuration parameter 'base_os' must have a value"),
     ],
 )
-def test_cluster_param_from_file_with_validation(mocker, param_key, param_value, expected_value, expected_message):
+def test_sit_cluster_param_from_file_with_validation(mocker, param_key, param_value, expected_value, expected_message):
     utils.assert_param_from_file(
-        mocker, CLUSTER, param_key, param_value, expected_value, expected_message, do_validation=True
+        mocker, CLUSTER_SIT, param_key, param_value, expected_value, expected_message, do_validation=True
     )
 
 
@@ -426,28 +505,43 @@ def test_cluster_param_from_file_with_validation(mocker, param_key, param_value,
         ({"base_os": "centos7"}, {"cluster default": {"base_os": "centos7"}}, None),
     ],
 )
-def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_dict, expected_message):
-    utils.assert_section_to_file(mocker, CLUSTER, section_dict, expected_config_parser_dict, expected_message)
+def test_sit_cluster_section_to_file(mocker, section_dict, expected_config_parser_dict, expected_message):
+    utils.assert_section_to_file(mocker, CLUSTER_SIT, section_dict, expected_config_parser_dict, expected_message)
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_cfn_params", [(DefaultDict["cluster"].value, DefaultCfnParams["cluster"].value)],
+    "cluster_section_definition, section_dict, expected_cfn_params",
+    [
+        (CLUSTER_SIT, DefaultDict["cluster_sit"].value, DefaultCfnParams["cluster_sit"].value),
+        (
+            CLUSTER_SIT,
+            utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,2"}),
+        ),
+        (
+            CLUSTER_HIT,
+            utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
+            # With HIT clusters there should be no cores information for compute instance type
+            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0"}),
+        ),
+    ],
 )
-def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
+def test_sit_cluster_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params):
     utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
-    utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params)
+    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=4)
+    utils.assert_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params)
 
 
 @pytest.mark.parametrize(
     "settings_label, expected_cfn_params",
     [
-        ("default", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"Scheduler": "sge"})),
+        ("default", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Scheduler": "sge"})),
         (
             "custom1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -494,7 +588,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "batch",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -517,7 +611,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "batch-custom1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -543,7 +637,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "batch-no-cw-logging",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -563,7 +657,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "wrong_mix_traditional",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -580,7 +674,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "wrong_mix_batch",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -604,7 +698,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "efs",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -617,7 +711,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "dcv",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -630,7 +724,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "ebs",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -650,7 +744,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "ebs-multiple",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -670,7 +764,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "ebs-shareddir-cluster1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -690,7 +784,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "ebs-shareddir-cluster2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -710,7 +804,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "ebs-shareddir-ebs",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "VPCId": "vpc-12345678",
@@ -729,12 +823,12 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ),
         (
             "cw_log",
-            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1", "Scheduler": "sge"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"CWLogOptions": "true,1", "Scheduler": "sge"}),
         ),
         (
             "all-settings",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     # scaling
@@ -766,7 +860,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "random-order",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "AvailabilityZone": "mocked_avail_zone",
                     "KeyName": "key",
@@ -830,7 +924,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ),
     ],
 )
-def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
+def test_sit_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing Cluster related options."""
     mocker.patch(
         "pcluster.config.cfn_param_types.get_efs_mount_target_id",
@@ -849,9 +943,9 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
     "section_dict, expected_cfn_params",
     [
         (
-            DefaultDict["cluster"].value,
+            DefaultDict["cluster_sit"].value,
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "ClusterConfigMetadata": json.dumps(
                         {"sections": {"scaling": ["default"], "vpc": ["default"], "cluster": ["default"]}},
@@ -862,7 +956,7 @@ def test_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_label
         )
     ],
 )
-def test_cluster_config_metadata_to_cfn(mocker, section_dict, expected_cfn_params):
+def test_sit_cluster_config_metadata_to_cfn(mocker, section_dict, expected_cfn_params):
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
-    utils.assert_section_to_cfn(mocker, CLUSTER, section_dict, expected_cfn_params, ignore_metadata=False)
+    utils.assert_section_to_cfn(mocker, CLUSTER_SIT, section_dict, expected_cfn_params, ignore_metadata=False)

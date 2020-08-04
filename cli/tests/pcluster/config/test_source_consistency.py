@@ -15,11 +15,11 @@ import os
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from pcluster.config.mappings import ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
+from pcluster.config.mappings import ALIASES, AWS, CLUSTER_SIT, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
 from pcluster.config.pcluster_config import PclusterConfig
-from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
+from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
 
-EXISTING_SECTIONS = [ALIASES, AWS, CLUSTER, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC]
+EXISTING_SECTIONS = [ALIASES, AWS, CLUSTER_SIT, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC]
 
 
 def test_mapping_consistency():
@@ -32,7 +32,16 @@ def test_mapping_consistency():
                 description="{0} is not allowed in {1} section definition".format(
                     section_key, section_definition.get("key")
                 ),
-            ).is_in("type", "key", "default_label", "cfn_param_mapping", "params", "validators", "max_resources")
+            ).is_in(
+                "type",
+                "key",
+                "default_label",
+                "cfn_param_mapping",
+                "params",
+                "validators",
+                "max_resources",
+                "cluster_model",
+            )
 
         for param_key, param_definition in section_definition.get("params").items():
 
@@ -68,7 +77,7 @@ def test_example_config_consistency(mocker):
 
     cfn_params = pcluster_config.to_cfn()
 
-    assert_that(len(cfn_params)).is_equal_to(CFN_CONFIG_NUM_OF_PARAMS)
+    assert_that(len(cfn_params)).is_equal_to(utils.get_cfn_config_num_of_params(pcluster_config))
 
     # for param_key, param_value in expected_cfn_params.items():
     # assert_that(cfn_params.get(param_key)).is_equal_to(expected_cfn_params.get(param_key))
@@ -83,7 +92,7 @@ def test_defaults_consistency():
     assert_that(template_num_of_params).is_less_than_or_equal_to(60)
 
     # verify number of parameters used for tests with number of parameters in CFN template
-    total_number_of_params = CFN_CONFIG_NUM_OF_PARAMS + len(CFN_CLI_RESERVED_PARAMS)
+    total_number_of_params = CFN_SIT_CONFIG_NUM_OF_PARAMS + len(CFN_CLI_RESERVED_PARAMS)
     assert_that(total_number_of_params).is_equal_to(template_num_of_params)
 
     # The EC2IAMPoicies parameter is expected to differ by default from the default value in the

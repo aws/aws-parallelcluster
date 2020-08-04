@@ -259,19 +259,19 @@ def get_supported_features(region, feature):
     return supported_features
 
 
-def get_instance_vcpus(region, instance_type):
+def get_instance_vcpus(instance_type):
     """
     Get number of vcpus for the given instance type.
 
     :param region: AWS Region
     :param instance_type: the instance type to search for.
     :return: the number of vcpus or -1 if the instance type cannot be found
-    or the pricing file cannot be retrieved/parsed
     """
     try:
-        instances = _get_json_from_s3(region, "instances/instances.json")
-        vcpus = int(instances[instance_type]["vcpus"])
-    except (KeyError, ValueError, ClientError):
+        instance_type_info = get_instance_type(instance_type)
+        vcpus_info = instance_type_info.get("VCpuInfo")
+        vcpus = vcpus_info.get("DefaultVCpus")
+    except (ClientError):
         vcpus = -1
 
     return vcpus

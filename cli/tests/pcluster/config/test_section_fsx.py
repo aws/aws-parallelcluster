@@ -229,7 +229,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 DefaultCfnParams["fsx"].value,
                 {"MasterSubnetId": "subnet-12345678", "AvailabilityZone": "mocked_avail_zone"},
             ),
@@ -237,7 +237,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -248,7 +248,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test3",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -263,7 +263,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test6",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",

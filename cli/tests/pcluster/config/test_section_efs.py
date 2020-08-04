@@ -171,7 +171,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 DefaultCfnParams["efs"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
@@ -183,7 +183,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -195,7 +195,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test3",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -207,7 +207,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test4",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",

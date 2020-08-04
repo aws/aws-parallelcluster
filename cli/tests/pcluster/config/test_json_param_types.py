@@ -16,7 +16,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.config.cfn_param_types import CfnSection
-from pcluster.config.mappings import CLUSTER
+from pcluster.config.mappings import CLUSTER_HIT
 from pcluster.config.param_types import SettingsParam, StorageData
 from pcluster.config.pcluster_config import PclusterConfig
 from tests.common import MockedBoto3Request
@@ -83,6 +83,7 @@ def boto3_stubber_path():
             "'g4dn.metal' is not currently supported by ParallelCluster.\n",
         ),
         ([], ""),
+        (["queue3"], ""),
     ],
 )
 def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_reader, queues, expected_warnings):
@@ -134,7 +135,7 @@ def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_r
     _mock_boto3(boto3_stubber, expected_json_params)
 
     pcluster_config = get_mocked_pcluster_config(mocker)
-    cluster_section = CfnSection(CLUSTER, pcluster_config, section_label="default")
+    cluster_section = CfnSection(CLUSTER_HIT, pcluster_config, section_label="default")
     cluster_section.from_storage(StorageData(cfn_params=[], json_params=expected_json_params))
     pcluster_config.add_section(cluster_section)
     pcluster_config.refresh()

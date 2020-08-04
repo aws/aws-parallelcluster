@@ -12,6 +12,8 @@ import configparser
 import pytest
 from assertpy import assert_that
 
+from pcluster.cluster_model import ClusterModel
+from pcluster.config.hit_converter import HitConverter
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import init_pcluster_config_from_configparser
 
@@ -29,6 +31,8 @@ def boto3_stubber_path():
             {
                 "cluster default": {
                     "scheduler": "slurm",
+                    "master_root_volume_size": 30,
+                    "compute_root_volume_size": 35,
                     "cluster_type": "ondemand",
                     "enable_efa": "compute",
                     "disable_hyperthreading": True,
@@ -41,7 +45,15 @@ def boto3_stubber_path():
                 }
             },
             {
-                "cluster default": {"scheduler": "slurm"},
+                "cluster default": {
+                    # Common cluster params must be copied
+                    "scheduler": "slurm",
+                    "master_root_volume_size": 30,
+                    "compute_root_volume_size": 35,
+                    # disable_hyperthreading and enable_efa must be set to None in converted cluster section
+                    "enable_efa": None,
+                    "disable_hyperthreading": None,
+                },
                 "queue default": {
                     "compute_type": "ondemand",
                     "enable_efa": True,
@@ -118,12 +130,19 @@ def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
     config_parser = configparser.ConfigParser()
 
     config_parser.read_dict(src_config_dict)
-    src_pcluster_config = init_pcluster_config_from_configparser(config_parser, validate=False)
+    pcluster_config = init_pcluster_config_from_configparser(config_parser, validate=False)
+
+    HitConverter(pcluster_config).convert()
+
+    if scheduler == "slurm":
+        assert_that(pcluster_config.cluster_model).is_equal_to(ClusterModel.HIT)
+    else:
+        assert_that(pcluster_config.cluster_model).is_equal_to(ClusterModel.SIT)
 
     for section_key_label, section in dst_config_dict.items():
         section_key, section_label = section_key_label.split(" ")
 
-        src_section = src_pcluster_config.get_section(section_key, section_label)
+        src_section = pcluster_config.get_section(section_key, section_label)
         assert_that(src_section).is_not_none()
 
         for param_key, param_value in section.items():

@@ -20,15 +20,18 @@
     },
     "MinSize": {
       "Description": "Initial number of compute EC2 instances / vCpus to launch within the cluster.",
-      "Type": "Number"
+      "Type": "Number",
+      "Default": 0
     },
     "DesiredSize": {
       "Description": "Desired number of compute EC2 instances / vCpus to launch within the cluster.",
-      "Type": "Number"
+      "Type": "Number",
+      "Default": 0
     },
     "MaxSize": {
       "Description": "Maximum number of compute EC2 instances / vCpus to launch within the cluster.",
-      "Type": "Number"
+      "Type": "Number",
+      "Default": 0
     },
     "ComputeSubnetId": {
       "Description": "ID of the Subnet you want to provision the Compute Servers into",
@@ -332,9 +335,9 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "Cores": {
-      "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 no CpuOptions are set.",
+      "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 or NONE,NONE no CpuOptions are set.",
       "Type": "CommaDelimitedList",
-      "Default": "-1,-1"
+      "Default": "NONE,NONE"
     },
     "EFA": {
       "Description": "Enable EFA on the compute nodes, enable_efa = compute",

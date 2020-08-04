@@ -35,12 +35,12 @@ from pcluster.config.cfn_param_types import (
 )
 from pcluster.config.json_param_types import (
     BooleanJsonParam,
-    ComputeInstanceTypeJsonParam,
     DefaultComputeQueueJsonParam,
     FloatJsonParam,
     IntJsonParam,
     JsonParam,
     JsonSection,
+    QueueJsonSection,
     ScaleDownIdleTimeJsonParam,
     SettingsJsonParam,
 )
@@ -574,8 +574,8 @@ COMPUTE_RESOURCE = {
     "max_resources": 3,
     "params": OrderedDict([
         ("instance_type", {
-            "type": ComputeInstanceTypeJsonParam,
-            "validators": [ec2_instance_type_validator],
+            "type": JsonParam,
+            "validators": [ec2_instance_type_validator, instances_architecture_compatibility_validator],
             "required": True,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
@@ -619,7 +619,7 @@ COMPUTE_RESOURCE = {
 }
 
 QUEUE = {
-    "type": JsonSection,
+    "type": QueueJsonSection,
     "key": "queue",
     "default_label": "default",
     "validators": [queue_validator],
@@ -634,12 +634,10 @@ QUEUE = {
         ("enable_efa", {
             "type": BooleanJsonParam,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            "default": False
         }),
         ("disable_hyperthreading", {
             "type": BooleanJsonParam,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            "default": False
         }),
         ("placement_group", {
             "type": JsonParam,
@@ -655,40 +653,240 @@ QUEUE = {
     ])
 }
 
-CLUSTER = {
+CLUSTER_COMMON_PARAMS = [
+    # OrderedDict due to conditional defaults values
+    ("cluster_config_metadata", {
+        # NOTE: this is not exposed as a configuration parameter
+        "type": ClusterConfigMetadataCfnParam,
+        "cfn_param_mapping": "ClusterConfigMetadata",
+        "update_policy": UpdatePolicy.IGNORED,
+        "visibility": Visibility.PRIVATE,
+    }),
+    ("key_name", {
+        "cfn_param_mapping": "KeyName",
+        "validators": [ec2_key_pair_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("base_os", {
+        "type": BaseOSCfnParam,
+        "cfn_param_mapping": "BaseOS",
+        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
+        "validators": [base_os_validator, architecture_os_validator],
+        "required": True,
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("scheduler", {
+        "cfn_param_mapping": "Scheduler",
+        "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
+        "validators": [scheduler_validator],
+        "required": True,
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    # Master
+    ("master_instance_type", {
+        "default": "t2.micro",
+        "cfn_param_mapping": "MasterInstanceType",
+        "validators": [ec2_instance_type_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("master_root_volume_size", {
+        "type": IntCfnParam,
+        "default": 25,
+        "allowed_values": ALLOWED_VALUES["greater_than_25"],
+        "cfn_param_mapping": "MasterRootVolumeSize",
+        "update_policy": UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
+            action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
+        )
+    }),
+    # Compute fleet
+    ("compute_root_volume_size", {
+        "type": IntCfnParam,
+        "default": 25,
+        "allowed_values": ALLOWED_VALUES["greater_than_25"],
+        "cfn_param_mapping": "ComputeRootVolumeSize",
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+    }),
+    # Access and networking
+    ("proxy_server", {
+        "cfn_param_mapping": "ProxyServer",
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("ec2_iam_role", {
+        "cfn_param_mapping": "EC2IAMRoleName",
+        "validators": [ec2_iam_role_validator],  # TODO add regex
+        "update_policy": UpdatePolicy.SUPPORTED
+    }),
+    ("s3_read_resource", {
+        "cfn_param_mapping": "S3ReadResource",
+        "update_policy": UpdatePolicy.SUPPORTED
+    }),
+    ("s3_read_write_resource", {
+        "cfn_param_mapping": "S3ReadWriteResource",
+        "update_policy": UpdatePolicy.SUPPORTED
+    }),
+    # Customization
+    ("template_url", {
+        # TODO add regex
+        "validators": [url_validator],
+        # Ignored during update since we force using previous template
+        "update_policy": UpdatePolicy.IGNORED
+    }),
+    ("shared_dir", {
+        "type": SharedDirCfnParam,
+        "allowed_values": ALLOWED_VALUES["file_path"],
+        "cfn_param_mapping": "SharedDir",
+        "default": "/shared",
+        "validators": [shared_dir_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("enable_efa", {
+        "allowed_values": ["compute"],
+        "cfn_param_mapping": "EFA",
+        "validators": [efa_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("ephemeral_dir", {
+        "allowed_values": ALLOWED_VALUES["file_path"],
+        "default": "/scratch",
+        "cfn_param_mapping": "EphemeralDir",
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("encrypted_ephemeral", {
+        "default": False,
+        "type": BoolCfnParam,
+        "cfn_param_mapping": "EncryptedEphemeral",
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("custom_ami", {
+        "cfn_param_mapping": "CustomAMI",
+        "allowed_values": ALLOWED_VALUES["ami_id"],
+        "validators": [ec2_ami_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("pre_install", {
+        "cfn_param_mapping": "PreInstallScript",
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+    }),
+    ("pre_install_args", {
+        "cfn_param_mapping": "PreInstallArgs",
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+    }),
+    ("post_install", {
+        "cfn_param_mapping": "PostInstallScript",
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+    }),
+    ("post_install_args", {
+        "cfn_param_mapping": "PostInstallArgs",
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+    }),
+    ("extra_json", {
+        "type": ExtraJsonCfnParam,
+        "cfn_param_mapping": "ExtraJson",
+        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+    }),
+    ("additional_cfn_template", {
+        "cfn_param_mapping": "AdditionalCfnTemplate",
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("tags", {
+        "type": JsonCfnParam,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("custom_chef_cookbook", {
+        "cfn_param_mapping": "CustomChefCookbook",
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("enable_intel_hpc_platform", {
+        "default": False,
+        "type": BoolCfnParam,
+        "cfn_param_mapping": "IntelHPCPlatform",
+        "validators": [intel_hpc_os_validator, intel_hpc_architecture_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    # Settings
+    ("scaling_settings", {
+        "type": SettingsCfnParam,
+        "default": "default",  # set a value to create always the internal structure for the scaling section
+        "referred_section": SCALING,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("vpc_settings", {
+        "type": SettingsCfnParam,
+        "default": "default",  # set a value to create always the internal structure for the vpc section
+        "referred_section": VPC,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("ebs_settings", {
+        "type": EBSSettingsCfnParam,
+        "referred_section": EBS,
+        "validators": [ebs_settings_validator],
+        "update_policy": UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["ebs_sections_change"],
+        )
+    }),
+    ("efs_settings", {
+        "type": SettingsCfnParam,
+        "referred_section": EFS,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("raid_settings", {
+        "type": SettingsCfnParam,
+        "referred_section": RAID,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("fsx_settings", {
+        "type": SettingsCfnParam,
+        "referred_section": FSX,
+        "validators": [fsx_architecture_os_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("dcv_settings", {
+        "type": SettingsCfnParam,
+        "referred_section": DCV,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("cw_log_settings", {
+        "type": SettingsCfnParam,
+        "referred_section": CW_LOG,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    # Moved from the "Access and Networking" section because its configuration is
+    # dependent on multiple other parameters from within this section.
+    ("additional_iam_policies", {
+        "type": AdditionalIamPoliciesCfnParam,
+        "cfn_param_mapping": "EC2IAMPolicies",
+        "validators": [ec2_iam_policies_validator],
+        "update_policy": UpdatePolicy.SUPPORTED,
+    }),
+    # Derived parameters - present in CFN parameters but not in config file
+    ("architecture", {
+        "cfn_param_mapping": "Architecture",
+        "update_policy": UpdatePolicy.IGNORED,
+        "visibility": Visibility.PRIVATE,
+    }),
+
+]
+
+
+CLUSTER_SIT = {
     "type": ClusterCfnSection,
     "key": "cluster",
     "default_label": "default",
+    "cluster_model": "SIT",
     "validators": [cluster_validator],
     "params": OrderedDict(
-        [  # OrderedDict due to conditional defaults values
-            ("cluster_config_metadata", {
-                # NOTE: this is not exposed as a configuration parameter
-                "type": ClusterConfigMetadataCfnParam,
-                "cfn_param_mapping": "ClusterConfigMetadata",
-                "update_policy": UpdatePolicy.IGNORED,
-                "visibility": Visibility.PRIVATE,
-            }),
-            ("key_name", {
-                "cfn_param_mapping": "KeyName",
-                "validators": [ec2_key_pair_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("base_os", {
-                "type": BaseOSCfnParam,
-                "cfn_param_mapping": "BaseOS",
-                "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
-                "validators": [base_os_validator, architecture_os_validator],
-                "required": True,
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("scheduler", {
-                "cfn_param_mapping": "Scheduler",
-                "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
-                "validators": [scheduler_validator],
-                "required": True,
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
+        CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
                 "cfn_param_mapping": "PlacementGroup",
                 "validators": [ec2_placement_group_validator],
@@ -700,38 +898,13 @@ CLUSTER = {
                 "allowed_values": ["cluster", "compute"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
-            # Master
-            ("master_instance_type", {
-                "default": "t2.micro",
-                "cfn_param_mapping": "MasterInstanceType",
-                "validators": [ec2_instance_type_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("master_root_volume_size", {
-                "type": IntCfnParam,
-                "default": 25,
-                "allowed_values": ALLOWED_VALUES["greater_than_25"],
-                "cfn_param_mapping": "MasterRootVolumeSize",
-                "update_policy": UpdatePolicy(
-                    UpdatePolicy.UNSUPPORTED,
-                    fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
-                    action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
-                )
-            }),
             # Compute fleet
             ("compute_instance_type", {
                 "default":
                     lambda section:
-                        "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
+                    "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
                 "cfn_param_mapping": "ComputeInstanceType",
                 "validators": [compute_instance_type_validator, instances_architecture_compatibility_validator],
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
-            }),
-            ("compute_root_volume_size", {
-                "type": IntCfnParam,
-                "default": 25,
-                "allowed_values": ALLOWED_VALUES["greater_than_25"],
-                "cfn_param_mapping": "ComputeRootVolumeSize",
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("initial_queue_size", {
@@ -791,24 +964,6 @@ CLUSTER = {
                 "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
-            # Access and networking
-            ("proxy_server", {
-                "cfn_param_mapping": "ProxyServer",
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("ec2_iam_role", {
-                "cfn_param_mapping": "EC2IAMRoleName",
-                "validators": [ec2_iam_role_validator],  # TODO add regex
-                "update_policy": UpdatePolicy.SUPPORTED
-            }),
-            ("s3_read_resource", {
-                "cfn_param_mapping": "S3ReadResource",
-                "update_policy": UpdatePolicy.SUPPORTED
-            }),
-            ("s3_read_write_resource", {
-                "cfn_param_mapping": "S3ReadWriteResource",
-                "update_policy": UpdatePolicy.SUPPORTED
-            }),
             ("disable_hyperthreading", {
                 "type": DisableHyperThreadingCfnParam,
                 "default": False,
@@ -816,157 +971,29 @@ CLUSTER = {
                 "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
-            # Customization
-            ("template_url", {
-                # TODO add regex
-                "validators": [url_validator],
-                # Ignored during update since we force using previous template
-                "update_policy": UpdatePolicy.IGNORED
-            }),
-            ("hit_template_url", {
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.IGNORED
-            }),
-            ("shared_dir", {
-                "type": SharedDirCfnParam,
-                "allowed_values": ALLOWED_VALUES["file_path"],
-                "cfn_param_mapping": "SharedDir",
-                "default": "/shared",
-                "validators": [shared_dir_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("enable_efa", {
-                "allowed_values": ["compute"],
-                "cfn_param_mapping": "EFA",
-                "validators": [efa_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("ephemeral_dir", {
-                "allowed_values": ALLOWED_VALUES["file_path"],
-                "default": "/scratch",
-                "cfn_param_mapping": "EphemeralDir",
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("encrypted_ephemeral", {
-                "default": False,
-                "type": BoolCfnParam,
-                "cfn_param_mapping": "EncryptedEphemeral",
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("custom_ami", {
-                "cfn_param_mapping": "CustomAMI",
-                "allowed_values": ALLOWED_VALUES["ami_id"],
-                "validators": [ec2_ami_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("pre_install", {
-                "cfn_param_mapping": "PreInstallScript",
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            }),
-            ("pre_install_args", {
-                "cfn_param_mapping": "PreInstallArgs",
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            }),
-            ("post_install", {
-                "cfn_param_mapping": "PostInstallScript",
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            }),
-            ("post_install_args", {
-                "cfn_param_mapping": "PostInstallArgs",
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            }),
-            ("extra_json", {
-                "type": ExtraJsonCfnParam,
-                "cfn_param_mapping": "ExtraJson",
-                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
-            }),
-            ("additional_cfn_template", {
-                "cfn_param_mapping": "AdditionalCfnTemplate",
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("tags", {
-                "type": JsonCfnParam,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("custom_chef_cookbook", {
-                "cfn_param_mapping": "CustomChefCookbook",
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
             ("custom_awsbatch_template_url", {
                 "cfn_param_mapping": "CustomAWSBatchTemplateURL",
                 # TODO add regex
                 "validators": [url_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
-            ("enable_intel_hpc_platform", {
-                "default": False,
-                "type": BoolCfnParam,
-                "cfn_param_mapping": "IntelHPCPlatform",
-                "validators": [intel_hpc_os_validator, intel_hpc_architecture_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
+        ]
+    )
+}
+
+
+CLUSTER_HIT = {
+    "type": ClusterCfnSection,
+    "key": "cluster",
+    "default_label": "default",
+    "cluster_model": "HIT",
+    "params": OrderedDict(
+        CLUSTER_COMMON_PARAMS + [
             ("default_queue", {
                 "type": DefaultComputeQueueJsonParam,
                 # This param is managed automatically
                 "visibility": Visibility.PRIVATE,
                 "update_policy": UpdatePolicy.IGNORED
-            }),
-            # Settings
-            ("scaling_settings", {
-                "type": SettingsCfnParam,
-                "default": "default",  # set a value to create always the internal structure for the scaling section
-                "referred_section": SCALING,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("vpc_settings", {
-                "type": SettingsCfnParam,
-                "default": "default",  # set a value to create always the internal structure for the vpc section
-                "referred_section": VPC,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("ebs_settings", {
-                "type": EBSSettingsCfnParam,
-                "referred_section": EBS,
-                "validators": [ebs_settings_validator],
-                "update_policy": UpdatePolicy(
-                    UpdatePolicy.UNSUPPORTED,
-                    fail_reason=UpdatePolicy.FAIL_REASONS["ebs_sections_change"],
-                )
-            }),
-            ("efs_settings", {
-                "type": SettingsCfnParam,
-                "referred_section": EFS,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("raid_settings", {
-                "type": SettingsCfnParam,
-                "referred_section": RAID,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("fsx_settings", {
-                "type": SettingsCfnParam,
-                "referred_section": FSX,
-                "validators": [fsx_architecture_os_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("dcv_settings", {
-                "type": SettingsCfnParam,
-                "referred_section": DCV,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
-            ("cw_log_settings", {
-                "type": SettingsCfnParam,
-                "referred_section": CW_LOG,
-                "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
             ("queue_settings", {
                 "type": SettingsJsonParam,
@@ -974,19 +1001,16 @@ CLUSTER = {
                 "validators": [queue_settings_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),
-            # Moved from the "Access and Networking" section because its configuration is
-            # dependent on multiple other parameters from within this section.
-            ("additional_iam_policies", {
-                "type": AdditionalIamPoliciesCfnParam,
-                "cfn_param_mapping": "EC2IAMPolicies",
-                "validators": [ec2_iam_policies_validator],
-                "update_policy": UpdatePolicy.SUPPORTED,
+            ("disable_hyperthreading", {
+                "type": DisableHyperThreadingCfnParam,
+                "cfn_param_mapping": "Cores",
+                "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
+                "update_policy": UpdatePolicy.UNSUPPORTED
             }),
-            # Derived parameters - present in CFN parameters but not in config file
-            ("architecture", {
-                "cfn_param_mapping": "Architecture",
-                "update_policy": UpdatePolicy.IGNORED,
-                "visibility": Visibility.PRIVATE,
+            ("hit_template_url", {
+                # TODO add regex
+                "validators": [url_validator],
+                "update_policy": UpdatePolicy.IGNORED
             }),
         ]
     )

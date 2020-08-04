@@ -641,7 +641,7 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
             cfn_converter = self.definition.get("cfn_param_mapping", None)
             if cfn_converter and cfn_params:
                 cores = get_cfn_param(cfn_params, cfn_converter)
-                if cores and cores != "NONE":
+                if cores and cores != "NONE,NONE":
                     cores = int(cores.split(",")[0])
                     self.value = cores > 0
         except (ValueError, IndexError):
@@ -655,15 +655,20 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
 
         :return: string (cores_master,cores_compute)
         """
-        cfn_params = {self.definition.get("cfn_param_mapping"): "-1,-1"}
+        cfn_params = {self.definition.get("cfn_param_mapping"): "NONE,NONE"}
 
         cluster_config = self.pcluster_config.get_section(self.section_key)
-        if cluster_config.get_param_value("disable_hyperthreading"):
+        if self.value:
             master_instance_type = cluster_config.get_param_value("master_instance_type")
-            compute_instance_type = cluster_config.get_param_value("compute_instance_type")
-
             master_cores = get_instance_vcpus(self.pcluster_config.region, master_instance_type) // 2
-            compute_cores = get_instance_vcpus(self.pcluster_config.region, compute_instance_type) // 2
+
+            if self.pcluster_config.cluster_model.name == "SIT":
+                # compute_instance_type parameter is valid only in SIT clusters
+                compute_instance_type = cluster_config.get_param_value("compute_instance_type")
+                compute_cores = get_instance_vcpus(self.pcluster_config.region, compute_instance_type) // 2
+            else:
+                compute_instance_type = None
+                compute_cores = 0
 
             if master_cores < 0 or compute_cores < 0:
                 self.pcluster_config.error(

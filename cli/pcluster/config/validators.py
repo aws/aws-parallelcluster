@@ -404,11 +404,15 @@ def efa_validator(param_key, param_value, pcluster_config):
     cluster_section = pcluster_config.get_section("cluster")
 
     allowed_instances = _get_efa_enabled_instance_types(errors)
-    if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
-        errors.append(
-            "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
-            "to one of the following values : {1}".format(param_value, allowed_instances)
-        )
+    if pcluster_config.cluster_model.name == "SIT":
+        # Specific validations for SIT clusters
+        if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
+            errors.append(
+                "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
+                "to one of the following values : {1}".format(param_value, allowed_instances)
+            )
+        if cluster_section.get_param_value("placement_group") is None:
+            warnings.append("You may see better performance using a cluster placement group.")
 
     allowed_oses = ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
     if cluster_section.get_param_value("base_os") not in allowed_oses:
@@ -423,9 +427,6 @@ def efa_validator(param_key, param_value, pcluster_config):
             "When using 'enable_efa = {0}' it is required to set the 'scheduler' parameter "
             "to one of the following values : {1}".format(param_value, allowed_schedulers)
         )
-
-    if cluster_section.get_param_value("placement_group") is None:
-        warnings.append("You may see better performance using a cluster placement group.")
 
     _validate_efa_sg(pcluster_config, errors)
 
@@ -969,7 +970,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
         if "," not in param_value and "." in param_value:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max_vcpus limit
-            vcpus = get_instance_vcpus(pcluster_config.region, param_value)
+            vcpus = get_instance_vcpus(param_value)
             if vcpus <= 0:
                 warnings.append(
                     "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
@@ -1077,8 +1078,22 @@ def queue_settings_validator(param_key, param_value, pcluster_config):
 
 def queue_validator(section_key, section_label, pcluster_config):
     errors = []
-    section = pcluster_config.get_section(section_key, section_label)
-    compute_resource_labels = str(section.get_param_value("compute_resource_settings") or "").split(",")
+    warnings = []
+    queue_section = pcluster_config.get_section(section_key, section_label)
+    compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
+
+    def check_queue_xor_cluster(param_key):
+        cluster_section_value = pcluster_config.get_section("cluster").get_param_value(param_key)
+        param_value = queue_section.get_param_value(param_key)
+        if param_value is not None:
+            if cluster_section_value is not None:
+                errors.append("Parameter '{0}' can be used only in 'cluster' or in 'queue' section".format(param_key))
+        else:
+            if cluster_section_value is None:
+                errors.append("Parameter '{0}' must be specified in 'cluster' or in 'queue' section".format(param_key))
+
+    check_queue_xor_cluster("enable_efa")
+    check_queue_xor_cluster("disable_hyperthreading")
 
     instance_types = []
     for compute_resource_label in compute_resource_labels:
@@ -1094,7 +1109,14 @@ def queue_validator(section_key, section_label, pcluster_config):
                 )
             else:
                 instance_types.append(instance_type)
-    return errors, []
+
+            enable_efa = compute_resource.get_param_value("enable_efa")
+            if enable_efa and not compute_resource.get_param("enable_efa").value:
+                warnings.append(
+                    "EFA was enabled on queue '{0}', but instance type '{1}' "
+                    "does not support EFA.".format(queue_section.label, instance_type)
+                )
+    return errors, warnings
 
 
 def settings_validator(param_key, param_value, pcluster_config):

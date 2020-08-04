@@ -5,7 +5,7 @@ Parameters:
   ComputeSubnetId:
     Type: String
   ComputeCoreCount:
-    Type: Number
+    Type: String
   SNSTopic:
     Type: String
   RootDevice:
@@ -108,9 +108,13 @@ Conditions:
       - !Ref 'EFA'
       - NONE
   DisableComputeHyperthreading: !Not
-    - !Equals
-      - !Ref 'ComputeCoreCount'
-      - '-1'
+    - !Or
+      - !Equals
+        - !Ref 'ComputeCoreCount'
+        - '-1'
+      - !Equals
+        - !Ref 'ComputeCoreCount'
+        - NONE
   UseSpotInstances: !Equals
     - !Ref 'ClusterType'
     - spot
