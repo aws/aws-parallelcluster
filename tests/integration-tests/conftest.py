@@ -498,6 +498,11 @@ def vpc_stacks(cfn_stacks_factory, request):
     return vpc_stacks
 
 
+@pytest.fixture()
+def vpc_stack(vpc_stacks, region):
+    return vpc_stacks[region]
+
+
 # If stack creation fails it'll retry once more. This is done to mitigate failures due to resources
 # not available in randomly picked AZs.
 @retry(
@@ -569,3 +574,9 @@ def architecture(request, instance, region):
         supported_architecture = get_architecture_supported_by_instance_type(instance, region)
         request.config.cache.set(f"{instance}/architecture", supported_architecture)
     return supported_architecture
+
+
+@pytest.fixture(scope="session")
+def key_name(request):
+    """Return the EC2 key pair name to be used."""
+    return request.config.getoption("key_name")

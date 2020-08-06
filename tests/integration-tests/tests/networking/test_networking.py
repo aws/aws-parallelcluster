@@ -49,11 +49,6 @@ def networking_stack_factory(request):
     factory.delete_all_stacks()
 
 
-@pytest.fixture()
-def vpc_stack(vpc_stacks, region):
-    return vpc_stacks[region]
-
-
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
 def test_public_network_topology(region, vpc_stack, networking_stack_factory):

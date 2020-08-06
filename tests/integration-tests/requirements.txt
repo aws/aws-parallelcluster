@@ -5,6 +5,7 @@ boto3
 fabric
 jinja2
 junitparser
+pexpect
 # Pinning pytest because latest version 5.4 breaks pytest-rerunfailures
 # https://github.com/pytest-dev/pytest-rerunfailures/issues/103
 # https://github.com/pytest-dev/pytest-rerunfailures/issues/105
