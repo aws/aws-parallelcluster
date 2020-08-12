@@ -342,7 +342,8 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
     cluster_section = pcluster_config.get_section("cluster")
     if param_value == "master":
 
-        allowed_oses = get_supported_dcv_os()
+        architecture = cluster_section.get_param_value("architecture")
+        allowed_oses = get_supported_dcv_os(architecture)
         if cluster_section.get_param_value("base_os") not in allowed_oses:
             errors.append(
                 "NICE DCV can be used with one of the following operating systems: {0}. "

@@ -1333,6 +1333,9 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
         ("alinux2", "t2.medium", None, None, None),
         ("alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
         ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
+        ("ubuntu1804", "m6g.xlarge", None, None, None),
+        ("alinux2", "m6g.xlarge", None, None, None),
+        ("centos7", "m6g.xlarge", None, "Please double check the 'base_os' configuration parameter", None),
     ],
 )
 def test_dcv_enabled_validator(
@@ -1345,10 +1348,16 @@ def test_dcv_enabled_validator(
     if access_from:
         config_parser_dict["dcv dcv"]["access_from"] = access_from
 
-    mocker.patch(
-        "pcluster.config.validators.get_supported_instance_types", return_value=["t2.nano", "t2.micro", "t2.medium"]
+    architectures = ["x86_64"] if instance_type.startswith("t2") else ["arm64"]
+    extra_patches = {
+        "pcluster.config.validators.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
+        "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
+        "pcluster.config.param_types.get_supported_architectures_for_instance_type": architectures,
+        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
+    }
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_error, capsys, expected_warning, extra_patches=extra_patches
     )
-    utils.assert_param_validator(mocker, config_parser_dict, expected_error, capsys, expected_warning)
     access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
     assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
 
