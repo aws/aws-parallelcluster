@@ -589,6 +589,10 @@ COMPUTE_RESOURCE = {
             "default": 10,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
+        ("initial_count", {
+            "type": IntJsonParam,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+        }),
         ("spot_price", {
             "type": FloatJsonParam,
             "default": 0,

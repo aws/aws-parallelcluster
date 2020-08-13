@@ -269,6 +269,11 @@ class QueueJsonSection(JsonSection):
                 "NetworkInfo"
             ).get("EfaSupported")
 
+            # Set initial_count to min_count if not manually set
+            initial_count_param = compute_resource_section.get_param("initial_count")
+            if initial_count_param.value is None:
+                initial_count_param.value = compute_resource_section.get_param_value("min_count")
+
             # Printing warnings here to spare additional boto3 calls from validation.
             if ht_disabled and not default_cores:
                 self.pcluster_config.warn(
@@ -276,7 +281,7 @@ class QueueJsonSection(JsonSection):
                     "is not currently supported by ParallelCluster.".format(self.label, instance_type_param.value)
                 )
 
-            if enable_efa and not instance_type_param.owner_section.get_param("enable_efa").value:
+            if enable_efa and not compute_resource_section.get_param_value("enable_efa"):
                 self.pcluster_config.warn(
                     "EFA was enabled on queue '{0}', but instance type '{1}' "
                     "does not support EFA.".format(self.label, instance_type_param.value)

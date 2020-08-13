@@ -63,12 +63,61 @@ def boto3_stubber_path():
                 },
                 "compute_resource default": {
                     "instance_type": "t2.micro",
+                    # maintain_initial_size was False: min_count and initial_count must be set to initial_queue_size
                     "min_count": 2,
                     "max_count": 10,
+                    "initial_count": 2,
                     "spot_price": 0.4,
                     "vcpus": 96,
                     "gpus": 0,
                     "enable_efa": True,
+                },
+            },
+        ),
+        (
+            # Scheduler is slurm, conversion expected
+            {
+                "cluster default": {
+                    "scheduler": "slurm",
+                    "master_root_volume_size": 35,
+                    "compute_root_volume_size": 40,
+                    "cluster_type": "ondemand",
+                    "disable_hyperthreading": False,
+                    "placement_group": "",
+                    "compute_instance_type": "t2.micro",
+                    "max_queue_size": 10,
+                    "spot_price": 0.4,
+                    "maintain_initial_size": False,
+                    "initial_queue_size": 2,
+                }
+            },
+            {
+                "cluster default": {
+                    # Common cluster params must be copied
+                    "scheduler": "slurm",
+                    "master_root_volume_size": 35,
+                    "compute_root_volume_size": 40,
+                    # disable_hyperthreading and enable_efa must be set to None in converted cluster section
+                    "enable_efa": None,
+                    "disable_hyperthreading": None,
+                },
+                "queue default": {
+                    "compute_type": "ondemand",
+                    "enable_efa": False,
+                    "disable_hyperthreading": False,
+                    "placement_group": None,
+                    "compute_resource_settings": "default",
+                },
+                "compute_resource default": {
+                    "instance_type": "t2.micro",
+                    # maintain_initial_size was True: initial_count must be set to initial_queue_size and min_count to 0
+                    "min_count": 0,
+                    "max_count": 10,
+                    "initial_count": 2,
+                    "spot_price": 0.4,
+                    "vcpus": 96,
+                    "gpus": 0,
+                    "enable_efa": False,
                 },
             },
         ),
