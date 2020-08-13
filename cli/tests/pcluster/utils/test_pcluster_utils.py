@@ -597,6 +597,22 @@ def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
 
 
 @pytest.mark.parametrize(
+    "scheduler, expected_is_hit_enabled",
+    [
+        ("sge", False),
+        ("slurm", True),
+        ("torque", False),
+        ("awsbatch", False),
+        # doesn't check scheduler's validity, only whether it's slurm or not
+        ("madeup-scheduler", False),
+    ],
+)
+def test_is_hit_enabled_cluster(scheduler, expected_is_hit_enabled):
+    """Verify that the expected schedulers are hit enabled."""
+    assert_that(utils.is_hit_enabled_cluster(scheduler)).is_equal_to(expected_is_hit_enabled)
+
+
+@pytest.mark.parametrize(
     "region, expected_url",
     [
         ("us-east-1", "https://us-east-1-aws-parallelcluster.s3.us-east-1.amazonaws.com"),
