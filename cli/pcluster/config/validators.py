@@ -23,6 +23,7 @@ from pcluster.utils import (
     ellipsize,
     get_base_additional_iam_policies,
     get_efs_mount_target_id,
+    get_file_section_name,
     get_instance_vcpus,
     get_partition,
     get_region,
@@ -1083,14 +1084,19 @@ def queue_validator(section_key, section_label, pcluster_config):
     compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
 
     def check_queue_xor_cluster(param_key):
-        cluster_section_value = pcluster_config.get_section("cluster").get_param_value(param_key)
-        param_value = queue_section.get_param_value(param_key)
-        if param_value is not None:
-            if cluster_section_value is not None:
+        """Check that the param is not used in both queue and cluster section."""
+        # FIXME: Improve the design of the validation mechanism to allow validators to be linked to a specific
+        # validation phase (before, after refresh operations)
+        config_parser = pcluster_config.config_parser
+        if config_parser:
+            # This check is performed only if the configuration is loaded from file.
+            queue_param_in_config_file = config_parser.has_option(
+                get_file_section_name("queue", section_label), param_key
+            )
+            cluster_param_in_config_file = pcluster_config.get_section("cluster").get_param_value(param_key) is not None
+
+            if cluster_param_in_config_file and queue_param_in_config_file:
                 errors.append("Parameter '{0}' can be used only in 'cluster' or in 'queue' section".format(param_key))
-        else:
-            if cluster_section_value is None:
-                errors.append("Parameter '{0}' must be specified in 'cluster' or in 'queue' section".format(param_key))
 
     check_queue_xor_cluster("enable_efa")
     check_queue_xor_cluster("disable_hyperthreading")

@@ -11,10 +11,11 @@
 from collections import OrderedDict
 
 from pcluster import utils
-from pcluster.config.param_types import Param, Section, SettingsParam, get_file_section_name
-
+from pcluster.config.param_types import Param, Section, SettingsParam
 
 # ---------------------- Params ---------------------- #
+
+
 class JsonParam(Param):
     """Base class to manage configuration parameters stored in Json format."""
 
@@ -24,7 +25,7 @@ class JsonParam(Param):
 
     def from_file(self, config_parser):
         """Load the param value from configuration file."""
-        section_name = get_file_section_name(self.section_key, self.section_label)
+        section_name = utils.get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
             try:
                 self.value = self._parse_value(config_parser, section_name)
@@ -221,15 +222,18 @@ class QueueJsonSection(JsonSection):
     def refresh_section(self):
         """Take values of disable_hyperthreading and enable_efa from cluster section if not specified."""
         if self.get_param_value("disable_hyperthreading") is None:
-            self.get_param("disable_hyperthreading").value = self.pcluster_config.get_section(
-                "cluster"
-            ).get_param_value("disable_hyperthreading")
+            cluster_disable_hyperthreading = self.pcluster_config.get_section("cluster").get_param_value(
+                "disable_hyperthreading"
+            )
+            # None value at cluster level is converted to False at queue level
+            self.get_param("disable_hyperthreading").value = cluster_disable_hyperthreading is True
 
         if self.get_param_value("enable_efa") is None:
             cluster_enable_efa = self.pcluster_config.get_section("cluster").get_param_value("enable_efa")
-            # enable_efa is of string type in cluster section and of bool type in queue section
-            if cluster_enable_efa is not None:
-                self.get_param("enable_efa").value = cluster_enable_efa == "compute"
+
+            # enable_efa is of string type in cluster section and of bool type in queue section.
+            # None value at cluster level is converted to False at queue level
+            self.get_param("enable_efa").value = cluster_enable_efa == "compute"
 
         compute_resource_labels = self.get_param_value("compute_resource_settings")
         if compute_resource_labels:

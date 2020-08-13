@@ -15,15 +15,7 @@ from collections import OrderedDict
 import yaml
 
 from pcluster.config.iam_policy_rules import AWSBatchFullAccessInclusionRule, CloudWatchAgentServerPolicyInclusionRule
-from pcluster.config.param_types import (
-    LOGGER,
-    Param,
-    Section,
-    SettingsParam,
-    StorageData,
-    _ensure_section_existence,
-    get_file_section_name,
-)
+from pcluster.config.param_types import LOGGER, Param, Section, SettingsParam, StorageData, _ensure_section_existence
 from pcluster.config.resource_map import ResourceMap
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.utils import (
@@ -31,6 +23,7 @@ from pcluster.utils import (
     get_avail_zone,
     get_cfn_param,
     get_efs_mount_target_id,
+    get_file_section_name,
     get_instance_vcpus,
     get_supported_architectures_for_instance_type,
 )
@@ -660,12 +653,12 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if self.value:
             master_instance_type = cluster_config.get_param_value("master_instance_type")
-            master_cores = get_instance_vcpus(self.pcluster_config.region, master_instance_type) // 2
+            master_cores = get_instance_vcpus(master_instance_type) // 2
 
             if self.pcluster_config.cluster_model.name == "SIT":
                 # compute_instance_type parameter is valid only in SIT clusters
                 compute_instance_type = cluster_config.get_param_value("compute_instance_type")
-                compute_cores = get_instance_vcpus(self.pcluster_config.region, compute_instance_type) // 2
+                compute_cores = get_instance_vcpus(compute_instance_type) // 2
             else:
                 compute_instance_type = None
                 compute_cores = 0

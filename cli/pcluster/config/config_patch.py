@@ -16,8 +16,8 @@ from collections import namedtuple
 
 # Represents a single parameter change in a ConfigPatch instance
 from pcluster import utils
-from pcluster.config.param_types import get_file_section_name
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.utils import get_file_section_name
 
 Change = namedtuple("Change", ["section_key", "section_label", "param_key", "old_value", "new_value", "update_policy"])
 
