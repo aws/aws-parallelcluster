@@ -14,6 +14,7 @@ from pcluster.cluster_model import ClusterModel
 from pcluster.config import mappings
 from pcluster.config.cfn_param_types import ClusterCfnSection
 from pcluster.config.json_param_types import JsonSection, QueueJsonSection
+from pcluster.utils import get_file_section_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,8 +32,14 @@ class HitConverter:
         Currently, the conversion is performed only if the configured scheduler is Slurm.
         """
         if self.pcluster_config.cluster_model != ClusterModel.HIT:
-            sit_cluster_section = self.pcluster_config.get_section("cluster")
+            # Copying original vpc section
+            self._store_default_sections()
 
+            # Save current autorefresh settings and disable autorefresh
+            auto_refresh = self.pcluster_config.auto_refresh
+            self.pcluster_config.auto_refresh = False
+
+            sit_cluster_section = self.pcluster_config.get_section("cluster")
             scheduler = sit_cluster_section.get_param_value("scheduler")
 
             if scheduler == "slurm":
@@ -47,13 +54,9 @@ class HitConverter:
                 self.pcluster_config.remove_section(sit_cluster_section.key, sit_cluster_section.label)
                 self.pcluster_config.add_section(hit_cluster_section)
 
-                # Save current autorefresh settings and disable autorefresh
-                auto_refresh = self.pcluster_config.auto_refresh
-                self.pcluster_config.auto_refresh = False
-
                 # Create default queue section
                 queue_section = QueueJsonSection(
-                    mappings.QUEUE, self.pcluster_config, section_label="default", parent_section=sit_cluster_section
+                    mappings.QUEUE, self.pcluster_config, section_label="default", parent_section=hit_cluster_section
                 )
                 self.pcluster_config.add_section(queue_section)
                 hit_cluster_section.get_param("queue_settings").value = "default"
@@ -117,10 +120,49 @@ class HitConverter:
                             sit_cluster_section.get_param(param_key), hit_cluster_section.get_param(param_key)
                         )
 
+                # Restore original VPC section
+                self._restore_default_sections(hit_cluster_section)
+
                 # Refresh configuration and restore initial autorefresh settings
                 self.pcluster_config.refresh()
                 self.pcluster_config.auto_refresh = auto_refresh
 
+                self.clean_config_parser(hit_cluster_section)
+
     def _copy_param_value(self, old_param, new_param, new_value=None):
         """Copy the value from the old param to the new one."""
         new_param.value = new_value if new_value is not None else old_param.value
+
+    def _store_default_sections(self):
+        """
+        Store original default sections from configuration.
+
+        This operation is needed because default sections are overridden when the cluster section is replaced.
+        """
+        self.default_sections = [
+            self.pcluster_config.get_section("vpc"),
+            self.pcluster_config.get_section("scaling"),
+        ]
+
+    def _restore_default_sections(self, hit_cluster_section):
+        """
+        Restore the original default sections in the configuration, making them children of the new cluster section.
+
+        :param hit_cluster_section: The new HIT cluster section
+        """
+        for default_section in self.default_sections:
+            self.pcluster_config.remove_section(default_section.key)
+            default_section.parent_section = hit_cluster_section
+            self.pcluster_config.add_section(default_section)
+
+    def clean_config_parser(self, hit_cluster_section):
+        """
+        Clean the attached config parser from old attributes.
+
+        This operation is needed to avoid writing back unsupported parameters (like compute_instance_type) to the
+        configuration file
+        :param hit_cluster_section: The new HIT cluster section
+        """
+        config_parser = self.pcluster_config.config_parser
+        if config_parser:
+            config_parser.remove_section(get_file_section_name("cluster", hit_cluster_section.label))

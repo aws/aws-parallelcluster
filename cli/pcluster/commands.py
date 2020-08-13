@@ -29,6 +29,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_STACK_PREFIX
 
@@ -113,6 +114,10 @@ def create(args):  # noqa: C901 FIXME!!!
         config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
     )
     pcluster_config.validate()
+
+    # Automatic SIT -> HIT conversion, if needed
+    HitConverter(pcluster_config).convert()
+
     # get CFN parameters, template url and tags from config
     storage_data = pcluster_config.to_storage()
     cfn_params = storage_data.cfn_params
