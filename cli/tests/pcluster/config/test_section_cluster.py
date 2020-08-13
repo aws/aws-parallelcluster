@@ -740,7 +740,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
@@ -805,7 +805,7 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,NONE,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
                     # dcv
