@@ -263,7 +263,6 @@ def get_instance_vcpus(instance_type):
     """
     Get number of vcpus for the given instance type.
 
-    :param region: AWS Region
     :param instance_type: the instance type to search for.
     :return: the number of vcpus or -1 if the instance type cannot be found
     """
@@ -868,3 +867,8 @@ def get_bucket_url(region):
     return ("https://{region}-aws-parallelcluster.s3.{region}.amazonaws.com{suffix}").format(
         region=region, suffix=s3_suffix
     )
+
+
+def get_file_section_name(section_key, section_label=None):
+    """Build a section name as in the config file, given section key and label."""
+    return section_key + (" {0}".format(section_label) if section_label else "")

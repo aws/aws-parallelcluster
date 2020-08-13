@@ -1525,19 +1525,7 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
             None,
         ),
-        (
-            {"queue_settings": "default"},
-            {"compute_resource_settings": "cr1"},
-            [
-                "Parameter 'enable_efa' must be specified in 'cluster' or in 'queue' section",
-                "Parameter 'disable_hyperthreading' must be specified in 'cluster' or in 'queue' section",
-            ],
-        ),
-        (
-            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
-            {"compute_resource_settings": "cr1"},
-            None,
-        ),
+        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None,),
         (
             {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
             {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
@@ -1546,9 +1534,17 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
             ],
         ),
+        (
+            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
+            {"compute_resource_settings": "cr1", "enable_efa": False, "disable_hyperthreading": False},
+            [
+                "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
+                "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+        ),
     ],
 )
-def test_queue_validator(mocker, cluster_dict, queue_dict, expected_messages):
+def test_queue_validator(cluster_dict, queue_dict, expected_messages):
     config_parser_dict = {
         "cluster default": cluster_dict,
         "queue default": queue_dict,

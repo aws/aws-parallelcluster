@@ -19,6 +19,7 @@ from configparser import NoSectionError
 
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import settings_validator
+from pcluster.utils import get_file_section_name
 
 LOGGER = logging.getLogger(__name__)
 
@@ -589,10 +590,6 @@ class Section(ABC):
 
 
 # ---------------------- Common functions ---------------------- #
-def get_file_section_name(section_key, section_label=None):
-    return section_key + (" {0}".format(section_label) if section_label else "")
-
-
 def _ensure_section_existence(config_parser, section_name):
     """Add a section to the config_parser if not present."""
     if not config_parser.has_section(section_name):
