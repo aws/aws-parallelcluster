@@ -20,6 +20,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from pcluster.cluster_model import ClusterModel
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.config.update_policy import UpdatePolicy
@@ -38,7 +39,9 @@ def execute(args):
     LOGGER.info("Retrieving configuration from CloudFormation for cluster {0}...".format(args.cluster_name))
     base_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
 
-    if _check_changes(args, base_config, target_config):
+    if _check_cluster_models(base_config, target_config, args.cluster_template) and _check_changes(
+        args, base_config, target_config
+    ):
         # Update base config settings
         base_config.update(target_config)
 
@@ -206,3 +209,47 @@ def _restore_desired_size(cfn_params, stack_name, scheduler):
     # If there are compute nodes running, preserve current desired capacity (if possible)
     if int(cfn_params["MinSize"]) <= desired_capacity <= int(cfn_params["MaxSize"]):
         cfn_params["DesiredSize"] = str(desired_capacity)
+
+
+def _check_cluster_models(base_config, target_config, cluster_template):
+    """
+    Check if the cluster models of the two configurations are compatible with the update operation.
+
+    If target configuration is SIT and base is HIT a conversion is required.
+    """
+    same_cluster_model = target_config.cluster_model == base_config.cluster_model
+    if not same_cluster_model:
+        conversion_supported = (
+            True
+            if (target_config.cluster_model == ClusterModel.SIT and base_config.cluster_model == ClusterModel.HIT)
+            else False
+        )
+        if conversion_supported:
+            LOGGER.error(
+                (
+                    "The configuration of the cluster section in the '{config_file}' must be converted to the latest "
+                    "format with support for multiple queues before proceeding with the update.\n"
+                    "Please run the following command:\n"
+                    # TODO: update conversion command line when tool is available
+                    "pcluster-utils convert_config_file -c {config_file}{cluster_template_arg} -o {converted_file}\n"
+                    "Then retry with your converted configuration file by running the following command:\n"
+                    "pcluster update -c {converted_file} {cluster_name}"
+                ).format(
+                    config_file=target_config.config_file,
+                    converted_file="<new file>",
+                    cluster_name=base_config.cluster_name,
+                    cluster_template_arg=" -t " + cluster_template if cluster_template else "",
+                )
+            )
+        else:
+            LOGGER.error(
+                (
+                    "The configuration of the cluster section in the '{config_file}' configuration "
+                    "file is not compatible with the existing cluster '{cluster_name}'.\n"
+                    "Please make sure that you are passing the correct configuration file."
+                ).format(
+                    config_file=target_config.config_file, cluster_name=base_config.cluster_name,
+                )
+            )
+
+    return same_cluster_model

@@ -16,7 +16,9 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
+from pcluster.cluster_model import ClusterModel
 from pcluster.commands import _create_bucket_with_resources
+from pcluster.update import update_command
 
 
 def _mock_pcluster_config(mocker, scheduler, region, hit_template_url):
@@ -132,3 +134,31 @@ def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
         _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
     delete_s3_bucket_mock.assert_called_with(bucket_name)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
+
+
+@pytest.mark.parametrize(
+    "base_cluster_model, target_cluster_model, expected_result, expected_message",
+    [
+        (ClusterModel.SIT, ClusterModel.SIT, True, None),
+        (ClusterModel.HIT, ClusterModel.HIT, True, None),
+        (ClusterModel.SIT, ClusterModel.HIT, False, "is not compatible with the existing cluster"),
+        (ClusterModel.HIT, ClusterModel.SIT, False, "must be converted to the latest format"),
+    ],
+)
+def test_update_failure_on_different_cluster_models(
+    mocker, caplog, base_cluster_model, target_cluster_model, expected_result, expected_message
+):
+    base_config = _mock_pcluster_config(mocker, "slurm", "us-east-1", None)
+    base_config.cluster_model = base_cluster_model
+    base_config.cluster_name = "test_cluster"
+
+    target_config = _mock_pcluster_config(mocker, "slurm", "us-east-1", None)
+    target_config.cluster_model = target_cluster_model
+    target_config.config_file = "config_file"
+
+    models_check = update_command._check_cluster_models(base_config, target_config, "default")
+    assert_that(models_check).is_equal_to(expected_result)
+    if expected_message:
+        assert_that(caplog.text).contains(expected_message)
+    else:
+        assert_that(caplog.text).is_empty()
