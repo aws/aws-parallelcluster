@@ -1145,6 +1145,7 @@ def compute_resource_validator(section_key, section_label, pcluster_config):
 
     min_count = section.get_param_value("min_count")
     max_count = section.get_param_value("max_count")
+    initial_count = section.get_param_value("initial_count")
 
     if min_count < 0:
         errors.append("Parameter 'min_count' must be 0 or greater than 0")
@@ -1154,6 +1155,12 @@ def compute_resource_validator(section_key, section_label, pcluster_config):
 
     if section.get_param_value("max_count") < min_count:
         errors.append("Parameter 'max_count' must be greater than or equal to min_count")
+
+    if initial_count < min_count:
+        errors.append("Parameter 'initial_count' must be greater than or equal to 'min_count'")
+
+    if initial_count > max_count:
+        errors.append("Parameter 'initial_count' must be lower than or equal to 'max_count'")
 
     if section.get_param_value("spot_price") < 0:
         errors.append("Parameter 'spot_price' must be 0 or greater than 0")

@@ -1605,11 +1605,25 @@ def test_settings_validator(param_value, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"min_count": -1}, "Parameter 'min_count' must be 0 or greater than 0"),
-        ({"spot_price": -1.1}, "Parameter 'spot_price' must be 0 or greater than 0"),
-        ({"min_count": 1, "max_count": 0}, "Parameter 'max_count' must be greater than or equal to 'min_count'"),
-        ({"min_count": 0, "max_count": 0}, "Parameter 'max_count' must be 1 or greater than 1"),
-        ({"min_count": 1, "max_count": 2, "spot_price": 1.5}, None),
+        ({"min_count": -1, "initial_count": -1}, "Parameter 'min_count' must be 0 or greater than 0"),
+        (
+            {"min_count": 0, "initial_count": 1, "spot_price": -1.1},
+            "Parameter 'spot_price' must be 0 or greater than 0",
+        ),
+        (
+            {"min_count": 1, "max_count": 0, "initial_count": 1},
+            "Parameter 'max_count' must be greater than or equal to 'min_count'",
+        ),
+        ({"min_count": 0, "max_count": 0, "initial_count": 0}, "Parameter 'max_count' must be 1 or greater than 1"),
+        ({"min_count": 1, "max_count": 2, "spot_price": 1.5, "initial_count": 1}, None),
+        (
+            {"min_count": 2, "max_count": 4, "initial_count": 1},
+            "Parameter 'initial_count' must be greater than or equal to 'min_count'",
+        ),
+        (
+            {"min_count": 2, "max_count": 4, "initial_count": 5},
+            "Parameter 'initial_count' must be lower than or equal to 'max_count'",
+        ),
     ],
 )
 def test_compute_resource_validator(mocker, section_dict, expected_message):

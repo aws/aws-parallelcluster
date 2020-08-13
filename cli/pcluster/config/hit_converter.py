@@ -97,11 +97,13 @@ class HitConverter:
                     sit_cluster_section.get_param("spot_price"), compute_resource_section.get_param("spot_price")
                 )
 
-                if sit_cluster_section.get_param_value("maintain_initial_size"):
-                    self._copy_param_value(
-                        sit_cluster_section.get_param("initial_queue_size"),
-                        compute_resource_section.get_param("min_count"),
-                    )
+                # SIT initial size is copied to min_count or to initial_count based on SIT maintain_initial_size
+                sit_initial_size_param = sit_cluster_section.get_param("initial_queue_size")
+                sit_maintain_initial_size_param = sit_cluster_section.get_param("maintain_initial_size")
+                compute_resource_size_param_key = "min_count" if sit_maintain_initial_size_param else "initial_count"
+                self._copy_param_value(
+                    sit_initial_size_param, compute_resource_section.get_param(compute_resource_size_param_key),
+                )
 
                 # Copy all cluster params except enable_efa and disable_hyperthreading (already set at queue level)
                 hit_cluster_param_keys = [
