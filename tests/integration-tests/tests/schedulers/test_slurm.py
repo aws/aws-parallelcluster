@@ -278,7 +278,7 @@ def _gpu_test_scaleup(remote_command_executor, region, asg_name, stack_name, sca
     assert_scaling_worked(slurm_commands, region, stack_name, scaledown_idletime, expected_max=4, expected_final=0)
     # Assert jobs were completed
     for job_id in job_ids:
-        slurm_commands.assert_job_succeeded(job_id)
+        _assert_job_completed(remote_command_executor, job_id)
 
 
 def _test_slurm_version(remote_command_executor):
