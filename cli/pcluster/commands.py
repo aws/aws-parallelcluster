@@ -57,7 +57,7 @@ def _create_bucket_with_resources(pcluster_config, json_params):
         for resources_dir in resources_dirs:
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
-        if scheduler == "slurm":
+        if utils.is_hit_enabled_cluster(scheduler):
             _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
