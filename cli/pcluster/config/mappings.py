@@ -879,7 +879,11 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.IGNORED,
         "visibility": Visibility.PRIVATE,
     }),
-
+    ("hit_template_url", {
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.IGNORED
+    }),
 ]
 
 
@@ -1010,11 +1014,6 @@ CLUSTER_HIT = {
                 "cfn_param_mapping": "Cores",
                 "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
-            }),
-            ("hit_template_url", {
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.IGNORED
             }),
         ]
     )
