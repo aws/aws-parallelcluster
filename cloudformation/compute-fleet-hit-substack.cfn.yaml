@@ -52,6 +52,8 @@ Parameters:
     Type: String
   ProxyServer:
     Type: String
+  ClusterDNSDomain:
+    Type: String
   IntelHPCPlatform:
     Type: String
   CWLoggingEnabled:
@@ -74,6 +76,8 @@ Parameters:
     Type: List<AWS::EC2::SecurityGroup::Id>
   AssociatePublicIpAddress:
     Type: String
+  VPCId:
+    Type: AWS::EC2::VPC::Id
 Conditions:
   UseProxy: !Not
     - !Equals
@@ -259,6 +263,9 @@ Resources:
                         "cfn_ephemeral_dir": "${EphemeralDir}",
                         "cfn_shared_dir": "${SharedDir}",
                         "cfn_proxy": "${ProxyServer}",
+                        "cfn_ddb_table": "${DynamoDBTable}",
+                        "cfn_dns_domain": "${ClusterDNSDomain}",
+                        "cfn_hosted_zone": "${ClusterHostedZone}",
                         "cfn_node_type": "ComputeFleet",
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
@@ -293,6 +300,7 @@ Resources:
                 echo "Reporting instance as unhealthy and dumping logs to ${!log_dir}/${!instance_id}.tar.gz"
                 tar -czf ${!log_dir}/${!instance_id}.tar.gz /var/log
                 # TODO: add possibility to disable this behavior
+                sleep 10
                 aws --region ${!region} ec2 terminate-instances --instance-ids ${!instance_id}
                 exit 1
               }
@@ -322,7 +330,7 @@ Resources:
                 [[ ${!_region} =~ ^cn- ]] && s3_url="cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
                 which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
                 mkdir -p /etc/chef && chown -R root:root /etc/chef
-                curl --retry 3 -L https://${!_region}-aws-parallelcluster.s3.${!_region}.amazonaws.com$([ "${!_region}" != "${!_region#cn-*}" ] && echo ".cn")/archives/chef/chef-install.sh | bash -s -- -v ${!chef_version}
+                curl --retry 3 -L https://${!_region}-aws-parallelcluster.s3.${!_region}.amazonaws.com$([ "${!_region}" != "${!_region#cn-*}" ] && echo ".cn" || exit 0)/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
                 /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
                 curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
                 curl --retry 3 -s -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${!cookbook_url}.date
@@ -416,4 +424,18 @@ Resources:
           Projection:
             ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
+  ClusterHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref 'ClusterDNSDomain'
+      VPCs:
+        - VPCId: !Ref 'VPCId'
+          VPCRegion: !Ref 'AWS::Region'
+Outputs:
+  ClusterHostedZone:
+    Description: Id of the private hosted zone created within the cluster
+    Value: !Ref 'ClusterHostedZone'
+  ClusterDNSDomain:
+    Description: DNS Domain of the private hosted zone created within the cluster
+    Value: !Ref 'ClusterDNSDomain'
 

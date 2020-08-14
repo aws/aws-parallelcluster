@@ -20,6 +20,55 @@ logger = logging.getLogger(__name__)
 boto3_config = Config(retries={"max_attempts": 60})
 
 
+def _delete_dns_records(event):
+    """Delete all DNS entries from the private Route53 hosted zone created within the cluster."""
+    hosted_zone_id = event["ResourceProperties"]["ClusterHostedZone"]
+    if not hosted_zone_id:
+        logger.error("Hosted Zone ID is empty")
+        raise Exception("Hosted Zone ID is empty")
+
+    try:
+        logger.info("Deleting DNS records from %s", hosted_zone_id)
+        route53 = boto3.client("route53", config=boto3_config)
+
+        completed_successfully = False
+        while not completed_successfully:
+            completed_successfully = True
+            for changes in _list_resource_record_sets_iterator(hosted_zone_id):
+                if changes:
+                    try:
+                        route53.change_resource_record_sets(
+                            HostedZoneId=hosted_zone_id, ChangeBatch={"Changes": changes}
+                        )
+                    except Exception as e:
+                        logger.error("Failed when deleting DNS records from %s with error %s", hosted_zone_id, e)
+                        completed_successfully = False
+                        continue
+                else:
+                    logger.info("No DNS records to delete from %s.", hosted_zone_id)
+
+            logger.info("Sleeping for 5 seconds before retrying DNS records deletion.")
+            time.sleep(5)
+
+        logger.info("DNS records deletion from %s: COMPLETED", hosted_zone_id)
+    except Exception as e:
+        logger.error("Failed when listing DNS records from %s with error %s", hosted_zone_id, e)
+        raise
+
+
+def _list_resource_record_sets_iterator(hosted_zone_id):
+    route53 = boto3.client("route53", config=boto3_config)
+    pagination_config = {"PageSize": 100}
+
+    paginator = route53.get_paginator("list_resource_record_sets")
+    for page in paginator.paginate(HostedZoneId=hosted_zone_id, PaginationConfig=pagination_config):
+        changes = []
+        for record_set in page.get("ResourceRecordSets", []):
+            if record_set.get("Type") == "A":
+                changes.append({"Action": "DELETE", "ResourceRecordSet": record_set})
+        yield changes
+
+
 def _delete_s3_bucket(event):
     """
     Empty and delete the bucket passed as argument.
@@ -50,7 +99,9 @@ def _terminate_cluster_nodes(event):
         stack_name = event["ResourceProperties"]["StackName"]
         ec2 = boto3.client("ec2", config=boto3_config)
 
-        while len(next(_describe_instance_ids_iterator(stack_name))) > 0:
+        completed_successfully = False
+        while not completed_successfully:
+            completed_successfully = True
             for instance_ids in _describe_instance_ids_iterator(stack_name):
                 logger.info("Terminating instances %s", instance_ids)
                 if instance_ids:
@@ -58,6 +109,7 @@ def _terminate_cluster_nodes(event):
                         ec2.terminate_instances(InstanceIds=instance_ids)
                     except Exception as e:
                         logger.error("Failed when terminating instances with error %s", e)
+                        completed_successfully = False
                         continue
             logger.info("Sleeping for 10 seconds to allow all instances to initiate shut-down")
             time.sleep(10)
@@ -78,9 +130,7 @@ def _describe_instance_ids_iterator(stack_name, instance_state=("pending", "runn
         {"Name": "tag:Application", "Values": [stack_name]},
         {"Name": "instance-state-name", "Values": list(instance_state)},
     ]
-    pagination_config = {
-        "PageSize": 100,
-    }
+    pagination_config = {"PageSize": 100}
 
     paginator = ec2.get_paginator("describe_instances")
     for page in paginator.paginate(Filters=filters, PaginationConfig=pagination_config):
@@ -100,6 +150,7 @@ def no_op(_, __):
 ACTION_HANDLERS = {
     "DELETE_S3_BUCKET": _delete_s3_bucket,
     "TERMINATE_EC2_INSTANCES": _terminate_cluster_nodes,
+    "DELETE_DNS_RECORDS": _delete_dns_records,
 }
 
 
