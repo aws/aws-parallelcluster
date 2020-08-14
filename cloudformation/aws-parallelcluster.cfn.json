@@ -1639,7 +1639,7 @@
               "Sid": "DynamoDBTable",
               "Action": [
                 "dynamodb:PutItem",
-                "dynamodb:Query",
+                "dynamodb:BatchWriteItem",
                 "dynamodb:GetItem",
                 "dynamodb:DeleteItem",
                 "dynamodb:DescribeTable"
@@ -1648,6 +1648,51 @@
               "Resource": [
                 {
                   "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
+                }
+              ]
+            },
+            {
+              "Sid": "DynamoDBTableQuery",
+              "Action": [
+                "dynamodb:Query"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}/index/*"
+                }
+              ]
+            },
+            {
+              "Fn::If": [
+                "CreateHITSubstack",
+                {
+                  "Sid": "Route53Add",
+                  "Action": [
+                    "route53:ChangeResourceRecordSets"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": [
+                    {
+                      "Fn::Sub": [
+                        "arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}",
+                        {
+                          "ClusterHostedZone": {
+                            "Fn::GetAtt": [
+                              "ComputeFleetHITSubstack",
+                              "Outputs.ClusterHostedZone"
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "Ref": "AWS::NoValue"
                 }
               ]
             },
@@ -2439,27 +2484,74 @@
                   "Sid": "S3BucketPolicy"
                 },
                 {
-                  "Sid": "DescribeInstances",
-                  "Effect": "Allow",
-                  "Action": [
-                    "ec2:DescribeInstances"
-                  ],
-                  "Resource": "*"
+                  "Fn::If": [
+                    "CreateHITSubstack",
+                    {
+                      "Sid": "DescribeInstances",
+                      "Effect": "Allow",
+                      "Action": [
+                        "ec2:DescribeInstances"
+                      ],
+                      "Resource": "*"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
                 },
                 {
-                  "Sid": "FleetTerminatePolicy",
-                  "Effect": "Allow",
-                  "Action": [
-                    "ec2:TerminateInstances"
-                  ],
-                  "Resource": "*",
-                  "Condition": {
-                    "StringEquals": {
-                      "ec2:ResourceTag/Application": {
-                        "Ref": "AWS::StackName"
+                  "Fn::If": [
+                    "CreateHITSubstack",
+                    {
+                      "Sid": "FleetTerminatePolicy",
+                      "Effect": "Allow",
+                      "Action": [
+                        "ec2:TerminateInstances"
+                      ],
+                      "Resource": "*",
+                      "Condition": {
+                        "StringEquals": {
+                          "ec2:ResourceTag/Application": {
+                            "Ref": "AWS::StackName"
+                          }
+                        }
                       }
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
                     }
-                  }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "CreateHITSubstack",
+                    {
+                      "Sid": "Route53DeletePolicy",
+                      "Effect": "Allow",
+                      "Action": [
+                        "route53:ListResourceRecordSets",
+                        "route53:ChangeResourceRecordSets"
+                      ],
+                      "Resource": [
+                        {
+                          "Fn::Sub": [
+                            "arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}",
+                            {
+                              "ClusterHostedZone": {
+                                "Fn::GetAtt": [
+                                  "ComputeFleetHITSubstack",
+                                  "Outputs.ClusterHostedZone"
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
                 }
               ],
               "Version": "2012-10-17"
@@ -2485,6 +2577,28 @@
         }
       },
       "Condition": "HasResourcesS3Bucket"
+    },
+    "CleanupResourcesDNSRecordsCustomResource": {
+      "Type": "AWS::CloudFormation::CustomResource",
+      "Properties": {
+        "ClusterHostedZone": {
+          "Fn::GetAtt": [
+            "ComputeFleetHITSubstack",
+            "Outputs.ClusterHostedZone"
+          ]
+        },
+        "Action": "DELETE_DNS_RECORDS",
+        "ServiceToken": {
+          "Fn::GetAtt": [
+            "CleanupResourcesFunction",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "CloudWatchLogsSubstack"
+      ],
+      "Condition": "CreateHITSubstack"
     },
     "TerminateComputeFleetCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
@@ -2892,6 +3006,30 @@
           },
           "ProxyServer": {
             "Ref": "ProxyServer"
+          },
+          "ClusterDNSDomain": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              {
+                "Fn::GetAtt": [
+                  "ComputeFleetHITSubstack",
+                  "Outputs.ClusterDNSDomain"
+                ]
+              },
+              ""
+            ]
+          },
+          "ClusterHostedZone": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              {
+                "Fn::GetAtt": [
+                  "ComputeFleetHITSubstack",
+                  "Outputs.ClusterHostedZone"
+                ]
+              },
+              ""
+            ]
           },
           "MaxSize": {
             "Ref": "MaxSize"
@@ -3602,6 +3740,26 @@
           "ProxyServer": {
             "Ref": "ProxyServer"
           },
+          "ClusterDNSDomain": {
+            "Fn::Sub": [
+              "${ClusterName}.parallelcluster",
+              {
+                "ClusterName": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        "parallelcluster-",
+                        {
+                          "Ref": "AWS::StackName"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
           "IntelHPCPlatform": {
             "Ref": "IntelHPCPlatform"
           },
@@ -3700,6 +3858,9 @@
               true,
               false
             ]
+          },
+          "VPCId": {
+            "Ref": "VPCId"
           }
         },
         "TemplateURL": {

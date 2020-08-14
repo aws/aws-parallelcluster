@@ -74,7 +74,10 @@ def check_formatting(filenames, format):
             formatted_doc = FORMAT_TO_PARSING_FUNC[format](file)
             if formatted_doc != data:
                 has_failures = True
-                print("FAILED: fix formatting for file {filename}".format(filename=file))
+                print(
+                    "FAILED: fix formatting for file {filename} and "
+                    "double check newlines at the end of the file".format(filename=file)
+                )
                 for line in difflib.unified_diff(formatted_doc.splitlines(), data.splitlines()):
                     print(line)
             else:
