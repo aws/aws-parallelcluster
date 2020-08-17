@@ -149,6 +149,30 @@ def create_s3_bucket(bucket_name, region):
     else:
         s3_client.create_bucket(Bucket=bucket_name)
 
+    try:
+        _configure_s3_bucket(bucket_name)
+    except Exception as e:
+        LOGGER.error("Failed when configuring cluster S3 bucket with error %s", e)
+        delete_s3_bucket(bucket_name)
+        raise
+
+
+def _configure_s3_bucket(bucket_name):
+    s3_client = boto3.client("s3")
+    s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
+    s3_client.put_bucket_encryption(
+        Bucket=bucket_name,
+        ServerSideEncryptionConfiguration={
+            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+        },
+    )
+    deny_http_policy = (
+        '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly","Action":"s3:*",'
+        '"Effect":"Deny","Resource":["arn:aws:s3:::{bucket_name}","arn:aws:s3:::{bucket_name}/*"],'
+        '"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},"Principal":"*"}}]}}'
+    ).format(bucket_name=bucket_name)
+    s3_client.put_bucket_policy(Bucket=bucket_name, Policy=deny_http_policy)
+
 
 def delete_s3_bucket(bucket_name):
     """
