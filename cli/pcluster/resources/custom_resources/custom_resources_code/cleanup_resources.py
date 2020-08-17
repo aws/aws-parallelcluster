@@ -33,6 +33,7 @@ def _delete_s3_bucket(event):
             logger.info("S3 bucket %s deletion: STARTED" % bucket_name)
             bucket = boto3.resource("s3", config=boto3_config).Bucket(bucket_name)
             bucket.objects.all().delete()
+            bucket.object_versions.delete()
             bucket.delete()
             logger.info("S3 bucket %s deletion: COMPLETED" % bucket_name)
     except boto3.client("s3").exceptions.NoSuchBucket as ex:

@@ -2423,7 +2423,9 @@
                   "Action": [
                     "s3:DeleteBucket",
                     "s3:DeleteObject",
-                    "s3:ListBucket"
+                    "s3:DeleteObjectVersion",
+                    "s3:ListBucket",
+                    "s3:ListBucketVersions"
                   ],
                   "Effect": "Allow",
                   "Resource": [

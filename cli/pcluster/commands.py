@@ -47,7 +47,7 @@ def _create_bucket_with_resources(pcluster_config, json_params):
 
     try:
         utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
-    except ClientError:
+    except Exception:
         LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
         raise
 
