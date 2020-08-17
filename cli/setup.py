@@ -26,9 +26,9 @@ REQUIRES = [
     "setuptools",
     "boto3>=1.14.3",
     "future>=0.16.0,<=0.18.2",
-    "tabulate>=0.8.2,<=0.8.3",
+    "tabulate==0.8.5" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "tabulate>=0.8.2,<=0.8.7",
     "ipaddress>=1.0.22",
-    "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.1.2",
+    "PyYAML==5.2" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "PyYAML>=5.3.1",
     "jinja2==2.10.1" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "jinja2>=2.11.0",
 ]
 
