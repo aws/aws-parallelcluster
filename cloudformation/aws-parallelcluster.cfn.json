@@ -713,14 +713,6 @@
         }
       ]
     },
-    "GovCloudRegion": {
-      "Fn::Equals": [
-        {
-          "Ref": "AWS::Partition"
-        },
-        "aws-us-gov"
-      ]
-    },
     "CreateComputeFleet": {
       "Fn::Not": [
         {
@@ -1496,27 +1488,7 @@
             "KeyType": "HASH"
           }
         ],
-        "BillingMode": {
-          "Fn::If": [
-            "GovCloudRegion",
-            {
-              "Ref": "AWS::NoValue"
-            },
-            "PAY_PER_REQUEST"
-          ]
-        },
-        "ProvisionedThroughput": {
-          "Fn::If": [
-            "GovCloudRegion",
-            {
-              "ReadCapacityUnits": 5,
-              "WriteCapacityUnits": 5
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        }
+        "BillingMode": "PAY_PER_REQUEST"
       },
       "Condition": "CreateComputeFleet"
     },
