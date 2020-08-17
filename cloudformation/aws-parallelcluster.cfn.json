@@ -713,14 +713,6 @@
         }
       ]
     },
-    "GovCloudRegion": {
-      "Fn::Equals": [
-        {
-          "Ref": "AWS::Partition"
-        },
-        "aws-us-gov"
-      ]
-    },
     "CreateComputeFleet": {
       "Fn::Not": [
         {
@@ -1359,8 +1351,12 @@
     "SQS": {
       "Type": "AWS::SQS::Queue",
       "Properties": {
-        "MessageRetentionPeriod": 1209600
-      }
+        "MessageRetentionPeriod": 1209600,
+        "QueueName": {
+          "Ref": "AWS::StackName"
+        }
+      },
+      "Condition": "CreateComputeFleet"
     },
     "FSXSubstack": {
       "Type": "AWS::CloudFormation::Stack",
@@ -1452,7 +1448,8 @@
             "Ref": "SQS"
           }
         ]
-      }
+      },
+      "Condition": "CreateComputeFleet"
     },
     "SNS": {
       "Type": "AWS::SNS::Topic",
@@ -1468,13 +1465,17 @@
             "Protocol": "sqs"
           }
         ]
-      }
+      },
+      "Condition": "CreateComputeFleet"
     },
     "DynamoDBTable": {
       "Type": "AWS::DynamoDB::Table",
       "UpdateReplacePolicy": "Retain",
       "DeletionPolicy": "Delete",
       "Properties": {
+        "TableName": {
+          "Ref": "AWS::StackName"
+        },
         "AttributeDefinitions": [
           {
             "AttributeName": "instanceId",
@@ -1487,28 +1488,9 @@
             "KeyType": "HASH"
           }
         ],
-        "BillingMode": {
-          "Fn::If": [
-            "GovCloudRegion",
-            {
-              "Ref": "AWS::NoValue"
-            },
-            "PAY_PER_REQUEST"
-          ]
-        },
-        "ProvisionedThroughput": {
-          "Fn::If": [
-            "GovCloudRegion",
-            {
-              "ReadCapacityUnits": 5,
-              "WriteCapacityUnits": 5
-            },
-            {
-              "Ref": "AWS::NoValue"
-            }
-          ]
-        }
-      }
+        "BillingMode": "PAY_PER_REQUEST"
+      },
+      "Condition": "CreateComputeFleet"
     },
     "RootRole": {
       "Type": "AWS::IAM::Role",
@@ -1620,10 +1602,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::GetAtt": [
-                    "SQS",
-                    "Arn"
-                  ]
+                  "Fn::Sub": "arn:${AWS::Partition}:sqs:${AWS::Region}:${AWS::AccountId}:${AWS::StackName}"
                 }
               ]
             },
@@ -1668,7 +1647,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTable}"
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
                 }
               ]
             },
@@ -2916,13 +2895,10 @@
             "Ref": "MaxSize"
           },
           "DynamoDBTable": {
-            "Ref": "DynamoDBTable"
+            "Ref": "AWS::StackName"
           },
           "SQSQueueName": {
-            "Fn::GetAtt": [
-              "SQS",
-              "QueueName"
-            ]
+            "Ref": "AWS::StackName"
           },
           "DCVEnabled": {
             "Fn::If": [
