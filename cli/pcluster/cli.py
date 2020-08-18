@@ -22,6 +22,8 @@ import argparse
 from botocore.exceptions import NoCredentialsError
 
 import pcluster.commands as pcluster
+import pcluster.cli_commands.start as pcluster_start
+import pcluster.cli_commands.stop as pcluster_stop
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
@@ -72,11 +74,11 @@ def version(args):
 
 
 def start(args):
-    pcluster.start(args)
+    pcluster_start.start(args)
 
 
 def stop(args):
-    pcluster.stop(args)
+    pcluster_stop.stop(args)
 
 
 def create_ami(args):
