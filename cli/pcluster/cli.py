@@ -21,9 +21,9 @@ from logging.handlers import RotatingFileHandler
 import argparse
 from botocore.exceptions import NoCredentialsError
 
-import pcluster.commands as pcluster
 import pcluster.cli_commands.start as pcluster_start
 import pcluster.cli_commands.stop as pcluster_stop
+import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
