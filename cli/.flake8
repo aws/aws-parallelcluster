@@ -19,7 +19,7 @@ per-file-ignores =
     pcluster/utils.py: E402
     tests/pcluster/pcluster-unittest.py: D101, D102
     tests/pcluster/configure/test_*.py: D101, D102
-    tests/pcluster/test_*.py: D101, D102
+    tests/pcluster/*/test_*.py: D101, D102
     tests/awsbatch/test_*.py: D101, D102
     ../tests/integration-tests/*: D205, D400, D401
 exclude =
