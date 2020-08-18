@@ -15,7 +15,9 @@ import sys
 import boto3
 
 from pcluster import utils
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.utils import error
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
@@ -74,7 +76,24 @@ class HITStopCommand(StopCommand):
 
     def stop(self, args, pcluster_config):
         """Stop the compute fleet."""
-        raise NotImplementedError
+        stack_status = pcluster_config.cfn_stack.get("StackStatus")
+        if "IN_PROGRESS" in stack_status:
+            error("Cannot stop compute fleet while stack is in {} status.".format(stack_status))
+        elif "FAILED" in stack_status:
+            LOGGER.warning("Cluster stack is in %s status. This operation might fail.", stack_status)
+
+        try:
+            compute_fleet_status_manager = ComputeFleetStatusManager(args.cluster_name)
+            compute_fleet_status_manager.update_status_and_wait_transition(
+                ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
+            )
+        except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
+            error(
+                "Failed when stopping compute fleet due to a concurrent update of the status. "
+                "Please retry the operation."
+            )
+        except Exception as e:
+            error("Failed when stopping compute fleet with error: {}".format(e))
 
 
 SCHEDULER_TO_STOP_COMMAND_MAP = {

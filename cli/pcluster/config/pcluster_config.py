@@ -74,6 +74,7 @@ class PclusterConfig(object):
         """
         self.__autorefresh = False  # Initialization in progress
         self.fail_on_error = fail_on_error
+        self.cfn_stack = None
         self.__sections = OrderedDict({})
 
         # always parse the configuration file if there, to get AWS section
@@ -411,18 +412,17 @@ class PclusterConfig(object):
 
     def __init_sections_from_cfn(self, cluster_name):
         try:
-            stack = get_stack(get_stack_name(cluster_name))
-
-            if get_stack_version(stack) != get_installed_version():
+            self.cfn_stack = get_stack(get_stack_name(cluster_name))
+            if get_stack_version(self.cfn_stack) != get_installed_version():
                 self.error(
                     "The cluster {0} was created with a different version of ParallelCluster: {1}. "
                     "Installed version is {2}. Update operations may only be performed using the same ParallelCluster "
                     "version used to create the cluster.".format(
-                        cluster_name, get_stack_version(stack), get_installed_version()
+                        cluster_name, get_stack_version(self.cfn_stack), get_installed_version()
                     )
                 )
 
-            cfn_params = stack.get("Parameters")
+            cfn_params = self.cfn_stack.get("Parameters")
             json_params = self.__load_json_config(cfn_params)
 
             # Infer cluster model and load cluster section accordingly
