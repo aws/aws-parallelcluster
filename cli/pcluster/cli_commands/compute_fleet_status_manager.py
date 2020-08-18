@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+import time
 from enum import Enum
 
 import boto3
@@ -40,6 +41,16 @@ class ComputeFleetStatus(Enum):
         """Return True if stop is requested or in progress."""
         return status in {ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING}
 
+    @staticmethod
+    def is_stop_status(status):
+        """Return True if status is any of the stop ones."""
+        return status in {ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED}
+
+    @staticmethod
+    def is_start_status(status):
+        """Return True if status is any of the start ones."""
+        return status in {ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING}
+
 
 class ComputeFleetStatusManager:
     """Implement functionalities to retrieve and update the compute fleet status."""
@@ -65,9 +76,7 @@ class ComputeFleetStatusManager:
                 raise Exception("COMPUTE_FLEET status not found in db table")
             return ComputeFleetStatus(compute_fleet_status["Item"][self.COMPUTE_FLEET_STATUS_ATTRIBUTE])
         except Exception as e:
-            LOGGER.error(
-                "Failed when retrieving fleet status from DynamoDB with error %s, using fallback value %s", e, fallback
-            )
+            LOGGER.error("Failed when retrieving fleet status from DynamoDB with error %s", e)
             return fallback
 
     def update_status(self, current_status, next_status):
@@ -79,3 +88,54 @@ class ComputeFleetStatusManager:
             )
         except self._ddb_resource.meta.client.exceptions.ConditionalCheckFailedException as e:
             raise ComputeFleetStatusManager.ConditionalStatusUpdateFailed(e)
+
+    def update_status_and_wait_transition(self, request_status, in_progress_status, final_status):
+        """
+        Update the status of the compute fleet and wait for a status transition.
+
+        It updates the status of the fleet to request_status and then waits for it to be updated to final_status,
+        by eventually transitioning through in_progress_status
+        """
+        compute_fleet_status = self.get_status()
+        if not compute_fleet_status:
+            raise Exception("Could not retrieve compute fleet status.")
+
+        if compute_fleet_status == final_status:
+            LOGGER.info("Compute fleet already in %s status.", final_status)
+            return
+
+        if compute_fleet_status not in {request_status, in_progress_status, final_status}:
+            self.update_status(current_status=compute_fleet_status, next_status=request_status)
+        LOGGER.info("Submitted compute fleet status transition request. Waiting for status update to start...")
+
+        compute_fleet_status = self._wait_for_status_transition(wait_on_status=request_status, timeout=180)
+        if compute_fleet_status == in_progress_status:
+            LOGGER.info(
+                "Compute fleet status transition is in progress. This operation might take a while to complete..."
+            )
+            compute_fleet_status = self._wait_for_status_transition(wait_on_status=in_progress_status, timeout=600)
+
+        if compute_fleet_status != final_status:
+            raise Exception(
+                "Unexpected final state {} probably due to a concurrent status update request.".format(
+                    compute_fleet_status
+                )
+            )
+        else:
+            LOGGER.info("Compute fleet status updated successfully.")
+
+    def _wait_for_status_transition(self, wait_on_status, timeout=300, retry_every_seconds=15):
+        current_status = self.get_status()
+        start_time = time.time()
+        while current_status == wait_on_status and not self._timeout_expired(start_time, timeout):
+            current_status = self.get_status()
+            time.sleep(retry_every_seconds)
+
+        if current_status == wait_on_status:
+            raise TimeoutError("Timeout expired while waiting for status transition.")
+
+        return current_status
+
+    @staticmethod
+    def _timeout_expired(start_time, timeout):
+        return (time.time() - start_time) > timeout

@@ -55,3 +55,105 @@ class TestComputeFleetStatusManager:
         else:
             compute_fleet_status_manager._table.put_item.return_value = put_item_response
             compute_fleet_status_manager.update_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
+
+    @pytest.mark.parametrize(
+        "request_status, get_status_responses, update_status_responses, expected_exception, expected_error_message",
+        [
+            (ComputeFleetStatus.START_REQUESTED, [None], [], Exception, "Could not retrieve compute fleet status"),
+            (ComputeFleetStatus.START_REQUESTED, [ComputeFleetStatus.RUNNING], [], None, None),
+            (
+                ComputeFleetStatus.START_REQUESTED,
+                [
+                    ComputeFleetStatus.STOPPED,
+                    ComputeFleetStatus.START_REQUESTED,
+                    ComputeFleetStatus.STARTING,
+                    ComputeFleetStatus.RUNNING,
+                ],
+                [None],
+                None,
+                None,
+            ),
+            (
+                ComputeFleetStatus.START_REQUESTED,
+                [
+                    ComputeFleetStatus.STOPPED,
+                    ComputeFleetStatus.START_REQUESTED,
+                    ComputeFleetStatus.STARTING,
+                    ComputeFleetStatus.STOPPED,
+                ],
+                [None],
+                Exception,
+                "Unexpected final state STOPPED probably due to a concurrent status update request",
+            ),
+            (
+                ComputeFleetStatus.STOP_REQUESTED,
+                [
+                    ComputeFleetStatus.RUNNING,
+                    ComputeFleetStatus.STOP_REQUESTED,
+                    ComputeFleetStatus.STOPPING,
+                    ComputeFleetStatus.STOPPED,
+                ],
+                [None],
+                None,
+                None,
+            ),
+            (
+                ComputeFleetStatus.STOP_REQUESTED,
+                [ComputeFleetStatus.RUNNING, ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STARTING],
+                [None],
+                Exception,
+                "Unexpected final state STARTING probably due to a concurrent status update request",
+            ),
+            (
+                ComputeFleetStatus.STOP_REQUESTED,
+                [ComputeFleetStatus.RUNNING],
+                [ComputeFleetStatusManager.ConditionalStatusUpdateFailed],
+                ComputeFleetStatusManager.ConditionalStatusUpdateFailed,
+                None,
+            ),
+        ],
+    )
+    def test_update_status_and_wait_transition(
+        self,
+        mocker,
+        caplog,
+        compute_fleet_status_manager,
+        request_status,
+        get_status_responses,
+        update_status_responses,
+        expected_exception,
+        expected_error_message,
+    ):
+        get_status_mock = mocker.patch.object(
+            compute_fleet_status_manager, "get_status", side_effect=get_status_responses
+        )
+        update_status_mock = mocker.patch.object(
+            compute_fleet_status_manager, "update_status", side_effect=update_status_responses
+        )
+        mocker.patch("time.sleep")
+
+        final_status = (
+            ComputeFleetStatus.STOPPED
+            if request_status == ComputeFleetStatus.STOP_REQUESTED
+            else ComputeFleetStatus.RUNNING
+        )
+        in_progress_status = (
+            ComputeFleetStatus.STOPPING
+            if request_status == ComputeFleetStatus.STOP_REQUESTED
+            else ComputeFleetStatus.STARTING
+        )
+        if expected_exception:
+            with pytest.raises(expected_exception) as e:
+                compute_fleet_status_manager.update_status_and_wait_transition(
+                    request_status, in_progress_status, final_status
+                )
+            if expected_error_message:
+                assert_that(str(e.value)).contains(expected_error_message)
+        else:
+            compute_fleet_status_manager.update_status_and_wait_transition(
+                request_status, in_progress_status, final_status
+            )
+
+        assert_that(update_status_mock.call_count).is_equal_to(len(update_status_responses))
+        assert_that(get_status_mock.call_count).is_equal_to(len(get_status_responses))
+        assert_that(caplog.text).is_empty()
