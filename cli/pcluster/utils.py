@@ -184,6 +184,7 @@ def delete_s3_bucket(bucket_name):
         LOGGER.info("Deleting bucket %s", bucket_name)
         bucket = boto3.resource("s3").Bucket(bucket_name)
         bucket.objects.all().delete()
+        bucket.object_versions.delete()
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
