@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import datetime
 import logging
+import time
 
 import boto3
 import pytest
@@ -22,6 +23,13 @@ from retrying import retry
 from time_utils import minutes, seconds
 
 from tests.common.schedulers_common import SgeCommands
+
+BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING"}
+# Maximum number of minutes to wait past when an file system's automatic backup is scheduled to start creating.
+# If after this many minutes past the scheduled time backup creation has not started, the test will fail.
+MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START = 5
+# Maximum number of minutes to wait for a file system's backup to finish being created.
+MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 
 
 @pytest.mark.parametrize(
@@ -102,11 +110,10 @@ def test_fsx_lustre_backup(
 
     """
     mount_dir = "/fsx_mount_dir"
-    utc_now_plus_15 = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
-    daily_automatic_backup_start_time = utc_now_plus_15.strftime("%H:%M")
-    logging.info("daily_automatic_backup_start_time" + daily_automatic_backup_start_time)
+    daily_automatic_backup_start_time = datetime.datetime.utcnow() + datetime.timedelta(minutes=15)
+    logging.info(f"daily_automatic_backup_start_time: {daily_automatic_backup_start_time}")
     cluster_config = pcluster_config_reader(
-        mount_dir=mount_dir, daily_automatic_backup_start_time=daily_automatic_backup_start_time
+        mount_dir=mount_dir, daily_automatic_backup_start_time=daily_automatic_backup_start_time.strftime("%H:%M")
     )
 
     # Create a cluster with automatic backup parameters.
@@ -121,7 +128,9 @@ def test_fsx_lustre_backup(
     create_backup_test_file(remote_command_executor, mount_dir)
 
     # Wait for the creation of automatic backup and assert if it is in available state.
-    automatic_backup = monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region)
+    automatic_backup = monitor_automatic_backup_creation(
+        remote_command_executor, fsx_fs_id, region, daily_automatic_backup_start_time
+    )
 
     # Create a manual FSx Lustre backup using boto3 client.
     manual_backup = create_manual_fs_backup(remote_command_executor, fsx_fs_id, region)
@@ -295,26 +304,42 @@ def create_backup_test_file(remote_command_executor, mount_dir):
     assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
 
 
-def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region):
+def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region, backup_start_time):
     logging.info("Monitoring automatic backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
-    backup = poll_on_automatic_backup_creation(fsx_fs_id, fsx)
+    backup = sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
+    logging.info(
+        f"Waiting up to {MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START} minutes for automatic backup creation "
+        "to start"
+    )
+    backup = poll_on_automatic_backup_creation_start(fsx_fs_id, fsx)
+    backup = poll_on_backup_creation(backup, fsx)
     assert_that(backup.get("Lifecycle")).is_equal_to("AVAILABLE")
     return backup
 
 
-@retry(
-    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING", "NOT_STARTED"],
-    wait_fixed=seconds(5),
-    stop_max_delay=minutes(7),
-)
-def poll_on_automatic_backup_creation(fsx_fs_id, fsx):
-    backups = fsx.describe_backups(Filters=[{"Name": "file-system-id", "Values": [fsx_fs_id]}]).get("Backups")
-    backup = backups[0] if len(backups) > 0 else {"BackupId": "NA", "Lifecycle": "NOT_STARTED"}
+def sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time):
+    """Wait for the automatic backup of the given file system to start."""
+    logging.info(f"Sleeping until time when {fsx_fs_id}'s backup creation should start at {backup_start_time}")
+    time.sleep((backup_start_time - datetime.datetime.utcnow()).total_seconds())
+
+
+def log_backup_state(backup):
+    """Log the ID and status of the given backup."""
     logging.info(
         "Backup {backup_id}: {status}".format(backup_id=backup.get("BackupId"), status=backup.get("Lifecycle"))
     )
 
+
+@retry(
+    retry_on_result=lambda result: result.get("Lifecycle") == "NOT_STARTED",
+    wait_fixed=seconds(5),
+    stop_max_delay=minutes(MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START),
+)
+def poll_on_automatic_backup_creation_start(fsx_fs_id, fsx):
+    backups = fsx.describe_backups(Filters=[{"Name": "file-system-id", "Values": [fsx_fs_id]}]).get("Backups")
+    backup = backups[0] if len(backups) > 0 else {"BackupId": "NA", "Lifecycle": "NOT_STARTED"}
+    log_backup_state(backup)
     return backup
 
 
@@ -331,20 +356,18 @@ def create_manual_fs_backup(remote_command_executor, fsx_fs_id, region):
     logging.info("Create manual backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
     backup = fsx.create_backup(FileSystemId=fsx_fs_id).get("Backup")
-    backup = poll_on_manual_backup_creation(backup, fsx)
+    backup = poll_on_backup_creation(backup, fsx)
     assert_that(backup.get("Lifecycle")).is_equal_to("AVAILABLE")
     return backup
 
 
 @retry(
-    retry_on_result=lambda result: result.get("Lifecycle") in ["CREATING"],
+    retry_on_result=lambda result: result.get("Lifecycle") in BACKUP_NOT_YET_AVAILABLE_STATES,
     wait_fixed=seconds(5),
-    stop_max_delay=minutes(7),
+    stop_max_delay=minutes(MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION),
 )
-def poll_on_manual_backup_creation(backup, fsx):
-    logging.info(
-        "Backup {backup_id}: {status}".format(backup_id=backup.get("BackupId"), status=backup.get("Lifecycle"))
-    )
+def poll_on_backup_creation(backup, fsx):
+    log_backup_state(backup)
     return fsx.describe_backups(BackupIds=[backup.get("BackupId")]).get("Backups")[0]
 
 

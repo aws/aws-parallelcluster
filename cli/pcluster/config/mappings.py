@@ -409,7 +409,8 @@ RAID = {
             }),
             ("num_of_raid_volumes", {
                 "type": IntCfnParam,
-                "allowed_values": "^[1-5]$",
+                "default": 2,
+                "allowed_values": "^[2-5]$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
 
             }),

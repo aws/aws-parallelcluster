@@ -139,18 +139,22 @@ def _mock_create_network_configuration(mocker, public_subnet_id, private_subnet_
 
 
 def _mock_parallel_cluster_config(mocker):
-    supported_instance_types = ["t2.nano", "t2.micro", "t2.large", "c5.xlarge", "g3.8xlarge"]
+    supported_instance_types = ["t2.nano", "t2.micro", "t2.large", "c5.xlarge", "g3.8xlarge", "m6g.xlarge"]
     mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
     mocker.patch(
         "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
     )
     mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type",
+        side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
     )
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
     #       but it's being included in case that changes in the future.
-    mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+    mocker.patch(
+        "pcluster.config.validators.get_supported_architectures_for_instance_type",
+        side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
+    )
 
     for instance_type in supported_instance_types:
         mock_get_instance_type(mocker, instance_type)
@@ -164,43 +168,16 @@ def _launch_config(mocker, path, remove_path=True):
     configure(args)
 
 
-def _are_configurations_equals(path_config_expected, path_config_after_input):
-    if not os.path.isfile(path_config_expected):
-        return False
-    if not os.path.isfile(path_config_after_input):
-        return False
+def _assert_configurations_are_equal(path_config_expected, path_config_after_input):
+    assert_that(path_config_expected).exists().is_file()
+    assert_that(path_config_after_input).exists().is_file()
     config_expected = ConfigParser()
     config_expected.read(path_config_expected)
-    dict1 = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
-    config_temp = ConfigParser()
-    config_temp.read(path_config_after_input)
-    dict2 = {s: dict(config_temp.items(s)) for s in config_temp.sections()}
-    for section_name, section in dict1.items():
-        for key, value in section.items():
-            try:
-                if dict2[section_name][key] != value:
-                    print(
-                        (
-                            "Expected parameters are: {0}\n"
-                            "Actual parameters after running pcluster configure are: {1}"
-                        ).format(dict1, dict2)
-                    )
-                    print(
-                        "\nTest failed: Parameter '{0}' in section '{1}' is different from the expected one.".format(
-                            key, section_name
-                        )
-                    )
-                    print("The actual value is '{0}' but expected is '{1}'".format(dict2[section_name][key], value))
-                    return False
-            except KeyError:
-                print(
-                    "Expected parameters are: {0}\nActual parameters after running pcluster configure are: {1}".format(
-                        dict1, dict2
-                    )
-                )
-                print("\nTest failed: Parameter '{0}' doesn't exist in section '{1}'.".format(key, section_name))
-                return False
-    return True
+    config_expected_dict = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
+    config_actual = ConfigParser()
+    config_actual.read(path_config_after_input)
+    config_actual_dict = {s: dict(config_actual.items(s)) for s in config_actual.sections()}
+    assert_that(config_actual_dict).is_equal_to(config_expected_dict)
 
 
 def _are_output_error_correct(capsys, output, error, config_path):
@@ -277,7 +254,7 @@ def _verify_test(
         _launch_config(mocker, temp_path_for_config, remove_path=False)
     else:
         _launch_config(mocker, temp_path_for_config)
-    assert_that(_are_configurations_equals(expected_config, temp_path_for_config)).is_true()
+    _assert_configurations_are_equal(expected_config, temp_path_for_config)
     _are_output_error_correct(capsys, output, error, temp_path_for_config)
     os.remove(temp_path_for_config)
 
@@ -298,11 +275,25 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     _verify_test(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG)
 
 
-def _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False):
+def _run_input_test_with_config(
+    mocker,
+    config,
+    old_config_file,
+    error,
+    output,
+    capsys,
+    with_input=False,
+    master_instance="c5.xlarge",
+    compute_instance="g3.8xlarge",
+):
     if with_input:
         input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
         input_composer.add_first_flow(
-            op_sys="ubuntu1604", min_size="7", max_size="18", master_instance="c5.xlarge", compute_instance="g3.8xlarge"
+            op_sys="ubuntu1604",
+            min_size="7",
+            max_size="18",
+            master_instance=master_instance,
+            compute_instance=compute_instance,
         )
         input_composer.add_no_automation_no_empty_vpc(
             vpc_id="vpc-34567891", master_id="subnet-34567891", compute_id="subnet-45678912"
@@ -358,7 +349,17 @@ def test_with_input_no_automation_no_errors_with_config_file(mocker, capsys, tes
 
     MockHandler(mocker)
 
-    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=True)
+    _run_input_test_with_config(
+        mocker,
+        config,
+        old_config_file,
+        error,
+        output,
+        capsys,
+        with_input=True,
+        master_instance="m6g.xlarge",
+        compute_instance="m6g.xlarge",
+    )
 
 
 def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):

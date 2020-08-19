@@ -59,7 +59,7 @@ DEFAULT_EFS_DICT = {
 DEFAULT_RAID_DICT = {
     "shared_dir": None,
     "raid_type": None,
-    "num_of_raid_volumes": None,
+    "num_of_raid_volumes": 2,
     "volume_type": "gp2",
     "volume_size": 20,
     "volume_iops": 100,
