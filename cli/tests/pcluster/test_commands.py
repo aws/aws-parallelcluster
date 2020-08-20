@@ -21,13 +21,12 @@ from pcluster.commands import _create_bucket_with_resources
 from pcluster.update import update_command
 
 
-def _mock_pcluster_config(mocker, scheduler, region, hit_template_url):
+def _mock_pcluster_config(mocker, scheduler, region):
     pcluster_config = mocker.MagicMock()
     pcluster_config.region = region
     cluster_section_mock = mocker.MagicMock()
     cluster_config = {
         "scheduler": scheduler,
-        "hit_template_url": hit_template_url,
     }
     cluster_section_mock.get_param_value = mocker.MagicMock(side_effect=lambda param: cluster_config[param])
     pcluster_config.get_section = mocker.MagicMock(return_value=cluster_section_mock)
@@ -48,14 +47,13 @@ def test_create_bucket_with_resources_success(
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
     region = "us-east-1"
-    hit_template_url = "s3://{region}-aws-parallelcluster/templates/aws-parallelcluster-{version}.cfn.json"
 
     mocker.patch("pcluster.utils.generate_random_bucket_name", return_value=expected_bucket_name)
     mocker.patch("pcluster.utils.create_s3_bucket")
     upload_resources_artifacts_mock = mocker.patch("pcluster.utils.upload_resources_artifacts")
     delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
     upload_hit_resources_mock = mocker.patch("pcluster.commands._upload_hit_resources")
-    pcluster_config_mock = _mock_pcluster_config(mocker, scheduler, region, hit_template_url)
+    pcluster_config_mock = _mock_pcluster_config(mocker, scheduler, region)
 
     storage_data = pcluster_config_mock.to_storage()
 
@@ -82,7 +80,7 @@ def test_create_bucket_with_resources_creation_failure(mocker, caplog):
     mocker.patch("pcluster.utils.upload_resources_artifacts")
     delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
 
-    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region, None)
+    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
@@ -103,7 +101,7 @@ def test_create_bucket_with_resources_upload_failure(mocker, caplog):
     mocker.patch("pcluster.utils.upload_resources_artifacts", side_effect=client_error)
     delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
 
-    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region, None)
+    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
@@ -126,7 +124,7 @@ def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
     mocker.patch("pcluster.utils.upload_resources_artifacts", side_effect=client_error)
     delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket", side_effect=client_error)
 
-    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region, None)
+    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
     storage_data = pcluster_config_mock.to_storage()
 
     # force upload failure to trigger a bucket deletion and then check the behaviour when the deletion fails
@@ -148,11 +146,11 @@ def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
 def test_update_failure_on_different_cluster_models(
     mocker, caplog, base_cluster_model, target_cluster_model, expected_result, expected_message
 ):
-    base_config = _mock_pcluster_config(mocker, "slurm", "us-east-1", None)
+    base_config = _mock_pcluster_config(mocker, "slurm", "us-east-1")
     base_config.cluster_model = base_cluster_model
     base_config.cluster_name = "test_cluster"
 
-    target_config = _mock_pcluster_config(mocker, "slurm", "us-east-1", None)
+    target_config = _mock_pcluster_config(mocker, "slurm", "us-east-1")
     target_config.cluster_model = target_cluster_model
     target_config.config_file = "config_file"
 
