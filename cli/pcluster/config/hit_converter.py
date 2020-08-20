@@ -151,7 +151,7 @@ class HitConverter:
         :param hit_cluster_section: The new HIT cluster section
         """
         for default_section in self.default_sections:
-            self.pcluster_config.remove_section(default_section.key)
+            self.pcluster_config.remove_section(default_section.key, "default")
             default_section.parent_section = hit_cluster_section
             self.pcluster_config.add_section(default_section)
 
