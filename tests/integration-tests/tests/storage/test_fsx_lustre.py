@@ -307,7 +307,7 @@ def create_backup_test_file(remote_command_executor, mount_dir):
 def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region, backup_start_time):
     logging.info("Monitoring automatic backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
-    backup = sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
+    sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
     logging.info(
         f"Waiting up to {MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START} minutes for automatic backup creation "
         "to start"
@@ -321,7 +321,9 @@ def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region
 def sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time):
     """Wait for the automatic backup of the given file system to start."""
     logging.info(f"Sleeping until time when {fsx_fs_id}'s backup creation should start at {backup_start_time}")
-    time.sleep((backup_start_time - datetime.datetime.utcnow()).total_seconds())
+    remaining_time = (backup_start_time - datetime.datetime.utcnow()).total_seconds()
+    if remaining_time > 0:
+        time.sleep(remaining_time)
 
 
 def log_backup_state(backup):
