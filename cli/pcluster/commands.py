@@ -29,6 +29,7 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
 from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_STACK_PREFIX
@@ -229,6 +230,15 @@ def _evaluate_tags(pcluster_config, preferred_tags=None):
 
     # convert to CFN tags
     return [{"Key": tag, "Value": tags[tag]} for tag in tags]
+
+
+def _print_compute_fleet_status(cluster_name, stack):
+    outputs = stack.get("Outputs", [])
+    if utils.get_stack_output_value(outputs, "IsHITCluster") == "true":
+        status_manager = ComputeFleetStatusManager(cluster_name)
+        compute_fleet_status = status_manager.get_status()
+        if compute_fleet_status:
+            LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
 
 
 def _print_stack_outputs(stack):
@@ -454,6 +464,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
                     _print_stack_outputs(stack)
+                    _print_compute_fleet_status(args.cluster_name, stack)
             elif stack.get("StackStatus") in [
                 "ROLLBACK_COMPLETE",
                 "CREATE_FAILED",
