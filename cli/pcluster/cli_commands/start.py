@@ -109,7 +109,7 @@ class HITStartCommand(StartCommand):
 
         try:
             compute_fleet_status_manager = ComputeFleetStatusManager(args.cluster_name)
-            compute_fleet_status_manager.update_status_and_wait_transition(
+            compute_fleet_status_manager.update_status(
                 ComputeFleetStatus.START_REQUESTED, ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING
             )
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:

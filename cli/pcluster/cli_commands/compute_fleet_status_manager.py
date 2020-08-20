@@ -79,7 +79,7 @@ class ComputeFleetStatusManager:
             LOGGER.error("Failed when retrieving fleet status from DynamoDB with error %s", e)
             return fallback
 
-    def update_status(self, current_status, next_status):
+    def put_status(self, current_status, next_status):
         """Set compute fleet status."""
         try:
             self._table.put_item(
@@ -89,7 +89,7 @@ class ComputeFleetStatusManager:
         except self._ddb_resource.meta.client.exceptions.ConditionalCheckFailedException as e:
             raise ComputeFleetStatusManager.ConditionalStatusUpdateFailed(e)
 
-    def update_status_and_wait_transition(self, request_status, in_progress_status, final_status):
+    def update_status(self, request_status, in_progress_status, final_status, wait_transition=False):
         """
         Update the status of the compute fleet and wait for a status transition.
 
@@ -104,10 +104,16 @@ class ComputeFleetStatusManager:
             LOGGER.info("Compute fleet already in %s status.", final_status)
             return
 
+        LOGGER.info("Compute fleet status is: %s. Submitting status change request.", compute_fleet_status)
         if compute_fleet_status not in {request_status, in_progress_status, final_status}:
-            self.update_status(current_status=compute_fleet_status, next_status=request_status)
-        LOGGER.info("Submitted compute fleet status transition request. Waiting for status update to start...")
+            self.put_status(current_status=compute_fleet_status, next_status=request_status)
 
+        if not wait_transition:
+            LOGGER.info("Request submitted successfully. It might take a while for the transition to complete.")
+            LOGGER.info("Please run pcluster status if you need to check compute fleet status")
+            return
+
+        LOGGER.info("Submitted compute fleet status transition request. Waiting for status update to start...")
         compute_fleet_status = self._wait_for_status_transition(wait_on_status=request_status, timeout=180)
         if compute_fleet_status == in_progress_status:
             LOGGER.info(

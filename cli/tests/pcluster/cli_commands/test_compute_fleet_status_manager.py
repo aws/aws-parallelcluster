@@ -47,20 +47,28 @@ class TestComputeFleetStatusManager:
         ],
         ids=["success", "conditional_check_failed", "exception"],
     )
-    def test_update_status(self, compute_fleet_status_manager, put_item_response, expected_exception):
+    def test_put_status(self, compute_fleet_status_manager, put_item_response, expected_exception):
         if isinstance(put_item_response, Exception):
             compute_fleet_status_manager._table.put_item.side_effect = put_item_response
             with pytest.raises(expected_exception):
-                compute_fleet_status_manager.update_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
+                compute_fleet_status_manager.put_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
         else:
             compute_fleet_status_manager._table.put_item.return_value = put_item_response
-            compute_fleet_status_manager.update_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
+            compute_fleet_status_manager.put_status(ComputeFleetStatus.STARTING, ComputeFleetStatus.RUNNING)
 
     @pytest.mark.parametrize(
-        "request_status, get_status_responses, update_status_responses, expected_exception, expected_error_message",
+        "request_status, get_status_responses, update_status_responses, expected_exception, expected_error_message,"
+        " wait_for_transitions",
         [
-            (ComputeFleetStatus.START_REQUESTED, [None], [], Exception, "Could not retrieve compute fleet status"),
-            (ComputeFleetStatus.START_REQUESTED, [ComputeFleetStatus.RUNNING], [], None, None),
+            (
+                ComputeFleetStatus.START_REQUESTED,
+                [None],
+                [],
+                Exception,
+                "Could not retrieve compute fleet status",
+                True,
+            ),
+            (ComputeFleetStatus.START_REQUESTED, [ComputeFleetStatus.RUNNING], [], None, None, True),
             (
                 ComputeFleetStatus.START_REQUESTED,
                 [
@@ -72,6 +80,7 @@ class TestComputeFleetStatusManager:
                 [None],
                 None,
                 None,
+                True,
             ),
             (
                 ComputeFleetStatus.START_REQUESTED,
@@ -84,6 +93,7 @@ class TestComputeFleetStatusManager:
                 [None],
                 Exception,
                 "Unexpected final state STOPPED probably due to a concurrent status update request",
+                True,
             ),
             (
                 ComputeFleetStatus.STOP_REQUESTED,
@@ -96,6 +106,7 @@ class TestComputeFleetStatusManager:
                 [None],
                 None,
                 None,
+                True,
             ),
             (
                 ComputeFleetStatus.STOP_REQUESTED,
@@ -103,6 +114,7 @@ class TestComputeFleetStatusManager:
                 [None],
                 Exception,
                 "Unexpected final state STARTING probably due to a concurrent status update request",
+                True,
             ),
             (
                 ComputeFleetStatus.STOP_REQUESTED,
@@ -110,10 +122,12 @@ class TestComputeFleetStatusManager:
                 [ComputeFleetStatusManager.ConditionalStatusUpdateFailed],
                 ComputeFleetStatusManager.ConditionalStatusUpdateFailed,
                 None,
+                True,
             ),
+            (ComputeFleetStatus.START_REQUESTED, [ComputeFleetStatus.STOPPED], [None], None, None, False),
         ],
     )
-    def test_update_status_and_wait_transition(
+    def test_update_status(
         self,
         mocker,
         caplog,
@@ -123,12 +137,13 @@ class TestComputeFleetStatusManager:
         update_status_responses,
         expected_exception,
         expected_error_message,
+        wait_for_transitions,
     ):
         get_status_mock = mocker.patch.object(
             compute_fleet_status_manager, "get_status", side_effect=get_status_responses
         )
         update_status_mock = mocker.patch.object(
-            compute_fleet_status_manager, "update_status", side_effect=update_status_responses
+            compute_fleet_status_manager, "put_status", side_effect=update_status_responses
         )
         mocker.patch("time.sleep")
 
@@ -144,14 +159,14 @@ class TestComputeFleetStatusManager:
         )
         if expected_exception:
             with pytest.raises(expected_exception) as e:
-                compute_fleet_status_manager.update_status_and_wait_transition(
-                    request_status, in_progress_status, final_status
+                compute_fleet_status_manager.update_status(
+                    request_status, in_progress_status, final_status, wait_transition=wait_for_transitions
                 )
             if expected_error_message:
                 assert_that(str(e.value)).contains(expected_error_message)
         else:
-            compute_fleet_status_manager.update_status_and_wait_transition(
-                request_status, in_progress_status, final_status
+            compute_fleet_status_manager.update_status(
+                request_status, in_progress_status, final_status, wait_transition=wait_for_transitions
             )
 
         assert_that(update_status_mock.call_count).is_equal_to(len(update_status_responses))
