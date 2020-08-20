@@ -84,7 +84,7 @@ class HITStopCommand(StopCommand):
 
         try:
             compute_fleet_status_manager = ComputeFleetStatusManager(args.cluster_name)
-            compute_fleet_status_manager.update_status_and_wait_transition(
+            compute_fleet_status_manager.update_status(
                 ComputeFleetStatus.STOP_REQUESTED, ComputeFleetStatus.STOPPING, ComputeFleetStatus.STOPPED
             )
         except ComputeFleetStatusManager.ConditionalStatusUpdateFailed:
