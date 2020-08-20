@@ -56,10 +56,10 @@ class HitConverter:
 
                 # Create default queue section
                 queue_section = QueueJsonSection(
-                    mappings.QUEUE, self.pcluster_config, section_label="default", parent_section=hit_cluster_section
+                    mappings.QUEUE, self.pcluster_config, section_label="compute", parent_section=hit_cluster_section
                 )
                 self.pcluster_config.add_section(queue_section)
-                hit_cluster_section.get_param("queue_settings").value = "default"
+                hit_cluster_section.get_param("queue_settings").value = "compute"
 
                 self._copy_param_value(
                     sit_cluster_section.get_param("cluster_type"), queue_section.get_param("compute_type")

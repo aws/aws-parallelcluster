@@ -55,7 +55,7 @@ def boto3_stubber_path():
                     "enable_efa": None,
                     "disable_hyperthreading": None,
                 },
-                "queue default": {
+                "queue compute": {
                     "compute_type": "ondemand",
                     "enable_efa": True,
                     "disable_hyperthreading": True,
@@ -102,7 +102,7 @@ def boto3_stubber_path():
                     "enable_efa": None,
                     "disable_hyperthreading": None,
                 },
-                "queue default": {
+                "queue compute": {
                     "compute_type": "ondemand",
                     "enable_efa": False,
                     "disable_hyperthreading": False,
