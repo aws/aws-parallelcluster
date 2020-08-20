@@ -54,6 +54,7 @@ class PclusterConfig(object):
         fail_on_error=None,
         cluster_name=None,
         auto_refresh=True,
+        enforce_version=True,
     ):
         """
         Initialize object, from file, from a CFN Stack or from the internal mapping.
@@ -71,11 +72,14 @@ class PclusterConfig(object):
         if specified the initialization will start from the running Stack
         :param auto_refresh: if set, refresh() method will be called every time something changes in the structure of
         the configuration, like a section being added, removed or renamed.
+        :param enforce_version: when True enforces the CLI version to be of the same version as the cluster the user
+        is interacting with.
         """
         self.__autorefresh = False  # Initialization in progress
         self.fail_on_error = fail_on_error
         self.cfn_stack = None
         self.__sections = OrderedDict({})
+        self.__enforce_version = enforce_version
 
         # always parse the configuration file if there, to get AWS section
         self._init_config_parser(config_file, fail_on_file_absence)
@@ -413,10 +417,10 @@ class PclusterConfig(object):
     def __init_sections_from_cfn(self, cluster_name):
         try:
             self.cfn_stack = get_stack(get_stack_name(cluster_name))
-            if get_stack_version(self.cfn_stack) != get_installed_version():
+            if self.__enforce_version and get_stack_version(self.cfn_stack) != get_installed_version():
                 self.error(
                     "The cluster {0} was created with a different version of ParallelCluster: {1}. "
-                    "Installed version is {2}. Update operations may only be performed using the same ParallelCluster "
+                    "Installed version is {2}. This operation may only be performed using the same ParallelCluster "
                     "version used to create the cluster.".format(
                         cluster_name, get_stack_version(self.cfn_stack), get_installed_version()
                     )

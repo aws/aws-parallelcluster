@@ -3852,6 +3852,10 @@
       },
       "Condition": "CreateComputeFleet"
     },
+    "IsHITCluster": {
+      "Value": "true",
+      "Condition": "CreateHITSubstack"
+    },
     "ClusterConfigMetadata": {
       "Value": {
         "Ref": "ClusterConfigMetadata"
