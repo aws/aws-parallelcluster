@@ -110,7 +110,7 @@ class ComputeFleetStatusManager:
 
         if not wait_transition:
             LOGGER.info("Request submitted successfully. It might take a while for the transition to complete.")
-            LOGGER.info("Please run pcluster status if you need to check compute fleet status")
+            LOGGER.info("Please run 'pcluster status' if you need to check compute fleet status")
             return
 
         LOGGER.info("Submitted compute fleet status transition request. Waiting for status update to start...")
