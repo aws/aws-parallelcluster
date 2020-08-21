@@ -192,7 +192,7 @@ Resources:
     CreationPolicy:
       ResourceSignal:
         Count: 1
-        Timeout: PT60M
+        Timeout: PT30M
   MasterServerLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
     Properties:
