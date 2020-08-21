@@ -72,6 +72,8 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
+    parser.addoption("--pre-install", help="url to pre install script")
+    parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
     parser.addoption(
@@ -326,7 +328,14 @@ def _add_custom_packages_configs(cluster_config, request):
     config.read(cluster_config)
     cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
 
-    for custom_option in ["template_url", "custom_awsbatch_template_url", "custom_chef_cookbook", "custom_ami"]:
+    for custom_option in [
+        "template_url",
+        "custom_awsbatch_template_url",
+        "custom_chef_cookbook",
+        "custom_ami",
+        "pre_install",
+        "post_install",
+    ]:
         if request.config.getoption(custom_option) and custom_option not in config[cluster_template]:
             config[cluster_template][custom_option] = request.config.getoption(custom_option)
 
