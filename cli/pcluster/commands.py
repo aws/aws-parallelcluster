@@ -400,7 +400,8 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
     """
-    pcluster_config = PclusterConfig(fail_on_error=False)  # FIXME it always search for the default config file
+    # FIXME it always search for the default config file
+    pcluster_config = PclusterConfig(fail_on_error=False, auto_refresh=False)
     if args.command in pcluster_config.get_section("aliases").params:
         ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
     else:
