@@ -185,7 +185,7 @@ Resources:
             - GroupTotalInstances
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT60M
+        Timeout: PT30M
         Count: !Ref 'DesiredSize'
   ComputeServerLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
