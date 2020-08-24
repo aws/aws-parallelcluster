@@ -197,7 +197,7 @@ def configure(args):
         param.value = param.get_value_from_string(param_value)
 
     # Convert file if needed
-    HitConverter(pcluster_config).convert()
+    _convert_config(pcluster_config)
 
     # Update config file by overriding changed settings
     pcluster_config.to_file()
@@ -285,6 +285,23 @@ def _choose_network_configuration(scheduler):
     return next(
         configuration.value for configuration in NetworkConfiguration if configuration.value.config_type == target_type
     )
+
+
+def _convert_config(pcluster_config):
+    """Convert the generated SIT configuration to HIT model if scheduler is Slurm."""
+    if pcluster_config.cluster_model == ClusterModel.SIT:
+        HitConverter(pcluster_config).convert()
+
+        if pcluster_config.cluster_model == ClusterModel.HIT:
+            # Conversion occurred: reset some parameters from config file since their values can be inferred at runtime
+
+            # enable_efa and disable_hyperthreading will get their value from cluster section
+            queue_section = pcluster_config.get_section("queue", "compute")
+            _reset_config_params(queue_section, ("enable_efa", "disable_hyperthreading"))
+
+            # initial_count will take its value from min_count
+            compute_resource_section = pcluster_config.get_section("compute_resource", "default")
+            _reset_config_params(compute_resource_section, ["initial_count"])
 
 
 class SchedulerHandler:
