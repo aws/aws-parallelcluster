@@ -163,7 +163,9 @@ def assert_param_validator(
             assert_that(capsys.readouterr().out).matches(expected_warning)
 
 
-def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expected_section_dict):
+def assert_section_from_cfn(
+    mocker, section_definition, cfn_params_dict, expected_section_dict, expected_section_label="default"
+):
     def mock_get_avail_zone(subnet_id):
         # Mock az detection by returning a mock az if subnet has a value
         return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
@@ -180,7 +182,7 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
     section = section_type(section_definition, pcluster_config).from_storage(storage_params)
 
     if section.label:
-        assert_that(section.label).is_equal_to("default")
+        assert_that(section.label).is_equal_to(expected_section_label)
 
     # update expected dictionary
     default_dict = get_default_dict(section_definition)

@@ -18,11 +18,29 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 
 
 @pytest.mark.parametrize(
-    "cfn_params_dict, expected_section_dict",
+    "cfn_params_dict, expected_section_dict, expected_section_label",
     [
         (
             {},
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"additional_iam_policies": [], "architecture": None}),
+            "default",
+        ),
+        (
+            utils.merge_dicts(
+                DefaultCfnParams["cluster_sit"].value,
+                {"ClusterConfigMetadata": "{'sections': {'cluster': ['custom_cluster_label']}}"},
+            ),
+            # Cluster section with custom label
+            utils.merge_dicts(
+                DefaultDict["cluster_sit"].value,
+                {
+                    "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
+                    "base_os": "alinux2",
+                    "scheduler": "slurm",
+                    "cluster_config_metadata": {"sections": {"cluster": ["custom_cluster_label"]}},
+                },
+            ),
+            "custom_cluster_label",
         ),
         (
             DefaultCfnParams["cluster_sit"].value,
@@ -34,6 +52,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "scheduler": "slurm",
                 },
             ),
+            "default",
         ),
         # awsbatch defaults
         (
@@ -69,12 +88,13 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     ],
                 },
             ),
+            "default",
         ),
     ],
 )
-def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
+def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_dict, expected_section_label):
     """Test conversion from CFN input parameters."""
-    utils.assert_section_from_cfn(mocker, CLUSTER_SIT, cfn_params_dict, expected_section_dict)
+    utils.assert_section_from_cfn(mocker, CLUSTER_SIT, cfn_params_dict, expected_section_dict, expected_section_label)
 
 
 @pytest.mark.parametrize(
