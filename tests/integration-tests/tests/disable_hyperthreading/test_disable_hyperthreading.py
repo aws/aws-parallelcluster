@@ -24,48 +24,107 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.skip_schedulers(["awsbatch"])
-def test_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
-    """Test Disable Hyperthreading"""
+def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+    """Test Disable Hyperthreading for SIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler)
+    _test_disable_hyperthreading_settings(remote_command_executor, scheduler_commands, slots_per_instance, scheduler)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler):
+@pytest.mark.regions(["us-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.oss(["ubuntu1804"])
+@pytest.mark.schedulers(["slurm"])
+def test_hit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
+    """Test Disable Hyperthreading for HIT clusters."""
+    slots_per_instance = fetch_instance_slots(region, instance)
+    cluster_config = pcluster_config_reader()
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    _test_disable_hyperthreading_settings(
+        remote_command_executor,
+        scheduler_commands,
+        slots_per_instance,
+        scheduler,
+        hyperthreading_disabled=False,
+        partition="ht-enabled",
+    )
+    _test_disable_hyperthreading_settings(
+        remote_command_executor,
+        scheduler_commands,
+        slots_per_instance,
+        scheduler,
+        hyperthreading_disabled=True,
+        partition="ht-disabled",
+    )
+
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
+
+
+def _test_disable_hyperthreading_settings(
+    remote_command_executor,
+    scheduler_commands,
+    slots_per_instance,
+    scheduler,
+    hyperthreading_disabled=True,
+    partition=None,
+):
+    expected_cpus_per_instance = slots_per_instance // 2 if hyperthreading_disabled else slots_per_instance
+    expected_threads_per_core = 1 if hyperthreading_disabled else 2
+
     # Test disable hyperthreading on Master
     logging.info("Test Disable Hyperthreading on Master")
     result = remote_command_executor.run_remote_command("lscpu")
-    assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+1")
-    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance // 2))
+    if partition:
+        # If partition is supplied, assume this is HIT setting where ht settings are at the queue level
+        # In this case, ht is not disabled on master
+        assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(2))
+        assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance))
+    else:
+        assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(expected_threads_per_core))
+        assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(expected_cpus_per_instance))
 
     # Test disable hyperthreading on Compute
     logging.info("Test Disable Hyperthreading on Compute")
-    result = scheduler_commands.submit_command("lscpu > /shared/lscpu.out")
-
+    if partition:
+        result = scheduler_commands.submit_command("lscpu > /shared/lscpu.out", partition=partition)
+    else:
+        result = scheduler_commands.submit_command("lscpu > /shared/lscpu.out")
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
     # Check compute has 1 thread per core
     result = remote_command_executor.run_remote_command("cat /shared/lscpu.out")
-    assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+1")
-    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance // 2))
+    assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(expected_threads_per_core))
+    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(expected_cpus_per_instance))
 
     # Check scheduler has correct number of cores
-    result = scheduler_commands.get_node_cores()
+    if partition:
+        result = scheduler_commands.get_node_cores(partition=partition)
+    else:
+        result = scheduler_commands.get_node_cores()
     logging.info("{0} Cores: [{1}]".format(scheduler, result))
-    assert_that(int(result)).is_equal_to(slots_per_instance // 2)
+    assert_that(int(result)).is_equal_to(expected_cpus_per_instance)
 
-    # check scale up to 2 nodes
-    result = scheduler_commands.submit_command(
-        "hostname > /shared/hostname.out", nodes=2, slots=slots_per_instance // 2
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(2)
+    if hyperthreading_disabled:
+        # check scale up to 2 nodes
+        if partition:
+            result = scheduler_commands.submit_command(
+                "hostname > /shared/hostname.out", slots=slots_per_instance, partition=partition
+            )
+        else:
+            result = scheduler_commands.submit_command("hostname > /shared/hostname.out", slots=slots_per_instance)
+        job_id = scheduler_commands.assert_job_submitted(result.stdout)
+        scheduler_commands.wait_job_completed(job_id)
+        scheduler_commands.assert_job_succeeded(job_id)
+        if partition:
+            assert_that(scheduler_commands.compute_nodes_count(filter_by_partition=partition)).is_equal_to(2)
+        else:
+            assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(2)

@@ -91,13 +91,7 @@ class RemoteCommandExecutor:
         return result
 
     def run_remote_script(
-        self,
-        script_file,
-        args=None,
-        log_error=True,
-        additional_files=None,
-        hide=False,
-        timeout=None,
+        self, script_file, args=None, log_error=True, additional_files=None, hide=False, timeout=None, run_as_root=False
     ):
         """
         Execute a script remotely on the cluster master node.
@@ -115,12 +109,22 @@ class RemoteCommandExecutor:
         self.__connection.put(script_file, script_name)
         if not args:
             args = []
-        return self.run_remote_command(
-            ["/bin/bash", "--login", script_name] + args,
-            log_error=log_error,
-            additional_files=additional_files,
-            hide=hide,
-            timeout=timeout,
+        return (
+            self.run_remote_command(
+                ["sudo", "/bin/bash", script_name] + args,
+                log_error=log_error,
+                additional_files=additional_files,
+                hide=hide,
+                timeout=timeout,
+            )
+            if run_as_root
+            else self.run_remote_command(
+                ["/bin/bash", "--login", script_name] + args,
+                log_error=log_error,
+                additional_files=additional_files,
+                hide=hide,
+                timeout=timeout,
+            )
         )
 
     def _copy_additional_files(self, files):

@@ -10,7 +10,9 @@
 # limitations under the License.
 import boto3
 from assertpy import assert_that, soft_assertions
-from time_utils import minutes
+from retrying import retry
+from time_utils import minutes, seconds
+from utils import get_compute_nodes_count, get_compute_nodes_instance_ids
 
 from tests.common.scaling_common import get_compute_nodes_allocation
 
@@ -57,6 +59,10 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
             assert_that(log).does_not_contain(error_level)
 
 
+def assert_no_node_in_ec2(region, stack_name, instance_types=None):
+    assert_that(get_compute_nodes_count(stack_name, region, instance_types)).is_equal_to(0)
+
+
 def assert_scaling_worked(
     scheduler_commands,
     region,
@@ -97,3 +103,12 @@ def assert_scaling_worked(
             assert_that(compute_nodes_time_series[-1]).described_as(compute_nodes_time_series_str).is_equal_to(
                 expected_final
             )
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def wait_for_num_instances_in_cluster(cluster_name, region, desired):
+    assert_num_instances_in_cluster(cluster_name, region, desired)
+
+
+def assert_num_instances_in_cluster(cluster_name, region, desired):
+    assert_that(len(get_compute_nodes_instance_ids(cluster_name, region))).is_equal_to(desired)

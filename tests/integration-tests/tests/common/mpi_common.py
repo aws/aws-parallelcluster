@@ -38,6 +38,7 @@ def _test_mpi(
     stack_name=None,
     scaledown_idletime=None,
     verify_scaling=False,
+    partition=None,
 ):
     logging.info("Testing mpi job")
     mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
@@ -45,10 +46,18 @@ def _test_mpi(
     compile_mpi_ring(mpi_module, remote_command_executor)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    # submit script using additional files
-    result = scheduler_commands.submit_script(
-        str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)), slots=2 * slots_per_instance
-    )
+    if partition:
+        # submit script using additional files
+        result = scheduler_commands.submit_script(
+            str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)),
+            slots=2 * slots_per_instance,
+            partition=partition,
+        )
+    else:
+        # submit script using additional files
+        result = scheduler_commands.submit_script(
+            str(MPI_COMMON_DATADIR / "mpi_submit_{0}.sh".format(mpi_module)), slots=2 * slots_per_instance
+        )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
 
     if verify_scaling:
@@ -67,7 +76,14 @@ def _test_mpi(
     # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
     # Process 1 received token -1 from process 0
     assert_that(mpi_out.splitlines()).is_length(4)
-    nodename_prefix = "ip-" if scheduler != "slurm" else "compute-"
+    # Slurm HIT DNS name is the same as nodename and starts with partition
+    # Example: efa-enabled-st-c5n18xlarge-2
+    if partition:
+        nodename_prefix = partition
+    elif scheduler == "slurm":
+        nodename_prefix = ""
+    else:
+        nodename_prefix = "ip-"
     assert_that(mpi_out).matches(
         r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
     )

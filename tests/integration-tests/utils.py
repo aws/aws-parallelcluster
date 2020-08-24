@@ -109,14 +109,21 @@ def get_substacks(stack_name, region=None, sub_stack_name=None):
     return [r.get("PhysicalResourceId") for r in stacks]
 
 
-def get_compute_nodes_count(stack_name, region):
-    return len(get_compute_nodes_instance_ids(stack_name, region))
+def get_compute_nodes_count(stack_name, region, instance_types=None):
+    return len(get_compute_nodes_instance_ids(stack_name, region, instance_types=instance_types))
 
 
-def get_compute_nodes_instance_ids(stack_name, region):
+def get_compute_nodes_instance_ids(stack_name, region, instance_types=None):
     """Return a list of Compute Instances Id's."""
+    return get_cluster_nodes_instance_ids(stack_name, region, instance_types, node_type="Compute")
+
+
+def get_cluster_nodes_instance_ids(stack_name, region, instance_types=None, node_type=None):
+    """Return a list of cluster Instances Id's."""
     try:
-        instances = _describe_cluster_instances(stack_name, region, filter_by_node_type="Compute")
+        instances = _describe_cluster_instances(
+            stack_name, region, filter_by_node_type=node_type, filter_by_instance_types=instance_types
+        )
         instance_ids = []
         for instance in instances:
             instance_ids.append(instance.get("InstanceId"))
@@ -126,7 +133,9 @@ def get_compute_nodes_instance_ids(stack_name, region):
         raise
 
 
-def _describe_cluster_instances(stack_name, region, filter_by_node_type=None, filter_by_name=None):
+def _describe_cluster_instances(
+    stack_name, region, filter_by_node_type=None, filter_by_name=None, filter_by_instance_types=None
+):
     ec2 = boto3.client("ec2", region_name=region)
     filters = [
         {"Name": "tag:Application", "Values": [stack_name]},
@@ -136,6 +145,8 @@ def _describe_cluster_instances(stack_name, region, filter_by_node_type=None, fi
         filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
     if filter_by_name:
         filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
+    if filter_by_instance_types:
+        filters.append({"Name": "instance-type", "Values": filter_by_instance_types})
     instances = []
     for page in paginate_boto3(ec2.describe_instances, Filters=filters):
         instances.extend(page.get("Instances", []))

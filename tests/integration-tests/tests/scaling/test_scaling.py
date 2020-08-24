@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 import time
+from datetime import datetime, timezone
 from os import environ
 
 import boto3
@@ -21,7 +22,18 @@ from retrying import retry
 from time_utils import minutes, seconds
 from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostnames_conversion_dict
 
-from tests.common.assertions import assert_instance_replaced_or_terminating, assert_no_errors_in_logs
+from tests.common.assertions import (
+    assert_instance_replaced_or_terminating,
+    assert_no_errors_in_logs,
+    assert_num_instances_in_cluster,
+    wait_for_num_instances_in_cluster,
+)
+from tests.common.hit_common import (
+    assert_initial_conditions,
+    assert_num_nodes_in_scheduler,
+    submit_initial_job,
+    wait_for_num_nodes_in_scheduler,
+)
 from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
 from tests.common.schedulers_common import get_scheduler_commands
 
@@ -43,8 +55,8 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     logging.info("Executing test jobs on cluster")
     remote_command_executor.run_remote_script(test_datadir / "cluster-check.sh", args=["submit", scheduler])
 
-    logging.info("Monitoring asg capacity and compute nodes")
-    asg_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
+    logging.info("Monitoring ec2 capacity and compute nodes")
+    ec2_capacity_time_series, compute_nodes_time_series, timestamps = get_compute_nodes_allocation(
         scheduler_commands=scheduler_commands,
         region=region,
         stack_name=cluster.cfn_name,
@@ -56,7 +68,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 
     logging.info("Verifying auto-scaling worked correctly")
     _assert_scaling_works(
-        asg_capacity_time_series=asg_capacity_time_series,
+        asg_capacity_time_series=ec2_capacity_time_series,
         compute_nodes_time_series=compute_nodes_time_series,
         expected_asg_capacity=(0, 3),
         expected_compute_nodes=(0, 3),
@@ -73,7 +85,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     # slurm test use more nodes because of internal request to test in multi-node settings
-    initial_queue_size = 5 if scheduler == "slurm" else 1
+    initial_queue_size = 1
     environ["AWS_DEFAULT_REGION"] = region
     cluster_config = pcluster_config_reader(initial_queue_size=initial_queue_size)
     cluster = clusters_factory(cluster_config)
@@ -87,7 +99,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     logging.info("Testing that nodewatcher will terminate a node in failing state")
     # submit a job to run on all nodes
     scheduler_commands.submit_command("sleep infinity", nodes=initial_queue_size)
-    expected_num_nodes_killed = 4 if scheduler == "slurm" else 1
+    expected_num_nodes_killed = 1
     # simulate unexpected hardware failure by killing first x nodes
     nodes_to_remove = compute_nodes[:expected_num_nodes_killed]
     for node in nodes_to_remove:
@@ -111,23 +123,276 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 @pytest.mark.regions(["us-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["ubuntu1804"])
+@pytest.mark.oss(["alinux2", "centos7", "ubuntu1804"])
 @pytest.mark.usefixtures("region", "os", "instance")
-@pytest.mark.scaling_with_manual_actions
-def test_scaling_with_manual_actions(scheduler, region, pcluster_config_reader, clusters_factory):
+@pytest.mark.hit_scaling
+def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     """Test that slurm-specific scaling logic is resistent to manual actions and failures."""
-    num_compute_nodes = 5
-    environ["AWS_DEFAULT_REGION"] = region
-    cluster_config = pcluster_config_reader(initial_queue_size=num_compute_nodes)
+    cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    instance_ids = get_compute_nodes_instance_ids(cluster.cfn_name, region)
+    _assert_cluster_initial_conditions(scheduler_commands)
+    _test_partition_states(
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        active_partition="ondemand1",
+        inactive_partition="ondemand2",
+        num_static_nodes=2,
+        num_dynamic_nodes=3,
+        dynamic_instance_type="c5.xlarge",
+    )
+    _test_reset_terminated_nodes(
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=3,
+        dynamic_instance_type="c5.xlarge",
+    )
+    _test_replace_down_nodes(
+        remote_command_executor,
+        scheduler_commands,
+        test_datadir,
+        cluster.cfn_name,
+        region,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=3,
+        dynamic_instance_type="c5.xlarge",
+    )
+    _test_keep_or_replace_suspended_nodes(
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=3,
+        dynamic_instance_type="c5.xlarge",
+    )
+    _test_computemgtd_logic(
+        remote_command_executor,
+        scheduler_commands,
+        cluster.cfn_name,
+        region,
+        test_datadir,
+        partition="ondemand1",
+        num_static_nodes=2,
+        num_dynamic_nodes=3,
+        dynamic_instance_type="c5.xlarge",
+    )
 
-    _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instance_ids)
-    _test_replace_down_nodes(scheduler_commands, num_compute_nodes)
-    _test_keep_or_replace_suspended_nodes(scheduler_commands, num_compute_nodes)
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
+
+
+def _assert_cluster_initial_conditions(scheduler_commands):
+    """Assert that expected nodes are in cluster."""
+    cluster_node_states = scheduler_commands.get_nodes_status()
+    c4_nodes, c5_nodes, static_nodes, dynamic_nodes = [], [], [], []
+    logging.info(cluster_node_states)
+    for nodename, node_states in cluster_node_states.items():
+        if "c4" in nodename:
+            c4_nodes.append(nodename)
+        if "c5" in nodename:
+            c5_nodes.append(nodename)
+        if node_states == "idle":
+            if "-st-" in nodename:
+                static_nodes.append(nodename)
+            if "-dy-" in nodename:
+                dynamic_nodes.append(nodename)
+    assert_that(len(c4_nodes)).is_equal_to(20)
+    assert_that(len(c5_nodes)).is_equal_to(20)
+    assert_that(len(static_nodes)).is_equal_to(4)
+    assert_that(len(dynamic_nodes)).is_equal_to(1)
+
+
+def _test_partition_states(
+    scheduler_commands,
+    cluster_name,
+    region,
+    active_partition,
+    inactive_partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    """Partition states INACTIVE and UP are processed."""
+    logging.info("Testing that INACTIVE partiton are cleaned up")
+    # submit job to inactive partition to scale up some dynamic nodes
+    init_job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep 300",
+        inactive_partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition=inactive_partition, cancel_job_id=init_job_id
+    )
+    # set partition to inactive and wait for instances/node to terminate
+    scheduler_commands.set_partition_state(inactive_partition, "inactive")
+    # wait for all instances from inactive_partition to terminate
+    # active_partition should only have 2 static instances
+    wait_for_num_instances_in_cluster(cluster_name, region, 2)
+    # Assert no nodes in inactive partition
+    wait_for_num_nodes_in_scheduler(scheduler_commands, desired=0, filter_by_partition=inactive_partition)
+    # Assert active partition is not affected
+    assert_num_nodes_in_scheduler(scheduler_commands, desired=num_static_nodes, filter_by_partition=active_partition)
+    # set inactive partition back to active and wait for nodes to spin up
+    scheduler_commands.set_partition_state(inactive_partition, "up")
+    wait_for_num_nodes_in_scheduler(
+        scheduler_commands, desired=num_static_nodes, filter_by_partition=inactive_partition
+    )
+    # set inactive partition to inactive to save resources, this partition will not be used for later tests
+    scheduler_commands.set_partition_state(inactive_partition, "inactive")
+
+
+def _test_reset_terminated_nodes(
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    """
+    Test that slurm nodes are reset if instances are terminated manually.
+
+    Static capacity should be replaced and dynamic capacity power saved.
+    """
+    logging.info("Testing that nodes are reset when instances are terminated manually")
+    init_job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep 300",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    static_nodes, dynamic_nodes = assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, cancel_job_id=init_job_id
+    )
+    instance_ids = get_compute_nodes_instance_ids(cluster_name, region)
+    # terminate all instances manually
+    _terminate_nodes_manually(instance_ids)
+    # Assert that cluster replaced static node and reset dynamic nodes
+    _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes)
+    assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
+
+
+def _test_replace_down_nodes(
+    remote_command_executor,
+    scheduler_commands,
+    test_datadir,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    """Test that slurm nodes are replaced if nodes are marked DOWN."""
+    logging.info("Testing that nodes replaced when set to down state")
+    init_job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep 300",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    static_nodes, dynamic_nodes = assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition, cancel_job_id=init_job_id
+    )
+    # kill slurmd on static nodes, these nodes will be in down*
+    for node in static_nodes:
+        remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_slurmd_job.sh"), args=[node])
+    # set dynamic to down manually
+    _set_nodes_to_down_manually(scheduler_commands, dynamic_nodes)
+    _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes)
+    assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
+
+
+def _test_keep_or_replace_suspended_nodes(
+    scheduler_commands,
+    cluster_name,
+    region,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
+    logging.info(
+        "Testing that nodes are NOT terminated when set to suspend state and there is job running on the nodes"
+    )
+    job_id = submit_initial_job(
+        scheduler_commands,
+        "sleep 500",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    static_nodes, dynamic_nodes = assert_initial_conditions(
+        scheduler_commands, num_static_nodes, num_dynamic_nodes, partition
+    )
+    # Set all nodes to drain, static should be in DRAINED and dynamic in DRAINING
+    _set_nodes_to_suspend_state_manually(scheduler_commands, static_nodes + dynamic_nodes)
+    # Static nodes in DRAINED are immediately replaced
+    _wait_for_node_reset(scheduler_commands, static_nodes=static_nodes, dynamic_nodes=[])
+    # Assert dynamic nodes in DRAINING are not terminated during job run
+    _assert_nodes_not_terminated(scheduler_commands, dynamic_nodes)
+    # wait until the job is completed and check that the DRAINING dynamic nodes are then terminated
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
+    _wait_for_node_reset(scheduler_commands, static_nodes=[], dynamic_nodes=dynamic_nodes)
+    assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
+
+
+def _test_computemgtd_logic(
+    remote_command_executor,
+    scheduler_commands,
+    cluster_name,
+    region,
+    test_datadir,
+    partition,
+    num_static_nodes,
+    num_dynamic_nodes,
+    dynamic_instance_type,
+):
+    """Test that computemgtd is able to shut nodes down when clustermgtd and slurmctld are offline."""
+    logging.info("Testing that nodes are shut down when clustermgtd and slurmctld are offline")
+    submit_initial_job(
+        scheduler_commands,
+        "sleep infinity",
+        partition,
+        dynamic_instance_type,
+        num_dynamic_nodes,
+        other_options="--no-requeue",
+    )
+    assert_initial_conditions(scheduler_commands, num_static_nodes, num_dynamic_nodes, partition)
+    logging.info("Killing clustermgtd and rewriting timestamp file")
+    remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_clustermgtd.sh"), run_as_root=True)
+    # Overwrite clusterctld heartbeat to trigger timeout path
+    timestamp_format = "%Y-%m-%d %H:%M:%S.%f%z"
+    overwrite_time_str = datetime(2020, 1, 1, tzinfo=timezone.utc).strftime(timestamp_format)
+    remote_command_executor.run_remote_script(
+        str(test_datadir / "slurm_overwrite_clustermgtd_timestamp.sh"),
+        args=["{}".format(overwrite_time_str)],
+        run_as_root=True,
+    )
+    logging.info("Asserting that computemgtd is not self-terminating when slurmctld is up")
+    _assert_instances_not_terminated(cluster_name, region, desired=num_static_nodes + num_dynamic_nodes, timeout=2)
+    logging.info("Killing slurmctld")
+    remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_slurmctld.sh"), run_as_root=True)
+    logging.info("Waiting for computemgtd to self-terminate all instances")
+    wait_for_num_instances_in_cluster(cluster_name, region, 0)
 
 
 @retry(wait_fixed=seconds(30), stop_max_delay=minutes(15))
@@ -136,91 +401,34 @@ def _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, r
         assert_instance_replaced_or_terminating(hostname_to_instance_id.get(node), region)
 
 
-def _assert_initial_conditions(scheduler_commands, num_compute_nodes):
-    """Assert cluster is in expected state before test starts; return list of compute nodes."""
-    compute_nodes = scheduler_commands.get_compute_nodes()
-    logging.info(
-        "Assert initial condition, expect cluster to have {num_nodes} idle nodes".format(num_nodes=num_compute_nodes)
-    )
-    _assert_num_nodes_in_scheduler(scheduler_commands, num_compute_nodes)
-    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["idle"])
-
-    return compute_nodes
-
-
-def _test_replace_terminated_nodes(scheduler_commands, num_compute_nodes, instance_ids):
-    """Test that slurm nodes are replaced if instances are terminated manually."""
-    logging.info("Testing that nodes are replaced when terminated manually")
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
-    instance_ids_to_hostname = get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname=True)
-    # Run job on all nodes
-    _submit_sleep_job(scheduler_commands, num_compute_nodes)
-    nodes_to_retain = [instance_ids_to_hostname[instance_ids[0]]]
-    compute_nodes.remove(instance_ids_to_hostname[instance_ids[0]])
-    # terminate n-1 nodes manually
-    _terminate_nodes_manually(instance_ids[1:])
-    # ASG does EC2 health check and replace node 1 at a time, each node takes about 2 mins to replace
-    # This process does not scale well if large number of nodes are terminated manually
-    _assert_nodes_removed_and_replaced_in_scheduler(
-        scheduler_commands, compute_nodes, nodes_to_retain, desired_capacity=num_compute_nodes
-    )
+def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
+    """Wait for static and dynamic nodes to be reset."""
+    if dynamic_nodes:
+        logging.info("Assert dynamic nodes are power saved")
+        _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
+    if static_nodes:
+        logging.info("Assert static nodes are placed in DOWN during replacement")
+        # DRAIN+DOWN = drained
+        _wait_for_compute_nodes_states(
+            scheduler_commands, static_nodes, expected_states=["down", "down*", "drained", "drained*"]
+        )
+        logging.info("Assert static nodes are replaced")
+        _wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"])
 
 
-def _test_replace_down_nodes(scheduler_commands, num_compute_nodes):
-    """Test that slurm nodes are replaced if nodes are marked DOWN."""
-    logging.info("Testing that nodes replaced when set to down state")
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
-    # Run job on all nodes
-    _submit_sleep_job(scheduler_commands, num_compute_nodes)
-    # Set n-1 nodes to down
-    nodes_to_remove = compute_nodes[:-1]
-    nodes_to_retain = compute_nodes[-1:]
-    _set_nodes_to_down_manually(scheduler_commands, nodes_to_remove)
-    _assert_nodes_removed_and_replaced_in_scheduler(
-        scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=num_compute_nodes
-    )
-
-
-def _test_keep_or_replace_suspended_nodes(scheduler_commands, num_compute_nodes):
-    """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
-    logging.info(
-        "Testing that nodes are NOT terminated when set to suspend state and there is job running on the nodes"
-    )
-    compute_nodes = _assert_initial_conditions(scheduler_commands, num_compute_nodes)
-    # Run job on all nodes
-    job_id = _submit_sleep_job(scheduler_commands, num_compute_nodes)
-    # Set n-1 nodes to drain
-    nodes_to_remove = compute_nodes[:-1]
-    nodes_to_retain = compute_nodes[-1:]
-    _set_nodes_to_suspend_state_manually(scheduler_commands, nodes_to_remove)
-    # assert all nodes are retained correctly
-    _assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, compute_nodes)
-    # wait until the job is completed and check that the drain nodes are then terminated
-    scheduler_commands.wait_job_completed(job_id)
-    scheduler_commands.assert_job_succeeded(job_id)
-    _assert_nodes_removed_and_replaced_in_scheduler(
-        scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=num_compute_nodes
-    )
-
-
-def _submit_sleep_job(scheduler_commands, num_compute_nodes):
-    # submit job with --no-requeue so that we do not have to wait for job to finish
-    # if job is automatically requeued by slurm after node replacement
-    result = scheduler_commands.submit_command(
-        command="sleep 500", nodes=num_compute_nodes, other_options="--no-requeue"
-    )
-    job_id = scheduler_commands.assert_job_submitted(result.stdout)
-    # sleep for 10 seconds to avoid case of node is put into a state before job is assigned to the node
-    time.sleep(10)
-    return job_id
-
-
-def _assert_nodes_not_terminated_by_nodewatcher(scheduler_commands, nodes, nodewatcher_timeout=7):
-    logging.info("Waiting for nodewatcher action")
+def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
+    logging.info("Waiting for cluster daemon action")
     start_time = time.time()
-    while time.time() < start_time + 60 * (nodewatcher_timeout):
+    while time.time() < start_time + 60 * (timeout):
         assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
-        time.sleep(10)
+        time.sleep(20)
+
+
+def _assert_instances_not_terminated(cluster_name, region, desired, timeout=5):
+    logging.info("Waiting for cluster daemon action")
+    start_time = time.time()
+    while time.time() < start_time + 60 * (timeout):
+        assert_num_instances_in_cluster(cluster_name, region, desired)
 
 
 def _assert_nodes_removed_and_replaced_in_scheduler(
@@ -231,7 +439,7 @@ def _assert_nodes_removed_and_replaced_in_scheduler(
     Returns list of new nodenames in scheduler.
     """
     _assert_nodes_removed_from_scheduler(scheduler_commands, nodes_to_remove)
-    _assert_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
+    wait_for_num_nodes_in_scheduler(scheduler_commands, desired_capacity)
     new_compute_nodes = scheduler_commands.get_compute_nodes()
     if nodes_to_retain:
         assert_that(set(nodes_to_retain) <= set(new_compute_nodes)).is_true()
@@ -248,7 +456,7 @@ def _set_nodes_to_suspend_state_manually(scheduler_commands, compute_nodes):
     scheduler_commands.set_nodes_state(compute_nodes, state="drain")
     # draining means that there is job currently running on the node
     # drained would mean we placed node in drain when there is no job running on the node
-    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["draining"])
+    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states=["draining", "drained"])
 
 
 def _set_nodes_to_down_manually(scheduler_commands, compute_nodes):
@@ -260,6 +468,11 @@ def _assert_compute_node_states(scheduler_commands, compute_nodes, expected_stat
     node_states = scheduler_commands.get_nodes_status(compute_nodes)
     for node in compute_nodes:
         assert_that(expected_states).contains(node_states.get(node))
+
+
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(5))
+def _wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_states):
+    _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
 
 
 def _terminate_nodes_manually(instance_ids):
@@ -275,11 +488,6 @@ def _terminate_nodes_manually(instance_ids):
 @retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
 def _assert_nodes_removed_from_scheduler(scheduler_commands, nodes):
     assert_that(scheduler_commands.get_compute_nodes()).does_not_contain(*nodes)
-
-
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
-def _assert_num_nodes_in_scheduler(scheduler_commands, desired):
-    assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)
 
 
 def _assert_scaling_works(
