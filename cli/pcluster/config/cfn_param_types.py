@@ -742,8 +742,12 @@ class ClusterConfigMetadataCfnParam(JsonCfnParam):
         self.__section_resources.store(section_key, section_labels)
         LOGGER.debug("Automatic labels generated: {0}".format(str(section_labels)))
         # Refresh param value
-        self.refresh()
+        self.__resources_to_value()
         return self.__section_resources.resources(section_key)
+
+    def __resources_to_value(self):
+        """Sync data from internal resources structure to param value."""
+        self.value["sections"] = self.__section_resources.resources()
 
 
 class BaseOSCfnParam(CfnParam):
