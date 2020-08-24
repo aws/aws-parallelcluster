@@ -70,10 +70,6 @@ class HitConverter:
                     "compute" == sit_cluster_section.get_param("enable_efa").value,
                 )
                 self._copy_param_value(
-                    sit_cluster_section.get_param("disable_hyperthreading"),
-                    queue_section.get_param("disable_hyperthreading"),
-                )
-                self._copy_param_value(
                     sit_cluster_section.get_param("placement_group"), queue_section.get_param("placement_group")
                 )
 
@@ -102,17 +98,15 @@ class HitConverter:
 
                 # SIT initial size is copied to min_count or to initial_count based on SIT maintain_initial_size
                 sit_initial_size_param = sit_cluster_section.get_param("initial_queue_size")
-                sit_maintain_initial_size_param = sit_cluster_section.get_param("maintain_initial_size")
+                sit_maintain_initial_size_param = sit_cluster_section.get_param_value("maintain_initial_size")
                 compute_resource_size_param_key = "min_count" if sit_maintain_initial_size_param else "initial_count"
                 self._copy_param_value(
                     sit_initial_size_param, compute_resource_section.get_param(compute_resource_size_param_key),
                 )
 
-                # Copy all cluster params except enable_efa and disable_hyperthreading (already set at queue level)
+                # Copy all cluster params except enable_efa (already set at queue level)
                 hit_cluster_param_keys = [
-                    param_key
-                    for param_key in hit_cluster_section.params.keys()
-                    if param_key not in ["disable_hyperthreading", "enable_efa"]
+                    param_key for param_key in hit_cluster_section.params.keys() if param_key not in ["enable_efa"]
                 ]
                 for param_key in sit_cluster_section.params.keys():
                     if param_key in hit_cluster_param_keys:

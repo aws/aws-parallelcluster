@@ -51,9 +51,8 @@ def boto3_stubber_path():
                     "scheduler": "slurm",
                     "master_root_volume_size": 30,
                     "compute_root_volume_size": 35,
-                    # disable_hyperthreading and enable_efa must be set to None in converted cluster section
                     "enable_efa": None,
-                    "disable_hyperthreading": None,
+                    "disable_hyperthreading": True,
                 },
                 "queue compute": {
                     "compute_type": "ondemand",
@@ -69,7 +68,7 @@ def boto3_stubber_path():
                     "max_count": 10,
                     "initial_count": 2,
                     "spot_price": 0.4,
-                    "vcpus": 96,
+                    "vcpus": 48,
                     "gpus": 0,
                     "enable_efa": True,
                 },
@@ -98,15 +97,14 @@ def boto3_stubber_path():
                     "scheduler": "slurm",
                     "master_root_volume_size": 35,
                     "compute_root_volume_size": 40,
-                    # disable_hyperthreading and enable_efa must be set to None in converted cluster section
                     "enable_efa": None,
-                    "disable_hyperthreading": None,
+                    "disable_hyperthreading": False,
                 },
                 "queue compute": {
                     "compute_type": "ondemand",
                     "enable_efa": False,
                     "disable_hyperthreading": False,
-                    "placement_group": None,
+                    "placement_group": "",
                     "compute_resource_settings": "default",
                 },
                 "compute_resource default": {
@@ -196,4 +194,5 @@ def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
         assert_that(src_section).is_not_none()
 
         for param_key, param_value in section.items():
-            assert_that(src_section.get_param_value(param_key) == param_value)
+            print("param_type: {0}".format(param_key))
+            assert_that(src_section.get_param_value(param_key)).is_equal_to(param_value)
