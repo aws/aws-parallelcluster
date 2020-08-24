@@ -420,7 +420,7 @@ def _retrieve_slurm_dummy_nodes(remote_command_executor, gres=False):
     return len(remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout.split("\n"))
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
 def _assert_no_nodes_in_scheduler(scheduler_commands):
     assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(0)
 
