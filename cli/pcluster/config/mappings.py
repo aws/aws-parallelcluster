@@ -620,6 +620,13 @@ COMPUTE_RESOURCE = {
             "visibility": Visibility.PRIVATE,
             "default": False
         }),
+        ("disable_hyperthreading", {
+            "type": BooleanJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": False
+        }),
     ])
 }
 
