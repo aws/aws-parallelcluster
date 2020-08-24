@@ -295,22 +295,45 @@ class SlurmCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, host=None, after_ok=None, other_options=None):  # noqa: D102
-        submission_command = "sbatch --wrap='{0}'".format(command)
-        if nodes > 0:
-            submission_command += "  -N {0}".format(nodes)
-        if host:
-            submission_command += " --nodelist={0}".format(host)
-        if slots:
-            submission_command += " -n {0}".format(slots)
-        if after_ok:
-            submission_command += " -d afterok:{0}".format(after_ok)
-        if other_options:
-            submission_command += " {0}".format(other_options)
-        return self._remote_command_executor.run_remote_command(submission_command)
+    def submit_command(
+        self,
+        command,
+        nodes=0,
+        slots=None,
+        host=None,
+        after_ok=None,
+        partition=None,
+        constraint=None,
+        other_options=None,
+        raise_on_error=True,
+    ):  # noqa: D102
+        job_submit_command = "--wrap='{0}'".format(command)
+
+        return self._submit_batch_job(
+            job_submit_command,
+            nodes,
+            slots,
+            host,
+            after_ok,
+            partition,
+            constraint,
+            other_options,
+            raise_on_error=raise_on_error,
+        )
 
     def submit_script(
-        self, script, script_args=None, nodes=1, slots=None, host=None, additional_files=None
+        self,
+        script,
+        script_args=None,
+        nodes=0,
+        slots=None,
+        host=None,
+        after_ok=None,
+        partition=None,
+        constraint=None,
+        other_options=None,
+        additional_files=None,
+        raise_on_error=True,
     ):  # noqa: D102
         if not additional_files:
             additional_files = []
@@ -318,15 +341,57 @@ class SlurmCommands(SchedulerCommands):
             script_args = []
         additional_files.append(script)
         script_name = os.path.basename(script)
+        job_submit_command = " {0} {1}".format(script_name, " ".join(script_args))
+
+        return self._submit_batch_job(
+            job_submit_command,
+            nodes,
+            slots,
+            host,
+            after_ok,
+            partition,
+            constraint,
+            other_options,
+            additional_files,
+            raise_on_error=raise_on_error,
+        )
+
+    def _submit_batch_job(
+        self,
+        job_submit_command,
+        nodes=0,
+        slots=None,
+        host=None,
+        after_ok=None,
+        partition=None,
+        constraint=None,
+        other_options=None,
+        additional_files=None,
+        raise_on_error=True,
+    ):
         submission_command = "sbatch"
         if host:
             submission_command += " --nodelist={0}".format(host)
         if slots:
             submission_command += " -n {0}".format(slots)
-        if nodes > 1:
+        if nodes > 0:
             submission_command += " -N {0}".format(nodes)
-        submission_command += " {0} {1}".format(script_name, " ".join(script_args))
-        return self._remote_command_executor.run_remote_command(submission_command, additional_files=additional_files)
+        if after_ok:
+            submission_command += " -d afterok:{0}".format(after_ok)
+        if partition:
+            submission_command += " -p {0}".format(partition)
+        if constraint:
+            submission_command += " -C {0}".format(constraint)
+        if other_options:
+            submission_command += " {0}".format(other_options)
+        submission_command += " {0}".format(job_submit_command)
+
+        if additional_files:
+            return self._remote_command_executor.run_remote_command(
+                submission_command, additional_files=additional_files, raise_on_error=raise_on_error
+            )
+        else:
+            return self._remote_command_executor.run_remote_command(submission_command, raise_on_error=raise_on_error)
 
     def assert_job_succeeded(self, job_id, children_number=0):  # noqa: D102
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
@@ -339,7 +404,9 @@ class SlurmCommands(SchedulerCommands):
         command = "sinfo --Node --noheader --responding"
         if filter_by_partition:
             command += " --partition {}".format(filter_by_partition)
-        command += " | grep -v '[~#]' | awk '{print $1}'"
+        # Print first and fourth columns to get nodename and state only (default partition contains *)
+        # Filter out nodes that are not responding or in power saving states
+        command += " | awk '{print $1, $4}' | grep -v '[*#~]' | awk '{print $1}'"
         result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 
@@ -347,9 +414,12 @@ class SlurmCommands(SchedulerCommands):
     def wait_for_locked_node(self):  # noqa: D102
         return self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -h -o '%t'").stdout
 
-    def get_node_cores(self):
+    def get_node_cores(self, partition=None):
         """Return number of slots from the scheduler."""
-        result = self._remote_command_executor.run_remote_command("/opt/slurm/bin/sinfo -o '%c' -h")
+        check_core_cmd = "/opt/slurm/bin/sinfo -o '%c' -h"
+        if partition:
+            check_core_cmd += " -p {}".format(partition)
+        result = self._remote_command_executor.run_remote_command(check_core_cmd)
         return re.search(r"(\d+)", result.stdout).group(1)
 
     def get_job_info(self, job_id):
@@ -368,15 +438,31 @@ class SlurmCommands(SchedulerCommands):
             )
         )
 
-    def get_nodes_status(self, nodes):
+    def set_partition_state(self, partition, state):
+        """Put partition into a state."""
+        self._remote_command_executor.run_remote_command(
+            "sudo /opt/slurm/bin/scontrol update partition={} state={}".format(partition, state)
+        )
+
+    def get_nodes_status(self, filter_by_nodes=None):
         """Retrieve node state/status from scheduler"""
         result = self._remote_command_executor.run_remote_command(
-            "/opt/slurm/bin/sinfo -O nodehost,statelong | tail -n +2"
+            "/opt/slurm/bin/sinfo -N --long -h | awk '{print$1, $4}'"
         ).stdout.splitlines()
         current_node_states = {}
         for entry in result:
-            current_node_states[entry.split()[0]] = entry.split()[1]
-        return {node: current_node_states.get(node, "Unable to retrieve state") for node in nodes}
+            nodename, state = entry.split()
+            current_node_states[nodename] = state
+        return (
+            {node: current_node_states.get(node, "Unable to retrieve state") for node in filter_by_nodes}
+            if filter_by_nodes
+            else current_node_states
+        )
+
+    def submit_command_and_assert_job_accepted(self, submit_command_args):
+        """Submit a command and assert the job is accepted by scheduler."""
+        result = self.submit_command(**submit_command_args)
+        return self.assert_job_submitted(result.stdout)
 
 
 class TorqueCommands(SchedulerCommands):

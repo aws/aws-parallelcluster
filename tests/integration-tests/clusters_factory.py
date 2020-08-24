@@ -87,6 +87,57 @@ class Cluster:
                 raise
         self.has_been_deleted = True
 
+    def start(self):
+        """Run pcluster start and return the result."""
+        cmd_args = ["pcluster", "start", "--config", self.config_file, self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Cluster {0} started successfully".format(self.name))
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed starting cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def stop(self):
+        """Run pcluster stop and return the result."""
+        cmd_args = ["pcluster", "stop", "--config", self.config_file, self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Cluster {0} stopped successfully".format(self.name))
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error("Failed stopping cluster with with error:\n%s\nand output:\n%s", e.stderr, e.stdout)
+            raise
+
+    def status(self):
+        """Run pcluster stop and return the result."""
+        cmd_args = ["pcluster", "status", "--config", self.config_file, self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Get cluster {0} status successfully".format(self.name))
+            return result.stdout
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "Failed when getting cluster status with with error:\n%s\nand output:\n%s", e.stderr, e.stdout
+            )
+            raise
+
+    def instances(self):
+        """Run pcluster stop and return the result."""
+        cmd_args = ["pcluster", "instances", "--config", self.config_file, self.name]
+        try:
+            result = run_command(cmd_args, log_error=False)
+            logging.info("Get cluster {0} instances successfully".format(self.name))
+            cluster_instances = []
+            for entry in result.stdout.splitlines():
+                cluster_instances.append(entry.split()[1])
+            return cluster_instances
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                "Failed when getting cluster instances with with error:\n%s\nand output:\n%s", e.stderr, e.stdout
+            )
+            raise
+
     @property
     def cfn_name(self):
         """Return the name of the CloudFormation stack associated to the cluster."""
