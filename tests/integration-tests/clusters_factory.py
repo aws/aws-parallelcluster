@@ -34,6 +34,10 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def __repr__(self):
+        attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
+        return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
+
     def update(self, reset_desired=False, extra_params=None):
         """
         Update a cluster with an already updated config.

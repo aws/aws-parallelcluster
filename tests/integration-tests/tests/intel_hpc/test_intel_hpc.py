@@ -23,7 +23,7 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge"])
 @pytest.mark.oss(["centos7"])
-@pytest.mark.schedulers(["sge"])
+@pytest.mark.schedulers(["slurm"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Intel Cluster Checker"""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -33,7 +33,7 @@ def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clus
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_instance, test_datadir)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_instance, test_datadir):
@@ -46,9 +46,9 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_inst
     # ip-172-31-12-237  # role: compute
     # ip-172-31-8-49  # role: compute
     remote_command_executor.run_remote_command("echo $HOSTNAME | awk '{print $1 \" # role: head\" }' > nodefile")
-    remote_command_executor.run_remote_command(
-        "qhost | tail -n +4 | awk '{print $1 \" # role: compute\" }' >> nodefile"
-    )
+    compute_nodes = scheduler_commands.get_compute_nodes()
+    for node in compute_nodes:
+        remote_command_executor.run_remote_command("echo '{0} # role: compute' >> nodefile".format(node))
     result = remote_command_executor.run_remote_command("cat nodefile | wc -l")
     assert_that(result.stdout).contains("3")
 
