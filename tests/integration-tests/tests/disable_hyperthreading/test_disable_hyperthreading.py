@@ -33,7 +33,7 @@ def test_disable_hyperthreading(region, scheduler, instance, os, pcluster_config
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _test_disable_hyperthreading(remote_command_executor, scheduler_commands, slots_per_instance, scheduler):

@@ -19,7 +19,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 
 
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("os")
@@ -34,8 +34,7 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
     _test_s3_access(remote_command_executor, region)
     _test_batch_access(remote_command_executor, region)
 
-    if not scheduler == "awsbatch":
-        assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _test_s3_access(remote_command_executor, region):
