@@ -21,7 +21,7 @@ from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, compile_mpi_ring
-from tests.common.schedulers_common import SlurmCommands
+from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
@@ -52,6 +52,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
 
     if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
+
+    _test_torque_job_submit(remote_command_executor, test_datadir)
 
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)
     _test_cluster_limits(remote_command_executor, max_queue_size)
@@ -469,3 +471,11 @@ def _assert_job_state(remote_command_executor, job_id, job_state):
     except RemoteCommandExecutionError as e:
         # Handle the case when job is deleted from history
         assert_that(e.result.stdout).contains("slurm_load_jobs error: Invalid job id specified")
+
+
+def _test_torque_job_submit(remote_command_executor, test_datadir):
+    """Test torque job submit command in slurm cluster."""
+    logging.info("Testing cluster submits job by torque command")
+    torque_commands = TorqueCommands(remote_command_executor)
+    result = torque_commands.submit_script(str(test_datadir / "torque_job.sh"))
+    torque_commands.assert_job_submitted(result.stdout)
