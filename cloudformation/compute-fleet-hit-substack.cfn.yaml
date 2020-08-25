@@ -262,7 +262,8 @@ Resources:
                         "cfn_node_type": "ComputeFleet",
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
-                        "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}"
+                        "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
+                        "scheduler_queue_name": "{{ queue }}"
                       },
                       "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                     }
