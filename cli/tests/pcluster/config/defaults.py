@@ -169,6 +169,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "custom_chef_cookbook": None,
     "disable_hyperthreading": None,
     "enable_intel_hpc_platform": False,
+    "disable_cluster_dns": False,
     "scaling_settings": "default",
     "vpc_settings": "default",
     "ebs_settings": None,

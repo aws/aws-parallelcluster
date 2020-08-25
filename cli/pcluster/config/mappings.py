@@ -1023,6 +1023,11 @@ CLUSTER_HIT = {
                 "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
+            ("disable_cluster_dns", {
+                "type": BooleanJsonParam,
+                "default": False,
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
         ]
     )
 }

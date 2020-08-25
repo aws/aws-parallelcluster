@@ -2,6 +2,7 @@
   "cluster": {
     "label": "default",
     "default_queue": "None",
+    "disable_cluster_dns": true,
     "queue_settings": {
       "queue1": {
         "compute_type": "ondemand",

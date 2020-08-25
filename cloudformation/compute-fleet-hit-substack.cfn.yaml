@@ -78,10 +78,18 @@ Parameters:
     Type: String
   VPCId:
     Type: AWS::EC2::VPC::Id
+  RootRole:
+    Type: String
+  ResourcesS3Bucket:
+    Type: String
 Conditions:
   UseProxy: !Not
     - !Equals
       - !Ref 'ProxyServer'
+      - NONE
+  AddRoute53IamPolicies: !Not
+    - !Equals
+      - !Ref 'RootRole'
       - NONE
 Resources:
 {%- for queue, queue_config in queues.items() %}
@@ -264,8 +272,8 @@ Resources:
                         "cfn_shared_dir": "${SharedDir}",
                         "cfn_proxy": "${ProxyServer}",
                         "cfn_ddb_table": "${DynamoDBTable}",
-                        "cfn_dns_domain": "${ClusterDNSDomain}",
-                        "cfn_hosted_zone": "${ClusterHostedZone}",
+                        "cfn_dns_domain": {% if config.cluster.disable_cluster_dns == False %}"${ClusterDNSDomain}"{% else %}""{% endif %},
+                        "cfn_hosted_zone": {% if config.cluster.disable_cluster_dns == False %}"${ClusterHostedZone}"{% else %}""{% endif %},
                         "cfn_node_type": "ComputeFleet",
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
@@ -300,6 +308,7 @@ Resources:
                 echo "Reporting instance as unhealthy and dumping logs to ${!log_dir}/${!instance_id}.tar.gz"
                 tar -czf ${!log_dir}/${!instance_id}.tar.gz /var/log
                 # TODO: add possibility to disable this behavior
+                # wait logs flush before signaling the failure
                 sleep 10
                 aws --region ${!region} ec2 terminate-instances --instance-ids ${!instance_id}
                 exit 1
@@ -424,6 +433,7 @@ Resources:
           Projection:
             ProjectionType: KEYS_ONLY
       BillingMode: PAY_PER_REQUEST
+  {%- if config.cluster.disable_cluster_dns == False %}
   ClusterHostedZone:
     Type: AWS::Route53::HostedZone
     Properties:
@@ -431,11 +441,98 @@ Resources:
       VPCs:
         - VPCId: !Ref 'VPCId'
           VPCRegion: !Ref 'AWS::Region'
+  ParallelClusterHITRoute53Policies:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: parallelcluster-hit-route53
+      PolicyDocument:
+        Statement:
+          - Sid: Route53Add
+            Action:
+              - route53:ChangeResourceRecordSets
+            Effect: Allow
+            Resource:
+              - !Sub
+                - arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}
+                - ClusterHostedZone: !Ref 'ClusterHostedZone'
+      Roles:
+        - !Ref 'RootRole'
+    Condition: AddRoute53IamPolicies
+  CleanupRoute53Function:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub
+        - pcluster-CleanupRoute53-${StackId}
+        - StackId: !Select
+            - '2'
+            - !Split
+              - /
+              - !Ref 'AWS::StackId'
+      Code:
+        S3Bucket: !Ref 'ResourcesS3Bucket'
+        S3Key: custom_resources_code/artifacts.zip
+      Handler: cleanup_resources.handler
+      MemorySize: 128
+      Role: !GetAtt 'CleanupRoute53FunctionExecutionRole.Arn'
+      Runtime: python3.8
+      Timeout: 900
+  CleanupRoute53CustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ClusterHostedZone: !Ref 'ClusterHostedZone'
+      Action: DELETE_DNS_RECORDS
+      ServiceToken: !GetAtt 'CleanupRoute53Function.Arn'
+  CleanupRoute53FunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+                Sid: CloudWatchLogsPolicy
+              - Sid: Route53DeletePolicy
+                Effect: Allow
+                Action:
+                  - route53:ListResourceRecordSets
+                  - route53:ChangeResourceRecordSets
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}
+                    - ClusterHostedZone: !Ref 'ClusterHostedZone'
+            Version: '2012-10-17'
+          PolicyName: LambdaPolicy
+  {%- endif %}
+Metadata:
+  RootRole: !Ref 'RootRole'
+  VPCId: !Ref 'VPCId'
+  ClusterDNSDomain: !Ref 'ClusterDNSDomain'
+  ResourcesS3Bucket: !Ref 'ResourcesS3Bucket'
+  AddRoute53IamPolicies: !If
+    - AddRoute53IamPolicies
+    - true
+    - false
 Outputs:
   ClusterHostedZone:
     Description: Id of the private hosted zone created within the cluster
-    Value: !Ref 'ClusterHostedZone'
+    Value: {% if config.cluster.disable_cluster_dns == False %}!Ref 'ClusterHostedZone'{% else %}''{% endif %}
   ClusterDNSDomain:
     Description: DNS Domain of the private hosted zone created within the cluster
-    Value: !Ref 'ClusterDNSDomain'
+    Value: {% if config.cluster.disable_cluster_dns == False %}!Ref 'ClusterDNSDomain'{% else %}''{% endif %}
+  CleanupRoute53CustomResource:
+    Description: ARN of the custom resource to cleanup Route53
+    Value: {% if config.cluster.disable_cluster_dns == False %}!Ref 'CleanupRoute53CustomResource'{% else %}''{% endif %}
 
