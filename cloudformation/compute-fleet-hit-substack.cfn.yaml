@@ -120,8 +120,8 @@ Resources:
   {%- endif %}
         ImageId: !Ref 'ImageId'
         CpuOptions:
-          CoreCount: {{ compute_resource.vcpus if queue_config.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
-          ThreadsPerCore: {{ 1 if queue_config.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
+          CoreCount: {{ compute_resource.vcpus if compute_resource.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
+          ThreadsPerCore: {{ 1 if compute_resource.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
         Monitoring:
           Enabled: false
         TagSpecifications:
@@ -257,7 +257,7 @@ Resources:
                         "cfn_fsx_fs_id": "${FSXId}",
                         "cfn_fsx_options": "${FSXOptions}",
                         "cfn_scheduler": "${Scheduler}",
-                        "cfn_scheduler_slots": "{{ 'cores' if queue_config.disable_hyperthreading else 'vcpus' }}",
+                        "cfn_scheduler_slots": "{{ 'cores' if compute_resource.disable_hyperthreading else 'vcpus' }}",
                         "cfn_scaledown_idletime": "{{ scaling_config.scaledown_idletime }}",
                         "cfn_encrypted_ephemeral": "${EncryptedEphemeral}",
                         "cfn_ephemeral_dir": "${EphemeralDir}",
@@ -269,7 +269,8 @@ Resources:
                         "cfn_node_type": "ComputeFleet",
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
-                        "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}"
+                        "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
+                        "scheduler_queue_name": "{{ queue }}"
                       },
                       "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                     }

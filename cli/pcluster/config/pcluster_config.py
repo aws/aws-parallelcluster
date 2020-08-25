@@ -511,7 +511,7 @@ class PclusterConfig(object):
         configuration settings.
         :param config_file: pcluster config file - None to use default
         """
-        PclusterConfig(config_file=config_file, fail_on_error=False, fail_on_file_absence=False)
+        PclusterConfig(config_file=config_file, fail_on_error=False, fail_on_file_absence=False, auto_refresh=False)
 
     def update(self, pcluster_config):
         """

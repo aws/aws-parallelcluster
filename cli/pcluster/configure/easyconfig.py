@@ -303,6 +303,11 @@ def _convert_config(pcluster_config):
             compute_resource_section = pcluster_config.get_section("compute_resource", "default")
             _reset_config_params(compute_resource_section, ["initial_count"])
 
+            # cluster's disable_hyperthreading's HIT default is None instead of False
+            cluster_section = pcluster_config.get_section("cluster")
+            if not cluster_section.get_param_value("disable_hyperthreading"):
+                _reset_config_params(cluster_section, ["disable_hyperthreading"])
+
 
 class SchedulerHandler:
     """Handle question scheduler related."""
