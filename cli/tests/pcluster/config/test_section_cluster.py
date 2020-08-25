@@ -163,9 +163,10 @@ def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ),
         # right value
         (
-            {"cluster default": {"key_name": "test"}},
+            {"cluster default": {"key_name": "test", "disable_cluster_dns": True}},
             {
                 "key_name": "test",
+                "disable_cluster_dns": True,
                 "additional_iam_policies": [],
                 "architecture": None,
                 "scheduler": "slurm",
