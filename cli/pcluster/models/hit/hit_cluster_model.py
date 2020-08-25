@@ -89,7 +89,7 @@ class HITClusterModel(ClusterModel):
                 self.__test_compute_resource(
                     pcluster_config,
                     compute_resource_section,
-                    disable_hyperthreading=queue_section.get_param_value("disable_hyperthreading"),
+                    disable_hyperthreading=compute_resource_section.get_param_value("disable_hyperthreading"),
                     ami_id=latest_alinux_ami_id,
                     subnet=compute_subnet,
                     security_groups_ids=security_groups_ids,

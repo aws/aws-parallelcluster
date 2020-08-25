@@ -17,7 +17,8 @@
             "spot_price": 0,
             "vcpus": 2,
             "gpus": 0,
-            "enable_efa": false
+            "enable_efa": false,
+            "disable_hyperthreading": true
           },
           "q1-i2": {
             "instance_type": "g4dn.metal",
@@ -27,7 +28,8 @@
             "spot_price": 0,
             "vcpus": 96,
             "gpus": 8,
-            "enable_efa": true
+            "enable_efa": true,
+            "disable_hyperthreading": false
           },
           "q1-i3": {
             "instance_type": "i3en.24xlarge",
@@ -37,7 +39,8 @@
             "spot_price": 0,
             "vcpus": 48,
             "gpus": 0,
-            "enable_efa": true
+            "enable_efa": true,
+            "disable_hyperthreading": true
           }
         }
       },
@@ -55,7 +58,8 @@
             "spot_price": 0.4,
             "vcpus": 4,
             "gpus": 0,
-            "enable_efa": false
+            "enable_efa": false,
+            "disable_hyperthreading": false
           },
           "q2-i2": {
             "instance_type": "g4dn.metal",
@@ -65,7 +69,8 @@
             "spot_price": 0.5,
             "vcpus": 96,
             "gpus": 8,
-            "enable_efa": false
+            "enable_efa": false,
+            "disable_hyperthreading": false
           },
           "q2-i3": {
             "instance_type": "i3en.24xlarge",
@@ -75,7 +80,8 @@
             "spot_price": 0.6,
             "vcpus": 96,
             "gpus": 0,
-            "enable_efa": false
+            "enable_efa": false,
+            "disable_hyperthreading": false
           }
         }
       },
@@ -93,7 +99,8 @@
             "spot_price": 0.4,
             "vcpus": 96,
             "gpus": 0,
-            "enable_efa": true
+            "enable_efa": true,
+            "disable_hyperthreading": false
           }
         }
       }
