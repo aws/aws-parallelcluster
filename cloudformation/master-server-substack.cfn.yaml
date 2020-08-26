@@ -501,7 +501,7 @@ Resources:
           commands:
             chef:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
-                auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes
+                info --force-formatter --no-color --chef-zero-port 8889 --json-attributes
                 /etc/chef/dna.json --override-runlist aws-parallelcluster::_prep_env
                 | tee -a /var/log/chef-client.log
               cwd: /etc/chef
@@ -513,7 +513,7 @@ Resources:
           commands:
             chef:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
-                auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes
+                info --force-formatter --no-color --chef-zero-port 8889 --json-attributes
                 /etc/chef/dna.json | tee -a /var/log/chef-client.log
               cwd: /etc/chef
         shellRunPostInstall:
@@ -524,7 +524,7 @@ Resources:
           commands:
             chef:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
-                auto --force-formatter --no-color --chef-zero-port 8889 --json-attributes
+                info --force-formatter --no-color --chef-zero-port 8889 --json-attributes
                 /etc/chef/dna.json --override-runlist aws-parallelcluster::finalize
                 | tee -a /var/log/chef-client.log
               cwd: /etc/chef
