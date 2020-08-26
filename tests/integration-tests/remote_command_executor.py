@@ -91,7 +91,13 @@ class RemoteCommandExecutor:
         return result
 
     def run_remote_script(
-        self, script_file, args=None, log_error=True, additional_files=None, hide=False, timeout=None,
+        self,
+        script_file,
+        args=None,
+        log_error=True,
+        additional_files=None,
+        hide=False,
+        timeout=None,
     ):
         """
         Execute a script remotely on the cluster master node.

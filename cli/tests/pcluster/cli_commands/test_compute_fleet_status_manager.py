@@ -17,8 +17,16 @@ class TestComputeFleetStatusManager:
         "get_item_response, fallback, expected_status",
         [
             ({"Item": {"Id": "COMPUTE_FLEET", "Status": "RUNNING"}}, None, ComputeFleetStatus.RUNNING),
-            ({}, ComputeFleetStatus.STOPPED, ComputeFleetStatus.STOPPED,),
-            (Exception, ComputeFleetStatus.STOPPED, ComputeFleetStatus.STOPPED,),
+            (
+                {},
+                ComputeFleetStatus.STOPPED,
+                ComputeFleetStatus.STOPPED,
+            ),
+            (
+                Exception,
+                ComputeFleetStatus.STOPPED,
+                ComputeFleetStatus.STOPPED,
+            ),
         ],
         ids=["success", "empty_response", "exception"],
     )
@@ -36,7 +44,10 @@ class TestComputeFleetStatusManager:
     @pytest.mark.parametrize(
         "put_item_response, expected_exception",
         [
-            ({}, None,),
+            (
+                {},
+                None,
+            ),
             (
                 boto3.client("dynamodb", region_name="us-east-1").exceptions.ConditionalCheckFailedException(
                     {"Error": {}}, {}
