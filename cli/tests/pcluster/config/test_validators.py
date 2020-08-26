@@ -18,9 +18,10 @@ from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.cfn_param_types import CfnParam, CfnSection
-from pcluster.config.mappings import FSX
+from pcluster.config.mappings import ALLOWED_VALUES, FSX
 from pcluster.config.validators import (
     DCV_MESSAGES,
+    EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     architecture_os_validator,
@@ -2018,3 +2019,40 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         assert_that(errors[0]).matches(expected_error)
     else:
         assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_error",
+    [
+        ({"volume_type": "standard", "volume_size": 15}, None),
+        ({"volume_type": "standard", "volume_size": 0}, "The size of standard volumes must be at least 1 GiB"),
+        ({"volume_type": "standard", "volume_size": 1025}, "The size of standard volumes can not exceed 1024 GiB"),
+        ({"volume_type": "io1", "volume_size": 15}, None),
+        ({"volume_type": "io1", "volume_size": 3}, "The size of io1 volumes must be at least 4 GiB"),
+        ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
+        # TODO Uncomment these lines after adding support for io2 volume types
+        # ({"volume_type": "io2", "volume_size": 15}, None),
+        # ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
+        # ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes must be at most 16384 GiB"),
+        ({"volume_type": "gp2", "volume_size": 15}, None),
+        ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
+        ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "st1", "volume_size": 500}, None),
+        ({"volume_type": "st1", "volume_size": 20}, "The size of st1 volumes must be at least 500 GiB"),
+        ({"volume_type": "st1", "volume_size": 16385}, "The size of st1 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "sc1", "volume_size": 500}, None),
+        ({"volume_type": "sc1", "volume_size": 20}, "The size of sc1 volumes must be at least 500 GiB"),
+        ({"volume_type": "sc1", "volume_size": 16385}, "The size of sc1 volumes can not exceed 16384 GiB"),
+    ],
+)
+def test_ebs_volume_type_size_validator(mocker, section_dict, caplog, expected_error):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error)
+
+
+def test_ebs_allowed_values_all_have_volume_size_bounds():
+    """Ensure that all known EBS volume types are accounted for by the volume size validator."""
+    allowed_values_all_have_volume_size_bounds = set(ALLOWED_VALUES["volume_types"]) <= set(
+        EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
+    )
+    assert_that(allowed_values_all_have_volume_size_bounds).is_true()
