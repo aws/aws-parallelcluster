@@ -21,6 +21,7 @@ from logging.handlers import RotatingFileHandler
 import argparse
 from botocore.exceptions import NoCredentialsError
 
+import pcluster.cli_commands.delete as pcluster_delete
 import pcluster.cli_commands.start as pcluster_start
 import pcluster.cli_commands.stop as pcluster_stop
 import pcluster.commands as pcluster
@@ -58,7 +59,7 @@ def list_stacks(args):
 
 
 def delete(args):
-    pcluster.delete(args)
+    pcluster_delete.delete(args)
 
 
 def instances(args):
