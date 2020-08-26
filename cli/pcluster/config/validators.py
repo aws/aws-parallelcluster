@@ -63,6 +63,15 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "arm64": ["ubuntu1804", "alinux2"],
 }
 
+EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
+    "standard": (1, 1024),
+    "io1": (4, 16 * 1024),
+    "io2": (4, 16 * 1024),
+    "gp2": (1, 16 * 1024),
+    "st1": (500, 16 * 1024),
+    "sc1": (500, 16 * 1024),
+}
+
 # Constants for section labels
 LABELS_MAX_LENGTH = 64
 LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
@@ -1253,3 +1262,30 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
 def _describe_ec2_key_pair(key_pair_name):
     """Return information about the provided ec2 key pair."""
     return boto3.client("ec2").describe_key_pairs(KeyNames=[key_pair_name])
+
+
+def ebs_volume_type_size_validator(section_key, section_label, pcluster_config):
+    """
+    Validate that the EBS volume size matches the chosen volume type.
+
+    The default value of volume_size for EBS volumes is 20 GiB.
+    The volume size of standard ranges from 1 GiB - 1 TiB(1024 GiB)
+    The volume size of gp2 ranges from 1 GiB - 16 TiB(16384 GiB)
+    The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
+    The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
+    """
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    volume_size = section.get_param_value("volume_size")
+    volume_type = section.get_param_value("volume_type")
+
+    if volume_type in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
+        min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type)
+        if volume_size > max_size:
+            errors.append("The size of {0} volumes can not exceed {1} GiB".format(volume_type, max_size))
+        elif volume_size < min_size:
+            errors.append("The size of {0} volumes must be at least {1} GiB".format(volume_type, min_size))
+
+    return errors, warnings
