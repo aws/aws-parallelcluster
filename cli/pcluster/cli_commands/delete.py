@@ -13,10 +13,12 @@ import sys
 import time
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from pcluster import utils
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.utils import NodeType, paginate_boto3
 
 LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +35,7 @@ def delete(args):
                 )
             )
         utils.warn("Cluster {0} has already been deleted.".format(args.cluster_name))
+        _terminate_cluster_nodes(stack_name)
         sys.exit(0)
     elif args.keep_logs:
         _persist_cloudwatch_log_groups(args.cluster_name)
@@ -79,11 +82,11 @@ def _delete_cluster(cluster_name, nowait):
     """Delete cluster described by cluster_name."""
     cfn = boto3.client("cloudformation")
     saw_update = False
+    terminate_compute_fleet = not nowait
+    stack_name = utils.get_stack_name(cluster_name)
     try:
         # delete_stack does not raise an exception if stack does not exist
         # Use describe_stacks to explicitly check if the stack exists
-        stack_name = utils.get_stack_name(cluster_name)
-        cfn.describe_stacks(StackName=stack_name)
         cfn.delete_stack(StackName=stack_name)
         saw_update = True
         stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
@@ -117,5 +120,40 @@ def _delete_cluster(cluster_name, nowait):
         sys.stdout.flush()
         sys.exit(1)
     except KeyboardInterrupt:
+        terminate_compute_fleet = False
         LOGGER.info("\nExiting...")
         sys.exit(0)
+    finally:
+        if terminate_compute_fleet:
+            _terminate_cluster_nodes(stack_name)
+
+
+def _terminate_cluster_nodes(stack_name):
+    try:
+        LOGGER.debug("Compute fleet clean-up: STARTED")
+        # FIXME: improve messaging when cluster does not exist
+        LOGGER.info("\nChecking if there are any running compute fleet nodes that require termination")
+        ec2 = boto3.client("ec2", config=Config(retries={"max_attempts": 10}))
+
+        for instance_ids in _describe_instance_ids_iterator(stack_name):
+            LOGGER.debug("Terminating instances %s", instance_ids)
+            if instance_ids:
+                ec2.terminate_instances(InstanceIds=instance_ids)
+
+        LOGGER.debug("Compute fleet clean-up: COMPLETED")
+    except Exception as e:
+        LOGGER.error("Failed when terminating EC2 instances with error %s", e)
+
+
+def _describe_instance_ids_iterator(stack_name, instance_state=("pending", "running", "stopping", "stopped")):
+    ec2 = boto3.client("ec2")
+    filters = [
+        {"Name": "tag:Application", "Values": [stack_name]},
+        {"Name": "instance-state-name", "Values": list(instance_state)},
+        {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(NodeType.compute)]},
+    ]
+    for page in paginate_boto3(ec2.describe_instances, Filters=filters, PaginationConfig={"PageSize": 100}):
+        instances = []
+        for instance in page.get("Instances", []):
+            instances.append(instance.get("InstanceId"))
+        yield instances

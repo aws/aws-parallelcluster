@@ -28,21 +28,24 @@ def get_fake_pdelete_args(cluster_name="cluster_name", config_file=None, nowait=
 
 
 @pytest.mark.parametrize(
-    "keep_logs,stack_exists,warn_call_count,persist_called,delete_called",
+    "keep_logs,stack_exists,warn_call_count,persist_called,delete_called,terminate_instances_called",
     [
-        (True, False, 2, False, False),
-        (False, False, 1, False, False),
-        (False, True, 0, False, True),
-        (True, True, 0, True, True),
+        (True, False, 2, False, False, True),
+        (False, False, 1, False, False, True),
+        (False, True, 0, False, True, False),
+        (True, True, 0, True, True, False),
     ],
 )
-def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called, delete_called):
+def test_delete(
+    mocker, keep_logs, stack_exists, warn_call_count, persist_called, delete_called, terminate_instances_called
+):
     """Verify that commands.delete behaves as expected."""
     mocker.patch("pcluster.commands.utils.stack_exists").return_value = stack_exists
     persist_cloudwatch_log_groups_mock = mocker.patch("pcluster.cli_commands.delete._persist_cloudwatch_log_groups")
     delete_cluster_mock = mocker.patch("pcluster.cli_commands.delete._delete_cluster")
     warn_mock = mocker.patch("pcluster.commands.utils.warn")
     init_aws_mock = mocker.patch("pcluster.commands.PclusterConfig.init_aws")
+    terminate_cluster_nodes_mock = mocker.patch("pcluster.cli_commands.delete._terminate_cluster_nodes")
     args = get_fake_pdelete_args(keep_logs=keep_logs)
 
     if not stack_exists:
@@ -65,6 +68,9 @@ def test_delete(mocker, keep_logs, stack_exists, warn_call_count, persist_called
     assert_that(delete_cluster_mock.called).is_equal_to(delete_called)
     if delete_called:
         delete_cluster_mock.assert_called_with(args.cluster_name, args.nowait)
+
+    if terminate_instances_called:
+        terminate_cluster_nodes_mock.assert_called_with(FAKE_STACK_NAME)
 
 
 @pytest.mark.parametrize(
