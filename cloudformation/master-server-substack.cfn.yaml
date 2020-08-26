@@ -104,7 +104,7 @@ Parameters:
     Type: String
   ResourcesS3Bucket:
     Type: String
-  DependsOnTerminateComputeFleetCustomResource:
+  DependsOnCustomResources:
     Type: String
     Description: This is needed to set a conditional dependency on the TerminateComputeFleetCustomResource
       used with HIT
@@ -339,6 +339,8 @@ Resources:
 
               function error_exit
               {
+                # wait logs flush before signaling the failure
+                sleep 10
                 cfn-signal --exit-code=1 --reason="$1" --stack=${AWS::StackName} --role=${IamRoleName} --resource=MasterServer --region=${AWS::Region}
                 exit 1
               }
@@ -542,4 +544,4 @@ Outputs:
     Description: Private DNS name of the Master host
     Value: !GetAtt 'MasterServer.PrivateDnsName'
 Metadata:
-  DependsOnTerminateComputeFleetCustomResource: !Ref 'DependsOnTerminateComputeFleetCustomResource'
+  DependsOnCustomResources: !Ref 'DependsOnCustomResources'

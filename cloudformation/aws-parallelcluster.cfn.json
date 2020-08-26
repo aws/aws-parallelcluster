@@ -1315,6 +1315,13 @@
               "false"
             ]
           },
+          "CreateCleanupRoute53FunctionLogGroup": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              "true",
+              "false"
+            ]
+          },
           "CreateAWSBatchLogGroups": {
             "Fn::If": [
               "CreateAWSBatchStack",
@@ -1652,51 +1659,6 @@
               ]
             },
             {
-              "Sid": "DynamoDBTableQuery",
-              "Action": [
-                "dynamodb:Query"
-              ],
-              "Effect": "Allow",
-              "Resource": [
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
-                },
-                {
-                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}/index/*"
-                }
-              ]
-            },
-            {
-              "Fn::If": [
-                "CreateHITSubstack",
-                {
-                  "Sid": "Route53Add",
-                  "Action": [
-                    "route53:ChangeResourceRecordSets"
-                  ],
-                  "Effect": "Allow",
-                  "Resource": [
-                    {
-                      "Fn::Sub": [
-                        "arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}",
-                        {
-                          "ClusterHostedZone": {
-                            "Fn::GetAtt": [
-                              "ComputeFleetHITSubstack",
-                              "Outputs.ClusterHostedZone"
-                            ]
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "Ref": "AWS::NoValue"
-                }
-              ]
-            },
-            {
               "Sid": "S3GetObj",
               "Action": [
                 "s3:GetObject"
@@ -1815,6 +1777,21 @@
                 },
                 {
                   "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
+                }
+              ]
+            },
+            {
+              "Sid": "DynamoDBTableQuery",
+              "Action": [
+                "dynamodb:Query"
+              ],
+              "Effect": "Allow",
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}"
+                },
+                {
+                  "Fn::Sub": "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AWS::StackName}/index/*"
                 }
               ]
             }
@@ -2521,37 +2498,6 @@
                       "Ref": "AWS::NoValue"
                     }
                   ]
-                },
-                {
-                  "Fn::If": [
-                    "CreateHITSubstack",
-                    {
-                      "Sid": "Route53DeletePolicy",
-                      "Effect": "Allow",
-                      "Action": [
-                        "route53:ListResourceRecordSets",
-                        "route53:ChangeResourceRecordSets"
-                      ],
-                      "Resource": [
-                        {
-                          "Fn::Sub": [
-                            "arn:${AWS::Partition}:route53:::hostedzone/${ClusterHostedZone}",
-                            {
-                              "ClusterHostedZone": {
-                                "Fn::GetAtt": [
-                                  "ComputeFleetHITSubstack",
-                                  "Outputs.ClusterHostedZone"
-                                ]
-                              }
-                            }
-                          ]
-                        }
-                      ]
-                    },
-                    {
-                      "Ref": "AWS::NoValue"
-                    }
-                  ]
                 }
               ],
               "Version": "2012-10-17"
@@ -2577,28 +2523,6 @@
         }
       },
       "Condition": "HasResourcesS3Bucket"
-    },
-    "CleanupResourcesDNSRecordsCustomResource": {
-      "Type": "AWS::CloudFormation::CustomResource",
-      "Properties": {
-        "ClusterHostedZone": {
-          "Fn::GetAtt": [
-            "ComputeFleetHITSubstack",
-            "Outputs.ClusterHostedZone"
-          ]
-        },
-        "Action": "DELETE_DNS_RECORDS",
-        "ServiceToken": {
-          "Fn::GetAtt": [
-            "CleanupResourcesFunction",
-            "Arn"
-          ]
-        }
-      },
-      "DependsOn": [
-        "CloudWatchLogsSubstack"
-      ],
-      "Condition": "CreateHITSubstack"
     },
     "TerminateComputeFleetCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
@@ -3115,11 +3039,24 @@
           "ResourcesS3Bucket": {
             "Ref": "ResourcesS3Bucket"
           },
-          "DependsOnTerminateComputeFleetCustomResource": {
+          "DependsOnCustomResources": {
             "Fn::If": [
               "CreateHITSubstack",
               {
-                "Ref": "TerminateComputeFleetCustomResource"
+                "Fn::Sub": [
+                  "DependsOn${fleetTermination}And${route53cleanup}",
+                  {
+                    "fleetTermination": {
+                      "Ref": "TerminateComputeFleetCustomResource"
+                    },
+                    "route53cleanup": {
+                      "Fn::GetAtt": [
+                        "ComputeFleetHITSubstack",
+                        "Outputs.CleanupRoute53CustomResource"
+                      ]
+                    }
+                  }
+                ]
               },
               ""
             ]
@@ -3742,7 +3679,7 @@
           },
           "ClusterDNSDomain": {
             "Fn::Sub": [
-              "${ClusterName}.parallelcluster",
+              "${ClusterName}.pcluster",
               {
                 "ClusterName": {
                   "Fn::Select": [
@@ -3861,6 +3798,18 @@
           },
           "VPCId": {
             "Ref": "VPCId"
+          },
+          "RootRole": {
+            "Fn::If": [
+              "UseEC2IAMRole",
+              "NONE",
+              {
+                "Ref": "RootRole"
+              }
+            ]
+          },
+          "ResourcesS3Bucket": {
+            "Ref": "ResourcesS3Bucket"
           }
         },
         "TemplateURL": {
