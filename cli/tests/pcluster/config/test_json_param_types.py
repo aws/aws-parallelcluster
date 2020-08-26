@@ -119,7 +119,8 @@ def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_rea
 
 
 @pytest.mark.parametrize(
-    "queues", [(["queue1"]), (["queue2"]), (["queue1", "queue2"]), ([])],
+    "queues",
+    [(["queue1"]), (["queue2"]), (["queue1", "queue2"]), ([])],
 )
 def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_reader, queues):
     def mock_get_avail_zone(subnet_id):

@@ -140,7 +140,12 @@ def mock_get_instance_type(mocker, instance_type="t2.micro"):
 
 
 def assert_param_validator(
-    mocker, config_parser_dict, expected_error=None, capsys=None, expected_warning=None, extra_patches=None,
+    mocker,
+    config_parser_dict,
+    expected_error=None,
+    capsys=None,
+    expected_warning=None,
+    extra_patches=None,
 ):
     config_parser = configparser.ConfigParser()
 

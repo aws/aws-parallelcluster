@@ -101,7 +101,8 @@ class HitConverter:
                 sit_maintain_initial_size_param = sit_cluster_section.get_param_value("maintain_initial_size")
                 compute_resource_size_param_key = "min_count" if sit_maintain_initial_size_param else "initial_count"
                 self._copy_param_value(
-                    sit_initial_size_param, compute_resource_section.get_param(compute_resource_size_param_key),
+                    sit_initial_size_param,
+                    compute_resource_section.get_param(compute_resource_size_param_key),
                 )
 
                 # Copy all cluster params except enable_efa (already set at queue level)
