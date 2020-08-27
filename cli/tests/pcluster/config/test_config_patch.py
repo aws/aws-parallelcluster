@@ -87,7 +87,9 @@ def test_single_param_change(
     dst_dict.update(default_cluster_params)
     dst_dict[param_key] = dst_param_value
     dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
-    dst_conf = PclusterConfig(config_file=dst_config_file,)
+    dst_conf = PclusterConfig(
+        config_file=dst_config_file,
+    )
 
     expected_change = Change(
         section_key, section_label, param_key, src_param_value, dst_param_value, change_update_policy
@@ -127,7 +129,10 @@ def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
     ]
 
     _check_patch(
-        src_conf, dst_conf, expected_changes, UpdatePolicy.UNSUPPORTED,
+        src_conf,
+        dst_conf,
+        expected_changes,
+        UpdatePolicy.UNSUPPORTED,
     )
 
 
