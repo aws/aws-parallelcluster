@@ -20,7 +20,10 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
 @pytest.mark.parametrize(
     "cfn_params_dict, expected_section_dict",
     [
-        ({}, utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": []}),),
+        (
+            {},
+            utils.merge_dicts(DefaultDict["cluster"].value, {"additional_iam_policies": []}),
+        ),
         (
             DefaultCfnParams["cluster"].value,
             utils.merge_dicts(
@@ -427,7 +430,8 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_cfn_params", [(DefaultDict["cluster"].value, DefaultCfnParams["cluster"].value)],
+    "section_dict, expected_cfn_params",
+    [(DefaultDict["cluster"].value, DefaultCfnParams["cluster"].value)],
 )
 def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
     utils.set_default_values_for_required_cluster_section_params(section_dict)
@@ -716,7 +720,10 @@ def test_cluster_section_to_cfn(mocker, section_dict, expected_cfn_params):
                 },
             ),
         ),
-        ("cw_log", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1"}),),
+        (
+            "cw_log",
+            utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1"}),
+        ),
         (
             "all-settings",
             utils.merge_dicts(

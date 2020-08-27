@@ -17,7 +17,10 @@ from pcluster.config.pcluster_config import PclusterConfig
 def test_update_sections(mocker, pcluster_config_reader):
     mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
     pcluster_config = PclusterConfig(
-        cluster_label="default", config_file=pcluster_config_reader(), fail_on_file_absence=True, fail_on_error=True,
+        cluster_label="default",
+        config_file=pcluster_config_reader(),
+        fail_on_file_absence=True,
+        fail_on_error=True,
     )
 
     ebs1 = pcluster_config.get_section("ebs", "ebs1")
