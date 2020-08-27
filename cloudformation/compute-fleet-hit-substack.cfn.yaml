@@ -431,7 +431,7 @@ Resources:
             - AttributeName: InstanceId
               KeyType: HASH
           Projection:
-            ProjectionType: KEYS_ONLY
+            ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
   {%- if config.cluster.disable_cluster_dns == False %}
   ClusterHostedZone:
