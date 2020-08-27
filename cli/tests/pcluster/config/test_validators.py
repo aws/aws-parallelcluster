@@ -1482,7 +1482,10 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
         ({"scheduler": "slurm"}, None),
         # HIT cluster with one queue
         ({"scheduler": "slurm", "queue_settings": "queue1"}, None),
-        ({"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5"}, None,),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5"},
+            None,
+        ),
         (
             {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5,queue6"},
             "Invalid number of 'queue' sections specified. Max 5 expected.",
@@ -1534,7 +1537,11 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
             None,
         ),
-        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None,),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1"},
+            None,
+        ),
         (
             {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
             {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
@@ -1795,7 +1802,14 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
     """Verify that the correct set of OSes is supported for each supported architecture."""
     config_dict = {"cluster": {"base_os": base_os, "architecture": architecture}}
     run_architecture_validator_test(
-        mocker, config_dict, "cluster", "architecture", "base_os", base_os, architecture_os_validator, expected_message,
+        mocker,
+        config_dict,
+        "cluster",
+        "architecture",
+        "base_os",
+        base_os,
+        architecture_os_validator,
+        expected_message,
     )
 
 

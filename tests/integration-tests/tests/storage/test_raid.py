@@ -37,7 +37,7 @@ def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_facto
 
 @pytest.mark.regions(["us-east-2", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()

@@ -73,7 +73,8 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
     ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
-        bucket_url=utils.get_bucket_url(pcluster_config.region), version=utils.get_installed_version(),
+        bucket_url=utils.get_bucket_url(pcluster_config.region),
+        version=utils.get_installed_version(),
     )
 
     try:
@@ -86,10 +87,14 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
     try:
         s3_client = boto3.client("s3")
         s3_client.put_object(
-            Bucket=bucket_name, Body=rendered_template, Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+            Bucket=bucket_name,
+            Body=rendered_template,
+            Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
         )
         s3_client.put_object(
-            Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json",
+            Bucket=bucket_name,
+            Body=json.dumps(json_params),
+            Key="configs/cluster-config.json",
         )
     except Exception as e:
         LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)

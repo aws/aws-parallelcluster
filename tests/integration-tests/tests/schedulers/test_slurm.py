@@ -62,7 +62,7 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     )
     _test_dynamic_dummy_nodes(remote_command_executor, region, cluster.asg, max_queue_size)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, "slurm")
 
 
 @pytest.mark.regions(["us-east-2"])
@@ -88,7 +88,7 @@ def test_slurm_gpu(region, pcluster_config_reader, clusters_factory):
     _gpu_resource_check(remote_command_executor)
     _gpu_test_conflicting_options(remote_command_executor, 2)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, "slurm")
 
 
 @pytest.mark.regions(["eu-west-1"])
@@ -284,7 +284,7 @@ def _gpu_test_scaleup(remote_command_executor, region, asg_name, stack_name, sca
 def _test_slurm_version(remote_command_executor):
     logging.info("Testing Slurm Version")
     version = remote_command_executor.run_remote_command("sinfo -V").stdout
-    assert_that(version).is_equal_to("slurm 19.05.5")
+    assert_that(version).is_equal_to("slurm 20.02.4")
 
 
 def _test_dynamic_max_cluster_size(remote_command_executor, region, asg_name, max_queue_size):

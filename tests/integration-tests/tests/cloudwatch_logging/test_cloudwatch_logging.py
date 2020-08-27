@@ -157,7 +157,8 @@ class CloudWatchLoggingClusterState:
 
     def _add_compute_instance(self, instance):
         """Update the cluster's log state by adding a compute node."""
-        self._cluster_log_state[COMPUTE_NODE_ROLE_NAME][instance.get("PrivateDnsName")] = {
+        compute_hostname = self._run_command_on_master("ssh -q {} hostname -f".format(instance.get("PrivateDnsName")))
+        self._cluster_log_state[COMPUTE_NODE_ROLE_NAME][compute_hostname] = {
             "node_role": COMPUTE_NODE_ROLE_NAME,
             "hostname": instance.get("PrivateDnsName"),
             "instance_id": instance.get("InstanceId"),

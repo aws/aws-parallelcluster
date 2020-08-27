@@ -71,9 +71,9 @@ def test_ebs_snapshot(
 # cn-north-1 does not support KMS
 @pytest.mark.regions(["us-east-1", "us-gov-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
-@pytest.mark.skip_oss("[centos6]")
+@pytest.mark.skip_oss(["centos6"])
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
@@ -89,7 +89,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
 
 @pytest.mark.regions(["eu-west-2", "cn-northwest-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
-@pytest.mark.schedulers(["sge", "awsbatch"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()

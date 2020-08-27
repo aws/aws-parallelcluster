@@ -248,7 +248,8 @@ def _check_cluster_models(base_config, target_config, cluster_template):
                     "file is not compatible with the existing cluster '{cluster_name}'.\n"
                     "Please make sure that you are passing the correct configuration file."
                 ).format(
-                    config_file=target_config.config_file, cluster_name=base_config.cluster_name,
+                    config_file=target_config.config_file,
+                    cluster_name=base_config.cluster_name,
                 )
             )
 
