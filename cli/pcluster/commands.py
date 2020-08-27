@@ -19,6 +19,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+import re
 import sys
 import time
 from builtins import str
@@ -32,7 +33,7 @@ import pcluster.utils as utils
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
 from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
-from pcluster.constants import PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
 
 LOGGER = logging.getLogger(__name__)
 
@@ -111,9 +112,22 @@ def _check_for_updates(pcluster_config):
         utils.check_if_latest_version()
 
 
+def _validate_cluster_name(cluster_name):
+    if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), cluster_name):
+        LOGGER.error(
+            (
+                "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+                "It must start with an alphabetic character and can't be longer than {} characters."
+            ).format(PCLUSTER_NAME_MAX_LENGTH)
+        )
+        sys.exit(1)
+
+
 def create(args):  # noqa: C901 FIXME!!!
     LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
     LOGGER.debug("Building cluster config based on args %s", str(args))
+
+    _validate_cluster_name(args.cluster_name)
 
     # Build the config based on args
     pcluster_config = PclusterConfig(
