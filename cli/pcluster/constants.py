@@ -10,6 +10,8 @@
 # limitations under the License.
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
+PCLUSTER_NAME_MAX_LENGTH = 60
+PCLUSTER_NAME_REGEX = r"^([a-zA-Z][a-zA-Z0-9-]{0,%d})$"
 PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 CIDR_ALL_IPS = "0.0.0.0/0"
 DEFAULT_ARCHITECTURE = "x86_64"

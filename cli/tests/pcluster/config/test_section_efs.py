@@ -81,8 +81,12 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
         ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
         ("shared_dir", "//test", None, "has an invalid value"),
         ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", ".\\test", None, "has an invalid value"),
+        ("shared_dir", "\\test", None, "has an invalid value"),
         ("shared_dir", ".test", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
+        ("shared_dir", "/test//test2", None, "has an invalid value"),
+        ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # Note: NONE is considered as a valid path
         ("efs_fs_id", None, None, None),
         ("efs_fs_id", "", None, "has an invalid value"),
