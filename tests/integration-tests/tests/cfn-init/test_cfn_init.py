@@ -9,6 +9,7 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import time
 
 import boto3
 import pytest
@@ -49,6 +50,7 @@ def test_replace_compute_on_failure(
     _assert_compute_logs(remote_command_executor, instance_id)
 
     # check that instance got already replaced or is marked as Unhealthy
+    time.sleep(15)  # Instance waits for 10 seconds before terminating to allow logs to propagate to CloudWatch
     assert_instance_replaced_or_terminating(instance_id, region)
 
 

@@ -271,7 +271,7 @@ class SlurmCommands(SchedulerCommands):
 
     @retry(
         retry_on_result=lambda result: "JobState" not in result
-        or any(value in result for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING"]),
+        or any(value in result for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]),
         wait_fixed=seconds(3),
         stop_max_delay=minutes(7),
     )

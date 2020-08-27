@@ -25,6 +25,7 @@ from tests.common.schedulers_common import SlurmCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
+@pytest.mark.skip(reason="FIXME")
 @pytest.mark.regions(["us-east-2"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
@@ -65,6 +66,7 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     assert_no_errors_in_logs(remote_command_executor, "slurm")
 
 
+@pytest.mark.skip(reason="FIXME")
 @pytest.mark.regions(["us-east-2"])
 @pytest.mark.instances(["g3.8xlarge"])
 @pytest.mark.schedulers(["slurm"])

@@ -20,11 +20,16 @@ def assert_instance_replaced_or_terminating(instance_id, region):
     response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
         InstanceIds=[instance_id]
     )
-    assert_that(
-        not response["AutoScalingInstances"]
-        or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
-        or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-    ).is_true()
+    if response["AutoScalingInstances"]:
+        assert_that(
+            response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
+            or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
+        ).is_true()
+    else:
+        ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+        assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in(
+            "shutting-down", "terminated"
+        )
 
 
 def assert_asg_desired_capacity(region, asg_name, expected):
