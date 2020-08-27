@@ -435,7 +435,11 @@ def get_stack_events(stack_name, raise_on_error=False):
 def get_cluster_substacks(cluster_name):
     """Return stack objects with names that match the given prefix."""
     resources = get_stack_resources(get_stack_name(cluster_name))
-    return [get_stack(r.get("PhysicalResourceId")) for r in resources if r.get("ResourceType") == STACK_TYPE]
+    substacks = []
+    for r in resources:
+        if r.get("ResourceType") == STACK_TYPE and r.get("PhysicalResourceId"):
+            substacks.append(get_stack(r.get("PhysicalResourceId")))
+    return substacks
 
 
 def verify_stack_creation(stack_name, cfn_client):
