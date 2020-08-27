@@ -92,7 +92,11 @@ def test_fsx_lustre(
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre_backup(
-    region, pcluster_config_reader, clusters_factory, test_datadir, os,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    os,
 ):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
@@ -143,7 +147,9 @@ def test_fsx_lustre_backup(
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
-        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId"),
+        config_file="pcluster_restore_fsx.config.ini",
+        mount_dir=mount_dir,
+        fsx_backup_id=manual_backup.get("BackupId"),
     )
 
     cluster_restore = clusters_factory(cluster_config_restore)
