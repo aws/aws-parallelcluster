@@ -125,7 +125,11 @@ def assert_config_contains_expected_values(
         {"section_name": "aws", "parameter_name": "aws_region_name", "expected_value": region},
         {"section_name": "cluster", "parameter_name": "key_name", "expected_value": key_name},
         {"section_name": "cluster", "parameter_name": "scheduler", "expected_value": scheduler},
-        {"section_name": "cluster", "parameter_name": "base_os", "expected_value": os},
+        {
+            "section_name": "cluster",
+            "parameter_name": "base_os",
+            "expected_value": os if scheduler != "awsbatch" else "alinux2",
+        },
         {"section_name": "cluster", "parameter_name": "master_instance_type", "expected_value": instance},
         {"section_name": "vpc", "parameter_name": "vpc_id", "expected_value": vpc_id},
         {"section_name": "vpc", "parameter_name": "master_subnet_id", "expected_value": public_subnet_id},
