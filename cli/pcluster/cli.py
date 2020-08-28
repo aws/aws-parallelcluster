@@ -29,7 +29,7 @@ import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
-from pcluster.update import update_command
+import pcluster.cli_commands.update as pcluster_update
 
 LOGGER = logging.getLogger(__name__)
 
@@ -67,7 +67,7 @@ def instances(args):
 
 
 def update(args):
-    update_command.execute(args)
+    pcluster_update.execute(args)
 
 
 def version(args):

@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.update.update_command import _format_report_column
+from pcluster.cli_commands.update import _format_report_column
 
 
 @pytest.mark.parametrize(

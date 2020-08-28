@@ -19,7 +19,7 @@ import pcluster.utils as utils
 from pcluster.cluster_model import ClusterModel
 from pcluster.commands import _create_bucket_with_resources, _validate_cluster_name
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
-from pcluster.update import update_command
+from pcluster.cli_commands import update
 
 
 def _mock_pcluster_config(mocker, scheduler, region):
@@ -155,7 +155,7 @@ def test_update_failure_on_different_cluster_models(
     target_config.cluster_model = target_cluster_model
     target_config.config_file = "config_file"
 
-    models_check = update_command._check_cluster_models(base_config, target_config, "default")
+    models_check = update._check_cluster_models(base_config, target_config, "default")
     assert_that(models_check).is_equal_to(expected_result)
     if expected_message:
         assert_that(caplog.text).contains(expected_message)
