@@ -53,8 +53,6 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     if supports_impi:
         _test_mpi_job_termination(remote_command_executor, test_datadir)
 
-    _test_torque_job_submit(remote_command_executor, test_datadir)
-
     _test_dynamic_max_cluster_size(remote_command_executor, region, cluster.asg, max_queue_size=max_queue_size)
     _test_cluster_limits(remote_command_executor, max_queue_size)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime, max_queue_size)
@@ -63,6 +61,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
         remote_command_executor, "slurm", region, cluster.cfn_name, scaledown_idletime
     )
     _test_dynamic_dummy_nodes(remote_command_executor, region, cluster.asg, max_queue_size)
+
+    _test_torque_job_submit(remote_command_executor, test_datadir)
 
     assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
 
