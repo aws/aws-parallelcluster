@@ -10,11 +10,13 @@
 # limitations under the License.
 import json
 
+import configparser
 import pytest
 from assertpy import assert_that
+from pytest import fail
 
 from tests.common import MockedBoto3Request
-from tests.pcluster.config.utils import get_mocked_pcluster_config
+from tests.pcluster.config.utils import get_mocked_pcluster_config, init_pcluster_config_from_configparser
 
 
 @pytest.fixture()
@@ -115,3 +117,41 @@ def test_load_json_config(mocker, valid_bucket, cfn_params_dict, expected_json, 
             pcluster_config._PclusterConfig__load_json_config(cfn_params)
     else:
         assert_that(pcluster_config._PclusterConfig__load_json_config(cfn_params)).is_equal_to(expected_json)
+
+
+@pytest.mark.parametrize(
+    "config_parser_dict, expected_message",
+    [
+        (
+            {
+                "cluster default": {"queue_settings": "queue1,queue2"},
+                "queue queue1": {"compute_resource_settings": "cr1,cr2"},
+                "queue queue2": {"compute_resource_settings": "cr1"},
+                "compute_resource cr1": {},
+                "compute_resource cr2": {},
+            },
+            "ERROR: Multiple reference to section '\\[.*\\]'",
+        ),
+        (
+            {
+                "cluster default": {"queue_settings": "queue1,queue2"},
+                "queue queue1": {"compute_resource_settings": "cr1"},
+                "queue queue2": {"compute_resource_settings": "cr2"},
+                "compute_resource cr1": {},
+                "compute_resource cr2": {},
+            },
+            None,
+        ),
+    ],
+)
+def test_load_from_file_errors(capsys, config_parser_dict, expected_message):
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    try:
+        init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    except SystemExit as e:
+        if expected_message:
+            assert_that(e.args[0]).matches(expected_message)
+        else:
+            fail("Unexpected failure when loading file")

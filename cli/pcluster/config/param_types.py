@@ -349,6 +349,13 @@ class SettingsParam(Param):
             self._replace_default_section(sections[0])
         else:
             for section in sections:
+                if self.pcluster_config.get_section(section.key, section.label):
+                    self.pcluster_config.error(
+                        "Multiple reference to section '[{0}]'. "
+                        "Only one reference to each section is allowed from the same configuration file.".format(
+                            get_file_section_name(section.key, section.label)
+                        )
+                    )
                 self.pcluster_config.add_section(section)
 
     def refresh(self):
