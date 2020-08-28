@@ -347,7 +347,7 @@ def _set_custom_packages_args(args, pytest_args):
     if args.custom_template_url:
         pytest_args.extend(["--template-url", args.custom_template_url])
 
-    if args.custom_template_url:
+    if args.custom_hit_template_url:
         pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
 
     if args.custom_awsbatch_template_url:

@@ -53,7 +53,8 @@ def test_scheduler_performance(region, scheduler, os, instance, pcluster_config_
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    enable_asg_metrics(region, cluster)
+    if cluster.asg:
+        enable_asg_metrics(region, cluster)
 
     logging.info("Starting benchmark with following parameters: %s", benchmark_params)
     start_time = datetime.datetime.utcnow()
