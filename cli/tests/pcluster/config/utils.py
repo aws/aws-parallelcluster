@@ -139,6 +139,23 @@ def mock_get_instance_type(mocker, instance_type="t2.micro"):
     )
 
 
+def mock_ec2_key_pair(mocker, cluster_section_dict):
+    if cluster_section_dict.get("key_name") is None:
+        cluster_section_dict["key_name"] = "test_key"
+
+        mocker.patch(
+            "pcluster.config.validators._describe_ec2_key_pair",
+            return_value={
+                "KeyPairs": [
+                    {
+                        "KeyFingerprint": "12:bf:7c:56:6c:dd:4f:8c:24:45:75:f1:1b:16:54:89:82:09:a4:26",
+                        "KeyName": "test_key",
+                    }
+                ]
+            },
+        )
+
+
 def assert_param_validator(
     mocker,
     config_parser_dict,
@@ -146,6 +163,7 @@ def assert_param_validator(
     capsys=None,
     expected_warning=None,
     extra_patches=None,
+    use_mock_ec2_key_pair=True,
 ):
     config_parser = configparser.ConfigParser()
 
@@ -154,10 +172,12 @@ def assert_param_validator(
     set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
+    mock_ec2_key_pair(mocker, config_parser_dict.get("cluster default"))
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
     mock_get_instance_type(mocker)
+
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)
