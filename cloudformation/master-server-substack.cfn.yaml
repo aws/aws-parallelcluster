@@ -504,7 +504,7 @@ Resources:
             chef:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
                 info --force-formatter --no-color --chef-zero-port 8889 --json-attributes
-                /etc/chef/dna.json --override-runlist aws-parallelcluster::_prep_env
+                /etc/chef/dna.json --override-runlist aws-parallelcluster::prep_env
                 | tee -a /var/log/chef-client.log && exit ${PIPESTATUS[0]}
               cwd: /etc/chef
         shellRunPreInstall:
