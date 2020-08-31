@@ -68,6 +68,8 @@ TEST_DEFAULTS = {
     "custom_awsbatchcli_url": None,
     "custom_hit_template_url": None,
     "custom_ami": None,
+    "pre_install": None,
+    "post_install": None,
     "vpc_stack": None,
     "cluster": None,
     "no_delete": False,
@@ -197,6 +199,10 @@ def _init_argparser():
     )
     parser.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
+    )
+    parser.add_argument("--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"))
+    parser.add_argument(
+        "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
     )
     parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
     parser.add_argument(
@@ -330,11 +336,10 @@ def _get_pytest_args(args, regions, log_file, out_dir):
 
     _set_custom_packages_args(args, pytest_args)
     _set_custom_stack_args(args, pytest_args)
-
     return pytest_args
 
 
-def _set_custom_packages_args(args, pytest_args):
+def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.custom_node_url:
         pytest_args.extend(["--custom-node-package", args.custom_node_url])
 
@@ -358,6 +363,12 @@ def _set_custom_packages_args(args, pytest_args):
 
     if args.custom_ami:
         pytest_args.extend(["--custom-ami", args.custom_ami])
+
+    if args.pre_install:
+        pytest_args.extend(["--pre-install", args.pre_install])
+
+    if args.post_install:
+        pytest_args.extend(["--post-install", args.post_install])
 
 
 def _set_custom_stack_args(args, pytest_args):

@@ -21,7 +21,7 @@ from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_asg_desired_capacity, assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, compile_mpi_ring
-from tests.common.schedulers_common import SlurmCommands
+from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
 
@@ -62,6 +62,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
         remote_command_executor, "slurm", region, cluster.cfn_name, scaledown_idletime
     )
     _test_dynamic_dummy_nodes(remote_command_executor, region, cluster.asg, max_queue_size)
+
+    _test_torque_job_submit(remote_command_executor, test_datadir)
 
     assert_no_errors_in_logs(remote_command_executor, "slurm")
 
@@ -422,7 +424,7 @@ def _retrieve_slurm_dummy_nodes(remote_command_executor, gres=False):
     return len(remote_command_executor.run_remote_command(retrieve_dummy_nodes_command).stdout.split("\n"))
 
 
-@retry(wait_fixed=seconds(20), stop_max_delay=minutes(7))
+@retry(wait_fixed=seconds(20), stop_max_delay=minutes(10))
 def _assert_no_nodes_in_scheduler(scheduler_commands):
     assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(0)
 
@@ -471,3 +473,11 @@ def _assert_job_state(remote_command_executor, job_id, job_state):
     except RemoteCommandExecutionError as e:
         # Handle the case when job is deleted from history
         assert_that(e.result.stdout).contains("slurm_load_jobs error: Invalid job id specified")
+
+
+def _test_torque_job_submit(remote_command_executor, test_datadir):
+    """Test torque job submit command in slurm cluster."""
+    logging.info("Testing cluster submits job by torque command")
+    torque_commands = TorqueCommands(remote_command_executor)
+    result = torque_commands.submit_script(str(test_datadir / "torque_job.sh"))
+    torque_commands.assert_job_submitted(result.stdout)
