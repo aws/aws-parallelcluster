@@ -480,7 +480,7 @@ def ec2_key_pair_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
     try:
-        boto3.client("ec2").describe_key_pairs(KeyNames=[param_value])
+        _describe_ec2_key_pair(param_value)
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 
@@ -1236,3 +1236,8 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
                 errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
 
     return errors, warnings
+
+
+def _describe_ec2_key_pair(key_pair_name):
+    """Return information about the provided ec2 key pair."""
+    return boto3.client("ec2").describe_key_pairs(KeyNames=[key_pair_name])

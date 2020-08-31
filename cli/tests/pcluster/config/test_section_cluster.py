@@ -506,6 +506,7 @@ def test_sit_cluster_param_from_file(
     [
         ("scheduler", None, None, "Configuration parameter 'scheduler' must have a value"),
         ("base_os", None, None, "Configuration parameter 'base_os' must have a value"),
+        ("key_name", None, None, "Configuration parameter 'key_name' must have a value"),
     ],
 )
 def test_sit_cluster_param_from_file_with_validation(mocker, param_key, param_value, expected_value, expected_message):
