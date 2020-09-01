@@ -20,11 +20,16 @@ def assert_instance_replaced_or_terminating(instance_id, region):
     response = boto3.client("autoscaling", region_name=region).describe_auto_scaling_instances(
         InstanceIds=[instance_id]
     )
-    assert_that(
-        not response["AutoScalingInstances"]
-        or response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
-        or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
-    ).is_true()
+    if response["AutoScalingInstances"]:
+        assert_that(
+            response["AutoScalingInstances"][0]["LifecycleState"] == "Terminating"
+            or response["AutoScalingInstances"][0]["HealthStatus"] == "UNHEALTHY"
+        ).is_true()
+    else:
+        ec2_response = boto3.client("ec2", region_name=region).describe_instances(InstanceIds=[instance_id])
+        assert_that(ec2_response["Reservations"][0]["Instances"][0]["State"]["Name"]).is_in(
+            "shutting-down", "terminated"
+        )
 
 
 def assert_asg_desired_capacity(region, asg_name, expected):
@@ -33,8 +38,19 @@ def assert_asg_desired_capacity(region, asg_name, expected):
     assert_that(asg.get("DesiredCapacity")).is_equal_to(expected)
 
 
-def assert_no_errors_in_logs(remote_command_executor, log_files):
+def assert_no_errors_in_logs(remote_command_executor, scheduler):
     __tracebackhide__ = True
+    if scheduler == "slurm":
+        log_files = [
+            "/var/log/parallelcluster/clustermgtd",
+            "/var/log/parallelcluster/slurm_resume.log",
+            "/var/log/parallelcluster/slurm_suspend.log",
+        ]
+    elif scheduler in {"sge", "torque"}:
+        log_files = ["/var/log/sqswatcher", "/var/log/jobwatcher"]
+    else:
+        log_files = []
+
     for log_file in log_files:
         log = remote_command_executor.run_remote_command("cat {0}".format(log_file), hide=True).stdout
         for error_level in ["CRITICAL", "ERROR"]:
@@ -48,13 +64,13 @@ def assert_scaling_worked(
     scaledown_idletime,
     expected_max,
     expected_final,
-    assert_asg=True,
+    assert_ec2=True,
     assert_scheduler=True,
 ):
     jobs_execution_time = 1
     estimated_scaleup_time = 5
     max_scaledown_time = 10
-    asg_capacity_time_series, compute_nodes_time_series, _ = get_compute_nodes_allocation(
+    ec2_capacity_time_series, compute_nodes_time_series, _ = get_compute_nodes_allocation(
         scheduler_commands=scheduler_commands,
         region=region,
         stack_name=stack_name,
@@ -65,12 +81,12 @@ def assert_scaling_worked(
     )
 
     with soft_assertions():
-        if assert_asg:
-            asg_capacity_time_series_str = f"asg_capacity_time_series={asg_capacity_time_series}"
-            assert_that(max(asg_capacity_time_series)).described_as(asg_capacity_time_series_str).is_equal_to(
+        if assert_ec2:
+            ec2_capacity_time_series_str = f"ec2_capacity_time_series={ec2_capacity_time_series}"
+            assert_that(max(ec2_capacity_time_series)).described_as(ec2_capacity_time_series_str).is_equal_to(
                 expected_max
             )
-            assert_that(asg_capacity_time_series[-1]).described_as(asg_capacity_time_series_str).is_equal_to(
+            assert_that(ec2_capacity_time_series[-1]).described_as(ec2_capacity_time_series_str).is_equal_to(
                 expected_final
             )
         if assert_scheduler:

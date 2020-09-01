@@ -17,6 +17,7 @@ from time import sleep
 import boto3
 from retrying import RetryError, retry
 from time_utils import seconds
+from utils import _describe_cluster_instances
 
 METRIC_WIDGET_TEMPLATE = """
     {{
@@ -24,9 +25,9 @@ METRIC_WIDGET_TEMPLATE = """
             [ "ParallelCluster/benchmarking/{cluster_name}", "ComputeNodesCount", {{ "stat": "Maximum", "label": \
 "ComputeNodesCount Max" }} ],
             [ "...", {{ "stat": "Minimum", "label": "ComputeNodesCount Min" }} ],
-            [ "AWS/AutoScaling", "GroupDesiredCapacity", "AutoScalingGroupName", "{asg_name}", {{ "stat": "Maximum", \
-"label": "GroupDesiredCapacity" }} ],
-            [ ".", "GroupInServiceInstances", ".", ".", {{ "stat": "Maximum", "label": "GroupInServiceInstances" }} ]
+            [ "ParallelCluster/benchmarking/{cluster_name}", "EC2NodesCount", {{ "stat": "Maximum", "label": \
+"EC2NodesCount Max" }} ],
+            [ "...", {{ "stat": "Minimum", "label": "EC2NodesCount Min" }} ]
         ],
         "view": "timeSeries",
         "stacked": false,
@@ -70,24 +71,41 @@ METRIC_WIDGET_TEMPLATE = """
 def publish_compute_nodes_metric(scheduler_commands, max_monitoring_time, region, cluster_name):
     logging.info("Monitoring scheduler status and publishing metrics")
     cw_client = boto3.client("cloudwatch", region_name=region)
-    compute_nodes_time_series = [0]
+    compute_nodes_time_series = []
+    ec2_nodes_time_series = []
     timestamps = [datetime.datetime.utcnow()]
 
     @retry(
-        retry_on_result=lambda _: len(compute_nodes_time_series) == 1 or compute_nodes_time_series[-1] != 0,
+        # Retry until EC2 and Scheduler capacities scale down to 0
+        # Also make sure cluster scaled up before scaling down
+        retry_on_result=lambda _: ec2_nodes_time_series[-1] != 0
+        or compute_nodes_time_series[-1] != 0
+        or max(ec2_nodes_time_series) == 0
+        or max(compute_nodes_time_series) == 0,
         wait_fixed=seconds(20),
         stop_max_delay=max_monitoring_time,
     )
     def _watch_compute_nodes_allocation():
         try:
             compute_nodes = scheduler_commands.compute_nodes_count()
-            logging.info("Publishing metric: count={0}".format(compute_nodes))
+            logging.info("Publishing schedueler compute metric: count={0}".format(compute_nodes))
             cw_client.put_metric_data(
                 Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
                 MetricData=[{"MetricName": "ComputeNodesCount", "Value": compute_nodes, "Unit": "Count"}],
             )
+            ec2_instances_count = len(_describe_cluster_instances(cluster_name, region, filter_by_node_type="Compute"))
+            logging.info("Publishing EC2 compute metric: count={0}".format(ec2_instances_count))
+            cw_client.put_metric_data(
+                Namespace="ParallelCluster/benchmarking/{cluster_name}".format(cluster_name=cluster_name),
+                MetricData=[{"MetricName": "EC2NodesCount", "Value": ec2_instances_count, "Unit": "Count"}],
+            )
             # add values only if there is a transition.
-            if compute_nodes_time_series[-1] != compute_nodes:
+            if (
+                len(ec2_nodes_time_series) == 0
+                or ec2_nodes_time_series[-1] != ec2_instances_count
+                or compute_nodes_time_series[-1] != compute_nodes
+            ):
+                ec2_nodes_time_series.append(ec2_instances_count)
                 compute_nodes_time_series.append(compute_nodes)
                 timestamps.append(datetime.datetime.utcnow())
         except Exception as e:
@@ -140,7 +158,7 @@ def _publish_metric(region, instance, os, scheduler, state, count):
 
 
 def produce_benchmark_metrics_report(
-    benchmark_params, region, cluster_name, asg_name, start_time, end_time, scaling_target, request
+    benchmark_params, region, cluster_name, start_time, end_time, scaling_target, request
 ):
     title = ", ".join("{0}={1}".format(key, val) for (key, val) in benchmark_params.items())
     graph_start_time = _to_datetime(start_time) - datetime.timedelta(minutes=2)
@@ -148,7 +166,6 @@ def produce_benchmark_metrics_report(
     scaling_target = scaling_target
     widget_metric = METRIC_WIDGET_TEMPLATE.format(
         cluster_name=cluster_name,
-        asg_name=asg_name,
         start_time=start_time,
         end_time=end_time,
         title=title,

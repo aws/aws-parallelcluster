@@ -67,9 +67,14 @@ def _test_mpi(
     # Hello world from processor ip-192-168-60-9, rank 1 out of 2 processors
     # Process 1 received token -1 from process 0
     assert_that(mpi_out.splitlines()).is_length(4)
-    assert_that(mpi_out).matches(r"Hello world from processor ip-.+, rank 0 out of 2 processors")
-    assert_that(mpi_out).matches(r"Hello world from processor ip-.+, rank 1 out of 2 processors")
+    nodename_prefix = "ip-" if scheduler != "slurm" else "compute-"
+    assert_that(mpi_out).matches(
+        r"Hello world from processor {0}.+, rank 0 out of 2 processors".format(nodename_prefix)
+    )
+    assert_that(mpi_out).matches(
+        r"Hello world from processor {0}.+, rank 1 out of 2 processors".format(nodename_prefix)
+    )
     assert_that(mpi_out).contains("Process 0 received token -1 from process 1")
-    assert_that(mpi_out).matches("Process 1 received token -1 from process 0")
+    assert_that(mpi_out).contains("Process 1 received token -1 from process 0")
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)

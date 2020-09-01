@@ -109,14 +109,14 @@ def test_cw_log_settings_section_from_cfn(mocker, cfn_params_dict, expected_sect
 @pytest.mark.parametrize(
     "settings_label, expected_cfn_params",
     [
-        ("defaults", DefaultCfnParams["cluster"].value),
+        ("defaults", DefaultCfnParams["cluster_sit"].value),
         (
             "disabled",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value, {"EC2IAMPolicies": "NONE", "CWLogOptions": "false,14"}
+                DefaultCfnParams["cluster_sit"].value, {"EC2IAMPolicies": "NONE", "CWLogOptions": "false,14"}
             ),
         ),
-        ("one_day_retention", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"CWLogOptions": "true,1"})),
+        ("one_day_retention", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"CWLogOptions": "true,1"})),
         ("bad_retention_val", SystemExit()),
         ("bad_enable_val", SystemExit()),
         ("empty_enable_val", SystemExit()),

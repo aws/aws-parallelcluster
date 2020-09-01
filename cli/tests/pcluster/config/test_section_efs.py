@@ -81,8 +81,12 @@ def test_cluster_section_to_file(mocker, section_dict, expected_config_parser_di
         ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
         ("shared_dir", "//test", None, "has an invalid value"),
         ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", ".\\test", None, "has an invalid value"),
+        ("shared_dir", "\\test", None, "has an invalid value"),
         ("shared_dir", ".test", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
+        ("shared_dir", "/test//test2", None, "has an invalid value"),
+        ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # Note: NONE is considered as a valid path
         ("efs_fs_id", None, None, None),
         ("efs_fs_id", "", None, "has an invalid value"),
@@ -158,7 +162,7 @@ def test_efs_param_from_file(mocker, param_key, param_value, expected_value, exp
     ],
 )
 def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
+    mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     mocker.patch(
         "pcluster.config.pcluster_config.PclusterConfig.get_master_availability_zone", return_value="mocked_avail_zone"
     )
@@ -171,7 +175,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 DefaultCfnParams["efs"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
@@ -183,7 +187,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -195,7 +199,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test3",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -207,7 +211,7 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         (
             "test4",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -222,8 +226,8 @@ def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
 def test_efs_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing EFS related options."""
     mocker.patch(
-        "pcluster.config.param_types.get_efs_mount_target_id",
+        "pcluster.config.cfn_param_types.get_efs_mount_target_id",
         side_effect=lambda efs_fs_id, avail_zone: "master_mt" if avail_zone == "mocked_avail_zone" else None,
     )
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)

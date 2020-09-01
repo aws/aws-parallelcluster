@@ -8,16 +8,20 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import json
+
+import configparser
 import pytest
 from assertpy import assert_that
+from pytest import fail
 
 from tests.common import MockedBoto3Request
-from tests.pcluster.config.utils import get_mocked_pcluster_config
+from tests.pcluster.config.utils import get_mocked_pcluster_config, init_pcluster_config_from_configparser
 
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "pcluster.config.pcluster_config.boto3"
+    return "pcluster.cluster_model.boto3"
 
 
 @pytest.mark.parametrize(
@@ -57,7 +61,97 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
-            _ = pcluster_config._PclusterConfig__get_latest_alinux_ami_id()
+            _ = pcluster_config.cluster_model._get_latest_alinux_ami_id()
     else:
-        latest_linux_ami_id = pcluster_config._PclusterConfig__get_latest_alinux_ami_id()
+        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux_ami_id()
         assert_that(latest_linux_ami_id).is_equal_to(boto3_response.get("Parameters")[0].get("Value"))
+
+
+@pytest.mark.parametrize(
+    "cfn_params_dict, valid_bucket, expected_json, expected_message",
+    [
+        (
+            # ResourceS3Bucket expected and not available
+            {"Scheduler": "slurm"},
+            False,
+            None,
+            "Unable to retrieve configuration: ResourceS3Bucket not available.",
+        ),
+        (
+            # Invalid ResourcesS3Bucket
+            {"Scheduler": "slurm", "ResourcesS3Bucket": "invalid_bucket"},
+            False,
+            None,
+            "Unable to load configuration from bucket 'invalid_bucket'.\nInvalid file url",
+        ),
+        (
+            # ResourceS3Bucket available
+            {"Scheduler": "slurm", "ResourcesS3Bucket": "valid_bucket"},
+            True,
+            {"test_key": "test_value"},
+            None,
+        ),
+        (
+            # ResourceS3Bucket not expected
+            {"Scheduler": "sge"},
+            False,
+            None,
+            None,
+        ),
+    ],
+)
+def test_load_json_config(mocker, valid_bucket, cfn_params_dict, expected_json, expected_message):
+    cfn_params = []
+    for cfn_key, cfn_value in cfn_params_dict.items():
+        cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
+    pcluster_config = get_mocked_pcluster_config(mocker)
+
+    patched_read_remote_file = mocker.patch("pcluster.config.pcluster_config.read_remote_file")
+    if valid_bucket:
+        patched_read_remote_file.return_value = json.dumps(expected_json)
+    else:
+        patched_read_remote_file.side_effect = Exception("Invalid file url")
+
+    if expected_message:
+        with pytest.raises(SystemExit, match=expected_message):
+            pcluster_config._PclusterConfig__load_json_config(cfn_params)
+    else:
+        assert_that(pcluster_config._PclusterConfig__load_json_config(cfn_params)).is_equal_to(expected_json)
+
+
+@pytest.mark.parametrize(
+    "config_parser_dict, expected_message",
+    [
+        (
+            {
+                "cluster default": {"queue_settings": "queue1,queue2"},
+                "queue queue1": {"compute_resource_settings": "cr1,cr2"},
+                "queue queue2": {"compute_resource_settings": "cr1"},
+                "compute_resource cr1": {},
+                "compute_resource cr2": {},
+            },
+            "ERROR: Multiple reference to section '\\[.*\\]'",
+        ),
+        (
+            {
+                "cluster default": {"queue_settings": "queue1,queue2"},
+                "queue queue1": {"compute_resource_settings": "cr1"},
+                "queue queue2": {"compute_resource_settings": "cr2"},
+                "compute_resource cr1": {},
+                "compute_resource cr2": {},
+            },
+            None,
+        ),
+    ],
+)
+def test_load_from_file_errors(capsys, config_parser_dict, expected_message):
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    try:
+        init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    except SystemExit as e:
+        if expected_message:
+            assert_that(e.args[0]).matches(expected_message)
+        else:
+            fail("Unexpected failure when loading file")

@@ -55,7 +55,7 @@ def test_torque(region, pcluster_config_reader, clusters_factory):
         remote_command_executor, "torque", region, cluster.cfn_name, scaledown_idletime
     )
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, "torque")
 
 
 def _test_torque_version(remote_command_executor):

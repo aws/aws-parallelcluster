@@ -28,9 +28,10 @@ from tests.common.scaling_common import (
 from tests.common.schedulers_common import SlurmCommands
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
+# FIXME @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_update_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)

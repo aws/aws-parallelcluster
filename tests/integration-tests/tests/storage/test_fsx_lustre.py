@@ -22,7 +22,7 @@ from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
 
-from tests.common.schedulers_common import SgeCommands
+from tests.common.schedulers_common import get_scheduler_commands
 
 BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING"}
 # Maximum number of minutes to wait past when an file system's automatic backup is scheduled to start creating.
@@ -37,8 +37,8 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 )
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["sge"])
-@pytest.mark.usefixtures("os", "instance", "scheduler", "deployment_type")
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.usefixtures("instance", "deployment_type")
 # FSx is not supported on CentOS 6
 @pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
@@ -54,6 +54,7 @@ def test_fsx_lustre(
     s3_bucket_factory,
     test_datadir,
     os,
+    scheduler,
 ):
     """
     Test all FSx Lustre related features.
@@ -72,11 +73,12 @@ def test_fsx_lustre(
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
-    _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir)
+    _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
@@ -84,7 +86,7 @@ def test_fsx_lustre(
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
-@pytest.mark.usefixtures("os", "instance", "scheduler")
+@pytest.mark.usefixtures("instance")
 # FSx is not supported on CentOS 6
 @pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
@@ -95,8 +97,8 @@ def test_fsx_lustre_backup(
     region,
     pcluster_config_reader,
     clusters_factory,
-    test_datadir,
     os,
+    scheduler,
 ):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
@@ -123,13 +125,14 @@ def test_fsx_lustre_backup(
     # Create a cluster with automatic backup parameters.
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
 
     # Mount file system
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
 
     # Create a text file in the mount directory.
-    create_backup_test_file(remote_command_executor, mount_dir)
+    create_backup_test_file(scheduler_commands, remote_command_executor, mount_dir)
 
     # Wait for the creation of automatic backup and assert if it is in available state.
     automatic_backup = monitor_automatic_backup_creation(
@@ -210,19 +213,18 @@ def _test_import_path(remote_command_executor, mount_dir):
     assert_that(result.stdout).is_equal_to("Downloaded by FSx Lustre")
 
 
-def _test_fsx_lustre_correctly_shared(remote_command_executor, mount_dir):
+def _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir):
     logging.info("Testing fsx lustre correctly mounted on compute nodes")
-    sge_commands = SgeCommands(remote_command_executor)
     remote_command_executor.run_remote_command("touch {mount_dir}/test_file".format(mount_dir=mount_dir))
     job_command = (
         "cat {mount_dir}/s3_test_file "
         "&& cat {mount_dir}/test_file "
         "&& touch {mount_dir}/compute_output".format(mount_dir=mount_dir)
     )
-    result = sge_commands.submit_command(job_command)
-    job_id = sge_commands.assert_job_submitted(result.stdout)
-    sge_commands.wait_job_completed(job_id)
-    sge_commands.assert_job_succeeded(job_id)
+    result = scheduler_commands.submit_command(job_command)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
     remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
 
 
@@ -295,17 +297,16 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(file_permissions).is_equal_to("0100777")
 
 
-def create_backup_test_file(remote_command_executor, mount_dir):
+def create_backup_test_file(scheduler_commands, remote_command_executor, mount_dir):
     logging.info("Creating a backup test file in fsx lustre mount directory")
-    sge_commands = SgeCommands(remote_command_executor)
     remote_command_executor.run_remote_command(
         "echo 'FSx Lustre Backup test file' > {mount_dir}/file_to_backup".format(mount_dir=mount_dir)
     )
     job_command = "cat {mount_dir}/file_to_backup ".format(mount_dir=mount_dir)
-    result = sge_commands.submit_command(job_command)
-    job_id = sge_commands.assert_job_submitted(result.stdout)
-    sge_commands.wait_job_completed(job_id)
-    sge_commands.assert_job_succeeded(job_id)
+    result = scheduler_commands.submit_command(job_command)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
     result = remote_command_executor.run_remote_command("cat {mount_dir}/file_to_backup".format(mount_dir=mount_dir))
     assert_that(result.stdout).is_equal_to("FSx Lustre Backup test file")
 
@@ -313,7 +314,7 @@ def create_backup_test_file(remote_command_executor, mount_dir):
 def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region, backup_start_time):
     logging.info("Monitoring automatic backup for FSx Lustre file system: {fs_id}".format(fs_id=fsx_fs_id))
     fsx = boto3.client("fsx", region_name=region)
-    backup = sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
+    sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time)
     logging.info(
         f"Waiting up to {MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START} minutes for automatic backup creation "
         "to start"
@@ -327,7 +328,9 @@ def monitor_automatic_backup_creation(remote_command_executor, fsx_fs_id, region
 def sleep_until_automatic_backup_creation_start_time(fsx_fs_id, backup_start_time):
     """Wait for the automatic backup of the given file system to start."""
     logging.info(f"Sleeping until time when {fsx_fs_id}'s backup creation should start at {backup_start_time}")
-    time.sleep((backup_start_time - datetime.datetime.utcnow()).total_seconds())
+    remaining_time = (backup_start_time - datetime.datetime.utcnow()).total_seconds()
+    if remaining_time > 0:
+        time.sleep(remaining_time)
 
 
 def log_backup_state(backup):

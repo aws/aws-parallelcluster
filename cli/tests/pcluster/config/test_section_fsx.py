@@ -113,8 +113,12 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
         ("shared_dir", "//test", None, "has an invalid value"),
         ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", ".\\test", None, "has an invalid value"),
+        ("shared_dir", "\\test", None, "has an invalid value"),
         ("shared_dir", ".test", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
+        ("shared_dir", "/test//test2", None, "has an invalid value"),
+        ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # Note: NONE is considered as a valid path
         ("fsx_fs_id", None, None, None),
         ("fsx_fs_id", "", None, "has an invalid value"),
@@ -229,7 +233,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test1",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 DefaultCfnParams["fsx"].value,
                 {"MasterSubnetId": "subnet-12345678", "AvailabilityZone": "mocked_avail_zone"},
             ),
@@ -237,7 +241,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test2",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -248,7 +252,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test3",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -263,7 +267,7 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
         (
             "test6",
             utils.merge_dicts(
-                DefaultCfnParams["cluster"].value,
+                DefaultCfnParams["cluster_sit"].value,
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
@@ -275,6 +279,6 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
 )
 def test_fsx_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing EFS related options."""
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="mount_target_id")
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="mount_target_id")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)

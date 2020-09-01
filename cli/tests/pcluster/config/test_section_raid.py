@@ -108,8 +108,12 @@ def test_raid_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
         ("shared_dir", "//test", None, "has an invalid value"),
         ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", ".\\test", None, "has an invalid value"),
+        ("shared_dir", "\\test", None, "has an invalid value"),
         ("shared_dir", ".test", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2", None, "has an invalid value"),
+        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
+        ("shared_dir", "/test//test2", None, "has an invalid value"),
+        ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         ("raid_type", None, None, None),
         ("raid_type", "", None, "must be an Integer"),

@@ -12,39 +12,39 @@ import configparser
 import pytest
 from assertpy import assert_that
 
-from pcluster.config.mappings import CLUSTER, SCALING
-from tests.pcluster.config.utils import get_mocked_pcluster_config, get_param_definition
+from pcluster.config.mappings import CLUSTER_SIT, SCALING
+from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pcluster_config
 
 
 @pytest.mark.parametrize(
     "section_definition, param_key, param_value, expected_value",
     [
         # Param
-        (CLUSTER, "key_name", None, None),
-        (CLUSTER, "key_name", "test", "test"),
-        (CLUSTER, "key_name", "NONE", "NONE"),
-        (CLUSTER, "base_os", "alinux", "alinux"),
-        (CLUSTER, "base_os", "ubuntu1804", "ubuntu1804"),
-        (CLUSTER, "base_os", "ubuntu1404", "ubuntu1404"),  # no longer supported value
+        (CLUSTER_SIT, "key_name", None, None),
+        (CLUSTER_SIT, "key_name", "test", "test"),
+        (CLUSTER_SIT, "key_name", "NONE", "NONE"),
+        (CLUSTER_SIT, "base_os", "alinux", "alinux"),
+        (CLUSTER_SIT, "base_os", "ubuntu1804", "ubuntu1804"),
+        (CLUSTER_SIT, "base_os", "ubuntu1404", "ubuntu1404"),  # no longer supported value
         # BoolParam
-        (CLUSTER, "encrypted_ephemeral", None, None),
-        (CLUSTER, "encrypted_ephemeral", False, None),
-        (CLUSTER, "encrypted_ephemeral", True, "true"),
+        (CLUSTER_SIT, "encrypted_ephemeral", None, None),
+        (CLUSTER_SIT, "encrypted_ephemeral", False, None),
+        (CLUSTER_SIT, "encrypted_ephemeral", True, "true"),
         # IntParam
         (SCALING, "scaledown_idletime", None, None),
         (SCALING, "scaledown_idletime", 10, None),
         (SCALING, "scaledown_idletime", 3, "3"),
         # JsonParam
-        (CLUSTER, "extra_json", None, None),
-        (CLUSTER, "extra_json", {}, {}),
+        (CLUSTER_SIT, "extra_json", None, None),
+        (CLUSTER_SIT, "extra_json", {}, {}),
         (
-            CLUSTER,
+            CLUSTER_SIT,
             "extra_json",
             {"cluster": {"cfn_scheduler_slots": "cores"}},
             '{"cluster": {"cfn_scheduler_slots": "cores"}}',
         ),
         (
-            CLUSTER,
+            CLUSTER_SIT,
             "extra_json",
             {"cfncluster": {"cfn_scheduler_slots": "cores"}},
             '{"cluster": {"cfn_scheduler_slots": "cores"}}',
@@ -59,7 +59,7 @@ def test_param_to_file(mocker, section_definition, param_key, param_value, expec
 
     pcluster_config = get_mocked_pcluster_config(mocker)
 
-    param_definition, param_type = get_param_definition(section_definition, param_key)
+    param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
     param = param_type(section_definition.get("key"), section_label, param_key, param_definition, pcluster_config)
     param.value = param_value or param_definition.get("default")
     param.to_file(config_parser)

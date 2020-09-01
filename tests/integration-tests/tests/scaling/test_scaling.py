@@ -63,12 +63,12 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
     )
 
     logging.info("Verifying no error in logs")
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 @pytest.mark.regions(["sa-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge", "torque"])
+@pytest.mark.schedulers(["sge", "torque"])
 @pytest.mark.usefixtures("region", "os", "instance")
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
@@ -105,7 +105,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
         scheduler_commands, nodes_to_remove, nodes_to_retain, desired_capacity=initial_queue_size
     )
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 @pytest.mark.regions(["us-west-1"])

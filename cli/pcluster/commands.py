@@ -19,6 +19,7 @@ from __future__ import absolute_import, print_function
 import json
 import logging
 import os
+import re
 import sys
 import time
 from builtins import str
@@ -29,36 +30,75 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
+from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
-from pcluster.constants import PCLUSTER_STACK_PREFIX
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
 
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_batch_resources(stack_name, region):
-    """
-    Create a bucket associated to the given stack and upload batch resources.
+def _create_bucket_with_resources(pcluster_config, json_params):
+    """Create a bucket associated to the given stack and upload specified resources."""
+    scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
+    if scheduler not in ["awsbatch", "slurm"]:
+        return None
 
-    Returns the bucket name if both creation and upload succeed.
-    """
-    batch_resources = pkg_resources.resource_filename(__name__, "resources/batch")
-    s3_bucket_name = utils.generate_random_bucket_name(stack_name)
-    LOGGER.debug("Creating S3 bucket for AWS Batch resources, named %s", s3_bucket_name)
+    s3_bucket_name = utils.generate_random_bucket_name("parallelcluster")
+    LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
 
     try:
-        utils.create_s3_bucket(s3_bucket_name, region)
-    except ClientError:
+        utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
+    except Exception:
         LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
         raise
 
     try:
-        utils.upload_resources_artifacts(s3_bucket_name, root=batch_resources)
+        resources_dirs = ["resources/custom_resources"]
+        if scheduler == "awsbatch":
+            resources_dirs.append("resources/batch")
+        for resources_dir in resources_dirs:
+            resources = pkg_resources.resource_filename(__name__, resources_dir)
+            utils.upload_resources_artifacts(s3_bucket_name, root=resources)
+        if utils.is_hit_enabled_cluster(scheduler):
+            _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
     except Exception:
-        LOGGER.error("Unable to upload AWS Batch resources to the S3 bucket %s.", s3_bucket_name)
+        LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
         raise
 
     return s3_bucket_name
+
+
+def _upload_hit_resources(bucket_name, pcluster_config, json_params):
+    hit_template_url = pcluster_config.get_section("cluster").get_param_value(
+        "hit_template_url"
+    ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
+        bucket_url=utils.get_bucket_url(pcluster_config.region),
+        version=utils.get_installed_version(),
+    )
+
+    try:
+        file_contents = utils.read_remote_file(hit_template_url)
+        rendered_template = utils.render_template(file_contents, json_params)
+    except Exception as e:
+        LOGGER.error("Error when generating hit template from url %s: %s", hit_template_url, e)
+        raise
+
+    try:
+        s3_client = boto3.client("s3")
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Body=rendered_template,
+            Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+        )
+        s3_client.put_object(
+            Bucket=bucket_name,
+            Body=json.dumps(json_params),
+            Key="configs/cluster-config.json",
+        )
+    except Exception as e:
+        LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)
 
 
 def version():
@@ -72,30 +112,46 @@ def _check_for_updates(pcluster_config):
         utils.check_if_latest_version()
 
 
+def _validate_cluster_name(cluster_name):
+    if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), cluster_name):
+        LOGGER.error(
+            (
+                "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+                "It must start with an alphabetic character and can't be longer than {} characters."
+            ).format(PCLUSTER_NAME_MAX_LENGTH)
+        )
+        sys.exit(1)
+
+
 def create(args):  # noqa: C901 FIXME!!!
     LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
     LOGGER.debug("Building cluster config based on args %s", str(args))
+
+    _validate_cluster_name(args.cluster_name)
 
     # Build the config based on args
     pcluster_config = PclusterConfig(
         config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
     )
     pcluster_config.validate()
+
+    # Automatic SIT -> HIT conversion, if needed
+    HitConverter(pcluster_config).convert()
+
     # get CFN parameters, template url and tags from config
-    cluster_section = pcluster_config.get_section("cluster")
-    cfn_params = pcluster_config.to_cfn()
+    storage_data = pcluster_config.to_storage()
+    cfn_params = storage_data.cfn_params
 
     _check_for_updates(pcluster_config)
 
-    batch_bucket_name = None
+    bucket_name = None
     try:
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        # If scheduler is awsbatch create bucket with resources
-        if cluster_section.get_param_value("scheduler") == "awsbatch":
-            batch_bucket_name = _create_bucket_with_batch_resources(stack_name, pcluster_config.region)
-            cfn_params["ResourcesS3Bucket"] = batch_bucket_name
+        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data.json_params)
+        if bucket_name:
+            cfn_params["ResourcesS3Bucket"] = bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
         LOGGER.debug(cfn_params)
@@ -137,21 +193,21 @@ def create(args):  # noqa: C901 FIXME!!!
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
     except KeyError as e:
         LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
     except Exception as e:
         LOGGER.critical(e)
-        if batch_bucket_name:
-            utils.delete_s3_bucket(batch_bucket_name)
+        if bucket_name:
+            utils.delete_s3_bucket(bucket_name)
         sys.exit(1)
 
 
@@ -195,6 +251,15 @@ def _evaluate_tags(pcluster_config, preferred_tags=None):
     return [{"Key": tag, "Value": tags[tag]} for tag in tags]
 
 
+def _print_compute_fleet_status(cluster_name, stack):
+    outputs = stack.get("Outputs", [])
+    if utils.get_stack_output_value(outputs, "IsHITCluster") == "true":
+        status_manager = ComputeFleetStatusManager(cluster_name)
+        compute_fleet_status = status_manager.get_status()
+        if compute_fleet_status:
+            LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
+
+
 def _print_stack_outputs(stack):
     """
     Print a limited set of the CloudFormation Stack outputs.
@@ -228,47 +293,6 @@ def _is_ganglia_enabled(parameters):
     except Exception:
         pass
     return is_ganglia_enabled
-
-
-def start(args):
-    """Restore ASG limits or awsbatch CE to min/max/desired."""
-    stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
-    cluster_section = pcluster_config.get_section("cluster")
-
-    if cluster_section.get_param_value("scheduler") == "awsbatch":
-        LOGGER.info("Enabling AWS Batch compute environment : %s", args.cluster_name)
-        max_vcpus = cluster_section.get_param_value("max_vcpus")
-        desired_vcpus = cluster_section.get_param_value("desired_vcpus")
-        min_vcpus = cluster_section.get_param_value("min_vcpus")
-        ce_name = utils.get_batch_ce(stack_name)
-        _start_batch_ce(ce_name=ce_name, min_vcpus=min_vcpus, desired_vcpus=desired_vcpus, max_vcpus=max_vcpus)
-    else:
-        LOGGER.info("Starting compute fleet : %s", args.cluster_name)
-        max_queue_size = cluster_section.get_param_value("max_queue_size")
-        min_desired_size = (
-            cluster_section.get_param_value("initial_queue_size")
-            if cluster_section.get_param_value("maintain_initial_size")
-            else 0
-        )
-        asg_name = utils.get_asg_name(stack_name)
-        utils.set_asg_limits(asg_name=asg_name, min=min_desired_size, max=max_queue_size, desired=min_desired_size)
-
-
-def stop(args):
-    """Set ASG limits or awsbatch ce to min/max/desired = 0/0/0."""
-    stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
-    cluster_section = pcluster_config.get_section("cluster")
-
-    if cluster_section.get_param_value("scheduler") == "awsbatch":
-        LOGGER.info("Disabling AWS Batch compute environment : %s", args.cluster_name)
-        ce_name = utils.get_batch_ce(stack_name)
-        _stop_batch_ce(ce_name=ce_name)
-    else:
-        LOGGER.info("Stopping compute fleet : %s", args.cluster_name)
-        asg_name = utils.get_asg_name(stack_name)
-        utils.set_asg_limits(asg_name=asg_name, min=0, max=0, desired=0)
 
 
 def _get_pcluster_version_from_stack(stack):
@@ -326,7 +350,11 @@ def list_stacks(args):
 def _poll_master_server_state(stack_name):
     ec2 = boto3.client("ec2")
     try:
-        master_id = utils.get_master_server_id(stack_name)
+        instances = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.master)
+        if not instances:
+            LOGGER.error("Cannot retrieve master node status. Exiting...")
+            sys.exit(1)
+        master_id = instances[0].get("InstanceId")
         instance = ec2.describe_instance_status(InstanceIds=[master_id]).get("InstanceStatuses")[0]
         state = instance.get("InstanceState").get("Name")
         sys.stdout.write("\rMasterServer: %s" % state.upper())
@@ -359,47 +387,23 @@ def _poll_master_server_state(stack_name):
     return state
 
 
-def _get_ec2_instances(stack):
-    resources = utils.get_stack_resources(stack)
-    temp_instances = [r for r in resources if r.get("ResourceType") == "AWS::EC2::Instance"]
-
-    stack_instances = []
-    for instance in temp_instances:
-        stack_instances.append([instance.get("LogicalResourceId"), instance.get("PhysicalResourceId")])
-
-    return stack_instances
-
-
-def _start_batch_ce(ce_name, min_vcpus, desired_vcpus, max_vcpus):
-    try:
-        boto3.client("batch").update_compute_environment(
-            computeEnvironment=ce_name,
-            state="ENABLED",
-            computeResources={
-                "minvCpus": int(min_vcpus),
-                "maxvCpus": int(max_vcpus),
-                "desiredvCpus": int(desired_vcpus),
-            },
-        )
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
-
-
-def _stop_batch_ce(ce_name):
-    boto3.client("batch").update_compute_environment(computeEnvironment=ce_name, state="DISABLED")
+def _get_compute_instances(stack):
+    instances = utils.describe_cluster_instances(stack, node_type=utils.NodeType.compute)
+    return map(lambda i: ("ComputeFleet", i.get("InstanceId")), instances)
 
 
 def instances(args):
     stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
+    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False)
     cluster_section = pcluster_config.get_section("cluster")
 
     instances = []
-    instances.extend(_get_ec2_instances(stack_name))
+    master_server = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.master)
+    if master_server:
+        instances.append(("MasterServer", master_server[0].get("InstanceId")))
 
     if cluster_section.get_param_value("scheduler") != "awsbatch":
-        instances.extend(utils.get_asg_instances(stack_name))
+        instances.extend(_get_compute_instances(stack_name))
 
     for instance in instances:
         LOGGER.info("%s         %s", instance[0], instance[1])
@@ -415,7 +419,8 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
     """
-    pcluster_config = PclusterConfig(fail_on_error=False)  # FIXME it always search for the default config file
+    # FIXME it always search for the default config file
+    pcluster_config = PclusterConfig(fail_on_error=False, auto_refresh=False)
     if args.command in pcluster_config.get_section("aliases").params:
         ssh_command = pcluster_config.get_section("aliases").get_param_value(args.command)
     else:
@@ -423,7 +428,6 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
 
     try:
         master_ip, username = utils.get_master_ip_and_username(args.cluster_name)
-
         try:
             from shlex import quote as cmd_quote
         except ImportError:
@@ -480,6 +484,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
                     _print_stack_outputs(stack)
+                    _print_compute_fleet_status(args.cluster_name, stack)
             elif stack.get("StackStatus") in [
                 "ROLLBACK_COMPLETE",
                 "CREATE_FAILED",
@@ -507,106 +512,6 @@ def status(args):  # noqa: C901 FIXME!!!
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)
-
-
-def _get_unretained_cw_log_group_resource_keys(template):
-    """Return the keys to all CloudWatch log group resources in template if the resource is not to be retained."""
-    unretained_cw_log_group_keys = []
-    for key, resource in template.get("Resources", {}).items():
-        if resource.get("Type") == "AWS::Logs::LogGroup" and resource.get("DeletionPolicy") != "Retain":
-            unretained_cw_log_group_keys.append(key)
-    return unretained_cw_log_group_keys
-
-
-def _persist_stack_resources(stack, template, keys):
-    """Set the resources in template identified by keys to have a DeletionPolicy of 'Retain'."""
-    for key in keys:
-        template["Resources"][key]["DeletionPolicy"] = "Retain"
-    try:
-        utils.update_stack_template(stack.get("StackName"), template, stack.get("Parameters"))
-    except ClientError as client_err:
-        utils.error(
-            "Unable to persist logs on cluster deletion, failed with error: {emsg}.\n"
-            "If you want to continue, please retry without the --keep-logs flag.".format(
-                emsg=client_err.response.get("Error").get("Message")
-            )
-        )
-
-
-def _persist_cloudwatch_log_groups(cluster_name):
-    """Enable cluster's CloudWatch log groups to persist past cluster deletion."""
-    LOGGER.info("Configuring {0}'s CloudWatch log groups to persist past cluster deletion.".format(cluster_name))
-    substacks = utils.get_cluster_substacks(cluster_name)
-    cw_substack = next((stack for stack in substacks if "CloudWatchLogsSubstack" in stack.get("StackName")), None)
-    if cw_substack:
-        cw_substack_template = utils.get_stack_template(cw_substack.get("StackName"))
-        log_group_keys = _get_unretained_cw_log_group_resource_keys(cw_substack_template)
-        if log_group_keys:  # Only persist the CloudWatch group
-            _persist_stack_resources(cw_substack, cw_substack_template, log_group_keys)
-
-
-def _delete_cluster(cluster_name, nowait):
-    """Delete cluster described by cluster_name."""
-    cfn = boto3.client("cloudformation")
-    saw_update = False
-    try:
-        # delete_stack does not raise an exception if stack does not exist
-        # Use describe_stacks to explicitly check if the stack exists
-        stack_name = utils.get_stack_name(cluster_name)
-        cfn.describe_stacks(StackName=stack_name)
-        cfn.delete_stack(StackName=stack_name)
-        saw_update = True
-        stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
-        sys.stdout.write("\rStatus: %s" % stack_status)
-        sys.stdout.flush()
-        LOGGER.debug("Status: %s", stack_status)
-        if not nowait:
-            while stack_status == "DELETE_IN_PROGRESS":
-                time.sleep(5)
-                stack_status = utils.get_stack(stack_name, cfn, raise_on_error=True).get("StackStatus")
-                events = utils.get_stack_events(stack_name, raise_on_error=True)[0]
-                resource_status = (
-                    "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                ).ljust(80)
-                sys.stdout.write("\r%s" % resource_status)
-                sys.stdout.flush()
-            sys.stdout.write("\rStatus: %s\n" % stack_status)
-            sys.stdout.flush()
-            LOGGER.debug("Status: %s", stack_status)
-        else:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-        if stack_status == "DELETE_FAILED":
-            LOGGER.info("Cluster did not delete successfully. Run 'pcluster delete %s' again", cluster_name)
-    except ClientError as e:
-        if e.response.get("Error").get("Message").endswith("does not exist"):
-            if saw_update:
-                LOGGER.info("\nCluster deleted successfully.")
-                sys.exit(0)
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
-    except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
-        sys.exit(0)
-
-
-def delete(args):
-    PclusterConfig.init_aws(config_file=args.config_file)
-    LOGGER.info("Deleting: %s", args.cluster_name)
-    stack_name = utils.get_stack_name(args.cluster_name)
-    if not utils.stack_exists(stack_name):
-        if args.keep_logs:
-            utils.warn(
-                "Stack for {0} does not exist. Cannot prevent its log groups from being deleted.".format(
-                    args.cluster_name
-                )
-            )
-        utils.warn("Cluster {0} has already been deleted.".format(args.cluster_name))
-        sys.exit(0)
-    elif args.keep_logs:
-        _persist_cloudwatch_log_groups(args.cluster_name)
-    _delete_cluster(args.cluster_name, args.nowait)
 
 
 def _get_default_template_url(region):

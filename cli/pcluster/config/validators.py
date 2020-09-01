@@ -20,8 +20,10 @@ from botocore.exceptions import ClientError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
 from pcluster.utils import (
+    ellipsize,
     get_base_additional_iam_policies,
     get_efs_mount_target_id,
+    get_file_section_name,
     get_instance_vcpus,
     get_partition,
     get_region,
@@ -60,6 +62,10 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
     "arm64": ["ubuntu1804", "alinux2"],
 }
+
+# Constants for section labels
+LABELS_MAX_LENGTH = 64
+LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
 
 
 def _get_sts_endpoint():
@@ -400,11 +406,15 @@ def efa_validator(param_key, param_value, pcluster_config):
     cluster_section = pcluster_config.get_section("cluster")
 
     allowed_instances = _get_efa_enabled_instance_types(errors)
-    if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
-        errors.append(
-            "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
-            "to one of the following values : {1}".format(param_value, allowed_instances)
-        )
+    if pcluster_config.cluster_model.name == "SIT":
+        # Specific validations for SIT clusters
+        if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
+            errors.append(
+                "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
+                "to one of the following values : {1}".format(param_value, allowed_instances)
+            )
+        if cluster_section.get_param_value("placement_group") is None:
+            warnings.append("You may see better performance using a cluster placement group.")
 
     allowed_oses = ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
     if cluster_section.get_param_value("base_os") not in allowed_oses:
@@ -419,9 +429,6 @@ def efa_validator(param_key, param_value, pcluster_config):
             "When using 'enable_efa = {0}' it is required to set the 'scheduler' parameter "
             "to one of the following values : {1}".format(param_value, allowed_schedulers)
         )
-
-    if cluster_section.get_param_value("placement_group") is None:
-        warnings.append("You may see better performance using a cluster placement group.")
 
     _validate_efa_sg(pcluster_config, errors)
 
@@ -473,7 +480,7 @@ def ec2_key_pair_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
     try:
-        boto3.client("ec2").describe_key_pairs(KeyNames=[param_value])
+        _describe_ec2_key_pair(param_value)
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 
@@ -965,7 +972,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
         if "," not in param_value and "." in param_value:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max_vcpus limit
-            vcpus = get_instance_vcpus(pcluster_config.region, param_value)
+            vcpus = get_instance_vcpus(param_value)
             if vcpus <= 0:
                 warnings.append(
                     "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
@@ -1035,12 +1042,12 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    allowed_oses = get_supported_os_for_architecture(param_value)
-    base_os = pcluster_config.get_section("cluster").get_param_value("base_os")
-    if base_os not in allowed_oses:
+    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    allowed_oses = get_supported_os_for_architecture(architecture)
+    if param_value not in allowed_oses:
         errors.append(
             "The architecture {0} is only supported for the following operating systems: {1}".format(
-                param_value, allowed_oses
+                architecture, allowed_oses
             )
         )
 
@@ -1058,6 +1065,124 @@ def base_os_validator(param_key, param_value, pcluster_config):
         )
 
     return [], warnings
+
+
+def queue_settings_validator(param_key, param_value, pcluster_config):
+    errors = []
+    cluster_section = pcluster_config.get_section("cluster")
+    scheduler = cluster_section.get_param_value("scheduler")
+
+    if scheduler != "slurm":
+        errors.append("queue_settings is supported only with slurm scheduler")
+
+    for label in param_value.split(","):
+        if re.match("[A-Z]", label) or re.match("^default$", label) or "_" in label:
+            errors.append(
+                (
+                    "Invalid queue name '{0}'. Queue section names can be at most 30 chars long, must begin with"
+                    " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                    " 'default' as a queue section name."
+                ).format(label)
+            )
+
+    return errors, []
+
+
+def queue_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+    queue_section = pcluster_config.get_section(section_key, section_label)
+    compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
+
+    def check_queue_xor_cluster(param_key):
+        """Check that the param is not used in both queue and cluster section."""
+        # FIXME: Improve the design of the validation mechanism to allow validators to be linked to a specific
+        # validation phase (before, after refresh operations)
+        config_parser = pcluster_config.config_parser
+        if config_parser:
+            # This check is performed only if the configuration is loaded from file.
+            queue_param_in_config_file = config_parser.has_option(
+                get_file_section_name("queue", section_label), param_key
+            )
+            cluster_param_in_config_file = pcluster_config.get_section("cluster").get_param_value(param_key) is not None
+
+            if cluster_param_in_config_file and queue_param_in_config_file:
+                errors.append("Parameter '{0}' can be used only in 'cluster' or in 'queue' section".format(param_key))
+
+    check_queue_xor_cluster("enable_efa")
+    check_queue_xor_cluster("disable_hyperthreading")
+
+    instance_types = []
+    for compute_resource_label in compute_resource_labels:
+        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
+        if compute_resource:
+            instance_type = compute_resource.get_param_value("instance_type")
+            if instance_type in instance_types:
+                errors.append(
+                    "Duplicate instance type '{0}' found in queue '{1}'. "
+                    "Compute resources in the same queue must use different instance types".format(
+                        instance_type, section_label
+                    )
+                )
+            else:
+                instance_types.append(instance_type)
+
+            enable_efa = compute_resource.get_param_value("enable_efa")
+            if enable_efa and not compute_resource.get_param("enable_efa").value:
+                warnings.append(
+                    "EFA was enabled on queue '{0}', but instance type '{1}' "
+                    "does not support EFA.".format(queue_section.label, instance_type)
+                )
+    return errors, warnings
+
+
+def settings_validator(param_key, param_value, pcluster_config):
+    errors = []
+    if param_value:
+        for label in param_value.split(","):
+            label = label.strip()
+            match = re.match(LABELS_REGEX, label)
+            if not match:
+                errors.append(
+                    "Invalid label '{0}' in param '{1}'. Section labels can only contain alphanumeric characters, "
+                    "dashes or underscores.".format(ellipsize(label, 20), param_key)
+                )
+            else:
+                if len(label) > LABELS_MAX_LENGTH:
+                    errors.append(
+                        "Invalid label '{0}' in param '{1}'. The maximum length allowed for section labels is "
+                        "{2} characters".format(ellipsize(label, 20), param_key, LABELS_MAX_LENGTH)
+                    )
+    return errors, []
+
+
+def compute_resource_validator(section_key, section_label, pcluster_config):
+    errors = []
+    section = pcluster_config.get_section(section_key, section_label)
+
+    min_count = section.get_param_value("min_count")
+    max_count = section.get_param_value("max_count")
+    initial_count = section.get_param_value("initial_count")
+
+    if min_count < 0:
+        errors.append("Parameter 'min_count' must be 0 or greater than 0")
+
+    if max_count < 1:
+        errors.append("Parameter 'max_count' must be 1 or greater than 1")
+
+    if section.get_param_value("max_count") < min_count:
+        errors.append("Parameter 'max_count' must be greater than or equal to min_count")
+
+    if initial_count < min_count:
+        errors.append("Parameter 'initial_count' must be greater than or equal to 'min_count'")
+
+    if initial_count > max_count:
+        errors.append("Parameter 'initial_count' must be lower than or equal to 'max_count'")
+
+    if section.get_param_value("spot_price") < 0:
+        errors.append("Parameter 'spot_price' must be 0 or greater than 0")
+
+    return errors, []
 
 
 def _get_efa_enabled_instance_types(errors):
@@ -1121,3 +1246,8 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
                 errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
 
     return errors, warnings
+
+
+def _describe_ec2_key_pair(key_pair_name):
+    """Return information about the provided ec2 key pair."""
+    return boto3.client("ec2").describe_key_pairs(KeyNames=[key_pair_name])

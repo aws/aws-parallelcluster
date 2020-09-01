@@ -10,7 +10,9 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import os
 import sys
+from glob import glob
 
 import argparse
 import boto3
@@ -21,6 +23,19 @@ from botocore.exceptions import ClientError
 def get_all_aws_regions(region):
     ec2 = boto3.client("ec2", region_name=region)
     return set(sorted(r.get("RegionName") for r in ec2.describe_regions().get("Regions")))
+
+
+def get_template_extension(templates_dir, template_name):
+    matching_files = glob("{}{}.*".format(templates_dir, template_name))
+    if len(matching_files) != 1:
+        raise Exception(
+            "Found 0 or multiple matching files for template name {}: {}".format(template_name, matching_files)
+        )
+    file_name = os.path.basename(matching_files[0])
+    extension = file_name[len(template_name) :]  # noqa: E203
+    if extension not in {".cfn.json", ".cfn.yaml"}:
+        raise Exception("Found invalid extension for template {}: {}".format(template_name, extension))
+    return extension
 
 
 def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
@@ -70,8 +85,11 @@ def upload_to_s3(args, region, aws_credentials=None):
     template_paths = "cloudformation/"
 
     for t in args.templates:
-        template_name = "%s%s.cfn.json" % (template_paths, t)
-        key = key_path + "%s-%s.cfn.json" % (t, args.version)
+        template_ext = get_template_extension(template_paths, t)
+        template_name = "{dir}{name}{extension}".format(dir=template_paths, name=t, extension=template_ext)
+        key = "{key_path}{name}-{version}{extension}".format(
+            key_path=key_path, name=t, version=args.version, extension=template_ext
+        )
         data = open(template_name, "rb")
         for bucket in buckets:
             try:

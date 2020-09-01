@@ -7,6 +7,7 @@ from configparser import ConfigParser
 
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
+from tests.pcluster.config.utils import mock_get_instance_type
 
 EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
@@ -143,9 +144,9 @@ def _mock_parallel_cluster_config(mocker):
     mocker.patch(
         "pcluster.configure.easyconfig.get_supported_compute_instance_types", return_value=supported_instance_types
     )
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     mocker.patch(
-        "pcluster.config.param_types.get_supported_architectures_for_instance_type",
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type",
         side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
     )
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
@@ -154,6 +155,9 @@ def _mock_parallel_cluster_config(mocker):
         "pcluster.config.validators.get_supported_architectures_for_instance_type",
         side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
     )
+
+    for instance_type in supported_instance_types:
+        mock_get_instance_type(mocker, instance_type)
 
 
 def _launch_config(mocker, path, remove_path=True):
@@ -664,3 +668,13 @@ def test_prompt_a_list_of_tuple(mocker):
             mocker, vpc_id="vpc-34567891", master_id="subnet-45678912", compute_id="subnet-45678912"
         )
     ).is_true()
+
+
+def test_hit_config_file(mocker, capsys, test_datadir):
+    old_config_file = str(test_datadir / "original_config_file.ini")
+
+    MockHandler(mocker)
+
+    # Expected sys exit with error
+    with pytest.raises(SystemExit, match="ERROR: Configuration in file .* cannot be overwritten"):
+        _launch_config(mocker, old_config_file, remove_path=False)

@@ -113,8 +113,8 @@ def test_dcv_param_from_file(mocker, param_key, param_value, expected_value, exp
     "settings_label, expected_cfn_params",
     [
         ("test1", SystemExit()),
-        ("test2", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"DCVOptions": "master,8443,0.0.0.0/0"})),
-        ("test3", utils.merge_dicts(DefaultCfnParams["cluster"].value, {"DCVOptions": "master,8555,10.0.0.0/0"})),
+        ("test2", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"DCVOptions": "master,8443,0.0.0.0/0"})),
+        ("test3", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"DCVOptions": "master,8555,10.0.0.0/0"})),
         ("test1,test2", SystemExit()),
         ("test4", SystemExit()),
         ("test5", SystemExit()),
@@ -123,6 +123,6 @@ def test_dcv_param_from_file(mocker, param_key, param_value, expected_value, exp
 )
 def test_dcv_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing EFS related options."""
-    mocker.patch("pcluster.config.param_types.get_efs_mount_target_id", return_value="mount_target_id")
-    mocker.patch("pcluster.config.param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="mount_target_id")
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)

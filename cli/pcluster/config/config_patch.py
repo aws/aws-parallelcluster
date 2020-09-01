@@ -16,8 +16,8 @@ from collections import namedtuple
 
 # Represents a single parameter change in a ConfigPatch instance
 from pcluster import utils
-from pcluster.config.param_types import get_file_section_name
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.utils import get_file_section_name
 
 Change = namedtuple("Change", ["section_key", "section_label", "param_key", "old_value", "new_value", "update_policy"])
 
@@ -68,8 +68,8 @@ class ConfigPatch(object):
         self.target_config = copy.deepcopy(target_config)
 
         # Disable autorefresh to avoid breakages due to changes made to the configurations when creating the patch
-        self.base_config.set_auto_refresh(False)
-        self.target_config.set_auto_refresh(False)
+        self.base_config.auto_refresh = False
+        self.target_config.auto_refresh = False
 
         self.changes = []
         self._compare()

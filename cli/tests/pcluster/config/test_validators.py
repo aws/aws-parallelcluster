@@ -12,21 +12,25 @@ import datetime
 import os
 import re
 
+import configparser
 import pytest
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
+from pcluster.config.cfn_param_types import CfnParam, CfnSection
 from pcluster.config.mappings import FSX
-from pcluster.config.param_types import Param, Section
 from pcluster.config.validators import (
     DCV_MESSAGES,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     architecture_os_validator,
+    compute_resource_validator,
     disable_hyperthreading_architecture_validator,
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
+    queue_validator,
+    settings_validator,
 )
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
@@ -35,6 +39,10 @@ from tests.pcluster.config.defaults import DefaultDict
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
+
+
+def _mock_efa_supported_instances(mocker):
+    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
 
 
 @pytest.mark.parametrize(
@@ -1131,14 +1139,14 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
     "section_dict, expected_error, expected_warning",
     [
         ({"enable_efa": "NONE"}, "invalid value", None),
-        ({"enable_efa": "compute"}, "is required to set the 'compute_instance_type'", None),
+        ({"enable_efa": "compute", "scheduler": "sge"}, "is required to set the 'compute_instance_type'", None),
         (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large"},
+            {"enable_efa": "compute", "compute_instance_type": "t2.large", "scheduler": "sge"},
             None,
             "You may see better performance using a cluster placement group",
         ),
         (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6"},
+            {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6", "scheduler": "sge"},
             "it is required to set the 'base_os'",
             None,
         ),
@@ -1157,7 +1165,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "centos7",
-                "scheduler": "slurm",
+                "scheduler": "sge",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1168,7 +1176,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
                 "base_os": "alinux2",
-                "scheduler": "slurm",
+                "scheduler": "sge",
                 "placement_group": "DYNAMIC",
             },
             None,
@@ -1261,6 +1269,7 @@ def test_efa_validator_with_vpc_security_group(
             "compute_instance_type": "t2.large",
             "placement_group": "DYNAMIC",
             "vpc_settings": "default",
+            "scheduler": "sge",
         },
         "vpc default": {"vpc_security_group_id": "sg-12345678"},
     }
@@ -1280,7 +1289,7 @@ def test_efa_validator_with_vpc_security_group(
                 "vol5": {"shared_dir": "/vol5"},
                 "vol6": {"shared_dir": "/vol6"},
             },
-            "Currently only supports upto 5 EBS volumes",
+            "Invalid number of 'ebs' sections specified. Max 5 expected.",
         ),
         (
             {"ebs_settings": "vol1, vol2 "},
@@ -1352,7 +1361,7 @@ def test_dcv_enabled_validator(
     extra_patches = {
         "pcluster.config.validators.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.param_types.get_supported_architectures_for_instance_type": architectures,
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(
@@ -1425,8 +1434,9 @@ def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_m
     }
     expected_message = re.escape(expected_message) if expected_message else None
     extra_patches = {
-        "pcluster.config.param_types.get_supported_architectures_for_instance_type": [architecture],
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": [architecture],
         "pcluster.config.validators.get_supported_architectures_for_instance_type": [architecture],
+        "pcluster.config.validators.get_supported_os_for_architecture": [base_os],
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 
@@ -1463,6 +1473,257 @@ def test_maintain_initial_size_validator(mocker, section_dict, expected_message)
 def test_base_os_validator(mocker, capsys, base_os, expected_warning):
     config_parser_dict = {"cluster default": {"base_os": base_os}}
     utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
+
+
+@pytest.mark.parametrize(
+    "cluster_section_dict, expected_message",
+    [
+        # SIT cluster, perfectly fine
+        ({"scheduler": "slurm"}, None),
+        # HIT cluster with one queue
+        ({"scheduler": "slurm", "queue_settings": "queue1"}, None),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5"},
+            None,
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1, queue2"},
+            None,
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5,queue6"},
+            "Invalid number of 'queue' sections specified. Max 5 expected.",
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue_1"},
+            (
+                "Invalid queue name 'queue_1'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "default"},
+            (
+                "Invalid queue name 'default'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1, default"},
+            (
+                "Invalid queue name '.*'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "QUEUE"},
+            (
+                "Invalid queue name 'QUEUE'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "my-default-queue"},
+            None,
+        ),
+    ],
+)
+def test_queue_settings_validator(mocker, cluster_section_dict, expected_message):
+    config_parser_dict = {
+        "cluster default": cluster_section_dict,
+    }
+    if cluster_section_dict.get("queue_settings"):
+        for i, queue_name in enumerate(cluster_section_dict["queue_settings"].split(",")):
+            config_parser_dict["queue {0}".format(queue_name.strip())] = {
+                "compute_resource_settings": "cr{0}".format(i),
+                "disable_hyperthreading": True,
+                "enable_efa": True,
+            }
+            config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
+
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "cluster_dict, queue_dict, expected_messages",
+    [
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1,cr2", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Duplicate instance type 't2.micro' found in queue 'default'. "
+                "Compute resources in the same queue must use different instance types"
+            ],
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr3,cr4", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Duplicate instance type 'c4.xlarge' found in queue 'default'. "
+                "Compute resources in the same queue must use different instance types"
+            ],
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1,cr3", "enable_efa": True, "disable_hyperthreading": True},
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr1"},
+            None,
+        ),
+        (
+            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
+            {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
+            [
+                "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
+                "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+        ),
+        (
+            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
+            {"compute_resource_settings": "cr1", "enable_efa": False, "disable_hyperthreading": False},
+            [
+                "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
+                "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+        ),
+    ],
+)
+def test_queue_validator(cluster_dict, queue_dict, expected_messages):
+    config_parser_dict = {
+        "cluster default": cluster_dict,
+        "queue default": queue_dict,
+        "compute_resource cr1": {"instance_type": "t2.micro"},
+        "compute_resource cr2": {"instance_type": "t2.micro"},
+        "compute_resource cr3": {"instance_type": "c4.xlarge"},
+        "compute_resource cr4": {"instance_type": "c4.xlarge"},
+    }
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+
+    errors, warnings = queue_validator("queue", "default", pcluster_config)
+
+    if expected_messages:
+        assert_that(expected_messages).is_equal_to(errors)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "param_value, expected_message",
+    [
+        (
+            "section1!2",
+            "Invalid label 'section1!2' in param 'queue_settings'. "
+            "Section labels can only contain alphanumeric characters, dashes or underscores.",
+        ),
+        (
+            "section!123456789abcdefghijklmnopqrstuvwxyz_123456789abcdefghijklmnopqrstuvwxyz_",
+            "Invalid label 'section!123456789...' in param 'queue_settings'. "
+            "Section labels can only contain alphanumeric characters, dashes or underscores.",
+        ),
+        ("section-1", None),
+        ("section_1", None),
+        (
+            "section_123456789abcdefghijklmnopqrstuvwxyz_123456789abcdefghijklmnopqrstuvwxyz_",
+            "Invalid label 'section_123456789...' in param 'queue_settings'. "
+            "The maximum length allowed for section labels is 64 characters",
+        ),
+    ],
+)
+def test_settings_validator(param_value, expected_message):
+    errors, warnings = settings_validator("queue_settings", param_value, None)
+    if expected_message:
+        assert_that(errors and len(errors) == 1).is_true()
+        assert_that(errors[0]).is_equal_to(expected_message)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"min_count": -1, "initial_count": -1}, "Parameter 'min_count' must be 0 or greater than 0"),
+        (
+            {"min_count": 0, "initial_count": 1, "spot_price": -1.1},
+            "Parameter 'spot_price' must be 0 or greater than 0",
+        ),
+        (
+            {"min_count": 1, "max_count": 0, "initial_count": 1},
+            "Parameter 'max_count' must be greater than or equal to 'min_count'",
+        ),
+        ({"min_count": 0, "max_count": 0, "initial_count": 0}, "Parameter 'max_count' must be 1 or greater than 1"),
+        ({"min_count": 1, "max_count": 2, "spot_price": 1.5, "initial_count": 1}, None),
+        (
+            {"min_count": 2, "max_count": 4, "initial_count": 1},
+            "Parameter 'initial_count' must be greater than or equal to 'min_count'",
+        ),
+        (
+            {"min_count": 2, "max_count": 4, "initial_count": 5},
+            "Parameter 'initial_count' must be lower than or equal to 'max_count'",
+        ),
+    ],
+)
+def test_compute_resource_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {
+        "cluster default": {"queue_settings": "default"},
+        "queue default": {"compute_resource_settings": "default"},
+        "compute_resource default": section_dict,
+    }
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
+    mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)
+
+    errors, warnings = compute_resource_validator("compute_resource", "default", pcluster_config)
+
+    if expected_message:
+        assert_that(expected_message in errors)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "cluster_section_dict, sections_dict, expected_message",
+    [
+        (
+            {"vpc_settings": "vpc1, vpc2"},
+            {"vpc vpc1": {}, "vpc vpc2": {}},
+            "The value of 'vpc_settings' parameter is invalid. It can only contain a single vpc section label",
+        ),
+        (
+            {"efs_settings": "efs1, efs2"},
+            {"efs efs1": {}, "efs efs2": {}},
+            "The value of 'efs_settings' parameter is invalid. It can only contain a single efs section label",
+        ),
+    ],
+)
+def test_single_settings_validator(mocker, cluster_section_dict, sections_dict, expected_message):
+    config_parser_dict = {"cluster default": cluster_section_dict}
+    if sections_dict:
+        for key, section in sections_dict.items():
+            config_parser_dict[key] = section
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 #########
@@ -1584,9 +1845,9 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
         mocker,
         config_dict,
         "cluster",
-        "base_os",
         "architecture",
-        architecture,
+        "base_os",
+        base_os,
         architecture_os_validator,
         expected_message,
     )
@@ -1767,9 +2028,9 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
 )
 def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
     mocked_pcluster_config = utils.get_mocked_pcluster_config(mocker)
-    fsx_section = Section(FSX, mocked_pcluster_config, "default")
+    fsx_section = CfnSection(FSX, mocked_pcluster_config, "default")
     for param_key, param_value in section_dict.items():
-        param = FSX.get("params").get(param_key).get("type", Param)
+        param = FSX.get("params").get(param_key).get("type", CfnParam)
         param.value = param_value
         fsx_section.set_param(param_key, param)
     mocked_pcluster_config.add_section(fsx_section)

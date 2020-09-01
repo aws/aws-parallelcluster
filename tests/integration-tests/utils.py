@@ -109,25 +109,37 @@ def get_substacks(stack_name, region=None, sub_stack_name=None):
     return [r.get("PhysicalResourceId") for r in stacks]
 
 
+def get_compute_nodes_count(stack_name, region):
+    return len(get_compute_nodes_instance_ids(stack_name, region))
+
+
 def get_compute_nodes_instance_ids(stack_name, region):
     """Return a list of Compute Instances Id's."""
-    resources = retrieve_cfn_resources(stack_name, region)
-    asg_name = resources.get("ComputeFleet")
-
     try:
-        asg = boto3.client("autoscaling", region_name=region)
-        instances = (
-            asg.describe_auto_scaling_groups(AutoScalingGroupNames=[asg_name])
-            .get("AutoScalingGroups")[0]
-            .get("Instances")
-        )
+        instances = _describe_cluster_instances(stack_name, region, filter_by_node_type="Compute")
         instance_ids = []
         for instance in instances:
             instance_ids.append(instance.get("InstanceId"))
         return instance_ids
     except Exception as e:
-        logging.error("Failed retrieving stack resources for stack {} with exception: {}".format(stack_name, e))
+        logging.error("Failed retrieving instance ids with exception: {}".format(e))
         raise
+
+
+def _describe_cluster_instances(stack_name, region, filter_by_node_type=None, filter_by_name=None):
+    ec2 = boto3.client("ec2", region_name=region)
+    filters = [
+        {"Name": "tag:Application", "Values": [stack_name]},
+        {"Name": "instance-state-name", "Values": ["running"]},
+    ]
+    if filter_by_node_type:
+        filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
+    if filter_by_name:
+        filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
+    instances = []
+    for page in paginate_boto3(ec2.describe_instances, Filters=filters):
+        instances.extend(page.get("Instances", []))
+    return instances
 
 
 def get_instance_ids_compute_hostnames_conversion_dict(instance_ids, id_to_hostname, region=None):

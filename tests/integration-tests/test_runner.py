@@ -66,6 +66,7 @@ TEST_DEFAULTS = {
     "custom_template_url": None,
     "custom_awsbatch_template_url": None,
     "custom_awsbatchcli_url": None,
+    "custom_hit_template_url": None,
     "custom_ami": None,
     "pre_install": None,
     "post_install": None,
@@ -180,6 +181,11 @@ def _init_argparser():
     )
     parser.add_argument(
         "--custom-template-url", help="URL to a custom cfn template.", default=TEST_DEFAULTS.get("custom_template_url")
+    )
+    parser.add_argument(
+        "--custom-hit-template-url",
+        help="URL to a custom hit cfn template.",
+        default=TEST_DEFAULTS.get("custom_hit_template_url"),
     )
     parser.add_argument(
         "--custom-awsbatch-template-url",
@@ -333,7 +339,7 @@ def _get_pytest_args(args, regions, log_file, out_dir):
     return pytest_args
 
 
-def _set_custom_packages_args(args, pytest_args):
+def _set_custom_packages_args(args, pytest_args):  # noqa: C901
     if args.custom_node_url:
         pytest_args.extend(["--custom-node-package", args.custom_node_url])
 
@@ -345,6 +351,9 @@ def _set_custom_packages_args(args, pytest_args):
 
     if args.custom_template_url:
         pytest_args.extend(["--template-url", args.custom_template_url])
+
+    if args.custom_hit_template_url:
+        pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
 
     if args.custom_awsbatch_template_url:
         pytest_args.extend(["--custom-awsbatch-template-url", args.custom_awsbatch_template_url])

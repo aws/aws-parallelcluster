@@ -34,6 +34,10 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+    def __repr__(self):
+        attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
+        return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
+
     def update(self, reset_desired=False, extra_params=None):
         """
         Update a cluster with an already updated config.
@@ -100,8 +104,12 @@ class Cluster:
             return self.cfn_outputs["MasterPublicIP"]
         else:
             ec2 = boto3.client("ec2", region_name=self.region)
-            master_server = self.cfn_resources["MasterServer"]
-            instance = ec2.describe_instances(InstanceIds=[master_server]).get("Reservations")[0].get("Instances")[0]
+            filters = [
+                {"Name": "tag:Application", "Values": [self.cfn_name]},
+                {"Name": "instance-state-name", "Values": ["running"]},
+                {"Name": "tag:Name", "Values": ["Master"]},
+            ]
+            instance = ec2.describe_instances(Filters=filters).get("Reservations")[0].get("Instances")[0]
             return instance.get("PublicIpAddress")
 
     @property
@@ -113,7 +121,7 @@ class Cluster:
     @property
     def asg(self):
         """Return the asg name for the ComputeFleet."""
-        return self.cfn_resources["ComputeFleet"]
+        return self.cfn_outputs.get("ASGName")
 
     @property
     def cfn_outputs(self):

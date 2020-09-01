@@ -18,17 +18,22 @@ import pytest
 from assertpy import assert_that
 from configparser import NoOptionError, NoSectionError
 
-from pcluster.config.param_types import Param
+from pcluster.cluster_model import ClusterModel
+from pcluster.config.cfn_param_types import CfnParam
+from pcluster.config.param_types import StorageData
 from pcluster.config.pcluster_config import PclusterConfig
-from tests.pcluster.config.defaults import CFN_CONFIG_NUM_OF_PARAMS, DefaultDict
+from tests.pcluster.config.defaults import CFN_HIT_CONFIG_NUM_OF_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultDict
 
 # List of parameters ignored by default when comparing sections
-COMPARATION_IGNORED_PARAMS = ["ClusterConfigMetadata"]
+COMPARATION_IGNORED_PARAMS = [
+    "ClusterConfigMetadata",  # Difficult to test among the other params. Has a specifically dedicated test
+    "_scaledown_idletime",  # Automatically managed, contains just a copy of scaledown_idletime for S3 configuration
+]
 
 
-def get_param_definition(section_definition, param_key):
+def get_cfnparam_definition(section_definition, param_key):
     param_definition = section_definition.get("params").get(param_key)
-    return param_definition, param_definition.get("type", Param)
+    return param_definition, param_definition.get("type", CfnParam)
 
 
 def merge_dicts(*args):
@@ -79,7 +84,7 @@ def assert_param_from_file(
     if param_value is not None:
         config_parser.set(section_name, param_key, param_value)
 
-    param_definition, param_type = get_param_definition(section_definition, param_key)
+    param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
@@ -106,8 +111,8 @@ def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
         "pcluster.config.validators.get_supported_instance_types": master_instances,
         "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.param_types.get_avail_zone": "mocked_avail_zone",
-        "pcluster.config.param_types.get_supported_architectures_for_instance_type": architectures,
+        "pcluster.config.cfn_param_types.get_avail_zone": "mocked_avail_zone",
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.validators.get_instance_vcpus": 1,
     }
     if extra_patches:
@@ -123,6 +128,34 @@ def mock_pcluster_config(mocker, scheduler=None, extra_patches=None, patch_funcs
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
+def mock_get_instance_type(mocker, instance_type="t2.micro"):
+    mocker.patch(
+        "pcluster.utils.get_instance_type",
+        return_value={
+            "InstanceType": instance_type,
+            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+            "NetworkInfo": {"EfaSupported": False},
+        },
+    )
+
+
+def mock_ec2_key_pair(mocker, cluster_section_dict):
+    if cluster_section_dict.get("key_name") is None:
+        cluster_section_dict["key_name"] = "test_key"
+
+        mocker.patch(
+            "pcluster.config.validators._describe_ec2_key_pair",
+            return_value={
+                "KeyPairs": [
+                    {
+                        "KeyFingerprint": "12:bf:7c:56:6c:dd:4f:8c:24:45:75:f1:1b:16:54:89:82:09:a4:26",
+                        "KeyName": "test_key",
+                    }
+                ]
+            },
+        )
+
+
 def assert_param_validator(
     mocker,
     config_parser_dict,
@@ -130,6 +163,7 @@ def assert_param_validator(
     capsys=None,
     expected_warning=None,
     extra_patches=None,
+    use_mock_ec2_key_pair=True,
 ):
     config_parser = configparser.ConfigParser()
 
@@ -138,9 +172,12 @@ def assert_param_validator(
     set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
+    mock_ec2_key_pair(mocker, config_parser_dict.get("cluster default"))
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
+    mock_get_instance_type(mocker)
+
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
             _ = init_pcluster_config_from_configparser(config_parser)
@@ -151,12 +188,14 @@ def assert_param_validator(
             assert_that(capsys.readouterr().out).matches(expected_warning)
 
 
-def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expected_section_dict):
+def assert_section_from_cfn(
+    mocker, section_definition, cfn_params_dict, expected_section_dict, expected_section_label="default"
+):
     def mock_get_avail_zone(subnet_id):
         # Mock az detection by returning a mock az if subnet has a value
         return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
 
-    mocker.patch("pcluster.config.param_types.get_avail_zone", mock_get_avail_zone)
+    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", mock_get_avail_zone)
     cfn_params = []
     for cfn_key, cfn_value in cfn_params_dict.items():
         cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
@@ -164,41 +203,59 @@ def assert_section_from_cfn(mocker, section_definition, cfn_params_dict, expecte
     pcluster_config = get_mocked_pcluster_config(mocker)
 
     section_type = section_definition.get("type")
-    section = section_type(section_definition, pcluster_config).from_cfn_params(cfn_params)
+    storage_params = StorageData(cfn_params, None)
+    section = section_type(section_definition, pcluster_config).from_storage(storage_params)
 
     if section.label:
-        assert_that(section.label).is_equal_to("default")
+        assert_that(section.label).is_equal_to(expected_section_label)
 
     # update expected dictionary
-    default_dict = DefaultDict[section_definition.get("key")].value
+    default_dict = get_default_dict(section_definition)
     expected_dict = default_dict.copy()
     if isinstance(expected_section_dict, dict):
         expected_dict.update(expected_section_dict)
 
     section_dict = {}
     for param_key, param in section.params.items():
-        section_dict[param_key] = param.value
+        if not param_key.startswith("_"):
+            section_dict[param_key] = param.value
+
+    remove_ignored_params(section_dict)
 
     assert_that(section_dict).is_equal_to(expected_dict)
 
 
+def get_default_dict(section_definition):
+    section_key = section_definition.get("key")
+
+    if section_key == "global":
+        section_key += "_"
+
+    if "cluster" == section_key:
+        section_key += "_sit" if section_definition.get("cluster_model") == ClusterModel.SIT.name else "_hit"
+
+    default_dict = DefaultDict[section_key].value
+    return default_dict
+
+
 def get_mocked_pcluster_config(mocker, auto_refresh=False):
-    mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
     pcluster_config = PclusterConfig(config_file="wrong-file")
-    pcluster_config.set_auto_refresh(auto_refresh)
+    pcluster_config.auto_refresh = auto_refresh
     return pcluster_config
 
 
 def assert_section_from_file(mocker, section_definition, config_parser_dict, expected_dict_params, expected_message):
-    mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
 
     # update expected dictionary
-    default_dict_key = section_definition.get("key")
-    if default_dict_key == "global":
-        default_dict_key += "_"
-    default_dict = DefaultDict[default_dict_key].value
+    default_dict = get_default_dict(section_definition)
     expected_dict = default_dict.copy()
     if isinstance(expected_dict_params, dict):
         expected_dict.update(expected_dict_params)
@@ -213,7 +270,8 @@ def assert_section_from_file(mocker, section_definition, config_parser_dict, exp
         section = section_type(section_definition, pcluster_config).from_file(config_parser)
         section_dict = {}
         for param_key, param in section.params.items():
-            section_dict[param_key] = param.value
+            if not param_key.startswith("_"):
+                section_dict[param_key] = param.value
 
         assert_that(section_dict).is_equal_to(expected_dict)
 
@@ -229,7 +287,7 @@ def assert_section_to_file(mocker, section_definition, section_dict, expected_co
     section = section_type(section_definition, pcluster_config, section_label="default")
 
     for param_key, param_value in section_dict.items():
-        param_definition, param_type = get_param_definition(section.definition, param_key)
+        param_definition, param_type = get_cfnparam_definition(section.definition, param_key)
         param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
         param.value = param_value
         section.add_param(param)
@@ -270,13 +328,20 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
     section_type = section_definition.get("type")
     section = section_type(section_definition, pcluster_config)
     for param_key, param_value in section_dict.items():
-        param_definition, param_type = get_param_definition(section_definition, param_key)
-        param = param_type(section_definition.get("key"), "default", param_key, param_definition, pcluster_config)
+        param_definition, param_type = get_cfnparam_definition(section_definition, param_key)
+        param = param_type(
+            section_definition.get("key"),
+            "default",
+            param_key,
+            param_definition,
+            pcluster_config,
+            owner_section=section,
+        )
         param.value = param_value
         section.add_param(param)
     pcluster_config.add_section(section)
 
-    cfn_params = section.to_cfn()
+    cfn_params = section.to_storage().cfn_params
     if ignore_metadata:
         remove_ignored_params(cfn_params)
         remove_ignored_params(expected_cfn_params)
@@ -285,7 +350,17 @@ def assert_section_to_cfn(mocker, section_definition, section_dict, expected_cfn
 
 
 def assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
-    mocker.patch("pcluster.config.param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"])
+    mocker.patch(
+        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
+    )
+    mocker.patch(
+        "pcluster.utils.get_instance_type",
+        return_value={
+            "InstanceType": "t2.micro",
+            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+            "NetworkInfo": {"EfaSupported": False},
+        },
+    )
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):
             PclusterConfig(
@@ -301,7 +376,7 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
 
         cfn_params = pcluster_config.to_cfn()
 
-        assert_that(len(cfn_params)).is_equal_to(CFN_CONFIG_NUM_OF_PARAMS)
+        assert_that(len(cfn_params)).is_equal_to(get_cfn_config_num_of_params(pcluster_config))
 
         remove_ignored_params(cfn_params)
 
@@ -311,14 +386,14 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
             )
 
 
-def init_pcluster_config_from_configparser(config_parser, validate=True):
+def init_pcluster_config_from_configparser(config_parser, validate=True, auto_refresh=True):
     with tempfile.NamedTemporaryFile(delete=False) as config_file:
 
         with open(config_file.name, "w") as cf:
             config_parser.write(cf)
 
         pcluster_config = PclusterConfig(
-            config_file=config_file.name, cluster_label="default", fail_on_file_absence=True
+            config_file=config_file.name, cluster_label="default", fail_on_file_absence=True, auto_refresh=auto_refresh
         )
         if validate:
             pcluster_config.validate()
@@ -331,3 +406,22 @@ def duplicate_config_file(dst_config_file, test_datadir):
     src_config_file_path = os.path.join(str(test_datadir), "pcluster.config.ini")
     dst_config_file_path = os.path.join(str(test_datadir), dst_config_file)
     shutil.copy(src_config_file_path, dst_config_file_path)
+
+
+def get_cfn_config_num_of_params(pcluster_config):
+    return (
+        CFN_SIT_CONFIG_NUM_OF_PARAMS
+        if pcluster_config.cluster_model == ClusterModel.SIT
+        else CFN_HIT_CONFIG_NUM_OF_PARAMS
+    )
+
+
+def dict_to_cfn_params(cfn_params_dict):
+    """Convert a dictionary to a list of CloudFormation params."""
+    if cfn_params_dict:
+        cfn_params = []
+        for cfn_key, cfn_value in cfn_params_dict.items():
+            cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
+    else:
+        cfn_params = None
+    return cfn_params

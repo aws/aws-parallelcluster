@@ -7,6 +7,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
+from pcluster.utils import get_bucket_url
 from tests.common import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster_name"
@@ -363,9 +364,15 @@ def test_generate_random_bucket_name(bucket_prefix):
 
 
 @pytest.mark.parametrize(
-    "region,error_message", [("eu-west-1", None), ("us-east-1", None), ("eu-west-1", "An error occurred")]
+    "region,create_error_message,configure_error_message",
+    [
+        ("eu-west-1", None, None),
+        ("us-east-1", None, None),
+        ("eu-west-1", "An error occurred", None),
+        ("eu-west-1", None, "An error occurred"),
+    ],
 )
-def test_create_s3_bucket(region, error_message, boto3_stubber):
+def test_create_s3_bucket(region, create_error_message, configure_error_message, boto3_stubber, mocker):
     bucket_name = "test"
     expected_params = {"Bucket": bucket_name}
     if region != "us-east-1":
@@ -373,21 +380,61 @@ def test_create_s3_bucket(region, error_message, boto3_stubber):
         # When the region is us-east-1 we are not specifying this parameter because it's the default region.
         expected_params["CreateBucketConfiguration"] = {"LocationConstraint": region}
 
+    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket", auto_spec=True)
+
     mocked_requests = [
         MockedBoto3Request(
             method="create_bucket",
             expected_params=expected_params,
             response={"Location": bucket_name},
-            generate_error=error_message is not None,
-        )
+            generate_error=create_error_message is not None,
+        ),
     ]
+    if not create_error_message:
+        mocked_requests += [
+            MockedBoto3Request(
+                method="put_bucket_versioning",
+                expected_params={"Bucket": bucket_name, "VersioningConfiguration": {"Status": "Enabled"}},
+                response={},
+                generate_error=configure_error_message is not None,
+            ),
+        ]
+        if not configure_error_message:
+            mocked_requests += [
+                MockedBoto3Request(
+                    method="put_bucket_encryption",
+                    expected_params={
+                        "Bucket": bucket_name,
+                        "ServerSideEncryptionConfiguration": {
+                            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
+                        },
+                    },
+                    response={},
+                ),
+                MockedBoto3Request(
+                    method="put_bucket_policy",
+                    expected_params={
+                        "Bucket": bucket_name,
+                        "Policy": (
+                            '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly",'
+                            '"Action":"s3:*","Effect":"Deny","Resource":["arn:aws:s3:::{bucket_name}","arn:aws:s3:::'
+                            '{bucket_name}/*"],"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},'
+                            '"Principal":"*"}}]}}'
+                        ).format(bucket_name=bucket_name),
+                    },
+                    response={},
+                ),
+            ]
 
     boto3_stubber("s3", mocked_requests)
-    if error_message:
-        with pytest.raises(ClientError, match=error_message):
+    if create_error_message or configure_error_message:
+        with pytest.raises(ClientError, match=create_error_message or configure_error_message):
             utils.create_s3_bucket(bucket_name, region)
+        if configure_error_message:
+            assert_that(delete_s3_bucket_mock.call_count).is_equal_to(1)
     else:
         utils.create_s3_bucket(bucket_name, region)
+        delete_s3_bucket_mock.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -511,3 +558,112 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
         get_instance_types_info_patch.assert_not_called()
     else:
         get_instance_types_info_patch.assert_called_with([instance_type])
+
+
+@pytest.mark.parametrize(
+    "node_type, expected_fallback, expected_response, expected_instances",
+    [
+        (utils.NodeType.master, False, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.master, True, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.master, True, {"Reservations": []}, 0),
+        (utils.NodeType.compute, False, {"Reservations": [{"Groups": [], "Instances": [{}, {}, {}]}]}, 3),
+        (utils.NodeType.compute, True, {"Reservations": [{"Groups": [], "Instances": [{}, {}]}]}, 2),
+        (utils.NodeType.compute, True, {"Reservations": []}, 0),
+    ],
+)
+def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback, expected_response, expected_instances):
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_instances",
+            expected_params={
+                "Filters": [
+                    {"Name": "tag:Application", "Values": ["test-cluster"]},
+                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(node_type)]},
+                ]
+            },
+            response=expected_response if not expected_fallback else {"Reservations": []},
+        )
+    ]
+    if expected_fallback:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_instances",
+                expected_params={
+                    "Filters": [
+                        {"Name": "tag:Application", "Values": ["test-cluster"]},
+                        {"Name": "instance-state-name", "Values": ["running"]},
+                        {"Name": "tag:Name", "Values": [str(node_type)]},
+                    ]
+                },
+                response=expected_response,
+            )
+        )
+    boto3_stubber("ec2", mocked_requests)
+    instances = utils.describe_cluster_instances("test-cluster", node_type=node_type)
+    assert_that(instances).is_length(expected_instances)
+
+
+@pytest.mark.parametrize(
+    "master_instance, expected_ip, error",
+    [
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "running"},
+            },
+            "18.188.93.193",
+            None,
+        ),
+        ({"PrivateIpAddress": "10.0.16.17", "State": {"Code": 16, "Name": "running"}}, "10.0.16.17", None),
+        (
+            {
+                "PrivateIpAddress": "10.0.16.17",
+                "PublicIpAddress": "18.188.93.193",
+                "State": {"Code": 16, "Name": "stopped"},
+            },
+            "18.188.93.193",
+            "MasterServer: STOPPED",
+        ),
+    ],
+    ids=["public_ip", "private_ip", "stopped"],
+)
+def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
+    describe_cluster_instances_mock = mocker.patch(
+        "pcluster.utils.describe_cluster_instances", return_value=[master_instance]
+    )
+
+    if error:
+        with pytest.raises(SystemExit, match=error):
+            utils._get_master_server_ip("stack-name")
+    else:
+        assert_that(utils._get_master_server_ip("stack-name")).is_equal_to(expected_ip)
+        describe_cluster_instances_mock.assert_called_with("stack-name", node_type=utils.NodeType.master)
+
+
+@pytest.mark.parametrize(
+    "scheduler, expected_is_hit_enabled",
+    [
+        ("sge", False),
+        ("slurm", True),
+        ("torque", False),
+        ("awsbatch", False),
+        # doesn't check scheduler's validity, only whether it's slurm or not
+        ("madeup-scheduler", False),
+    ],
+)
+def test_is_hit_enabled_cluster(scheduler, expected_is_hit_enabled):
+    """Verify that the expected schedulers are hit enabled."""
+    assert_that(utils.is_hit_enabled_cluster(scheduler)).is_equal_to(expected_is_hit_enabled)
+
+
+@pytest.mark.parametrize(
+    "region, expected_url",
+    [
+        ("us-east-1", "https://us-east-1-aws-parallelcluster.s3.us-east-1.amazonaws.com"),
+        ("cn-north-1", "https://cn-north-1-aws-parallelcluster.s3.cn-north-1.amazonaws.com.cn"),
+    ],
+)
+def test_get_bucket_url(region, expected_url):
+    assert_that(get_bucket_url(region)).is_equal_to(expected_url)

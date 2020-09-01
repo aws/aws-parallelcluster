@@ -69,6 +69,7 @@ def pytest_addoption(parser):
     )
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
+    parser.addoption("--hit-template-url", help="url to a custom HIT cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
@@ -151,14 +152,19 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_collection_finish(session):
-    _log_collected_tests(session.config, session.items)
+    _log_collected_tests(session)
 
 
-def _log_collected_tests(config, items):
-    logging.info("Collected test=%d", len(items))
-    out_dir = config.getoption("output_dir")
-    with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
-        out_f.write("\n".join(map(lambda item: item.nodeid, items)))
+def _log_collected_tests(session):
+    from xdist import get_xdist_worker_id
+
+    # Write collected tests in a single worker
+    # get_xdist_worker_id returns the id of the current worker ('gw0', 'gw1', etc) or 'master'
+    if get_xdist_worker_id(session) in ["master", "gw0"]:
+        logging.info("Collected test=%d", len(session.items))
+        out_dir = session.config.getoption("output_dir")
+        with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
+            out_f.write("\n".join(map(lambda item: item.nodeid, session.items)))
 
 
 def pytest_exception_interact(node, call, report):
@@ -316,20 +322,21 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        _add_custom_packages_configs(config_file_path, request, region)
+        add_custom_packages_configs(config_file_path, request, region)
         _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
 
 
-def _add_custom_packages_configs(cluster_config, request, region):
+def add_custom_packages_configs(cluster_config, request, region):
     config = configparser.ConfigParser()
     config.read(cluster_config)
     cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
 
     for custom_option in [
         "template_url",
+        "hit_template_url",
         "custom_awsbatch_template_url",
         "custom_chef_cookbook",
         "custom_ami",

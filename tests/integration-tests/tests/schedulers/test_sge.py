@@ -48,7 +48,7 @@ def test_sge(region, pcluster_config_reader, clusters_factory):
     )
     # TODO: _test_dynamic_max_cluster_size
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, "sge")
 
 
 def _test_sge_version(remote_command_executor):

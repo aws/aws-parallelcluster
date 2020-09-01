@@ -47,7 +47,7 @@ def test_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_f
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
 
-    assert_no_errors_in_logs(remote_command_executor, ["/var/log/sqswatcher", "/var/log/jobwatcher"])
+    assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
 def _test_efa_installed(scheduler_commands, remote_command_executor):

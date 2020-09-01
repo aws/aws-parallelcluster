@@ -271,7 +271,10 @@ class SlurmCommands(SchedulerCommands):
 
     @retry(
         retry_on_result=lambda result: "JobState" not in result
-        or any(value in result for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING"]),
+        or any(
+            value in result
+            for value in ["EndTime=Unknown", "JobState=RUNNING", "JobState=COMPLETING", "JobState=CONFIGURING"]
+        ),
         wait_fixed=seconds(3),
         stop_max_delay=minutes(7),
     )
@@ -329,15 +332,15 @@ class SlurmCommands(SchedulerCommands):
         result = self._remote_command_executor.run_remote_command("scontrol show jobs -o {0}".format(job_id))
         assert_that(result.stdout).contains("JobState=COMPLETED")
 
-    def compute_nodes_count(self):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command("sinfo --Node --noheader | grep compute | wc -l")
-        # split()[-1] to extract last line and trim whitespaces
-        return int(result.stdout.split()[-1])
+    def compute_nodes_count(self, filter_by_partition=None):  # noqa: D102
+        return len(self.get_compute_nodes(filter_by_partition))
 
-    def get_compute_nodes(self):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command(
-            "sinfo --Node --noheader | grep compute | awk '{print $1}'"
-        )
+    def get_compute_nodes(self, filter_by_partition=None):  # noqa: D102
+        command = "sinfo --Node --noheader --responding"
+        if filter_by_partition:
+            command += " --partition {}".format(filter_by_partition)
+        command += " | grep -v '[~#]' | awk '{print $1}'"
+        result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 
     @retry(retry_on_result=lambda result: "drain" not in result, wait_fixed=seconds(3), stop_max_delay=minutes(5))

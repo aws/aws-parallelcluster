@@ -11,6 +11,10 @@
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
 from future import standard_library  # isort:skip
+
+from pcluster.cluster_model import ClusterModel
+from pcluster.config.hit_converter import HitConverter
+
 standard_library.install_aliases()
 # fmt: on
 
@@ -110,6 +114,14 @@ def configure(args):
 
     pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False)
 
+    # FIXME: Overriding HIT config files is currently not supported.
+    if pcluster_config.cluster_model == ClusterModel.HIT:
+        error(
+            "Configuration in file {0} cannot be overwritten. Please specify a different file path".format(
+                args.config_file
+            )
+        )
+
     if os.path.exists(pcluster_config.config_file):
         msg = "WARNING: Configuration file {0} will be overwritten."
     else:
@@ -183,6 +195,9 @@ def configure(args):
     for param_key, param_value in vpc_parameters.items():
         param = vpc_section.get_param(param_key)
         param.value = param.get_value_from_string(param_value)
+
+    # Convert file if needed
+    _convert_config(pcluster_config)
 
     # Update config file by overriding changed settings
     pcluster_config.to_file()
@@ -270,6 +285,28 @@ def _choose_network_configuration(scheduler):
     return next(
         configuration.value for configuration in NetworkConfiguration if configuration.value.config_type == target_type
     )
+
+
+def _convert_config(pcluster_config):
+    """Convert the generated SIT configuration to HIT model if scheduler is Slurm."""
+    if pcluster_config.cluster_model == ClusterModel.SIT:
+        HitConverter(pcluster_config).convert()
+
+        if pcluster_config.cluster_model == ClusterModel.HIT:
+            # Conversion occurred: reset some parameters from config file since their values can be inferred at runtime
+
+            # enable_efa and disable_hyperthreading will get their value from cluster section
+            queue_section = pcluster_config.get_section("queue", "compute")
+            _reset_config_params(queue_section, ("enable_efa", "disable_hyperthreading"))
+
+            # initial_count will take its value from min_count
+            compute_resource_section = pcluster_config.get_section("compute_resource", "default")
+            _reset_config_params(compute_resource_section, ["initial_count"])
+
+            # cluster's disable_hyperthreading's HIT default is None instead of False
+            cluster_section = pcluster_config.get_section("cluster")
+            if not cluster_section.get_param_value("disable_hyperthreading"):
+                _reset_config_params(cluster_section, ["disable_hyperthreading"])
 
 
 class SchedulerHandler:

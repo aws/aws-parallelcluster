@@ -15,13 +15,14 @@ import logging
 import pexpect
 import pytest
 from assertpy import assert_that
+from conftest import add_custom_packages_configs
 
 from pcluster.config.pcluster_config import PclusterConfig
 
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["awsbatch", "slurm"])
+@pytest.mark.schedulers(["awsbatch", "slurm", "sge"])
 def test_pcluster_configure(
     request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
 ):
@@ -50,6 +51,8 @@ def test_pcluster_configure(
         vpc_stack.cfn_outputs["PrivateSubnetId"],
         config_path,
     )
+
+    add_custom_packages_configs(config_path, request, region)
     clusters_factory(config_path)
 
 
@@ -65,11 +68,6 @@ def get_unsupported_test_runner_options(request):
     """Return list of CLI args exposed by test_runner.py that this test doesn't support which were also used."""
     unsupported_options = [
         "cluster",
-        "custom_ami",
-        "custom_awsbatchcli_package",
-        "custom_awsbatch_template_url",
-        "custom_chef_cookbook",
-        "custom_node_package",
     ]
     return [option for option in unsupported_options if request.config.getoption(option) is not None]
 
@@ -127,31 +125,37 @@ def assert_config_contains_expected_values(
         {"section_name": "aws", "parameter_name": "aws_region_name", "expected_value": region},
         {"section_name": "cluster", "parameter_name": "key_name", "expected_value": key_name},
         {"section_name": "cluster", "parameter_name": "scheduler", "expected_value": scheduler},
-        {"section_name": "cluster", "parameter_name": "base_os", "expected_value": os},
+        {
+            "section_name": "cluster",
+            "parameter_name": "base_os",
+            "expected_value": os if scheduler != "awsbatch" else "alinux2",
+        },
         {"section_name": "cluster", "parameter_name": "master_instance_type", "expected_value": instance},
         {"section_name": "vpc", "parameter_name": "vpc_id", "expected_value": vpc_id},
         {"section_name": "vpc", "parameter_name": "master_subnet_id", "expected_value": public_subnet_id},
         {"section_name": "vpc", "parameter_name": "compute_subnet_id", "expected_value": private_subnet_id},
-        {
-            "section_name": "cluster",
-            "parameter_name": "min_vcpus" if scheduler == "awsbatch" else "initial_queue_size",
-            "expected_value": 1,
-        },
-        {
-            "section_name": "cluster",
-            "parameter_name": "desired_vcpus" if scheduler == "awsbatch" else "maintain_initial_size",
-            "expected_value": 1 if scheduler == "awsbatch" else True,
-        },
-        {
-            "section_name": "cluster",
-            "parameter_name": "compute_instance_type",
-            "expected_value": instance,
-            "skip_for_batch": True,
-        },
     ]
+
+    if scheduler == "slurm":
+        param_validators += [
+            {"section_name": "cluster", "parameter_name": "queue_settings", "expected_value": "compute"},
+            {"section_name": "queue", "parameter_name": "compute_resource_settings", "expected_value": "default"},
+            {"section_name": "compute_resource", "parameter_name": "instance_type", "expected_value": instance},
+            {"section_name": "compute_resource", "parameter_name": "min_count", "expected_value": 1},
+        ]
+    elif scheduler == "awsbatch":
+        param_validators += [
+            {"section_name": "cluster", "parameter_name": "min_vcpus", "expected_value": 1},
+            {"section_name": "cluster", "parameter_name": "desired_vcpus", "expected_value": 1},
+        ]
+    else:
+        param_validators += [
+            {"section_name": "cluster", "parameter_name": "initial_queue_size", "expected_value": 1},
+            {"section_name": "cluster", "parameter_name": "maintain_initial_size", "expected_value": True},
+            {"section_name": "cluster", "parameter_name": "compute_instance_type", "expected_value": instance},
+        ]
+
     for validator in param_validators:
-        if validator.get("skip_for_batch") and scheduler == "awsbatch":
-            continue
         observed_value = pcluster_config.get_section(validator.get("section_name")).get_param_value(
             validator.get("parameter_name")
         )
