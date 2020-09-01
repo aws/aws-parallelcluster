@@ -93,7 +93,13 @@ def test_fsx_lustre(
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
-def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
+def test_fsx_lustre_backup(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    os,
+    scheduler,
+):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
     1. Create a cluster with FSx automatic backups feature enabled.

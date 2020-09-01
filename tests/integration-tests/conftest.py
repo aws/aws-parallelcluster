@@ -73,6 +73,8 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
+    parser.addoption("--pre-install", help="url to pre install script")
+    parser.addoption("--post-install", help="url to post install script")
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
     parser.addoption(
@@ -320,14 +322,14 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
         config_file_path.write_text(rendered_template)
-        add_custom_packages_configs(config_file_path, request)
+        add_custom_packages_configs(config_file_path, request, region)
         _enable_sanity_check_if_unset(config_file_path)
         return config_file_path
 
     return _config_renderer
 
 
-def add_custom_packages_configs(cluster_config, request):
+def add_custom_packages_configs(cluster_config, request, region):
     config = configparser.ConfigParser()
     config.read(cluster_config)
     cluster_template = "cluster {0}".format(config.get("global", "cluster_template", fallback="default"))
@@ -338,9 +340,13 @@ def add_custom_packages_configs(cluster_config, request):
         "custom_awsbatch_template_url",
         "custom_chef_cookbook",
         "custom_ami",
+        "pre_install",
+        "post_install",
     ]:
         if request.config.getoption(custom_option) and custom_option not in config[cluster_template]:
             config[cluster_template][custom_option] = request.config.getoption(custom_option)
+            if custom_option in ["pre_install", "post_install"]:
+                _add_policy_for_pre_post_install(cluster_template, config, custom_option, request, region)
 
     extra_json = json.loads(config.get(cluster_template, "extra_json", fallback="{}"))
     for extra_json_custom_option in ["custom_awsbatchcli_package", "custom_node_package"]:
@@ -357,6 +363,33 @@ def add_custom_packages_configs(cluster_config, request):
 
     with cluster_config.open(mode="w") as f:
         config.write(f)
+
+
+def _add_policy_for_pre_post_install(cluster_template, config, custom_option, request, region):
+    match = re.match(r"s3://(.*?)/(.*)", request.config.getoption(custom_option))
+    if not match or len(match.groups()) < 2:
+        logging.info("{0} script is not an S3 URL".format(custom_option))
+    else:
+        additional_iam_policies = "arn:" + _get_arn_partition(region) + ":iam::aws:policy/AmazonS3ReadOnlyAccess"
+        logging.info(
+            "{0} script is an S3 URL, adding additional_iam_policies={1}".format(custom_option, additional_iam_policies)
+        )
+
+        if "additional_iam_policies" not in config[cluster_template]:
+            config[cluster_template]["additional_iam_policies"] = additional_iam_policies
+        else:
+            config[cluster_template]["additional_iam_policies"] = (
+                config[cluster_template]["additional_iam_policies"] + ", " + additional_iam_policies
+            )
+
+
+def _get_arn_partition(region):
+    if region.startswith("us-gov-"):
+        return "aws-us-gov"
+    elif region.startswith("cn-"):
+        return "aws-cn"
+    else:
+        return "aws"
 
 
 def _enable_sanity_check_if_unset(cluster_config):
