@@ -277,6 +277,7 @@ class SettingsParam(Param):
         if config_parser.has_option(section_name, self.key):
             self.value = config_parser.get(section_name, self.key)
             if self.value:
+                self._check_allowed_values()
                 sections = []
                 for section_label in self.value.split(","):
                     sections.append(
