@@ -128,7 +128,8 @@ ALLOWED_VALUES = {
             r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
             r"(\/([0-9]|[1-2][0-9]|3[0-2]))$",
     "efs_fs_id": r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}|NONE$",
-    "file_path": r"\/?[\w:]+",
+    "file_path": r"^\/?[^\/.\\][^\/\\]*(\/[^\/.\\][^\/]*)*$",
+    "queue_settings": r"^[a-zA-Z][a-zA-Z0-9-]{0,29}(,\s*[a-zA-Z][a-zA-Z0-9-]{0,29})*$",
     "fsx_fs_id": r"^fs-[0-9a-z]{17}|NONE$",
     "greater_than_25": r"^([0-9]+[0-9]{2}|[3-9][0-9]|2[5-9])$",
     "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
@@ -1015,6 +1016,7 @@ CLUSTER_HIT = {
             ("queue_settings", {
                 "type": SettingsJsonParam,
                 "referred_section": QUEUE,
+                "allowed_values": ALLOWED_VALUES["queue_settings"],
                 "validators": [queue_settings_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED,
             }),

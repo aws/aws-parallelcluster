@@ -17,7 +17,8 @@ from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
 from pcluster.cluster_model import ClusterModel
-from pcluster.commands import _create_bucket_with_resources
+from pcluster.commands import _create_bucket_with_resources, _validate_cluster_name
+from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 from pcluster.update import update_command
 
 
@@ -160,3 +161,28 @@ def test_update_failure_on_different_cluster_models(
         assert_that(caplog.text).contains(expected_message)
     else:
         assert_that(caplog.text).is_empty()
+
+
+@pytest.mark.parametrize(
+    "cluster_name, should_trigger_error",
+    [
+        ("ThisClusterNameShouldBeRightSize-ContainAHyphen-AndANumber12", False),
+        ("ThisClusterNameShouldBeJustOneCharacterTooLongAndShouldntBeOk", True),
+        ("2AClusterCanNotBeginByANumber", True),
+        ("ClusterCanNotContainUnderscores_LikeThis", True),
+        ("ClusterCanNotContainSpaces LikeThis", True),
+    ],
+)
+def test_validate_cluster_name(cluster_name, should_trigger_error, caplog):
+    error_msg = (
+        "Error: The cluster name can contain only alphanumeric characters (case-sensitive) and hyphens. "
+        "It must start with an alphabetic character and can't be longer than {} characters."
+    ).format(PCLUSTER_NAME_MAX_LENGTH)
+    if should_trigger_error:
+        with pytest.raises(SystemExit):
+            _validate_cluster_name(cluster_name)
+        assert_that(caplog.text).contains(error_msg)
+    else:
+        _validate_cluster_name(cluster_name)
+        for record in caplog.records:
+            assert record.levelname != "CRITICAL"

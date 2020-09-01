@@ -14,7 +14,7 @@ To make changes and re-generate do:
 .. code-block:: bash
 
     cd cli/
-    python ../util/generate-fsx-substack.py --target-path ../cloudformation/fsx-substack.cfn.json
+    python ../util/cfn-stacks-generators/generate-fsx-substack.py --target-path ../cloudformation/fsx-substack.cfn.json
     tox -e cfn-format
     # check for differences
     git diff
