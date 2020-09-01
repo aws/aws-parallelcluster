@@ -1168,7 +1168,7 @@ def test_sit_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_l
         side_effect=lambda efs_fs_id, avail_zone: "master_mt" if avail_zone == "mocked_avail_zone" else None,
     )
     mocker.patch(
-        "pcluster.config.cfn_param_types.get_avail_zone",
+        "pcluster.config.cfn_param_types.get_availability_zone_of_subnet",
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
 

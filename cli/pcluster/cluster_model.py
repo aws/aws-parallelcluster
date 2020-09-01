@@ -15,7 +15,13 @@ from abc import abstractmethod
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.utils import error, get_cfn_param, is_hit_enabled_cluster
+from pcluster.utils import (
+    error,
+    get_availability_zone_of_subnet,
+    get_cfn_param,
+    get_supported_az_for_one_instance_type,
+    is_hit_enabled_cluster,
+)
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
@@ -69,6 +75,18 @@ class ClusterModel(ABC):
                 pcluster_config.error(
                     "The specified subnet does not contain enough free private IP addresses "
                     "to fulfill your request.\n{0}".format(message)
+                )
+            elif code == "Unsupported" and get_availability_zone_of_subnet(
+                kwargs["SubnetId"]
+            ) not in get_supported_az_for_one_instance_type(kwargs["InstanceType"]):
+                # If an availability zone without desired instance type is selected, error code is "Unsupported"
+                # Therefore, we need to write our own code to tell the specific problem
+                current_az = get_availability_zone_of_subnet(kwargs["SubnetId"])
+                qualified_az = get_supported_az_for_one_instance_type(kwargs["InstanceType"])
+                self.error(
+                    "Your requested instance type ({0}) is not supported in the Availability Zone ({1}) of "
+                    "your requested subnet ({2}). Please retry your request by choosing a subnet in "
+                    "{3}. ".format(kwargs["InstanceType"], current_az, kwargs["SubnetId"], qualified_az)
                 )
             else:
                 pcluster_config.error(

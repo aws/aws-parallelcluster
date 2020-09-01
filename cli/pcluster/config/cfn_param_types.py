@@ -20,7 +20,7 @@ from pcluster.config.resource_map import ResourceMap
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.utils import (
     error,
-    get_avail_zone,
+    get_availability_zone_of_subnet,
     get_cfn_param,
     get_efs_mount_target_id,
     get_file_section_name,
@@ -571,7 +571,7 @@ class AvailabilityZoneCfnParam(CfnParam):
         section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, subnet_parameter):
             subnet_id = config_parser.get(section_name, subnet_parameter)
-            self.value = get_avail_zone(subnet_id)
+            self.value = get_availability_zone_of_subnet(subnet_id)
             self._check_allowed_values()
 
     def to_file(self, config_parser, write_defaults=False):
@@ -596,7 +596,7 @@ class MasterAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
     def from_cfn_params(self, cfn_params):
         """Initialize the Availability zone by checking the Compute Subnet from cfn."""
         master_subnet_id = get_cfn_param(cfn_params, "MasterSubnetId")
-        self.value = get_avail_zone(master_subnet_id)
+        self.value = get_availability_zone_of_subnet(master_subnet_id)
         return self
 
 
@@ -617,7 +617,7 @@ class ComputeAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
     def from_cfn_params(self, cfn_params):
         """Initialize the Availability zone by checking the Compute Subnet from cfn."""
         compute_subnet_id = get_cfn_param(cfn_params, "ComputeSubnetId")
-        self.value = get_avail_zone(compute_subnet_id)
+        self.value = get_availability_zone_of_subnet(compute_subnet_id)
         return self
 
 

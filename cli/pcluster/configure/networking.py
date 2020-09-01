@@ -44,10 +44,11 @@ else:
 class BaseNetworkConfig(ABC):
     """The abstract base configuration from which all configurations shall inherit."""
 
-    def __init__(self, config_type, template_name, stack_name_prefix):
+    def __init__(self, config_type, template_name, stack_name_prefix, availability_zones):
         self.config_type = config_type
         self.template_name = template_name
         self.stack_name_prefix = stack_name_prefix
+        self.availability_zones = availability_zones
 
     def create(self, vpc_id, compute_subnet_size):
         """
@@ -70,29 +71,36 @@ class BaseNetworkConfig(ABC):
     def _build_cfn_param(key, value):
         return {"ParameterKey": key, "ParameterValue": value}
 
-    @staticmethod
-    def _get_cfn_parameters(vpc_id, internet_gateway_id):
-        availability_zone = _get_availability_zone()
+    def _get_cfn_parameters(self, vpc_id, internet_gateway_id):
+        availability_zone = self._get_availability_zone()
         return [
             BaseNetworkConfig._build_cfn_param("AvailabilityZone", availability_zone),
             BaseNetworkConfig._build_cfn_param("InternetGatewayId", internet_gateway_id),
             BaseNetworkConfig._build_cfn_param("VpcId", vpc_id),
         ]
 
+    def _get_availability_zone(self):
+        if self.availability_zones:
+            # To Do: is the first az in the azs list the optimal option?
+            return self.availability_zones.pop()
+        else:
+            return ""
+
 
 class PublicNetworkConfig(BaseNetworkConfig):
     """The public configuration that creates one public subnet with master and compute fleet."""
 
-    def __init__(self):
+    def __init__(self, availability_zones=None):
         super(PublicNetworkConfig, self).__init__(
             config_type="Master and compute fleet in the same public subnet",
             template_name="public",
             stack_name_prefix="pub",
+            availability_zones=availability_zones,
         )
 
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr):
         """Create cloudformation-compatible stack parameter given the variables."""
-        parameters = super(PublicNetworkConfig, self)._get_cfn_parameters(vpc_id, internet_gateway_id)
+        parameters = self._get_cfn_parameters(vpc_id, internet_gateway_id)
         parameters.append(super(PublicNetworkConfig, self)._build_cfn_param("PublicCIDR", public_cidr))
         return parameters
 
@@ -109,16 +117,17 @@ class PublicNetworkConfig(BaseNetworkConfig):
 class PublicPrivateNetworkConfig(BaseNetworkConfig):
     """The publicprivate configuration that creates one public subnet for master and one private subnet for compute."""
 
-    def __init__(self):
+    def __init__(self, availability_zones=None):
         super(PublicPrivateNetworkConfig, self).__init__(
             config_type="Master in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
             stack_name_prefix="pubpriv",
+            availability_zones=availability_zones,
         )
 
     def get_cfn_parameters(self, vpc_id, internet_gateway_id, public_cidr, private_cidr):
         """Create cloudformation-compatible stack parameter given the variables."""
-        parameters = super(PublicPrivateNetworkConfig, self)._get_cfn_parameters(vpc_id, internet_gateway_id)
+        parameters = self._get_cfn_parameters(vpc_id, internet_gateway_id)
         parameters.append(super(PublicPrivateNetworkConfig, self)._build_cfn_param("PublicCIDR", public_cidr))
         parameters.append(super(PublicPrivateNetworkConfig, self)._build_cfn_param("PrivateCIDR", private_cidr))
         return parameters
@@ -212,12 +221,6 @@ def _get_internet_gateway_id(vpc_id):
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
     )
     return response["InternetGateways"][0]["InternetGatewayId"] if response["InternetGateways"] else ""
-
-
-@handle_client_exception
-def _get_availability_zone():
-    # FIXME placeholder for a function that should decide the best availability zone for the current region
-    return ""
 
 
 def automate_vpc_with_subnet_creation(network_configuration, compute_subnet_size):
