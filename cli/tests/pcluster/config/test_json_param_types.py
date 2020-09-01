@@ -127,7 +127,7 @@ def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_r
         # Mock az detection by returning a mock az if subnet has a value
         return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
 
-    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", mock_get_avail_zone)
+    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", mock_get_avail_zone)
 
     # Created expected json params based on active queues
     expected_json_params = _prepare_json_config(queues, test_datadir)

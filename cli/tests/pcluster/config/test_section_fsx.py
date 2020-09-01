@@ -280,5 +280,5 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
 def test_fsx_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):
     """Unit tests for parsing EFS related options."""
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="mount_target_id")
-    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)

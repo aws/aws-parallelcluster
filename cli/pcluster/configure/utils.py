@@ -15,6 +15,7 @@ from builtins import input
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from tabulate import tabulate
 
 LOGGER = logging.getLogger(__name__)
 unsupported_regions = ["ap-northeast-3"]
@@ -49,16 +50,21 @@ def get_default_suggestion(parameter, options):
 
     if parameter in opinionated_suggestions:
         default = opinionated_suggestions.get(parameter)
-    elif isinstance(options, (list, tuple)) and isinstance(options[0], (list, tuple)):
-        default = options[0][0]
     elif isinstance(options, (list, tuple)):
-        default = options[0]
+        default = options[0]["id"] if isinstance(options[0], dict) else options[0]
     else:
         default = ""
     return default
 
 
-def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, default_value=None, options_to_print=None):
+def prompt(
+    message,
+    validator=lambda x: True,
+    input_to_option=lambda x: x,
+    default_value=None,
+    options_to_print=None,
+    table_header=None,
+):
     """
     Prompt the user a message with optionally some options.
 
@@ -71,8 +77,11 @@ def prompt(message, validator=lambda x: True, input_to_option=lambda x: x, defau
     """
     if options_to_print:
         print("Allowed values for {0}:".format(message))
-        for item in options_to_print:
-            print(item)
+        if table_header:
+            print(tabulate(options_to_print, table_header))
+        else:
+            for item in options_to_print:
+                print(item)
     user_prompt = "{0} [{1}]: ".format(
         message, default_value if default_value is not None else get_default_suggestion(message, options_to_print)
     )
@@ -96,50 +105,96 @@ def prompt_iterable(message, options, default_value=None):
 
     The selected option will be the first element of the selected tuple.
     :param message: the message to show to the user
-    :param options: the list of tuple
+    :param options: a list of strings or dicts. dicts must have id as one of the keys
     :param default_value: the default value
     :return: the validated value
     """
     if not options:
         LOGGER.error("ERROR: No options found for {0}".format(message))
         sys.exit(1)
-    is_tuple = isinstance(options[0], (list, tuple))
-
-    if default_value is None:
-        default_value = get_default_suggestion(message, options)
+    is_dict = isinstance(options[0], dict)
+    valid_options = [option["id"] for option in options] if is_dict else options
+    if default_value not in valid_options:
+        # If default value is not allowed, change default value to the first item of the options
+        default_value = get_default_suggestion(message, valid_options)
 
     def input_to_parameter(user_input):
         try:
             if user_input.isdigit() and user_input != "0":
-                option_value = options[int(user_input) - 1][0] if is_tuple else options[int(user_input) - 1]
+                option_value = options[int(user_input) - 1]["id"] if is_dict else options[int(user_input) - 1]
             else:
                 option_value = user_input
         except (ValueError, IndexError):
             option_value = user_input
         return option_value
 
-    if is_tuple:
-        valid_options = [item[0] for item in options]
+    if is_dict:
+        valid_options = [item["id"] for item in options]
+        rows, header = get_rows_and_header(options)
+        return prompt(
+            message,
+            validator=lambda x: x in valid_options,
+            input_to_option=lambda x: input_to_parameter(x),
+            default_value=default_value,
+            options_to_print=rows,
+            table_header=header,
+        )
     else:
         valid_options = options
-
-    return prompt(
-        message,
-        validator=lambda x: x in valid_options,
-        input_to_option=lambda x: input_to_parameter(x),
-        default_value=default_value,
-        options_to_print=generate_printable_list(options),
-    )
+        return prompt(
+            message,
+            validator=lambda x: x in valid_options,
+            input_to_option=lambda x: input_to_parameter(x),
+            default_value=default_value,
+            options_to_print=generate_printable_list(options),
+        )
 
 
 def generate_printable_list(items):
     output = []
     for iterator, item in enumerate(items, start=1):
-        if isinstance(item, (list, tuple)):
-            output.append("{0}. {1}".format(iterator, " | ".join(item)))
-        else:
-            output.append("{0}. {1}".format(iterator, item))
+        output.append("{0}. {1}".format(iterator, item))
     return output
+
+
+def get_rows_and_header(items):
+    """
+     Return rows and header to print using tabulate.
+
+     :param items: list of dicts
+     :return: rows are all values in items. header is keys of dict
+
+     Example:
+     If items is a list of vpc dicts:
+     [
+         {"id":vpc-id1, "name":name1, "number_of_subnets": 6},
+         {"id":vpc-id2, "name":name2, "number_of_subnets": 1}
+         {"id":vpc-id3, "name":name2, "number_of_subnets": 2}
+     ]
+     Return is:
+      (
+         [
+             [1, vpc-id1, name1, 6],
+             [2, vpc-id2, name2, 1],
+             [3, vpc-id3, name3, 2]
+         ],
+         ["#", "id", "name", "number_of_subnets"]
+      )
+     Finally, tabulate(rows header) prints:
+      #  id         name       number_of_subnets
+    ---  --------  ---------  -------------------
+      1  vpc-id1    name1                    6
+      2  vpc-id2    name2                    1
+      3  vpc-id3    name3                    2
+    """
+    header = list(items[0].keys())
+    header.insert(0, "#")
+    rows = []
+    for iterator, item in enumerate(items, start=1):
+        row = list(item.values())
+        row.insert(0, str(iterator))
+        rows.append(row)
+    return rows, header
 
 
 @handle_client_exception

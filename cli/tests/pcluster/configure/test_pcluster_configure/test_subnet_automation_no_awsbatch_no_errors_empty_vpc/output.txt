@@ -39,10 +39,13 @@ Allowed values for Operating System:
 5. ubuntu1604
 6. ubuntu1804
 Allowed values for VPC ID:
-1. vpc-12345678 | ParallelClusterVPC-20190625135738 | 2 subnets inside
-2. vpc-23456789 | ParallelClusterVPC-20190624105051 | 0 subnets inside
-3. vpc-34567891 | default | 3 subnets inside
-4. vpc-45678912 | ParallelClusterVPC-20190626095403 | 1 subnets inside
+  #  id            name                                 number_of_subnets
+---  ------------  ---------------------------------  -------------------
+  1  vpc-12345678  ParallelClusterVPC-20190625135738                    2
+  2  vpc-23456789  ParallelClusterVPC-20190624105051                    0
+  3  vpc-34567891  default                                              3
+  4  vpc-45678912  ParallelClusterVPC-20190626095403                    1
+There are no qualified subnets. Starting automatic creation of subnets...
 Allowed values for Network Configuration:
 1. Master in a public subnet and compute fleet in a private subnet
 2. Master and compute fleet in the same public subnet

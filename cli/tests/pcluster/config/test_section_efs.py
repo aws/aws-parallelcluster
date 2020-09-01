@@ -229,5 +229,5 @@ def test_efs_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, ex
         "pcluster.config.cfn_param_types.get_efs_mount_target_id",
         side_effect=lambda efs_fs_id, avail_zone: "master_mt" if avail_zone == "mocked_avail_zone" else None,
     )
-    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
