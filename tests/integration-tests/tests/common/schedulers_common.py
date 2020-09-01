@@ -431,9 +431,7 @@ class TorqueCommands(SchedulerCommands):
         assert_that(status).is_equal_to("0")
 
     def compute_nodes_count(self):  # noqa: D102
-        result = self._remote_command_executor.run_remote_command(
-            "echo $(( $(/opt/torque/bin/pbsnodes -l all | wc -l) - 1))"
-        )
+        result = self._remote_command_executor.run_remote_command("echo $(( $(pbsnodes -l all | wc -l) - 1))")
         # split()[-1] to extract last line and trim whitespaces
         return int(result.stdout.split()[-1])
 
