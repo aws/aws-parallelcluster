@@ -164,14 +164,6 @@ class CfnResource(object):
         ])
 
     def _cfn_response(self, event):
-        # Use existing PhysicalResourceId if it's in the event and no ID was set
-        if not self.PhysicalResourceId and "PhysicalResourceId" in event.keys():
-            logger.info("PhysicalResourceId present in event, Using that for response")
-            self.PhysicalResourceId = event['PhysicalResourceId']
-        # Generate a physical id if none is provided
-        elif not self.PhysicalResourceId or self.PhysicalResourceId is True:
-            logger.info("No physical resource id returned, generating one...")
-            self.PhysicalResourceId = self.generate_physical_id(event)
         self._send()
 
     def _poll_enabled(self):
@@ -225,6 +217,15 @@ class CfnResource(object):
         return getattr(self, request_type.format(self._event['RequestType'].lower()))
 
     def _send(self, status=None, reason="", send_response=_send_response):
+        # Use existing PhysicalResourceId if it's in the event and no ID was set
+        if not self.PhysicalResourceId and "PhysicalResourceId" in self._event.keys():
+            logger.info("PhysicalResourceId present in event, Using that for response")
+            self.PhysicalResourceId = self._event['PhysicalResourceId']
+        # Generate a physical id if none is provided
+        elif not self.PhysicalResourceId or self.PhysicalResourceId is True:
+            logger.info("No physical resource id returned, generating one...")
+            self.PhysicalResourceId = self.generate_physical_id(self._event)
+
         if len(str(str(self.Reason))) > 256:
             self.Reason = "ERROR: (truncated) " + str(self.Reason)[len(str(self.Reason)) - 240:]
         if len(str(reason)) > 256:
