@@ -708,34 +708,6 @@ def test_sit_cluster_param_from_file(
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
-        ("queue_settings", "test1", None, "Section .* not found in the config file"),
-        ("queue_settings", "test1,test2", None, "Section .* not found in the config file"),
-        (
-            "queue_settings",
-            "test1,    LongestQueueNameThatIsPossible,    LongestQueueNameThatIsPossible",
-            None,
-            "Section .* not found in the config file",
-        ),
-        (
-            "queue_settings",
-            "test1,2test",
-            None,
-            ("ERROR: The configuration parameter 'queue_settings' has an invalid value .*"),
-        ),
-        (
-            "queue_settings",
-            "LongQueueNameJustOneCharTooLong",
-            None,
-            ("ERROR: The configuration parameter 'queue_settings' has an invalid value .*"),
-        ),
-        (
-            "queue_settings",
-            "test1,test2,LongQueueNameJustOneCharTooLong",
-            None,
-            ("ERROR: The configuration parameter 'queue_settings' has an invalid value .*"),
-        ),
-        ("queue_settings", "test1,test2,test-3", None, "Section .* not found in the config file"),
-        ("queue_settings", "LongestQueueNameThatIsPossible", None, "Section .* not found in the config file"),
     ],
 )
 def test_hit_cluster_param_from_file(

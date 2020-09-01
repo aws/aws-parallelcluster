@@ -1075,6 +1075,16 @@ def queue_settings_validator(param_key, param_value, pcluster_config):
     if scheduler != "slurm":
         errors.append("queue_settings is supported only with slurm scheduler")
 
+    for label in param_value.split(","):
+        if re.match("[A-Z]", label) or re.match("^default$", label) or "_" in label:
+            errors.append(
+                (
+                    "Invalid queue name '{0}'. Queue section names can be at most 30 chars long, must begin with"
+                    " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                    " 'default' as a queue section name."
+                ).format(label)
+            )
+
     return errors, []
 
 

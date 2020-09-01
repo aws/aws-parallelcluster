@@ -83,6 +83,22 @@ class Param(ABC):
         """Load the param from the related storage data structure."""
         pass
 
+    def _validate_section_label(self):
+        """
+        Validate the section label.
+
+        Verifies that the section label begins by a letter, contains only alphanumeric characters and hyphens
+        and if its length is at most 30.
+        """
+        if self.section_label != "" and not re.match(r"^[a-zA-Z][a-zA-Z0-9-\\_]{0,29}$", self.section_label):
+            LOGGER.error(
+                (
+                    "Failed validation for section {0} {1}. Section names can be at most 30 chars long,"
+                    " must begin with a letter and only contain alphanumeric characters, hyphens and underscores."
+                ).format(self.section_key, self.section_label)
+            )
+            sys.exit(1)
+
     def from_file(self, config_parser):
         """
         Initialize parameter value from config_parser.
@@ -91,6 +107,10 @@ class Param(ABC):
         """
         section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
+
+            if self.section_key not in ["aws", "global", "aliases"]:
+                self._validate_section_label()
+
             self.value = config_parser.get(section_name, self.key)
             self._check_allowed_values()
 
