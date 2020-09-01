@@ -1487,8 +1487,48 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
             None,
         ),
         (
+            {"scheduler": "slurm", "queue_settings": "queue1, queue2"},
+            None,
+        ),
+        (
             {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5,queue6"},
             "Invalid number of 'queue' sections specified. Max 5 expected.",
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue_1"},
+            (
+                "Invalid queue name 'queue_1'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "default"},
+            (
+                "Invalid queue name 'default'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "queue1, default"},
+            (
+                "Invalid queue name '.*'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "QUEUE"},
+            (
+                "Invalid queue name 'QUEUE'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
+        (
+            {"scheduler": "slurm", "queue_settings": "my-default-queue"},
+            None,
         ),
     ],
 )
@@ -1496,14 +1536,14 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
     config_parser_dict = {
         "cluster default": cluster_section_dict,
     }
-
-    for i in range(1, 7):
-        config_parser_dict["queue queue{0}".format(i)] = {
-            "compute_resource_settings": "cr{0}".format(i),
-            "disable_hyperthreading": True,
-            "enable_efa": True,
-        }
-        config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
+    if cluster_section_dict.get("queue_settings"):
+        for i, queue_name in enumerate(cluster_section_dict["queue_settings"].split(",")):
+            config_parser_dict["queue {0}".format(queue_name.strip())] = {
+                "compute_resource_settings": "cr{0}".format(i),
+                "disable_hyperthreading": True,
+                "enable_efa": True,
+            }
+            config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
 
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
