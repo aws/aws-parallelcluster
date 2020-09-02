@@ -335,7 +335,7 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "Cores": {
-      "Description": "Comma seperated string of [master cores], [compute cores]. If set to -1,-1 or NONE,NONE no CpuOptions are set.",
+      "Description": "Comma seperated string of [master cores], [compute cores], [master instance type supports disabling hyperthreading via CPU options], [compute instance type supports disabling hyperthreading via CPU options].",
       "Type": "CommaDelimitedList",
       "Default": "NONE,NONE"
     },
@@ -2691,11 +2691,26 @@
             "Ref": "ComputeInstanceType"
           },
           "MasterCoreCount": {
-            "Fn::Select": [
-              "0",
-              {
-                "Ref": "Cores"
-              }
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::Select": [
+                    "0",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Select": [
+                    "2",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
+                }
+              ]
             ]
           },
           "ComputeCoreCount": {
@@ -3114,11 +3129,26 @@
             ]
           },
           "ComputeCoreCount": {
-            "Fn::Select": [
-              "1",
-              {
-                "Ref": "Cores"
-              }
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
+                },
+                {
+                  "Fn::Select": [
+                    "3",
+                    {
+                      "Ref": "Cores"
+                    }
+                  ]
+                }
+              ]
             ]
           },
           "SNSTopic": {

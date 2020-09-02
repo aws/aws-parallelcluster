@@ -852,6 +852,34 @@ def get_instance_type(instance_type):
         raise e
 
 
+def get_default_threads_per_core(instance_type, instance_info=None):
+    """Return the default threads per core for the given instance type."""
+    # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
+    #       attribute in their VCpuInfo section. This is a known issue with the
+    #       ec2 DescribeInstanceTypes API. For these instance types an assumption
+    #       is made that if the instance's supported architectures list includes
+    #       x86_64 then the default is 2, otherwise it's 1.
+    if instance_info is None:
+        instance_info = get_instance_type(instance_type)
+    threads_per_core = instance_info.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+    if threads_per_core is None:
+        supported_architectures = instance_info.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+        threads_per_core = 2 if "x86_64" in supported_architectures else 1
+    return threads_per_core
+
+
+def ht_should_be_disabled_via_cpu_options(instance_type, default_threads_per_core=None):
+    """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
+    if default_threads_per_core is None:
+        default_threads_per_core = get_default_threads_per_core(instance_type)
+    return all([
+        # If default threads per core is 1, HT doesn't need to be disabled
+        default_threads_per_core > 1,
+        # Currently, hyperthreading must be disabled manually on *.metal instances
+        not instance_type.endswith(".metal"),
+    ])
+
+
 def is_hit_enabled_cluster(scheduler):
     return scheduler in ["slurm"]
 

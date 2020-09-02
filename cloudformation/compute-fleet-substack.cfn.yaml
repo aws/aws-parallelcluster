@@ -5,7 +5,7 @@ Parameters:
   ComputeSubnetId:
     Type: String
   ComputeCoreCount:
-    Type: String
+    Type: CommaDelimitedList
   SNSTopic:
     Type: String
   RootDevice:
@@ -110,11 +110,26 @@ Conditions:
   DisableComputeHyperthreading: !Not
     - !Or
       - !Equals
-        - !Ref 'ComputeCoreCount'
+        - !Select
+          - '0'
+          - !Ref 'ComputeCoreCount'
         - '-1'
       - !Equals
-        - !Ref 'ComputeCoreCount'
+        - !Select
+          - '0'
+          - !Ref 'ComputeCoreCount'
         - NONE
+  DisableComputeHyperthreadingViaCpuOptions: !And
+    - !Condition DisableComputeHyperthreading
+    - !Equals
+      - !Select
+        - '1'
+        - !Ref 'ComputeCoreCount'
+      - 'true'
+  DisableComputeHyperthreadingManually: !And
+    - !Condition DisableComputeHyperthreading
+    - !Not
+      - !Condition DisableComputeHyperthreadingViaCpuOptions
   UseSpotInstances: !Equals
     - !Ref 'ClusterType'
     - spot
@@ -217,11 +232,13 @@ Resources:
         ImageId: !Ref 'ImageId'
         CpuOptions:
           CoreCount: !If
-            - DisableComputeHyperthreading
-            - !Ref 'ComputeCoreCount'
+            - DisableComputeHyperthreadingViaCpuOptions
+            - !Select
+              - '0'
+              - !Ref 'ComputeCoreCount'
             - !Ref 'AWS::NoValue'
           ThreadsPerCore: !If
-            - DisableComputeHyperthreading
+            - DisableComputeHyperthreadingViaCpuOptions
             - 1
             - !Ref 'AWS::NoValue'
         Monitoring:
@@ -337,6 +354,7 @@ Resources:
                         "cfn_fsx_options": "${FSXOptions}",
                         "cfn_scheduler": "${Scheduler}",
                         "cfn_scheduler_slots": "${SchedulerSlots}",
+                        "cfn_disable_hyperthreading_manually": "${DisableHyperthreadingManually}",
                         "cfn_scaledown_idletime": "${ScaleDownIdleTime}",
                         "cfn_encrypted_ephemeral": "${EncryptedEphemeral}",
                         "cfn_ephemeral_dir": "${EphemeralDir}",
@@ -479,8 +497,14 @@ Resources:
                 - 'false'
               SchedulerSlots: !If
                 - DisableComputeHyperthreading
-                - !Ref 'ComputeCoreCount'
+                - !Select
+                  - '0'
+                  - !Ref 'ComputeCoreCount'
                 - vcpus
+              DisableHyperthreadingManually: !If
+                - DisableComputeHyperthreadingManually
+                - 'true'
+                - 'false'
 Outputs:
   ASGName:
     Value: !Ref 'ComputeFleet'

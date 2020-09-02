@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config import mappings
-from pcluster.utils import get_instance_type
+from pcluster.utils import get_default_threads_per_core, get_instance_type, ht_should_be_disabled_via_cpu_options
 
 
 class HITClusterModel(ClusterModel):
@@ -54,7 +54,14 @@ class HITClusterModel(ClusterModel):
         master_vcpus = vcpus_info.get("DefaultVCpus")
 
         master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-
+        master_threads_per_core = get_default_threads_per_core(master_instance_type)
+        master_cpu_options = (
+            {"CoreCount": master_vcpus // master_threads_per_core, "ThreadsPerCore": 1}
+            if disable_hyperthreading and ht_should_be_disabled_via_cpu_options(
+                master_instance_type, master_threads_per_core
+            )
+            else {}
+        )
         try:
             latest_alinux_ami_id = self._get_latest_alinux_ami_id()
 
@@ -86,10 +93,14 @@ class HITClusterModel(ClusterModel):
                     "compute_resource", compute_resource_settings.split(",")[0]
                 )
 
+                disable_hyperthreading = (
+                    compute_resource_section.get_param_value("disable_hyperthreading")
+                    and compute_resource_section.get_param_value("disable_hyperthreading_via_cpu_options")
+                )
                 self.__test_compute_resource(
                     pcluster_config,
                     compute_resource_section,
-                    disable_hyperthreading=compute_resource_section.get_param_value("disable_hyperthreading"),
+                    disable_hyperthreading=disable_hyperthreading,
                     ami_id=latest_alinux_ami_id,
                     subnet=compute_subnet,
                     security_groups_ids=security_groups_ids,

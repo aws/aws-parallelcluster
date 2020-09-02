@@ -5,7 +5,7 @@ Parameters:
   ComputeInstanceType:
     Type: String
   MasterCoreCount:
-    Type: String
+    Type: CommaDelimitedList
   ComputeCoreCount:
     Type: String
   RootDevice:
@@ -112,11 +112,26 @@ Conditions:
   DisableMasterHyperthreading: !Not
     - !Or
       - !Equals
-        - !Ref 'MasterCoreCount'
+        - !Select
+          - '0'
+          - !Ref 'MasterCoreCount'
         - '-1'
       - !Equals
-        - !Ref 'MasterCoreCount'
+        - !Select
+          - '0'
+          - !Ref 'MasterCoreCount'
         - NONE
+  DisableMasterHyperthreadingViaCpuOptions: !And
+    - !Condition DisableMasterHyperthreading
+    - !Equals
+      - !Select
+        - '1'
+        - !Ref 'MasterCoreCount'
+      - 'true'
+  DisableMasterHyperthreadingManually: !And
+    - !Condition DisableMasterHyperthreading
+    - !Not
+      - !Condition DisableMasterHyperthreadingViaCpuOptions
   IsMasterInstanceEbsOpt: !Not
     - !Or
       - !Or
@@ -204,11 +219,13 @@ Resources:
         InstanceType: !Ref 'MasterInstanceType'
         CpuOptions:
           CoreCount: !If
-            - DisableMasterHyperthreading
-            - !Ref 'MasterCoreCount'
+            - DisableMasterHyperthreadingViaCpuOptions
+            - !Select
+              - '0'
+              - !Ref 'MasterCoreCount'
             - !Ref 'AWS::NoValue'
           ThreadsPerCore: !If
-            - DisableMasterHyperthreading
+            - DisableMasterHyperthreadingViaCpuOptions
             - 1
             - !Ref 'AWS::NoValue'
         BlockDeviceMappings:
@@ -447,8 +464,15 @@ Resources:
                   cfn_raid_parameters: !Ref 'RAIDOptions'
                   cfn_scheduler_slots: !If
                     - DisableMasterHyperthreading
-                    - !Ref 'ComputeCoreCount'
+                    - !Ref 'ComputeCoreCount'  # TODO: why is the
+                                               # compute core count
+                                               # used on the master
+                                               # server?
                     - !Ref 'AWS::NoValue'
+                  cfn_disable_hyperthreading_manually: !If
+                    - DisableMasterHyperthreadingManually
+                    - 'true'
+                    - 'false'
                   cfn_base_os: !Ref 'OS'
                   cfn_preinstall: !Ref 'PreInstallScript'
                   cfn_preinstall_args: !Ref 'PreInstallArgs'

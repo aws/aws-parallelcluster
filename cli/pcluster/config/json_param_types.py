@@ -255,8 +255,8 @@ class QueueJsonSection(JsonSection):
             # Set vcpus according to queue's disable_hyperthreading and instance features
             ht_disabled = self.get_param_value("disable_hyperthreading")
             vcpus_info = instance_type.get("VCpuInfo")
-            default_cores = vcpus_info.get("DefaultCores")
-            vcpus = default_cores if ht_disabled and default_cores else vcpus_info.get("DefaultVCpus")
+            default_threads_per_core = utils.get_default_threads_per_core(instance_type_param.value, instance_type)
+            vcpus = vcpus_info.get("DefaultVCpus") // default_threads_per_core
             compute_resource_section.get_param("vcpus").value = vcpus
 
             # Set gpus according to instance features
@@ -276,21 +276,22 @@ class QueueJsonSection(JsonSection):
             # Set disable_hyperthreading according to queues' disable_hyperthreading and instance features
             compute_resource_section.get_param("disable_hyperthreading").value = (
                 ht_disabled
-                and default_cores is not None
-                and vcpus_info.get("DefaultCores") != vcpus_info.get("DefaultVCpus")
+                and default_threads_per_core != 1
+            )
+
+            # On some instance types, hyperthreading must be disabled manually rather than
+            # through the CpuOptions of a launch template.
+            compute_resource_section.get_param("disable_hyperthreading_via_cpu_options").value = (
+                utils.ht_should_be_disabled_via_cpu_options(
+                    instance_type_param.value,
+                    utils.get_default_threads_per_core(instance_type_param.value, instance_type),
+                )
             )
 
             # Set initial_count to min_count if not manually set
             initial_count_param = compute_resource_section.get_param("initial_count")
             if initial_count_param.value is None:
                 initial_count_param.value = compute_resource_section.get_param_value("min_count")
-
-            # FIXME: These warnings can now be safely moved to validators as they are no longer dependent on API calls
-            if ht_disabled and not compute_resource_section.get_param_value("disable_hyperthreading"):
-                self.pcluster_config.warn(
-                    "Hyperthreading was disabled on queue '{0}', but disabling hyperthreading on instance type '{1}' "
-                    "is not currently supported by ParallelCluster.".format(self.label, instance_type_param.value)
-                )
 
             if enable_efa and not compute_resource_section.get_param_value("enable_efa"):
                 self.pcluster_config.warn(
