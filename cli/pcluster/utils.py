@@ -407,8 +407,7 @@ def get_availability_zone_of_subnet(subnet_id):
                     subnet_id, e.response.get("Error").get("Message")
                 )
             )
-            raise
-    return cache[subnet_id]
+    return cache.get(subnet_id)
 
 
 def get_supported_os_for_scheduler(scheduler):
