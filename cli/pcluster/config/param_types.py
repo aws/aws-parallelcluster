@@ -408,6 +408,11 @@ class SettingsParam(Param):
             # create section
             section.to_file(config_parser)
 
+    @property
+    def referred_section_labels(self):
+        """Return the referred section labels as a list of stripped element."""
+        return [label.strip() for label in self.value.split(",")] if self.value else []
+
 
 # ---------------------- Section ---------------------- #
 class Section(ABC):
