@@ -146,7 +146,7 @@ class SettingsJsonParam(SettingsParam):
             }
         """
         if self.value:
-            labels = self.value.split(",")
+            labels = self.referred_section_labels
 
             for label in labels:
                 section = self.pcluster_config.get_section(self.referred_section_key, label.strip())
@@ -235,9 +235,9 @@ class QueueJsonSection(JsonSection):
             # None value at cluster level is converted to False at queue level
             self.get_param("enable_efa").value = cluster_enable_efa == "compute"
 
-        compute_resource_labels = self.get_param_value("compute_resource_settings")
+        compute_resource_labels = self.get_param("compute_resource_settings").referred_section_labels
         if compute_resource_labels:
-            for compute_resource_label in compute_resource_labels.split(","):
+            for compute_resource_label in compute_resource_labels:
                 compute_resource_section = self.pcluster_config.get_section("compute_resource", compute_resource_label)
                 self.refresh_compute_resource(compute_resource_section)
 
