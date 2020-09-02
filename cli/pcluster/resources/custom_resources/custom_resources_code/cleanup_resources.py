@@ -114,14 +114,28 @@ def _terminate_cluster_nodes(event):
             logger.info("Sleeping for 10 seconds to allow all instances to initiate shut-down")
             time.sleep(10)
 
-        while len(next(_describe_instance_ids_iterator(stack_name, ["shutting-down"]))) > 0:
+        while _has_shuttingdown_instances(stack_name):
             logger.info("Waiting for all nodes to shut-down...")
             time.sleep(10)
+
+        # Sleep for 30 more seconds to give PlacementGroups the time to update
+        time.sleep(30)
 
         logger.info("Compute fleet clean-up: COMPLETED")
     except Exception as e:
         logger.error("Failed when terminating instances with error %s", e)
         raise
+
+
+def _has_shuttingdown_instances(stack_name):
+    ec2 = boto3.client("ec2", config=boto3_config)
+    filters = [
+        {"Name": "tag:Application", "Values": [stack_name]},
+        {"Name": "instance-state-name", "Values": ["shutting-down"]},
+    ]
+
+    result = ec2.describe_instances(Filters=filters)
+    return len(result.get("Reservations", [])) > 0
 
 
 def _describe_instance_ids_iterator(stack_name, instance_state=("pending", "running", "stopping", "stopped")):
