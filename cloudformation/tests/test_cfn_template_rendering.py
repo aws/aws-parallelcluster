@@ -133,7 +133,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
     env = Environment(loader=FileSystemLoader(".."))
     env.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
     template = env.get_template("compute-fleet-hit-substack.cfn.yaml")
-    output_from_parsed_template = template.render(config=test_config)
+    output_from_parsed_template = template.render(config=test_config, config_version="version")
     rendered_file = tmp_path / "compute-fleet-hit-substack.cfn.yaml"
     rendered_file.write_text(output_from_parsed_template)
 

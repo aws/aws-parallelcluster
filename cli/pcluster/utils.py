@@ -34,6 +34,7 @@ import pkg_resources
 from botocore.exceptions import ClientError
 from jinja2 import BaseLoader, Environment
 
+from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
 
 LOGGER = logging.getLogger(__name__)
@@ -53,6 +54,14 @@ class NodeType(Enum):
 
 def get_stack_name(cluster_name):
     return PCLUSTER_STACK_PREFIX + cluster_name
+
+
+def get_cluster_name(stack_name):
+    prefix = "parallelcluster-"
+    if stack_name.startswith(prefix):
+        return stack_name[len(prefix) :]  # noqa: E203
+    else:
+        raise Exception("Invalid stack name: {}".format(stack_name))
 
 
 def get_stack_template(stack_name):
@@ -656,6 +665,13 @@ def get_efs_mount_target_id(efs_fs_id, avail_zone):
 
 
 def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_name=None):
+    instances = []
+    for instances_page in _describe_cluster_instances_iterator(stack_name, filter_by_node_type, filter_by_name):
+        instances.extend(instances_page)
+    return instances
+
+
+def _describe_cluster_instances_iterator(stack_name, filter_by_node_type=None, filter_by_name=None):
     try:
         ec2 = boto3.client("ec2")
         filters = [
@@ -666,10 +682,9 @@ def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_
             filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
         if filter_by_name:
             filters.append({"Name": "tag:Name", "Values": [filter_by_name]})
-        instances = []
+
         for page in paginate_boto3(ec2.describe_instances, Filters=filters):
-            instances.extend(page.get("Instances", []))
-        return instances
+            yield page.get("Instances", [])
 
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
@@ -896,17 +911,17 @@ def get_base_additional_iam_policies():
     ]
 
 
-def get_cluster_capacity(stack_name):
+def cluster_has_running_capacity(stack_name):
     stack = get_stack(stack_name)
     scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
     if is_hit_enabled_cluster(scheduler):
-        # TODO: to be implemented
-        raise NotImplementedError()
-    return (
-        get_batch_ce_capacity(stack_name)
-        if scheduler == "awsbatch"
-        else get_asg_settings(stack_name).get("DesiredCapacity")
-    )
+        return ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
+    else:
+        return (
+            get_batch_ce_capacity(stack_name) > 0
+            if scheduler == "awsbatch"
+            else get_asg_settings(stack_name).get("DesiredCapacity") > 0
+        )
 
 
 def get_instance_type(instance_type):
@@ -938,7 +953,7 @@ def read_remote_file(url):
         raise e
 
 
-def render_template(template_str, params_dict):
+def render_template(template_str, params_dict, config_version):
     """
     Render a Jinjia template and return the rendered output.
 
@@ -949,7 +964,7 @@ def render_template(template_str, params_dict):
         environment = Environment(loader=BaseLoader)
         environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
         template = environment.from_string(template_str)
-        output_from_parsed_template = template.render(config=params_dict)
+        output_from_parsed_template = template.render(config=params_dict, config_version=config_version)
         return output_from_parsed_template
     except Exception as e:
         LOGGER.error("Error when rendering template: %s", e)

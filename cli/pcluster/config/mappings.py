@@ -660,7 +660,7 @@ QUEUE = {
             "type": SettingsJsonParam,
             "referred_section": COMPUTE_RESOURCE,
             "required": True,
-            "update_policy": UpdatePolicy.UNSUPPORTED,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
         }),
     ])
 }
@@ -1016,7 +1016,7 @@ CLUSTER_HIT = {
                 "type": SettingsJsonParam,
                 "referred_section": QUEUE,
                 "validators": [queue_settings_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
+                "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
             }),
             ("disable_hyperthreading", {
                 "type": DisableHyperThreadingCfnParam,

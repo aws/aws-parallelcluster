@@ -138,7 +138,7 @@ UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
     level=10,
     fail_reason="All compute nodes must be stopped",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
-    condition_checker=lambda change, patch: utils.get_cluster_capacity(patch.stack_name) == 0,
+    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name),
 )
 
 # Update supported only with master node down

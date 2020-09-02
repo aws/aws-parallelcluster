@@ -516,6 +516,47 @@ Resources:
             Version: '2012-10-17'
           PolicyName: LambdaPolicy
   {%- endif %}
+  UpdateWaiterFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !Ref 'ResourcesS3Bucket'
+        S3Key: custom_resources_code/artifacts.zip
+      Handler: wait_for_update.handler
+      MemorySize: 128
+      Role: !GetAtt 'UpdateWaiterFunctionExecutionRole.Arn'
+      Runtime: python3.8
+      Timeout: 900
+  UpdateWaiterFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource: !Sub 'arn:${AWS::Partition}:logs:*:*:*'
+                Sid: CloudWatchLogsPolicy
+              - Sid: DynamoDBTable
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTable}'
+            Version: '2012-10-17'
+          PolicyName: LambdaPolicy
 Metadata:
   RootRole: !Ref 'RootRole'
   VPCId: !Ref 'VPCId'
@@ -535,4 +576,9 @@ Outputs:
   CleanupRoute53CustomResource:
     Description: ARN of the custom resource to cleanup Route53
     Value: {% if config.cluster.disable_cluster_dns == False %}!Ref 'CleanupRoute53CustomResource'{% else %}''{% endif %}
+  ConfigVersion:
+    Description: Version of the config used to generate the HIT substack
+    Value: {{ config_version }}
+  UpdateWaiterFunctionArn:
+    Value: !GetAtt 'UpdateWaiterFunction.Arn'
 

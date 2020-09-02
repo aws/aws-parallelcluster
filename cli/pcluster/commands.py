@@ -77,28 +77,32 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
         bucket_url=utils.get_bucket_url(pcluster_config.region),
         version=utils.get_installed_version(),
     )
+    s3_client = boto3.client("s3")
 
     try:
+        result = s3_client.put_object(
+            Bucket=bucket_name,
+            Body=json.dumps(json_params),
+            Key="configs/cluster-config.json",
+        )
         file_contents = utils.read_remote_file(hit_template_url)
-        rendered_template = utils.render_template(file_contents, json_params)
+        rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"))
+    except ClientError as client_error:
+        LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
+        raise
     except Exception as e:
         LOGGER.error("Error when generating hit template from url %s: %s", hit_template_url, e)
         raise
 
     try:
-        s3_client = boto3.client("s3")
         s3_client.put_object(
             Bucket=bucket_name,
             Body=rendered_template,
             Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
         )
-        s3_client.put_object(
-            Bucket=bucket_name,
-            Body=json.dumps(json_params),
-            Key="configs/cluster-config.json",
-        )
     except Exception as e:
         LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)
+        raise
 
 
 def version():
@@ -480,7 +484,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 sys.stdout.flush()
             sys.stdout.write("\rStatus: %s\n" % stack.get("StackStatus"))
             sys.stdout.flush()
-            if stack.get("StackStatus") in ["CREATE_COMPLETE", "UPDATE_COMPLETE"]:
+            if stack.get("StackStatus") in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
                     _print_stack_outputs(stack)
@@ -489,7 +493,6 @@ def status(args):  # noqa: C901 FIXME!!!
                 "ROLLBACK_COMPLETE",
                 "CREATE_FAILED",
                 "DELETE_FAILED",
-                "UPDATE_ROLLBACK_COMPLETE",
             ]:
                 events = utils.get_stack_events(stack_name)
                 for event in events:

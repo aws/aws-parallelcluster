@@ -137,7 +137,7 @@ class ConfigPatch(object):
                 # Mock changes are always considered supported (or ignored). Their purpose is just to show which
                 # parameters are present in a section that has been added or removed. UpdatePolicy checks on related
                 # settings parameters will determine whether adding or removing these sections is supported
-                if mock_change and param.get_update_policy().level != UpdatePolicy.IGNORED:
+                if mock_change and param.get_update_policy() != UpdatePolicy.IGNORED:
                     change_update_policy = UpdatePolicy.SUPPORTED
                 else:
                     change_update_policy = param.get_update_policy()

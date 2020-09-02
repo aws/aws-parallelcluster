@@ -16,10 +16,10 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
+from pcluster.cli_commands import update
 from pcluster.cluster_model import ClusterModel
 from pcluster.commands import _create_bucket_with_resources, _validate_cluster_name
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
-from pcluster.cli_commands import update
 
 
 def _mock_pcluster_config(mocker, scheduler, region):

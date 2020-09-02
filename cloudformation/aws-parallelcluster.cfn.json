@@ -3060,6 +3060,30 @@
               },
               ""
             ]
+          },
+          "HITConfigVersion": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              {
+                "Fn::GetAtt": [
+                  "ComputeFleetHITSubstack",
+                  "Outputs.ConfigVersion"
+                ]
+              },
+              ""
+            ]
+          },
+          "UpdateWaiterFunctionArn": {
+            "Fn::If": [
+              "CreateHITSubstack",
+              {
+                "Fn::GetAtt": [
+                  "ComputeFleetHITSubstack",
+                  "Outputs.UpdateWaiterFunctionArn"
+                ]
+              },
+              "NONE"
+            ]
           }
         },
         "TemplateURL": {
