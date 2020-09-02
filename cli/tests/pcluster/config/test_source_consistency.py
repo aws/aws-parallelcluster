@@ -69,7 +69,7 @@ def test_mapping_consistency():
 
 def test_example_config_consistency(mocker):
     """Validate example file and try to convert to CFN."""
-    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", return_value="mocked_avail_zone")
+    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )

@@ -329,6 +329,88 @@ def get_supported_compute_instance_types(scheduler):
     return instances
 
 
+def get_supported_az_for_one_instance_type(instance_type):
+    """
+    Return a tuple of availability zones that have the instance_types.
+
+    This function build above get_supported_az_for_multi_instance_types,
+    but simplify the input to 1 instance type and result to a list
+
+    :param instance_type: the instance type for which the supporting AZs.
+    :return: a tuple of the supporting AZs
+    """
+    return get_supported_az_for_multi_instance_types([instance_type])[instance_type]
+
+
+def get_supported_az_for_multi_instance_types(instance_types):
+    """
+    Return a dict of instance types to list of availability zones that have each of the instance_types.
+
+    :param instance_types: the list of instance types for which the supporting AZs.
+    :return: a dicts. keys are strings of instance type, values are the tuples of the supporting AZs
+
+    Example:
+    If instance_types is:
+    ["t2.micro", "t2.large"]
+    Result can be:
+    {
+        "t2.micro": (us-east-1a, us-east-1b),
+        "t2.large": (us-east-1a, us-east-1b)
+    }
+    """
+    # first looks for info in cache, then using only one API call for all infos that is not inside the cache
+    if not hasattr(get_supported_az_for_multi_instance_types, "cache"):
+        get_supported_az_for_multi_instance_types.cache = {}
+    cache = get_supported_az_for_multi_instance_types.cache
+    missing_instance_types = []
+    result = {}
+    for instance_type in instance_types:
+        if instance_type in cache:
+            result[instance_type] = cache[instance_type]
+        else:
+            missing_instance_types.append(instance_type)
+    if missing_instance_types:
+        ec2_client = boto3.client("ec2")
+        paginator = ec2_client.get_paginator("describe_instance_type_offerings")
+        page_iterator = paginator.paginate(
+            LocationType="availability-zone", Filters=[{"Name": "instance-type", "Values": missing_instance_types}]
+        )
+        offerings = []
+        for page in page_iterator:
+            offerings.extend(page["InstanceTypeOfferings"])
+        for instance_type in missing_instance_types:
+            cache[instance_type] = tuple(
+                offering["Location"] for offering in offerings if offering["InstanceType"] == instance_type
+            )
+            result[instance_type] = cache[instance_type]
+    return result
+
+
+def get_availability_zone_of_subnet(subnet_id):
+    """
+    Return the availability zone of the subnet.
+
+    :param subnet_id: the id of the subnet.
+    :return: a strings of availability zone name
+    """
+    if not hasattr(get_availability_zone_of_subnet, "cache"):
+        get_availability_zone_of_subnet.cache = {}
+    cache = get_availability_zone_of_subnet.cache
+    if subnet_id not in cache:
+        try:
+            cache[subnet_id] = (
+                boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
+            )
+        except ClientError as e:
+            LOGGER.debug(
+                "Unable to detect availability zone for subnet {0}.\n{1}".format(
+                    subnet_id, e.response.get("Error").get("Message")
+                )
+            )
+            raise
+    return cache[subnet_id]
+
+
 def get_supported_os_for_scheduler(scheduler):
     """
     Return an array containing the list of OSes supported by parallelcluster for the specific scheduler.
@@ -568,25 +650,10 @@ def get_efs_mount_target_id(efs_fs_id, avail_zone):
         for mount_target in mount_targets.get("MountTargets"):
             # Check to see if there is an existing mt in the az of the stack
             mount_target_subnet = mount_target.get("SubnetId")
-            if avail_zone == get_avail_zone(mount_target_subnet):
+            if avail_zone == get_availability_zone_of_subnet(mount_target_subnet):
                 mount_target_id = mount_target.get("MountTargetId")
 
     return mount_target_id
-
-
-def get_avail_zone(subnet_id):
-    avail_zone = None
-    try:
-        avail_zone = (
-            boto3.client("ec2").describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("AvailabilityZone")
-        )
-    except ClientError as e:
-        LOGGER.debug(
-            "Unable to detect availability zone for subnet {0}.\n{1}".format(
-                subnet_id, e.response.get("Error").get("Message")
-            )
-        )
-    return avail_zone
 
 
 def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_name=None):

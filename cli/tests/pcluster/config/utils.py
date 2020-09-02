@@ -111,7 +111,7 @@ def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
         "pcluster.config.validators.get_supported_instance_types": master_instances,
         "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.cfn_param_types.get_avail_zone": "mocked_avail_zone",
+        "pcluster.config.cfn_param_types.get_availability_zone_of_subnet": "mocked_avail_zone",
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.validators.get_instance_vcpus": 1,
     }
@@ -195,7 +195,7 @@ def assert_section_from_cfn(
         # Mock az detection by returning a mock az if subnet has a value
         return "my-avail-zone" if subnet_id and subnet_id != "NONE" else None
 
-    mocker.patch("pcluster.config.cfn_param_types.get_avail_zone", mock_get_avail_zone)
+    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", mock_get_avail_zone)
     cfn_params = []
     for cfn_key, cfn_value in cfn_params_dict.items():
         cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})

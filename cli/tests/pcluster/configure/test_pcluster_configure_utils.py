@@ -16,12 +16,8 @@ from pcluster.configure.utils import get_default_suggestion
         ("Operating System", [], "alinux2", None),
         ("Operating System", ["centos7", "centos6", "ubuntu1804"], "alinux2", None),
         # Ensure first item is selected from first nested list/tuple
-        ("fake-parameter", [["a", "b"], ["c", "d"]], "a", None),
-        ("fake-parameter", [("a", "b"), ("c", "d")], "a", None),
-        ("fake-parameter", (["a", "b"], ["c", "d"]), "a", None),
-        ("fake-parameter", (("a", "b"), ("c", "d")), "a", None),
-        ("fake-parameter", (["a", "b"], ("c", "d")), "a", None),
-        ("fake-parameter", [["a", "b"], ("c", "d")], "a", None),
+        ("fake-parameter", [{"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}], "a", None),
+        ("fake-parameter", ({"id": "a", "key2": "b"}, {"id": "c", "key3": "d"}), "a", None),
         # Ensure first item is selected from flat lists/tuples
         ("fake-parameter", ["a", "b", "c", "d"], "a", None),
         ("fake-parameter", ("a", "b", "c", "d"), "a", None),
@@ -32,10 +28,6 @@ from pcluster.configure.utils import get_default_suggestion
         # tuples/lists are assumed to be non-empty
         ("fake-parameter", [], None, IndexError),
         ("fake-parameter", (), None, IndexError),
-        ("fake-parameter", [[]], None, IndexError),
-        ("fake-parameter", [()], None, IndexError),
-        ("fake-parameter", (()), None, IndexError),
-        ("fake-parameter", ([]), None, IndexError),
     ],
 )
 def test_get_default_suggestion(parameter, options, expected_suggestion, expected_exception):
