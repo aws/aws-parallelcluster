@@ -35,6 +35,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 2,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": False,
                                 },
                                 "multiple_spot_c5.2xlarge": {
                                     "instance_type": "c5.2xlarge",
@@ -44,6 +46,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 4,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": True,
                                 },
                             },
                         },
@@ -57,6 +61,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 36,
                                     "gpus": 0,
                                     "enable_efa": True,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": True,
                                 }
                             },
                             "compute_type": "ondemand",
@@ -74,6 +80,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 16,
                                     "gpus": 2,
                                     "enable_efa": False,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": True,
                                 }
                             },
                             "compute_type": "ondemand",
@@ -107,6 +115,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 2,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": True,
                                 },
                                 "multiple_spot_c5.2xlarge": {
                                     "instance_type": "c5.2xlarge",
@@ -116,6 +126,8 @@ spec.loader.exec_module(cfn_formatter)
                                     "vcpus": 4,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "disable_hyperthreading": True,
+                                    "disable_hyperthreading_via_cpu_options": True,
                                 },
                             },
                         }

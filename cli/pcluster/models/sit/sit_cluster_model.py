@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config import mappings
-from pcluster.utils import get_instance_vcpus
+from pcluster.utils import disable_ht_via_cpu_options, get_default_threads_per_core, get_instance_vcpus
 
 
 class SITClusterModel(ClusterModel):
@@ -83,9 +83,19 @@ class SITClusterModel(ClusterModel):
         # Initialize CpuOptions
         disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
         master_vcpus = get_instance_vcpus(master_instance_type)
+        master_threads_per_core = get_default_threads_per_core(master_instance_type)
         compute_vcpus = get_instance_vcpus(compute_instance_type)
-        master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-        compute_cpu_options = {"CoreCount": compute_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
+        compute_threads_per_core = get_default_threads_per_core(compute_instance_type)
+        master_cpu_options = (
+            {"CoreCount": master_vcpus // master_threads_per_core, "ThreadsPerCore": 1}
+            if disable_hyperthreading and disable_ht_via_cpu_options(master_instance_type, master_threads_per_core)
+            else {}
+        )
+        compute_cpu_options = (
+            {"CoreCount": compute_vcpus // compute_threads_per_core, "ThreadsPerCore": 1}
+            if disable_hyperthreading and disable_ht_via_cpu_options(compute_instance_type, compute_threads_per_core)
+            else {}
+        )
 
         # Initialize Placement Group Logic
         placement_group = cluster_section.get_param_value("placement_group")

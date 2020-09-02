@@ -165,7 +165,7 @@ def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
                     "InstanceTypes": [
                         {
                             "InstanceType": instance_type,
-                            "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48},
+                            "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                             "NetworkInfo": {"EfaSupported": True},
                         }
                     ]

@@ -30,8 +30,11 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "c4.xlarge",
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": False},
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["x86_64"],
+                },
             }
         ]
     },
@@ -44,6 +47,9 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 96},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True},
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["x86_64"],
+                },
             }
         ]
     },
@@ -53,8 +59,39 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
         "InstanceTypes": [
             {
                 "InstanceType": "i3en.24xlarge",
-                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48},
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": True},
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["x86_64"],
+                },
+            }
+        ]
+    },
+    # Disable hyperthreading: not supported
+    # EFA: not supported
+    "t2.xlarge": {
+        "InstanceTypes": [
+            {
+                "InstanceType": "t2.xlarge",
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
+                "NetworkInfo": {"EfaSupported": False},
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["x86_64"],
+                },
+            }
+        ]
+    },
+    # Disable hyperthreading: not supported
+    # EFA: not supported
+    "m6g.xlarge": {
+        "InstanceTypes": [
+            {
+                "InstanceType": "m6g.xlarge",
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
+                "NetworkInfo": {"EfaSupported": False},
+                "ProcessorInfo": {
+                    "SupportedArchitectures": ["arm64"],
+                },
             }
         ]
     },
@@ -72,15 +109,15 @@ def boto3_stubber_path():
         (
             ["queue1"],
             "WARNING: EFA was enabled on queue 'queue1', but instance type 'c4.xlarge' does not support EFA.\n"
-            "WARNING: Hyperthreading was disabled on queue 'queue1', but disabling hyperthreading on instance type "
-            "'g4dn.metal' is not currently supported by ParallelCluster.\n",
+            "WARNING: EFA was enabled on queue 'queue1', but instance type 't2.xlarge' does not support EFA.\n"
+            "WARNING: EFA was enabled on queue 'queue1', but instance type 'm6g.xlarge' does not support EFA.\n",
         ),
         (["queue2"], ""),
         (
             ["queue1", "queue2"],
             "WARNING: EFA was enabled on queue 'queue1', but instance type 'c4.xlarge' does not support EFA.\n"
-            "WARNING: Hyperthreading was disabled on queue 'queue1', but disabling hyperthreading on instance type "
-            "'g4dn.metal' is not currently supported by ParallelCluster.\n",
+            "WARNING: EFA was enabled on queue 'queue1', but instance type 't2.xlarge' does not support EFA.\n"
+            "WARNING: EFA was enabled on queue 'queue1', but instance type 'm6g.xlarge' does not support EFA.\n",
         ),
         ([], ""),
         (["queue3"], ""),

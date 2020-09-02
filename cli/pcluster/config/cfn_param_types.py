@@ -19,9 +19,11 @@ from pcluster.config.param_types import LOGGER, Param, Section, SettingsParam, S
 from pcluster.config.resource_map import ResourceMap
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.utils import (
+    disable_ht_via_cpu_options,
     error,
     get_availability_zone_of_subnet,
     get_cfn_param,
+    get_default_threads_per_core,
     get_efs_mount_target_id,
     get_file_section_name,
     get_instance_vcpus,
@@ -634,7 +636,7 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
             cfn_converter = self.definition.get("cfn_param_mapping", None)
             if cfn_converter and cfn_params:
                 cores = get_cfn_param(cfn_params, cfn_converter)
-                if cores and cores != "NONE,NONE":
+                if cores and not cores.startswith("NONE,NONE"):
                     cores = int(cores.split(",")[0])
                     self.value = cores > 0
         except (ValueError, IndexError):
@@ -642,35 +644,68 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
 
         return self
 
+    @staticmethod
+    def _get_cfn_params_for_instance_type(instance_type):
+        """
+        Return a pair describing whether or not to disable HT for the instance_type and how to do so.
+
+        The first item in the pair is an integer representing a core count for the instance type when
+        HT is disabled (or "NONE" if it shouldn't be disabled). The second item is a boolean expressing
+        if HT should be disabled via CPU Options for the given instance type.
+        """
+        default_threads_per_core = get_default_threads_per_core(instance_type)
+        if default_threads_per_core == 1:
+            # no action is required to disable hyperthreading
+            cores = "NONE"
+        else:
+            cores = get_instance_vcpus(instance_type) // default_threads_per_core
+
+        return cores, disable_ht_via_cpu_options(instance_type, default_threads_per_core)
+
     def to_cfn(self):
         """
-        Define the Cores CFN parameter as a tuple (cores_master,cores_compute) if disable_hyperthreading = true.
+        Define the Cores CFN parameter if disable_hyperthreading = true.
 
-        :return: string (cores_master,cores_compute)
+        :return: string (cores_master,cores_compute,master_supports_cpu_options,compute_supports_cpu_options)
         """
-        cfn_params = {self.definition.get("cfn_param_mapping"): "NONE,NONE"}
-
+        cfn_params = {self.definition.get("cfn_param_mapping"): "NONE,NONE,NONE,NONE"}
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if self.value:
             master_instance_type = cluster_config.get_param_value("master_instance_type")
-            master_cores = get_instance_vcpus(master_instance_type) // 2
+            master_cores, disable_master_ht_via_cpu_options = self._get_cfn_params_for_instance_type(
+                master_instance_type
+            )
 
             if self.pcluster_config.cluster_model.name == "SIT":
                 # compute_instance_type parameter is valid only in SIT clusters
                 compute_instance_type = cluster_config.get_param_value("compute_instance_type")
-                compute_cores = get_instance_vcpus(compute_instance_type) // 2
+                compute_cores, disable_compute_ht_via_cpu_options = self._get_cfn_params_for_instance_type(
+                    compute_instance_type
+                )
             else:
                 compute_instance_type = None
                 compute_cores = 0
+                disable_compute_ht_via_cpu_options = False
 
-            if master_cores < 0 or compute_cores < 0:
-                self.pcluster_config.error(
-                    "For disable_hyperthreading, unable to get number of vcpus for {0} instance. "
-                    "Please open an issue {1}".format(
-                        master_instance_type if master_cores < 0 else compute_instance_type, PCLUSTER_ISSUES_LINK
+            for node_label, cores, instance_type in [
+                ("master", master_cores, master_instance_type),
+                ("compute", compute_cores, compute_instance_type),
+            ]:
+                if isinstance(cores, int) and cores < 0:
+                    self.pcluster_config.error(
+                        "For disable_hyperthreading, unable to get number of vcpus for {0} instance type {1}. "
+                        "Please open an issue {2}".format(node_label, instance_type, PCLUSTER_ISSUES_LINK)
                     )
-                )
-            cfn_params.update({self.definition.get("cfn_param_mapping"): "{0},{1}".format(master_cores, compute_cores)})
+            cfn_params.update(
+                {
+                    self.definition.get("cfn_param_mapping"): "{0},{1},{2},{3}".format(
+                        master_cores,
+                        compute_cores,
+                        str(disable_master_ht_via_cpu_options).lower(),
+                        str(disable_compute_ht_via_cpu_options).lower(),
+                    )
+                }
+            )
 
         return cfn_params
 

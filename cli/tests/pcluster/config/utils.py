@@ -357,7 +357,11 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
         "pcluster.utils.get_instance_type",
         return_value={
             "InstanceType": "t2.micro",
-            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+            "VCpuInfo": {
+                "DefaultVCpus": 1,
+                "DefaultCores": 1,
+                "DefaultThreadsPerCore": 1,
+            },
             "NetworkInfo": {"EfaSupported": False},
         },
     )
