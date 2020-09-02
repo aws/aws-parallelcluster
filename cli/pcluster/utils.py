@@ -168,9 +168,9 @@ def _configure_s3_bucket(bucket_name):
     )
     deny_http_policy = (
         '{{"Id":"DenyHTTP","Version":"2012-10-17","Statement":[{{"Sid":"AllowSSLRequestsOnly","Action":"s3:*",'
-        '"Effect":"Deny","Resource":["arn:aws:s3:::{bucket_name}","arn:aws:s3:::{bucket_name}/*"],'
+        '"Effect":"Deny","Resource":["arn:{partition}:s3:::{bucket_name}","arn:{partition}:s3:::{bucket_name}/*"],'
         '"Condition":{{"Bool":{{"aws:SecureTransport":"false"}}}},"Principal":"*"}}]}}'
-    ).format(bucket_name=bucket_name)
+    ).format(bucket_name=bucket_name, partition=get_partition())
     s3_client.put_bucket_policy(Bucket=bucket_name, Policy=deny_http_policy)
 
 
