@@ -108,6 +108,12 @@ Parameters:
     Type: String
     Description: This is needed to set a conditional dependency on the TerminateComputeFleetCustomResource
       used with HIT
+  HITConfigVersion:
+    Type: String
+    Description: Version of the config used to generate the HIT substack. Used to
+      trigger cfn-hup with metadata changes.
+  UpdateWaiterFunctionArn:
+    Type: String
 Conditions:
   DisableMasterHyperthreading: !Not
     - !Or
@@ -185,6 +191,10 @@ Conditions:
   UsePlacementGroup: !Not
     - !Equals
       - !Ref 'PlacementGroup'
+      - NONE
+  HasUpdateWaiterFunction: !Not
+    - !Equals
+      - !Ref 'UpdateWaiterFunctionArn'
       - NONE
 Resources:
   MasterServer:
@@ -428,11 +438,15 @@ Resources:
         configSets:
           default:
             - deployConfigFiles
+            - cfnHupConfig
             - chefPrepEnv
             - shellRunPreInstall
             - chefConfig
             - shellRunPostInstall
             - chefFinalize
+          update:
+            - deployConfigFiles
+            - chefUpdate
         deployConfigFiles:
           files:
             /tmp/dna.json:
@@ -477,7 +491,9 @@ Resources:
                   dcv_port: !Ref 'DCVPort'
                   enable_intel_hpc_platform: !Ref 'IntelHPCPlatform'
                   cfn_cluster_cw_logging_enabled: !Ref 'CWLoggingEnabled'
-                  cluster_config_s3_uri: !Sub 's3://${ResourcesS3Bucket}/configs/cluster-config.json'
+                  cluster_s3_bucket: !Ref 'ResourcesS3Bucket'
+                  cluster_config_s3_key: configs/cluster-config.json
+                  cluster_config_version: !Ref 'HITConfigVersion'
                 run_list: !Sub 'recipe[aws-parallelcluster::${Scheduler}_config]'
             /etc/chef/client.rb:
               mode: '000644'
@@ -499,6 +515,28 @@ Resources:
                 -n '$f1 + $f2 | .cfncluster = $f1.cfncluster + $f2.cfncluster' > /etc/chef/dna.json
                 || ( echo "jq not installed"; cp /tmp/dna.json /etc/chef/dna.json
                 )
+        cfnHupConfig:
+          files:
+            /etc/cfn/hooks.d/parallelcluster-update.conf:
+              content: !Sub |
+                [parallelcluster-update]
+                triggers=post.update
+                path=Resources.MasterServerLaunchTemplate.Metadata.AWS::CloudFormation::Init
+                action=cfn-init -v --stack ${AWS::StackName} --role=${IamRoleName} --resource MasterServerLaunchTemplate --configsets update --region ${AWS::Region}
+                runas=root
+              mode: '000400'
+              owner: root
+              group: root
+            /etc/cfn/cfn-hup.conf:
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                role=${IamRoleName}
+                interval=2
+              mode: '000400'
+              owner: root
+              group: root
         chefPrepEnv:
           commands:
             chef:
@@ -533,6 +571,21 @@ Resources:
             bootstrap:
               command: '[ ! -f /opt/parallelcluster/.bootstrapped ] && echo ${parallelcluster_version}
                 | tee /opt/parallelcluster/.bootstrapped || exit 0'
+        chefUpdate:
+          commands:
+            chef:
+              command: chef-client --local-mode --config /etc/chef/client.rb --log_level
+                info --logfile /var/log/chef-client.log --force-formatter --no-color
+                --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist
+                aws-parallelcluster::update_master
+              cwd: /etc/chef
+  UpdateWaiterCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ConfigVersion: !Ref 'HITConfigVersion'
+      DynamoDBTable: !Ref 'DynamoDBTable'
+      ServiceToken: !Ref 'UpdateWaiterFunctionArn'
+    Condition: HasUpdateWaiterFunction
 Outputs:
   MasterPrivateIP:
     Description: Private IP Address of the Master host

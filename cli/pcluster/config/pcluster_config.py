@@ -17,6 +17,7 @@ import os
 import stat
 import sys
 
+import boto3
 import configparser
 from botocore.exceptions import ClientError
 
@@ -31,7 +32,6 @@ from pcluster.utils import (
     get_stack_name,
     get_stack_version,
     is_hit_enabled_cluster,
-    read_remote_file,
 )
 
 LOGGER = logging.getLogger(__name__)
@@ -90,8 +90,8 @@ class PclusterConfig(object):
 
         # init pcluster_config object, from cfn or from config_file
         if cluster_name:
-            self.__init_sections_from_cfn(cluster_name)
             self.cluster_name = cluster_name
+            self.__init_sections_from_cfn(cluster_name)
         else:
             self.__init_sections_from_file(cluster_label, self.config_parser, fail_on_file_absence)
 
@@ -473,13 +473,27 @@ class PclusterConfig(object):
             if not s3_bucket_name or s3_bucket_name == "NONE":
                 self.error("Unable to retrieve configuration: ResourceS3Bucket not available.")
 
-            try:
-                json_str = read_remote_file("s3://{0}/{1}".format(s3_bucket_name, "configs/cluster-config.json"))
-                json_config = json.loads(json_str, object_pairs_hook=OrderedDict)
-            except Exception as e:
-                self.error("Unable to load configuration from bucket '{0}'.\n{1}".format(s3_bucket_name, e))
+            json_config = self.__retrieve_cluster_config(s3_bucket_name)
 
         return json_config
+
+    def __retrieve_cluster_config(self, bucket):
+        table = boto3.resource("dynamodb").Table(get_stack_name(self.cluster_name))
+        config_version = None  # Use latest if not found
+        try:
+            config_version_item = table.get_item(ConsistentRead=True, Key={"Id": "CLUSTER_CONFIG"})
+            if config_version_item or "Item" in config_version_item:
+                config_version = config_version_item["Item"].get("Version")
+        except Exception as e:
+            self.error("Failed when retrieving cluster config version from DynamoDB with error {0}".format(e))
+
+        try:
+            config_version_args = {"VersionId": config_version} if config_version else {}
+            s3_object = boto3.resource("s3").Object(bucket, "configs/cluster-config.json")
+            json_str = s3_object.get(**config_version_args)["Body"].read().decode("utf-8")
+            return json.loads(json_str, object_pairs_hook=OrderedDict)
+        except Exception as e:
+            self.error("Unable to load configuration from bucket '{0}'.\n{1}".format(bucket, e))
 
     def __test_configuration(self):  # noqa: C901
         """

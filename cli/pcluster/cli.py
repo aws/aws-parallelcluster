@@ -24,12 +24,12 @@ from botocore.exceptions import NoCredentialsError
 import pcluster.cli_commands.delete as pcluster_delete
 import pcluster.cli_commands.start as pcluster_start
 import pcluster.cli_commands.stop as pcluster_stop
+import pcluster.cli_commands.update as pcluster_update
 import pcluster.commands as pcluster
 import pcluster.configure.easyconfig as easyconfig
 import pcluster.createami as createami
 import pcluster.utils as utils
 from pcluster.dcv.connect import dcv_connect
-import pcluster.cli_commands.update as pcluster_update
 
 LOGGER = logging.getLogger(__name__)
 

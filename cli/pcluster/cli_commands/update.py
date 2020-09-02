@@ -21,6 +21,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.cluster_model import ClusterModel
+from pcluster.commands import _evaluate_pcluster_template_url, _upload_hit_resources
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.config.update_policy import UpdatePolicy
@@ -29,15 +30,18 @@ LOGGER = logging.getLogger(__name__)
 
 
 def execute(args):
+    LOGGER.info("Retrieving configuration from CloudFormation for cluster {0}...".format(args.cluster_name))
+    base_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
+    stack_status = base_config.cfn_stack.get("StackStatus")
+    if "IN_PROGRESS" in stack_status:
+        utils.error("Cannot execute update while stack is in {} status.".format(stack_status))
+
     LOGGER.info("Validating configuration file {0}...".format(args.config_file if args.config_file else ""))
     stack_name = utils.get_stack_name(args.cluster_name)
     target_config = PclusterConfig(
         config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
     )
     target_config.validate()
-
-    LOGGER.info("Retrieving configuration from CloudFormation for cluster {0}...".format(args.cluster_name))
-    base_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name)
 
     if _check_cluster_models(base_config, target_config, args.cluster_template) and _check_changes(
         args, base_config, target_config
@@ -48,13 +52,30 @@ def execute(args):
         cfn_params = base_config.to_cfn()
         cfn_client = boto3.client("cloudformation")
         _restore_cfn_only_params(cfn_client, args, cfn_params, stack_name, target_config)
-        _update_cluster(args, cfn_client, cfn_params, stack_name)
+
+        scheduler = target_config.get_section("cluster").get_param_value("scheduler")
+        is_hit = utils.is_hit_enabled_cluster(scheduler)
+        template_url = None
+        if is_hit:
+            try:
+                _upload_hit_resources(
+                    cfn_params["ResourcesS3Bucket"], target_config, target_config.to_storage().json_params
+                )
+            except Exception:
+                utils.error(
+                    "Failed when uploading resources to cluster S3 bucket {0}".format(cfn_params["ResourcesS3Bucket"])
+                )
+            template_url = _evaluate_pcluster_template_url(target_config)
+
+        _update_cluster(
+            args, cfn_client, cfn_params, stack_name, use_previous_template=not is_hit, template_url=template_url
+        )
     else:
         LOGGER.info("Update aborted.")
         sys.exit(1)
 
 
-def _update_cluster(args, cfn, cfn_params, stack_name):
+def _update_cluster(args, cfn, cfn_params, stack_name, use_previous_template, template_url):
     LOGGER.info("Updating: %s", args.cluster_name)
     LOGGER.debug("Updating based on args %s", str(args))
     try:
@@ -65,9 +86,15 @@ def _update_cluster(args, cfn, cfn_params, stack_name):
 
         cfn_params = [{"ParameterKey": key, "ParameterValue": value} for key, value in cfn_params.items()]
         LOGGER.info("Calling update_stack")
-        cfn.update_stack(
-            StackName=stack_name, UsePreviousTemplate=True, Parameters=cfn_params, Capabilities=["CAPABILITY_IAM"]
-        )
+        update_stack_args = {
+            "StackName": stack_name,
+            "UsePreviousTemplate": use_previous_template,
+            "Parameters": cfn_params,
+            "Capabilities": ["CAPABILITY_IAM"],
+        }
+        if template_url:
+            update_stack_args["TemplateURL"] = template_url
+        cfn.update_stack(**update_stack_args)
         stack_status = utils.get_stack(stack_name, cfn).get("StackStatus")
         if not args.nowait:
             while stack_status in ["UPDATE_IN_PROGRESS", "UPDATE_COMPLETE_CLEANUP_IN_PROGRESS"]:
@@ -236,7 +263,7 @@ def _check_cluster_models(base_config, target_config, cluster_template):
                     "format with support for multiple queues before proceeding with the update.\n"
                     "Please run the following command:\n"
                     # TODO: update conversion command line when tool is available
-                    "pcluster-utils convert_config_file -c {config_file}{cluster_template_arg} -o {converted_file}\n"
+                    "pcluster-convert-config -o {converted_file} {config_file}{cluster_template_arg}\n"
                     "Then retry with your converted configuration file by running the following command:\n"
                     "pcluster update -c {converted_file} {cluster_name}"
                 ).format(
