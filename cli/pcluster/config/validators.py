@@ -652,6 +652,8 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
                 param_value, e.response.get("Error").get("Message"), param_key
             )
         )
+    except IndexError:
+        errors.append("Unable to find AMI {0}. Check value of parameter {1}.".format(param_value, param_key))
 
     if not errors:
         # Make sure architecture implied by instance types agrees with that implied by AMI
