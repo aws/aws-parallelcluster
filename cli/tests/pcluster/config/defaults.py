@@ -286,7 +286,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "CustomChefCookbook": "NONE",
     "CustomAWSBatchTemplateURL": "NONE",
     "NumberOfEBSVol": "1",
-    "Cores": "NONE,NONE",
+    "Cores": "NONE,NONE,NONE,NONE",
     "IntelHPCPlatform": "false",
     # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # scaling
@@ -351,7 +351,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "AdditionalCfnTemplate": "NONE",
     "CustomChefCookbook": "NONE",
     "NumberOfEBSVol": "1",
-    "Cores": "NONE,NONE",
+    "Cores": "NONE,NONE,NONE,NONE",
     "IntelHPCPlatform": "false",
     # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
     # scaling

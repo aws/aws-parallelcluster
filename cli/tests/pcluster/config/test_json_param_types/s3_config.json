@@ -19,7 +19,8 @@
             "vcpus": 2,
             "gpus": 0,
             "enable_efa": false,
-            "disable_hyperthreading": true
+            "disable_hyperthreading": true,
+            "disable_hyperthreading_via_cpu_options": true
           },
           "q1-i2": {
             "instance_type": "g4dn.metal",
@@ -27,10 +28,11 @@
             "max_count": 10,
             "initial_count": 2,
             "spot_price": 0,
-            "vcpus": 96,
+            "vcpus": 48,
             "gpus": 8,
             "enable_efa": true,
-            "disable_hyperthreading": false
+            "disable_hyperthreading": true,
+            "disable_hyperthreading_via_cpu_options": false
           },
           "q1-i3": {
             "instance_type": "i3en.24xlarge",
@@ -41,7 +43,32 @@
             "vcpus": 48,
             "gpus": 0,
             "enable_efa": true,
-            "disable_hyperthreading": true
+            "disable_hyperthreading": true,
+            "disable_hyperthreading_via_cpu_options": true
+          },
+          "q1-i4": {
+            "instance_type": "t2.xlarge",
+            "min_count": 0,
+            "max_count": 10,
+            "initial_count": 0,
+            "spot_price": 0,
+            "vcpus": 4,
+            "gpus": 0,
+            "enable_efa": false,
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
+          },
+          "q1-i5": {
+            "instance_type": "m6g.xlarge",
+            "min_count": 0,
+            "max_count": 10,
+            "initial_count": 0,
+            "spot_price": 0,
+            "vcpus": 4,
+            "gpus": 0,
+            "enable_efa": false,
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
           }
         }
       },
@@ -60,7 +87,8 @@
             "vcpus": 4,
             "gpus": 0,
             "enable_efa": false,
-            "disable_hyperthreading": false
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
           },
           "q2-i2": {
             "instance_type": "g4dn.metal",
@@ -71,7 +99,8 @@
             "vcpus": 96,
             "gpus": 8,
             "enable_efa": false,
-            "disable_hyperthreading": false
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
           },
           "q2-i3": {
             "instance_type": "i3en.24xlarge",
@@ -82,7 +111,32 @@
             "vcpus": 96,
             "gpus": 0,
             "enable_efa": false,
-            "disable_hyperthreading": false
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
+          },
+          "q2-i4": {
+            "instance_type": "t2.xlarge",
+            "min_count": 0,
+            "max_count": 10,
+            "initial_count": 0,
+            "spot_price": 0,
+            "vcpus": 4,
+            "gpus": 0,
+            "enable_efa": false,
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
+          },
+          "q2-i5": {
+            "instance_type": "m6g.xlarge",
+            "min_count": 0,
+            "max_count": 10,
+            "initial_count": 0,
+            "spot_price": 0,
+            "vcpus": 4,
+            "gpus": 0,
+            "enable_efa": false,
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
           }
         }
       },
@@ -101,7 +155,8 @@
             "vcpus": 96,
             "gpus": 0,
             "enable_efa": true,
-            "disable_hyperthreading": false
+            "disable_hyperthreading": false,
+            "disable_hyperthreading_via_cpu_options": false
           }
         }
       }

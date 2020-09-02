@@ -128,8 +128,8 @@ Resources:
   {%- endif %}
         ImageId: !Ref 'ImageId'
         CpuOptions:
-          CoreCount: {{ compute_resource.vcpus if compute_resource.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
-          ThreadsPerCore: {{ 1 if compute_resource.disable_hyperthreading else "!Ref 'AWS::NoValue'" }}
+          CoreCount: {{ compute_resource.vcpus if compute_resource.disable_hyperthreading_via_cpu_options else "!Ref 'AWS::NoValue'" }}
+          ThreadsPerCore: {{ 1 if compute_resource.disable_hyperthreading_via_cpu_options else "!Ref 'AWS::NoValue'" }}
         Monitoring:
           Enabled: false
         TagSpecifications:
@@ -265,7 +265,8 @@ Resources:
                         "cfn_fsx_fs_id": "${FSXId}",
                         "cfn_fsx_options": "${FSXOptions}",
                         "cfn_scheduler": "${Scheduler}",
-                        "cfn_scheduler_slots": "{{ 'cores' if compute_resource.disable_hyperthreading else 'vcpus' }}",
+                        "cfn_scheduler_slots": "{{ compute_resource.vcpus }}",
+                        "cfn_disable_hyperthreading_manually": "{{ (compute_resource.disable_hyperthreading and not compute_resource.disable_hyperthreading_via_cpu_options) | lower }}",
                         "cfn_scaledown_idletime": "{{ scaling_config.scaledown_idletime }}",
                         "cfn_encrypted_ephemeral": "${EncryptedEphemeral}",
                         "cfn_ephemeral_dir": "${EphemeralDir}",

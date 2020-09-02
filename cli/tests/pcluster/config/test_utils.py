@@ -26,9 +26,7 @@ def test_get_instance_vcpus(boto3_stubber, valid_instance_type, expected_vcpus):
     mocked_requests = [
         MockedBoto3Request(
             method="describe_instance_types",
-            response={
-                "InstanceTypes": [{"InstanceType": "g4dn.metal", "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48}}]
-            },
+            response={"InstanceTypes": [{"InstanceType": "g4dn.metal", "VCpuInfo": {"DefaultVCpus": 96}}]},
             expected_params={"InstanceTypes": [instance_type]},
             generate_error=not valid_instance_type,
         )

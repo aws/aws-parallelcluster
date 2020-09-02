@@ -747,27 +747,72 @@ def test_sit_cluster_section_to_file(mocker, section_dict, expected_config_parse
 
 
 @pytest.mark.parametrize(
-    "cluster_section_definition, section_dict, expected_cfn_params",
+    "cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core",
     [
-        (CLUSTER_SIT, DefaultDict["cluster_sit"].value, DefaultCfnParams["cluster_sit"].value),
+        (CLUSTER_SIT, DefaultDict["cluster_sit"].value, DefaultCfnParams["cluster_sit"].value, (1, 1)),
+        (CLUSTER_HIT, DefaultDict["cluster_hit"].value, DefaultCfnParams["cluster_hit"].value, (1, 1)),
         (
             CLUSTER_SIT,
             utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
-            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,2"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,2,true,true"}),
+            (2, 2),
+        ),
+        (
+            CLUSTER_SIT,
+            utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "NONE,NONE,false,false"}),
+            (1, 1),
+        ),
+        (
+            CLUSTER_SIT,
+            utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "2,NONE,true,false"}),
+            (2, 1),
+        ),
+        (
+            CLUSTER_SIT,
+            utils.merge_dicts(DefaultDict["cluster_sit"].value, {"disable_hyperthreading": "True"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"Cores": "NONE,2,false,true"}),
+            (1, 2),
         ),
         (
             CLUSTER_HIT,
             utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
             # With HIT clusters there should be no cores information for compute instance type
-            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0"}),
+            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0,true,false"}),
+            (2, 2),
+        ),
+        (
+            CLUSTER_HIT,
+            utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
+            # With HIT clusters there should be no cores information for compute instance type
+            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "NONE,0,false,false"}),
+            (1, 1),
+        ),
+        (
+            CLUSTER_HIT,
+            utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
+            # With HIT clusters there should be no cores information for compute instance type
+            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "2,0,true,false"}),
+            (2, 1),
+        ),
+        (
+            CLUSTER_HIT,
+            utils.merge_dicts(DefaultDict["cluster_hit"].value, {"disable_hyperthreading": "True"}),
+            # With HIT clusters there should be no cores information for compute instance type
+            utils.merge_dicts(DefaultCfnParams["cluster_hit"].value, {"Cores": "NONE,0,false,false"}),
+            (1, 2),
         ),
     ],
 )
-def test_sit_cluster_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params):
+def test_cluster_section_to_cfn(
+    mocker, cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core
+):
     utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=4)
+    mocker.patch("pcluster.config.cfn_param_types.get_default_threads_per_core", side_effect=default_threads_per_core)
     utils.assert_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params)
 
 
@@ -815,7 +860,7 @@ def test_sit_cluster_section_to_cfn(mocker, cluster_section_definition, section_
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
                     "CustomAWSBatchTemplateURL": "https://test",
-                    "Cores": "1,1",
+                    "Cores": "NONE,NONE,false,false",
                     "IntelHPCPlatform": "true",
                     # template_url = template
                     # tags = {"test": "test"}
