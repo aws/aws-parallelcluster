@@ -63,6 +63,8 @@ class Cluster:
         self.__cfn_outputs = None
         self.__cfn_resources = None
 
+        return result
+
     def delete(self, keep_logs=False):
         """Delete this cluster."""
         if self.has_been_deleted:
@@ -228,8 +230,8 @@ class ClustersFactory:
 
         # FIXME: temporary workaround since in certain circumstances the cluster isn't ready for
         # job submission right after creation. We need to investigate this further.
-        logging.info("Sleeping for 60 seconds in case cluster is not ready yet")
-        time.sleep(60)
+        logging.info("Sleeping for 30 seconds in case cluster is not ready yet")
+        time.sleep(30)
 
     @retry(stop_max_attempt_number=5, wait_fixed=5000, retry_on_exception=retry_if_subprocess_error)
     def destroy_cluster(self, name, keep_logs=False):
