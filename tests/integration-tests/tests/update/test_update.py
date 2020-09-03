@@ -9,6 +9,8 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import logging
+import re
 import time
 
 import boto3
@@ -16,20 +18,18 @@ import configparser
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from time_utils import minutes
 
+from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import (
     get_batch_ce_max_size,
     get_batch_ce_min_size,
     get_max_asg_capacity,
     get_min_asg_capacity,
-    watch_compute_nodes,
 )
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-# FIXME @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
 @pytest.mark.usefixtures("os")
 def test_update_sit(
@@ -134,6 +134,174 @@ def test_update_sit(
     )
 
 
+@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "*", "slurm")
+@pytest.mark.usefixtures("os", "instance")
+def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+    # Create S3 bucket for pre/post install scripts
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "preinstall.sh"), "scripts/preinstall.sh")
+    bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
+
+    # Create cluster with initial configuration
+    init_config_file = pcluster_config_reader()
+    cluster = clusters_factory(init_config_file)
+
+    # Command executors
+    command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
+
+    # Create shared dir for script results
+    command_executor.run_remote_command("mkdir -p /shared/script_results")
+
+    initial_queues_config = {
+        "queue1": {
+            "compute_resources": {
+                "queue1_i1": {
+                    "instance_type": "c5.xlarge",
+                    "expected_running_instances": 1,
+                    "expected_power_saved_instances": 1,
+                    "enable_efa": False,
+                    "disable_hyperthreading": False,
+                },
+                "queue1_i2": {
+                    "instance_type": "t2.micro",
+                    "expected_running_instances": 1,
+                    "expected_power_saved_instances": 9,
+                    "enable_efa": False,
+                    "disable_hyperthreading": False,
+                },
+            },
+            "compute_type": "ondemand",
+        }
+    }
+
+    _assert_scheduler_nodes(queues_config=initial_queues_config, slurm_commands=scheduler_commands)
+    _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
+
+    # Update cluster with new configuration
+    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini", bucket=bucket_name)
+    cluster.config_file = str(updated_config_file)
+    cluster.stop()
+    time.sleep(60)  # wait for the cluster to stop
+    cluster.update()
+    cluster.start()
+
+    assert_initial_conditions(scheduler_commands, 1, 0, partition="queue1")
+
+    updated_queues_config = {
+        "queue1": {
+            "compute_resources": {
+                "queue1_i1": {
+                    "instance_type": "c5.xlarge",
+                    "expected_running_instances": 1,
+                    "expected_power_saved_instances": 1,
+                    "disable_hyperthreading": True,
+                    "enable_efa": False,
+                },
+                "queue1_i2": {
+                    "instance_type": "c5.2xlarge",
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
+                    "disable_hyperthreading": True,
+                    "enable_efa": False,
+                },
+                "queue1_i3": {
+                    "instance_type": "t2.micro",
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
+                    "disable_hyperthreading": False,
+                    "enable_efa": False,
+                },
+            },
+            "compute_type": "spot",
+        },
+        "queue2": {
+            "compute_resources": {
+                "queue2_i1": {
+                    "instance_type": "c5n.18xlarge",
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
+                    "disable_hyperthreading": True,
+                    "enable_efa": True,
+                },
+                "queue2_i2": {
+                    "instance_type": "t2.xlarge",
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
+                    "disable_hyperthreading": False,
+                    "enable_efa": False,
+                },
+            },
+            "compute_type": "ondemand",
+        },
+    }
+
+    _assert_scheduler_nodes(queues_config=updated_queues_config, slurm_commands=scheduler_commands)
+    _assert_launch_templates_config(queues_config=updated_queues_config, cluster_name=cluster.name, region=region)
+
+    # Read updated configuration
+    updated_config = configparser.ConfigParser()
+    updated_config.read(updated_config_file)
+
+    # Check new S3 resources
+    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+
+    # Check new Additional IAM policies
+    _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
+
+    # TODO add following tests:
+    # - Check Additional IAM policies
+    # - Check compute root volume size
+    # - Check pre/post install scripts
+    # - Test extra json
+
+
+def _assert_launch_templates_config(queues_config, cluster_name, region):
+    logging.info("Checking launch templates")
+    ec2_client = boto3.client("ec2", region_name=region)
+    for queue, queue_config in queues_config.items():
+        for compute_resource_config in queue_config["compute_resources"].values():
+            launch_template_name = f"{cluster_name}-{queue}-{compute_resource_config.get('instance_type')}"
+            logging.info("Validating LaunchTemplate: %s", launch_template_name)
+            launch_template_data = ec2_client.describe_launch_template_versions(
+                LaunchTemplateName=launch_template_name, Versions=["$Latest"]
+            )["LaunchTemplateVersions"][0]["LaunchTemplateData"]
+            if queue_config["compute_type"] == "spot":
+                assert_that(launch_template_data["InstanceMarketOptions"]["MarketType"]).is_equal_to(
+                    queue_config["compute_type"]
+                )
+            else:
+                assert_that("InstanceMarketOptions").is_not_in(launch_template_data)
+            assert_that(launch_template_data["InstanceType"]).is_equal_to(compute_resource_config["instance_type"])
+            if compute_resource_config["disable_hyperthreading"]:
+                assert_that(launch_template_data["CpuOptions"]["ThreadsPerCore"]).is_equal_to(1)
+            else:
+                assert_that("CpuOptions").is_not_in(launch_template_data)
+            if compute_resource_config["enable_efa"]:
+                assert_that(launch_template_data["NetworkInterfaces"][0]["InterfaceType"]).is_equal_to("efa")
+            else:
+                assert_that("InterfaceType").is_not_in(launch_template_data["NetworkInterfaces"][0])
+
+
+def _assert_scheduler_nodes(queues_config, slurm_commands):
+    logging.info("Checking scheduler nodes")
+    slurm_nodes = slurm_commands.get_nodes_status()
+    slurm_nodes_str = ""
+    for node, state in slurm_nodes.items():
+        slurm_nodes_str += f"{node} {state}\n"
+    for queue, queue_config in queues_config.items():
+        for compute_resource_config in queue_config["compute_resources"].values():
+            instance_type = compute_resource_config["instance_type"].replace(".", "")
+            running_instances = len(re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle\n").findall(slurm_nodes_str))
+            power_saved_instances = len(
+                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
+            )
+            assert_that(running_instances).is_equal_to(compute_resource_config["expected_running_instances"])
+            assert_that(power_saved_instances).is_equal_to(compute_resource_config["expected_power_saved_instances"])
+
+
 def _check_max_queue(region, stack_name, queue_size):
     asg_max_size = get_max_asg_capacity(region, stack_name)
     assert_that(asg_max_size).is_equal_to(queue_size)
@@ -157,15 +325,10 @@ def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
 
     number_of_nodes = len(initial_compute_nodes) + number_of_nodes
     # submit a job to perform a scaling up action and have new instances
-    result = scheduler_commands.submit_command("sleep 1", nodes=number_of_nodes)
-    scheduler_commands.assert_job_submitted(result.stdout)
-
-    estimated_scaleup_time = 8
-    watch_compute_nodes(
-        scheduler_commands=scheduler_commands,
-        max_monitoring_time=minutes(estimated_scaleup_time),
-        number_of_nodes=number_of_nodes,
-    )
+    result = scheduler_commands.submit_command("sleep 1", nodes=number_of_nodes, slots=slots_per_node)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
 
     return [node for node in scheduler_commands.get_compute_nodes() if node not in initial_compute_nodes]
 
@@ -284,7 +447,7 @@ def _check_role_attached_policy(region, cluster, policy_arn):
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_datadir):
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()
     cluster = clusters_factory(init_config_file)
