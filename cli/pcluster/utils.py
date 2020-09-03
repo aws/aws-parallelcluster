@@ -393,6 +393,8 @@ def get_availability_zone_of_subnet(subnet_id):
     :param subnet_id: the id of the subnet.
     :return: a strings of availability zone name
     """
+    if subnet_id == "NONE":
+        return None
     if not hasattr(get_availability_zone_of_subnet, "cache"):
         get_availability_zone_of_subnet.cache = {}
     cache = get_availability_zone_of_subnet.cache
