@@ -25,6 +25,7 @@ from utils import get_compute_nodes_instance_ids, get_instance_ids_compute_hostn
 from tests.common.assertions import (
     assert_instance_replaced_or_terminating,
     assert_no_errors_in_logs,
+    assert_num_instances_constant,
     assert_num_instances_in_cluster,
     wait_for_num_instances_in_cluster,
 )
@@ -279,7 +280,7 @@ def _test_reset_terminated_nodes(
     )
     instance_ids = get_compute_nodes_instance_ids(cluster_name, region)
     # terminate all instances manually
-    _terminate_nodes_manually(instance_ids)
+    _terminate_nodes_manually(instance_ids, region)
     # Assert that cluster replaced static node and reset dynamic nodes
     _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes)
     assert_num_instances_in_cluster(cluster_name, region, len(static_nodes))
@@ -388,7 +389,7 @@ def _test_computemgtd_logic(
         run_as_root=True,
     )
     logging.info("Asserting that computemgtd is not self-terminating when slurmctld is up")
-    _assert_instances_not_terminated(cluster_name, region, desired=num_static_nodes + num_dynamic_nodes, timeout=2)
+    assert_num_instances_constant(cluster_name, region, desired=num_static_nodes + num_dynamic_nodes, timeout=2)
     logging.info("Killing slurmctld")
     remote_command_executor.run_remote_script(str(test_datadir / "slurm_kill_slurmctld.sh"), run_as_root=True)
     logging.info("Waiting for computemgtd to self-terminate all instances")
@@ -422,13 +423,6 @@ def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
     while time.time() < start_time + 60 * (timeout):
         assert_that(set(nodes) <= set(scheduler_commands.get_compute_nodes())).is_true()
         time.sleep(20)
-
-
-def _assert_instances_not_terminated(cluster_name, region, desired, timeout=5):
-    logging.info("Waiting for cluster daemon action")
-    start_time = time.time()
-    while time.time() < start_time + 60 * (timeout):
-        assert_num_instances_in_cluster(cluster_name, region, desired)
 
 
 def _assert_nodes_removed_and_replaced_in_scheduler(
@@ -475,8 +469,7 @@ def _wait_for_compute_nodes_states(scheduler_commands, compute_nodes, expected_s
     _assert_compute_node_states(scheduler_commands, compute_nodes, expected_states)
 
 
-def _terminate_nodes_manually(instance_ids):
-    region = environ.get("AWS_DEFAULT_REGION")
+def _terminate_nodes_manually(instance_ids, region):
     ec2_client = boto3.client("ec2", region_name=region)
     for instance_id in instance_ids:
         instance_states = ec2_client.terminate_instances(InstanceIds=[instance_id]).get("TerminatingInstances")[0]

@@ -70,4 +70,7 @@ def wait_for_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_parti
 
 
 def assert_num_nodes_in_scheduler(scheduler_commands, desired, filter_by_partition=None):
-    assert_that(len(scheduler_commands.get_compute_nodes(filter_by_partition))).is_equal_to(desired)
+    if filter_by_partition:
+        assert_that(len(scheduler_commands.get_compute_nodes(filter_by_partition))).is_equal_to(desired)
+    else:
+        assert_that(len(scheduler_commands.get_compute_nodes())).is_equal_to(desired)

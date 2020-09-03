@@ -113,7 +113,11 @@ def _test_disable_hyperthreading_settings(
     logging.info("{0} Cores: [{1}]".format(scheduler, result))
     assert_that(int(result)).is_equal_to(expected_cpus_per_instance)
 
-    if hyperthreading_disabled:
+    # To-do: fix this test for torque
+    # Cannot specify slots without nodes for torque job
+    # But if node is specified, cluster is obviously going to scale up
+    # For now it may be sufficient to only rely on above check on scheduler node cores
+    if hyperthreading_disabled and scheduler != "torque":
         # check scale up to 2 nodes
         if partition:
             result = scheduler_commands.submit_command(

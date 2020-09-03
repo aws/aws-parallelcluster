@@ -36,8 +36,8 @@ def test_hit_no_cluster_dns_mpi(
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     # Assert that compute hostname cannot be pinged directly
     compute_nodes = scheduler_commands.get_compute_nodes()
-    result = remote_command_executor.run_remote_command("ping -c 3 {}".format(compute_nodes[0]))
-    assert_that(result.stdout).contains("Destination Host Unreachable")
+    result = remote_command_executor.run_remote_command("ping -c 3 {}".format(compute_nodes[0]), raise_on_error=False)
+    assert_that(result.failed).is_true()
 
     # Assert compute hostname is the same as nodename
     scheduler_commands.submit_script(str(test_datadir / "print_hostname.sh"))
