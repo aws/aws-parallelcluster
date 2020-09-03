@@ -198,6 +198,11 @@ def create(args):  # noqa: C901 FIXME!!!
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
+        if bucket_name:
+            LOGGER.info(
+                "Your S3 bucket named %s was not deleted. Do not forget to delete it when deleting your cluster.",
+                bucket_name,
+            )
         sys.exit(0)
     except KeyError as e:
         LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
