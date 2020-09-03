@@ -25,13 +25,16 @@ from tests.common.scaling_common import (
     get_min_asg_capacity,
     watch_compute_nodes,
 )
-from tests.common.schedulers_common import SlurmCommands
+from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.utils import fetch_instance_slots
 
 
 # FIXME @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "slurm")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
-@pytest.mark.usefixtures("os", "scheduler", "instance")
-def test_update(region, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
+@pytest.mark.usefixtures("os")
+def test_update_sit(
+    region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
+):
     # Create S3 bucket for pre/post install scripts
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -44,7 +47,7 @@ def test_update(region, pcluster_config_reader, clusters_factory, test_datadir, 
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
-    slurm_commands = SlurmCommands(command_executor)
+    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
 
     # Create shared dir for script results
     command_executor.run_remote_command("mkdir /shared/script_results")
@@ -57,10 +60,11 @@ def test_update(region, pcluster_config_reader, clusters_factory, test_datadir, 
     # Get initial, new and old compute instances references, to be able to execute specific tests in different group of
     # instances
     # Get initial compute nodes
-    initial_compute_nodes = slurm_commands.get_compute_nodes()
+    initial_compute_nodes = scheduler_commands.get_compute_nodes()
 
     # Get new compute nodes
-    new_compute_nodes = _add_compute_nodes(slurm_commands)
+    slots_per_instance = fetch_instance_slots(region, instance)
+    new_compute_nodes = _add_compute_nodes(scheduler_commands, slots_per_instance, number_of_nodes=1)
 
     # Old compute node instance refs
     old_compute_node = initial_compute_nodes[0]
@@ -96,34 +100,34 @@ def test_update(region, pcluster_config_reader, clusters_factory, test_datadir, 
     # Check old and new compute root volume size
     _check_compute_root_volume_size(
         command_executor,
-        slurm_commands,
+        scheduler_commands,
         test_datadir,
         cluster.config.get("cluster default", "compute_root_volume_size"),
         old_compute_node,
     )
     _check_compute_root_volume_size(
         command_executor,
-        slurm_commands,
+        scheduler_commands,
         test_datadir,
         updated_config.get("cluster default", "compute_root_volume_size"),
         new_compute_node,
     )
 
     # Check old and new extra_json
-    _check_extra_json(command_executor, slurm_commands, old_compute_node, "test_value_1")
-    _check_extra_json(command_executor, slurm_commands, new_compute_node, "test_value_2")
+    _check_extra_json(command_executor, scheduler_commands, old_compute_node, "test_value_1")
+    _check_extra_json(command_executor, scheduler_commands, new_compute_node, "test_value_2")
 
     # Check pre and post install on new nodes
     _check_script(
         command_executor,
-        slurm_commands,
+        scheduler_commands,
         new_compute_node,
         "preinstall",
         updated_config.get("cluster default", "pre_install_args"),
     )
     _check_script(
         command_executor,
-        slurm_commands,
+        scheduler_commands,
         new_compute_node,
         "postinstall",
         updated_config.get("cluster default", "post_install_args"),
@@ -140,7 +144,7 @@ def _check_initial_queue(region, stack_name, queue_size):
     assert_that(asg_min_size).is_equal_to(queue_size)
 
 
-def _add_compute_nodes(slurm_commands, number_of_nodes=1):
+def _add_compute_nodes(scheduler_commands, slots_per_node, number_of_nodes=1):
     """
     Add new compute nodes to the cluster.
 
@@ -149,21 +153,21 @@ def _add_compute_nodes(slurm_commands, number_of_nodes=1):
     :param number_of_nodes: number of nodes to add
     :return an array containing the new compute nodes only
     """
-    initial_compute_nodes = slurm_commands.get_compute_nodes()
+    initial_compute_nodes = scheduler_commands.get_compute_nodes()
 
     number_of_nodes = len(initial_compute_nodes) + number_of_nodes
     # submit a job to perform a scaling up action and have new instances
-    result = slurm_commands.submit_command("sleep 1", nodes=number_of_nodes)
-    slurm_commands.assert_job_submitted(result.stdout)
+    result = scheduler_commands.submit_command("sleep 1", nodes=number_of_nodes)
+    scheduler_commands.assert_job_submitted(result.stdout)
 
     estimated_scaleup_time = 8
     watch_compute_nodes(
-        scheduler_commands=slurm_commands,
+        scheduler_commands=scheduler_commands,
         max_monitoring_time=minutes(estimated_scaleup_time),
         number_of_nodes=number_of_nodes,
     )
 
-    return [node for node in slurm_commands.get_compute_nodes() if node not in initial_compute_nodes]
+    return [node for node in scheduler_commands.get_compute_nodes() if node not in initial_compute_nodes]
 
 
 def _get_instance(region, stack_name, host, none_expected=False):
@@ -198,12 +202,12 @@ def _check_ondemand_instance(instance):
     assert_that(not hasattr(instance, "instance_life_cycle"))
 
 
-def _check_compute_root_volume_size(command_executor, slurm_commands, test_datadir, compute_root_volume_size, host):
+def _check_compute_root_volume_size(command_executor, scheduler_commands, test_datadir, compute_root_volume_size, host):
     # submit a job to retrieve compute root volume size and save in a file
-    result = slurm_commands.submit_script(str(test_datadir / "slurm_get_root_volume_size.sh"), host=host)
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
-    slurm_commands.wait_job_completed(job_id)
-    slurm_commands.assert_job_succeeded(job_id)
+    result = scheduler_commands.submit_script(str(test_datadir / "slurm_get_root_volume_size.sh"), host=host)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
 
     # read volume size from file
     time.sleep(5)  # wait a bit to be sure to have the file
@@ -211,38 +215,38 @@ def _check_compute_root_volume_size(command_executor, slurm_commands, test_datad
     assert_that(result.stdout).matches(r"{size}G".format(size=compute_root_volume_size))
 
 
-def _retrieve_script_output(slurm_commands, script_name, host):
+def _retrieve_script_output(scheduler_commands, script_name, host):
     # submit a job to retrieve pre and post install outputs
     command = "cp /tmp/{0}_out.txt /shared/script_results/{1}_{0}_out.txt".format(script_name, host)
-    result = slurm_commands.submit_command(command, host=host)
+    result = scheduler_commands.submit_command(command, host=host)
 
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
-    slurm_commands.wait_job_completed(job_id)
-    slurm_commands.assert_job_succeeded(job_id)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
 
     time.sleep(5)  # wait a bit to be sure to have the files
 
 
-def _check_script(command_executor, slurm_commands, host, script_name, script_arg):
-    _retrieve_script_output(slurm_commands, script_name, host)
+def _check_script(command_executor, scheduler_commands, host, script_name, script_arg):
+    _retrieve_script_output(scheduler_commands, script_name, host)
     result = command_executor.run_remote_command("cat /shared/script_results/{1}_{0}_out.txt".format(script_name, host))
     assert_that(result.stdout).matches(r"{0}-{1}".format(script_name, script_arg))
 
 
-def _retrieve_extra_json(slurm_commands, host):
+def _retrieve_extra_json(scheduler_commands, host):
     # submit a job to retrieve the value of the custom key test_key provided with extra_json
     command = "jq .test_key /etc/chef/dna.json > /shared/{0}_extra_json.txt".format(host)
-    result = slurm_commands.submit_command(command, host=host)
+    result = scheduler_commands.submit_command(command, host=host)
 
-    job_id = slurm_commands.assert_job_submitted(result.stdout)
-    slurm_commands.wait_job_completed(job_id)
-    slurm_commands.assert_job_succeeded(job_id)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+    scheduler_commands.wait_job_completed(job_id)
+    scheduler_commands.assert_job_succeeded(job_id)
 
     time.sleep(5)  # wait a bit to be sure to have the files
 
 
-def _check_extra_json(command_executor, slurm_commands, host, expected_value):
-    _retrieve_extra_json(slurm_commands, host)
+def _check_extra_json(command_executor, scheduler_commands, host, expected_value):
+    _retrieve_extra_json(scheduler_commands, host)
     result = command_executor.run_remote_command("cat /shared/{0}_extra_json.txt".format(host))
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
