@@ -8,6 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
+import time
+
 import boto3
 from assertpy import assert_that, soft_assertions
 from retrying import retry
@@ -112,3 +115,11 @@ def wait_for_num_instances_in_cluster(cluster_name, region, desired):
 
 def assert_num_instances_in_cluster(cluster_name, region, desired):
     assert_that(len(get_compute_nodes_instance_ids(cluster_name, region))).is_equal_to(desired)
+
+
+def assert_num_instances_constant(cluster_name, region, desired, timeout=5):
+    """Assert number of cluster instances if constant during a time period."""
+    logging.info("Waiting for cluster daemon action")
+    start_time = time.time()
+    while time.time() < start_time + 60 * (timeout):
+        assert_num_instances_in_cluster(cluster_name, region, desired)
