@@ -25,6 +25,30 @@ class SITClusterModel(ClusterModel):
         """Get the cluster section definition used by the cluster model."""
         return mappings.CLUSTER_SIT
 
+    def get_start_command(self, pcluster_config):
+        """Get the start command for a SIT cluster."""
+        cluster_section = pcluster_config.get_section("cluster")
+        if cluster_section.get_param_value("scheduler") == "awsbatch":
+            from pcluster.cli_commands.start import AWSBatchStartCommand
+
+            return AWSBatchStartCommand()
+        else:
+            from pcluster.cli_commands.start import SITStartCommand
+
+            return SITStartCommand()
+
+    def get_stop_command(self, pcluster_config):
+        """Get the stop command for a SIT cluster."""
+        cluster_section = pcluster_config.get_section("cluster")
+        if cluster_section.get_param_value("scheduler") == "awsbatch":
+            from pcluster.cli_commands.stop import AWSBatchStopCommand
+
+            return AWSBatchStopCommand()
+        else:
+            from pcluster.cli_commands.stop import SITStopCommand
+
+            return SITStopCommand()
+
     def test_configuration(self, pcluster_config):
         """
         Try to launch the requested instances (in dry-run mode) to verify configuration parameters.

@@ -914,7 +914,7 @@ def get_base_additional_iam_policies():
 def cluster_has_running_capacity(stack_name):
     stack = get_stack(stack_name)
     scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
-    if is_hit_enabled_cluster(scheduler):
+    if is_hit_enabled_cluster(stack):
         return ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
     else:
         return (
@@ -933,8 +933,14 @@ def get_instance_type(instance_type):
         raise e
 
 
-def is_hit_enabled_cluster(scheduler):
+def is_hit_enabled_scheduler(scheduler):
     return scheduler in ["slurm"]
+
+
+def is_hit_enabled_cluster(cfn_stack):
+    scheduler = get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
+    version = get_stack_version(cfn_stack)
+    return is_hit_enabled_scheduler(scheduler) and version >= "2.9.0"
 
 
 def read_remote_file(url):

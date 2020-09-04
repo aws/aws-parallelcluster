@@ -53,8 +53,7 @@ def execute(args):
         cfn_client = boto3.client("cloudformation")
         _restore_cfn_only_params(cfn_client, args, cfn_params, stack_name, target_config)
 
-        scheduler = target_config.get_section("cluster").get_param_value("scheduler")
-        is_hit = utils.is_hit_enabled_cluster(scheduler)
+        is_hit = utils.is_hit_enabled_cluster(base_config.cfn_stack)
         template_url = None
         if is_hit:
             try:
@@ -214,7 +213,7 @@ def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, tar
 
     scheduler = cluster_section.get_param_value("scheduler")
     # Autofill DesiredSize cfn param
-    if not args.reset_desired and not utils.is_hit_enabled_cluster(scheduler):
+    if not args.reset_desired and not utils.is_hit_enabled_scheduler(scheduler):
         _restore_desired_size(cfn_params, stack_name, scheduler)
     elif scheduler == "awsbatch":
         LOGGER.info("reset_desired flag does not work with awsbatch scheduler")

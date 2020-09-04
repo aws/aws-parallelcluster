@@ -25,6 +25,18 @@ class HITClusterModel(ClusterModel):
         """Get the cluster section definition used by the cluster model."""
         return mappings.CLUSTER_HIT
 
+    def get_start_command(self, pcluster_config):
+        """Get the start command for the HIT cluster."""
+        from pcluster.cli_commands.start import HITStartCommand
+
+        return HITStartCommand()
+
+    def get_stop_command(self, pcluster_config):
+        """Get the stop command for the HIT cluster."""
+        from pcluster.cli_commands.stop import HITStopCommand
+
+        return HITStopCommand()
+
     def test_configuration(self, pcluster_config):
         """Try to launch the requested instances (in dry-run mode) to verify configuration parameters."""
         cluster_section = pcluster_config.get_section("cluster")

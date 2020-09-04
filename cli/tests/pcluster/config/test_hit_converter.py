@@ -14,7 +14,7 @@ from assertpy import assert_that
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config.hit_converter import HitConverter
-from pcluster.utils import is_hit_enabled_cluster
+from pcluster.utils import is_hit_enabled_scheduler
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.utils import init_pcluster_config_from_configparser
 
@@ -157,7 +157,7 @@ def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
     scheduler = src_config_dict["cluster default"]["scheduler"]
     instance_type = src_config_dict["cluster default"]["compute_instance_type"]
 
-    if is_hit_enabled_cluster(scheduler):
+    if is_hit_enabled_scheduler(scheduler):
         mocked_requests = [
             MockedBoto3Request(
                 method="describe_instance_types",

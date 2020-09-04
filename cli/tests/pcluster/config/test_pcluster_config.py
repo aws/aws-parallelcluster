@@ -66,24 +66,33 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
 
 
 @pytest.mark.parametrize(
-    "cfn_params_dict, expected_json",
+    "cfn_params_dict, version, expected_json",
     [
         (
             # ResourceS3Bucket available
             {"Scheduler": "slurm", "ResourcesS3Bucket": "valid_bucket"},
+            "2.9.0",
             {"test_key": "test_value"},
+        ),
+        (
+            # SIT version
+            {"Scheduler": "slurm"},
+            "2.8.0",
+            None,
         ),
         (
             # ResourceS3Bucket not expected
             {"Scheduler": "sge"},
+            "2.9.0",
             None,
         ),
     ],
 )
-def test_load_json_config(mocker, cfn_params_dict, expected_json):
+def test_load_json_config(mocker, cfn_params_dict, version, expected_json):
     cfn_params = []
     for cfn_key, cfn_value in cfn_params_dict.items():
         cfn_params.append({"ParameterKey": cfn_key, "ParameterValue": cfn_value})
+    cfn_stack = {"Parameters": cfn_params, "Tags": [{"Key": "Version", "Value": version}]}
     pcluster_config = get_mocked_pcluster_config(mocker)
 
     patched_read_remote_file = mocker.patch.object(
@@ -91,7 +100,7 @@ def test_load_json_config(mocker, cfn_params_dict, expected_json):
     )
     patched_read_remote_file.return_value = expected_json
 
-    assert_that(pcluster_config._PclusterConfig__load_json_config(cfn_params)).is_equal_to(expected_json)
+    assert_that(pcluster_config._PclusterConfig__load_json_config(cfn_stack)).is_equal_to(expected_json)
 
 
 @pytest.mark.parametrize(

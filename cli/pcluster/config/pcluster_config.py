@@ -427,10 +427,10 @@ class PclusterConfig(object):
                 )
 
             cfn_params = self.cfn_stack.get("Parameters")
-            json_params = self.__load_json_config(cfn_params)
+            json_params = self.__load_json_config(self.cfn_stack)
 
             # Infer cluster model and load cluster section accordingly
-            cluster_model = infer_cluster_model(cfn_params=cfn_params)
+            cluster_model = infer_cluster_model(cfn_stack=self.cfn_stack)
             section = ClusterCfnSection(
                 section_definition=cluster_model.get_cluster_section_definition(), pcluster_config=self
             )
@@ -463,12 +463,11 @@ class PclusterConfig(object):
         """Get the Availability zone of the Compute Subnet."""
         return self.get_section("vpc").get_param_value("compute_availability_zone")
 
-    def __load_json_config(self, cfn_params):
+    def __load_json_config(self, cfn_stack):
         """Retrieve Json configuration params from the S3 bucket linked from the cfn params."""
         json_config = None
-        scheduler = get_cfn_param(cfn_params, "Scheduler")
-        if is_hit_enabled_cluster(scheduler):
-            s3_bucket_name = get_cfn_param(cfn_params, "ResourcesS3Bucket")
+        if is_hit_enabled_cluster(cfn_stack):
+            s3_bucket_name = get_cfn_param(cfn_stack.get("Parameters"), "ResourcesS3Bucket")
 
             if not s3_bucket_name or s3_bucket_name == "NONE":
                 self.error("Unable to retrieve configuration: ResourceS3Bucket not available.")

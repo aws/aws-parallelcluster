@@ -13,28 +13,57 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.cluster_model import ClusterModel, infer_cluster_model
-from tests.pcluster.config.utils import dict_to_cfn_params
 
 
 @pytest.mark.parametrize(
-    "config_parser_cluster_dict, cfn_params_dict, expected_cluster_model",
+    "config_parser_cluster_dict, cfn_stack, expected_cluster_model",
     [
         # queue_settings present in config
         ({"queue_settings": "queue1, queue2"}, None, ClusterModel.HIT),
         # no queue_settings in config and no cfn params
         ({}, None, ClusterModel.SIT),
         # no queue_settings in config and slurm scheduler in cfn params
-        ({}, {"Scheduler": "slurm"}, ClusterModel.HIT),
+        (
+            {},
+            {
+                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "slurm"}],
+                "Tags": [{"Key": "Version", "Value": "2.9.0"}],
+            },
+            ClusterModel.HIT,
+        ),
+        # slurm scheduler in cfn params but SIT version
+        (
+            {},
+            {
+                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "slurm"}],
+                "Tags": [{"Key": "Version", "Value": "2.8.91"}],
+            },
+            ClusterModel.SIT,
+        ),
         # no queue_settings in config and no slurm scheduler in cfn params
-        ({}, {"Scheduler": "sge"}, ClusterModel.SIT),
+        (
+            {},
+            {
+                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "sge"}],
+                "Tags": [{"Key": "Version", "Value": "2.8.91"}],
+            },
+            ClusterModel.SIT,
+        ),
+        (
+            {},
+            {
+                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "torque"}],
+                "Tags": [{"Key": "Version", "Value": "2.10.0"}],
+            },
+            ClusterModel.SIT,
+        ),
     ],
 )
-def test_cluster_model(config_parser_cluster_dict, cfn_params_dict, expected_cluster_model):
+def test_cluster_model(config_parser_cluster_dict, cfn_stack, expected_cluster_model):
     config_parser_dict = {"cluster default": config_parser_cluster_dict}
 
     config_parser = configparser.ConfigParser()
     config_parser.read_dict(config_parser_dict)
-    cfn_params = dict_to_cfn_params(cfn_params_dict)
 
-    cluster_model = infer_cluster_model(config_parser, "default", cfn_params)
+    cluster_model = infer_cluster_model(config_parser, "default", cfn_stack)
     assert_that(cluster_model).is_equal_to(expected_cluster_model)

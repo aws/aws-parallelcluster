@@ -31,11 +31,10 @@ LOGGER = logging.getLogger(__name__)
 
 def start(args):
     """Start cluster compute fleet."""
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False)
-    cluster_section = pcluster_config.get_section("cluster")
-    scheduler = cluster_section.get_param_value("scheduler")
-
-    SCHEDULER_TO_START_COMMAND_MAP[scheduler]().start(args, pcluster_config)
+    pcluster_config = PclusterConfig(
+        config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False, enforce_version=False
+    )
+    pcluster_config.cluster_model.get_start_command(pcluster_config).start(args, pcluster_config)
 
 
 class StartCommand(ABC):
@@ -119,11 +118,3 @@ class HITStartCommand(StartCommand):
             )
         except Exception as e:
             error("Failed when starting compute fleet with error: {}".format(e))
-
-
-SCHEDULER_TO_START_COMMAND_MAP = {
-    "awsbatch": AWSBatchStartCommand,
-    "sge": SITStartCommand,
-    "torque": SITStartCommand,
-    "slurm": HITStartCommand,
-}
