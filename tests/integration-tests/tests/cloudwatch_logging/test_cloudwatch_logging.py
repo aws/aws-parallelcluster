@@ -157,7 +157,9 @@ class CloudWatchLoggingClusterState:
 
     def _add_compute_instance(self, instance):
         """Update the cluster's log state by adding a compute node."""
-        compute_hostname = self._run_command_on_master("ssh -q {} hostname -f".format(instance.get("PrivateDnsName")))
+        compute_hostname = self._run_command_on_master(
+            "ssh -o StrictHostKeyChecking=no -q {} hostname -f".format(instance.get("PrivateDnsName"))
+        )
         self._cluster_log_state[COMPUTE_NODE_ROLE_NAME][compute_hostname] = {
             "node_role": COMPUTE_NODE_ROLE_NAME,
             "hostname": instance.get("PrivateDnsName"),
@@ -301,7 +303,7 @@ class CloudWatchLoggingClusterState:
 
     def _run_command_on_master(self, cmd):
         """Run cmd on cluster's MasterServer."""
-        return self.remote_command_executor.run_remote_command(cmd).stdout.strip()
+        return self.remote_command_executor.run_remote_command(cmd, timeout=60).stdout.strip()
 
     def _run_command_on_computes(self, cmd, assert_success=True):
         """Run cmd on all computes in the cluster."""
