@@ -23,6 +23,9 @@ from pcluster.config.pcluster_config import PclusterConfig
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["awsbatch", "slurm", "sge"])
+# Do not run on ARM + Batch
+# pcluster configure always picks optimal and Batch does not support ARM for optimal for now
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "*", "awsbatch")
 def test_pcluster_configure(
     request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
 ):

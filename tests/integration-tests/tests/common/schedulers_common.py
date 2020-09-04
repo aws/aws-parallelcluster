@@ -406,7 +406,7 @@ class SlurmCommands(SchedulerCommands):
             command += " --partition {}".format(filter_by_partition)
         # Print first and fourth columns to get nodename and state only (default partition contains *)
         # Filter out nodes that are not responding or in power saving states
-        command += " | awk '{print $1, $4}' | grep -v '[*#~]' | awk '{print $1}'"
+        command += " | awk '{print $1, $4}' | grep -v '[*#~%]' | awk '{print $1}'"
         result = self._remote_command_executor.run_remote_command(command)
         return result.stdout.splitlines()
 

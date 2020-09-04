@@ -136,9 +136,9 @@ def _print_check_report(patch_allowed, check_rows, forced):
         report_rows.append(
             [
                 "{0}{1}".format(report_row_num_str, "*" if failed else ""),
-                utils.ellipsize(check_row[1], 30),
-                utils.ellipsize(check_row[2], 30) if check_row[2] else "-",
-                utils.ellipsize(check_row[3], 30) if check_row[3] else "-",
+                _format_report_column(check_row[1]),
+                _format_report_column(check_row[2]),
+                _format_report_column(check_row[3]),
             ]
         )
 
@@ -175,6 +175,11 @@ def _print_check_details(patch_allowed, report_row_details):
         )
     else:
         print("Congratulations! The new configuration can be safely applied to your cluster.")
+
+
+def _format_report_column(value):
+    """Format the provided change value to fit the report table."""
+    return utils.ellipsize(value, 30) if value is not None else "-"
 
 
 def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, target_config):
