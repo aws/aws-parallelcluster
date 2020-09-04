@@ -15,12 +15,22 @@
   {%- if coord.update({'x': 0, 'y': coord.y+dy}) %} {%- endif %}
 {%- endmacro %}
 
+{#- Macro to reset coordinates #}
+{%- macro reset_coord() %}
+  {%- if coord.update({'x': 0, 'y': 0}) %} {%- endif %}
+{%- endmacro %}
+
 {%- set graph_width = 6 %}
 {%- set graph_height = 6 -%}
+{%- set logs_width = 24 %}
+{%- set logs_height = 6 -%}
 Parameters:
   {#- Cluster parameters #}
   PclusterStackName:
     Description: Name of the cluster to which this dashboard belongs
+    Type: String
+  CWLogGroupName:
+    Description: Name of the CloudWatch Log Group created
     Type: String
   {#- EC2 parameters #}
   MasterInstanceId:
@@ -241,5 +251,256 @@ Resources:
               {{- update_coord(graph_width, graph_height) }}
             {%- endfor %}
           {%- endif %}
+          - ']}'
+  LogsDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: !Join
+        - '-'
+        - - !Ref 'PclusterStackName'
+          - Logs
+      DashboardBody: !Join
+        {%- set dcv_enabled = (config.DCVOptions.split(',')[0]=='master') %}
+        - ''
+        - - '{"widgets":['
+          {{- reset_coord() }}
+          {%- set logs_params =
+            [
+              {
+                'title': "system-messages",
+                'cond_list': {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7"]},
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "system-messages"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "syslog",
+                'cond_list': [{'attr': config.BaseOS, 'attr_list': ["ubuntu1604","ubuntu1804"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "syslog"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "cfn-init",
+                'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "cfn-init"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "chef-client",
+                'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "chef-client"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "cloud-init",
+                'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "cloud-init$"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "supervisord",
+                'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "supervisord"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "jobwatcher",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["sge","torque"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "jobwatcher"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "sqswatcher",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["sge","torque"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "sqswatcher"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "clustermgtd",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "clustermgtd"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "slurm_resume",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "slurm_resume"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "slurm_suspend",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "slurm_suspend"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "slurmctld",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "slurmctld"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "sge-qmaster",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["sge"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "sge-qmaster"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "torque-server",
+                'cond_list': [
+                  {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                  {'attr': config.Scheduler, 'attr_list': ["torque"]}
+                ],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "torque-server"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-authenticator",
+                'cond_list' : [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-authenticator"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-ext-authenticator",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-ext-authenticator"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-server",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-server"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-session-launcher",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-session-launcher"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-agent",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-agent"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "dcv-xsession",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "dcv-xsession"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              },
+              {
+                'title': "Xdcv",
+                'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                'fields': ["@timestamp", "@message"],
+                'filters':
+                  [{'attr': "@logStream", 'pattern': "Xdcv"}],
+                'sort': "@timestamp desc",
+                'limit': 100
+              }
+            ]
+          -%}
+          {%- set first_metric = {'bool': True} %}{#- #FIXME should be useless if we include header sections, or should be modified #}
+          {%- for log_params in logs_params %}
+            {%- set passed_cond = {'bool': True} %}
+            {%- for cond_dict in log_params.cond_list %}
+              {%- if cond_dict.attr not in cond_dict.attr_list %}
+                {%- if passed_cond.update({'bool': False}) %} {% endif %}
+              {%- endif %}
+            {%- endfor %}
+            {%- if passed_cond.bool %}
+          - '{% if first_metric.bool %}{{ first_metric.update({'bool': False}) or "" }}{% else %},{% endif %}{"type":"log","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ logs_width }},"height":{{ logs_height }},"properties":{"view":"table","stacked":false,'
+          - !Sub '"region":"${AWS::Region}","title":"{{ log_params.title }}",'
+          - !Sub '"query":"SOURCE ''${CWLogGroupName}'''
+          - '| fields {{ log_params.fields|join(', ') }}'
+              {%- for filter in log_params.filters %}
+          - '| filter {{ filter.attr }} like /{{ filter.pattern }}/'
+              {%- endfor %}
+          - '| sort {{ log_params.sort }}'
+          - '| limit {{ log_params.limit }}"}}'
+              {{- update_coord(logs_width, logs_height) }}
+            {%- endif %}
+          {%- endfor %}
           - ']}'
 
