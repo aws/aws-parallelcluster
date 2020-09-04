@@ -14,6 +14,7 @@ from __future__ import print_function
 import logging
 import sys
 import time
+from builtins import input
 
 import boto3
 from botocore.exceptions import ClientError
