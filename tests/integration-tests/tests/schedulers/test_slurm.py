@@ -126,6 +126,8 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
 
     # Check that mpi processes are started
     _assert_job_state(slurm_commands, job_id, job_state="RUNNING")
+    # Sleep a bit to avoid race condition
+    time.sleep(5)
     _check_mpi_process(remote_command_executor, slurm_commands, test_datadir, num_nodes=2, after_completion=False)
     slurm_commands.cancel_job(job_id)
 
