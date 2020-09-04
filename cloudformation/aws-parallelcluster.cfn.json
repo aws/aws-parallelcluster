@@ -3884,10 +3884,36 @@
           "PclusterStackName": {
             "Ref": "AWS::StackName"
           },
+          "CWLogGroupName": {
+            "Fn::Sub": [
+              "/aws/parallelcluster/${cluster_name}",
+              {
+                "cluster_name": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        "parallelcluster-",
+                        {
+                          "Ref": "AWS::StackName"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
           "MasterInstanceId": {
             "Fn::GetAtt": [
               "MasterServerSubstack",
               "Outputs.MasterInstanceID"
+            ]
+          },
+          "MasterPrivateIP": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterPrivateIP"
             ]
           },
           "EBSVolumesIds": {
