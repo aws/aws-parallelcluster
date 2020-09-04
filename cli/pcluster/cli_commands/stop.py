@@ -29,11 +29,10 @@ LOGGER = logging.getLogger(__name__)
 
 def stop(args):
     """Stop cluster compute fleet."""
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False)
-    cluster_section = pcluster_config.get_section("cluster")
-    scheduler = cluster_section.get_param_value("scheduler")
-
-    SCHEDULER_TO_STOP_COMMAND_MAP[scheduler]().stop(args, pcluster_config)
+    pcluster_config = PclusterConfig(
+        config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False, enforce_version=False
+    )
+    pcluster_config.cluster_model.get_stop_command(pcluster_config).stop(args, pcluster_config)
 
 
 class StopCommand(ABC):
@@ -94,11 +93,3 @@ class HITStopCommand(StopCommand):
             )
         except Exception as e:
             error("Failed when stopping compute fleet with error: {}".format(e))
-
-
-SCHEDULER_TO_STOP_COMMAND_MAP = {
-    "awsbatch": AWSBatchStopCommand,
-    "sge": SITStopCommand,
-    "torque": SITStopCommand,
-    "slurm": HITStopCommand,
-}

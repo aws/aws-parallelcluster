@@ -18,7 +18,6 @@ from botocore.exceptions import ClientError
 from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
-    get_cfn_param,
     get_supported_az_for_one_instance_type,
     is_hit_enabled_cluster,
 )
@@ -49,6 +48,16 @@ class ClusterModel(ABC):
     @abstractmethod
     def test_configuration(self, pcluster_config):
         """Do dryrun tests for the configuration."""
+        pass
+
+    @abstractmethod
+    def get_start_command(self, pcluster_config):
+        """Get the start command for the model."""
+        pass
+
+    @abstractmethod
+    def get_stop_command(self, pcluster_config):
+        """Get the stop command for the model."""
         pass
 
     def _ec2_run_instance(self, pcluster_config, **kwargs):
@@ -83,7 +92,7 @@ class ClusterModel(ABC):
                 # Therefore, we need to write our own code to tell the specific problem
                 current_az = get_availability_zone_of_subnet(kwargs["SubnetId"])
                 qualified_az = get_supported_az_for_one_instance_type(kwargs["InstanceType"])
-                self.error(
+                pcluster_config.error(
                     "Your requested instance type ({0}) is not supported in the Availability Zone ({1}) of "
                     "your requested subnet ({2}). Please retry your request by choosing a subnet in "
                     "{3}. ".format(kwargs["InstanceType"], current_az, kwargs["SubnetId"], qualified_az)
@@ -110,7 +119,7 @@ class ClusterModel(ABC):
         return alinux_ami_id
 
 
-def infer_cluster_model(config_parser=None, cluster_label=None, cfn_params=None):
+def infer_cluster_model(config_parser=None, cluster_label=None, cfn_stack=None):
     """
     Infer the cluster model from the provided configuration.
 
@@ -118,8 +127,8 @@ def infer_cluster_model(config_parser=None, cluster_label=None, cfn_params=None)
     and a config_parser instance.
     """
     return (
-        _infer_cluster_model_from_cfn(cfn_params)
-        if cfn_params
+        _infer_cluster_model_from_cfn(cfn_stack)
+        if cfn_stack
         else _infer_cluster_model_from_file(config_parser, cluster_label)
     )
 
@@ -137,14 +146,14 @@ def _infer_cluster_model_from_file(config_parser, cluster_label):
     )
 
 
-def _infer_cluster_model_from_cfn(cfn_params):
+def _infer_cluster_model_from_cfn(cfn_stack):
     """
     Infer the cluster model from cfn params.
 
     Only HIT model is allowed to be stored if scheduler is Slurm, so checking the scheduler is enough to determine the
     cluster model.
     """
-    return ClusterModel.HIT if is_hit_enabled_cluster(get_cfn_param(cfn_params, "Scheduler")) else ClusterModel.SIT
+    return ClusterModel.HIT if is_hit_enabled_cluster(cfn_stack) else ClusterModel.SIT
 
 
 def get_cluster_model(name):

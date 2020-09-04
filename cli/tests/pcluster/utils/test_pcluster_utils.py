@@ -655,7 +655,7 @@ def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
 )
 def test_is_hit_enabled_cluster(scheduler, expected_is_hit_enabled):
     """Verify that the expected schedulers are hit enabled."""
-    assert_that(utils.is_hit_enabled_cluster(scheduler)).is_equal_to(expected_is_hit_enabled)
+    assert_that(utils.is_hit_enabled_scheduler(scheduler)).is_equal_to(expected_is_hit_enabled)
 
 
 @pytest.mark.parametrize(

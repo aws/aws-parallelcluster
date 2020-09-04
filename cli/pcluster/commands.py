@@ -60,7 +60,7 @@ def _create_bucket_with_resources(pcluster_config, json_params):
         for resources_dir in resources_dirs:
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
-        if utils.is_hit_enabled_cluster(scheduler):
+        if utils.is_hit_enabled_scheduler(scheduler):
             _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
@@ -398,21 +398,22 @@ def _get_compute_instances(stack):
 
 def instances(args):
     stack_name = utils.get_stack_name(args.cluster_name)
-    pcluster_config = PclusterConfig(config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False)
-    cluster_section = pcluster_config.get_section("cluster")
+    PclusterConfig.init_aws(config_file=args.config_file)
+    cfn_stack = utils.get_stack(stack_name)
+    scheduler = utils.get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
 
     instances = []
     master_server = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.master)
     if master_server:
         instances.append(("MasterServer", master_server[0].get("InstanceId")))
 
-    if cluster_section.get_param_value("scheduler") != "awsbatch":
+    if scheduler != "awsbatch":
         instances.extend(_get_compute_instances(stack_name))
 
     for instance in instances:
         LOGGER.info("%s         %s", instance[0], instance[1])
 
-    if cluster_section.get_param_value("scheduler") == "awsbatch":
+    if scheduler == "awsbatch":
         LOGGER.info("Run 'awsbhosts --cluster %s' to list the compute instances", args.cluster_name)
 
 
