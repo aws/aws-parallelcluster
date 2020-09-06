@@ -215,7 +215,9 @@ class SgeCommands(SchedulerCommands):
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):  # noqa: D102
+    def submit_script(
+        self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None
+    ):  # noqa: D102
         if not additional_files:
             additional_files = []
         if not script_args:
