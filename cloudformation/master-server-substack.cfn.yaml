@@ -545,7 +545,7 @@ Resources:
                 [parallelcluster-update]
                 triggers=post.update
                 path=Resources.MasterServerLaunchTemplate.Metadata.AWS::CloudFormation::Init
-                action=cfn-init -v --stack ${AWS::StackName} --role=${IamRoleName} --resource MasterServerLaunchTemplate --configsets update --region ${AWS::Region}
+                action=PATH=/usr/local/bin:/bin:/usr/bin:/opt/aws/bin; cfn-init -v --stack ${AWS::StackName} --role=${IamRoleName} --resource MasterServerLaunchTemplate --configsets update --region ${AWS::Region}
                 runas=root
               mode: '000400'
               owner: root
