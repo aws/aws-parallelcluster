@@ -40,7 +40,8 @@ def test_hit_no_cluster_dns_mpi(
     assert_that(result.failed).is_true()
 
     # Assert compute hostname is the same as nodename
-    job_id = scheduler_commands.submit_script(str(test_datadir / "print_hostname.sh"))
+    result = scheduler_commands.submit_command("hostname > /shared/compute_hostname")
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     hostname = remote_command_executor.run_remote_command("cat /shared/compute_hostname").stdout
     assert_that(compute_nodes).contains(hostname)

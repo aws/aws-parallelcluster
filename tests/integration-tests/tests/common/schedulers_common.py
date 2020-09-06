@@ -199,7 +199,7 @@ class SgeCommands(SchedulerCommands):
         assert_that(match).is_not_none()
         return match.group(1)
 
-    def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None):  # noqa: D102
+    def submit_command(self, command, nodes=1, slots=None, hold=False, after_ok=None, host=None):  # noqa: D102
         flags = ""
         if nodes > 1:
             slots = nodes * slots
@@ -209,11 +209,13 @@ class SgeCommands(SchedulerCommands):
             flags += "-h "
         if after_ok:
             flags += "-hold_jid {0} ".format(after_ok)
+        if host:
+            flags += "-l hostname={0} ".format(host)
         return self._remote_command_executor.run_remote_command(
             "echo '{0}' | qsub {1}".format(command, flags), raise_on_error=False
         )
 
-    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None):  # noqa: D102
+    def submit_script(self, script, script_args=None, nodes=1, slots=None, additional_files=None, host=None):  # noqa: D102
         if not additional_files:
             additional_files = []
         if not script_args:
@@ -222,6 +224,8 @@ class SgeCommands(SchedulerCommands):
         flags = ""
         if slots:
             flags += "-pe mpi {0} ".format(slots)
+        if host:
+            flags += "-l hostname={0} ".format(host)
         script_name = os.path.basename(script)
         return self._remote_command_executor.run_remote_command(
             "qsub {0} {1} {2}".format(flags, script_name, " ".join(script_args)), additional_files=additional_files
