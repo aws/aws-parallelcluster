@@ -32,7 +32,7 @@
   {%- if empty_section.update({'bool': True}) %} {%- endif %}
   {%- for log_params in section_widgets.widgets %}
     {%- for cond_dict in log_params.cond_list %}
-      {%- if cond_dict.attr in cond_dict.attr_list %}
+      {%- if cond_dict.attr in cond_dict.attr_values %}
         {%- if empty_section.update({'bool': False}) %} {% endif %}
       {%- endif %}
     {%- endfor %}
@@ -47,10 +47,13 @@ Parameters:
   CWLogGroupName:
     Description: Name of the CloudWatch Log Group created
     Type: String
-  {#- EC2 parameters #}
+  {#- Head Node parameters #}
   MasterInstanceId:
     Description: ID of the Master instance
     Type: AWS::EC2::Instance::Id
+  MasterPrivateIP:
+    Description: Private IP of the Master instance
+    Type: String
   {#- EBS parameters #}
   EBSVolumesIds:
     Description: IDs of the EBS volumes used
@@ -287,60 +290,60 @@ Resources:
                   [{
                    'title': "jobwatcher",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_list': ["sge","torque"]}
+                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': config.Scheduler, 'attr_values': ["sge","torque"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
-                     [{'attr': "@logStream", 'pattern': "jobwatcher"}],
+                     [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*jobwatcher"}],
                    'sort': "@timestamp desc",
                    'limit': 100
                  },
                  {
                    'title': "sqswatcher",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_list': ["sge","torque"]}
+                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': config.Scheduler, 'attr_values': ["sge","torque"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
-                     [{'attr': "@logStream", 'pattern': "sqswatcher"}],
+                     [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*sqswatcher"}],
                    'sort': "@timestamp desc",
                    'limit': 100
                  },
                  {
                    'title': "clustermgtd",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
-                     [{'attr': "@logStream", 'pattern': "clustermgtd"}],
+                     [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*clustermgtd"}],
                    'sort': "@timestamp desc",
                    'limit': 100
                  },
                  {
                    'title': "slurm_resume",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
-                     [{'attr': "@logStream", 'pattern': "slurm_resume"}],
+                     [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*slurm_resume"}],
                    'sort': "@timestamp desc",
                    'limit': 100
                  },
                  {
                    'title': "slurm_suspend",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
-                     [{'attr': "@logStream", 'pattern': "slurm_suspend"}],
+                     [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*slurm_suspend"}],
                    'sort': "@timestamp desc",
                    'limit': 100
                  }
@@ -351,36 +354,36 @@ Resources:
                {
                  'title': "slurmctld",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_list': ["slurm"]}
+                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': config.Scheduler, 'attr_values': ["slurm"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "slurmctld"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*slurmctld"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "sge-qmaster",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_list': ["sge"]}
+                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': config.Scheduler, 'attr_values': ["sge"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "sge-qmaster"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*sge-qmaster"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "torque-server",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_list': ["torque"]}
+                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': config.Scheduler, 'attr_values': ["torque"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "torque-server"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*torque-server"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                }]
@@ -389,64 +392,64 @@ Resources:
                'widgets': [
                {
                  'title': "dcv-ext-authenticator",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-ext-authenticator"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-ext-authenticator"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "dcv-authenticator",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-authenticator"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-authenticator"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "dcv-agent",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-agent"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-agent"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "dcv-xsession",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-xsession"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-xsession"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "dcv-server",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-server"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-server"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "dcv-session-launcher",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "dcv-session-launcher"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*dcv-session-launcher"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "Xdcv",
-                 'cond_list': [{'attr': dcv_enabled, 'attr_list': ["True"]}],
+                 'cond_list': [{'attr': dcv_enabled, 'attr_values': [True]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "Xdcv"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*Xdcv"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                }]
@@ -455,55 +458,55 @@ Resources:
                'widgets': [
                {
                  'title': "system-messages",
-                 'cond_list': {'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7"]},
+                 'cond_list': {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7"]},
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "system-messages"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*system-messages"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "syslog",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_list': ["ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "syslog"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*syslog"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "cfn-init",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "cfn-init"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*cfn-init"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "chef-client",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "chef-client"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*chef-client"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "cloud-init",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "cloud-init$"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*cloud-init$"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                },
                {
                  'title': "supervisord",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_list': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
-                   [{'attr': "@logStream", 'pattern': "supervisord"}],
+                   [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*supervisord"}],
                  'sort': "@timestamp desc",
                  'limit': 100
                }]
@@ -520,7 +523,7 @@ Resources:
               {%- for log_params in section_widgets.widgets %}
                 {%- set passed_cond = {'bool': True} %}
                 {%- for cond_dict in log_params.cond_list %}
-                  {%- if cond_dict.attr not in cond_dict.attr_list %}
+                  {%- if cond_dict.attr not in cond_dict.attr_values %}
                     {%- if passed_cond.update({'bool': False}) %} {% endif %}
                   {%- endif %}
                 {%- endfor %}
@@ -530,7 +533,7 @@ Resources:
           - !Sub '"query":"SOURCE ''${CWLogGroupName}'''
           - '| fields {{ log_params.fields|join(', ') }}'
                   {%- for filter in log_params.filters %}
-          - '| filter {{ filter.attr }} like /{{ filter.pattern }}/'
+          - !Sub '| filter {{ filter.attr }} like /{{ filter.pattern }}/'
                   {%- endfor %}
           - '| sort {{ log_params.sort }}'
           - '| limit {{ log_params.limit }}"}}'
