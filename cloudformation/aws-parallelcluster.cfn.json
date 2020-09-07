@@ -1460,18 +1460,21 @@
     },
     "SNS": {
       "Type": "AWS::SNS::Topic",
+      "Condition": "CreateComputeFleet"
+    },
+    "SNSSubscription": {
+      "Type": "AWS::SNS::Subscription",
       "Properties": {
-        "Subscription": [
-          {
-            "Endpoint": {
-              "Fn::GetAtt": [
-                "SQS",
-                "Arn"
-              ]
-            },
-            "Protocol": "sqs"
-          }
-        ]
+        "Endpoint": {
+          "Fn::GetAtt": [
+            "SQS",
+            "Arn"
+          ]
+        },
+        "Protocol": "sqs",
+        "TopicArn": {
+          "Ref": "SNS"
+        }
       },
       "Condition": "CreateComputeFleet"
     },
