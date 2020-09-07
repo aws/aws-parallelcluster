@@ -7,7 +7,7 @@ Parameters:
   MasterCoreCount:
     Type: CommaDelimitedList
   ComputeCoreCount:
-    Type: CommaDelimitedList
+    Type: String
   RootDevice:
     Type: String
   RootVolumeSize:
@@ -126,6 +126,14 @@ Conditions:
         - !Select
           - '0'
           - !Ref 'MasterCoreCount'
+        - NONE
+  DisableComputeHyperthreading: !Not
+    - !Or
+      - !Equals
+        - !Ref 'ComputeCoreCount'
+        - '-1'
+      - !Equals
+        - !Ref 'ComputeCoreCount'
         - NONE
   DisableMasterHyperthreadingViaCpuOptions: !And
     - !Condition 'DisableMasterHyperthreading'
@@ -477,10 +485,8 @@ Resources:
                   cfn_raid_vol_ids: !Ref 'RAIDVolIds'
                   cfn_raid_parameters: !Ref 'RAIDOptions'
                   cfn_scheduler_slots: !If
-                    - DisableMasterHyperthreading
-                    - !Select
-                      - '0'
-                      - !Ref 'ComputeCoreCount'
+                    - DisableComputeHyperthreading
+                    - !Ref 'ComputeCoreCount'
                     - !Ref 'AWS::NoValue'
                   cfn_disable_hyperthreading_manually: !If
                     - DisableMasterHyperthreadingManually
