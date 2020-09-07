@@ -383,10 +383,8 @@ def _test_computemgtd_logic(
     # Overwrite clusterctld heartbeat to trigger timeout path
     timestamp_format = "%Y-%m-%d %H:%M:%S.%f%z"
     overwrite_time_str = datetime(2020, 1, 1, tzinfo=timezone.utc).strftime(timestamp_format)
-    remote_command_executor.run_remote_script(
-        str(test_datadir / "slurm_overwrite_clustermgtd_timestamp.sh"),
-        args=["{}".format(overwrite_time_str)],
-        run_as_root=True,
+    remote_command_executor.run_remote_command(
+        f"echo -n '{overwrite_time_str}' | sudo tee /opt/slurm/etc/pcluster/.slurm_plugin/clustermgtd_heartbeat"
     )
     logging.info("Asserting that computemgtd is not self-terminating when slurmctld is up")
     assert_num_instances_constant(cluster_name, region, desired=num_static_nodes + num_dynamic_nodes, timeout=2)
@@ -404,9 +402,6 @@ def _assert_failing_nodes_terminated(nodes_to_remove, hostname_to_instance_id, r
 
 def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
     """Wait for static and dynamic nodes to be reset."""
-    if dynamic_nodes:
-        logging.info("Assert dynamic nodes are power saved")
-        _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
     if static_nodes:
         logging.info("Assert static nodes are placed in DOWN during replacement")
         # DRAIN+DOWN = drained
@@ -415,6 +410,10 @@ def _wait_for_node_reset(scheduler_commands, static_nodes, dynamic_nodes):
         )
         logging.info("Assert static nodes are replaced")
         _wait_for_compute_nodes_states(scheduler_commands, static_nodes, expected_states=["idle"])
+    # dynamic nodes are power saved after SuspendTimeout. static_nodes must be checked first
+    if dynamic_nodes:
+        logging.info("Assert dynamic nodes are power saved")
+        _wait_for_compute_nodes_states(scheduler_commands, dynamic_nodes, expected_states=["idle~"])
 
 
 def _assert_nodes_not_terminated(scheduler_commands, nodes, timeout=5):
