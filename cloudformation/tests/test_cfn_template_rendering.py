@@ -230,4 +230,6 @@ def test_cw_dashboard_substack_rendering(tmp_path):
         "Cores": "NONE,NONE",
     }
 
-    substack_rendering(tmp_path, "cw-dashboard-substack.cfn.yaml", test_config)  # , ["-i", "W2001"]) # to ignore W2001
+    substack_rendering(tmp_path, "cw-dashboard-substack.cfn.yaml", test_config)  #FIXME , ["-i", "W2001"]) # to ignore W2001
+    #FIXME Might have to use W2001 as if the Logs dashboard is empty, we do not use variable CWLogGroupName
+    # As before, it might not be important as the test does not try to do that (and there is no point in doing that)

@@ -1,6 +1,13 @@
 {#- Automatically updated variable to define graph/header section position #}
 {%- set coord = {'x': 0, 'y': 0} %}
 
+{%- set graph_width = 6 %}
+{%- set graph_height = 6 -%}
+{%- set logs_width = 24 %}
+{%- set logs_height = 6 -%}
+
+{%- set empty_section = {'bool': True} %}
+
 {#- Macro to calculate coordinates for the new graph #}
 {#- It updates both x and y values if the graph doesn't fit in the given line #}
 {%- macro update_coord(dx, dy) %}
@@ -20,10 +27,18 @@
   {%- if coord.update({'x': 0, 'y': 0}) %} {%- endif %}
 {%- endmacro %}
 
-{%- set graph_width = 6 %}
-{%- set graph_height = 6 -%}
-{%- set logs_width = 24 %}
-{%- set logs_height = 6 -%}
+{#- Macro to check if a section will not be empty #}
+{%- macro is_logs_section_empty(section_widgets) %}
+  {%- if empty_section.update({'bool': True}) %} {%- endif %}
+  {%- for log_params in section_widgets.widgets %}
+    {%- for cond_dict in log_params.cond_list %}
+      {%- if cond_dict.attr in cond_dict.attr_list %}
+        {%- if empty_section.update({'bool': False}) %} {% endif %}
+      {%- endif %}
+    {%- endfor %}
+  {%- endfor %}
+{%- endmacro -%}
+
 Parameters:
   {#- Cluster parameters #}
   PclusterStackName:
@@ -495,31 +510,34 @@ Resources:
               }
             ]
           -%}
-          {%- set first_metric = {'bool': True} %}{#- #FIXME should be useless if we include header sections, or should be modified #}
+          {%- set first_metric = {'bool': True} %}
           {%- for section_widgets in sections_widgets %}
+            {{- is_logs_section_empty(section_widgets) }}
+            {%- if not empty_section.bool %}
           - '{% if first_metric.bool %}{{ first_metric.update({'bool': False}) or "" }}{% else %},{% endif %}{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
             {{ section_widgets.section_title }}\n"}}'
             {{- update_coord_after_section(1) }}
-            {%- for log_params in section_widgets.widgets %}
-              {%- set passed_cond = {'bool': True} %}
-              {%- for cond_dict in log_params.cond_list %}
-                {%- if cond_dict.attr not in cond_dict.attr_list %}
-                  {%- if passed_cond.update({'bool': False}) %} {% endif %}
-                {%- endif %}
-              {%- endfor %}
-              {%- if passed_cond.bool %}
+              {%- for log_params in section_widgets.widgets %}
+                {%- set passed_cond = {'bool': True} %}
+                {%- for cond_dict in log_params.cond_list %}
+                  {%- if cond_dict.attr not in cond_dict.attr_list %}
+                    {%- if passed_cond.update({'bool': False}) %} {% endif %}
+                  {%- endif %}
+                {%- endfor %}
+                {%- if passed_cond.bool %}
           - ',{"type":"log","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ logs_width }},"height":{{ logs_height }},"properties":{"view":"table","stacked":false,'
           - !Sub '"region":"${AWS::Region}","title":"{{ log_params.title }}",'
           - !Sub '"query":"SOURCE ''${CWLogGroupName}'''
           - '| fields {{ log_params.fields|join(', ') }}'
-                {%- for filter in log_params.filters %}
+                  {%- for filter in log_params.filters %}
           - '| filter {{ filter.attr }} like /{{ filter.pattern }}/'
-                {%- endfor %}
+                  {%- endfor %}
           - '| sort {{ log_params.sort }}'
           - '| limit {{ log_params.limit }}"}}'
-                {{- update_coord(logs_width, logs_height) }}
-              {%- endif %}
-            {%- endfor %}
+                  {{- update_coord(logs_width, logs_height) }}
+                {%- endif %}
+              {%- endfor %}
+            {%- endif %}
           {%- endfor %}
           - ']}'
 
