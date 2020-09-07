@@ -173,7 +173,7 @@ Examples::
     pcreate.add_argument(
         "-t",
         "--cluster-template",
-        help="Indicates which section of the configuration file to use for cluster creation.",
+        help="Indicates the 'cluster' section of the configuration file to use for cluster creation.",
     )
     pcreate.add_argument(
         "-p",
@@ -211,7 +211,9 @@ Examples::
         help="Disable CloudFormation stack rollback on error.",
     )
     pupdate.add_argument(
-        "-t", "--cluster-template", help="Indicates which section of the configuration file to use for cluster update."
+        "-t",
+        "--cluster-template",
+        help="Indicates the 'cluster' section of the configuration file to use for cluster update.",
     )
     pupdate.add_argument(
         "-p",
@@ -392,7 +394,7 @@ Variables substituted::
     pami_group1.add_argument(
         "-t",
         "--cluster-template",
-        help="Specifies the cluster section of the configuration file to retrieve VPC settings.",
+        help="Specifies the 'cluster' section of the configuration file to retrieve VPC settings.",
     )
     pami_group2 = pami.add_argument_group("Build AMI in a custom VPC and Subnet")
     pami_group2.add_argument("--vpc-id", help="Specifies the VPC to use to build the AWS ParallelCluster AMI.")

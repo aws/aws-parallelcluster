@@ -82,6 +82,10 @@ class BooleanJsonParam(JsonParam):
         # Convert value to boolean
         return config_parser.getboolean(section_name, self.key)
 
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return self.get_default_value().lower() if self.value is None else str(bool(self.value)).lower()
+
 
 class FloatJsonParam(JsonParam):
     """Base JsonParam to manage float parameters."""
