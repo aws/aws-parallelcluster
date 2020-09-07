@@ -23,7 +23,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 
 # For EFS tests, only use regions defined in AVAILABILITY_ZONE_OVERRIDES in conftest
 # Otherwise we cannot control the AZs of the subnets to properly test EFS.
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["us-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.oss(["alinux2"])
@@ -46,7 +46,7 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
     _test_efs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1", "cn-north-1"])
+@pytest.mark.regions(["ap-northeast-1", "cn-north-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")

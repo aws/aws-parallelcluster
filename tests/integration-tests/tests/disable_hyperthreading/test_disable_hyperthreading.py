@@ -21,7 +21,7 @@ from tests.common.utils import fetch_instance_slots
 
 
 # t2's do not support CpuOptions and hence do not support disable_hyperthreading
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["eu-north-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.skip_schedulers(["awsbatch"])
 def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
