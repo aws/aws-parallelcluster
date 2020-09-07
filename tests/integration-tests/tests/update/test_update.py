@@ -186,6 +186,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     time.sleep(60)  # wait for the cluster to stop
     cluster.update()
     cluster.start()
+    time.sleep(90)  # wait for the cluster to start
 
     assert_initial_conditions(scheduler_commands, 1, 0, partition="queue1")
 
