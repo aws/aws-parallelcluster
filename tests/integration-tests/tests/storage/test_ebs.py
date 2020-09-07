@@ -36,7 +36,7 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["ap-northeast-2"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])  # Test on EBS-Only and NVMe instances
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("os", "instance")
@@ -69,7 +69,7 @@ def test_ebs_snapshot(
 
 
 # cn-north-1 does not support KMS
-@pytest.mark.regions(["us-east-1", "us-gov-east-1"])
+@pytest.mark.regions(["ca-central-1", "us-gov-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")

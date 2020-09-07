@@ -18,7 +18,7 @@ from remote_command_executor import RemoteCommandExecutor
 from tests.common.assertions import assert_no_errors_in_logs
 
 
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["ap-northeast-2"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
 @pytest.mark.oss(["alinux2"])

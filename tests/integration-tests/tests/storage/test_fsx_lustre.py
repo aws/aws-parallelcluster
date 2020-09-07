@@ -35,7 +35,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 @pytest.mark.parametrize(
     "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
 )
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "deployment_type")
@@ -83,7 +83,7 @@ def test_fsx_lustre(
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
