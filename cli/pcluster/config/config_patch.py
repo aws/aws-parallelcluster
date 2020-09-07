@@ -16,6 +16,7 @@ from collections import namedtuple
 
 # Represents a single parameter change in a ConfigPatch instance
 from pcluster import utils
+from pcluster.config.mappings import GLOBAL_SECTIONS
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.utils import get_file_section_name
 
@@ -50,8 +51,6 @@ class ConfigPatch(object):
         - A boolean telling if the new configuration can be safely applied
         - A list of change rows with all the information to build a detailed report
     """
-
-    IGNORED_SECTIONS = ["global", "aliases", "aws"]  # Sections ignored for patch creation
 
     def __init__(self, base_config, target_config):
         """
@@ -154,7 +153,8 @@ class ConfigPatch(object):
                 )
 
     def _remove_ignored_sections(self, config):
-        for section_key in ConfigPatch.IGNORED_SECTIONS:
+        # global file sections are ignored for patch creation
+        for section_key in [section_map.get("key") for section_map in GLOBAL_SECTIONS]:
             config.remove_section(section_key)
 
     @property

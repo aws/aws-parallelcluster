@@ -106,7 +106,7 @@ class CommaSeparatedCfnParam(CfnParam):
 
     def get_string_value(self):
         """Convert internal representation into string."""
-        return str(",".join(self.value))
+        return str(",".join(self.value)) if self.value else ""
 
     def get_value_from_string(self, string_value):
         """Return internal representation starting from string/CFN value."""
@@ -351,7 +351,7 @@ class SharedDirCfnParam(CfnParam):
         section_name = get_file_section_name(self.section_key, self.section_label)
         if not self.pcluster_config.get_section("ebs") and (write_defaults or self.value != self.get_default_value()):
             _ensure_section_existence(config_parser, section_name)
-            config_parser.set(section_name, self.key, self.value)
+            config_parser.set(section_name, self.key, self.get_string_value())
         # else: there are ebs volumes, let the EBSSettings parse the SharedDir CFN parameter.
 
     def from_cfn_params(self, cfn_params):
@@ -822,7 +822,7 @@ class SettingsCfnParam(SettingsParam):
 
     def from_storage(self, storage_params):
         """Initialize section configuration parameters referred by the settings value by parsing CFN parameters."""
-        self.value = self.definition.get("default", None)
+        self.value = self.get_default_value()
         section_labels = self.get_metadata_labels()
         label = section_labels[0] if section_labels else None
 
@@ -938,19 +938,19 @@ class EBSSettingsCfnParam(SettingsCfnParam):
 
     def to_file(self, config_parser, write_defaults=False):
         """Convert the param value into a list of sections in the config_parser and initialize them."""
-        sections = {}
+        sections = []
         if self.value:
             for section_label in self.value.split(","):
-                sections.update(self.pcluster_config.get_section(self.referred_section_key, section_label.strip()))
+                sections.append(self.pcluster_config.get_section(self.referred_section_key, section_label.strip()))
 
         if sections:
             section_name = get_file_section_name(self.section_key, self.section_label)
             # add "*_settings = *" to the parent section
             _ensure_section_existence(config_parser, section_name)
-            config_parser.add_section(section_name)
+            config_parser.set(section_name, self.key, self.get_string_value())
 
             # create sections
-            for _, section in sections:
+            for section in sections:
                 section.to_file(config_parser)
 
     def to_storage(self, storage_params):

@@ -52,6 +52,7 @@ setup(
     entry_points={
         "console_scripts": [
             "pcluster = pcluster.cli:main",
+            "pcluster-config = pcluster_config.cli:main",
             "awsbqueues = awsbatch.awsbqueues:main",
             "awsbhosts = awsbatch.awsbhosts:main",
             "awsbstat = awsbatch.awsbstat:main",

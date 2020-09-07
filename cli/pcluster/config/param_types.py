@@ -108,7 +108,7 @@ class Param(ABC):
         section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
 
-            if self.section_key not in ["aws", "global", "aliases"]:
+            if self.section_key not in ["aws", "aliases", "global"]:  # FIXME use GLOBAL_FILE_SECTIONS from mappings.py
                 self._validate_section_label()
 
             self.value = config_parser.get(section_name, self.key)
@@ -264,8 +264,21 @@ class SettingsParam(Param):
             section_key, section_label, param_key, param_definition, pcluster_config, owner_section
         )
 
+    def get_default_value(self):
+        """
+        Get default value.
+
+        If the SettingsParam is in the ALWAYS_PRESENT_SECTIONS list, it means that it is required to initialize
+        the related section with default values (i.e. vpc, scaling).
+        """
+        return (
+            "default"
+            if (self.referred_section_key in ["scaling", "vpc"])  # FIXME use ALWAYS_PRESENT_SECTIONS from mappings.py
+            else None
+        )
+
     def _from_definition(self):
-        self.value = self.definition.get("default", None)
+        self.value = self.get_default_value()
         if self.value:
             # the SettingsParam has a default value, it means that it is required to initialize
             # the related section with default values (e.g. vpc, scaling).
@@ -403,7 +416,7 @@ class SettingsParam(Param):
                     write_defaults or (param_value != param_definition.get("default", None))
                 ):
                     _ensure_section_existence(config_parser, section_name)
-                    config_parser.set(section_name, self.key, self.value)
+                    config_parser.set(section_name, self.key, self.get_string_value())
 
             # create section
             section.to_file(config_parser)

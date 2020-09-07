@@ -330,6 +330,7 @@ def _run_configuration(mocker, path, with_config=False):
 def _assert_configurations_are_equal(path_config_expected, path_config_after_input):
     assert_that(path_config_expected).exists().is_file()
     assert_that(path_config_after_input).exists().is_file()
+
     config_expected = ConfigParser()
     config_expected.read(path_config_expected)
     config_expected_dict = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
@@ -409,9 +410,7 @@ def get_file_path(test_datadir):
     return str(config), str(error), str(output)
 
 
-def _run_and_assert(
-    mocker, capsys, output, error, expected_config, path_for_config, with_config=False, exact_match=False
-):
+def _run_and_assert(mocker, capsys, output, error, expected_config, path_for_config, with_config=False):
     _run_configuration(mocker, path_for_config, with_config)
     _assert_configurations_are_equal(expected_config, path_for_config)
     _assert_output_error_are_correct(capsys, output, error, path_for_config)

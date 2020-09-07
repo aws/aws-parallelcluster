@@ -262,13 +262,11 @@ def _check_cluster_models(base_config, target_config, cluster_template):
                     "The configuration of the cluster section in the '{config_file}' must be converted to the latest "
                     "format with support for multiple queues before proceeding with the update.\n"
                     "Please run the following command:\n"
-                    # TODO: update conversion command line when tool is available
-                    "pcluster-convert-config -o {converted_file} {config_file}{cluster_template_arg}\n"
+                    "pcluster-config convert -c {config_file} {cluster_template_arg} -o <output_file> \n"
                     "Then retry with your converted configuration file by running the following command:\n"
-                    "pcluster update -c {converted_file} {cluster_name}"
+                    "pcluster update -c <output_file> {cluster_template_arg} {cluster_name}"
                 ).format(
                     config_file=target_config.config_file,
-                    converted_file="<new file>",
                     cluster_name=base_config.cluster_name,
                     cluster_template_arg=" -t " + cluster_template if cluster_template else "",
                 )
