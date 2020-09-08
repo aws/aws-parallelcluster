@@ -809,10 +809,7 @@ def test_invalid_min_max_exception(mocker, min_size, max_size):
         general_wrapper_for_prompt_testing(mocker, min_size=min_size, max_size=max_size)
 
 
-@pytest.mark.parametrize(
-    "min_size, max_size",
-    [("", ""), ("1", "2"), ("", "1"), ("4", "")],
-)
+@pytest.mark.parametrize("min_size, max_size", [("", ""), ("1", "2"), ("", "1"), ("4", "")])
 def test_valid_min_max(mocker, min_size, max_size, instance_type_offerings_stub):
     instance_type_offerings_stub()
     assert_that(general_wrapper_for_prompt_testing(mocker, min_size=min_size, max_size=max_size)).is_true()

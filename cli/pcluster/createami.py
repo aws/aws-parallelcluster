@@ -198,10 +198,7 @@ def _print_create_ami_results(results):
 
 def _get_default_createami_instance_type(ami_architecture):
     """Return instance type to build AMI on based on architecture supported by base AMI."""
-    ami_architecture_to_instance_type = {
-        "x86_64": "t2.xlarge",
-        "arm64": "m6g.xlarge",
-    }
+    ami_architecture_to_instance_type = {"x86_64": "t2.xlarge", "arm64": "m6g.xlarge"}
     instance_type = ami_architecture_to_instance_type.get(ami_architecture)
     if instance_type is None:
         LOGGER.error("Base AMI used in createami has an unsupported architecture: {0}".format(ami_architecture))

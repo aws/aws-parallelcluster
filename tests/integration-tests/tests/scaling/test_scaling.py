@@ -254,13 +254,7 @@ def _test_partition_states(
 
 
 def _test_reset_terminated_nodes(
-    scheduler_commands,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """
     Test that slurm nodes are reset if instances are terminated manually.
@@ -321,13 +315,7 @@ def _test_replace_down_nodes(
 
 
 def _test_keep_or_replace_suspended_nodes(
-    scheduler_commands,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
     logging.info(

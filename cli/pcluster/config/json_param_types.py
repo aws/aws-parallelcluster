@@ -289,8 +289,7 @@ class QueueJsonSection(JsonSection):
             ).value = compute_resource_section.get_param(
                 "disable_hyperthreading"
             ).value and utils.disable_ht_via_cpu_options(
-                instance_type_param.value,
-                utils.get_default_threads_per_core(instance_type_param.value, instance_type),
+                instance_type_param.value, utils.get_default_threads_per_core(instance_type_param.value, instance_type)
             )
 
             # Set initial_count to min_count if not manually set

@@ -40,10 +40,7 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
 }
 
-AMI_TYPE_DICT = {
-    "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
-    "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
-}
+AMI_TYPE_DICT = {"official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP, "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP}
 
 
 def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):

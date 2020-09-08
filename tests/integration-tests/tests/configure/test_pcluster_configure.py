@@ -69,9 +69,7 @@ def skip_if_unsupported_test_options_were_used(request):
 
 def get_unsupported_test_runner_options(request):
     """Return list of CLI args exposed by test_runner.py that this test doesn't support which were also used."""
-    unsupported_options = [
-        "cluster",
-    ]
+    unsupported_options = ["cluster"]
     return [option for option in unsupported_options if request.config.getoption(option) is not None]
 
 

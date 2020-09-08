@@ -388,7 +388,7 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
             expected_params=expected_params,
             response={"Location": bucket_name},
             generate_error=create_error_message is not None,
-        ),
+        )
     ]
     if not create_error_message:
         mocked_requests += [
@@ -397,7 +397,7 @@ def test_create_s3_bucket(region, create_error_message, configure_error_message,
                 expected_params={"Bucket": bucket_name, "VersioningConfiguration": {"Status": "Enabled"}},
                 response={},
                 generate_error=configure_error_message is not None,
-            ),
+            )
         ]
         if not configure_error_message:
             mocked_requests += [
@@ -483,7 +483,7 @@ def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
             response=error_message or {"Images": response},
             expected_params={"ImageIds": image_ids},
             generate_error=error_message is not None,
-        ),
+        )
     ]
     boto3_stubber("ec2", mocked_requests)
     if error_message is None:

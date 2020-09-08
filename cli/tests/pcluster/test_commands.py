@@ -26,9 +26,7 @@ def _mock_pcluster_config(mocker, scheduler, region):
     pcluster_config = mocker.MagicMock()
     pcluster_config.region = region
     cluster_section_mock = mocker.MagicMock()
-    cluster_config = {
-        "scheduler": scheduler,
-    }
+    cluster_config = {"scheduler": scheduler}
     cluster_section_mock.get_param_value = mocker.MagicMock(side_effect=lambda param: cluster_config[param])
     pcluster_config.get_section = mocker.MagicMock(return_value=cluster_section_mock)
 

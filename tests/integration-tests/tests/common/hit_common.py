@@ -54,7 +54,7 @@ def submit_initial_job(
             "constraint": "{0},{1}".format(instance_type, node_type),
             "nodes": num_nodes,
             "other_options": other_options,
-        },
+        }
     )
 
 

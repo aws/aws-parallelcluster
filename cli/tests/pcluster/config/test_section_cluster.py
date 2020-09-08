@@ -180,11 +180,7 @@ def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
             None,
         ),
         # invalid value
-        (
-            {"cluster default": {"base_os": "wrong_value"}},
-            {},
-            "has an invalid value",
-        ),
+        ({"cluster default": {"base_os": "wrong_value"}}, {}, "has an invalid value"),
         # invalid key
         ({"cluster default": {"invalid_key": "fake_value"}}, {}, "'invalid_key' is not allowed in the .* section"),
         # CLUSTER_SIT parameters must not be allowed in CLUSTER_HIT
