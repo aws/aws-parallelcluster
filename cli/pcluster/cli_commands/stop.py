@@ -30,7 +30,11 @@ LOGGER = logging.getLogger(__name__)
 def stop(args):
     """Stop cluster compute fleet."""
     pcluster_config = PclusterConfig(
-        config_file=args.config_file, cluster_name=args.cluster_name, auto_refresh=False, enforce_version=False
+        config_file=args.config_file,
+        cluster_name=args.cluster_name,
+        auto_refresh=False,
+        enforce_version=False,
+        skip_load_json_config=True,
     )
     pcluster_config.cluster_model.get_stop_command(pcluster_config).stop(args, pcluster_config)
 
