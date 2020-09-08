@@ -74,16 +74,13 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
     ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
-        bucket_url=utils.get_bucket_url(pcluster_config.region),
-        version=utils.get_installed_version(),
+        bucket_url=utils.get_bucket_url(pcluster_config.region), version=utils.get_installed_version()
     )
     s3_client = boto3.client("s3")
 
     try:
         result = s3_client.put_object(
-            Bucket=bucket_name,
-            Body=json.dumps(json_params),
-            Key="configs/cluster-config.json",
+            Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json"
         )
         file_contents = utils.read_remote_file(hit_template_url)
         rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"))
@@ -96,9 +93,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
 
     try:
         s3_client.put_object(
-            Bucket=bucket_name,
-            Body=rendered_template,
-            Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+            Bucket=bucket_name, Body=rendered_template, Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml"
         )
     except Exception as e:
         LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)
@@ -490,11 +485,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 if state == "running":
                     _print_stack_outputs(stack)
                     _print_compute_fleet_status(args.cluster_name, stack)
-            elif stack.get("StackStatus") in [
-                "ROLLBACK_COMPLETE",
-                "CREATE_FAILED",
-                "DELETE_FAILED",
-            ]:
+            elif stack.get("StackStatus") in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
                 events = utils.get_stack_events(stack_name)
                 for event in events:
                     if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:

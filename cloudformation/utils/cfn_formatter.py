@@ -37,10 +37,7 @@ def _format_json(filename):
     return json.dumps(unformatted_json, indent=2, separators=(",", ": ")) + "\n"
 
 
-FORMAT_TO_PARSING_FUNC = {
-    "json": _format_json,
-    "yaml": _format_yaml,
-}
+FORMAT_TO_PARSING_FUNC = {"json": _format_json, "yaml": _format_yaml}
 
 
 def format_files(filenames, format):

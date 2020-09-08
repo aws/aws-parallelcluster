@@ -136,9 +136,7 @@ def get_stack(stack_name, region, cfn_client=None):
     """
     if not cfn_client:
         cfn_client = boto3.client("cloudformation", region_name=region)
-    return cfn_client.describe_stacks(StackName=stack_name,).get(
-        "Stacks"
-    )[0]
+    return cfn_client.describe_stacks(StackName=stack_name).get("Stacks")[0]
 
 
 def get_stack_output_value(stack_outputs, output_key):

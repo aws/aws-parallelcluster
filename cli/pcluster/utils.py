@@ -905,10 +905,7 @@ def policy_name_to_arn(policy_name):
 
 
 def get_base_additional_iam_policies():
-    return [
-        policy_name_to_arn("CloudWatchAgentServerPolicy"),
-        policy_name_to_arn("AWSBatchFullAccess"),
-    ]
+    return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
 
 
 def cluster_has_running_capacity(stack_name):
