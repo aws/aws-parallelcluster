@@ -55,6 +55,7 @@ class PclusterConfig(object):
         cluster_name=None,
         auto_refresh=True,
         enforce_version=True,
+        skip_load_json_config=False,
     ):
         """
         Initialize object, from file, from a CFN Stack or from the internal mapping.
@@ -80,6 +81,7 @@ class PclusterConfig(object):
         self.cfn_stack = None
         self.__sections = OrderedDict({})
         self.__enforce_version = enforce_version
+        self.__skip_load_json_config = skip_load_json_config
 
         # always parse the configuration file if there, to get AWS section
         self._init_config_parser(config_file, fail_on_file_absence)
@@ -427,7 +429,7 @@ class PclusterConfig(object):
                 )
 
             cfn_params = self.cfn_stack.get("Parameters")
-            json_params = self.__load_json_config(self.cfn_stack)
+            json_params = self.__load_json_config(self.cfn_stack) if not self.__skip_load_json_config else None
 
             # Infer cluster model and load cluster section accordingly
             cluster_model = infer_cluster_model(cfn_stack=self.cfn_stack)

@@ -136,13 +136,13 @@ def _terminate_cluster_nodes(stack_name):
         ec2 = boto3.client("ec2", config=Config(retries={"max_attempts": 10}))
 
         for instance_ids in _describe_instance_ids_iterator(stack_name):
-            LOGGER.debug("Terminating instances %s", instance_ids)
+            LOGGER.info("Terminating following instances: %s", instance_ids)
             if instance_ids:
                 ec2.terminate_instances(InstanceIds=instance_ids)
 
         LOGGER.debug("Compute fleet clean-up: COMPLETED")
     except Exception as e:
-        LOGGER.error("Failed when terminating EC2 instances with error %s", e)
+        LOGGER.error("Failed when checking for running EC2 instances with error: %s", e)
 
 
 def _describe_instance_ids_iterator(stack_name, instance_state=("pending", "running", "stopping", "stopped")):
