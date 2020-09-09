@@ -23,7 +23,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["us-east-2", "us-gov-west-1"])
+@pytest.mark.regions(["us-east-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
 @pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge", "slurm"])
