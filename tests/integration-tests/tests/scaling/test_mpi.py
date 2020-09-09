@@ -58,9 +58,9 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
     )
 
 
-@pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm", "sge", "torque"])
+@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["slurm", "sge"])
 # Known ssh issue on CentOS6+SLURM
 @pytest.mark.skip_dimensions("*", "*", "centos6", "slurm")
 @pytest.mark.usefixtures("region", "instance")
