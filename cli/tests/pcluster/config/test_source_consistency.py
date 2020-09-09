@@ -36,6 +36,7 @@ def test_mapping_consistency():
                 "type",
                 "key",
                 "default_label",
+                "autocreate",
                 "cfn_param_mapping",
                 "params",
                 "validators",

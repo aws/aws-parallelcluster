@@ -16,7 +16,6 @@ from collections import namedtuple
 
 # Represents a single parameter change in a ConfigPatch instance
 from pcluster import utils
-from pcluster.config.mappings import GLOBAL_SECTIONS
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.utils import get_file_section_name
 
@@ -154,7 +153,7 @@ class ConfigPatch(object):
 
     def _remove_ignored_sections(self, config):
         # global file sections are ignored for patch creation
-        for section_key in [section_map.get("key") for section_map in GLOBAL_SECTIONS]:
+        for section_key in config.get_global_section_keys():
             config.remove_section(section_key)
 
     @property

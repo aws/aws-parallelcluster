@@ -198,6 +198,7 @@ SCALING = {
     "type": CfnSection,
     "key": "scaling",
     "default_label": "default",
+    "autocreate": True,
     "params": {
         "scaledown_idletime": {
             "type": IntCfnParam,
@@ -219,6 +220,7 @@ VPC = {
     "type": CfnSection,
     "key": "vpc",
     "default_label": "default",
+    "autocreate": True,
     "params": {
         "vpc_id": {
             "cfn_param_mapping": "VPCId",
@@ -1041,14 +1043,3 @@ CLUSTER_HIT = {
 }
 
 # fmt: on
-
-# Sections not related to the cluster one
-GLOBAL_SECTIONS = [AWS, ALIASES, GLOBAL]
-
-# Sections nested into the cluster SIT one
-CLUSTER_SIT_NESTED_SECTIONS = [CW_LOG, DCV, EBS, EFS, FSX, RAID, SCALING, VPC]
-
-# Sections that must always be present in the PclusterConfig object.
-# An automatically value of "default" will be set as a label value
-# to always create the internal structure for the these sections.
-ALWAYS_PRESENT_SECTIONS = [SCALING, VPC]

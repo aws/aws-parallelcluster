@@ -108,7 +108,7 @@ class Param(ABC):
         section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
 
-            if self.section_key not in ["aws", "aliases", "global"]:  # FIXME use GLOBAL_FILE_SECTIONS from mappings.py
+            if self.section_key not in self.pcluster_config.get_global_section_keys():
                 self._validate_section_label()
 
             self.value = config_parser.get(section_name, self.key)
@@ -268,14 +268,10 @@ class SettingsParam(Param):
         """
         Get default value.
 
-        If the SettingsParam is in the ALWAYS_PRESENT_SECTIONS list, it means that it is required to initialize
-        the related section with default values (i.e. vpc, scaling).
+        If the referred section has the "autocreate" attribute, it means that it is required to initialize
+        the settings param and the related section with default values (i.e. vpc, scaling).
         """
-        return (
-            "default"
-            if (self.referred_section_key in ["scaling", "vpc"])  # FIXME use ALWAYS_PRESENT_SECTIONS from mappings.py
-            else None
-        )
+        return "default" if self.referred_section_definition.get("autocreate", False) else None
 
     def _from_definition(self):
         self.value = self.get_default_value()
@@ -434,6 +430,7 @@ class Section(ABC):
     def __init__(self, section_definition, pcluster_config, section_label=None, parent_section=None):
         self.definition = section_definition
         self.key = section_definition.get("key")
+        self.autocreate = section_definition.get("autocreate", False)
         self._label = section_label or self.definition.get("default_label", "")
         # All sections have only 1 resource by default, which means they refer to a single Cfn resource or set
         # of resources
