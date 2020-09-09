@@ -13,7 +13,7 @@
 #
 
 import argparse
-import logging
+import os
 import sys
 
 from pcluster.config.hit_converter import HitConverter
@@ -74,35 +74,47 @@ def _parse_args(argv=None):
 
 def convert(args=None):
     """Command to convert SIT cluster section into HIT format."""
-
-    # Build the config based on args
-    pcluster_config = PclusterConfig(
-        config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
-    )
-
-    # Automatic SIT -> HIT conversion, if needed
-    HitConverter(pcluster_config).convert(log_level=logging.INFO)
-
-    if args.output_file:
-        pcluster_config.config_file = args.output_file
-        pcluster_config.to_file()
-        print(
-            "Section [cluster {label}] from file {input} has been converted and saved into {output}.\n"
-            "New [queue compute] and [compute_resource default] sections have been created. "
-            "No other sections have been modified.".format(
-                label=pcluster_config.get_section("cluster").label, input=args.config_file, output=args.output_file
-            )
+    try:
+        # Build the config based on args
+        pcluster_config = PclusterConfig(
+            config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
         )
-    else:
-        print(
-            "Section [cluster {label}] from file {input} has been converted.\n"
-            "New [queue compute] and [compute_resource default] sections have been created. "
-            "No other sections have been modified.\n"
-            "Configuration file content:\n\n".format(
-                label=pcluster_config.get_section("cluster").label, input=args.config_file
-            )
-        )
-        pcluster_config.to_file(print_stdout=True)
+
+        # Automatic SIT -> HIT conversion, if needed
+        conversion_done, reason = HitConverter(pcluster_config).convert()
+        if conversion_done:
+            if args.output_file:
+                if os.path.isfile(args.output_file):
+                    print("ERROR: File {0} already exists, please select another output file.".format(args.output_file))
+                    sys.exit(1)
+                else:
+                    pcluster_config.config_file = args.output_file
+                    pcluster_config.to_file(exclude_unrelated_sections=True)
+                    print(
+                        "Section [cluster {label}] from file {input} has been converted and saved into {output}.\n"
+                        "New [queue compute] and [compute_resource default] sections have been created.".format(
+                            label=pcluster_config.get_section("cluster").label,
+                            input=args.config_file,
+                            output=args.output_file,
+                        )
+                    )
+            else:
+                print(
+                    "Section [cluster {label}] from file {input} has been converted.\n"
+                    "New [queue compute] and [compute_resource default] sections have been created.\n"
+                    "Configuration file content:\n\n".format(
+                        label=pcluster_config.get_section("cluster").label, input=args.config_file
+                    )
+                )
+                pcluster_config.to_file(exclude_unrelated_sections=True, print_stdout=True)
+        else:
+            print(reason)
+    except KeyboardInterrupt:
+        print("Exiting...")
+        sys.exit(1)
+    except Exception as e:
+        print("Unexpected error of type %s: %s", type(e).__name__, e)
+        sys.exit(1)
 
 
 def main(argv=None):

@@ -25,13 +25,18 @@ class HitConverter:
     def __init__(self, pcluster_config):
         self.pcluster_config = pcluster_config
 
-    def convert(self, log_level=logging.DEBUG):
+    def convert(self):
         """
         Convert the pcluster_config instance from pre-HIT to HIT configuration model.
 
         Currently, the conversion is performed only if the configured scheduler is Slurm.
+        :return False and the reason if the conversion cannot be done, (True, None) otherwise.
         """
-        if self.pcluster_config.cluster_model != ClusterModel.HIT:
+        conversion_done = False
+        reason = None
+        if self.pcluster_config.cluster_model == ClusterModel.HIT:
+            reason = "Conversion not required, the configuration file format already supports multiple instance types."
+        else:
             # Copying sections referred from cluster or global ones
             self._store_original_sections()
 
@@ -43,10 +48,10 @@ class HitConverter:
             scheduler = sit_cluster_section.get_param_value("scheduler")
 
             if scheduler != "slurm":
-                LOGGER.log(log_level, "Conversion not required, scheduler is %s.", scheduler)
+                reason = "Conversion not required, scheduler is {0}.".format(scheduler)
+                LOGGER.debug(reason)
             else:
-                LOGGER.log(
-                    log_level,
+                LOGGER.debug(
                     "Slurm scheduler used with Single Instance Type configuration model. Starting conversion...",
                 )
                 hit_cluster_section = ClusterCfnSection(
@@ -80,8 +85,7 @@ class HitConverter:
 
                 # Print a warning for unsupported parameters
                 if sit_cluster_section.get_param_value("placement") == "cluster":
-                    LOGGER.log(
-                        log_level,
+                    LOGGER.debug(
                         "Warning: 'placement = cluster' is not supported when using multiple instance types.",
                     )
 
@@ -134,7 +138,10 @@ class HitConverter:
                 self.pcluster_config.auto_refresh = auto_refresh
 
                 self.clean_config_parser(hit_cluster_section)
-                LOGGER.log(log_level, "Conversion to HIT completed successfully.")
+                LOGGER.debug("Conversion to HIT completed successfully.")
+                conversion_done = True
+
+        return conversion_done, reason
 
     def _copy_param_value(self, old_param, new_param, new_value=None):
         """Copy the value from the old param to the new one."""
@@ -170,7 +177,6 @@ class HitConverter:
             if section.key not in self.pcluster_config.get_global_section_keys():
                 # change owner of sections nested into the cluster one.
                 section.parent_section = hit_cluster_section
-
 
     def clean_config_parser(self, hit_cluster_section):
         """
