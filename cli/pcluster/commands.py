@@ -91,7 +91,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
         LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
         raise
     except Exception as e:
-        LOGGER.error("Error when generating hit template from url %s: %s", hit_template_url, e)
+        LOGGER.error("Error when generating CloudFormation template from url %s: %s", hit_template_url, e)
         raise
 
     try:
@@ -101,7 +101,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
             Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml",
         )
     except Exception as e:
-        LOGGER.error("Error when uploading hit template to bucket %s: %s", bucket_name, e)
+        LOGGER.error("Error when uploading CloudFormation template to bucket %s: %s", bucket_name, e)
         raise
 
 
