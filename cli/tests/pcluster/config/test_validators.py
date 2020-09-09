@@ -2095,3 +2095,35 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
         EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
     )
     assert_that(allowed_values_all_have_volume_size_bounds).is_true()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
+        # TODO Uncomment these lines after adding support for io2 volume types
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
+        #         "IOPS to volume size ratio of .* is too hig"),
+    ],
+)
+def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
