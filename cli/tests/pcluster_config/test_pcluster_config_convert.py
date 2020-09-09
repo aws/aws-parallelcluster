@@ -15,20 +15,39 @@ from assertpy import assert_that
 from pcluster_config import cli
 
 
-def test_sge_sit(mocker, test_datadir, tmpdir):
-    # template not specified, it takes the cluster_template value from global section
-    _convert_and_assert_file_content(mocker, test_datadir, tmpdir)
+def test_sge_sit(mocker, test_datadir, tmpdir, capsys):
+    # Template not specified, it takes the cluster_template value from global section.
+    # The scheduler is sge so it should skip the conversion
+    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, expected_skip_message="scheduler is sge")
 
 
-def test_slurm_sit_simple(mocker, test_datadir, tmpdir):
-    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, cluster_template="slurm-sit-simple")
+def test_slurm_hit(mocker, test_datadir, tmpdir, capsys):
+    # The cluster is already HIT so it should skip the conversion
+    _convert_and_assert_file_content(
+        mocker,
+        test_datadir,
+        tmpdir,
+        capsys,
+        cluster_template="already-hit",
+        expected_skip_message="already supports multiple instance types",
+    )
 
 
-def test_slurm_sit_full(mocker, test_datadir, tmpdir):
-    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, cluster_template="slurm-sit-full")
+def test_slurm_sit_simple(mocker, test_datadir, tmpdir, capsys):
+    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, cluster_template="slurm-sit-simple")
 
 
-def _convert_and_assert_file_content(mocker, test_datadir, tmpdir, cluster_template=None):
+def test_slurm_sit_full(mocker, test_datadir, tmpdir, capsys):
+    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, cluster_template="slurm-sit-full")
+
+
+def test_slurm_unrelated_sections(mocker, test_datadir, tmpdir, capsys):
+    _convert_and_assert_file_content(mocker, test_datadir, tmpdir, capsys, cluster_template="slurm-sit-full")
+
+
+def _convert_and_assert_file_content(
+    mocker, test_datadir, tmpdir, capsys, cluster_template=None, expected_skip_message=None
+):
     config_file = test_datadir / "pcluster.config.ini"
     output_file = tmpdir / "pcluster.config.ini"
 
@@ -49,7 +68,10 @@ def _convert_and_assert_file_content(mocker, test_datadir, tmpdir, cluster_templ
         if original_default_region:
             os.environ["AWS_DEFAULT_REGION"] = original_default_region
 
-    _assert_files_are_equal(output_file, test_datadir / "expected_output.ini")
+    if expected_skip_message:
+        assert_that(capsys.readouterr().out).contains(expected_skip_message)
+    else:
+        _assert_files_are_equal(output_file, test_datadir / "expected_output.ini")
 
 
 def _assert_files_are_equal(file, expected_file):

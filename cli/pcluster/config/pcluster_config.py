@@ -27,6 +27,7 @@ from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
     get_cfn_param,
+    get_file_section_name,
     get_installed_version,
     get_stack,
     get_stack_name,
@@ -156,6 +157,15 @@ class PclusterConfig(object):
 
         section_keys = [section_key for section_key in self.__sections.keys() if section_key not in excluded_keys]
         return section_keys
+
+    def _get_file_section_names(self):
+        """Return the names of the sections as represented in the configuration file."""
+        file_section_names = []
+        for section_key, sections in self.__sections.items():
+            for _, section in sections.items():
+                file_section_names.append(get_file_section_name(section_key, section.label))
+
+        return file_section_names
 
     def get_sections(self, section_key):
         """
@@ -295,8 +305,15 @@ class PclusterConfig(object):
         """Set fail_on_error property value."""
         self._fail_on_error = fail_on_error
 
-    def to_file(self, print_stdout=False):
+    def to_file(self, print_stdout=False, exclude_unrelated_sections=False):
         """Convert the internal representation of the cluster to the relative file sections."""
+        if exclude_unrelated_sections:
+            # Remove sections not strictly related to the cluster from the config_parser.
+            cluster_related_sections = self._get_file_section_names()
+            for section_name in self.config_parser.sections():
+                if section_name not in cluster_related_sections:
+                    self.config_parser.remove_section(section_name)
+
         for section_key in self.get_global_section_keys():
             self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
