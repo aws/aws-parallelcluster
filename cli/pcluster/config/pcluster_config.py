@@ -23,7 +23,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.cluster_model import ClusterModel, get_cluster_model, infer_cluster_model
 from pcluster.config.cfn_param_types import ClusterCfnSection
-from pcluster.config.mappings import ALIASES, AWS, GLOBAL, GLOBAL_SECTIONS
+from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
     get_cfn_param,
@@ -143,12 +143,18 @@ class PclusterConfig(object):
         except (configparser.ParsingError, configparser.DuplicateOptionError) as e:
             self.error("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
-    def get_section_keys(self, include_global_sections=False):
+    @staticmethod
+    def get_global_section_keys():
+        """Return the keys associated to the global sections, not related to the cluster one."""
+        return ["aws", "aliases", "global"]
+
+    def get_section_keys(self, include_global_sections=False, excluded_keys=None):
         """Return the section keys."""
-        section_keys = self.__sections.keys()
+        excluded_keys = excluded_keys or []
         if not include_global_sections:
-            global_sections_keys = [section_map.get("key") for section_map in GLOBAL_SECTIONS]
-            section_keys = [section_key for section_key in section_keys if section_key not in global_sections_keys]
+            excluded_keys += self.get_global_section_keys()
+
+        section_keys = [section_key for section_key in self.__sections.keys() if section_key not in excluded_keys]
         return section_keys
 
     def get_sections(self, section_key):
@@ -291,7 +297,7 @@ class PclusterConfig(object):
 
     def to_file(self, print_stdout=False):
         """Convert the internal representation of the cluster to the relative file sections."""
-        for section_key in [section_map.get("key") for section_map in GLOBAL_SECTIONS]:
+        for section_key in self.get_global_section_keys():
             self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
         self.get_section("cluster").to_file(self.config_parser)

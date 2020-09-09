@@ -148,10 +148,11 @@ class HitConverter:
         and other sections must change the owner.
         """
         self._cluster_nested_sections = []
-        for section_type in mappings.CLUSTER_SIT_NESTED_SECTIONS + mappings.GLOBAL_SECTIONS:
-            for _, section in self.pcluster_config.get_sections(section_type.get("key")).items():
-                if section:
-                    self._cluster_nested_sections.append(section)
+        for section_key in self.pcluster_config.get_section_keys(
+            include_global_sections=True, excluded_keys=["cluster"]
+        ):
+            for _, section in self.pcluster_config.get_sections(section_key).items():
+                self._cluster_nested_sections.append(section)
 
     def _restore_original_sections(self, hit_cluster_section):
         """
@@ -160,16 +161,16 @@ class HitConverter:
         :param hit_cluster_section: The new HIT cluster section
         """
         for section in self._cluster_nested_sections:
-            if section.key in [section_map.get("key") for section_map in mappings.ALWAYS_PRESENT_SECTIONS]:
+            if section.autocreate:
                 # remove default sections
                 self.pcluster_config.remove_section(section.key, "default")
+                # restore sections
+                self.pcluster_config.add_section(section)
 
-            if section.key in [section_map.get("key") for section_map in mappings.CLUSTER_SIT_NESTED_SECTIONS]:
+            if section.key not in self.pcluster_config.get_global_section_keys():
                 # change owner of sections nested into the cluster one.
                 section.parent_section = hit_cluster_section
 
-            # restore sections
-            self.pcluster_config.add_section(section)
 
     def clean_config_parser(self, hit_cluster_section):
         """
