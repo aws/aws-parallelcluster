@@ -20,7 +20,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.regions(["eu-west-2"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 def test_hit_no_cluster_dns_mpi(
