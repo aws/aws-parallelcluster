@@ -37,10 +37,7 @@ DISTROS = OrderedDict(
         ("ubuntu1804", "ubuntu-1804"),
     ]
 )
-ARCHITECTURES_TO_MAPPING_NAME = {
-    "x86_64": "AWSRegionOS2AMIx86",
-    "arm64": "AWSRegionOS2AMIarm64",
-}
+ARCHITECTURES_TO_MAPPING_NAME = {"x86_64": "AWSRegionOS2AMIx86", "arm64": "AWSRegionOS2AMIarm64"}
 
 
 def get_initialized_mappings_dicts():

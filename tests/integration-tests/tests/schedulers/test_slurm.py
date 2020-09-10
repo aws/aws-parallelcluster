@@ -206,7 +206,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "constraint": instance_type,
             "slots": gpu_per_instance,
             "other_options": "-G {0} --gpus-per-task=1".format(gpu_per_instance),
-        },
+        }
     )
     slurm_commands.submit_command_and_assert_job_accepted(
         submit_command_args={
@@ -214,7 +214,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "partition": partition,
             "constraint": instance_type,
             "other_options": "--gres=gpu:{0}".format(gpu_per_instance),
-        },
+        }
     )
     # Submit job without '-N' option(nodes=-1)
     slurm_commands.submit_command_and_assert_job_accepted(
@@ -224,7 +224,7 @@ def _test_cluster_gpu_limits(slurm_commands, partition, instance_type, max_count
             "constraint": instance_type,
             "nodes": -1,
             "other_options": "-G {0} --gpus-per-node={1}".format(gpu_per_instance * max_count, gpu_per_instance),
-        },
+        }
     )
 
 
@@ -272,7 +272,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type):
             "partition": partition,
             "constraint": instance_type,
             "other_options": "-G 1 --cpus-per-gpu 5",
-        },
+        }
     )
     job_info = slurm_commands.get_job_info(job_id)
     assert_that(job_info).contains("TresPerJob=gpu:1", "CpusPerTres=gpu:5")
@@ -283,7 +283,7 @@ def _gpu_resource_check(slurm_commands, partition, instance_type):
             "partition": partition,
             "constraint": instance_type,
             "other_options": "--gres=gpu:2 --cpus-per-gpu 6",
-        },
+        }
     )
     job_info = slurm_commands.get_job_info(job_id)
     assert_that(job_info).contains("TresPerNode=gpu:2", "CpusPerTres=gpu:6")
@@ -329,7 +329,7 @@ def _test_job_arrays_and_parallel_jobs(
             "partition": partition,
             "constraint": instance_type,
             "other_options": "-a 1-{0}".format(cpu_per_instance + 1),
-        },
+        }
     )
 
     parallel_job_id = slurm_commands.submit_command_and_assert_job_accepted(
@@ -340,7 +340,7 @@ def _test_job_arrays_and_parallel_jobs(
             "partition": partition,
             "constraint": instance_type,
             "other_options": "-c {0}".format(cpu_per_instance - 1),
-        },
+        }
     )
 
     # Assert scaling worked as expected

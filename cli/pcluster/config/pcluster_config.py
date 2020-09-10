@@ -27,6 +27,7 @@ from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
     get_cfn_param,
+    get_file_section_name,
     get_installed_version,
     get_stack,
     get_stack_name,
@@ -37,14 +38,17 @@ from pcluster.utils import (
 LOGGER = logging.getLogger(__name__)
 
 
+def default_config_file_path():
+    """Return the default path for the ParallelCluster configuration file."""
+    return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+
+
 class PclusterConfig(object):
     """
     Class to manage the configuration of a cluster created (or to create) with ParallelCluster.
 
     This class contains a dictionary of sections associated to the given cluster
     """
-
-    GLOBAL_SECTIONS = ["aws", "global", "aliases"]
 
     def __init__(
         self,
@@ -116,7 +120,7 @@ class PclusterConfig(object):
             self.config_file = os.environ["AWS_PCLUSTER_CONFIG_FILE"]
             default_config = False
         else:
-            self.config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+            self.config_file = default_config_file_path()
             default_config = True
 
         self.config_file = str(self.config_file)
@@ -140,14 +144,28 @@ class PclusterConfig(object):
         except (configparser.ParsingError, configparser.DuplicateOptionError) as e:
             self.error("Error parsing configuration file {0}.\n{1}".format(self.config_file, str(e)))
 
-    def get_section_keys(self, include_global_sections=False):
+    @staticmethod
+    def get_global_section_keys():
+        """Return the keys associated to the global sections, not related to the cluster one."""
+        return ["aws", "aliases", "global"]
+
+    def get_section_keys(self, include_global_sections=False, excluded_keys=None):
         """Return the section keys."""
-        section_keys = self.__sections.keys()
+        excluded_keys = excluded_keys or []
         if not include_global_sections:
-            section_keys = [
-                section_key for section_key in section_keys if section_key not in PclusterConfig.GLOBAL_SECTIONS
-            ]
+            excluded_keys += self.get_global_section_keys()
+
+        section_keys = [section_key for section_key in self.__sections.keys() if section_key not in excluded_keys]
         return section_keys
+
+    def _get_file_section_names(self):
+        """Return the names of the sections as represented in the configuration file."""
+        file_section_names = []
+        for section_key, sections in self.__sections.items():
+            for _, section in sections.items():
+                file_section_names.append(get_file_section_name(section_key, section.label))
+
+        return file_section_names
 
     def get_sections(self, section_key):
         """
@@ -287,29 +305,41 @@ class PclusterConfig(object):
         """Set fail_on_error property value."""
         self._fail_on_error = fail_on_error
 
-    def to_file(self):
+    def to_file(self, print_stdout=False, exclude_unrelated_sections=False):
         """Convert the internal representation of the cluster to the relative file sections."""
-        for section_key in ["aws", "global", "aliases"]:
+        if exclude_unrelated_sections:
+            # Remove sections not strictly related to the cluster from the config_parser.
+            cluster_related_sections = self._get_file_section_names()
+            for section_name in self.config_parser.sections():
+                if section_name not in cluster_related_sections:
+                    self.config_parser.remove_section(section_name)
+
+        for section_key in self.get_global_section_keys():
             self.get_section(section_key).to_file(self.config_parser, write_defaults=True)
 
         self.get_section("cluster").to_file(self.config_parser)
 
-        # ensure that the directory for the config file exists
-        if not os.path.isfile(self.config_file):
-            try:
-                config_folder = os.path.dirname(self.config_file) or "."
-                os.makedirs(config_folder)
-            except OSError as e:
-                if e.errno != errno.EEXIST:
-                    raise  # can safely ignore EEXISTS for this purpose...
+        if print_stdout:
+            # print log file to stdout instead of writing the file
+            self.config_parser.write(sys.stdout)
+            sys.stdout.flush()
+        else:
+            # ensure that the directory for the config file exists
+            if not os.path.isfile(self.config_file):
+                try:
+                    config_folder = os.path.dirname(self.config_file) or "."
+                    os.makedirs(config_folder)
+                except OSError as e:
+                    if e.errno != errno.EEXIST:
+                        raise  # can safely ignore EEXISTS for this purpose...
 
-            # Fix permissions
-            with open(self.config_file, "a"):
-                os.chmod(self.config_file, stat.S_IRUSR | stat.S_IWUSR)
+                # Fix permissions
+                with open(self.config_file, "a"):
+                    os.chmod(self.config_file, stat.S_IRUSR | stat.S_IWUSR)
 
-        # Write configuration to disk
-        with open(self.config_file, "w") as conf_file_stream:
-            self.config_parser.write(conf_file_stream)
+            # Write configuration to disk
+            with open(self.config_file, "w") as conf_file_stream:
+                self.config_parser.write(conf_file_stream)
 
     def to_cfn(self):
         """

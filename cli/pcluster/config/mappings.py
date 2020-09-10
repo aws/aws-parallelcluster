@@ -162,23 +162,25 @@ AWS = {
 GLOBAL = {
     "type": CfnSection,
     "key": "global",
-    "params": {
-        "cluster_template": {
-            # TODO This could be a SettingsParam referring to a CLUSTER section
-            "default": "default",
-            "update_policy": UpdatePolicy.IGNORED
-        },
-        "update_check": {
-            "type": BoolCfnParam,
-            "default": True,
-            "update_policy": UpdatePolicy.IGNORED
-        },
-        "sanity_check": {
-            "type": BoolCfnParam,
-            "default": True,
-            "update_policy": UpdatePolicy.IGNORED
-        },
-    }
+    "params": OrderedDict(
+        [
+            ("cluster_template", {
+                # TODO This could be a SettingsParam referring to a CLUSTER section
+                "default": "default",
+                "update_policy": UpdatePolicy.IGNORED
+            }),
+            ("update_check", {
+                "type": BoolCfnParam,
+                "default": True,
+                "update_policy": UpdatePolicy.IGNORED
+            }),
+            ("sanity_check", {
+                "type": BoolCfnParam,
+                "default": True,
+                "update_policy": UpdatePolicy.IGNORED
+            }),
+        ]
+    )
 }
 
 ALIASES = {
@@ -196,6 +198,7 @@ SCALING = {
     "type": CfnSection,
     "key": "scaling",
     "default_label": "default",
+    "autocreate": True,
     "params": {
         "scaledown_idletime": {
             "type": IntCfnParam,
@@ -217,6 +220,7 @@ VPC = {
     "type": CfnSection,
     "key": "vpc",
     "default_label": "default",
+    "autocreate": True,
     "params": {
         "vpc_id": {
             "cfn_param_mapping": "VPCId",
@@ -836,13 +840,11 @@ CLUSTER_COMMON_PARAMS = [
     # Settings
     ("scaling_settings", {
         "type": SettingsCfnParam,
-        "default": "default",  # set a value to create always the internal structure for the scaling section
         "referred_section": SCALING,
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("vpc_settings", {
         "type": SettingsCfnParam,
-        "default": "default",  # set a value to create always the internal structure for the vpc section
         "referred_section": VPC,
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),

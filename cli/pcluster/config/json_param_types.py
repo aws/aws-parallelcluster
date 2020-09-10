@@ -82,6 +82,10 @@ class BooleanJsonParam(JsonParam):
         # Convert value to boolean
         return config_parser.getboolean(section_name, self.key)
 
+    def get_string_value(self):
+        """Convert internal representation into string."""
+        return self.get_default_value().lower() if self.value is None else str(bool(self.value)).lower()
+
 
 class FloatJsonParam(JsonParam):
     """Base JsonParam to manage float parameters."""
@@ -289,8 +293,7 @@ class QueueJsonSection(JsonSection):
             ).value = compute_resource_section.get_param(
                 "disable_hyperthreading"
             ).value and utils.disable_ht_via_cpu_options(
-                instance_type_param.value,
-                utils.get_default_threads_per_core(instance_type_param.value, instance_type),
+                instance_type_param.value, utils.get_default_threads_per_core(instance_type_param.value, instance_type)
             )
 
             # Set initial_count to min_count if not manually set

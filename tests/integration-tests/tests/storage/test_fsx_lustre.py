@@ -35,7 +35,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 @pytest.mark.parametrize(
     "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
 )
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "deployment_type")
@@ -83,7 +83,7 @@ def test_fsx_lustre(
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
-@pytest.mark.regions(["us-east-1"])
+@pytest.mark.regions(["us-west-2"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
@@ -93,13 +93,7 @@ def test_fsx_lustre(
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
-def test_fsx_lustre_backup(
-    region,
-    pcluster_config_reader,
-    clusters_factory,
-    os,
-    scheduler,
-):
+def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed
     1. Create a cluster with FSx automatic backups feature enabled.
@@ -150,9 +144,7 @@ def test_fsx_lustre_backup(
 
     # Restore backup into a new cluster
     cluster_config_restore = pcluster_config_reader(
-        config_file="pcluster_restore_fsx.config.ini",
-        mount_dir=mount_dir,
-        fsx_backup_id=manual_backup.get("BackupId"),
+        config_file="pcluster_restore_fsx.config.ini", mount_dir=mount_dir, fsx_backup_id=manual_backup.get("BackupId")
     )
 
     cluster_restore = clusters_factory(cluster_config_restore)

@@ -30,10 +30,15 @@ class HitConverter:
         Convert the pcluster_config instance from pre-HIT to HIT configuration model.
 
         Currently, the conversion is performed only if the configured scheduler is Slurm.
+        :return False and the reason if the conversion cannot be done, (True, None) otherwise.
         """
-        if self.pcluster_config.cluster_model != ClusterModel.HIT:
-            # Copying original vpc section
-            self._store_default_sections()
+        conversion_done = False
+        reason = None
+        if self.pcluster_config.cluster_model == ClusterModel.HIT:
+            reason = "Conversion not required, the configuration file format already supports multiple instance types."
+        else:
+            # Copying sections referred from cluster or global ones
+            self._store_original_sections()
 
             # Save current autorefresh settings and disable autorefresh
             auto_refresh = self.pcluster_config.auto_refresh
@@ -42,8 +47,13 @@ class HitConverter:
             sit_cluster_section = self.pcluster_config.get_section("cluster")
             scheduler = sit_cluster_section.get_param_value("scheduler")
 
-            if scheduler == "slurm":
-                LOGGER.debug("Slurm scheduler used with SIT configuration model. Conversion in progress.")
+            if scheduler != "slurm":
+                reason = "Conversion not required, scheduler is {0}.".format(scheduler)
+                LOGGER.debug(reason)
+            else:
+                LOGGER.debug(
+                    "Slurm scheduler used with Single Instance Type configuration model. Starting conversion...",
+                )
                 hit_cluster_section = ClusterCfnSection(
                     section_definition=mappings.CLUSTER_HIT,
                     pcluster_config=self.pcluster_config,
@@ -73,6 +83,12 @@ class HitConverter:
                     sit_cluster_section.get_param("placement_group"), queue_section.get_param("placement_group")
                 )
 
+                # Print a warning for unsupported parameters
+                if sit_cluster_section.get_param_value("placement") == "cluster":
+                    LOGGER.debug(
+                        "Warning: 'placement = cluster' is not supported when using multiple instance types.",
+                    )
+
                 # Create default single compute resource
                 compute_resource_section = JsonSection(
                     mappings.COMPUTE_RESOURCE,
@@ -101,8 +117,7 @@ class HitConverter:
                 sit_maintain_initial_size_param = sit_cluster_section.get_param_value("maintain_initial_size")
                 compute_resource_size_param_key = "min_count" if sit_maintain_initial_size_param else "initial_count"
                 self._copy_param_value(
-                    sit_initial_size_param,
-                    compute_resource_section.get_param(compute_resource_size_param_key),
+                    sit_initial_size_param, compute_resource_section.get_param(compute_resource_size_param_key)
                 )
 
                 # Copy all cluster params except enable_efa (already set at queue level)
@@ -115,40 +130,53 @@ class HitConverter:
                             sit_cluster_section.get_param(param_key), hit_cluster_section.get_param(param_key)
                         )
 
-                # Restore original VPC section
-                self._restore_default_sections(hit_cluster_section)
+                # Restore cluster nested sections, with owner modified
+                self._restore_original_sections(hit_cluster_section)
 
                 # Refresh configuration and restore initial autorefresh settings
                 self.pcluster_config.refresh()
                 self.pcluster_config.auto_refresh = auto_refresh
 
                 self.clean_config_parser(hit_cluster_section)
+                LOGGER.debug("Conversion to HIT completed successfully.")
+                conversion_done = True
+
+        return conversion_done, reason
 
     def _copy_param_value(self, old_param, new_param, new_value=None):
         """Copy the value from the old param to the new one."""
         new_param.value = new_value if new_value is not None else old_param.value
 
-    def _store_default_sections(self):
+    def _store_original_sections(self):
         """
         Store original default sections from configuration.
 
-        This operation is needed because default sections are overridden when the cluster section is replaced.
+        This operation is needed because default sections are overridden when the cluster section is created
+        and other sections must change the owner.
         """
-        self.default_sections = [
-            self.pcluster_config.get_section("vpc"),
-            self.pcluster_config.get_section("scaling"),
-        ]
+        self._cluster_nested_sections = []
+        for section_key in self.pcluster_config.get_section_keys(
+            include_global_sections=True, excluded_keys=["cluster"]
+        ):
+            for _, section in self.pcluster_config.get_sections(section_key).items():
+                self._cluster_nested_sections.append(section)
 
-    def _restore_default_sections(self, hit_cluster_section):
+    def _restore_original_sections(self, hit_cluster_section):
         """
         Restore the original default sections in the configuration, making them children of the new cluster section.
 
         :param hit_cluster_section: The new HIT cluster section
         """
-        for default_section in self.default_sections:
-            self.pcluster_config.remove_section(default_section.key, "default")
-            default_section.parent_section = hit_cluster_section
-            self.pcluster_config.add_section(default_section)
+        for section in self._cluster_nested_sections:
+            if section.autocreate:
+                # remove default sections
+                self.pcluster_config.remove_section(section.key, "default")
+                # restore sections
+                self.pcluster_config.add_section(section)
+
+            if section.key not in self.pcluster_config.get_global_section_keys():
+                # change owner of sections nested into the cluster one.
+                section.parent_section = hit_cluster_section
 
     def clean_config_parser(self, hit_cluster_section):
         """

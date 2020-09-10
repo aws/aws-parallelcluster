@@ -42,8 +42,14 @@ def boto3_stubber_path():
                     "max_queue_size": 10,
                     "spot_price": 0.4,
                     "maintain_initial_size": True,
+                    "additional_iam_policies": (
+                        "arn:aws:iam::aws:policy/CloudWatchFullAccess,arn:aws:iam::aws:policy/CloudWatchOtherAccess"
+                    ),
                     "initial_queue_size": 2,
-                }
+                    "ebs_settings": "ebs1,ebs2",
+                },
+                "ebs ebs1": {"shared_dir": "sharedebs", "volume_type": "gp2", "volume_size": 50},
+                "ebs ebs2": {"shared_dir": "sharedebs2", "volume_type": "io1", "volume_size": 35},
             },
             {
                 "cluster default": {
@@ -52,6 +58,11 @@ def boto3_stubber_path():
                     "master_root_volume_size": 30,
                     "compute_root_volume_size": 35,
                     "enable_efa": None,
+                    "additional_iam_policies": [
+                        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
+                        "arn:aws:iam::aws:policy/CloudWatchFullAccess",
+                        "arn:aws:iam::aws:policy/CloudWatchOtherAccess",
+                    ],
                     "disable_hyperthreading": True,
                 },
                 "queue compute": {
@@ -72,6 +83,8 @@ def boto3_stubber_path():
                     "gpus": 0,
                     "enable_efa": True,
                 },
+                "ebs ebs1": {"shared_dir": "sharedebs", "volume_type": "gp2", "volume_size": 50},
+                "ebs ebs2": {"shared_dir": "sharedebs2", "volume_type": "io1", "volume_size": 35},
             },
         ),
         (

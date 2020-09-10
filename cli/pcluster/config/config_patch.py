@@ -51,8 +51,6 @@ class ConfigPatch(object):
         - A list of change rows with all the information to build a detailed report
     """
 
-    IGNORED_SECTIONS = ["global", "aliases", "aws"]  # Sections ignored for patch creation
-
     def __init__(self, base_config, target_config):
         """
         Create a ConfigPatch.
@@ -154,7 +152,8 @@ class ConfigPatch(object):
                 )
 
     def _remove_ignored_sections(self, config):
-        for section_key in ConfigPatch.IGNORED_SECTIONS:
+        # global file sections are ignored for patch creation
+        for section_key in config.get_global_section_keys():
             config.remove_section(section_key)
 
     @property

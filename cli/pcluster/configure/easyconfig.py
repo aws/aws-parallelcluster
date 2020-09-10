@@ -221,11 +221,7 @@ def _create_vpc_parameters(vpc_section, cluster_config):
             )
         else:
             default_vpc = vpc_section.get_param_value("vpc_id")
-            vpc_id = prompt_iterable(
-                "VPC ID",
-                vpc_list,
-                default_value=default_vpc,
-            )
+            vpc_id = prompt_iterable("VPC ID", vpc_list, default_value=default_vpc)
             vpc_parameters["vpc_id"] = vpc_id
             subnet_list = vpc_and_subnets["vpc_subnets"][vpc_id]
             qualified_master_subnets = _filter_subnets_offering_instance_type(
@@ -319,11 +315,7 @@ def _prompt_for_subnet(default_subnet, all_subnets, qualified_subnets, message):
             "Note:  {0} subnet(s) is/are not listed, "
             "because the instance type is not in their availability zone(s)".format(total_omitted_subnets)
         )
-    return prompt_iterable(
-        message,
-        qualified_subnets,
-        default_value=default_subnet,
-    )
+    return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 
 
 def _convert_config(pcluster_config):

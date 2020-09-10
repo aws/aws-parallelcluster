@@ -43,10 +43,7 @@ def get_default_suggestion(parameter, options):
     """
     # For these parameters, steer users towards a default value rather than selecting the first
     # from the available set of options.
-    opinionated_suggestions = {
-        "Scheduler": "slurm",
-        "Operating System": "alinux2",
-    }
+    opinionated_suggestions = {"Scheduler": "slurm", "Operating System": "alinux2"}
 
     if parameter in opinionated_suggestions:
         default = opinionated_suggestions.get(parameter)

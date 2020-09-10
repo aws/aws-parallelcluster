@@ -82,7 +82,8 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 @pytest.mark.regions(["sa-east-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge", "torque"])
-@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.oss(["alinux2", "centos7", "ubuntu1804"])
+@pytest.mark.usefixtures("region", "instance")
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     # slurm test use more nodes because of internal request to test in multi-node settings
@@ -253,13 +254,7 @@ def _test_partition_states(
 
 
 def _test_reset_terminated_nodes(
-    scheduler_commands,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """
     Test that slurm nodes are reset if instances are terminated manually.
@@ -320,13 +315,7 @@ def _test_replace_down_nodes(
 
 
 def _test_keep_or_replace_suspended_nodes(
-    scheduler_commands,
-    cluster_name,
-    region,
-    partition,
-    num_static_nodes,
-    num_dynamic_nodes,
-    dynamic_instance_type,
+    scheduler_commands, cluster_name, region, partition, num_static_nodes, num_dynamic_nodes, dynamic_instance_type
 ):
     """Test keep DRAIN nodes if there is job running, or terminate if no job is running."""
     logging.info(

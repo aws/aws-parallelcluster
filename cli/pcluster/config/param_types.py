@@ -108,7 +108,7 @@ class Param(ABC):
         section_name = get_file_section_name(self.section_key, self.section_label)
         if config_parser.has_option(section_name, self.key):
 
-            if self.section_key not in ["aws", "global", "aliases"]:
+            if self.section_key not in self.pcluster_config.get_global_section_keys():
                 self._validate_section_label()
 
             self.value = config_parser.get(section_name, self.key)
@@ -264,8 +264,17 @@ class SettingsParam(Param):
             section_key, section_label, param_key, param_definition, pcluster_config, owner_section
         )
 
+    def get_default_value(self):
+        """
+        Get default value.
+
+        If the referred section has the "autocreate" attribute, it means that it is required to initialize
+        the settings param and the related section with default values (i.e. vpc, scaling).
+        """
+        return "default" if self.referred_section_definition.get("autocreate", False) else None
+
     def _from_definition(self):
-        self.value = self.definition.get("default", None)
+        self.value = self.get_default_value()
         if self.value:
             # the SettingsParam has a default value, it means that it is required to initialize
             # the related section with default values (e.g. vpc, scaling).
@@ -403,7 +412,7 @@ class SettingsParam(Param):
                     write_defaults or (param_value != param_definition.get("default", None))
                 ):
                     _ensure_section_existence(config_parser, section_name)
-                    config_parser.set(section_name, self.key, self.value)
+                    config_parser.set(section_name, self.key, self.get_string_value())
 
             # create section
             section.to_file(config_parser)
@@ -421,6 +430,7 @@ class Section(ABC):
     def __init__(self, section_definition, pcluster_config, section_label=None, parent_section=None):
         self.definition = section_definition
         self.key = section_definition.get("key")
+        self.autocreate = section_definition.get("autocreate", False)
         self._label = section_label or self.definition.get("default_label", "")
         # All sections have only 1 resource by default, which means they refer to a single Cfn resource or set
         # of resources

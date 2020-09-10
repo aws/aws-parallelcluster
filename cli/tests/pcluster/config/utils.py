@@ -60,10 +60,7 @@ def set_default_values_for_required_cluster_section_params(cluster_section_dict,
     cluster_section_dict does not contain keys for the required parameters. Otherwise a default is
     only set if the value is None.
     """
-    required_cluster_params = [
-        {"key": "scheduler", "value": "slurm"},
-        {"key": "base_os", "value": "alinux2"},
-    ]
+    required_cluster_params = [{"key": "scheduler", "value": "slurm"}, {"key": "base_os", "value": "alinux2"}]
     for required_param in required_cluster_params:
         if only_if_not_present:
             cluster_section_dict.setdefault(required_param.get("key"), required_param.get("value"))
@@ -357,11 +354,7 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
         "pcluster.utils.get_instance_type",
         return_value={
             "InstanceType": "t2.micro",
-            "VCpuInfo": {
-                "DefaultVCpus": 1,
-                "DefaultCores": 1,
-                "DefaultThreadsPerCore": 1,
-            },
+            "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
             "NetworkInfo": {"EfaSupported": False},
         },
     )

@@ -32,9 +32,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "InstanceType": "c4.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": False},
-                "ProcessorInfo": {
-                    "SupportedArchitectures": ["x86_64"],
-                },
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
     },
@@ -47,9 +45,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 96},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True},
-                "ProcessorInfo": {
-                    "SupportedArchitectures": ["x86_64"],
-                },
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
     },
@@ -61,9 +57,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "InstanceType": "i3en.24xlarge",
                 "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": True},
-                "ProcessorInfo": {
-                    "SupportedArchitectures": ["x86_64"],
-                },
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
     },
@@ -75,9 +69,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "InstanceType": "t2.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
                 "NetworkInfo": {"EfaSupported": False},
-                "ProcessorInfo": {
-                    "SupportedArchitectures": ["x86_64"],
-                },
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
     },
@@ -89,9 +81,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "InstanceType": "m6g.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
                 "NetworkInfo": {"EfaSupported": False},
-                "ProcessorInfo": {
-                    "SupportedArchitectures": ["arm64"],
-                },
+                "ProcessorInfo": {"SupportedArchitectures": ["arm64"]},
             }
         ]
     },
@@ -155,10 +145,7 @@ def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_rea
     pass
 
 
-@pytest.mark.parametrize(
-    "queues",
-    [(["queue1"]), (["queue2"]), (["queue1", "queue2"]), ([])],
-)
+@pytest.mark.parametrize("queues", [(["queue1"]), (["queue2"]), (["queue1", "queue2"]), ([])])
 def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_reader, queues):
     def mock_get_avail_zone(subnet_id):
         # Mock az detection by returning a mock az if subnet has a value

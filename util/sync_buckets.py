@@ -78,18 +78,8 @@ def _parse_args():
         required=False,
         default="{region}-aws-parallelcluster",
     )
-    parser.add_argument(
-        "--src-bucket",
-        type=str,
-        help="Source bucket",
-        required=True,
-    )
-    parser.add_argument(
-        "--src-bucket-region",
-        type=str,
-        help="Source bucket region",
-        required=True,
-    )
+    parser.add_argument("--src-bucket", type=str, help="Source bucket", required=True)
+    parser.add_argument("--src-bucket-region", type=str, help="Source bucket region", required=True)
     parser.add_argument("--src-files", help="Files to sync", nargs="+", required=True)
     parser.add_argument(
         "--integrity-check",

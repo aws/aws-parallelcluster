@@ -25,6 +25,7 @@ from configparser import ConfigParser, NoOptionError, NoSectionError
 from tabulate import tabulate
 
 from awsbatch.utils import fail, get_region_by_stack_id, hide_keys
+from pcluster.config.pcluster_config import default_config_file_path
 
 PCLUSTER_STACK_PREFIX = "parallelcluster-"
 
@@ -148,7 +149,7 @@ class AWSBatchCliConfig(object):
         self.aws_secret_access_key = None
         self.region = None
         self.env_blacklist = None
-        parallelcluster_config_file = os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+        parallelcluster_config_file = default_config_file_path()
         if os.path.isfile(parallelcluster_config_file):
             self.__init_from_parallelcluster_config(parallelcluster_config_file, log)
 

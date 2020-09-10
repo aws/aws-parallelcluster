@@ -55,20 +55,13 @@ def test_sit_cli_commands(scheduler, region, pcluster_config_reader, clusters_fa
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _test_pcluster_instances_and_status(
-    cluster,
-    region,
-    compute_fleet_status=None,
-):
+def _test_pcluster_instances_and_status(cluster, region, compute_fleet_status=None):
     """Test pcluster status and pcluster instances functionalities."""
     logging.info("Testing that pcluster status and pcluster instances output are expected")
     cluster_instances_from_ec2 = get_cluster_nodes_instance_ids(cluster.cfn_name, region)
     cluster_instances_from_cli = cluster.instances()
     assert_that(set(cluster_instances_from_cli)).is_equal_to(set(cluster_instances_from_ec2))
-    expected_status_details = [
-        "Status: CREATE_COMPLETE",
-        "MasterServer: RUNNING",
-    ]
+    expected_status_details = ["Status: CREATE_COMPLETE", "MasterServer: RUNNING"]
     if compute_fleet_status:
         expected_status_details.append("ComputeFleetStatus: {0}".format(compute_fleet_status))
     cluster_status = cluster.status()
@@ -76,13 +69,7 @@ def _test_pcluster_instances_and_status(
         assert_that(cluster_status).contains(detail)
 
 
-def _test_pcluster_stop_and_start(
-    scheduler_commands,
-    cluster,
-    region,
-    expected_num_nodes,
-    hit_cluster=False,
-):
+def _test_pcluster_stop_and_start(scheduler_commands, cluster, region, expected_num_nodes, hit_cluster=False):
     """Test pcluster start and stop functionality."""
     logging.info("Testing pcluster stop functionalities")
     cluster_stop_output = cluster.stop()
