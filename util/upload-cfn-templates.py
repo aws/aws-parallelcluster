@@ -35,7 +35,7 @@ def get_template_extension(templates_dir, template_name):
     extension = file_name.split(".cfn.")[-1]
     if extension not in {"json", "yaml"}:
         raise Exception("Found invalid extension for template {}: {}".format(template_name, extension))
-    return extension
+    return ".cfn." + extension
 
 
 def put_object_to_s3(s3_client, bucket, key, region, data, template_name):
