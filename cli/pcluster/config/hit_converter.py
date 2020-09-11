@@ -25,7 +25,7 @@ class HitConverter:
     def __init__(self, pcluster_config):
         self.pcluster_config = pcluster_config
 
-    def convert(self):
+    def convert(self, prepare_to_file=False):
         """
         Convert the pcluster_config instance from pre-HIT to HIT configuration model.
 
@@ -138,6 +138,9 @@ class HitConverter:
                 self.pcluster_config.auto_refresh = auto_refresh
 
                 self.clean_config_parser(hit_cluster_section)
+                if prepare_to_file:
+                    self._prepare_to_file()
+
                 LOGGER.debug("Conversion to HIT completed successfully.")
                 conversion_done = True
 
@@ -146,6 +149,28 @@ class HitConverter:
     def _copy_param_value(self, old_param, new_param, new_value=None):
         """Copy the value from the old param to the new one."""
         new_param.value = new_value if new_value is not None else old_param.value
+
+    @staticmethod
+    def _reset_config_params(section, parameters_to_remove):
+        for param_key in parameters_to_remove:
+            param = section.get_param(param_key)
+            param.value = param.get_default_value()
+
+    def _prepare_to_file(self):
+        """Reset some parameters from config file since their values can be inferred at runtime."""
+        # disable_hyperthreading will get its value from cluster section
+        queue_section = self.pcluster_config.get_section("queue", "compute")
+        self._reset_config_params(queue_section, ["disable_hyperthreading"])
+
+        # Remove initial_count if not needed
+        compute_section = self.pcluster_config.get_section("compute_resource", "default")
+        if compute_section.get_param_value("initial_count") == compute_section.get_param_value("min_count"):
+            self._reset_config_params(compute_section, ["initial_count"])
+
+        # cluster's disable_hyperthreading's HIT default is None instead of False
+        cluster_section = self.pcluster_config.get_section("cluster")
+        if not cluster_section.get_param_value("disable_hyperthreading"):
+            self._reset_config_params(cluster_section, ["disable_hyperthreading"])
 
     def _store_original_sections(self):
         """

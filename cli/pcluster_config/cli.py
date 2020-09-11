@@ -81,7 +81,7 @@ def convert(args=None):
         )
 
         # Automatic SIT -> HIT conversion, if needed
-        conversion_done, reason = HitConverter(pcluster_config).convert()
+        conversion_done, reason = HitConverter(pcluster_config).convert(prepare_to_file=True)
         if conversion_done:
             if args.output_file:
                 if os.path.isfile(args.output_file):
