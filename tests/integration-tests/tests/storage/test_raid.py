@@ -39,7 +39,7 @@ def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_facto
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.usefixtures("region", "os", "instance")
 def test_raid_fault_tolerance_mode(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
