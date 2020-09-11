@@ -20,7 +20,7 @@ from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
-@pytest.mark.regions(["us-west-3", "cn-north-1", "us-gov-west-1"])
+@pytest.mark.regions(["eu-west-3", "cn-north-1", "us-gov-west-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("region", "os", "instance")
@@ -36,11 +36,10 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["ap-northeast-2"])
-@pytest.mark.instances(["c5.xlarge"])  # Test on EBS-Only and NVMe instances
-@pytest.mark.schedulers(["sge"])
-@pytest.mark.oss(["alinux2"])  # centos6 does not support GPT
-@pytest.mark.usefixtures("instance")
+# centos6 does not support GPT
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
+@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
+@pytest.mark.usefixtures("os", "instance")
 def test_ebs_snapshot(
     request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
 ):
@@ -69,11 +68,9 @@ def test_ebs_snapshot(
 
 
 # cn-north-1 does not support KMS
-@pytest.mark.regions(["ca-central-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["slurm", "awsbatch"])
-@pytest.mark.oss(["ubuntu1804"])
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "awsbatch")
+@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "ubuntu1804", "slurm")
+@pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
@@ -87,11 +84,8 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["cn-northwest-1"])
-@pytest.mark.instances(["c4.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.oss(["alinux"])
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux", "slurm")
+@pytest.mark.usefixtures("region", "os", "instance")
 def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
@@ -103,11 +97,8 @@ def test_default_ebs(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-gov-east-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.schedulers(["torque"])
-@pytest.mark.oss(["ubuntu1604"])
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "torque")
+@pytest.mark.usefixtures("region", "os", "instance")
 def test_ebs_single_empty(scheduler, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
