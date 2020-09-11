@@ -32,7 +32,7 @@ def get_template_extension(templates_dir, template_name):
             "Found 0 or multiple matching files for template name {}: {}".format(template_name, matching_files)
         )
     file_name = os.path.basename(matching_files[0])
-    extension = file_name[len(template_name) :]  # noqa: E203
+    extension = os.path.splitext(file_name)[1]
     if extension not in {".cfn.json", ".cfn.yaml"}:
         raise Exception("Found invalid extension for template {}: {}".format(template_name, extension))
     return extension
