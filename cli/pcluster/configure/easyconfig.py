@@ -186,7 +186,7 @@ def configure(args):
         param.value = param.get_value_from_string(param_value)
 
     # Convert file if needed
-    _convert_config(pcluster_config)
+    HitConverter(pcluster_config).convert(prepare_to_file=True)
 
     # Update config file by overriding changed settings
     pcluster_config.to_file()
@@ -316,28 +316,6 @@ def _prompt_for_subnet(default_subnet, all_subnets, qualified_subnets, message):
             "because the instance type is not in their availability zone(s)".format(total_omitted_subnets)
         )
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
-
-
-def _convert_config(pcluster_config):
-    """Convert the generated SIT configuration to HIT model if scheduler is Slurm."""
-    if pcluster_config.cluster_model == ClusterModel.SIT:
-        HitConverter(pcluster_config).convert()
-
-        if pcluster_config.cluster_model == ClusterModel.HIT:
-            # Conversion occurred: reset some parameters from config file since their values can be inferred at runtime
-
-            # enable_efa and disable_hyperthreading will get their value from cluster section
-            queue_section = pcluster_config.get_section("queue", "compute")
-            _reset_config_params(queue_section, ("enable_efa", "disable_hyperthreading"))
-
-            # initial_count will take its value from min_count
-            compute_resource_section = pcluster_config.get_section("compute_resource", "default")
-            _reset_config_params(compute_resource_section, ["initial_count"])
-
-            # cluster's disable_hyperthreading's HIT default is None instead of False
-            cluster_section = pcluster_config.get_section("cluster")
-            if not cluster_section.get_param_value("disable_hyperthreading"):
-                _reset_config_params(cluster_section, ["disable_hyperthreading"])
 
 
 class ClusterConfigureHelper:

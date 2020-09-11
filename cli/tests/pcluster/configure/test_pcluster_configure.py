@@ -334,6 +334,7 @@ def _assert_configurations_are_equal(path_config_expected, path_config_after_inp
     config_expected = ConfigParser()
     config_expected.read(path_config_expected)
     config_expected_dict = {s: dict(config_expected.items(s)) for s in config_expected.sections()}
+
     config_actual = ConfigParser()
     config_actual.read(path_config_after_input)
     config_actual_dict = {s: dict(config_actual.items(s)) for s in config_actual.sections()}
