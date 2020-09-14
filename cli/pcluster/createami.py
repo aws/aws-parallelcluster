@@ -26,8 +26,10 @@ import sys
 import tarfile
 import time
 from builtins import str
-from shutil import rmtree
+from shutil import copyfile, rmtree
 from tempfile import mkdtemp, mkstemp
+from urllib.error import URLError
+from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -111,6 +113,49 @@ def _get_cookbook_dir(region, template_url, args, tmpdir):
         sys.exit(1)
 
 
+def _evaluate_post_install_script(post_install_script_url):
+    return any(
+        [
+            post_install_script_url.startswith("https://"),
+            post_install_script_url.startswith("s3://"),
+            post_install_script_url.startswith("file://"),
+        ]
+    )
+
+
+def _get_current_timestamp():
+    return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def _get_post_install_script_dir(post_install_script_url, tmp_dir):
+    LOGGER.info("Post install script url: %s", post_install_script_url)
+    try:
+        tmp_post_install_script_folder = os.path.join(tmp_dir, "script")
+        os.mkdir(tmp_post_install_script_folder)
+        if post_install_script_url is not None:
+            if not _evaluate_post_install_script(post_install_script_url):
+                raise URLError("Invalid URL")
+            tmp_post_install_script_path = os.path.join(
+                tmp_post_install_script_folder, _get_current_timestamp() + "-" + post_install_script_url.split("/")[-1],
+            )
+            if post_install_script_url.startswith("https"):
+                urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)
+            elif post_install_script_url.startswith("s3"):
+                s3_client = boto3.client("s3")
+                output = urlparse(post_install_script_url)
+                s3_client.download_file(output.netloc, output.path.lstrip("/"), tmp_post_install_script_path)
+            elif post_install_script_url.startswith("file"):
+                copyfile(post_install_script_url.replace("file://", ""), tmp_post_install_script_path)
+        else:
+            tmp_post_install_script_path = None
+        LOGGER.info("Post install script dir: %s", tmp_post_install_script_path)
+        return tmp_post_install_script_path
+    except (IOError, URLError, ClientError) as e:
+        LOGGER.error("Unable to download post install script at URL %s", post_install_script_url)
+        LOGGER.critical("Error: %s", str(e))
+        sys.exit(1)
+
+
 def _dispose_packer_instance(results):
     time.sleep(2)
     try:
@@ -132,7 +177,7 @@ def _run_packer(packer_command, packer_env):
     erase_line = "\x1b[2K"
     _command = shlex.split(packer_command)
     results = {}
-    _, path_log = mkstemp(prefix="packer.log." + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + "."), text=True)
+    _, path_log = mkstemp(prefix="packer.log." + _get_current_timestamp() + ".", text=True)
     LOGGER.info("Packer log: %s", path_log)
     try:
         dev_null = open(os.devnull, "rb")
@@ -297,6 +342,8 @@ def create_ami(args):
 
         tmp_dir = mkdtemp()
         cookbook_dir = _get_cookbook_dir(aws_region, template_url, args, tmp_dir)
+
+        _get_post_install_script_dir(args.ami_post_install_script, tmp_dir)
 
         packer_command = (
             cookbook_dir
