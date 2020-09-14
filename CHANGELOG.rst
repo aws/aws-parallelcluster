@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+2.9.1
+=====
+
+**BUG FIXES**
+
+* Fix cluster creation with the head node in a private subnet when it doesn't get a public IP.
+
 2.9.0
 =====
 
@@ -36,6 +43,7 @@ CHANGELOG
 * Add new log streams to CloudWatch: chef-client, clustermgtd, computemgtd, slurm_resume, slurm_suspend.
 * Add support for queue names in pre/post install scripts.
 * Use PAY_PER_REQUEST billing mode for DynamoDb table in govcloud regions.
+* Add limit of section names length to 30 characters in the configuration file.
 
 **BUG FIXES**
 
