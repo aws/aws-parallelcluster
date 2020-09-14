@@ -2790,7 +2790,7 @@
           "MasterENI": {
             "Ref": "MasterENI"
           },
-          "MasterPublicIp": {
+          "UseMasterPublicIp": {
             "Fn::If": [
               "MasterPublicIp",
               true,
