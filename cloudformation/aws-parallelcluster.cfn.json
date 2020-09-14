@@ -2790,6 +2790,13 @@
           "MasterENI": {
             "Ref": "MasterENI"
           },
+          "MasterPublicIp": {
+            "Fn::If": [
+              "MasterPublicIp",
+              true,
+              false
+            ]
+          },
           "ImageId": {
             "Fn::If": [
               "UseCustomAMI",
