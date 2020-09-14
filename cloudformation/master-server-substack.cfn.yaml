@@ -24,7 +24,7 @@ Parameters:
     Type: String
   MasterENI:
     Type: String
-  MasterPublicIp:
+  UseMasterPublicIp:
     Type: String
   ImageId:
     Type: AWS::EC2::Image::Id
@@ -221,8 +221,8 @@ Conditions:
     - !Equals
       - !Ref 'UpdateWaiterFunctionArn'
       - NONE
-  MasterPublicIp: !Equals
-    - !Ref 'MasterPublicIp'
+  HasMasterPublicIp: !Equals
+    - !Ref 'UseMasterPublicIp'
     - 'true'
 Resources:
   MasterServer:
@@ -627,7 +627,7 @@ Outputs:
   MasterPublicIP:
     Description: Public IP Address of the Master host
     Value: !GetAtt 'MasterServer.PublicIp'
-    Condition: MasterPublicIp
+    Condition: HasMasterPublicIp
   MasterPrivateDnsName:
     Description: Private DNS name of the Master host
     Value: !GetAtt 'MasterServer.PrivateDnsName'
