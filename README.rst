@@ -2,7 +2,7 @@
 AWS ParallelCluster - HPC for the Cloud
 =======================================
 
-|Build Status| |Version| |Spack|
+|Build Status| |Version| |Spack| |Conda|
 
 .. |Build Status| image:: https://img.shields.io/travis/aws/aws-parallelcluster
    :target: https://travis-ci.org/aws/aws-parallelcluster/
@@ -13,6 +13,9 @@ AWS ParallelCluster - HPC for the Cloud
 .. |Spack| image:: https://img.shields.io/spack/v/aws-parallelcluster
     :target: https://spack.readthedocs.io/en/latest/package_list.html#aws-parallelcluster
     :alt: Spack Version
+.. |Conda| image:: https://img.shields.io/conda/vn/conda-forge/aws-parallelcluster
+    :target: https://anaconda.org/conda-forge/aws-parallelcluster
+    :alt: Conda Version
 
 AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
 manage High Performance Computing (HPC) clusters in the AWS cloud.
