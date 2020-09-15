@@ -153,7 +153,6 @@ def create(args):  # noqa: C901 FIXME!!!
             cfn_params["ResourcesS3Bucket"] = bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
-        LOGGER.debug(cfn_params)
 
         # determine the CloudFormation Template URL to use
         template_url = _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
