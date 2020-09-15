@@ -460,6 +460,7 @@ class PclusterConfig(object):
 
             cfn_params = self.cfn_stack.get("Parameters")
             json_params = self.__load_json_config(self.cfn_stack) if not self.__skip_load_json_config else None
+            cfn_tags = self.cfn_stack.get("Tags")
 
             # Infer cluster model and load cluster section accordingly
             cluster_model = infer_cluster_model(cfn_stack=self.cfn_stack)
@@ -469,7 +470,7 @@ class PclusterConfig(object):
 
             self.add_section(section)
 
-            section.from_storage(StorageData(cfn_params, json_params))
+            section.from_storage(StorageData(cfn_params, json_params, cfn_tags))
 
         except ClientError as e:
             self.error(

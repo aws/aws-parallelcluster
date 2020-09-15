@@ -185,6 +185,21 @@ def test_ec2_ami_validator(mocker, boto3_stubber, image_architecture, bad_ami_me
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"tags": {"key": "value", "key2": "value2"}}, None),
+        (
+            {"tags": {"key": "value", "Version": "value2"}},
+            r".*Version.*reserved",
+        ),
+    ],
+)
+def test_tags_validator(mocker, capsys, section_dict, expected_message):
+    config_parser_dict = {"cluster default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_message)
+
+
 def test_ec2_ebs_snapshot_validator(mocker, boto3_stubber):
     describe_snapshots_response = {
         "Snapshots": [

@@ -45,6 +45,10 @@ def test_update_sit(
     init_config_file = pcluster_config_reader()
     cluster = clusters_factory(init_config_file)
 
+    # Update cluster with the same configuration, command should not result any error even if not using force update
+    cluster.config_file = str(init_config_file)
+    cluster.update(force=False)
+
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, command_executor)
@@ -146,6 +150,10 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     # Create cluster with initial configuration
     init_config_file = pcluster_config_reader()
     cluster = clusters_factory(init_config_file)
+
+    # Update cluster with the same configuration, command should not result any error even if not using force update
+    cluster.config_file = str(init_config_file)
+    cluster.update(force=False)
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
@@ -455,6 +463,10 @@ def test_update_awsbatch(region, pcluster_config_reader, clusters_factory, test_
 
     # Verify initial configuration
     _verify_initialization(region, cluster, cluster.config)
+
+    # Update cluster with the same configuration, command should not result any error even if not using force update
+    cluster.config_file = str(init_config_file)
+    cluster.update(force=False)
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini")

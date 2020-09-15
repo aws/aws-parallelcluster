@@ -816,6 +816,30 @@ class BaseOSCfnParam(CfnParam):
             self.owner_section.get_param("architecture").value = architecture
 
 
+class TagsParam(JsonCfnParam):
+    """
+    Class to manage the tags json configuration parameter.
+
+    Tags are stored in CFN as a separate field instead of inside parameters in CFN.
+    Therefore, we need to overwrite the from_storage function
+    """
+
+    def from_storage(self, storage_params):
+        """Load the param from the related storage data structure."""
+        return self.from_cfn_tag(storage_params.cfn_tags)
+
+    def from_cfn_tag(self, cfn_tags):
+        """Initialize custom tags."""
+        if cfn_tags:
+            for tag in cfn_tags:
+                key = tag.get("Key")
+                if key == "Version":
+                    # Skip default "Version" tag
+                    continue
+                self.value[key] = tag.get("Value")
+        return self
+
+
 # ---------------------- SettingsParams ---------------------- #
 class SettingsCfnParam(SettingsParam):
     """Class to manage *_settings parameter on which the value is a single value (e.g. vpc_settings = default)."""

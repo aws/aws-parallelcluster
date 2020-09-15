@@ -24,7 +24,6 @@ from pcluster.config.cfn_param_types import (
     ExtraJsonCfnParam,
     FloatCfnParam,
     IntCfnParam,
-    JsonCfnParam,
     MaintainInitialSizeCfnParam,
     MasterAvailabilityZoneCfnParam,
     QueueSizeCfnParam,
@@ -32,6 +31,7 @@ from pcluster.config.cfn_param_types import (
     SharedDirCfnParam,
     SpotBidPercentageCfnParam,
     SpotPriceCfnParam,
+    TagsParam,
 )
 from pcluster.config.json_param_types import (
     BooleanJsonParam,
@@ -91,6 +91,7 @@ from pcluster.config.validators import (
     s3_bucket_validator,
     scheduler_validator,
     shared_dir_validator,
+    tags_validator,
     url_validator,
 )
 from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHITECTURES
@@ -831,7 +832,8 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("tags", {
-        "type": JsonCfnParam,
+        "type": TagsParam,
+        "validators": [tags_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("custom_chef_cookbook", {

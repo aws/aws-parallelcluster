@@ -52,6 +52,10 @@ from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pclu
             '{ "cfncluster" : { "enable_ganglia" : "true" } }',
             {"cfncluster": {"enable_ganglia": "true"}},
         ),
+        # Tags
+        (CLUSTER_SIT, "tags", "", {}),
+        (CLUSTER_SIT, "tags", "NONE", {}),
+        (CLUSTER_SIT, "tags", '{"key": "value"}', {"key": "value"}),
         # SharedDirParam
         (CLUSTER_SIT, "shared_dir", "", "/shared"),
         (CLUSTER_SIT, "shared_dir", "NONE", "/shared"),

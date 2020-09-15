@@ -33,9 +33,10 @@ else:
 class StorageData:
     """Class containing storage data for configuration persistence mechanisms, namely Cfn Params and Json."""
 
-    def __init__(self, cfn_params=None, json_params=None):
+    def __init__(self, cfn_params=None, json_params=None, cfn_tags=None):
         self.cfn_params = cfn_params if cfn_params else {}
         self.json_params = json_params if json_params else {}
+        self.cfn_tags = cfn_tags if cfn_tags else {}
 
 
 # ---------------------- Visibility ---------------------- #
