@@ -219,9 +219,12 @@ def _get_default_createami_instance_type(ami_architecture):
     return instance_type
 
 
-def _validate_createami_args_architecture_compatibility(args):
-    """Validate the compatibility of the implied architectures for the args passed to the createami command."""
-    ami_architecture = utils.get_info_for_amis([args.base_ami_id])[0].get("Architecture")
+def _validate_createami_args_ami_compatibility(args):
+    """Validate the compatibility of the base_ami to the implied architectures and current pcluster version."""
+    ami_info = utils.get_info_for_amis([args.base_ami_id])[0]
+
+    # Validate the compatibility of the base_ami to the implied architectures
+    ami_architecture = ami_info.get("Architecture")
     if not args.instance_type:
         args.instance_type = _get_default_createami_instance_type(ami_architecture)
     elif ami_architecture not in utils.get_supported_architectures_for_instance_type(args.instance_type):
@@ -240,7 +243,10 @@ def _validate_createami_args_architecture_compatibility(args):
         )
         sys.exit(1)
 
-    return ami_architecture
+    # Validate if the version of pcluster baked the base_ami is the same as current version
+    utils.validate_pcluster_version_based_on_ami_name(ami_info.get("Name"))
+
+    return ami_info
 
 
 def create_ami(args):
@@ -252,7 +258,8 @@ def create_ami(args):
         os.environ["AWS_DEFAULT_REGION"] = args.region
     pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
 
-    ami_architecture = _validate_createami_args_architecture_compatibility(args)
+    ami_info = _validate_createami_args_ami_compatibility(args)
+    ami_architecture = ami_info.get("Architecture")
 
     LOGGER.debug("Building AMI based on args %s", str(args))
     results = {}

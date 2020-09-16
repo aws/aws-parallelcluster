@@ -33,6 +33,7 @@ from pcluster.utils import (
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
     paginate_boto3,
+    validate_pcluster_version_based_on_ami_name,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -655,6 +656,7 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
     # Make sure AMI exists
     try:
         image_info = boto3.client("ec2").describe_images(ImageIds=[param_value]).get("Images")[0]
+        validate_pcluster_version_based_on_ami_name(image_info.get("Name"))
     except ClientError as e:
         errors.append(
             "Unable to get information for AMI {0}: {1}. Check value of parameter {2}.".format(

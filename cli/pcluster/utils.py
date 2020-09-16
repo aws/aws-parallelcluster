@@ -771,6 +771,19 @@ def get_info_for_amis(ami_ids):
         error(e.response.get("Error").get("Message"))
 
 
+def validate_pcluster_version_based_on_ami_name(ami_name):
+    match = re.match(r"(.*)aws-parallelcluster-(\d+\.\d+\.\d+)(.*)", ami_name)
+    if match:
+        if match.group(2) != get_installed_version():
+            error(
+                "This AMI was created with version {0} of ParallelCluster,"
+                " but is trying to be used with version {1}. Please either use an AMI created with "
+                "version {1} or change your ParallelCluster to version {0}".format(
+                    match.group(2), get_installed_version()
+                )
+            )
+
+
 def get_instance_types_info(instance_types, fail_on_error=True):
     """Return InstanceTypes list returned by EC2's DescribeInstanceTypes API."""
     try:

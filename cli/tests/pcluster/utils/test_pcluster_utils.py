@@ -667,3 +667,29 @@ def test_is_hit_enabled_cluster(scheduler, expected_is_hit_enabled):
 )
 def test_get_bucket_url(region, expected_url):
     assert_that(get_bucket_url(region)).is_equal_to(expected_url)
+
+
+@pytest.mark.parametrize(
+    "ami_name, error_expected, expected_message",
+    [
+        # Compatible ami name
+        ("ami-xxxaws-parallelcluster-2.9.0xxx", False, ""),
+        ("ami-aws-parallelcluster-2.9.0", False, ""),
+        ("ami-name-one", False, ""),
+        ("aws-parallelcluster-2.9.0-ubuntu-1804-lts-hvm-x86_64-202009142226", False, ""),
+        # Incompatible ami name
+        (
+            "ami-aws-parallelcluster-0.0.0",
+            True,
+            "This AMI was created with version 0.0.0 of ParallelCluster, but is trying to be used with version 2.9.0."
+            " Please either use an AMI created with version 2.9.0 or change your ParallelCluster to version 0.0.0",
+        ),
+    ],
+)
+def test_validate_pcluster_version_based_on_ami_name(mocker, ami_name, error_expected, expected_message):
+    mocker.patch("pcluster.utils.get_installed_version", return_value="2.9.0")
+    if error_expected:
+        with pytest.raises(SystemExit, match=expected_message):
+            utils.validate_pcluster_version_based_on_ami_name(ami_name)
+    else:
+        utils.validate_pcluster_version_based_on_ami_name(ami_name)
