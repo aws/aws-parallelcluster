@@ -21,20 +21,20 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE, NONE"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
         ),
         (
             {
-                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,NEW_CHANGED,test5,SCRATCH_1,"
                 "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8"
             },
             {
@@ -45,6 +45,7 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "imported_file_chunk_size": 20,
                 "export_path": "test3",
                 "import_path": "test4",
+                "auto_import_policy": "NEW_CHANGED",
                 "weekly_maintenance_start_time": "test5",
                 "deployment_type": "SCRATCH_1",
                 "per_unit_storage_throughput": 50,
@@ -159,6 +160,10 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("import_path", "http://test", "http://test", None),
         ("import_path", "s3://test/test2", "s3://test/test2", None),
         ("import_path", "NONE", "NONE", None),
+        ("auto_import_policy", None, "NONE", None),
+        ("auto_import_policy", "NONE", "NONE", None),
+        ("auto_import_policy", "NEW", "NEW", None),
+        ("auto_import_policy", "NEW_CHANGED", "NEW_CHANGED", None),
         # TODO add regex for weekly_maintenance_start_time
         ("weekly_maintenance_start_time", None, None, None),
         ("weekly_maintenance_start_time", "", None, "has an invalid value"),

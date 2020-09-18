@@ -278,3 +278,6 @@ master_subnet_id = subnet-12345678
 #export_path = s3://import-path/export-dir
 # For SCRATCH_2 and PERSISTENT_1 you can provide a KMS Key for in transit encryption
 #fsx_kms_key_id = XXXX-XXXXX-XXX-XXXXX
+# AutoImportPolicy configures how the filesystem is automatically updated with new and changed files from the linked S3 bucket
+# Valid options are NONE, NEW, NEW_CHANGED
+#auto_import_policy = NEW_CHANGED
