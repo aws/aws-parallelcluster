@@ -10,13 +10,11 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import os
-import random
 
 import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from conftest import AVAILABILITY_ZONE_OVERRIDES
 from utils import random_alphanumeric
 
 
@@ -51,11 +49,11 @@ def networking_stack_factory(request):
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
-def test_public_network_topology(region, vpc_stack, networking_stack_factory):
+def test_public_network_topology(region, vpc_stack, networking_stack_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "192.168.3.0/24"
-    availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
+    availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
     parameters = _get_cfn_parameters(
@@ -75,12 +73,12 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory):
 
 @pytest.mark.regions(["eu-central-1", "us-gov-east-1", "cn-northwest-1"])
 @pytest.mark.skip_instances(["g3.8xlarge"])
-def test_public_private_network_topology(region, vpc_stack, networking_stack_factory):
+def test_public_private_network_topology(region, vpc_stack, networking_stack_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     public_subnet_cidr = "192.168.5.0/24"
     private_subnet_cidr = "192.168.4.0/24"
-    availability_zone = random.choice(AVAILABILITY_ZONE_OVERRIDES.get(region, [""]))
+    availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
     parameters = _get_cfn_parameters(
