@@ -61,7 +61,7 @@ def _create_bucket_with_resources(pcluster_config, storage_data, tags):
             if utils.is_hit_enabled_scheduler(scheduler):
                 _upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
 
-        _upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.cfn_params)
+        _upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -85,7 +85,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
             Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json"
         )
         file_contents = utils.read_remote_file(hit_template_url)
-        rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"), tags)
+        rendered_template = utils.render_template(file_contents, json_params, tags, result.get("VersionId"))
     except ClientError as client_error:
         LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
         raise
@@ -102,7 +102,8 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
         raise
 
 
-def _upload_dashboard_resource(bucket_name, pcluster_config, cfn_params):
+def _upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_params):
+    params = {"json_params": json_params, "cfn_params": cfn_params}
     cw_dashboard_template_url = pcluster_config.get_section("cluster").get_param_value(
         "cw_dashboard_template_url"
     ) or "{bucket_url}/templates/cw-dashboard-substack-{version}.cfn.yaml".format(
@@ -112,7 +113,7 @@ def _upload_dashboard_resource(bucket_name, pcluster_config, cfn_params):
 
     try:
         file_contents = utils.read_remote_file(cw_dashboard_template_url)
-        rendered_template = utils.render_template(file_contents, cfn_params)
+        rendered_template = utils.render_template(file_contents, params, {})
     except Exception as e:
         LOGGER.error(
             "Error when generating CloudWatch Dashboard template from path %s: %s", cw_dashboard_template_url, e
@@ -120,8 +121,7 @@ def _upload_dashboard_resource(bucket_name, pcluster_config, cfn_params):
         raise
 
     try:
-        s3_client = boto3.client("s3")
-        s3_client.put_object(
+        boto3.client("s3").put_object(
             Bucket=bucket_name,
             Body=rendered_template,
             Key="templates/cw-dashboard-substack.rendered.cfn.yaml",

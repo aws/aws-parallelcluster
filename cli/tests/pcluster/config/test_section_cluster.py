@@ -494,6 +494,8 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
+        ("cw_log_settings", "test1", None, "Section .* not found in the config file"),
+        ("dashboard_settings", "test1", None, "Section .* not found in the config file"),
     ],
 )
 def test_sit_cluster_param_from_file(
@@ -697,6 +699,8 @@ def test_sit_cluster_param_from_file(
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
+        ("cw_log_settings", "test1", None, "Section .* not found in the config file"),
+        ("dashboard_settings", "test1", None, "Section .* not found in the config file"),
     ],
 )
 def test_hit_cluster_param_from_file(

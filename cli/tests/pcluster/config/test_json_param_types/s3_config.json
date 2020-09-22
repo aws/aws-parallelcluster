@@ -164,6 +164,10 @@
     "scaling": {
       "label": "default",
       "scaledown_idletime": 10
+    },
+    "dashboard": {
+      "label": "dashboard1",
+      "enable": false
     }
   }
 }
