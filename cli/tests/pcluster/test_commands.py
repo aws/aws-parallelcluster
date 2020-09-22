@@ -65,7 +65,9 @@ def test_create_bucket_with_resources_success(
     )
     if expect_upload_hit_resources:
         upload_hit_resources_mock.assert_called_with(bucket_name, pcluster_config_mock, storage_data.json_params)
-    upload_dashboard_resource.assert_called_with(bucket_name, pcluster_config_mock, storage_data.cfn_params)
+    upload_dashboard_resource.assert_called_with(
+        bucket_name, pcluster_config_mock, storage_data.json_params, storage_data.cfn_params
+    )
     assert_that(bucket_name).is_equal_to(expected_bucket_name)
 
 

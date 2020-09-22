@@ -1,3 +1,7 @@
+{#- Assign the two dictionaries to variables #}
+{%- set cfn_params = config.cfn_params %}
+{%- set json_params = config.json_params %}
+
 {#- Automatically updated variable to define graph/header section position #}
 {%- set coord = {'x': 0, 'y': 0} %}
 
@@ -70,19 +74,24 @@ Parameters:
   FSXFileSystemId:
     Description: ID of the FSx volume used
     Type: String
+Conditions:
+  CreateDashboard: !Equals
+    - 'true'
+    - {% if not json_params.cluster.dashboard or json_params.cluster.dashboard.enable %}'true'{% else %}'false'{% endif %}
 Resources:
   HeadNodeDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: !Join
-        - '-'
-        - - !Ref 'PclusterStackName'
-          - HeadNode
+      DashboardName: !Ref 'PclusterStackName'
       DashboardBody: !Join
         - ''
         - - '{"widgets":['
-          {#- Head Node Instance Metrics #}
+          {#- Head Node EC2 metrics #}
           - '{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            Head Node EC2 Metrics\n"}}'
+          {{- update_coord_after_section(1) }}
+          {#- Head Node Instance Metrics #}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             Head Node Instance Metrics\n"}}'
           {%- set ec2_metrics = [{'metrics': ["CPUUtilization"], 'extra_params': ['"title":"CPU Utilization"']},
                                  {'metrics': ["NetworkPacketsIn", "NetworkPacketsOut"], 'extra_params': ['"title":"Network Packets In/Out"']},
@@ -102,7 +111,7 @@ Resources:
           {{- update_coord_after_section(graph_height) }}
 
           {#- EBS metrics graphs #}
-          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             EBS Metrics\n"}}'
           {{- update_coord_after_section(1) }}
 
@@ -113,8 +122,8 @@ Resources:
                                  {'metrics': ["VolumeQueueLength"], 'extra_params': ['"title":"Queue Length"']},
                                  {'metrics': ["VolumeIdleTime"], 'extra_params': ['"title":"Idle Time"']}]
           -%}
-          {%- set number_of_ebs_volumes = config.NumberOfEBSVol|int -%}
-          {%- set ebs_volume_types = config.VolumeType.split(',') %}
+          {%- set number_of_ebs_volumes = cfn_params.NumberOfEBSVol|int -%}
+          {%- set ebs_volume_types = cfn_params.VolumeType.split(',') %}
 
           {%- for metrics_param in ebs_metrics %}
           - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
@@ -165,9 +174,9 @@ Resources:
 
           {#- RAID metrics graphs #}
           {#- Unconditional RAID metrics #}
-          {%- set number_of_raid_volumes = config.RAIDOptions.split(',')[2]|int -%} {#- if NONE, converts to 0! #}
+          {%- set number_of_raid_volumes = cfn_params.RAIDOptions.split(',')[2]|int -%} {#- if NONE, converts to 0! #}
           {%- if number_of_raid_volumes > 0 %}
-          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             RAID Metrics\n"}}'
               {{- update_coord_after_section(1) }}
               {%- set raid_metrics = [{'metrics': ["VolumeReadOps", "VolumeWriteOps"], 'extra_params': ['"title":"Read/Write Ops"']},
@@ -176,7 +185,7 @@ Resources:
                                      {'metrics': ["VolumeQueueLength"], 'extra_params': ['"title":"Queue Length"']},
                                      {'metrics': ["VolumeIdleTime"], 'extra_params': ['"title":"Idle Time"']}]
               %}
-              {%- set raid_volume_type = config.RAIDOptions.split(',')[3] %}
+              {%- set raid_volume_type = cfn_params.RAIDOptions.split(',')[3] %}
 
               {%- for metrics_param in raid_metrics %}
           - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
@@ -214,10 +223,10 @@ Resources:
                 {%- endif %} {#- if raid_volume_type in metric_condition_params.supported_vol_types #}
               {%- endfor -%}
           {%- endif %} {#- if number_of_raid_volumes > 0 #}
-          {%- set efs_shared_dir = config.EFSOptions.split(',')[0] %}
+          {%- set efs_shared_dir = cfn_params.EFSOptions.split(',')[0] %}
           {%- if efs_shared_dir not in ["NONE", "/NONE"] %}
           {# EFS metrics graphs -#}
-          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             EFS Metrics\n"}}'
             {%- set efs_metrics = [{'metrics': ["BurstCreditBalance"], 'extra_params': ['"title":"Burst Credit Balance"']},
                                    {'metrics': ["ClientConnections"], 'extra_params': ['"title":"Client Connections"']},
@@ -237,7 +246,7 @@ Resources:
 
             {#- Conditional EFS metrics #}
             {%- set efs_metrics_conditions_params = [{'metric': 'PercentIOLimit', 'supported_vol_types': ["generalPurpose"], 'extra_params': ['"title":"Percent IO Limit"']}] %}
-            {%- set efs_volume_type = config.EFSOptions.split(',')[2] %}
+            {%- set efs_volume_type = cfn_params.EFSOptions.split(',')[2] %}
             {%- for metric_condition_params in efs_metrics_conditions_params %}
               {%- if efs_volume_type in metric_condition_params.supported_vol_types %}
           - !Sub ',{"type":"metric","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ graph_width }},"height":{{ graph_height }},"properties":{"view":"timeSeries","stacked":false,
@@ -250,10 +259,10 @@ Resources:
           {%- endif -%} {#- if efs_shared_dir not in ["NONE", "/NONE"] -#}
           {{ update_coord_after_section(graph_height) }}
 
-          {%- set fsx_shared_dir = config.FSXOptions.split(',')[0] %}
+          {%- set fsx_shared_dir = cfn_params.FSXOptions.split(',')[0] %}
           {%- if fsx_shared_dir not in ["NONE", "/NONE"] %}
           {#- FSx metrics graphs #}
-          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             FSx Metrics\n"}}'
             {%- set fsx_metrics = [{'metrics': ["DataReadOperations","DataWriteOperations"], 'extra_params': ['"title":"Data Read/Write Ops"','"period":300']},
                                    {'metrics': ["DataReadBytes","DataWriteBytes"], 'extra_params': ['"title":"Data Read/Write Bytes"','"period":300']},
@@ -269,19 +278,13 @@ Resources:
               {{- update_coord(graph_width, graph_height) }}
             {%- endfor %}
           {%- endif %}
-          - ']}'
-  LogsDashboard:
-    Type: AWS::CloudWatch::Dashboard
-    Properties:
-      DashboardName: !Join
-        - '-'
-        - - !Ref 'PclusterStackName'
-          - Logs
-      DashboardBody: !Join
-        {%- set dcv_enabled = (config.DCVOptions.split(',')[0]=='master') %}
-        - ''
-        - - '{"widgets":['
-          {{- reset_coord() }}
+          {{- update_coord_after_section(graph_height) }}
+
+          {#- Head Node Logs #}
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+            Head Node Logs\n"}}'
+          {{- update_coord_after_section(1) }}
+          {%- set dcv_enabled = (cfn_params.DCVOptions.split(',')[0]=='master') %}
           {%- set sections_widgets =
             [
               {
@@ -290,8 +293,8 @@ Resources:
                   [{
                    'title': "jobwatcher",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_values': ["sge","torque"]}
+                   {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': cfn_params.Scheduler, 'attr_values': ["sge","torque"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
@@ -302,8 +305,8 @@ Resources:
                  {
                    'title': "sqswatcher",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_values': ["sge","torque"]}
+                   {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': cfn_params.Scheduler, 'attr_values': ["sge","torque"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
@@ -314,8 +317,8 @@ Resources:
                  {
                    'title': "clustermgtd",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
+                   {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': cfn_params.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
@@ -326,8 +329,8 @@ Resources:
                  {
                    'title': "slurm_resume",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
+                   {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': cfn_params.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
@@ -338,8 +341,8 @@ Resources:
                  {
                    'title': "slurm_suspend",
                    'cond_list': [
-                   {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                   {'attr': config.Scheduler, 'attr_values': ["slurm"]}
+                   {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                   {'attr': cfn_params.Scheduler, 'attr_values': ["slurm"]}
                    ],
                    'fields': ["@timestamp", "@message"],
                    'filters':
@@ -354,8 +357,8 @@ Resources:
                {
                  'title': "slurmctld",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_values': ["slurm"]}
+                 {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': cfn_params.Scheduler, 'attr_values': ["slurm"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
@@ -366,8 +369,8 @@ Resources:
                {
                  'title': "sge-qmaster",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_values': ["sge"]}
+                 {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': cfn_params.Scheduler, 'attr_values': ["sge"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
@@ -378,8 +381,8 @@ Resources:
                {
                  'title': "torque-server",
                  'cond_list': [
-                 {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                 {'attr': config.Scheduler, 'attr_values': ["torque"]}
+                 {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
+                 {'attr': cfn_params.Scheduler, 'attr_values': ["torque"]}
                  ],
                  'fields': ["@timestamp", "@message"],
                  'filters':
@@ -458,7 +461,7 @@ Resources:
                'widgets': [
                {
                  'title': "system-messages",
-                 'cond_list': {'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7"]},
+                 'cond_list': {'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7"]},
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*system-messages"}],
@@ -467,7 +470,7 @@ Resources:
                },
                {
                  'title': "syslog",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': cfn_params.BaseOS, 'attr_values': ["ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*syslog"}],
@@ -476,7 +479,7 @@ Resources:
                },
                {
                  'title': "cfn-init",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*cfn-init"}],
@@ -485,7 +488,7 @@ Resources:
                },
                {
                  'title': "chef-client",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*chef-client"}],
@@ -494,7 +497,7 @@ Resources:
                },
                {
                  'title': "cloud-init",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*cloud-init$"}],
@@ -503,7 +506,7 @@ Resources:
                },
                {
                  'title': "supervisord",
-                 'cond_list': [{'attr': config.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
+                 'cond_list': [{'attr': cfn_params.BaseOS, 'attr_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                  'fields': ["@timestamp", "@message"],
                  'filters':
                    [{'attr': "@logStream", 'pattern': "${MasterPrivateIP}.*supervisord"}],
@@ -513,11 +516,10 @@ Resources:
               }
             ]
           -%}
-          {%- set first_metric = {'bool': True} %}
           {%- for section_widgets in sections_widgets %}
             {{- is_logs_section_empty(section_widgets) }}
             {%- if not empty_section.bool %}
-          - '{% if first_metric.bool %}{{ first_metric.update({'bool': False}) or "" }}{% else %},{% endif %}{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
+          - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             {{ section_widgets.section_title }}\n"}}'
             {{- update_coord_after_section(1) }}
               {%- for log_params in section_widgets.widgets %}
@@ -543,4 +545,5 @@ Resources:
             {%- endif %}
           {%- endfor %}
           - ']}'
+    Condition: CreateDashboard
 

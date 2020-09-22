@@ -110,6 +110,7 @@ def substack_rendering(tmp_path, template_name, test_config):
                     },
                     "scaling": {"scaledown_idletime": 10},
                     "disable_cluster_dns": False,
+                    "dashboard": {"enable": True},
                 }
             }
         ),
@@ -152,6 +153,7 @@ def substack_rendering(tmp_path, template_name, test_config):
                     },
                     "scaling": {"scaledown_idletime": 10},
                     "disable_cluster_dns": True,
+                    "dashboard": {"enable": True},
                 }
             }
         ),
@@ -164,7 +166,48 @@ def test_hit_substack_rendering(tmp_path, test_config):
 
 
 def test_cw_dashboard_substack_rendering(tmp_path):
-    test_config = {
+    json_params = {
+        "cluster": {
+            "label": "default",
+            "default_queue": "multiple_spot",
+            "queue_settings": {
+                "multiple_spot": {
+                    "compute_type": "spot",
+                    "enable_efa": False,
+                    "disable_hyperthreading": True,
+                    "placement_group": None,
+                    "compute_resource_settings": {
+                        "multiple_spot_c4.xlarge": {
+                            "instance_type": "c4.xlarge",
+                            "min_count": 0,
+                            "max_count": 10,
+                            "spot_price": None,
+                            "vcpus": 2,
+                            "gpus": 0,
+                            "enable_efa": False,
+                            "disable_hyperthreading": True,
+                            "disable_hyperthreading_via_cpu_options": True,
+                        },
+                        "multiple_spot_c5.2xlarge": {
+                            "instance_type": "c5.2xlarge",
+                            "min_count": 1,
+                            "max_count": 5,
+                            "spot_price": 1.5,
+                            "vcpus": 4,
+                            "gpus": 0,
+                            "enable_efa": False,
+                            "disable_hyperthreading": True,
+                            "disable_hyperthreading_via_cpu_options": True,
+                        },
+                    },
+                }
+            },
+            "scaling": {"scaledown_idletime": 10},
+            "disable_cluster_dns": True,
+            "dashboard": {"enable": True},
+        }
+    }
+    cfn_params = {
         "ClusterConfigMetadata": {
             "sections": {
                 "cluster": ["default"],
@@ -231,7 +274,7 @@ def test_cw_dashboard_substack_rendering(tmp_path):
     }
 
     substack_rendering(
-        tmp_path, "cw-dashboard-substack.cfn.yaml", test_config
+        tmp_path, "cw-dashboard-substack.cfn.yaml", {"json_params": json_params, "cfn_params": cfn_params}
     )  # FIXME , ["-i", "W2001"]) # to ignore W2001
     # FIXME Might have to use W2001 as if the Logs dashboard is empty, we do not use variable CWLogGroupName
     # As before, it might not be important as the test does not try to do that (and there is no point in doing that)
