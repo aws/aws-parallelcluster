@@ -173,12 +173,13 @@ Resources:
           {{ update_coord_after_section(graph_height) }}
 
           {#- RAID metrics graphs #}
-          {#- Unconditional RAID metrics #}
           {%- set number_of_raid_volumes = cfn_params.RAIDOptions.split(',')[2]|int -%} {#- if NONE, converts to 0! #}
           {%- if number_of_raid_volumes > 0 %}
           - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             RAID Metrics\n"}}'
               {{- update_coord_after_section(1) }}
+
+              {#- Unconditional RAID metrics #}
               {%- set raid_metrics = [{'metrics': ["VolumeReadOps", "VolumeWriteOps"], 'extra_params': ['"title":"Read/Write Ops"']},
                                      {'metrics': ["VolumeReadBytes", "VolumeWriteBytes"], 'extra_params': ['"title":"Read/Write Bytes"']},
                                      {'metrics': ["VolumeTotalReadTime", "VolumeTotalWriteTime"], 'extra_params': ['"title":"Total Read/Write Time"']},
@@ -225,9 +226,12 @@ Resources:
           {%- endif %} {#- if number_of_raid_volumes > 0 #}
           {%- set efs_shared_dir = cfn_params.EFSOptions.split(',')[0] %}
           {%- if efs_shared_dir not in ["NONE", "/NONE"] %}
-          {# EFS metrics graphs -#}
+
+          {#- EFS metrics graphs #}
           - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             EFS Metrics\n"}}'
+
+            {#- Unconditional EFS metrics #}
             {%- set efs_metrics = [{'metrics': ["BurstCreditBalance"], 'extra_params': ['"title":"Burst Credit Balance"']},
                                    {'metrics': ["ClientConnections"], 'extra_params': ['"title":"Client Connections"']},
                                    {'metrics': ["TotalIOBytes"], 'extra_params': ['"title":"Total IO Bytes"']},
@@ -261,6 +265,7 @@ Resources:
 
           {%- set fsx_shared_dir = cfn_params.FSXOptions.split(',')[0] %}
           {%- if fsx_shared_dir not in ["NONE", "/NONE"] %}
+
           {#- FSx metrics graphs #}
           - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             FSx Metrics\n"}}'
