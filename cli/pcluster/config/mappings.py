@@ -75,6 +75,7 @@ from pcluster.config.validators import (
     fsx_id_validator,
     fsx_ignored_parameters_validator,
     fsx_imported_file_chunk_size_validator,
+    fsx_lustre_auto_import_validator,
     fsx_lustre_backup_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
@@ -141,6 +142,7 @@ ALLOWED_VALUES = {
     "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "per_unit_storage_throughput": [50, 100, 200],
     "architectures": SUPPORTED_ARCHITECTURES,
+    "auto_import_policy": ["NONE", "NEW", "NEW_CHANGED"]
 }
 
 AWS = {
@@ -520,6 +522,11 @@ FSX = {
                 "allowed_values": "^(backup-[0-9a-f]{8,})$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
+            ("auto_import_policy", {
+                "validators": [fsx_lustre_auto_import_validator],
+                "allowed_values": ALLOWED_VALUES["auto_import_policy"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            })
         ]
     )
 }

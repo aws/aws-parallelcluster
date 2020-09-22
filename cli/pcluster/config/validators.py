@@ -767,7 +767,7 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
 
     if urlparse(param_value).scheme == "s3":
         try:
-            bucket = param_value.split("/")[2]
+            bucket = getBucketNameFromImportPath(param_value)
             boto3.client("s3").head_bucket(Bucket=bucket)
         except ClientError:
             warnings.append(
@@ -781,6 +781,27 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
 
     return errors, warnings
 
+def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value != "NONE":
+        try:
+            fsx_section = pcluster_config.get_section("fsx")
+            fsx_import_path = fsx_section.get_param_value("import_path")
+            bucket = getBucketNameFromImportPath(fsx_import_path)
+            s3BucketRegion = boto3.client("s3").get_bucket_location(Bucket=bucket)["LocationConstraint"]
+            # Buckets in Region us-east-1 have a LocationConstraint of null
+            if (s3BucketRegion is None):
+                s3BucketRegion = "us-east-1"
+            if s3BucketRegion != pcluster_config.region:
+                errors.append("AutoImport is not supported for cross-region buckets.")
+        except ClientError:
+            warnings.append(
+                "The S3 bucket '{0}' does not exist or you do not have access to it. "
+                "Please be sure the cluster nodes have access to it.".format(fsx_import_path)
+            )
+    return errors, warnings
 
 def ec2_ebs_snapshot_validator(param_key, param_value, pcluster_config):
     errors = []
@@ -1291,3 +1312,6 @@ def ebs_volume_type_size_validator(section_key, section_label, pcluster_config):
             errors.append("The size of {0} volumes must be at least {1} GiB".format(volume_type, min_size))
 
     return errors, warnings
+
+def getBucketNameFromImportPath(importPath):
+    return importPath.split("/")[2] 
