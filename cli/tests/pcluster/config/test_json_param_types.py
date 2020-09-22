@@ -154,6 +154,10 @@ def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_r
     pcluster_config.add_section(cluster_section)
     pcluster_config.refresh()
 
+    dashboard_section = pcluster_config.get_section("dashboard", "dashboard1")
+    assert_that(dashboard_section).is_not_none()
+    assert_that(dashboard_section.get_param_value("enable")).is_equal_to(False)
+
     for queue in queues:
         assert_that(pcluster_config.get_section("queue", queue)).is_not_none()
         _check_queue_section_from_json(

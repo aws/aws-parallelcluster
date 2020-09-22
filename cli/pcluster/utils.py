@@ -1101,7 +1101,7 @@ def read_remote_file(url):
         raise e
 
 
-def render_template(template_str, params_dict, config_version=None, tags):
+def render_template(template_str, params_dict, tags, config_version=None):
     """
     Render a Jinja template and return the rendered output.
 

@@ -65,7 +65,15 @@ def execute(args):
                 utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
             template_url = _evaluate_pcluster_template_url(target_config)
 
-        _upload_dashboard_resource(s3_bucket_name, target_config, target_config.to_storage().cfn_params)
+        try:
+            _upload_dashboard_resource(
+                s3_bucket_name,
+                target_config,
+                target_config.to_storage().json_params,
+                target_config.to_storage().cfn_params,
+            )
+        except Exception:
+            utils.error("Failed when uploading the dashboard resource to cluster S3 bucket {0}".format(s3_bucket_name))
 
         _update_cluster(
             args, cfn_client, cfn_params, stack_name, use_previous_template=not is_hit, template_url=template_url

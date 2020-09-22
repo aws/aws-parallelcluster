@@ -139,6 +139,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "dashboard_settings": None,
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
 }
@@ -182,6 +183,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "dashboard_settings": None,
     "queue_settings": None,
     "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
@@ -189,6 +191,8 @@ DEFAULT_CLUSTER_HIT_DICT = {
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
+
+DEFAULT_DASHBOARD_DICT = {"enable": True}
 
 DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_SIT_DICT}
 
@@ -209,6 +213,7 @@ class DefaultDict(Enum):
     fsx = DEFAULT_FSX_DICT
     dcv = DEFAULT_DCV_DICT
     cw_log = DEFAULT_CW_LOG_DICT
+    dashboard = DEFAULT_DASHBOARD_DICT
     pcluster = DEFAULT_PCLUSTER_DICT
 
 

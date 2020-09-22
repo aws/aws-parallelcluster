@@ -595,6 +595,19 @@ CW_LOG = {
     ])
 }
 
+DASHBOARD = {
+    "type": JsonSection,
+    "key": "dashboard",
+    "default_label": "default",
+    "params": OrderedDict([
+        ("enable", {
+            "type": BooleanJsonParam,
+            "default": True,
+            "update_policy": UpdatePolicy.SUPPORTED,
+        }),
+    ])
+}
+
 COMPUTE_RESOURCE = {
     "type": JsonSection,
     "key": "compute_resource",
@@ -907,6 +920,11 @@ CLUSTER_COMMON_PARAMS = [
         "type": SettingsCfnParam,
         "referred_section": CW_LOG,
         "update_policy": UpdatePolicy.UNSUPPORTED,
+    }),
+    ("dashboard_settings", {
+        "type": SettingsJsonParam,
+        "referred_section": DASHBOARD,
+        "update_policy": UpdatePolicy.SUPPORTED,
     }),
     # Moved from the "Access and Networking" section because its configuration is
     # dependent on multiple other parameters from within this section.
