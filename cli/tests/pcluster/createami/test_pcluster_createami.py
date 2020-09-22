@@ -140,7 +140,7 @@ def test_get_post_install_script_dir(mocker, post_install_script_url, tmp_dir):
     mocker.patch("pcluster.createami.urlretrieve")
     mocker.patch("pcluster.createami.copyfile")
     mocker.patch("pcluster.createami._get_current_timestamp").return_value = "now"
-    if not post_install_script_url or createami._evaluate_post_install_script(post_install_script_url):
+    if not post_install_script_url or createami._is_valid_post_install_script(post_install_script_url):
         assert_that(createami._get_post_install_script_dir(post_install_script_url, tmp_dir)).is_equal_to(
             os.path.join(tmp_dir + "/script", "now-script.sh") if post_install_script_url else None
         )

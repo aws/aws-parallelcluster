@@ -113,7 +113,7 @@ def _get_cookbook_dir(region, template_url, args, tmpdir):
         sys.exit(1)
 
 
-def _evaluate_post_install_script(post_install_script_url):
+def _is_valid_post_install_script(post_install_script_url):
     return any(
         [
             post_install_script_url.startswith("https://"),
@@ -133,10 +133,10 @@ def _get_post_install_script_dir(post_install_script_url, tmp_dir):
         tmp_post_install_script_folder = os.path.join(tmp_dir, "script")
         os.mkdir(tmp_post_install_script_folder)
         if post_install_script_url is not None:
-            if not _evaluate_post_install_script(post_install_script_url):
+            if not _is_valid_post_install_script(post_install_script_url):
                 raise URLError("Invalid URL")
             tmp_post_install_script_path = os.path.join(
-                tmp_post_install_script_folder, _get_current_timestamp() + "-" + post_install_script_url.split("/")[-1],
+                tmp_post_install_script_folder, _get_current_timestamp() + "-" + post_install_script_url.split("/")[-1]
             )
             if post_install_script_url.startswith("https"):
                 urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)

@@ -38,7 +38,20 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
 }
 
-AMI_TYPE_DICT = {"official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP, "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP}
+OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
+    "alinux": {"name": "aws-parallelcluster-*-amzn-hvm-x86_64-*", "owners": ["247102896272"]},
+    "alinux2": {"name": "aws-parallelcluster-*-amzn2-hvm-*-*", "owners": ["247102896272"]},
+    "centos6": {"name": "aws-parallelcluster-*-centos6-hvm-x86_64-*", "owners": ["247102896272"]},
+    "centos7": {"name": "aws-parallelcluster-*-centos7-hvm-x86_64-*", "owners": ["247102896272"]},
+    "ubuntu1604": {"name": "aws-parallelcluster-*-ubuntu-1604-lts-hvm-x86_64-*", "owners": ["247102896272"]},
+    "ubuntu1804": {"name": "aws-parallelcluster-*-ubuntu-1804-lts-hvm-*-*", "owners": ["247102896272"]},
+}
+
+AMI_TYPE_DICT = {
+    "official": OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP,
+    "remarkable": OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP,
+    "pcluster": OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP,
+}
 
 
 def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
