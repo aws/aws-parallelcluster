@@ -1583,7 +1583,8 @@
                 "ec2:AttachVolume",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeInstances"
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceTypes"
               ],
               "Effect": "Allow",
               "Resource": [

@@ -32,6 +32,7 @@ from pcluster.utils import (
     get_supported_instance_types,
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
+    is_instance_type_format,
     paginate_boto3,
     validate_pcluster_version_based_on_ami_name,
 )
@@ -968,15 +969,27 @@ def instances_architecture_compatibility_validator(param_key, param_value, pclus
     errors = []
     warnings = []
 
-    compute_architectures = get_supported_architectures_for_instance_type(param_value)
     master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if master_architecture not in compute_architectures:
-        errors.append(
-            "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
-            "compatible with the architecture supported by the master_instance_type ({2}).".format(
-                param_value, compute_architectures, master_architecture
+    # When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
+    compute_instance_types = param_value.split(",")
+    for compute_instance_type in compute_instance_types:
+        # When awsbatch is used as the scheduler instance families can be used.
+        # Don't attempt to validate architectures for instance families, as it would require
+        # guessing a valid instance type from within the family.
+        if not is_instance_type_format(compute_instance_type) and compute_instance_type != "optimal":
+            LOGFILE_LOGGER.debug(
+                "Not validating architecture compatibility for compute_instance_type {0} because it does not have the "
+                "expected format".format(compute_instance_type)
             )
-        )
+            continue
+        compute_architectures = get_supported_architectures_for_instance_type(compute_instance_type)
+        if master_architecture not in compute_architectures:
+            errors.append(
+                "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
+                "compatible with the architecture supported by the master_instance_type ({2}).".format(
+                    compute_instance_type, compute_architectures, master_architecture
+                )
+            )
 
     return errors, warnings
 
