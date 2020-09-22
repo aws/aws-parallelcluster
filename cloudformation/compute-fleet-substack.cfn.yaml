@@ -32,6 +32,8 @@ Parameters:
     Type: String
   EFA:
     Type: String
+  BaseOS:
+    Type: String
   OSUser:
     Type: String
   PreInstallScript:
@@ -343,6 +345,7 @@ Resources:
                         "stack_name": "${MainStackName}",
                         "enable_efa": "${EFA}",
                         "cfn_raid_parameters": "${RAIDOptions}",
+                        "cfn_base_os": "${BaseOS}",
                         "cfn_preinstall": "${PreInstallScript}",
                         "cfn_preinstall_args": "${PreInstallArgs}",
                         "cfn_postinstall": "${PostInstallScript}",

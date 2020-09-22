@@ -22,6 +22,8 @@ Parameters:
     Type: AWS::EC2::Image::Id
   IamInstanceProfile:
     Type: String
+  BaseOS:
+    Type: String
   OSUser:
     Type: String
   PreInstallScript:
@@ -255,6 +257,7 @@ Resources:
                         "stack_name": "${MainStackName}",
                         "enable_efa": "{{ 'efa' if compute_resource.enable_efa else 'NONE' }}",
                         "cfn_raid_parameters": "${RAIDOptions}",
+                        "cfn_base_os": "${BaseOS}",
                         "cfn_preinstall": "${PreInstallScript}",
                         "cfn_preinstall_args": "${PreInstallArgs}",
                         "cfn_postinstall": "${PostInstallScript}",
