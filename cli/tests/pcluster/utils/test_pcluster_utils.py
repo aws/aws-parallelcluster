@@ -746,7 +746,7 @@ def test_get_supported_batch_instance_types(
         "pcluster.utils._get_instance_families_from_types", return_value=dummy_all_instance_families
     )
     candidates_are_supported_patch = mocker.patch(
-        "pcluster.utils._instance_types_and_families_are_supported", return_value=types_parsed_from_emsg_are_known
+        "pcluster.utils._batch_instance_types_and_families_are_supported", return_value=types_parsed_from_emsg_are_known
     )
     returned_value = utils.get_supported_batch_instance_types()
     # The functions that call the Batch CreateComputeEnvironment API, and those that get all
@@ -806,18 +806,24 @@ def test_get_supported_batch_instance_types(
         ("be one of [c5.xlarge| m6g.xlarge]", False, None),
     ],
 )
-def test_parse_supported_instance_types_and_families_from_cce_emsg(api_emsg, match_expected, expected_return_value):
+def test_parse_supported_instance_types_and_families_from_cce_emsg(
+    caplog, api_emsg, match_expected, expected_return_value
+):
     """Verify parsing supported instance types from the CreateComputeEnvironment error message works as expected."""
+    results_log_msg_preamble = "Parsed the following instance types and families from Batch CCE error message:"
+    caplog.set_level(logging.DEBUG)
     if match_expected:
         assert_that(utils._parse_supported_instance_types_and_families_from_cce_emsg(api_emsg)).is_equal_to(
             expected_return_value
         )
+        assert_that(caplog.text).contains(results_log_msg_preamble)
     else:
         with pytest.raises(
             utils.BatchErrorMessageParsingException,
             match="Could not parse supported instance types from the following: {0}".format(escape(api_emsg)),
         ):
             utils._parse_supported_instance_types_and_families_from_cce_emsg(api_emsg)
+        assert_that(caplog.text).does_not_contain(results_log_msg_preamble)
 
 
 @pytest.mark.parametrize("error_type", [ClientError, EndpointConnectionError(endpoint_url="dummy_endpoint"), None])
@@ -901,14 +907,16 @@ def test_get_supported_instance_types(mocker, boto3_stubber, generate_error):
     [
         (["c5.xlarge", "m6g"], ["c5.xlarge", "c5", "m6g.xlarge", "m6g"]),
         (["bad-candidate"], ["c5.xlarge", "c5", "m6g.xlarge", "m6g"]),
+        (["optimal"], []),
     ],
 )
-def test_instance_types_and_families_are_supported(caplog, candidates, knowns):
+def test_batch_instance_types_and_families_are_supported(caplog, candidates, knowns):
     """Verify function that describes whether all given instance types/families are supported behaves as expected."""
     caplog.set_level(logging.DEBUG)
-    unknown_candidates = [candidate for candidate in candidates if candidate not in knowns]
+    knowns_plus_optimal = knowns + ["optimal"]  # Acceptable compute_instance_type value for batch
+    unknown_candidates = [candidate for candidate in candidates if candidate not in knowns_plus_optimal]
     expected_return_value = not unknown_candidates
-    observed_return_value = utils._instance_types_and_families_are_supported(candidates, knowns)
+    observed_return_value = utils._batch_instance_types_and_families_are_supported(candidates, knowns)
     assert_that(observed_return_value).is_equal_to(expected_return_value)
     if unknown_candidates:
         log_msg = "Found the following unknown instance types/families: {0}".format(" ".join(unknown_candidates))
