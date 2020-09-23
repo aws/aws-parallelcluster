@@ -62,7 +62,7 @@ def execute(args):
             try:
                 _upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params)
             except Exception:
-                utils.error("Failed when uploading hit resources to cluster S3 bucket {0}".format(s3_bucket_name))
+                utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
             template_url = _evaluate_pcluster_template_url(target_config)
 
         try:

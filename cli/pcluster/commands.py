@@ -119,8 +119,7 @@ def _upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_pa
         raise
 
     try:
-        s3_client = boto3.client("s3")
-        s3_client.put_object(
+        boto3.client("s3").put_object(
             Bucket=bucket_name,
             Body=rendered_template,
             Key="templates/cw-dashboard-substack.rendered.cfn.yaml",
