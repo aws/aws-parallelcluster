@@ -335,7 +335,13 @@ def _parse_supported_instance_types_and_families_from_cce_emsg(emsg):
     """
     match = re.search(r"be\s+one\s+of\s*\[(.*[0-9a-z.\-]+.*,.*)\]", emsg)
     if match:
-        return [instance_type_token.strip() for instance_type_token in match.group(1).split(",")]
+        parsed_values = [instance_type_token.strip() for instance_type_token in match.group(1).split(",")]
+        LOGGER.debug(
+            "Parsed the following instance types and families from Batch CCE error message: {0}".format(
+                " ".join(parsed_values)
+            )
+        )
+        return parsed_values
     else:
         raise BatchErrorMessageParsingException(
             "Could not parse supported instance types from the following: {0}".format(emsg)
@@ -359,9 +365,14 @@ def _get_instance_families_from_types(instance_types):
     return list(families)
 
 
-def _instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
-    """Return a boolean describing whether the given instance types and families are known to be supported."""
-    unknowns = [candidate for candidate in candidate_types_and_families if candidate not in known_types_and_families]
+def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
+    """Return a boolean describing whether the instance types and families parsed from Batch API are known."""
+    known_exceptions = ["optimal"]
+    unknowns = [
+        candidate
+        for candidate in candidate_types_and_families
+        if candidate not in known_types_and_families + known_exceptions
+    ]
     if unknowns:
         LOGGER.debug("Found the following unknown instance types/families: {0}".format(" ".join(unknowns)))
     return not unknowns
@@ -380,7 +391,7 @@ def get_supported_batch_instance_types():
     try:
         emsg = _get_cce_emsg_containing_supported_instance_types()
         parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)
-        if _instance_types_and_families_are_supported(
+        if _batch_instance_types_and_families_are_supported(
             parsed_instance_types_and_families, supported_instance_types_and_families
         ):
             supported_batch_types = parsed_instance_types_and_families
