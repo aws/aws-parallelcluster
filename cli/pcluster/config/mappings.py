@@ -900,7 +900,7 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("dashboard_settings", {
-        "type": SettingsCfnParam,
+        "type": SettingsJsonParam,
         "referred_section": DASHBOARD,
         "update_policy": UpdatePolicy.SUPPORTED,
     }),
