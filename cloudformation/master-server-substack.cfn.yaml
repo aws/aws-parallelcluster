@@ -36,7 +36,7 @@ Parameters:
     Type: String
   EFA:
     Type: String
-  OS:
+  BaseOS:
     Type: String
   OSUser:
     Type: String
@@ -497,7 +497,7 @@ Resources:
                     - DisableMasterHyperthreadingManually
                     - 'true'
                     - 'false'
-                  cfn_base_os: !Ref 'OS'
+                  cfn_base_os: !Ref 'BaseOS'
                   cfn_preinstall: !Ref 'PreInstallScript'
                   cfn_preinstall_args: !Ref 'PreInstallArgs'
                   cfn_postinstall: !Ref 'PostInstallScript'
