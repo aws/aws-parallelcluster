@@ -456,9 +456,12 @@ def random_az_selector(request):
 
     def _get_random_availability_zones(region, num_azs=1, default_value=None):
         """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
-        az_ids = AVAILABILITY_ZONE_OVERRIDES.get(region, [default_value] * num_azs)
-        az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
-        sample = random.sample([az_id_to_az_name_map.get(az_id) for az_id in az_ids], k=num_azs)
+        az_ids = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
+        if az_ids:
+            az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
+            sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
+        else:
+            sample = [default_value] * num_azs
         return sample[0] if num_azs == 1 else sample
 
     return _get_random_availability_zones
