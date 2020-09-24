@@ -332,17 +332,22 @@ def remove_keys_from_known_hosts(hostname, host_keys_file, env):
         run_command("ssh-keygen -R {0} -f {1}".format(host, host_keys_file), env=env)
 
 
+def get_instance_info(instance_type, region_name=None):
+    """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
+    try:
+        ec2_client = boto3.client("ec2", region_name=region_name)
+        return ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+    except Exception as exception:
+        logging.error(f"Failed to get instance type info for instance type: {exception}")
+        raise
+
+
 def get_architecture_supported_by_instance_type(instance_type, region_name=None):
     """Return the architecture supported by the given instance type (which is also supported by ParallelCluster)."""
     pcluster_architectures = ["x86_64", "arm64"]
-    instance_architectures = []
-    ec2 = boto3.client("ec2", region_name=region_name)
-    try:
-        response = ec2.describe_instance_types(InstanceTypes=[instance_type])
-        instance_architectures = response.get("InstanceTypes")[0].get("ProcessorInfo").get("SupportedArchitectures")
-    except Exception as e:
-        logging.error(f"Failed to get supported architecture for instance type: {e}")
-        raise
+    instance_architectures = (
+        get_instance_info(instance_type, region_name).get("ProcessorInfo").get("SupportedArchitectures")
+    )
 
     # Some instance types support architectures that ParallelCluster does not (e.g., i386). Filter those out.
     instance_architectures = list(set(instance_architectures) & set(pcluster_architectures))
