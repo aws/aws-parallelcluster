@@ -134,8 +134,8 @@ class SettingsJsonParam(SettingsParam):
         """
         Convert the referred sections into the json storage representation.
 
-        For each label, a subdictionary is created is generated under the param key, with the section label as key and
-        the related section as value.
+        In case of multiple sections, a subdictionary is created for each section under the param key, with the section
+        label as key and the related section as value.
         Example of storage conversion:
         config file:
             queue_settings = queue1, queue2
@@ -148,6 +148,22 @@ class SettingsJsonParam(SettingsParam):
                     "queue2": {...}
                 }
             }
+
+        In case of single section, a subdictionary is created under the section key, and the section label is set as as
+        a dict item.
+        Example of storage conversion:
+        config file:
+            dashboard_settings = dashboard1
+
+        json config:
+            "cluster": {
+                ...
+                "dashboard": {
+                  "label": "dashboard1",
+                  ...
+                }
+            }
+
         """
         if self.value:
             labels = self.referred_section_labels
@@ -164,19 +180,30 @@ class SettingsJsonParam(SettingsParam):
         then each subsection is loaded from storage as well.
         """
         json_params = storage_params.json_params
-        json_subdict = _get_storage_subdict(self, json_params).get(self.key)
+        json_subdict = _get_storage_subdict(self, json_params)
+        labels = None
         if json_subdict:
-            labels = [label for label in json_subdict.keys()]
+            if self.referred_section_definition.get("max_resources", 1) > 1:
+                # Multiple sections: the dict is under <section_key>_settings
+                json_subdict = json_subdict.get(self.key)
+                if json_subdict:
+                    labels = [label for label in json_subdict.keys()]
+            else:
+                # Single section: the dict is under <section_key>
+                json_subdict = json_subdict.get(self.referred_section_key)
+                if json_subdict:
+                    labels = [json_subdict.get("label")]
 
-            self.value = ",".join(labels)
-            for label in labels:
-                section = self.referred_section_type(
-                    self.referred_section_definition,
-                    self.pcluster_config,
-                    section_label=label,
-                    parent_section=self.owner_section,
-                ).from_storage(storage_params)
-                self.pcluster_config.add_section(section)
+            if labels:
+                self.value = ",".join(labels)
+                for label in labels:
+                    section = self.referred_section_type(
+                        self.referred_section_definition,
+                        self.pcluster_config,
+                        section_label=label,
+                        parent_section=self.owner_section,
+                    ).from_storage(storage_params)
+                    self.pcluster_config.add_section(section)
 
         return self
 

@@ -84,8 +84,12 @@ def test_validate_createami_args_architecture_compatibility(
     mocker, base_ami_id, instance_type, base_ami_os, base_ami_architecture, supported_instance_archs, supported_os
 ):
     """Verify that parameter validation works as expected in the function that implements the createami command."""
-    mocker.patch("pcluster.createami.utils.get_info_for_amis").return_value = [{"Architecture": base_ami_architecture}]
+    base_ami_name = "ami-x"
+    mocker.patch("pcluster.createami.utils.get_info_for_amis").return_value = [
+        {"Architecture": base_ami_architecture, "Name": base_ami_name}
+    ]
     mocker.patch("pcluster.createami._get_default_createami_instance_type")
+    mocker.patch("pcluster.createami.utils.validate_pcluster_version_based_on_ami_name")
     mocker.patch(
         "pcluster.createami.utils.get_supported_architectures_for_instance_type"
     ).return_value = supported_instance_archs
@@ -100,12 +104,13 @@ def test_validate_createami_args_architecture_compatibility(
     )
     if error_expected:
         with pytest.raises(SystemExit) as sysexit:
-            createami._validate_createami_args_architecture_compatibility(args)
+            createami._validate_createami_args_ami_compatibility(args)
         assert_that(sysexit.value.code).is_not_equal_to(0)
     else:
-        assert_that(createami._validate_createami_args_architecture_compatibility(args)).is_equal_to(
-            base_ami_architecture
+        assert_that(createami._validate_createami_args_ami_compatibility(args)).is_equal_to(
+            {"Architecture": base_ami_architecture, "Name": base_ami_name}
         )
+        createami.utils.validate_pcluster_version_based_on_ami_name.assert_called_with(base_ami_name)
 
     createami.utils.get_info_for_amis.assert_called_with([base_ami_id])
 

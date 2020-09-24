@@ -32,7 +32,9 @@ from pcluster.utils import (
     get_supported_instance_types,
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
+    is_instance_type_format,
     paginate_boto3,
+    validate_pcluster_version_based_on_ami_name,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -655,6 +657,7 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
     # Make sure AMI exists
     try:
         image_info = boto3.client("ec2").describe_images(ImageIds=[param_value]).get("Images")[0]
+        validate_pcluster_version_based_on_ami_name(image_info.get("Name"))
     except ClientError as e:
         errors.append(
             "Unable to get information for AMI {0}: {1}. Check value of parameter {2}.".format(
@@ -945,15 +948,27 @@ def instances_architecture_compatibility_validator(param_key, param_value, pclus
     errors = []
     warnings = []
 
-    compute_architectures = get_supported_architectures_for_instance_type(param_value)
     master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if master_architecture not in compute_architectures:
-        errors.append(
-            "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
-            "compatible with the architecture supported by the master_instance_type ({2}).".format(
-                param_value, compute_architectures, master_architecture
+    # When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
+    compute_instance_types = param_value.split(",")
+    for compute_instance_type in compute_instance_types:
+        # When awsbatch is used as the scheduler instance families can be used.
+        # Don't attempt to validate architectures for instance families, as it would require
+        # guessing a valid instance type from within the family.
+        if not is_instance_type_format(compute_instance_type) and compute_instance_type != "optimal":
+            LOGFILE_LOGGER.debug(
+                "Not validating architecture compatibility for compute_instance_type {0} because it does not have the "
+                "expected format".format(compute_instance_type)
             )
-        )
+            continue
+        compute_architectures = get_supported_architectures_for_instance_type(compute_instance_type)
+        if master_architecture not in compute_architectures:
+            errors.append(
+                "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
+                "compatible with the architecture supported by the master_instance_type ({2}).".format(
+                    compute_instance_type, compute_architectures, master_architecture
+                )
+            )
 
     return errors, warnings
 
@@ -1287,5 +1302,33 @@ def ebs_volume_type_size_validator(section_key, section_label, pcluster_config):
             errors.append("The size of {0} volumes can not exceed {1} GiB".format(volume_type, max_size))
         elif volume_size < min_size:
             errors.append("The size of {0} volumes must be at least {1} GiB".format(volume_type, min_size))
+
+    return errors, warnings
+
+
+def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    volume_size = section.get_param_value("volume_size")
+    volume_type = section.get_param_value("volume_type")
+    volume_type_to_iops_ratio = {"io1": 50, "io2": 500}
+    volume_iops = section.get_param_value("volume_iops")
+    min_iops = 100
+    max_iops = 64000
+    if volume_type in volume_type_to_iops_ratio:
+        if volume_iops and (volume_iops < min_iops or volume_iops > max_iops):
+            errors.append(
+                "IOPS rate must be between {min_iops} and {max_iops} when provisioning {volume_type} volumes.".format(
+                    min_iops=min_iops, max_iops=max_iops, volume_type=volume_type
+                )
+            )
+        if volume_iops and volume_iops > volume_size * volume_type_to_iops_ratio[volume_type]:
+            errors.append(
+                "IOPS to volume size ratio of {0} is too high; maximum is {1}.".format(
+                    float(volume_iops) / float(volume_size), volume_type_to_iops_ratio[volume_type]
+                )
+            )
 
     return errors, warnings

@@ -24,6 +24,7 @@ from pcluster.config.validators import (
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
+    LOGFILE_LOGGER,
     architecture_os_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
@@ -40,10 +41,6 @@ from tests.pcluster.config.defaults import DefaultDict
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
-
-
-def _mock_efa_supported_instances(mocker):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
 
 
 @pytest.mark.parametrize(
@@ -1765,7 +1762,7 @@ def run_architecture_validator_test(
     param_name,
     param_val,
     validator,
-    expected_message,
+    expected_messages,
 ):
     """Run a test for a validator that's concerned with the architecture param."""
     mocked_pcluster_config = make_pcluster_config_mock(mocker, config)
@@ -1776,18 +1773,18 @@ def run_architecture_validator_test(
         constrained_param_name
     )
     assert_that(len(warnings)).is_equal_to(0)
-    assert_that(len(errors)).is_equal_to(0 if expected_message is None else 1)
-    if expected_message:
-        assert_that(errors[0]).matches(re.escape(expected_message))
+    assert_that(len(errors)).is_equal_to(len(expected_messages))
+    for error, expected_message in zip(errors, expected_messages):
+        assert_that(error).matches(re.escape(expected_message))
 
 
 @pytest.mark.parametrize(
     "enabled, architecture, expected_message",
     [
-        (True, "x86_64", None),
-        (True, "arm64", "instance types and an AMI that support these architectures"),
-        (False, "x86_64", None),
-        (False, "arm64", None),
+        (True, "x86_64", []),
+        (True, "arm64", ["instance types and an AMI that support these architectures"]),
+        (False, "x86_64", []),
+        (False, "arm64", []),
     ],
 )
 def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_message):
@@ -1809,19 +1806,19 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
     "base_os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux", "x86_64", None),
-        ("alinux2", "x86_64", None),
-        ("centos6", "x86_64", None),
-        ("centos7", "x86_64", None),
-        ("ubuntu1604", "x86_64", None),
-        ("ubuntu1804", "x86_64", None),
+        ("alinux", "x86_64", []),
+        ("alinux2", "x86_64", []),
+        ("centos6", "x86_64", []),
+        ("centos7", "x86_64", []),
+        ("ubuntu1604", "x86_64", []),
+        ("ubuntu1804", "x86_64", []),
         # Only a subset of OSes supported for x86_64
-        ("alinux", "arm64", "arm64 is only supported for the following operating systems"),
-        ("alinux2", "arm64", None),
-        ("centos6", "arm64", "arm64 is only supported for the following operating systems"),
-        ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
-        ("ubuntu1604", "arm64", "arm64 is only supported for the following operating systems"),
-        ("ubuntu1804", "arm64", None),
+        ("alinux", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("alinux2", "arm64", []),
+        ("centos6", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("ubuntu1604", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("ubuntu1804", "arm64", []),
     ],
 )
 def test_architecture_os_validator(mocker, base_os, architecture, expected_message):
@@ -1835,10 +1832,14 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
 @pytest.mark.parametrize(
     "disable_hyperthreading, architecture, expected_message",
     [
-        (True, "x86_64", None),
-        (False, "x86_64", None),
-        (True, "arm64", "disable_hyperthreading is only supported on instance types that support these architectures"),
-        (False, "arm64", None),
+        (True, "x86_64", []),
+        (False, "x86_64", []),
+        (
+            True,
+            "arm64",
+            ["disable_hyperthreading is only supported on instance types that support these architectures"],
+        ),
+        (False, "arm64", []),
     ],
 )
 def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthreading, architecture, expected_message):
@@ -1856,30 +1857,68 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
 
 
 @pytest.mark.parametrize(
-    "master_architecture, compute_architecture, expected_message",
+    "master_architecture, compute_architecture, compute_instance_type, expected_message",
     [
-        ("x86_64", "x86_64", None),
-        ("x86_64", "arm64", "none of which are compatible with the architecture supported by the master_instance_type"),
-        ("arm64", "x86_64", "none of which are compatible with the architecture supported by the master_instance_type"),
-        ("arm64", "arm64", None),
+        # Single compute_instance_type
+        ("x86_64", "x86_64", "c5.xlarge", []),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"],
+        ),
+        (
+            "arm64",
+            "x86_64",
+            "c5.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"],
+        ),
+        ("arm64", "arm64", "m6g.xlarge", []),
+        ("x86_64", "x86_64", "optimal", []),
+        # Function to get supported architectures shouldn't be called because compute_instance_type arg
+        # are instance families.
+        ("x86_64", None, "m6g", []),
+        ("x86_64", None, "c5", []),
+        # The validator must handle the case where compute_instance_type is a CSV list
+        ("arm64", "arm64", "m6g.xlarge,r6g.xlarge", []),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge,r6g.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"] * 2,
+        ),
     ],
 )
 def test_instances_architecture_compatibility_validator(
-    mocker, master_architecture, compute_architecture, expected_message
+    mocker, caplog, master_architecture, compute_architecture, compute_instance_type, expected_message
 ):
-    mocker.patch(
+    def internal_is_instance_type(itype):
+        return "." in itype or itype == "optimal"
+
+    supported_architectures_patch = mocker.patch(
         "pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=[compute_architecture]
     )
+    is_instance_type_patch = mocker.patch(
+        "pcluster.config.validators.is_instance_type_format", side_effect=internal_is_instance_type
+    )
+    logger_patch = mocker.patch.object(LOGFILE_LOGGER, "debug")
     run_architecture_validator_test(
         mocker,
         {"cluster": {"architecture": master_architecture}},
         "cluster",
         "architecture",
         "compute_instance_type",
-        "some_instance_type",
+        compute_instance_type,
         instances_architecture_compatibility_validator,
         expected_message,
     )
+    compute_instance_types = compute_instance_type.split(",")
+    non_instance_families = [
+        instance_type for instance_type in compute_instance_types if internal_is_instance_type(instance_type)
+    ]
+    assert_that(supported_architectures_patch.call_count).is_equal_to(len(non_instance_families))
+    assert_that(logger_patch.call_count).is_equal_to(len(compute_instance_types) - len(non_instance_families))
+    assert_that(is_instance_type_patch.call_count).is_equal_to(len(compute_instance_types))
 
 
 @pytest.mark.parametrize(
@@ -2056,3 +2095,35 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
         EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
     )
     assert_that(allowed_values_all_have_volume_size_bounds).is_true()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
+        # TODO Uncomment these lines after adding support for io2 volume types
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
+        #         "IOPS to volume size ratio of .* is too hig"),
+    ],
+)
+def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)

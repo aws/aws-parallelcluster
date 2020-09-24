@@ -56,6 +56,7 @@ from pcluster.config.validators import (
     disable_hyperthreading_architecture_validator,
     disable_hyperthreading_validator,
     ebs_settings_validator,
+    ebs_volume_iops_validator,
     ebs_volume_type_size_validator,
     ec2_ami_validator,
     ec2_ebs_snapshot_validator,
@@ -291,7 +292,7 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_type_size_validator],
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator],
     "params": {
         "shared_dir": {
             "allowed_values": ALLOWED_VALUES["file_path"],

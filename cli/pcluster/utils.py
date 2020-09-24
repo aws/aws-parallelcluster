@@ -31,11 +31,11 @@ from urllib.parse import urlparse
 
 import boto3
 import pkg_resources
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, EndpointConnectionError
 from jinja2 import BaseLoader, Environment
 
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
-from pcluster.constants import PCLUSTER_ISSUES_LINK, PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
+from pcluster.constants import PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
 
 LOGGER = logging.getLogger(__name__)
 
@@ -240,59 +240,6 @@ def upload_resources_artifacts(bucket_name, root):
             bucket.upload_file(os.path.join(root, res), res)
 
 
-def _get_json_from_s3(region, file_name):
-    """
-    Get pricing file (if none) and parse content as json.
-
-    :param region: AWS Region
-    :param file_name the object name to get
-    :return: a json object representing the file content
-    :raises ClientError if unable to download the file
-    :raises ValueError if unable to decode the file content
-    """
-    bucket_name = "{0}-aws-parallelcluster".format(region)
-
-    file_contents = boto3.resource("s3").Object(bucket_name, file_name).get()["Body"].read().decode("utf-8")
-    return json.loads(file_contents)
-
-
-def get_supported_features(region, feature):
-    """
-    Get a json object containing the attributes supported by a feature, for example.
-
-    {
-        "Features": {
-            "efa": {
-                "instances": ["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"],
-                "baseos": ["alinux", "centos7"],
-                "schedulers": ["sge", "slurm", "torque"]
-            },
-            "batch": {
-                "instances": ["r3.8xlarge", ..., "m5.4xlarge"]
-            }
-        }
-    }
-
-    :param region: AWS Region
-    :param feature: the feature to search for, i.e. "efa" "awsbatch"
-    :return: json object containing all the attributes supported by feature
-    """
-    try:
-        features = _get_json_from_s3(region, "features/feature_whitelist.json")
-        supported_features = features.get("Features").get(feature)
-    except (ValueError, ClientError, KeyError) as e:
-        if isinstance(e, ClientError):
-            code = e.response.get("Error").get("Code")
-            if code == "InvalidAccessKeyId":
-                error(e.response.get("Error").get("Message"))
-        error(
-            "Failed validate {0}. This is probably a bug on our end. "
-            "Please submit an issue {1}".format(feature, PCLUSTER_ISSUES_LINK)
-        )
-
-    return supported_features
-
-
 def get_instance_vcpus(instance_type):
     """
     Get number of vcpus for the given instance type.
@@ -311,16 +258,155 @@ def get_instance_vcpus(instance_type):
 
 
 def get_supported_instance_types():
-    """
-    Get supported instance types.
+    """Return the list of instance types available in the given region."""
+    ec2_client = boto3.client("ec2")
+    try:
+        return [
+            offering.get("InstanceType") for offering in paginate_boto3(ec2_client.describe_instance_type_offerings)
+        ]
+    except ClientError as client_err:
+        error(
+            "Error when getting supported instance types via DescribeInstanceTypeOfferings: {0}".format(
+                client_err.response.get("Error").get("Message")
+            )
+        )
 
-    :return: the list of supported instance types
+
+class BatchErrorMessageParsingException(Exception):
+    """Exception for errors getting supported Batch instance types from CreateComputeEnvironment."""
+
+    pass
+
+
+def _call_create_compute_environment_with_bad_instance_type():
+    """
+    Call CreateComputeEnvironment with a nonexistent instance type.
+
+    For more information on why this would be done, see the docstring for
+    _get_supported_instance_types_create_compute_environment_error_message.
+    """
+    batch_client = boto3.client("batch")
+    nonexistent_instance_type = "p8.84xlarge"
+    batch_client.create_compute_environment(
+        computeEnvironmentName="dummy",
+        type="MANAGED",
+        computeResources={
+            "type": "EC2",
+            "minvCpus": 0,
+            "maxvCpus": 0,
+            "instanceTypes": [nonexistent_instance_type],
+            "subnets": ["subnet-12345"],  # security group, subnet and role aren't checked
+            "securityGroupIds": ["sg-12345"],
+            "instanceRole": "ecsInstanceRole",
+        },
+        serviceRole="AWSBatchServiceRole",
+    )
+
+
+def _get_cce_emsg_containing_supported_instance_types():
+    """
+    Call CreateComputeEnvironment with nonexistent instance type and return error message.
+
+    The returned error message is expected to have a list of supported instance types.
     """
     try:
-        instances = _get_json_from_s3(get_region(), "instances/instances.json")
-        return instances.keys()
-    except (ValueError, ClientError):
-        error("Unable to retrieve the list of supported instance types.")
+        _call_create_compute_environment_with_bad_instance_type()
+    except ClientError as e:
+        # This is the expected behavior
+        return e.response.get("Error").get("Message")
+    except EndpointConnectionError:
+        raise BatchErrorMessageParsingException(
+            "Could not connect to the batch endpoint for region %s. Probably Batch is not available.", get_region()
+        )
+    else:
+        # TODO: need to delete the compute environment?
+        raise BatchErrorMessageParsingException(
+            "Attempting to create a Batch ComputeEnvironment using a nonexistent instance type did not result "
+            "in an error as expected."
+        )
+
+
+def _parse_supported_instance_types_and_families_from_cce_emsg(emsg):
+    """
+    Parse the supported instance types emsg, obtained by calling CreateComputeEnvironment.
+
+    The string is expected to have the following format:
+    Instance type can only be one of [r3, r4, m6g.xlarge, r5, optimal, ...]
+    """
+    match = re.search(r"be\s+one\s+of\s*\[(.*[0-9a-z.\-]+.*,.*)\]", emsg)
+    if match:
+        parsed_values = [instance_type_token.strip() for instance_type_token in match.group(1).split(",")]
+        LOGGER.debug(
+            "Parsed the following instance types and families from Batch CCE error message: {0}".format(
+                " ".join(parsed_values)
+            )
+        )
+        return parsed_values
+    else:
+        raise BatchErrorMessageParsingException(
+            "Could not parse supported instance types from the following: {0}".format(emsg)
+        )
+
+
+def is_instance_type_format(candidate):
+    """Return a boolean describing whether or not candidate is of the format of an instance type."""
+    return re.search(r"^([a-z0-9\-]+)\.", candidate) is not None
+
+
+def _get_instance_families_from_types(instance_types):
+    """Return a list of instance families represented by the given list of instance types."""
+    families = set()
+    for instance_type in instance_types:
+        match = re.search(r"^([a-z0-9\-]+)\.", instance_type)
+        if match:
+            families.add(match.group(1))
+        else:
+            LOGGER.debug("Unable to parse instance family for instance type {0}".format(instance_type))
+    return list(families)
+
+
+def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
+    """Return a boolean describing whether the instance types and families parsed from Batch API are known."""
+    known_exceptions = ["optimal"]
+    unknowns = [
+        candidate
+        for candidate in candidate_types_and_families
+        if candidate not in known_types_and_families + known_exceptions
+    ]
+    if unknowns:
+        LOGGER.debug("Found the following unknown instance types/families: {0}".format(" ".join(unknowns)))
+    return not unknowns
+
+
+def get_supported_batch_instance_types():
+    """
+    Get the instance types supported by Batch in the desired region.
+
+    This is done by calling Batch's CreateComputeEnvironment with a bad
+    instance type and parsing the error message.
+    """
+    supported_instance_types = get_supported_instance_types()
+    supported_instance_families = _get_instance_families_from_types(supported_instance_types)
+    supported_instance_types_and_families = supported_instance_types + supported_instance_families
+    try:
+        emsg = _get_cce_emsg_containing_supported_instance_types()
+        parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)
+        if _batch_instance_types_and_families_are_supported(
+            parsed_instance_types_and_families, supported_instance_types_and_families
+        ):
+            supported_batch_types = parsed_instance_types_and_families
+        else:
+            supported_batch_types = supported_instance_types_and_families
+    except Exception as exception:
+        # When the instance types supported by Batch can't be parsed from an error message,
+        # log the reason for the failure and return instead a list of all instance types
+        # supported in the region.
+        LOGGER.debug(
+            "Failed to parse supported Batch instance types from a CreateComputeEnvironment "
+            "error message: {0}".format(exception)
+        )
+        supported_batch_types = supported_instance_types_and_families
+    return supported_batch_types
 
 
 def get_supported_compute_instance_types(scheduler):
@@ -330,12 +416,7 @@ def get_supported_compute_instance_types(scheduler):
     :param scheduler: the scheduler for which we want to know the supported compute instance types or families
     :return: the list of supported instance types and families
     """
-    instances = (
-        get_supported_features(get_region(), "batch").get("instances")
-        if scheduler == "awsbatch"
-        else get_supported_instance_types()
-    )
-    return instances
+    return get_supported_batch_instance_types() if scheduler == "awsbatch" else get_supported_instance_types()
 
 
 def get_supported_az_for_one_instance_type(instance_type):
@@ -769,6 +850,19 @@ def get_info_for_amis(ami_ids):
         return boto3.client("ec2").describe_images(ImageIds=ami_ids).get("Images")
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
+
+
+def validate_pcluster_version_based_on_ami_name(ami_name):
+    match = re.match(r"(.*)aws-parallelcluster-(\d+\.\d+\.\d+)(.*)", ami_name)
+    if match:
+        if match.group(2) != get_installed_version():
+            error(
+                "This AMI was created with version {0} of ParallelCluster,"
+                " but is trying to be used with version {1}. Please either use an AMI created with "
+                "version {1} or change your ParallelCluster to version {0}".format(
+                    match.group(2), get_installed_version()
+                )
+            )
 
 
 def get_instance_types_info(instance_types, fail_on_error=True):

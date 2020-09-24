@@ -170,7 +170,6 @@ def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_r
         _check_queue_section_from_json(
             expected_json_params, pcluster_config, pcluster_config.get_section("queue", queue)
         )
-    pass
 
 
 def _check_queue_section_from_json(json_config, pcluster_config, queue_section):

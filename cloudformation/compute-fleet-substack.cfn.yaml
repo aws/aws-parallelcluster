@@ -32,6 +32,8 @@ Parameters:
     Type: String
   EFA:
     Type: String
+  BaseOS:
+    Type: String
   OSUser:
     Type: String
   PreInstallScript:
@@ -343,6 +345,7 @@ Resources:
                         "stack_name": "${MainStackName}",
                         "enable_efa": "${EFA}",
                         "cfn_raid_parameters": "${RAIDOptions}",
+                        "cfn_base_os": "${BaseOS}",
                         "cfn_preinstall": "${PreInstallScript}",
                         "cfn_preinstall_args": "${PreInstallArgs}",
                         "cfn_postinstall": "${PostInstallScript}",
@@ -456,7 +459,7 @@ Resources:
               if [ -f /opt/parallelcluster/.bootstrapped ]; then
                 installed_version=$(cat /opt/parallelcluster/.bootstrapped)
                 if [ "${!parallelcluster_version}" != "${!installed_version}" ]; then
-                  bootstrap_instance
+                  error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!parallelcluster_version}. Please either use an AMI created with ${!parallelcluster_version} or change your ParallelCluster to ${!installed_version}"
                 fi
               else
                 bootstrap_instance

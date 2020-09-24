@@ -1583,7 +1583,8 @@
                 "ec2:AttachVolume",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeInstances"
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceTypes"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -2866,7 +2867,7 @@
           "EFA": {
             "Ref": "EFA"
           },
-          "OS": {
+          "BaseOS": {
             "Ref": "BaseOS"
           },
           "OSUser": {
@@ -3320,6 +3321,9 @@
           "EFA": {
             "Ref": "EFA"
           },
+          "BaseOS": {
+            "Ref": "BaseOS"
+          },
           "OSUser": {
             "Fn::FindInMap": [
               "OSFeatures",
@@ -3671,6 +3675,9 @@
           },
           "IamInstanceProfile": {
             "Ref": "RootInstanceProfile"
+          },
+          "BaseOS": {
+            "Ref": "BaseOS"
           },
           "OSUser": {
             "Fn::FindInMap": [
