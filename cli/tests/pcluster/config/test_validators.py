@@ -28,6 +28,7 @@ from pcluster.config.validators import (
     architecture_os_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
+    efa_gdr_validator,
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
@@ -1408,6 +1409,38 @@ def test_efa_validator(boto3_stubber, mocker, capsys, section_dict, expected_err
 
 
 @pytest.mark.parametrize(
+    "cluster_dict, expected_error",
+    [
+        # EFAGDR without EFA
+        (
+            {"enable_efa_gdr": "compute"},
+            "The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'",
+        ),
+        # EFAGDR with EFA
+        ({"enable_efa": "compute", "enable_efa_gdr": "compute"}, None),
+        # EFA withoud EFAGDR
+        ({"enable_efa": "compute"}, None),
+    ],
+)
+def test_efa_gdr_validator(cluster_dict, expected_error):
+    config_parser_dict = {
+        "cluster default": cluster_dict,
+    }
+
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    enable_efa_gdr_value = pcluster_config.get_section("cluster").get_param_value("enable_efa_gdr")
+
+    errors, warnings = efa_gdr_validator("enable_efa_gdr", enable_efa_gdr_value, pcluster_config)
+    if expected_error:
+        assert_that(errors[0]).matches(expected_error)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
     "ip_permissions, ip_permissions_egress, expected_message",
     [
         ([], [], "must allow all traffic in and out from itself"),
@@ -1797,6 +1830,27 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "defined in compute resource settings cr4 does not support EFA.",
             ],
         ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "enable_efa_gdr": True},
+            None,
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA.",
+                "EFA GDR was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA GDR.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA.",
+                "EFA GDR was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA GDR.",
+            ],
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "efa_instance", "enable_efa_gdr": True},
+            ["The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'"],
+            None,
+        ),
         ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None, None),
         (
             {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
@@ -1811,10 +1865,21 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             ],
         ),
         (
-            {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
-            {"compute_resource_settings": "cr1", "enable_efa": False, "disable_hyperthreading": False},
+            {
+                "queue_settings": "default",
+                "enable_efa": "compute",
+                "enable_efa_gdr": "compute",
+                "disable_hyperthreading": True,
+            },
+            {
+                "compute_resource_settings": "cr1",
+                "enable_efa": False,
+                "enable_efa_gdr": False,
+                "disable_hyperthreading": False,
+            },
             [
                 "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
+                "Parameter 'enable_efa_gdr' can be used only in 'cluster' or in 'queue' section",
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
             ],
             None,
@@ -1845,8 +1910,9 @@ def test_queue_validator(cluster_dict, queue_dict, expected_error_messages, expe
 
     efa_instance_compute_resource = pcluster_config.get_section("compute_resource", "efa_instance")
     if efa_instance_compute_resource:
-        # Override `enable_efa` default value for instance with efa support
+        # Override `enable_efa` and `enable_efa_gdr` default value for instance with efa support
         efa_instance_compute_resource.get_param("enable_efa").value = True
+        efa_instance_compute_resource.get_param("enable_efa_gdr").value = True
 
     errors, warnings = queue_validator("queue", "default", pcluster_config)
 
@@ -1929,6 +1995,7 @@ def test_compute_resource_validator(mocker, section_dict, expected_message):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
+    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
     mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)

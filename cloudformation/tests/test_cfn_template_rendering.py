@@ -48,6 +48,7 @@ def substack_rendering(tmp_path, template_name, test_config):
                         "multiple_spot": {
                             "compute_type": "spot",
                             "enable_efa": False,
+                            "enable_efa_gdr": False,
                             "disable_hyperthreading": True,
                             "placement_group": None,
                             "compute_resource_settings": {
@@ -59,8 +60,10 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 2,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": False,
+                                    "network_interfaces": 1,
                                 },
                                 "multiple_spot_c5.2xlarge": {
                                     "instance_type": "c5.2xlarge",
@@ -70,8 +73,10 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 4,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": True,
+                                    "network_interfaces": 1,
                                 },
                             },
                         },
@@ -85,12 +90,15 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 36,
                                     "gpus": 0,
                                     "enable_efa": True,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": True,
+                                    "network_interfaces": 1,
                                 }
                             },
                             "compute_type": "ondemand",
                             "enable_efa": True,
+                            "enable_efa_gdr": False,
                             "disable_hyperthreading": True,
                             "placement_group": "DYNAMIC",
                         },
@@ -104,12 +112,15 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 16,
                                     "gpus": 2,
                                     "enable_efa": False,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": True,
+                                    "network_interfaces": 1,
                                 }
                             },
                             "compute_type": "ondemand",
                             "enable_efa": False,
+                            "enable_efa_gdr": False,
                             "disable_hyperthreading": True,
                             "placement_group": None,
                         },
@@ -129,6 +140,7 @@ def substack_rendering(tmp_path, template_name, test_config):
                         "multiple_spot": {
                             "compute_type": "spot",
                             "enable_efa": False,
+                            "enable_efa_gdr": False,
                             "disable_hyperthreading": True,
                             "placement_group": None,
                             "compute_resource_settings": {
@@ -140,8 +152,10 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 2,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": True,
+                                    "network_interfaces": 1,
                                 },
                                 "multiple_spot_c5.2xlarge": {
                                     "instance_type": "c5.2xlarge",
@@ -151,9 +165,12 @@ def substack_rendering(tmp_path, template_name, test_config):
                                     "vcpus": 4,
                                     "gpus": 0,
                                     "enable_efa": False,
+                                    "enable_efa_gdr": False,
                                     "disable_hyperthreading": True,
                                     "disable_hyperthreading_via_cpu_options": True,
+                                    "network_interfaces": 1,
                                 },
+                                # TODO: add test for multiple NICs
                             },
                         }
                     },

@@ -9,6 +9,7 @@ CHANGELOG
 - Add support for CentOS 8 in all Commercial regions.
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.
+- Add support for P4d instance type 
 - Add ``-r/-region`` arg to ``pcluster configure``. If this arg is provided, configuration will skip region selection.
 
 **CHANGES**
@@ -28,6 +29,7 @@ CHANGELOG
 - Upgrade image used by CodeBuild environment when building container images for Batch clusters.
 - Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
   necessary when existing instances risk to be terminated.
+- Upgrade NVIDIA driver to version 450.80.02
 - Remove default region us-east-1. After the change, pcluster will adhere to the following lookup order for region:
   1. ```-r/--region``` arg.
   2. ``AWS_DEFAULT_REGION`` environment variable.

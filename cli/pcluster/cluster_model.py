@@ -60,13 +60,14 @@ class ClusterModel(ABC):
         """Get the stop command for the model."""
         pass
 
-    def _ec2_run_instance(self, pcluster_config, **kwargs):
+    def _ec2_run_instance(self, pcluster_config, **kwargs):  # noqa: C901 FIXME!!!
         """Wrap ec2 run_instance call. Useful since a successful run_instance call signals 'DryRunOperation'."""
         try:
             boto3.client("ec2").run_instances(**kwargs)
         except ClientError as e:
             code = e.response.get("Error").get("Code")
             message = e.response.get("Error").get("Message")
+            subnet_id = kwargs["NetworkInterfaces"][0]["SubnetId"]
             if code == "DryRunOperation":
                 pass
             elif code == "UnsupportedOperation":
@@ -85,22 +86,33 @@ class ClusterModel(ABC):
                     "The specified subnet does not contain enough free private IP addresses "
                     "to fulfill your request.\n{0}".format(message)
                 )
+            elif code == "InvalidParameterCombination":
+                if "associatePublicIPAddress" in message:
+                    # Instances with multiple Network Interfaces cannot currently take public IPs.
+                    # This check is meant to warn users about this problem until services are fixed.
+                    pcluster_config.warn(
+                        "The instance type '{0}' cannot take public IPs. "
+                        "Please make sure that the subnet with id '{1}' has the proper routing configuration to allow "
+                        "private IPs reaching the Internet (e.g. a NAT Gateway and a valid route table).".format(
+                            kwargs["InstanceType"], subnet_id
+                        )
+                    )
             elif code == "Unsupported" and get_availability_zone_of_subnet(
-                kwargs["SubnetId"]
+                subnet_id
             ) not in get_supported_az_for_one_instance_type(kwargs["InstanceType"]):
                 # If an availability zone without desired instance type is selected, error code is "Unsupported"
                 # Therefore, we need to write our own code to tell the specific problem
-                current_az = get_availability_zone_of_subnet(kwargs["SubnetId"])
+                current_az = get_availability_zone_of_subnet(subnet_id)
                 qualified_az = get_supported_az_for_one_instance_type(kwargs["InstanceType"])
                 pcluster_config.error(
                     "Your requested instance type ({0}) is not supported in the Availability Zone ({1}) of "
                     "your requested subnet ({2}). Please retry your request by choosing a subnet in "
-                    "{3}. ".format(kwargs["InstanceType"], current_az, kwargs["SubnetId"], qualified_az)
+                    "{3}. ".format(kwargs["InstanceType"], current_az, subnet_id, qualified_az)
                 )
             else:
                 pcluster_config.error(
-                    "Unable to validate configuration parameters. "
-                    "Please double check your cluster configuration.\n{0}".format(message)
+                    "Unable to validate configuration parameters for instance type '{0}'. "
+                    "Please double check your cluster configuration.\n{1}".format(kwargs["InstanceType"], message)
                 )
 
     def _get_latest_alinux_ami_id(self):
@@ -117,6 +129,42 @@ class ClusterModel(ABC):
             raise
 
         return alinux_ami_id
+
+    def public_ips_in_compute_subnet(self, pcluster_config, network_interfaces_count):
+        """Tell if public IPs will be used in compute subnet."""
+        vpc_section = pcluster_config.get_section("vpc")
+        master_subnet_id = vpc_section.get_param_value("master_subnet_id")
+        compute_subnet_id = vpc_section.get_param_value("compute_subnet_id")
+        use_public_ips = vpc_section.get_param_value("use_public_ips") and (
+            # For single NIC instances we check only if subnet is the same of master node
+            (not compute_subnet_id or compute_subnet_id == master_subnet_id)
+            # For multiple NICs instances we check also if subnet is different
+            # to warn users about the current lack of support for public IPs
+            or (network_interfaces_count > 1)
+        )
+
+        return use_public_ips
+
+    def build_launch_network_interfaces(
+        self, network_interfaces_count, use_efa, security_group_ids, subnet, use_public_ips
+    ):
+        """Build the needed NetworkInterfaces to launch an instance."""
+        network_interfaces = []
+        for device_index in range(network_interfaces_count):
+            network_interfaces.append(
+                {
+                    "DeviceIndex": device_index,
+                    "NetworkCardIndex": device_index,
+                    "InterfaceType": "efa" if use_efa else "interface",
+                    "Groups": security_group_ids,
+                    "SubnetId": subnet,
+                }
+            )
+
+        # If instance types has multiple Network Interfaces we also check for
+        if network_interfaces_count > 1 and use_public_ips:
+            network_interfaces[0]["AssociatePublicIpAddress"] = True
+        return network_interfaces
 
 
 def infer_cluster_model(config_parser=None, cluster_label=None, cfn_stack=None):

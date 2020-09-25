@@ -116,7 +116,17 @@ Parameters:
       trigger cfn-hup with metadata changes.
   UpdateWaiterFunctionArn:
     Type: String
+  MasterSubnetId:
+    Type: String
+  MasterNetworkInterfacesCount:
+    Type: Number
+  MasterSecurityGroups:
+    Type: List<AWS::EC2::SecurityGroup::Id>
 Conditions:
+  EnableEFA: !Not
+    - !Equals
+      - !Ref 'EFA'
+      - NONE
   DisableMasterHyperthreading: !Not
     - !Or
       - !Equals
@@ -224,6 +234,22 @@ Conditions:
   HasMasterPublicIp: !Equals
     - !Ref 'UseMasterPublicIp'
     - 'true'
+  UseNIC1: !Not
+    - !Equals
+      - !Ref 'MasterNetworkInterfacesCount'
+      - '1'
+  UseNIC2: !And
+    - !Not
+      - !Equals
+        - !Ref 'MasterNetworkInterfacesCount'
+        - '2'
+    - !Condition 'UseNIC1'
+  UseNIC3: !And
+    - !Not
+      - !Equals
+        - !Ref 'MasterNetworkInterfacesCount'
+        - '3'
+    - !Condition 'UseNIC2'
 Resources:
   MasterServer:
     Type: AWS::EC2::Instance
@@ -341,6 +367,36 @@ Resources:
         NetworkInterfaces:
           - NetworkInterfaceId: !Ref 'MasterENI'
             DeviceIndex: 0
+          - !If
+            - UseNIC1
+            - DeviceIndex: 1
+              NetworkCardIndex: 1
+              InterfaceType: !Ref 'AWS::NoValue'
+              Groups: !Ref 'MasterSecurityGroups'
+              SubnetId: !Ref 'MasterSubnetId'
+            - !Ref 'AWS::NoValue'
+          - !If
+            - UseNIC2
+            - DeviceIndex: 2
+              NetworkCardIndex: 1
+              InterfaceType: !If
+                - EnableEFA
+                - efa
+                - !Ref 'AWS::NoValue'
+              Groups: !Ref 'MasterSecurityGroups'
+              SubnetId: !Ref 'MasterSubnetId'
+            - !Ref 'AWS::NoValue'
+          - !If
+            - UseNIC3
+            - DeviceIndex: 3
+              NetworkCardIndex: 3
+              InterfaceType: !If
+                - EnableEFA
+                - efa
+                - !Ref 'AWS::NoValue'
+              Groups: !Ref 'MasterSecurityGroups'
+              SubnetId: !Ref 'MasterSubnetId'
+            - !Ref 'AWS::NoValue'
         ImageId: !Ref 'ImageId'
         EbsOptimized: !If
           - IsMasterInstanceEbsOpt

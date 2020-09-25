@@ -80,6 +80,11 @@ class HitConverter:
                     "compute" == sit_cluster_section.get_param("enable_efa").value,
                 )
                 self._copy_param_value(
+                    sit_cluster_section.get_param("enable_efa_gdr"),
+                    queue_section.get_param("enable_efa_gdr"),
+                    "compute" == sit_cluster_section.get_param("enable_efa_gdr").value,
+                )
+                self._copy_param_value(
                     sit_cluster_section.get_param("placement_group"), queue_section.get_param("placement_group")
                 )
 
@@ -120,9 +125,11 @@ class HitConverter:
                     sit_initial_size_param, compute_resource_section.get_param(compute_resource_size_param_key)
                 )
 
-                # Copy all cluster params except enable_efa (already set at queue level)
+                # Copy all cluster params except enable_efa and enable_efa_gdr (already set at queue level)
                 hit_cluster_param_keys = [
-                    param_key for param_key in hit_cluster_section.params.keys() if param_key not in ["enable_efa"]
+                    param_key
+                    for param_key in hit_cluster_section.params.keys()
+                    if param_key not in ["enable_efa", "enable_efa_gdr"]
                 ]
                 for param_key in sit_cluster_section.params.keys():
                     if param_key in hit_cluster_param_keys:

@@ -29,6 +29,7 @@ from pcluster.config.cfn_param_types import (
     IntCfnParam,
     MaintainInitialSizeCfnParam,
     MasterAvailabilityZoneCfnParam,
+    NetworkInterfacesCountCfnParam,
     QueueSizeCfnParam,
     SettingsCfnParam,
     SharedDirCfnParam,
@@ -74,6 +75,7 @@ from pcluster.config.validators import (
     ec2_subnet_id_validator,
     ec2_volume_validator,
     ec2_vpc_id_validator,
+    efa_gdr_validator,
     efa_validator,
     efs_id_validator,
     efs_validator,
@@ -659,7 +661,21 @@ COMPUTE_RESOURCE = {
             "visibility": Visibility.PRIVATE,
             "default": 0
         }),
+        ("network_interfaces", {
+            "type": IntJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": 0
+        }),
         ("enable_efa", {
+            "type": BooleanJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": False
+        }),
+        ("enable_efa_gdr", {
             "type": BooleanJsonParam,
             # This param is managed automatically
             "update_policy": UpdatePolicy.IGNORED,
@@ -697,6 +713,10 @@ QUEUE = {
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
         ("enable_efa", {
+            "type": BooleanJsonParam,
+            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+        }),
+        ("enable_efa_gdr", {
             "type": BooleanJsonParam,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
         }),
@@ -811,6 +831,12 @@ CLUSTER_COMMON_PARAMS = [
         "allowed_values": ["compute"],
         "cfn_param_mapping": "EFA",
         "validators": [efa_validator],
+        "update_policy": UpdatePolicy.UNSUPPORTED
+    }),
+    ("enable_efa_gdr", {
+        "allowed_values": ["compute"],
+        "cfn_param_mapping": "EFAGDR",
+        "validators": [efa_gdr_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("ephemeral_dir", {
@@ -961,6 +987,14 @@ CLUSTER_COMMON_PARAMS = [
         # TODO add regex
         "validators": [url_validator],
         "update_policy": UpdatePolicy.IGNORED
+    }),
+    ("network_interfaces_count", {
+        "type": NetworkInterfacesCountCfnParam,
+        "default": ["1", "1"],
+        "cfn_param_mapping": "NetworkInterfacesCount",
+        # This param is managed automatically
+        "update_policy": UpdatePolicy.IGNORED,
+        "visibility": Visibility.PRIVATE,
     }),
 ]
 

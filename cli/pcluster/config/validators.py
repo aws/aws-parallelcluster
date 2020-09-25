@@ -449,6 +449,17 @@ def efa_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+def efa_gdr_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_section = pcluster_config.get_section("cluster")
+    if param_value and cluster_section.get_param_value("enable_efa") is None:
+        errors.append("The parameter '{0}' can be used only in combination with 'enable_efa'".format(param_key))
+
+    return errors, warnings
+
+
 def _validate_efa_sg(pcluster_config, errors):
     vpc_security_group_id = pcluster_config.get_section("vpc").get_param_value("vpc_security_group_id")
     if vpc_security_group_id:
@@ -1175,6 +1186,7 @@ def queue_validator(section_key, section_label, pcluster_config):
     queue_section = pcluster_config.get_section(section_key, section_label)
     compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
 
+    # Check for replicated parameters in cluster and queue sections
     def check_queue_xor_cluster(param_key):
         """Check that the param is not used in both queue and cluster section."""
         # FIXME: Improve the design of the validation mechanism to allow validators to be linked to a specific
@@ -1191,9 +1203,18 @@ def queue_validator(section_key, section_label, pcluster_config):
                 errors.append("Parameter '{0}' can be used only in 'cluster' or in 'queue' section".format(param_key))
 
     check_queue_xor_cluster("enable_efa")
+    check_queue_xor_cluster("enable_efa_gdr")
     check_queue_xor_cluster("disable_hyperthreading")
 
-    enable_efa = queue_section.get_param_value("enable_efa")
+    # Check for unsupported features in compute resources
+    def check_unsupported_feature(compute_resource, feature_name, param_key):
+        """Check if a feature enabled in the parent queue section is supported on a given child compute resource."""
+        feature_enabled = queue_section.get_param_value(param_key)
+        if feature_enabled and not compute_resource.get_param_value(param_key):
+            warnings.append(
+                "{0} was enabled on queue '{1}', but instance type '{2}' defined in compute resource settings {3} "
+                "does not support {0}.".format(feature_name, queue_section.label, instance_type, compute_resource_label)
+            )
 
     instance_types = []
     for compute_resource_label in compute_resource_labels:
@@ -1210,11 +1231,13 @@ def queue_validator(section_key, section_label, pcluster_config):
             else:
                 instance_types.append(instance_type)
 
-            if enable_efa and not compute_resource.get_param_value("enable_efa"):
-                warnings.append(
-                    "EFA was enabled on queue '{0}', but instance type '{1}' defined in compute resource settings {2} "
-                    "does not support EFA.".format(queue_section.label, instance_type, compute_resource_label)
-                )
+            check_unsupported_feature(compute_resource, "EFA", "enable_efa")
+            check_unsupported_feature(compute_resource, "EFA GDR", "enable_efa_gdr")
+
+    # Check that efa_gdr is used with enable_efa
+    if queue_section.get_param_value("enable_efa_gdr") and not queue_section.get_param_value("enable_efa"):
+        errors.append("The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'")
+
     return errors, warnings
 
 

@@ -1068,7 +1068,7 @@ def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
     """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
     if default_threads_per_core is None:
         default_threads_per_core = get_default_threads_per_core(instance_type)
-    return all(
+    res = all(
         [
             # If default threads per core is 1, HT doesn't need to be disabled
             default_threads_per_core > 1,
@@ -1078,6 +1078,7 @@ def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
             ),
         ]
     )
+    return res
 
 
 def is_hit_enabled_scheduler(scheduler):
@@ -1165,3 +1166,34 @@ def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
                 ebs_snapshot_id, e.response.get("Error").get("Message")
             )
         )
+
+
+def get_instance_network_interfaces(instance_type, instance_info=None):
+    """Return the number of network interfaces to configure for the instance type."""
+    if not instance_info:
+        instance_info = get_instance_type(instance_type)
+
+    # Until maximumNetworkCards is not available, 1 is a safe value for all instance types
+    needed_interfaces = int(instance_info.get("NetworkInfo").get("MaximumNetworkCards", 1))
+
+    # FIXME: temporary patch for P4d instances - remove after new API is GA
+    if instance_type == "p4d.24xlarge" and needed_interfaces == 1:
+        needed_interfaces = 4
+
+    return needed_interfaces
+
+
+def get_instance_gpus(instance_type, instance_info=None):
+    """Return the number of GPUs provided by the instance type."""
+    if not instance_info:
+        instance_info = get_instance_type(instance_type)
+
+    gpu_info = instance_info.get("GpuInfo", None)
+
+    # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
+    gpus = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")]) if gpu_info else 0
+    # FIXME: temporary patch for P4d instances - remove after new API is GA
+    if instance_type == "p4d.24xlarge" and gpus == 0:
+        gpus = 8
+
+    return gpus

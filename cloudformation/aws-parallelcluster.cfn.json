@@ -338,6 +338,11 @@
       "Type": "String",
       "Default": "NONE"
     },
+    "EFAGDR": {
+      "Description": "Enable EFA GPUDirect Support on the compute nodes, enable_efa_gdr = compute",
+      "Type": "String",
+      "Default": "NONE"
+    },
     "DCVOptions": {
       "Description": "Comma separated list of NICE DCV related options, 3 parameters in total, [enabled,port,access_from]",
       "Type": "String",
@@ -355,6 +360,11 @@
       "Description": "Comma separated list of CloudWatch logging, 2 parameters in total, [enabled, retention_days]",
       "Type": "String",
       "Default": "true,14"
+    },
+    "NetworkInterfacesCount": {
+      "Description": "Comma separated string of [master network interfaces], [compute network interfaces].",
+      "Type": "CommaDelimitedList",
+      "Default": "1,1"
     }
   },
   "Conditions": {
@@ -2633,8 +2643,51 @@
           "MasterInstanceType": {
             "Ref": "MasterInstanceType"
           },
+          "MasterSecurityGroups": {
+            "Fn::Join": [
+              ",",
+              [
+                {
+                  "Fn::If": [
+                    "CreateSecurityGroups",
+                    {
+                      "Ref": "MasterSecurityGroup"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "AddAdditionalSG",
+                    {
+                      "Ref": "AdditionalSG"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                },
+                {
+                  "Fn::If": [
+                    "UseExistingSecurityGroup",
+                    {
+                      "Ref": "VPCSecurityGroupId"
+                    },
+                    {
+                      "Ref": "AWS::NoValue"
+                    }
+                  ]
+                }
+              ]
+            ]
+          },
           "ComputeInstanceType": {
             "Ref": "ComputeInstanceType"
+          },
+          "MasterSubnetId": {
+            "Ref": "MasterSubnetId"
           },
           "MasterCoreCount": {
             "Fn::Join": [
@@ -3052,6 +3105,14 @@
               },
               "NONE"
             ]
+          },
+          "MasterNetworkInterfacesCount": {
+            "Fn::Select": [
+              "0",
+              {
+                "Ref": "NetworkInterfacesCount"
+              }
+            ]
           }
         },
         "TemplateURL": {
@@ -3263,6 +3324,9 @@
           "EFA": {
             "Ref": "EFA"
           },
+          "EFAGDR": {
+            "Ref": "EFAGDR"
+          },
           "BaseOS": {
             "Ref": "BaseOS"
           },
@@ -3465,6 +3529,14 @@
             "Fn::GetAtt": [
               "MasterServerSubstack",
               "Outputs.MasterPrivateIP"
+            ]
+          },
+          "ComputeNetworkInterfacesCount": {
+            "Fn::Select": [
+              "1",
+              {
+                "Ref": "NetworkInterfacesCount"
+              }
             ]
           }
         },

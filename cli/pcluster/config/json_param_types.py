@@ -266,6 +266,13 @@ class QueueJsonSection(JsonSection):
             # None value at cluster level is converted to False at queue level
             self.get_param("enable_efa").value = cluster_enable_efa == "compute"
 
+        if self.get_param_value("enable_efa_gdr") is None:
+            cluster_enable_efa_gdr = self.pcluster_config.get_section("cluster").get_param_value("enable_efa_gdr")
+
+            # enable_efa_gdr is of string type in cluster section and of bool type in queue section.
+            # None value at cluster level is converted to False at queue level
+            self.get_param("enable_efa_gdr").value = cluster_enable_efa_gdr == "compute"
+
         compute_resource_labels = self.get_param("compute_resource_settings").referred_section_labels
         if compute_resource_labels:
             for compute_resource_label in compute_resource_labels:
@@ -295,18 +302,22 @@ class QueueJsonSection(JsonSection):
             compute_resource_section.get_param("vcpus").value = vcpus
 
             # Set gpus according to instance features
-            gpu_info = instance_type.get("GpuInfo", None)
-            if gpu_info:
-                # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
-                compute_resource_section.get_param("gpus").value = sum(
-                    [gpus.get("Count") for gpus in gpu_info.get("Gpus")]
-                )
+            gpus = utils.get_instance_gpus(instance_type_param.value, instance_type)
+            compute_resource_section.get_param("gpus").value = gpus
 
             # Set enable_efa according to queues' enable_efa and instance features
+            # Instance type must support EFA
             enable_efa = self.get_param_value("enable_efa")
             compute_resource_section.get_param("enable_efa").value = enable_efa and instance_type.get(
                 "NetworkInfo"
             ).get("EfaSupported")
+
+            # Set enable_efa_gdr according to queues' enable_efa_gdr and instance features
+            # Instance type must support EFA and have GPUs
+            enable_efa_gdr = self.get_param_value("enable_efa_gdr")
+            compute_resource_section.get_param("enable_efa_gdr").value = (
+                enable_efa_gdr and instance_type.get("NetworkInfo").get("EfaSupported") and (gpus > 0)
+            )
 
             # Set disable_hyperthreading according to queues' disable_hyperthreading and instance features
             compute_resource_section.get_param("disable_hyperthreading").value = (
@@ -327,6 +338,11 @@ class QueueJsonSection(JsonSection):
             initial_count_param = compute_resource_section.get_param("initial_count")
             if initial_count_param.value is None:
                 initial_count_param.value = compute_resource_section.get_param_value("min_count")
+
+            # Set number of network interfaces
+            compute_resource_section.get_param("network_interfaces").value = utils.get_instance_network_interfaces(
+                instance_type_param.value, instance_type
+            )
 
 
 # ---------------------- Common functions ---------------------- #

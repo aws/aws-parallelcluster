@@ -93,6 +93,9 @@ Conditions:
     - !Equals
       - !Ref 'RootRole'
       - NONE
+  UseAssociatePublicIpAddress: !Equals
+    - !Ref 'AssociatePublicIpAddress'
+    - true
 Resources:
 {%- for queue, queue_config in queues.items() %}
   {%- for compute_resource in queue_config.compute_resource_settings.values() %}
@@ -110,11 +113,20 @@ Resources:
       LaunchTemplateData:
         InstanceType: {{ instance_type }}
         NetworkInterfaces:
-          - DeviceIndex: 0
-            InterfaceType: {{ 'efa' if compute_resource.enable_efa else "!Ref 'AWS::NoValue'" }}
+          {%- for device_index in range(compute_resource.network_interfaces) %}
+          - DeviceIndex: {{device_index}}
+            {%- if device_index == 0 %}
+            AssociatePublicIpAddress: !If
+              - UseAssociatePublicIpAddress
+              - true
+              - {% if compute_resource.network_interfaces == 1 %}false{% else %}!Ref 'AWS::NoValue'{% endif %}
+            {%- else %}
+            NetworkCardIndex: {{device_index}}
+            {%- endif %}
+            InterfaceType: {% if compute_resource.enable_efa %}efa{% else %}!Ref 'AWS::NoValue'{% endif %}
             Groups: !Ref 'ComputeSecurityGroups'
-            AssociatePublicIpAddress: !Ref 'AssociatePublicIpAddress'
             SubnetId: !Ref 'ComputeSubnetId'
+          {%- endfor %}
         Placement:
           GroupName: {% if queue_config.placement_group == "DYNAMIC" %}!Ref 'PlacementGroup{{ queue | sha1 | truncate(16, True, "") | capitalize }}'{% elif queue_config.placement_group %}{{ queue_config.placement_group }}{% else %}!Ref 'AWS::NoValue'{% endif %}
         KeyName: !Ref 'KeyName'
@@ -313,7 +325,8 @@ Resources:
                         "cfn_cluster_user": "${OSUser}",
                         "enable_intel_hpc_platform": "${IntelHPCPlatform}",
                         "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
-                        "scheduler_queue_name": "{{ queue }}"
+                        "scheduler_queue_name": "{{ queue }}",
+                        "enable_efa_gdr": "{{ 'compute' if compute_resource.enable_efa_gdr else 'NONE' }}"
                       },
                       "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
                     }

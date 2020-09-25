@@ -166,9 +166,11 @@ def boto3_stubber_path():
         ),
     ],
 )
-def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
+def test_hit_converter(mocker, boto3_stubber, src_config_dict, dst_config_dict):
     scheduler = src_config_dict["cluster default"]["scheduler"]
     instance_type = src_config_dict["cluster default"]["compute_instance_type"]
+
+    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
 
     if is_hit_enabled_scheduler(scheduler):
         mocked_requests = [
