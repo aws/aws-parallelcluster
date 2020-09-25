@@ -575,13 +575,14 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
     ],
 )
 def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback, expected_response, expected_instances):
+    instance_state_list = ["pending", "running", "stopping", "stopped"]
     mocked_requests = [
         MockedBoto3Request(
             method="describe_instances",
             expected_params={
                 "Filters": [
                     {"Name": "tag:Application", "Values": ["test-cluster"]},
-                    {"Name": "instance-state-name", "Values": ["running"]},
+                    {"Name": "instance-state-name", "Values": instance_state_list},
                     {"Name": "tag:aws-parallelcluster-node-type", "Values": [str(node_type)]},
                 ]
             },
@@ -595,7 +596,7 @@ def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback,
                 expected_params={
                     "Filters": [
                         {"Name": "tag:Application", "Values": ["test-cluster"]},
-                        {"Name": "instance-state-name", "Values": ["running"]},
+                        {"Name": "instance-state-name", "Values": instance_state_list},
                         {"Name": "tag:Name", "Values": [str(node_type)]},
                     ]
                 },
