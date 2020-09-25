@@ -75,6 +75,14 @@ class HITClusterModel(ClusterModel):
         try:
             latest_alinux_ami_id = self._get_latest_alinux_ami_id()
 
+            master_network_interfaces = self.build_launch_network_interfaces(
+                network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
+                use_efa=False,  # EFA is not supported on master node
+                security_group_ids=security_groups_ids,
+                subnet=master_subnet,
+                use_public_ips=vpc_section.get_param_value("use_public_ips"),
+            )
+
             # Test Master Instance Configuration
             self._ec2_run_instance(
                 pcluster_config,
@@ -82,9 +90,8 @@ class HITClusterModel(ClusterModel):
                 MinCount=1,
                 MaxCount=1,
                 ImageId=latest_alinux_ami_id,
-                SubnetId=master_subnet,
-                SecurityGroupIds=security_groups_ids,
                 CpuOptions=master_cpu_options,
+                NetworkInterfaces=master_network_interfaces,
                 DryRun=True,
             )
 
@@ -96,12 +103,7 @@ class HITClusterModel(ClusterModel):
                     else {}
                 )
 
-                compute_resource_settings = queue_section.get_param_value("compute_resource_settings")
-
-                # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
-                compute_resource_section = pcluster_config.get_section(
-                    "compute_resource", compute_resource_settings.split(",")[0]
-                )
+                compute_resource_section = self.select_dryrun_compute_resource(queue_section, pcluster_config)
 
                 disable_hyperthreading = compute_resource_section.get_param_value(
                     "disable_hyperthreading"
@@ -119,6 +121,23 @@ class HITClusterModel(ClusterModel):
         except ClientError:
             pcluster_config.error("Unable to validate configuration parameters.")
 
+    def select_dryrun_compute_resource(self, queue_section, pcluster_config):
+        """
+        Select the "best" compute resource to run dryrun tests against.
+
+        Resources with multiple NICs are preferred among others.
+        """
+        # Temporarily limiting dryrun tests to 1 per queue to save boto3 calls.
+        compute_resource_labels = queue_section.get_param("compute_resource_settings").referred_section_labels
+        dryrun_section = pcluster_config.get_section("compute_resource", compute_resource_labels[0])
+        for section_label in compute_resource_labels:
+            compute_resource_section = pcluster_config.get_section("compute_resource", section_label)
+            if compute_resource_section.get_param_value("network_interfaces") > 1:
+                dryrun_section = compute_resource_section
+                break
+
+        return dryrun_section
+
     def __test_compute_resource(
         self,
         pcluster_config,
@@ -132,6 +151,16 @@ class HITClusterModel(ClusterModel):
         """Test Compute Resource Instance Configuration."""
         vcpus = compute_resource_section.get_param_value("vcpus")
         compute_cpu_options = {"CoreCount": vcpus, "ThreadsPerCore": 1} if disable_hyperthreading else {}
+        network_interfaces_count = compute_resource_section.get_param_value("network_interfaces")
+        use_public_ips = self.public_ips_in_compute_subnet(pcluster_config, network_interfaces_count)
+
+        network_interfaces = self.build_launch_network_interfaces(
+            network_interfaces_count,
+            compute_resource_section.get_param_value("enable_efa"),
+            security_groups_ids,
+            subnet,
+            use_public_ips,
+        )
 
         self._ec2_run_instance(
             pcluster_config,
@@ -139,9 +168,8 @@ class HITClusterModel(ClusterModel):
             MinCount=1,
             MaxCount=1,
             ImageId=ami_id,
-            SubnetId=subnet,
-            SecurityGroupIds=security_groups_ids,
             CpuOptions=compute_cpu_options,
             Placement=placement_group,
+            NetworkInterfaces=network_interfaces,
             DryRun=True,
         )

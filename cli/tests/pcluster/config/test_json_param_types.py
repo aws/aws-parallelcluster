@@ -31,7 +31,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
             {
                 "InstanceType": "c4.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
-                "NetworkInfo": {"EfaSupported": False},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
@@ -44,7 +44,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "InstanceType": "g4dn.metal",
                 "VCpuInfo": {"DefaultVCpus": 96},
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
-                "NetworkInfo": {"EfaSupported": True},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
@@ -56,7 +56,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
             {
                 "InstanceType": "i3en.24xlarge",
                 "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
-                "NetworkInfo": {"EfaSupported": True},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
@@ -68,7 +68,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
             {
                 "InstanceType": "t2.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
-                "NetworkInfo": {"EfaSupported": False},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
@@ -80,8 +80,34 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
             {
                 "InstanceType": "m6g.xlarge",
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
-                "NetworkInfo": {"EfaSupported": False},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
                 "ProcessorInfo": {"SupportedArchitectures": ["arm64"]},
+            }
+        ]
+    },
+    # Disable hyperthreading: not supported
+    # EFA: not supported
+    "t2.micro": {
+        "InstanceTypes": [
+            {
+                "InstanceType": "t2.micro",
+                "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
+                "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+            }
+        ]
+    },
+    # Disable hyperthreading: supported
+    # EFA: supported
+    # GPUs: yes
+    "p4d.24xlarge": {
+        "InstanceTypes": [
+            {
+                "InstanceType": "p4d.24xlarge",
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "GpuInfo": {"Gpus": [{"Name": "A100", "Manufacturer": "NVIDIA", "Count": 8}]},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
+                "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
             }
         ]
     },
@@ -114,7 +140,7 @@ def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_rea
     expected_json_params = _prepare_json_config(queues, test_datadir)
 
     # Mock expected boto3 calls
-    _mock_boto3(boto3_stubber, expected_json_params)
+    _mock_boto3(boto3_stubber, expected_json_params, master_instance_type="c4.xlarge")
 
     # Load config from created config file
     dst_config_file = pcluster_config_reader(dst_config_file, queue_settings=queue_settings)
@@ -146,9 +172,9 @@ def test_config_from_json(mocker, boto3_stubber, test_datadir, pcluster_config_r
     expected_json_params = _prepare_json_config(queues, test_datadir)
 
     # Mock expected boto3 calls
-    _mock_boto3(boto3_stubber, expected_json_params)
+    _mock_boto3(boto3_stubber, expected_json_params, master_instance_type="t2.micro")
 
-    pcluster_config = get_mocked_pcluster_config(mocker)
+    pcluster_config = get_mocked_pcluster_config(mocker, auto_refresh=False)
     cluster_section = CfnSection(CLUSTER_HIT, pcluster_config, section_label="default")
     cluster_section.from_storage(StorageData(cfn_params=[], json_params=expected_json_params))
     pcluster_config.add_section(cluster_section)
@@ -204,19 +230,29 @@ def _prepare_json_config(queues, test_datadir):
     expected_cluster_json_params = expected_json_params.get("cluster")
     queues_dict = expected_cluster_json_params.get("queue_settings")
     expected_cluster_json_params.pop("queue_settings")
-    expected_json_queue_settings = {
-        queue_label: queues_dict[queue_label] for queue_label in queues_dict.keys() if queue_label in queues
-    }
+    expected_json_queue_settings = OrderedDict({queue_label: queues_dict[queue_label] for queue_label in queues})
     expected_cluster_json_params["default_queue"] = queues[0] if queues else None
     if expected_json_queue_settings:
         expected_cluster_json_params["queue_settings"] = expected_json_queue_settings
     return expected_json_params
 
 
-def _mock_boto3(boto3_stubber, expected_json_params):
+def _mock_boto3(boto3_stubber, expected_json_params, master_instance_type=None):
     """Mock the boto3 client based on the expected json configuration."""
     expected_json_queue_settings = expected_json_params["cluster"].get("queue_settings", {})
     mocked_requests = []
+
+    # One describe_instance_type for the Master node
+    if master_instance_type:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response=DESCRIBE_INSTANCE_TYPES_RESPONSES[master_instance_type],
+                expected_params={"InstanceTypes": [master_instance_type]},
+            )
+        )
+
+    # One describe_instance_type per compute resource
     for _, queue in expected_json_queue_settings.items():
         for _, compute_resource in queue.get("compute_resource_settings", {}).items():
             instance_type = compute_resource["instance_type"]

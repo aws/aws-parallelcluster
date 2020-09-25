@@ -118,6 +118,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "s3_read_resource": None,
     "s3_read_write_resource": None,
     "enable_efa": None,
+    "enable_efa_gdr": None,
     "ephemeral_dir": "/scratch",
     "encrypted_ephemeral": False,
     "custom_ami": None,
@@ -142,6 +143,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "dashboard_settings": None,
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
+    "network_interfaces_count": ["1", "1"],
 }
 
 DEFAULT_CLUSTER_HIT_DICT = {
@@ -161,6 +163,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "s3_read_resource": None,
     "s3_read_write_resource": None,
     "enable_efa": None,
+    "enable_efa_gdr": None,
     "ephemeral_dir": "/scratch",
     "encrypted_ephemeral": False,
     "custom_ami": None,
@@ -188,6 +191,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
+    "network_interfaces_count": ["1", "1"],
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -220,8 +224,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 58
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 50
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 60
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 52
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -285,6 +289,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "S3ReadResource": "NONE",
     "S3ReadWriteResource": "NONE",
     "EFA": "NONE",
+    "EFAGDR": "NONE",
     "EphemeralDir": "/scratch",
     "EncryptedEphemeral": "false",
     "CustomAMI": "NONE",
@@ -333,6 +338,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "ClusterConfigMetadata": "{'sections': {}}",
     # architecture
     "Architecture": "x86_64",
+    "NetworkInterfacesCount": "1,1",
 }
 
 
@@ -350,6 +356,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "S3ReadResource": "NONE",
     "S3ReadWriteResource": "NONE",
     "EFA": "NONE",
+    "EFAGDR": "NONE",
     "EphemeralDir": "/scratch",
     "EncryptedEphemeral": "false",
     "CustomAMI": "NONE",
@@ -398,6 +405,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "ClusterConfigMetadata": "{'sections': {}}",
     # architecture
     "Architecture": "x86_64",
+    "NetworkInterfacesCount": "1,1",
 }
 
 

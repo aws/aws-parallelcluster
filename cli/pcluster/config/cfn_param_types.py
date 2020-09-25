@@ -27,6 +27,7 @@ from pcluster.utils import (
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
+    get_instance_network_interfaces,
     get_instance_vcpus,
     get_supported_architectures_for_instance_type,
 )
@@ -1067,6 +1068,25 @@ class EBSSettingsCfnParam(SettingsCfnParam):
         # We always have at least one EBS volume
         # FIXME: remove NumberOfEBSVol Parameter and use EBS section params to manage EBS Volumes in cfn template
         cfn_params["NumberOfEBSVol"] = str(max(number_of_ebs_sections, 1))
+
+
+class NetworkInterfacesCountCfnParam(CommaSeparatedCfnParam):
+    """
+    Class to manage NetworkInterfacesCount Cfn param.
+
+    The internal value is a list of two items, which respectively indicate the number of network interfaces to activate
+    on master and compute nodes.
+    """
+
+    def refresh(self):
+        """Compute the number of network interfaces for master and compute nodes."""
+        cluster_section = self.pcluster_config.get_section("cluster")
+        self.value = [
+            str(get_instance_network_interfaces(cluster_section.get_param_value("master_instance_type"))),
+            str(get_instance_network_interfaces(cluster_section.get_param_value("compute_instance_type")))
+            if self.pcluster_config.cluster_model.name == "SIT"
+            else "1",
+        ]
 
 
 # ---------------------- Sections ---------------------- #

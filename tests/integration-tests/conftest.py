@@ -384,7 +384,10 @@ def add_custom_packages_configs(cluster_config, request, region):
         if request.config.getoption(extra_json_custom_option):
             cluster = extra_json.get("cluster", {})
             if extra_json_custom_option not in cluster:
-                cluster[extra_json_custom_option] = request.config.getoption(extra_json_custom_option)
+                extra_json_custom_option_value = request.config.getoption(extra_json_custom_option)
+                # Escape '%' char to avoid 'Invalid Interpolation Syntax' error
+                extra_json_custom_option_value = extra_json_custom_option_value.replace("%", "%%")
+                cluster[extra_json_custom_option] = extra_json_custom_option_value
                 if extra_json_custom_option == "custom_node_package":
                     # Do not skip install recipes so that custom node package can take effect
                     cluster["skip_install_recipes"] = "no"

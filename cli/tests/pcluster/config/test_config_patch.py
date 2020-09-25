@@ -35,6 +35,7 @@ def _do_mocking_for_tests(mocker):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
+    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
 
 
 def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
