@@ -748,6 +748,8 @@ def test_get_supported_batch_instance_types(
     candidates_are_supported_patch = mocker.patch(
         "pcluster.utils._batch_instance_types_and_families_are_supported", return_value=types_parsed_from_emsg_are_known
     )
+    # this list contains values that are assumed to be supported instance types in all regions
+    assumed_supported = ["optimal"]
     returned_value = utils.get_supported_batch_instance_types()
     # The functions that call the Batch CreateComputeEnvironment API, and those that get all
     # supported instance types and families should always be called.
@@ -767,12 +769,12 @@ def test_get_supported_batch_instance_types(
     else:
         candidates_are_supported_patch.assert_called_with(
             dummy_batch_instance_types + dummy_batch_instance_families,
-            dummy_all_instance_types + dummy_all_instance_families,
+            dummy_all_instance_types + dummy_all_instance_families + assumed_supported,
         )
     # If either of the functions don't succeed, get_supported_instance_types return value should be
     # used as a fallback.
     assert_that(returned_value).is_equal_to(
-        dummy_all_instance_types + dummy_all_instance_families
+        dummy_all_instance_types + dummy_all_instance_families + assumed_supported
         if any([raise_error_api_function, raise_error_parsing_function, not types_parsed_from_emsg_are_known])
         else dummy_batch_instance_types + dummy_batch_instance_families
     )
@@ -913,8 +915,7 @@ def test_get_supported_instance_types(mocker, boto3_stubber, generate_error):
 def test_batch_instance_types_and_families_are_supported(caplog, candidates, knowns):
     """Verify function that describes whether all given instance types/families are supported behaves as expected."""
     caplog.set_level(logging.DEBUG)
-    knowns_plus_optimal = knowns + ["optimal"]  # Acceptable compute_instance_type value for batch
-    unknown_candidates = [candidate for candidate in candidates if candidate not in knowns_plus_optimal]
+    unknown_candidates = [candidate for candidate in candidates if candidate not in knowns]
     expected_return_value = not unknown_candidates
     observed_return_value = utils._batch_instance_types_and_families_are_supported(candidates, knowns)
     assert_that(observed_return_value).is_equal_to(expected_return_value)

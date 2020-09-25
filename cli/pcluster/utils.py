@@ -367,12 +367,7 @@ def _get_instance_families_from_types(instance_types):
 
 def _batch_instance_types_and_families_are_supported(candidate_types_and_families, known_types_and_families):
     """Return a boolean describing whether the instance types and families parsed from Batch API are known."""
-    known_exceptions = ["optimal"]
-    unknowns = [
-        candidate
-        for candidate in candidate_types_and_families
-        if candidate not in known_types_and_families + known_exceptions
-    ]
+    unknowns = [candidate for candidate in candidate_types_and_families if candidate not in known_types_and_families]
     if unknowns:
         LOGGER.debug("Found the following unknown instance types/families: {0}".format(" ".join(unknowns)))
     return not unknowns
@@ -387,7 +382,8 @@ def get_supported_batch_instance_types():
     """
     supported_instance_types = get_supported_instance_types()
     supported_instance_families = _get_instance_families_from_types(supported_instance_types)
-    supported_instance_types_and_families = supported_instance_types + supported_instance_families
+    known_exceptions = ["optimal"]
+    supported_instance_types_and_families = supported_instance_types + supported_instance_families + known_exceptions
     try:
         emsg = _get_cce_emsg_containing_supported_instance_types()
         parsed_instance_types_and_families = _parse_supported_instance_types_and_families_from_cce_emsg(emsg)
