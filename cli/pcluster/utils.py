@@ -752,12 +752,17 @@ def _describe_cluster_instances(stack_name, filter_by_node_type=None, filter_by_
     return instances
 
 
-def _describe_cluster_instances_iterator(stack_name, filter_by_node_type=None, filter_by_name=None):
+def _describe_cluster_instances_iterator(
+    stack_name,
+    filter_by_node_type=None,
+    filter_by_name=None,
+    instance_state=("pending", "running", "stopping", "stopped"),
+):
     try:
         ec2 = boto3.client("ec2")
         filters = [
             {"Name": "tag:Application", "Values": [stack_name]},
-            {"Name": "instance-state-name", "Values": ["running"]},
+            {"Name": "instance-state-name", "Values": list(instance_state)},
         ]
         if filter_by_node_type:
             filters.append({"Name": "tag:aws-parallelcluster-node-type", "Values": [filter_by_node_type]})
