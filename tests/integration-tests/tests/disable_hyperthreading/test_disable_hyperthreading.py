@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+import re
 
 import pytest
 from assertpy import assert_that
@@ -20,10 +21,9 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-# t2's do not support CpuOptions and hence do not support disable_hyperthreading
-@pytest.mark.regions(["eu-north-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.skip_schedulers(["awsbatch"])
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "alinux", "sge")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "centos6", "torque")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
 def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """Test Disable Hyperthreading for SIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -36,10 +36,12 @@ def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_co
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-@pytest.mark.regions(["us-west-1"])
-@pytest.mark.instances(["c5.xlarge"])
-@pytest.mark.oss(["ubuntu1804"])
-@pytest.mark.schedulers(["slurm"])
+# Manually disabled HT
+@pytest.mark.dimensions("us-west-1", "m4.xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("us-west-1", "m4.xlarge", "ubuntu1604", "slurm")
+@pytest.mark.dimensions("us-west-1", "m4.xlarge", "centos7", "slurm")
+# HT disabled via CpuOptions
+@pytest.mark.dimensions("us-west-1", "c5.xlarge", "ubuntu1804", "slurm")
 def test_hit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """Test Disable Hyperthreading for HIT clusters."""
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -85,10 +87,10 @@ def _test_disable_hyperthreading_settings(
         # If partition is supplied, assume this is HIT setting where ht settings are at the queue level
         # In this case, ht is not disabled on master
         assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(2))
-        assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(slots_per_instance))
+        _assert_active_cpus(result.stdout, slots_per_instance)
     else:
         assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(expected_threads_per_core))
-        assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(expected_cpus_per_instance))
+        _assert_active_cpus(result.stdout, expected_cpus_per_instance)
 
     # Test disable hyperthreading on Compute
     logging.info("Test Disable Hyperthreading on Compute")
@@ -103,7 +105,7 @@ def _test_disable_hyperthreading_settings(
     # Check compute has 1 thread per core
     result = remote_command_executor.run_remote_command("cat /shared/lscpu.out")
     assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(expected_threads_per_core))
-    assert_that(result.stdout).matches(r"CPU\(s\):\s+{0}".format(expected_cpus_per_instance))
+    _assert_active_cpus(result.stdout, expected_cpus_per_instance)
 
     # Check scheduler has correct number of cores
     if partition:
@@ -132,3 +134,22 @@ def _test_disable_hyperthreading_settings(
             assert_that(scheduler_commands.compute_nodes_count(filter_by_partition=partition)).is_equal_to(2)
         else:
             assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(2)
+
+
+def _assert_active_cpus(lscpu_output, expected_cpus):
+    # Compute the number of active cpus based on the output of "On-line CPUs list"
+    # Examples:
+    # 1,2,3 => active cpus = 3 (1, 2, 3)
+    # 3-5 => active cpus = 3 (3, 4, 5)
+    # 1, 3-6 => active cpus = 5 (1, 3, 4, 5, 6)
+    online_cpus_list = re.search(r"On-line CPU\(s\) list:\s*(.*)", lscpu_output).group(1)
+    active_cpus = 0
+    for cpus_interval in online_cpus_list.split(","):
+        cpu_interval_tokens = cpus_interval.split("-")
+        if len(cpu_interval_tokens) > 1:
+            num_cpus = abs(int(cpu_interval_tokens[1].strip()) - int(cpu_interval_tokens[0].strip())) + 1
+        else:
+            num_cpus = 1
+        active_cpus += num_cpus
+
+    assert_that(active_cpus).is_equal_to(expected_cpus)
