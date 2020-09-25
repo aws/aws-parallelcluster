@@ -32,8 +32,8 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
 
     # Get base AMI
     # remarkable AMIs are not available for ARM yet
-    ami_type = "remarkable"
-    base_ami = retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="remarkable", architecture=architecture)
+
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
@@ -90,8 +90,7 @@ def test_createami_post_install(
     cluster_config = pcluster_config_reader()
 
     # Get ParallelCluster AMI as base AMI
-    ami_type = "pcluster"
-    base_ami = retrieve_latest_ami(region, os, ami_type=ami_type, architecture=architecture)
+    base_ami = retrieve_latest_ami(region, os, ami_type="pcluster", architecture=architecture)
 
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
@@ -102,17 +101,11 @@ def test_createami_post_install(
     custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
     # Instance type
-    pcluster_version_result = run_command(["pcluster", "version"])
-    instance_args = (
-        [] if version.parse(pcluster_version_result.stdout.strip()) < version.parse("2.4.1") else ["-i", instance]
-    )
+    instance_args = ["-i", instance]
 
     # Post install script
-    post_install_script = (
-        "file://" + str(test_datadir / "post_install_ubuntu.sh")
-        if os == "ubuntu1804" or os == "ubuntu1604"
-        else "file://" + str(test_datadir / "post_install.sh")
-    )
+    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804", "ubuntu1604"] else "post_install.sh"
+    post_install_script = "file://{0}".format(test_datadir / post_install_script_file)
     post_install_args = ["--post-install", post_install_script]
 
     pcluster_createami_result = run_command(
@@ -124,13 +117,7 @@ def test_createami_post_install(
     )
 
     assert_that(
-        any(
-            "downloading https://{0}-aws-parallelcluster.s3".format(region).lower() in s.lower()
-            for s in pcluster_createami_result.stdout.split("\n")
-        )
-    ).is_true()
-    assert_that(
-        any("No post script".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
+        any("No post install script".lower() in s.lower() for s in pcluster_createami_result.stdout.split("\n"))
     ).is_false()
 
     assert_that(pcluster_createami_result.stdout).does_not_contain("No custom AMI created")

@@ -384,7 +384,7 @@ Variables substituted::
     )
     pami.add_argument(
         "--post-install",
-        dest="ami_post_install_script",
+        dest="post_install_script",
         help="Specifies the post install script to use to build the AWS ParallelCluster AMI.",
     )
     pami.add_argument(

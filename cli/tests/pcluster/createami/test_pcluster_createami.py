@@ -124,27 +124,28 @@ def test_validate_createami_args_architecture_compatibility(
 
 
 @pytest.mark.parametrize(
-    "post_install_script_url, tmp_dir",
+    "post_install_script_url, expected_url",
     [
-        ("https://bucket.s3.us-east-1.amazonaws.com/script.sh", "/tmp"),
-        ("https://bucket.s3.us-east-1.amazonaws.com/cookbooks/script.sh", "/tmp"),
-        ("file://script.sh", "/tmp"),
-        # test for error
-        ("script", "/tmp"),
-        # test for script was not specified
-        (None, "/tmp"),
+        ("https://bucket.s3.us-east-1.amazonaws.com/script.sh", True),
+        ("https://bucket.s3.us-east-1.amazonaws.com/cookbooks/script.sh", True),
+        ("file://script.sh", True),
+        # Invalid url
+        ("script", False),
+        # Script not specified
+        (None, False),
     ],
 )
-def test_get_post_install_script_dir(mocker, post_install_script_url, tmp_dir):
+def test_get_post_install_script_dir(mocker, post_install_script_url, expected_url):
     mocker.patch("pcluster.createami.os.mkdir")
     mocker.patch("pcluster.createami.urlretrieve")
     mocker.patch("pcluster.createami.copyfile")
     mocker.patch("pcluster.createami._get_current_timestamp").return_value = "now"
-    if not post_install_script_url or createami._is_valid_post_install_script(post_install_script_url):
-        assert_that(createami._get_post_install_script_dir(post_install_script_url, tmp_dir)).is_equal_to(
-            os.path.join(tmp_dir + "/script", "now-script.sh") if post_install_script_url else None
+
+    if not post_install_script_url or expected_url:
+        assert_that(createami._get_post_install_script_dir(post_install_script_url, "/tmp")).is_equal_to(
+            os.path.join("/tmp/script", "now-script.sh") if post_install_script_url else None
         )
     else:
         with pytest.raises(SystemExit) as sysexit:
-            createami._get_post_install_script_dir(post_install_script_url, tmp_dir)
+            createami._get_post_install_script_dir(post_install_script_url, "/tmp")
         assert_that(sysexit.value.code).is_not_equal_to(0)

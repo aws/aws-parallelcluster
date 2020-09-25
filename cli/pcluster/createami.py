@@ -114,13 +114,7 @@ def _get_cookbook_dir(region, template_url, args, tmpdir):
 
 
 def _is_valid_post_install_script(post_install_script_url):
-    return any(
-        [
-            post_install_script_url.startswith("https://"),
-            post_install_script_url.startswith("s3://"),
-            post_install_script_url.startswith("file://"),
-        ]
-    )
+    return urlparse(post_install_script_url).scheme in ["s3", "https", "file"]
 
 
 def _get_current_timestamp():
@@ -128,31 +122,46 @@ def _get_current_timestamp():
 
 
 def _get_post_install_script_dir(post_install_script_url, tmp_dir):
-    LOGGER.info("Post install script url: %s", post_install_script_url)
     try:
         tmp_post_install_script_folder = os.path.join(tmp_dir, "script")
         os.mkdir(tmp_post_install_script_folder)
-        if post_install_script_url is not None:
+
+        if post_install_script_url:
+            LOGGER.info("Post install script url: %s", post_install_script_url)
             if not _is_valid_post_install_script(post_install_script_url):
-                raise URLError("Invalid URL")
+                raise URLError(
+                    "URL {0} is invalid. URLs starting with https, s3 and file are acceptable.".format(
+                        post_install_script_url
+                    )
+                )
+
             tmp_post_install_script_path = os.path.join(
                 tmp_post_install_script_folder, _get_current_timestamp() + "-" + post_install_script_url.split("/")[-1]
             )
-            if post_install_script_url.startswith("https"):
+
+            if urlparse(post_install_script_url).scheme == "https":
                 urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)
-            elif post_install_script_url.startswith("s3"):
-                s3_client = boto3.client("s3")
+            elif urlparse(post_install_script_url).scheme == "s3":
                 output = urlparse(post_install_script_url)
-                s3_client.download_file(output.netloc, output.path.lstrip("/"), tmp_post_install_script_path)
-            elif post_install_script_url.startswith("file"):
+                boto3.client("s3").download_file(output.netloc, output.path.lstrip("/"), tmp_post_install_script_path)
+            elif urlparse(post_install_script_url).scheme == "file":
                 copyfile(post_install_script_url.replace("file://", ""), tmp_post_install_script_path)
         else:
             tmp_post_install_script_path = None
-        LOGGER.info("Post install script dir: %s", tmp_post_install_script_path)
+
+        LOGGER.info(
+            "Post install script dir %s",
+            tmp_post_install_script_path if tmp_post_install_script_path else "not specified.",
+        )
         return tmp_post_install_script_path
-    except (IOError, URLError, ClientError) as e:
-        LOGGER.error("Unable to download post install script at URL %s", post_install_script_url)
-        LOGGER.critical("Error: %s", str(e))
+    except IOError as err:
+        LOGGER.critical("I/O error: {0}".format(err))
+        sys.exit(1)
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.exit(1)
+    except URLError as e:
+        LOGGER.critical(e.reason)
         sys.exit(1)
 
 
@@ -343,7 +352,7 @@ def create_ami(args):
         tmp_dir = mkdtemp()
         cookbook_dir = _get_cookbook_dir(aws_region, template_url, args, tmp_dir)
 
-        _get_post_install_script_dir(args.ami_post_install_script, tmp_dir)
+        _get_post_install_script_dir(args.post_install_script, tmp_dir)
 
         packer_command = (
             cookbook_dir
