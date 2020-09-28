@@ -485,13 +485,6 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("custom_chef_cookbook", "http://test", "http://test", None),
         ("custom_chef_cookbook", "s3://test/test2", "s3://test/test2", None),
         ("custom_chef_cookbook", "NONE", "NONE", None),
-        # TODO add regex for custom_awsbatch_template_url
-        ("custom_awsbatch_template_url", None, None, None),
-        ("custom_awsbatch_template_url", "", "", None),
-        ("custom_awsbatch_template_url", "fake_value", "fake_value", None),
-        ("custom_awsbatch_template_url", "http://test", "http://test", None),
-        ("custom_awsbatch_template_url", "s3://test/test2", "s3://test/test2", None),
-        ("custom_awsbatch_template_url", "NONE", "NONE", None),
         # Settings
         ("scaling_settings", "test1", None, "Section .* not found in the config file"),
         ("vpc_settings", "test1", None, "Section .* not found in the config file"),
@@ -855,7 +848,6 @@ def test_cluster_section_to_cfn(
                     "ExtraJson": '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
-                    "CustomAWSBatchTemplateURL": "https://test",
                     "Cores": "NONE,NONE,false,false",
                     "IntelHPCPlatform": "true",
                     # template_url = template
@@ -1171,7 +1163,6 @@ def test_cluster_section_to_cfn(
                     "ExtraJson": '{"cfncluster": {"cfn_scheduler_slots": "cores"}}',
                     "AdditionalCfnTemplate": "https://test",
                     "CustomChefCookbook": "https://test",
-                    "CustomAWSBatchTemplateURL": "https://test",
                     "IntelHPCPlatform": "false",
                     # scaling
                     "ScaleDownIdleTime": "15",
