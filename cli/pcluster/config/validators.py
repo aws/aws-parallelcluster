@@ -61,8 +61,8 @@ FSX_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
-    "arm64": ["ubuntu1804", "alinux2"],
+    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
@@ -1020,7 +1020,7 @@ def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    allowed_oses = ["centos7"]
+    allowed_oses = ["centos7", "centos8"]
 
     cluster_section = pcluster_config.get_section("cluster")
     if param_value and cluster_section.get_param_value("base_os") not in allowed_oses:
