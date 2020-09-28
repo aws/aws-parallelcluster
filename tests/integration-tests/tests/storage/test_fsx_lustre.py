@@ -80,6 +80,7 @@ def test_fsx_lustre(
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
+    _test_auto_import(remote_command_executor, mount_dir, bucket_name, region, fsx_fs_id)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
@@ -233,6 +234,21 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
     )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
+
+
+def _test_auto_import(remote_command_executor, mount_dir, bucket_name, region, fsx_fs_id):
+    # TO-DO: Add testing for AutoImportPolicy NONE and NEW_CHANGED
+    s3 = boto3.client("s3", region_name=region)
+    s3.put_object(Bucket=bucket_name, Key="fileToAutoImport", Body="AutoImported by FSx Lustre")
+    # AutoImport has a P99.9 of 1 min for new/changed files to be imported onto the filesystem
+    remote_command_executor.run_remote_command("sleep 1m")
+    temp = remote_command_executor.run_remote_command("ls {mount_dir}".format(mount_dir=mount_dir))
+    logging.info("Files in the import path " + temp.stdout)
+    fsx = boto3.client("fsx", region_name=region)
+
+    filesystem = fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("LustreConfiguration")
+    result = remote_command_executor.run_remote_command("cat {mount_dir}/fileToAutoImport".format(mount_dir=mount_dir))
+    assert_that(result.stdout).is_equal_to("AutoImported by FSx Lustre")
 
 
 @retry(

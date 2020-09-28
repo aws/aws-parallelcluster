@@ -403,6 +403,50 @@ def test_url_validator(mocker, boto3_stubber, capsys):
         }
         utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
 
+@pytest.mark.parametrize(
+    "config, num_calls, bucket, expected_message",
+    [
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW"
+                },
+            },
+            2,
+            {"Bucket": "test"},
+            "AutoImport is not supported for cross-region buckets.",
+        ),
+    ],
+)
+def test_auto_import_policy_validator(mocker, boto3_stubber, config, num_calls, bucket, expected_message):
+    head_bucket_response = {
+        "ResponseMetadata": {
+            "AcceptRanges": "bytes",
+            "ContentType": "text/html",
+            "LastModified": "Thu, 16 Apr 2015 18:19:14 GMT",
+            "ContentLength": 77,
+            "VersionId": "null",
+            "ETag": '"30a6ec7e1a9ad79c203d05a589c8b400"',
+            "Metadata": {},
+        }
+    }
+    get_bucket_location_response = {
+        "ResponseMetadata": {
+            "LocationConstraint": 'af-south1',
+        }
+    }
+    mocked_requests = []
+    for _ in range(num_calls):
+        mocked_requests.append(MockedBoto3Request(method="head_bucket", response=head_bucket_response, expected_params=bucket))
+    mocked_requests.append(MockedBoto3Request(method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket))
+
+    boto3_stubber("s3", mocked_requests)
+
+    utils.assert_param_validator(mocker, config, expected_message)
 
 @pytest.mark.parametrize(
     "config, num_calls, bucket, expected_message",
@@ -861,6 +905,18 @@ def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
     ] * num_calls
     boto3_stubber("s3", mocked_requests)
     mocker.patch("pcluster.config.validators.urllib.request.urlopen")
+
+# def _get_bucket_location_stubber(mocker, boto3_stubber, bucket, num_calls):
+#     get_bucket_location_response = {
+#         "ResponseMetadata": {
+#             "LocationConstraint": 'af-south1',
+#         }
+#     }
+#     mocked_requests = [
+#         MockedBoto3Request(method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket)
+#     ] * num_calls
+#     boto3_stubber("s3", mocked_requests)
+#     mocker.patch("pcluster.config.validators.urllib.request.urlopen")
 
 
 @pytest.mark.parametrize(
