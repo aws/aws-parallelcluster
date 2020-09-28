@@ -505,13 +505,13 @@ def get_supported_os_for_scheduler(scheduler):
     """
     oses = ["alinux", "alinux2"]
     if scheduler != "awsbatch":
-        oses.extend(["centos6", "centos7", "ubuntu1604", "ubuntu1804"])
+        oses.extend(["centos6", "centos7", "centos8", "ubuntu1604", "ubuntu1804"])
     return list(oses)
 
 
 def get_supported_os_for_architecture(architecture):
     """Return list of supported OSes for the specified architecture."""
-    oses = ["alinux2", "ubuntu1804"]
+    oses = ["alinux2", "ubuntu1804", "centos8"]
     if architecture == "x86_64":
         oses.extend(["centos6", "centos7", "alinux", "ubuntu1604"])
     return oses

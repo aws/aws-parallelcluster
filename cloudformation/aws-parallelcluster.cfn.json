@@ -200,6 +200,7 @@
       "AllowedValues": [
         "centos6",
         "centos7",
+        "centos8",
         "alinux",
         "alinux2",
         "ubuntu1604",
@@ -1155,6 +1156,10 @@
         "RootDevice": "/dev/sda1"
       },
       "centos7": {
+        "User": "centos",
+        "RootDevice": "/dev/sda1"
+      },
+      "centos8": {
         "User": "centos",
         "RootDevice": "/dev/sda1"
       },

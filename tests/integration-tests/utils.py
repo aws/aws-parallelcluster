@@ -315,6 +315,7 @@ def get_username_for_os(os):
         "alinux2": "ec2-user",
         "centos6": "centos",
         "centos7": "centos",
+        "centos8": "centos",
         "ubuntu1604": "ubuntu",
         "ubuntu1804": "ubuntu",
     }
