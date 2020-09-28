@@ -22,7 +22,7 @@ from tests.common.utils import fetch_instance_slots
 
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5n.18xlarge"])
-@pytest.mark.oss(["centos7"])
+@pytest.mark.oss(["centos7", "centos8"])
 @pytest.mark.schedulers(["slurm"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Intel Cluster Checker"""
