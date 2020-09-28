@@ -303,11 +303,6 @@
       "Type": "String",
       "Default": "NONE"
     },
-    "CustomAWSBatchTemplateURL": {
-      "Description": "URL of custom batch template that will override the default one.",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "ResourcesS3Bucket": {
       "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
       "Type": "String",
@@ -746,18 +741,6 @@
           "Ref": "Scheduler"
         },
         "awsbatch"
-      ]
-    },
-    "UseCustomAWSBatchTemplateURL": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "CustomAWSBatchTemplateURL"
-            },
-            "NONE"
-          ]
-        }
       ]
     },
     "HasResourcesS3Bucket": {
@@ -2355,33 +2338,25 @@
           }
         },
         "TemplateURL": {
-          "Fn::If": [
-            "UseCustomAWSBatchTemplateURL",
+          "Fn::Sub": [
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
             {
-              "Ref": "CustomAWSBatchTemplateURL"
-            },
-            {
-              "Fn::Sub": [
-                "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
-                {
-                  "s3_url": {
-                    "Fn::FindInMap": [
-                      "Partition2Url",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      "url"
-                    ]
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
                   },
-                  "version": {
-                    "Fn::FindInMap": [
-                      "PackagesVersions",
-                      "default",
-                      "parallelcluster"
-                    ]
-                  }
-                }
-              ]
+                  "url"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "parallelcluster"
+                ]
+              }
             }
           ]
         }
