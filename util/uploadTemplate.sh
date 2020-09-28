@@ -116,7 +116,6 @@ main() {
     echo "Done. Add the following variables to the pcluster config file, under the [cluster ...] section"
     echo "template_url = https://${_s3_folder_url}/aws-parallelcluster.cfn.json"
     echo "hit_template_url = s3://${_bucket}/${_templates_folder}/compute-fleet-hit-substack.cfn.yaml"
-    echo "custom_awsbatch_template_url = https://${_s3_folder_url}/batch-substack.cfn.json"
 }
 
 main "$@"

@@ -337,7 +337,6 @@ def add_custom_packages_configs(cluster_config, request, region):
     for custom_option in [
         "template_url",
         "hit_template_url",
-        "custom_awsbatch_template_url",
         "custom_chef_cookbook",
         "custom_ami",
         "pre_install",

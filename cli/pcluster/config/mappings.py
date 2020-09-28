@@ -1000,12 +1000,6 @@ CLUSTER_SIT = {
                 "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
-            ("custom_awsbatch_template_url", {
-                "cfn_param_mapping": "CustomAWSBatchTemplateURL",
-                # TODO add regex
-                "validators": [url_validator],
-                "update_policy": UpdatePolicy.UNSUPPORTED,
-            }),
         ]
     )
 }
