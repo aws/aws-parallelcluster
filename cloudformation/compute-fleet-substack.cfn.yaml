@@ -458,8 +458,8 @@ Resources:
               export berkshelf_version=${BerkshelfVersion}
               if [ -f /opt/parallelcluster/.bootstrapped ]; then
                 installed_version=$(cat /opt/parallelcluster/.bootstrapped)
-                if [ "${!parallelcluster_version}" != "${!installed_version}" ]; then
-                  error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!parallelcluster_version}. Please either use an AMI created with ${!parallelcluster_version} or change your ParallelCluster to ${!installed_version}"
+                if [ "${!cookbook_version}" != "${!installed_version}" ]; then
+                  error_exit "This AMI was created with ${!installed_version}, but is trying to be used with ${!cookbook_version}. Please either use an AMI created with ${!cookbook_version} or change your ParallelCluster to ${!installed_version}"
                 fi
               else
                 bootstrap_instance
@@ -484,7 +484,7 @@ Resources:
               } || error_exit 'Failed to run bootstrap recipes. If --norollback was specified, check /var/log/cfn-init.log and /var/log/cloud-init-output.log.'
 
               if [ ! -f /opt/parallelcluster/.bootstrapped ]; then
-                echo ${!parallelcluster_version} | tee /opt/parallelcluster/.bootstrapped
+                echo ${!cookbook_version} | tee /opt/parallelcluster/.bootstrapped
               fi
 
               cfn-signal --exit-code=0 --reason="ComputeServer setup complete" --stack=${AWS::StackName} --role=${IamRoleName} --resource=ComputeFleet --region=${AWS::Region}
