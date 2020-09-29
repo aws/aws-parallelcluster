@@ -21,7 +21,7 @@ from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.regions(["us-east-1"])
-@pytest.mark.instances(["c5.xlarge", "c5n.18xlarge", "m6g.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
 def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory, architecture):
     scaledown_idletime = 3
