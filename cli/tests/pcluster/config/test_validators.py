@@ -1518,6 +1518,14 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
                 " 'default' as a queue section name."
             ),
         ),
+        (
+            {"scheduler": "slurm", "queue_settings": "aQUEUEa"},
+            (
+                "Invalid queue name 'aQUEUEa'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
         ({"scheduler": "slurm", "queue_settings": "my-default-queue"}, None),
     ],
 )
