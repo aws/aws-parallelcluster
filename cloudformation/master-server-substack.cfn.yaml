@@ -399,16 +399,20 @@ Resources:
               }
               function bootstrap_instance
               {
+                which dnf 2>/dev/null; dnf=$?
                 which yum 2>/dev/null; yum=$?
                 which apt-get 2>/dev/null; apt=$?
-                if [ "${!yum}" == "0" ]; then
-                  yum -y groupinstall development && yum -y install curl wget jq awscli
+                if [ "${!dnf}" == "0" ]; then
+                  dnf -y groupinstall development && dnf -y install curl wget jq python3-pip
+                  pip3 install awscli --upgrade --user
+                elif [ "${!yum}" == "0" ]; then
+                  yum -y groupinstall development && yum -y install curl wget jq awscli python3-pip
                 fi
                 if [ "${!apt}" == "0" ]; then
-                  apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli
+                  apt-cache search build-essential; apt-get clean; apt-get update; apt-get -y install build-essential curl wget jq python-setuptools awscli python3-pip
                 fi
                 [[ ${!_region} =~ ^cn- ]] && s3_url="cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-                which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz; easy_install -U /tmp/aws-cfn-bootstrap-latest.tar.gz)
+                which cfn-init 2>/dev/null || ( curl -s -L -o /tmp/aws-cfn-bootstrap-py3-latest.tar.gz https://s3.${!s3_url}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz; pip3 install -U /tmp/aws-cfn-bootstrap-py3-latest.tar.gz)
                 mkdir -p /etc/chef && chown -R root:root /etc/chef
                 curl --retry 3 -L https://${!_region}-aws-parallelcluster.s3.${!_region}.amazonaws.com$([ "${!_region}" != "${!_region#cn-*}" ] && echo ".cn" || exit 0)/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
                 /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
@@ -457,7 +461,7 @@ Resources:
             - YumProxy: !If
                 - UseProxy
                 - !Ref 'ProxyServer'
-                - _none_
+                - ''
               AptProxy: !If
                 - UseProxy
                 - !Ref 'ProxyServer'
