@@ -1138,6 +1138,8 @@ def queue_validator(section_key, section_label, pcluster_config):
     check_queue_xor_cluster("enable_efa")
     check_queue_xor_cluster("disable_hyperthreading")
 
+    enable_efa = queue_section.get_param_value("enable_efa")
+
     instance_types = []
     for compute_resource_label in compute_resource_labels:
         compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
@@ -1153,11 +1155,10 @@ def queue_validator(section_key, section_label, pcluster_config):
             else:
                 instance_types.append(instance_type)
 
-            enable_efa = compute_resource.get_param_value("enable_efa")
-            if enable_efa and not compute_resource.get_param("enable_efa").value:
+            if enable_efa and not compute_resource.get_param_value("enable_efa"):
                 warnings.append(
-                    "EFA was enabled on queue '{0}', but instance type '{1}' "
-                    "does not support EFA.".format(queue_section.label, instance_type)
+                    "EFA was enabled on queue '{0}', but instance type '{1}' defined in compute resource settings {2} "
+                    "does not support EFA.".format(queue_section.label, instance_type, compute_resource_label)
                 )
     return errors, warnings
 
