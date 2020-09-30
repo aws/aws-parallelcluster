@@ -12,6 +12,7 @@
 
 import logging
 
+import boto3
 import pexpect
 import pytest
 from assertpy import assert_that
@@ -29,10 +30,10 @@ from pcluster.config.pcluster_config import PclusterConfig
 def test_pcluster_configure(
     request, vpc_stack, key_name, region, os, instance, scheduler, clusters_factory, test_datadir
 ):
-    """Verify that the configuration file produced by `pcluster configure` can be used to create a cluster."""
+    """Verify that the config file produced by `pcluster configure` can be used to create a cluster."""
     skip_if_unsupported_test_options_were_used(request)
     config_path = test_datadir / "config.ini"
-    orchestrate_pcluster_configure(
+    stages = orchestrate_pcluster_configure_stages(
         region,
         key_name,
         scheduler,
@@ -41,8 +42,9 @@ def test_pcluster_configure(
         vpc_stack.cfn_outputs["VpcId"],
         vpc_stack.cfn_outputs["PublicSubnetId"],
         vpc_stack.cfn_outputs["PrivateSubnetId"],
-        config_path,
+        vpc_stack,
     )
+    assert_configure_workflow(stages, config_path)
     assert_config_contains_expected_values(
         region,
         key_name,
@@ -59,6 +61,55 @@ def test_pcluster_configure(
     clusters_factory(config_path)
 
 
+@pytest.mark.dimensions("us-east-1", "c5.xlarge", "alinux2", "slurm")
+def test_pcluster_configure_avoid_bad_subnets(
+    vpc_stack,
+    subnet_in_use1_az3,
+    pcluster_config_reader,
+    key_name,
+    region,
+    os,
+    instance,
+    scheduler,
+    clusters_factory,
+    test_datadir,
+):
+    """
+    When config file contains a subnet that does not have the desired instance type, verify that `pcluster configure`
+    can correct the headnode/compute_subnet_id fields using qualified subnets and show a message for the omitted subnets
+    """
+    config_path = pcluster_config_reader(wrong_subnet_id=subnet_in_use1_az3)
+    stages = orchestrate_pcluster_configure_stages(
+        region,
+        key_name,
+        scheduler,
+        os,
+        instance,
+        vpc_stack.cfn_outputs["VpcId"],
+        # This test does not provide headnode/compute_subnet_ids input.
+        # Therefore, pcluster configure should use the subnet specified in the config file by default.
+        # However, in this test, the availability zone of the subnet in the config file does not contain c5.xlarge.
+        # Eventually, pcluster configure should omit the subnet in the config file
+        # and use the first subnet in the remaining list of subnets
+        "",
+        "",
+        vpc_stack,
+        omitted_subnets_num=1,
+    )
+    assert_configure_workflow(stages, config_path)
+    assert_config_contains_expected_values(
+        region,
+        key_name,
+        scheduler,
+        os,
+        instance,
+        vpc_stack.cfn_outputs["VpcId"],
+        vpc_stack.cfn_outputs["PublicSubnetId"],
+        None,
+        config_path,
+    )
+
+
 def skip_if_unsupported_test_options_were_used(request):
     unsupported_options = get_unsupported_test_runner_options(request)
     if unsupported_options:
@@ -73,32 +124,10 @@ def get_unsupported_test_runner_options(request):
     return [option for option in unsupported_options if request.config.getoption(option) is not None]
 
 
-def orchestrate_pcluster_configure(
-    region, key_name, scheduler, os, instance, vpc_id, public_subnet_id, private_subnet_id, config_path
-):
-    compute_units = "vcpus" if scheduler == "awsbatch" else "instances"
-    stages = [
-        {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
-        {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
-        {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
-        {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
-        {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
-        {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
-        {"prompt": r"Master instance type \[t2\.micro\]: ", "response": instance},
-        {"prompt": r"Compute instance type \[t2\.micro\]: ", "response": instance, "skip_for_batch": True},
-        {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
-        {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
-        {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
-        {"prompt": r"Master Subnet ID \[subnet-.+\]: ", "response": public_subnet_id},
-        {"prompt": fr"Compute Subnet ID \[{public_subnet_id}\]: ", "response": private_subnet_id},
-    ]
+def assert_configure_workflow(stages, config_path):
     logging.info(f"Using `pcluster configure` to write a configuration to {config_path}")
     configure_process = pexpect.spawn(f"pcluster configure -c {config_path}")
     for stage in stages:
-        if scheduler == "awsbatch" and stage.get("skip_for_batch"):
-            # When a user selects Batch as the scheduler, pcluster configure does not prompt
-            # for OS or compute instance type.
-            continue
         configure_prompt_status = configure_process.expect(stage.get("prompt"))
         assert_that(configure_prompt_status).is_equal_to(0)
         configure_process.sendline(stage.get("response"))
@@ -161,3 +190,78 @@ def assert_config_contains_expected_values(
             validator.get("parameter_name")
         )
         assert_that(observed_value).is_equal_to(validator.get("expected_value"))
+
+
+def orchestrate_pcluster_configure_stages(
+    region,
+    key_name,
+    scheduler,
+    os,
+    instance,
+    vpc_id,
+    headnode_subnet_id,
+    compute_subnet_id,
+    vpc_stack,
+    omitted_subnets_num=0,
+):
+    compute_units = "vcpus" if scheduler == "awsbatch" else "instances"
+    # Due to the order of creation,PublicSubnet is the first in the list of subnets. Therefore it is the default value.
+    vpc_stack_public_subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
+    # When there are omitted subnets, a note should be printed
+    omitted_note = "Note:  {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
+    stage_list = [
+        {"prompt": r"AWS Region ID \[.*\]: ", "response": region},
+        {"prompt": r"EC2 Key Pair Name \[.*\]: ", "response": key_name},
+        {"prompt": r"Scheduler \[slurm\]: ", "response": scheduler},
+        {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
+        {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
+        {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
+        {"prompt": r"Master instance type \[t2\.micro\]: ", "response": instance},
+        {"prompt": r"Compute instance type \[t2\.micro\]: ", "response": instance, "skip_for_batch": True},
+        {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
+        {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
+        {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
+        {
+            "prompt": fr"{omitted_note}Master Subnet ID \[{vpc_stack_public_subnet_id}\]: ",
+            "response": headnode_subnet_id,
+        },
+        {
+            "prompt": fr"{omitted_note}Compute Subnet ID \[{vpc_stack_public_subnet_id}\]: ",
+            "response": compute_subnet_id,
+        },
+    ]
+    # When a user selects Batch as the scheduler, pcluster configure does not prompt for OS or compute instance type.
+    return [stage for stage in stage_list if scheduler != "awsbatch" or not stage.get("skip_for_batch")]
+
+
+@pytest.fixture()
+def subnet_in_use1_az3(vpc_stack):
+    # Subnet used to test the functionality of avoiding subnet in AZs that do not have user specified instance types
+    # Hard coding implementation to run on us-east-1 and create subnet in use1_az3 without c5.xlarge
+    # Use use1_az3 as AZ, which does not have c5.xlarge
+    # To-do: extend code to support arbitrary region and arbitrary instance types
+
+    # Verify that use1_az3 does not have c5.xlarge.
+    ec2_client = boto3.client("ec2", region_name="us-east-1")
+    paginator = ec2_client.get_paginator("describe_instance_type_offerings")
+    page_iterator = paginator.paginate(
+        LocationType="availability-zone-id",
+        Filters=[
+            {"Name": "instance-type", "Values": ["c5.xlarge"]},
+            {"Name": "location", "Values": ["use1-az3"]},
+        ],
+    )
+    offerings = []
+    for page in page_iterator:
+        offerings.extend(page["InstanceTypeOfferings"])
+    logging.info(
+        "Asserting that c5.xlarge is not in use1-az3. If assertion fails, "
+        "c5.xlarge has been added to use1-az3, change the test code so that we are testing the case where"
+        " a specific instance type is not available in a chosen subnet"
+    )
+    assert_that(offerings).is_empty()
+    subnet_id = ec2_client.create_subnet(
+        AvailabilityZoneId="use1-az3", CidrBlock="192.168.16.0/20", VpcId=vpc_stack.cfn_outputs["VpcId"]
+    )["Subnet"]["SubnetId"]
+    yield subnet_id
+    ec2_client.delete_subnet(SubnetId=subnet_id)
