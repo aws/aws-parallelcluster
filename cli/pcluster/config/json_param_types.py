@@ -328,12 +328,6 @@ class QueueJsonSection(JsonSection):
             if initial_count_param.value is None:
                 initial_count_param.value = compute_resource_section.get_param_value("min_count")
 
-            if enable_efa and not compute_resource_section.get_param_value("enable_efa"):
-                self.pcluster_config.warn(
-                    "EFA was enabled on queue '{0}', but instance type '{1}' "
-                    "does not support EFA.".format(self.label, instance_type_param.value)
-                )
-
 
 # ---------------------- Common functions ---------------------- #
 def _get_storage_subdict(param, json_storage_params):

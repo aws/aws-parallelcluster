@@ -94,26 +94,16 @@ def boto3_stubber_path():
 
 
 @pytest.mark.parametrize(
-    "queues, expected_warnings",
+    "queues",
     [
-        (
-            ["queue1"],
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 'c4.xlarge' does not support EFA.\n"
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 't2.xlarge' does not support EFA.\n"
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 'm6g.xlarge' does not support EFA.\n",
-        ),
-        (["queue2"], ""),
-        (
-            ["queue1", "queue2"],
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 'c4.xlarge' does not support EFA.\n"
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 't2.xlarge' does not support EFA.\n"
-            "WARNING: EFA was enabled on queue 'queue1', but instance type 'm6g.xlarge' does not support EFA.\n",
-        ),
-        ([], ""),
-        (["queue3"], ""),
+        (["queue1"]),
+        (["queue2"]),
+        (["queue1", "queue2"]),
+        ([]),
+        (["queue3"]),
     ],
 )
-def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_reader, queues, expected_warnings):
+def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_reader, queues):
     queue_settings = ",".join(queues)
 
     # Create a new configuration file from the initial one
@@ -139,7 +129,6 @@ def test_config_to_json(capsys, boto3_stubber, test_datadir, pcluster_config_rea
     )
 
     readouterr = capsys.readouterr()
-    assert_that(readouterr.out).is_equal_to(expected_warnings)
     assert_that(readouterr.err).is_equal_to("")
 
     pass
