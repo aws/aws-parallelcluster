@@ -177,42 +177,29 @@ def fsx_validator(section_key, section_label, pcluster_config):
 
     fsx_section = pcluster_config.get_section(section_key, section_label)
     fsx_import_path = fsx_section.get_param_value("import_path")
-
     fsx_imported_file_chunk_size = fsx_section.get_param_value("imported_file_chunk_size")
-    if fsx_imported_file_chunk_size and not fsx_import_path:
-        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
-
     fsx_export_path = fsx_section.get_param_value("export_path")
-    if fsx_export_path and not fsx_import_path:
-        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
-
-    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1":
-        if fsx_section.get_param_value("fsx_kms_key_id"):
-            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
-        if fsx_section.get_param_value("per_unit_storage_throughput"):
-            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
-
+    fsx_auto_import_policy = fsx_section.get_param_value("auto_import_policy")
+    fsx_deployment_type = fsx_section.get_param_value("deployment_type")
+    fsx_kms_key_id = fsx_section.get_param_value("fsx_kms_key_id")
+    fsx_per_unit_storage_throughput = fsx_section.get_param_value("per_unit_storage_throughput")
     fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
     fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
     fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
 
-    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
-        errors.append(
-            "When specifying 'daily_automatic_backup_start_time', "
-            "the 'automatic_backup_retention_days' option must be specified"
-        )
-
-    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
-        errors.append(
-            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
-        )
-
-    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
-        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
-
-    if (fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path) and fsx_automatic_backup_retention_days:
-        errors.append("Backups cannot be created on S3-linked file systems")
-
+    validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy)
+    validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput)
+    validate_backup_options(
+        errors,
+        fsx_automatic_backup_retention_days,
+        fsx_daily_automatic_backup_start_time,
+        fsx_copy_tags_to_backups,
+        fsx_deployment_type,
+        fsx_imported_file_chunk_size,
+        fsx_import_path,
+        fsx_export_path,
+        fsx_auto_import_policy,
+    )
     return errors, warnings
 
 
@@ -768,18 +755,70 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
 
     if urlparse(param_value).scheme == "s3":
         try:
-            bucket = param_value.split("/")[2]
+            bucket = get_bucket_name_from_s3_url(param_value)
             boto3.client("s3").head_bucket(Bucket=bucket)
-        except ClientError:
-            warnings.append(
-                "The S3 bucket '{0}' does not exist or you do not have access to it. "
-                "Please be sure the cluster nodes have access to it.".format(param_value)
-            )
+        except ClientError as client_error:
+            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+                errors.append(
+                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
+            elif client_error.response.get("Error").get("Code") == "AccessDenied":
+                errors.append(
+                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
+            else:
+                errors.append(
+                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
     else:
         errors.append(
             "The value '{0}' used for the parameter '{1}' is not a valid S3 URI.".format(param_value, param_key)
         )
 
+    return errors, warnings
+
+
+def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section("fsx")
+    fsx_import_path = fsx_section.get_param_value("import_path")
+    bucket = get_bucket_name_from_s3_url(fsx_import_path)
+
+    if param_value is not None and param_value != "NONE":
+        try:
+            s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
+            # Buckets in Region us-east-1 have a LocationConstraint of null
+            if s3_bucket_region is None:
+                s3_bucket_region = "us-east-1"
+            if s3_bucket_region != pcluster_config.region:
+                errors.append("AutoImport is not supported for cross-region buckets.")
+        except ClientError as client_error:
+            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+                errors.append(
+                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
+            elif client_error.response.get("Error").get("Code") == "AccessDenied":
+                errors.append(
+                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
+            else:
+                errors.append(
+                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
     return errors, warnings
 
 
@@ -1333,3 +1372,54 @@ def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
             )
 
     return errors, warnings
+
+
+def get_bucket_name_from_s3_url(import_path):
+    return import_path.split("/")[2]
+
+
+def validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy):
+    if fsx_imported_file_chunk_size and not fsx_import_path:
+        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
+
+    if fsx_export_path and not fsx_import_path:
+        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
+
+    if fsx_auto_import_policy and not fsx_import_path:
+        errors.append("When specifying 'auto_import_policy', the 'import_path' option msut be specified")
+
+
+def validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput):
+    if fsx_deployment_type != "PERSISTENT_1":
+        if fsx_kms_key_id:
+            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
+        if fsx_per_unit_storage_throughput:
+            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
+
+
+def validate_backup_options(
+    errors,
+    fsx_automatic_backup_retention_days,
+    fsx_daily_automatic_backup_start_time,
+    fsx_copy_tags_to_backups,
+    fsx_deployment_type,
+    fsx_imported_file_chunk_size,
+    fsx_import_path,
+    fsx_export_path,
+    fsx_auto_import_policy,
+):
+    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
+        errors.append(
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified"
+        )
+    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
+        errors.append(
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
+        )
+    if fsx_deployment_type != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
+        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
+    if (
+        fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path or fsx_auto_import_policy
+    ) and fsx_automatic_backup_retention_days:
+        errors.append("Backups cannot be created on S3-linked file systems")

@@ -405,6 +405,100 @@ def test_url_validator(mocker, boto3_stubber, capsys):
 
 
 @pytest.mark.parametrize(
+    "config, num_calls, error_code, bucket, expected_message",
+    [
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            None,
+            {"Bucket": "test"},
+            "AutoImport is not supported for cross-region buckets.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "NoSuchBucket",
+            {"Bucket": "test"},
+            "The S3 bucket 'test' does not appear to exist.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "AccessDenied",
+            {"Bucket": "test"},
+            "You do not have access to the S3 bucket",
+        ),
+    ],
+)
+def test_auto_import_policy_validator(mocker, boto3_stubber, config, num_calls, error_code, bucket, expected_message):
+    head_bucket_response = {
+        "ResponseMetadata": {
+            "AcceptRanges": "bytes",
+            "ContentType": "text/html",
+            "LastModified": "Thu, 16 Apr 2015 18:19:14 GMT",
+            "ContentLength": 77,
+            "VersionId": "null",
+            "ETag": '"30a6ec7e1a9ad79c203d05a589c8b400"',
+            "Metadata": {},
+        }
+    }
+    get_bucket_location_response = {
+        "ResponseMetadata": {
+            "LocationConstraint": "af-south1",
+        }
+    }
+    mocked_requests = []
+    for _ in range(num_calls):
+        mocked_requests.append(
+            MockedBoto3Request(method="head_bucket", response=head_bucket_response, expected_params=bucket)
+        )
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params=bucket,
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+
+    utils.assert_param_validator(mocker, config, expected_message)
+
+
+@pytest.mark.parametrize(
     "config, num_calls, bucket, expected_message",
     [
         (
