@@ -927,7 +927,7 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     if param_value == "awsbatch":
-        if pcluster_config.region in ["ap-northeast-3", "us-gov-east-1", "us-gov-west-1"]:
+        if pcluster_config.region in ["ap-northeast-3"]:
             errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
 
     supported_os = get_supported_os_for_scheduler(param_value)

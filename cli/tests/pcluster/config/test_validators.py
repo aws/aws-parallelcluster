@@ -265,8 +265,8 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     [
         # verify awsbatch supported regions
         ("ap-northeast-3", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-east-1", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-west-1", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
+        ("us-gov-east-1", "alinux", "awsbatch", None),
+        ("us-gov-west-1", "alinux", "awsbatch", None),
         ("eu-west-1", "alinux", "awsbatch", None),
         ("us-east-1", "alinux", "awsbatch", None),
         ("eu-north-1", "alinux", "awsbatch", None),
