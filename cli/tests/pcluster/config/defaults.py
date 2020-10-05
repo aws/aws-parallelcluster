@@ -82,6 +82,7 @@ DEFAULT_FSX_DICT = {
     "automatic_backup_retention_days": None,
     "copy_tags_to_backups": None,
     "fsx_backup_id": None,
+    "auto_import_policy": None,
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
@@ -125,7 +126,6 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "additional_cfn_template": None,
     "tags": {},
     "custom_chef_cookbook": None,
-    "custom_awsbatch_template_url": None,
     "disable_hyperthreading": False,
     "enable_intel_hpc_platform": False,
     "scaling_settings": "default",
@@ -211,8 +211,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 59
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 51
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 58
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 50
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
@@ -247,7 +247,7 @@ DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
@@ -284,7 +284,6 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "ExtraJson": "{}",
     "AdditionalCfnTemplate": "NONE",
     "CustomChefCookbook": "NONE",
-    "CustomAWSBatchTemplateURL": "NONE",
     "NumberOfEBSVol": "1",
     "Cores": "NONE,NONE,NONE,NONE",
     "IntelHPCPlatform": "false",
@@ -315,7 +314,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
@@ -380,7 +379,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings

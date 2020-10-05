@@ -18,7 +18,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from pcluster.constants import CIDR_ALL_IPS
-from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
+from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     ellipsize,
     get_base_additional_iam_policies,
@@ -32,7 +32,9 @@ from pcluster.utils import (
     get_supported_instance_types,
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
+    is_instance_type_format,
     paginate_boto3,
+    validate_pcluster_version_based_on_ami_name,
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
@@ -61,6 +63,15 @@ FSX_MESSAGES = {
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
     "arm64": ["ubuntu1804", "alinux2"],
+}
+
+EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
+    "standard": (1, 1024),
+    "io1": (4, 16 * 1024),
+    "io2": (4, 16 * 1024),
+    "gp2": (1, 16 * 1024),
+    "st1": (500, 16 * 1024),
+    "sc1": (500, 16 * 1024),
 }
 
 # Constants for section labels
@@ -166,42 +177,29 @@ def fsx_validator(section_key, section_label, pcluster_config):
 
     fsx_section = pcluster_config.get_section(section_key, section_label)
     fsx_import_path = fsx_section.get_param_value("import_path")
-
     fsx_imported_file_chunk_size = fsx_section.get_param_value("imported_file_chunk_size")
-    if fsx_imported_file_chunk_size and not fsx_import_path:
-        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
-
     fsx_export_path = fsx_section.get_param_value("export_path")
-    if fsx_export_path and not fsx_import_path:
-        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
-
-    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1":
-        if fsx_section.get_param_value("fsx_kms_key_id"):
-            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
-        if fsx_section.get_param_value("per_unit_storage_throughput"):
-            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
-
+    fsx_auto_import_policy = fsx_section.get_param_value("auto_import_policy")
+    fsx_deployment_type = fsx_section.get_param_value("deployment_type")
+    fsx_kms_key_id = fsx_section.get_param_value("fsx_kms_key_id")
+    fsx_per_unit_storage_throughput = fsx_section.get_param_value("per_unit_storage_throughput")
     fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
     fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
     fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
 
-    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
-        errors.append(
-            "When specifying 'daily_automatic_backup_start_time', "
-            "the 'automatic_backup_retention_days' option must be specified"
-        )
-
-    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
-        errors.append(
-            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
-        )
-
-    if fsx_section.get_param_value("deployment_type") != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
-        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
-
-    if (fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path) and fsx_automatic_backup_retention_days:
-        errors.append("Backups cannot be created on S3-linked file systems")
-
+    validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy)
+    validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput)
+    validate_backup_options(
+        errors,
+        fsx_automatic_backup_retention_days,
+        fsx_daily_automatic_backup_start_time,
+        fsx_copy_tags_to_backups,
+        fsx_deployment_type,
+        fsx_imported_file_chunk_size,
+        fsx_import_path,
+        fsx_export_path,
+        fsx_auto_import_policy,
+    )
     return errors, warnings
 
 
@@ -355,9 +353,6 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
                 "NICE DCV can be used with one of the following operating systems: {0}. "
                 "Please double check the 'base_os' configuration parameter".format(allowed_oses)
             )
-
-        if get_partition() not in get_supported_dcv_partition():
-            errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
         master_instance_type = cluster_section.get_param_value("master_instance_type")
         if re.search(r"(micro)|(nano)", master_instance_type):
@@ -646,6 +641,7 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
     # Make sure AMI exists
     try:
         image_info = boto3.client("ec2").describe_images(ImageIds=[param_value]).get("Images")[0]
+        validate_pcluster_version_based_on_ami_name(image_info.get("Name"))
     except ClientError as e:
         errors.append(
             "Unable to get information for AMI {0}: {1}. Check value of parameter {2}.".format(
@@ -756,18 +752,70 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
 
     if urlparse(param_value).scheme == "s3":
         try:
-            bucket = param_value.split("/")[2]
+            bucket = get_bucket_name_from_s3_url(param_value)
             boto3.client("s3").head_bucket(Bucket=bucket)
-        except ClientError:
-            warnings.append(
-                "The S3 bucket '{0}' does not exist or you do not have access to it. "
-                "Please be sure the cluster nodes have access to it.".format(param_value)
-            )
+        except ClientError as client_error:
+            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+                errors.append(
+                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
+            elif client_error.response.get("Error").get("Code") == "AccessDenied":
+                errors.append(
+                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
+            else:
+                errors.append(
+                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                        param_value, client_error.response.get("Error").get("Message")
+                    )
+                )
     else:
         errors.append(
             "The value '{0}' used for the parameter '{1}' is not a valid S3 URI.".format(param_value, param_key)
         )
 
+    return errors, warnings
+
+
+def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    fsx_section = pcluster_config.get_section("fsx")
+    fsx_import_path = fsx_section.get_param_value("import_path")
+    bucket = get_bucket_name_from_s3_url(fsx_import_path)
+
+    if param_value is not None and param_value != "NONE":
+        try:
+            s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
+            # Buckets in Region us-east-1 have a LocationConstraint of null
+            if s3_bucket_region is None:
+                s3_bucket_region = "us-east-1"
+            if s3_bucket_region != pcluster_config.region:
+                errors.append("AutoImport is not supported for cross-region buckets.")
+        except ClientError as client_error:
+            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+                errors.append(
+                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
+            elif client_error.response.get("Error").get("Code") == "AccessDenied":
+                errors.append(
+                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
+            else:
+                errors.append(
+                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                        bucket, client_error.response.get("Error").get("Message")
+                    )
+                )
     return errors, warnings
 
 
@@ -936,15 +984,27 @@ def instances_architecture_compatibility_validator(param_key, param_value, pclus
     errors = []
     warnings = []
 
-    compute_architectures = get_supported_architectures_for_instance_type(param_value)
     master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if master_architecture not in compute_architectures:
-        errors.append(
-            "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
-            "compatible with the architecture supported by the master_instance_type ({2}).".format(
-                param_value, compute_architectures, master_architecture
+    # When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
+    compute_instance_types = param_value.split(",")
+    for compute_instance_type in compute_instance_types:
+        # When awsbatch is used as the scheduler instance families can be used.
+        # Don't attempt to validate architectures for instance families, as it would require
+        # guessing a valid instance type from within the family.
+        if not is_instance_type_format(compute_instance_type) and compute_instance_type != "optimal":
+            LOGFILE_LOGGER.debug(
+                "Not validating architecture compatibility for compute_instance_type {0} because it does not have the "
+                "expected format".format(compute_instance_type)
             )
-        )
+            continue
+        compute_architectures = get_supported_architectures_for_instance_type(compute_instance_type)
+        if master_architecture not in compute_architectures:
+            errors.append(
+                "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
+                "compatible with the architecture supported by the master_instance_type ({2}).".format(
+                    compute_instance_type, compute_architectures, master_architecture
+                )
+            )
 
     return errors, warnings
 
@@ -1078,7 +1138,7 @@ def queue_settings_validator(param_key, param_value, pcluster_config):
         errors.append("queue_settings is supported only with slurm scheduler")
 
     for label in param_value.split(","):
-        if re.match("[A-Z]", label) or re.match("^default$", label) or "_" in label:
+        if re.search("[A-Z]", label) or re.match("^default$", label) or "_" in label:
             errors.append(
                 (
                     "Invalid queue name '{0}'. Queue section names can be at most 30 chars long, must begin with"
@@ -1114,6 +1174,8 @@ def queue_validator(section_key, section_label, pcluster_config):
     check_queue_xor_cluster("enable_efa")
     check_queue_xor_cluster("disable_hyperthreading")
 
+    enable_efa = queue_section.get_param_value("enable_efa")
+
     instance_types = []
     for compute_resource_label in compute_resource_labels:
         compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
@@ -1129,11 +1191,10 @@ def queue_validator(section_key, section_label, pcluster_config):
             else:
                 instance_types.append(instance_type)
 
-            enable_efa = compute_resource.get_param_value("enable_efa")
-            if enable_efa and not compute_resource.get_param("enable_efa").value:
+            if enable_efa and not compute_resource.get_param_value("enable_efa"):
                 warnings.append(
-                    "EFA was enabled on queue '{0}', but instance type '{1}' "
-                    "does not support EFA.".format(queue_section.label, instance_type)
+                    "EFA was enabled on queue '{0}', but instance type '{1}' defined in compute resource settings {2} "
+                    "does not support EFA.".format(queue_section.label, instance_type, compute_resource_label)
                 )
     return errors, warnings
 
@@ -1253,3 +1314,109 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
 def _describe_ec2_key_pair(key_pair_name):
     """Return information about the provided ec2 key pair."""
     return boto3.client("ec2").describe_key_pairs(KeyNames=[key_pair_name])
+
+
+def ebs_volume_type_size_validator(section_key, section_label, pcluster_config):
+    """
+    Validate that the EBS volume size matches the chosen volume type.
+
+    The default value of volume_size for EBS volumes is 20 GiB.
+    The volume size of standard ranges from 1 GiB - 1 TiB(1024 GiB)
+    The volume size of gp2 ranges from 1 GiB - 16 TiB(16384 GiB)
+    The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
+    The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
+    """
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    volume_size = section.get_param_value("volume_size")
+    volume_type = section.get_param_value("volume_type")
+
+    if volume_type in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
+        min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type)
+        if volume_size > max_size:
+            errors.append("The size of {0} volumes can not exceed {1} GiB".format(volume_type, max_size))
+        elif volume_size < min_size:
+            errors.append("The size of {0} volumes must be at least {1} GiB".format(volume_type, min_size))
+
+    return errors, warnings
+
+
+def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    volume_size = section.get_param_value("volume_size")
+    volume_type = section.get_param_value("volume_type")
+    volume_type_to_iops_ratio = {"io1": 50, "io2": 500}
+    volume_iops = section.get_param_value("volume_iops")
+    min_iops = 100
+    max_iops = 64000
+    if volume_type in volume_type_to_iops_ratio:
+        if volume_iops and (volume_iops < min_iops or volume_iops > max_iops):
+            errors.append(
+                "IOPS rate must be between {min_iops} and {max_iops} when provisioning {volume_type} volumes.".format(
+                    min_iops=min_iops, max_iops=max_iops, volume_type=volume_type
+                )
+            )
+        if volume_iops and volume_iops > volume_size * volume_type_to_iops_ratio[volume_type]:
+            errors.append(
+                "IOPS to volume size ratio of {0} is too high; maximum is {1}.".format(
+                    float(volume_iops) / float(volume_size), volume_type_to_iops_ratio[volume_type]
+                )
+            )
+
+    return errors, warnings
+
+
+def get_bucket_name_from_s3_url(import_path):
+    return import_path.split("/")[2]
+
+
+def validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy):
+    if fsx_imported_file_chunk_size and not fsx_import_path:
+        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
+
+    if fsx_export_path and not fsx_import_path:
+        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
+
+    if fsx_auto_import_policy and not fsx_import_path:
+        errors.append("When specifying 'auto_import_policy', the 'import_path' option msut be specified")
+
+
+def validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput):
+    if fsx_deployment_type != "PERSISTENT_1":
+        if fsx_kms_key_id:
+            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
+        if fsx_per_unit_storage_throughput:
+            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
+
+
+def validate_backup_options(
+    errors,
+    fsx_automatic_backup_retention_days,
+    fsx_daily_automatic_backup_start_time,
+    fsx_copy_tags_to_backups,
+    fsx_deployment_type,
+    fsx_imported_file_chunk_size,
+    fsx_import_path,
+    fsx_export_path,
+    fsx_auto_import_policy,
+):
+    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
+        errors.append(
+            "When specifying 'daily_automatic_backup_start_time', "
+            "the 'automatic_backup_retention_days' option must be specified"
+        )
+    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
+        errors.append(
+            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
+        )
+    if fsx_deployment_type != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
+        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
+    if (
+        fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path or fsx_auto_import_policy
+    ) and fsx_automatic_backup_retention_days:
+        errors.append("Backups cannot be created on S3-linked file systems")

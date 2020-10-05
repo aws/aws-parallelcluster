@@ -18,11 +18,13 @@ from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.cfn_param_types import CfnParam, CfnSection
-from pcluster.config.mappings import FSX
+from pcluster.config.mappings import ALLOWED_VALUES, FSX
 from pcluster.config.validators import (
     DCV_MESSAGES,
+    EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
+    LOGFILE_LOGGER,
     architecture_os_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
@@ -39,10 +41,6 @@ from tests.pcluster.config.defaults import DefaultDict
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
-
-
-def _mock_efa_supported_instances(mocker):
-    mocker.patch("pcluster.config.validators.get_supported_features", return_value={"instances": ["t2.large"]})
 
 
 @pytest.mark.parametrize(
@@ -404,6 +402,100 @@ def test_url_validator(mocker, boto3_stubber, capsys):
             }
         }
         utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
+
+
+@pytest.mark.parametrize(
+    "config, num_calls, error_code, bucket, expected_message",
+    [
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            None,
+            {"Bucket": "test"},
+            "AutoImport is not supported for cross-region buckets.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "NoSuchBucket",
+            {"Bucket": "test"},
+            "The S3 bucket 'test' does not appear to exist.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "AccessDenied",
+            {"Bucket": "test"},
+            "You do not have access to the S3 bucket",
+        ),
+    ],
+)
+def test_auto_import_policy_validator(mocker, boto3_stubber, config, num_calls, error_code, bucket, expected_message):
+    head_bucket_response = {
+        "ResponseMetadata": {
+            "AcceptRanges": "bytes",
+            "ContentType": "text/html",
+            "LastModified": "Thu, 16 Apr 2015 18:19:14 GMT",
+            "ContentLength": 77,
+            "VersionId": "null",
+            "ETag": '"30a6ec7e1a9ad79c203d05a589c8b400"',
+            "Metadata": {},
+        }
+    }
+    get_bucket_location_response = {
+        "ResponseMetadata": {
+            "LocationConstraint": "af-south1",
+        }
+    }
+    mocked_requests = []
+    for _ in range(num_calls):
+        mocked_requests.append(
+            MockedBoto3Request(method="head_bucket", response=head_bucket_response, expected_params=bucket)
+        )
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params=bucket,
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+
+    utils.assert_param_validator(mocker, config, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -1520,6 +1612,14 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
                 " 'default' as a queue section name."
             ),
         ),
+        (
+            {"scheduler": "slurm", "queue_settings": "aQUEUEa"},
+            (
+                "Invalid queue name 'aQUEUEa'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
         ({"scheduler": "slurm", "queue_settings": "my-default-queue"}, None),
     ],
 )
@@ -1538,7 +1638,7 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
 
 
 @pytest.mark.parametrize(
-    "cluster_dict, queue_dict, expected_messages",
+    "cluster_dict, queue_dict, expected_error_messages, expected_warning_messages",
     [
         (
             {"queue_settings": "default"},
@@ -1546,6 +1646,12 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             [
                 "Duplicate instance type 't2.micro' found in queue 'default'. "
                 "Compute resources in the same queue must use different instance types"
+            ],
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA.",
             ],
         ),
         (
@@ -1555,24 +1661,46 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "Duplicate instance type 'c4.xlarge' found in queue 'default'. "
                 "Compute resources in the same queue must use different instance types"
             ],
+            [
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr3 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA.",
+            ],
         ),
         (
             {"queue_settings": "default"},
             {"compute_resource_settings": "cr1,cr3", "enable_efa": True, "disable_hyperthreading": True},
             None,
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr3 does not support EFA.",
+            ],
         ),
         (
             {"queue_settings": "default"},
             {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
             None,
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA.",
+            ],
         ),
-        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None),
+        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None, None),
         (
             {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
             {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
             [
                 "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA."
             ],
         ),
         (
@@ -1582,10 +1710,17 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
             ],
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "efa_instance", "enable_efa": True},
+            None,
+            None,
         ),
     ],
 )
-def test_queue_validator(cluster_dict, queue_dict, expected_messages):
+def test_queue_validator(cluster_dict, queue_dict, expected_error_messages, expected_warning_messages):
     config_parser_dict = {
         "cluster default": cluster_dict,
         "queue default": queue_dict,
@@ -1593,6 +1728,7 @@ def test_queue_validator(cluster_dict, queue_dict, expected_messages):
         "compute_resource cr2": {"instance_type": "t2.micro"},
         "compute_resource cr3": {"instance_type": "c4.xlarge"},
         "compute_resource cr4": {"instance_type": "c4.xlarge"},
+        "compute_resource efa_instance": {"instance_type": "p3dn.24xlarge"},
     }
 
     config_parser = configparser.ConfigParser()
@@ -1600,12 +1736,22 @@ def test_queue_validator(cluster_dict, queue_dict, expected_messages):
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
 
+    efa_instance_compute_resource = pcluster_config.get_section("compute_resource", "efa_instance")
+    if efa_instance_compute_resource:
+        # Override `enable_efa` default value for instance with efa support
+        efa_instance_compute_resource.get_param("enable_efa").value = True
+
     errors, warnings = queue_validator("queue", "default", pcluster_config)
 
-    if expected_messages:
-        assert_that(expected_messages).is_equal_to(errors)
+    if expected_error_messages:
+        assert_that(expected_error_messages).is_equal_to(errors)
     else:
         assert_that(errors).is_empty()
+
+    if expected_warning_messages:
+        assert_that(expected_warning_messages).is_equal_to(warnings)
+    else:
+        assert_that(warnings).is_empty()
 
 
 @pytest.mark.parametrize(
@@ -1764,7 +1910,7 @@ def run_architecture_validator_test(
     param_name,
     param_val,
     validator,
-    expected_message,
+    expected_messages,
 ):
     """Run a test for a validator that's concerned with the architecture param."""
     mocked_pcluster_config = make_pcluster_config_mock(mocker, config)
@@ -1775,18 +1921,18 @@ def run_architecture_validator_test(
         constrained_param_name
     )
     assert_that(len(warnings)).is_equal_to(0)
-    assert_that(len(errors)).is_equal_to(0 if expected_message is None else 1)
-    if expected_message:
-        assert_that(errors[0]).matches(re.escape(expected_message))
+    assert_that(len(errors)).is_equal_to(len(expected_messages))
+    for error, expected_message in zip(errors, expected_messages):
+        assert_that(error).matches(re.escape(expected_message))
 
 
 @pytest.mark.parametrize(
     "enabled, architecture, expected_message",
     [
-        (True, "x86_64", None),
-        (True, "arm64", "instance types and an AMI that support these architectures"),
-        (False, "x86_64", None),
-        (False, "arm64", None),
+        (True, "x86_64", []),
+        (True, "arm64", ["instance types and an AMI that support these architectures"]),
+        (False, "x86_64", []),
+        (False, "arm64", []),
     ],
 )
 def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_message):
@@ -1808,19 +1954,19 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
     "base_os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux", "x86_64", None),
-        ("alinux2", "x86_64", None),
-        ("centos6", "x86_64", None),
-        ("centos7", "x86_64", None),
-        ("ubuntu1604", "x86_64", None),
-        ("ubuntu1804", "x86_64", None),
+        ("alinux", "x86_64", []),
+        ("alinux2", "x86_64", []),
+        ("centos6", "x86_64", []),
+        ("centos7", "x86_64", []),
+        ("ubuntu1604", "x86_64", []),
+        ("ubuntu1804", "x86_64", []),
         # Only a subset of OSes supported for x86_64
-        ("alinux", "arm64", "arm64 is only supported for the following operating systems"),
-        ("alinux2", "arm64", None),
-        ("centos6", "arm64", "arm64 is only supported for the following operating systems"),
-        ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
-        ("ubuntu1604", "arm64", "arm64 is only supported for the following operating systems"),
-        ("ubuntu1804", "arm64", None),
+        ("alinux", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("alinux2", "arm64", []),
+        ("centos6", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("ubuntu1604", "arm64", ["arm64 is only supported for the following operating systems"]),
+        ("ubuntu1804", "arm64", []),
     ],
 )
 def test_architecture_os_validator(mocker, base_os, architecture, expected_message):
@@ -1834,10 +1980,14 @@ def test_architecture_os_validator(mocker, base_os, architecture, expected_messa
 @pytest.mark.parametrize(
     "disable_hyperthreading, architecture, expected_message",
     [
-        (True, "x86_64", None),
-        (False, "x86_64", None),
-        (True, "arm64", "disable_hyperthreading is only supported on instance types that support these architectures"),
-        (False, "arm64", None),
+        (True, "x86_64", []),
+        (False, "x86_64", []),
+        (
+            True,
+            "arm64",
+            ["disable_hyperthreading is only supported on instance types that support these architectures"],
+        ),
+        (False, "arm64", []),
     ],
 )
 def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthreading, architecture, expected_message):
@@ -1855,30 +2005,68 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
 
 
 @pytest.mark.parametrize(
-    "master_architecture, compute_architecture, expected_message",
+    "master_architecture, compute_architecture, compute_instance_type, expected_message",
     [
-        ("x86_64", "x86_64", None),
-        ("x86_64", "arm64", "none of which are compatible with the architecture supported by the master_instance_type"),
-        ("arm64", "x86_64", "none of which are compatible with the architecture supported by the master_instance_type"),
-        ("arm64", "arm64", None),
+        # Single compute_instance_type
+        ("x86_64", "x86_64", "c5.xlarge", []),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"],
+        ),
+        (
+            "arm64",
+            "x86_64",
+            "c5.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"],
+        ),
+        ("arm64", "arm64", "m6g.xlarge", []),
+        ("x86_64", "x86_64", "optimal", []),
+        # Function to get supported architectures shouldn't be called because compute_instance_type arg
+        # are instance families.
+        ("x86_64", None, "m6g", []),
+        ("x86_64", None, "c5", []),
+        # The validator must handle the case where compute_instance_type is a CSV list
+        ("arm64", "arm64", "m6g.xlarge,r6g.xlarge", []),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge,r6g.xlarge",
+            ["none of which are compatible with the architecture supported by the master_instance_type"] * 2,
+        ),
     ],
 )
 def test_instances_architecture_compatibility_validator(
-    mocker, master_architecture, compute_architecture, expected_message
+    mocker, caplog, master_architecture, compute_architecture, compute_instance_type, expected_message
 ):
-    mocker.patch(
+    def internal_is_instance_type(itype):
+        return "." in itype or itype == "optimal"
+
+    supported_architectures_patch = mocker.patch(
         "pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=[compute_architecture]
     )
+    is_instance_type_patch = mocker.patch(
+        "pcluster.config.validators.is_instance_type_format", side_effect=internal_is_instance_type
+    )
+    logger_patch = mocker.patch.object(LOGFILE_LOGGER, "debug")
     run_architecture_validator_test(
         mocker,
         {"cluster": {"architecture": master_architecture}},
         "cluster",
         "architecture",
         "compute_instance_type",
-        "some_instance_type",
+        compute_instance_type,
         instances_architecture_compatibility_validator,
         expected_message,
     )
+    compute_instance_types = compute_instance_type.split(",")
+    non_instance_families = [
+        instance_type for instance_type in compute_instance_types if internal_is_instance_type(instance_type)
+    ]
+    assert_that(supported_architectures_patch.call_count).is_equal_to(len(non_instance_families))
+    assert_that(logger_patch.call_count).is_equal_to(len(compute_instance_types) - len(non_instance_families))
+    assert_that(is_instance_type_patch.call_count).is_equal_to(len(compute_instance_types))
 
 
 @pytest.mark.parametrize(
@@ -2018,3 +2206,72 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         assert_that(errors[0]).matches(expected_error)
     else:
         assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_error",
+    [
+        ({"volume_type": "standard", "volume_size": 15}, None),
+        ({"volume_type": "standard", "volume_size": 0}, "The size of standard volumes must be at least 1 GiB"),
+        ({"volume_type": "standard", "volume_size": 1025}, "The size of standard volumes can not exceed 1024 GiB"),
+        ({"volume_type": "io1", "volume_size": 15}, None),
+        ({"volume_type": "io1", "volume_size": 3}, "The size of io1 volumes must be at least 4 GiB"),
+        ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
+        # TODO Uncomment these lines after adding support for io2 volume types
+        # ({"volume_type": "io2", "volume_size": 15}, None),
+        # ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
+        # ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes must be at most 16384 GiB"),
+        ({"volume_type": "gp2", "volume_size": 15}, None),
+        ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
+        ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "st1", "volume_size": 500}, None),
+        ({"volume_type": "st1", "volume_size": 20}, "The size of st1 volumes must be at least 500 GiB"),
+        ({"volume_type": "st1", "volume_size": 16385}, "The size of st1 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "sc1", "volume_size": 500}, None),
+        ({"volume_type": "sc1", "volume_size": 20}, "The size of sc1 volumes must be at least 500 GiB"),
+        ({"volume_type": "sc1", "volume_size": 16385}, "The size of sc1 volumes can not exceed 16384 GiB"),
+    ],
+)
+def test_ebs_volume_type_size_validator(mocker, section_dict, caplog, expected_error):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error)
+
+
+def test_ebs_allowed_values_all_have_volume_size_bounds():
+    """Ensure that all known EBS volume types are accounted for by the volume size validator."""
+    allowed_values_all_have_volume_size_bounds = set(ALLOWED_VALUES["volume_types"]) <= set(
+        EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
+    )
+    assert_that(allowed_values_all_have_volume_size_bounds).is_true()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
+        # TODO Uncomment these lines after adding support for io2 volume types
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         (
+        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
+        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        #         ),
+        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
+        #         "IOPS to volume size ratio of .* is too hig"),
+    ],
+)
+def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)

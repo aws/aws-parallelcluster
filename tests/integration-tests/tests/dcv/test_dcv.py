@@ -24,14 +24,68 @@ SERVER_URL = "https://localhost"
 DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 
+@pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "slurm")
+@pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "centos7", "slurm")
+@pytest.mark.dimensions("eu-west-1", "g3.8xlarge", "ubuntu1804", "slurm")
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "alinux2", "slurm")
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "centos7", "slurm")
+@pytest.mark.dimensions("eu-west-1", "m6g.xlarge", "ubuntu1804", "slurm")
+def test_dcv_configuration(
+    region,
+    instance,
+    os,
+    scheduler,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+):
+    _test_dcv_configuration(
+        8443,
+        "0.0.0.0/0",
+        "/shared",
+        region,
+        instance,
+        os,
+        scheduler,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+    )
+
+
 @pytest.mark.parametrize(
     "dcv_port, access_from, shared_dir", [(8443, "0.0.0.0/0", "/shared"), (5678, "192.168.1.1/32", "/myshared")]
 )
-@pytest.mark.regions(["eu-west-1", "cn-northwest-1"])  # DCV license bucket not present in us-gov
-@pytest.mark.oss(["centos7", "ubuntu1804", "alinux2"])
-@pytest.mark.instances(["c4.xlarge", "g3.8xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-def test_dcv_configuration(
+@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
+def test_dcv_with_remote_access(
+    dcv_port,
+    access_from,
+    shared_dir,
+    region,
+    instance,
+    os,
+    scheduler,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+):
+    _test_dcv_configuration(
+        dcv_port,
+        access_from,
+        shared_dir,
+        region,
+        instance,
+        os,
+        scheduler,
+        pcluster_config_reader,
+        clusters_factory,
+        test_datadir,
+    )
+
+
+def _test_dcv_configuration(
     dcv_port,
     access_from,
     shared_dir,

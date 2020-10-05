@@ -64,7 +64,6 @@ TEST_DEFAULTS = {
     "custom_cookbook_url": None,
     "createami_custom_cookbook_url": None,
     "custom_template_url": None,
-    "custom_awsbatch_template_url": None,
     "custom_awsbatchcli_url": None,
     "custom_hit_template_url": None,
     "custom_ami": None,
@@ -186,11 +185,6 @@ def _init_argparser():
         "--custom-hit-template-url",
         help="URL to a custom hit cfn template.",
         default=TEST_DEFAULTS.get("custom_hit_template_url"),
-    )
-    parser.add_argument(
-        "--custom-awsbatch-template-url",
-        help="URL to a custom awsbatch cfn template.",
-        default=TEST_DEFAULTS.get("custom_awsbatch_template_url"),
     )
     parser.add_argument(
         "--custom-awsbatchcli-url",
@@ -354,9 +348,6 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 
     if args.custom_hit_template_url:
         pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
-
-    if args.custom_awsbatch_template_url:
-        pytest_args.extend(["--custom-awsbatch-template-url", args.custom_awsbatch_template_url])
 
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])

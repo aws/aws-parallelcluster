@@ -337,7 +337,6 @@ def add_custom_packages_configs(cluster_config, request, region):
     for custom_option in [
         "template_url",
         "hit_template_url",
-        "custom_awsbatch_template_url",
         "custom_chef_cookbook",
         "custom_ami",
         "pre_install",
@@ -424,32 +423,47 @@ def cfn_stacks_factory(request):
         factory.delete_all_stacks()
 
 
-# FIXME: we need to find a better solution to this since AZs are independently mapped to names for each AWS account.
-# https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/using-regions-availability-zones.html
 AVAILABILITY_ZONE_OVERRIDES = {
-    # c5.xlarge is not supported in us-east-1e
-    # FSx Lustre file system creation is currently not supported for us-east-1e
-    # m6g.xlarge is not supported in us-east-1c or us-east-1e
-    "us-east-1": ["us-east-1a", "us-east-1b", "us-east-1d", "us-east-1f"],
-    # m6g.xlarge is not supported in us-east-2a
-    "us-east-2": ["us-east-2b", "us-east-2c"],
-    # c4.xlarge is not supported in us-west-2d
-    "us-west-2": ["us-west-2a", "us-west-2b", "us-west-2c"],
-    # c5.xlarge is not supported in ap-southeast-2a
-    "ap-southeast-2": ["ap-southeast-2b", "ap-southeast-2c"],
-    # m6g.xlarge is not supported in ap-northeast-1d
-    "ap-northeast-1": ["ap-northeast-1a", "ap-northeast-1c"],
-    # c4.xlarge is not supported in ap-northeast-2b
-    "ap-northeast-2": ["ap-northeast-2a", "ap-northeast-2c"],
-    # c5.xlarge is not supported in ap-southeast-1c
-    "ap-southeast-1": ["ap-southeast-1a", "ap-southeast-1b"],
-    # c4.xlarge is not supported in ap-south-1c
-    "ap-south-1": ["ap-south-1a", "ap-south-1b"],
-    # NAT Gateway not available in sa-east-1b
-    "sa-east-1": ["sa-east-1a", "sa-east-1c"],
-    # m6g.xlarge instances not available in eu-west-1c
-    "eu-west-1": ["eu-west-1a", "eu-west-1b"],
+    # c5.xlarge is not supported in use1-az3
+    # FSx Lustre file system creation is currently not supported for use1-az3
+    # m6g.xlarge is not supported in use1-az2 or use1-az3
+    "us-east-1": ["use1-az6", "use1-az1", "use1-az4", "use1-az5"],
+    # m6g.xlarge is not supported in use2-az1
+    "us-east-2": ["use2-az2", "use2-az3"],
+    # c4.xlarge is not supported in usw2-az4
+    "us-west-2": ["usw2-az2", "usw2-az1", "usw2-az3"],
+    # c5.xlarge is not supported in apse2-az3
+    "ap-southeast-2": ["apse2-az1", "apse2-az2"],
+    # m6g.xlarge is not supported in apne1-az2
+    "ap-northeast-1": ["apne1-az4", "apne1-az1"],
+    # c4.xlarge is not supported in apne2-az2
+    "ap-northeast-2": ["apne2-az1", "apne2-az3"],
+    # c5.xlarge is not supported in apse1-az3
+    "ap-southeast-1": ["apse1-az2", "apse1-az1"],
+    # c4.xlarge is not supported in aps1-az2
+    "ap-south-1": ["aps1-az1", "aps1-az3"],
+    # NAT Gateway not available in sae1-az2
+    "sa-east-1": ["sae1-az1", "sae1-az3"],
+    # m6g.xlarge instances not available in euw1-az3
+    "eu-west-1": ["euw1-az1", "euw1-az2"],
 }
+
+
+@pytest.fixture(scope="function")
+def random_az_selector(request):
+    """Select random AZs for a given region."""
+
+    def _get_random_availability_zones(region, num_azs=1, default_value=None):
+        """Return num_azs random AZs (in the form of AZ names, e.g. 'us-east-1a') for the given region."""
+        az_ids = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
+        if az_ids:
+            az_id_to_az_name_map = get_az_id_to_az_name_map(region, request.config.getoption("credential"))
+            sample = random.sample([az_id_to_az_name_map.get(az_id, default_value) for az_id in az_ids], k=num_azs)
+        else:
+            sample = [default_value] * num_azs
+        return sample[0] if num_azs == 1 else sample
+
+    return _get_random_availability_zones
 
 
 @pytest.fixture(scope="class", autouse=True)
@@ -458,6 +472,21 @@ def setup_sts_credentials(region, request):
     set_credentials(region, request.config.getoption("credential"))
     yield
     unset_credentials()
+
+
+def get_az_id_to_az_name_map(region, credential):
+    """Return a dict mapping AZ IDs (e.g, 'use1-az2') to AZ names (e.g., 'us-east-1c')."""
+    # credentials are managed manually rather than via setup_sts_credentials because this function
+    # is called by a session-scoped fixture, which cannot make use of a class-scoped fixture.
+    set_credentials(region, credential)
+    try:
+        ec2_client = boto3.client("ec2", region_name=region)
+        return {
+            entry.get("ZoneId"): entry.get("ZoneName")
+            for entry in ec2_client.describe_availability_zones().get("AvailabilityZones")
+        }
+    finally:
+        unset_credentials()
 
 
 def get_availability_zones(region, credential):
@@ -495,12 +524,19 @@ def vpc_stacks(cfn_stacks_factory, request):
         # Creating private_subnet_different_cidr in a different AZ for test_efs
         # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
 
-        # if region in AVAILABILITY_ZONE_OVERRIDES keys, find the availability_zones
-        if region in AVAILABILITY_ZONE_OVERRIDES:
-            availability_zones = random.sample(AVAILABILITY_ZONE_OVERRIDES.get(region), k=2)
-        # else if region is not in AVAILABILITY_ZONE_OVERRIDES keys, find available zones mapping to the region
+        # if region has a non-empty list in AVAILABILITY_ZONE_OVERRIDES, select a subset of those AZs
+        credential = request.config.getoption("credential")
+        az_ids_for_region = AVAILABILITY_ZONE_OVERRIDES.get(region, [])
+        if az_ids_for_region:
+            az_id_to_az_name = get_az_id_to_az_name_map(region, credential)
+            az_names = [az_id_to_az_name.get(az_id) for az_id in az_ids_for_region]
+            # if only one AZ can be used for the given region, use it multiple times
+            if len(az_names) == 1:
+                az_names *= 2
+            availability_zones = random.sample(az_names, k=2)
+        # otherwise, select a subset of all AZs in the region
         else:
-            az_list = get_availability_zones(region, request.config.getoption("credential"))
+            az_list = get_availability_zones(region, credential)
             # if number of available zones is smaller than 2, available zones should be [None, None]
             if len(az_list) < 2:
                 availability_zones = [None, None]

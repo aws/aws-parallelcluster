@@ -19,7 +19,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.storage.storage_common import verify_directory_correctly_shared
 
 
-@pytest.mark.regions(["ap-south-1", "cn-northwest-1", "us-gov-east-1"])
+@pytest.mark.regions(["ap-south-1", "us-gov-east-1"])
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["sge", "awsbatch"])
 @pytest.mark.usefixtures("region", "os", "instance")
@@ -35,8 +35,8 @@ def test_raid_performance_mode(scheduler, pcluster_config_reader, clusters_facto
     _test_raid_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-@pytest.mark.regions(["us-gov-west-1"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.regions(["us-gov-west-1", "cn-northwest-1"])
+@pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.usefixtures("region", "os", "instance")

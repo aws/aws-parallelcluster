@@ -153,7 +153,6 @@ def create(args):  # noqa: C901 FIXME!!!
             cfn_params["ResourcesS3Bucket"] = bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
-        LOGGER.debug(cfn_params)
 
         # determine the CloudFormation Template URL to use
         template_url = _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
@@ -354,8 +353,7 @@ def _poll_master_server_state(stack_name):
             LOGGER.error("Cannot retrieve master node status. Exiting...")
             sys.exit(1)
         master_id = instances[0].get("InstanceId")
-        instance = ec2.describe_instance_status(InstanceIds=[master_id]).get("InstanceStatuses")[0]
-        state = instance.get("InstanceState").get("Name")
+        state = instances[0].get("State").get("Name")
         sys.stdout.write("\rMasterServer: %s" % state.upper())
         sys.stdout.flush()
         while state not in ["running", "stopped", "terminated", "shutting-down"]:
@@ -484,7 +482,7 @@ def status(args):  # noqa: C901 FIXME!!!
                 state = _poll_master_server_state(stack_name)
                 if state == "running":
                     _print_stack_outputs(stack)
-                    _print_compute_fleet_status(args.cluster_name, stack)
+                _print_compute_fleet_status(args.cluster_name, stack)
             elif stack.get("StackStatus") in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
                 events = utils.get_stack_events(stack_name)
                 for event in events:

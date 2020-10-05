@@ -26,14 +26,16 @@ from tests.common.schedulers_common import AWSBatchCommands
 @pytest.mark.dimensions("ap-southeast-1", "c5.xlarge", "alinux", "awsbatch")
 @pytest.mark.dimensions("ap-northeast-1", "m6g.xlarge", "alinux2", "awsbatch")
 @pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir):
+def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog):
     """
     Test all AWS Batch related features.
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
+    caplog.set_level(logging.DEBUG)  # Needed for checks in _assert_compute_instance_type_validation_successful
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
+    _assert_compute_instance_type_validation_successful(caplog)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_simple_job_submission(remote_command_executor, test_datadir)
@@ -108,3 +110,22 @@ def _test_job_submission(remote_command_executor, submit_command, additional_fil
     except AssertionError:
         remote_command_executor.run_remote_command(f"awsbout {job_id}", raise_on_error=False, log_output=True)
         raise
+
+
+def _assert_compute_instance_type_validation_successful(caplog):
+    """
+    Verify that the validation for the compute_instance_type parameter worked as expected.
+
+    This is done by asserting that the log messages indicating that parsing supported Batch
+    instance types from a CreateComputeEnvironment error message either failed or found unknown
+    instance types are not present.
+    """
+    error_messages = [
+        "Attempting to create a Batch ComputeEnvironment using a nonexistent instance type did not result "
+        "in an error as expected.",
+        "Found the following unknown instance types/families:",
+        "Unable to parse instance family for instance type",
+        "Failed to parse supported Batch instance types from a CreateComputeEnvironment",
+    ]
+    for error_message in error_messages:
+        assert_that(caplog.text).does_not_contain(error_message)

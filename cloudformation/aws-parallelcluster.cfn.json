@@ -303,11 +303,6 @@
       "Type": "String",
       "Default": "NONE"
     },
-    "CustomAWSBatchTemplateURL": {
-      "Description": "URL of custom batch template that will override the default one.",
-      "Type": "String",
-      "Default": "NONE"
-    },
     "ResourcesS3Bucket": {
       "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
       "Type": "String",
@@ -325,9 +320,9 @@
       "Default": "1"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of FSx related options, 14 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id]",
+      "Description": "Comma separated list of FSx related options, 15 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy]",
       "Type": "String",
-      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
@@ -746,18 +741,6 @@
           "Ref": "Scheduler"
         },
         "awsbatch"
-      ]
-    },
-    "UseCustomAWSBatchTemplateURL": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "CustomAWSBatchTemplateURL"
-            },
-            "NONE"
-          ]
-        }
       ]
     },
     "HasResourcesS3Bucket": {
@@ -1583,7 +1566,8 @@
                 "ec2:AttachVolume",
                 "ec2:DescribeInstanceAttribute",
                 "ec2:DescribeInstanceStatus",
-                "ec2:DescribeInstances"
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceTypes"
               ],
               "Effect": "Allow",
               "Resource": [
@@ -2354,33 +2338,25 @@
           }
         },
         "TemplateURL": {
-          "Fn::If": [
-            "UseCustomAWSBatchTemplateURL",
+          "Fn::Sub": [
+            "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
             {
-              "Ref": "CustomAWSBatchTemplateURL"
-            },
-            {
-              "Fn::Sub": [
-                "https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.${s3_url}/templates/batch-substack-${version}.cfn.json",
-                {
-                  "s3_url": {
-                    "Fn::FindInMap": [
-                      "Partition2Url",
-                      {
-                        "Ref": "AWS::Partition"
-                      },
-                      "url"
-                    ]
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
                   },
-                  "version": {
-                    "Fn::FindInMap": [
-                      "PackagesVersions",
-                      "default",
-                      "parallelcluster"
-                    ]
-                  }
-                }
-              ]
+                  "url"
+                ]
+              },
+              "version": {
+                "Fn::FindInMap": [
+                  "PackagesVersions",
+                  "default",
+                  "parallelcluster"
+                ]
+              }
             }
           ]
         }
@@ -2866,7 +2842,7 @@
           "EFA": {
             "Ref": "EFA"
           },
-          "OS": {
+          "BaseOS": {
             "Ref": "BaseOS"
           },
           "OSUser": {
@@ -3320,6 +3296,9 @@
           "EFA": {
             "Ref": "EFA"
           },
+          "BaseOS": {
+            "Ref": "BaseOS"
+          },
           "OSUser": {
             "Fn::FindInMap": [
               "OSFeatures",
@@ -3671,6 +3650,9 @@
           },
           "IamInstanceProfile": {
             "Ref": "RootInstanceProfile"
+          },
+          "BaseOS": {
+            "Ref": "BaseOS"
           },
           "OSUser": {
             "Fn::FindInMap": [
