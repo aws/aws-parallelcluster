@@ -18,7 +18,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from pcluster.constants import CIDR_ALL_IPS
-from pcluster.dcv.utils import get_supported_dcv_os, get_supported_dcv_partition
+from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     ellipsize,
     get_base_additional_iam_policies,
@@ -353,9 +353,6 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
                 "NICE DCV can be used with one of the following operating systems: {0}. "
                 "Please double check the 'base_os' configuration parameter".format(allowed_oses)
             )
-
-        if get_partition() not in get_supported_dcv_partition():
-            errors.append("NICE DCV is not supported in the selected region '{0}'".format(get_region()))
 
         master_instance_type = cluster_section.get_param_value("master_instance_type")
         if re.search(r"(micro)|(nano)", master_instance_type):
