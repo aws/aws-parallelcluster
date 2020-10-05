@@ -2,6 +2,13 @@
 CHANGELOG
 =========
 
+2.10.0
+=====
+
+**ENHANCEMENTS**
+
+* Enable support for NICE DCV in GovCloud regions.
+
 2.9.1
 =====
 
