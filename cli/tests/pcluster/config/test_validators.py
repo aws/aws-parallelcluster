@@ -405,6 +405,100 @@ def test_url_validator(mocker, boto3_stubber, capsys):
 
 
 @pytest.mark.parametrize(
+    "config, num_calls, error_code, bucket, expected_message",
+    [
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            None,
+            {"Bucket": "test"},
+            "AutoImport is not supported for cross-region buckets.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "NoSuchBucket",
+            {"Bucket": "test"},
+            "The S3 bucket 'test' does not appear to exist.",
+        ),
+        (
+            {
+                "cluster default": {"fsx_settings": "fsx"},
+                "fsx fsx": {
+                    "storage_capacity": 1200,
+                    "import_path": "s3://test/test1/test2",
+                    "export_path": "s3://test/test1/test2",
+                    "auto_import_policy": "NEW",
+                },
+            },
+            2,
+            "AccessDenied",
+            {"Bucket": "test"},
+            "You do not have access to the S3 bucket",
+        ),
+    ],
+)
+def test_auto_import_policy_validator(mocker, boto3_stubber, config, num_calls, error_code, bucket, expected_message):
+    head_bucket_response = {
+        "ResponseMetadata": {
+            "AcceptRanges": "bytes",
+            "ContentType": "text/html",
+            "LastModified": "Thu, 16 Apr 2015 18:19:14 GMT",
+            "ContentLength": 77,
+            "VersionId": "null",
+            "ETag": '"30a6ec7e1a9ad79c203d05a589c8b400"',
+            "Metadata": {},
+        }
+    }
+    get_bucket_location_response = {
+        "ResponseMetadata": {
+            "LocationConstraint": "af-south1",
+        }
+    }
+    mocked_requests = []
+    for _ in range(num_calls):
+        mocked_requests.append(
+            MockedBoto3Request(method="head_bucket", response=head_bucket_response, expected_params=bucket)
+        )
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params=bucket,
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+
+    utils.assert_param_validator(mocker, config, expected_message)
+
+
+@pytest.mark.parametrize(
     "config, num_calls, bucket, expected_message",
     [
         (
@@ -1518,6 +1612,14 @@ def test_base_os_validator(mocker, capsys, base_os, expected_warning):
                 " 'default' as a queue section name."
             ),
         ),
+        (
+            {"scheduler": "slurm", "queue_settings": "aQUEUEa"},
+            (
+                "Invalid queue name 'aQUEUEa'. Queue section names can be at most 30 chars long, must begin with"
+                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
+                " 'default' as a queue section name."
+            ),
+        ),
         ({"scheduler": "slurm", "queue_settings": "my-default-queue"}, None),
     ],
 )
@@ -1536,7 +1638,7 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
 
 
 @pytest.mark.parametrize(
-    "cluster_dict, queue_dict, expected_messages",
+    "cluster_dict, queue_dict, expected_error_messages, expected_warning_messages",
     [
         (
             {"queue_settings": "default"},
@@ -1544,6 +1646,12 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             [
                 "Duplicate instance type 't2.micro' found in queue 'default'. "
                 "Compute resources in the same queue must use different instance types"
+            ],
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA.",
             ],
         ),
         (
@@ -1553,24 +1661,46 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "Duplicate instance type 'c4.xlarge' found in queue 'default'. "
                 "Compute resources in the same queue must use different instance types"
             ],
+            [
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr3 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA.",
+            ],
         ),
         (
             {"queue_settings": "default"},
             {"compute_resource_settings": "cr1,cr3", "enable_efa": True, "disable_hyperthreading": True},
             None,
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr3 does not support EFA.",
+            ],
         ),
         (
             {"queue_settings": "default"},
             {"compute_resource_settings": "cr2,cr4", "enable_efa": True, "disable_hyperthreading": True},
             None,
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr2 does not support EFA.",
+                "EFA was enabled on queue 'default', but instance type 'c4.xlarge' "
+                "defined in compute resource settings cr4 does not support EFA.",
+            ],
         ),
-        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None),
+        ({"queue_settings": "default"}, {"compute_resource_settings": "cr1"}, None, None),
         (
             {"queue_settings": "default", "enable_efa": "compute", "disable_hyperthreading": True},
             {"compute_resource_settings": "cr1", "enable_efa": True, "disable_hyperthreading": True},
             [
                 "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
+            ],
+            [
+                "EFA was enabled on queue 'default', but instance type 't2.micro' "
+                "defined in compute resource settings cr1 does not support EFA."
             ],
         ),
         (
@@ -1580,10 +1710,17 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
                 "Parameter 'enable_efa' can be used only in 'cluster' or in 'queue' section",
                 "Parameter 'disable_hyperthreading' can be used only in 'cluster' or in 'queue' section",
             ],
+            None,
+        ),
+        (
+            {"queue_settings": "default"},
+            {"compute_resource_settings": "efa_instance", "enable_efa": True},
+            None,
+            None,
         ),
     ],
 )
-def test_queue_validator(cluster_dict, queue_dict, expected_messages):
+def test_queue_validator(cluster_dict, queue_dict, expected_error_messages, expected_warning_messages):
     config_parser_dict = {
         "cluster default": cluster_dict,
         "queue default": queue_dict,
@@ -1591,6 +1728,7 @@ def test_queue_validator(cluster_dict, queue_dict, expected_messages):
         "compute_resource cr2": {"instance_type": "t2.micro"},
         "compute_resource cr3": {"instance_type": "c4.xlarge"},
         "compute_resource cr4": {"instance_type": "c4.xlarge"},
+        "compute_resource efa_instance": {"instance_type": "p3dn.24xlarge"},
     }
 
     config_parser = configparser.ConfigParser()
@@ -1598,12 +1736,22 @@ def test_queue_validator(cluster_dict, queue_dict, expected_messages):
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
 
+    efa_instance_compute_resource = pcluster_config.get_section("compute_resource", "efa_instance")
+    if efa_instance_compute_resource:
+        # Override `enable_efa` default value for instance with efa support
+        efa_instance_compute_resource.get_param("enable_efa").value = True
+
     errors, warnings = queue_validator("queue", "default", pcluster_config)
 
-    if expected_messages:
-        assert_that(expected_messages).is_equal_to(errors)
+    if expected_error_messages:
+        assert_that(expected_error_messages).is_equal_to(errors)
     else:
         assert_that(errors).is_empty()
+
+    if expected_warning_messages:
+        assert_that(expected_warning_messages).is_equal_to(warnings)
+    else:
+        assert_that(warnings).is_empty()
 
 
 @pytest.mark.parametrize(
