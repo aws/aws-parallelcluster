@@ -121,3 +121,31 @@ def test_validate_createami_args_architecture_compatibility(
 
     if instance_type is None or base_ami_architecture in supported_instance_archs:
         createami.utils.get_supported_os_for_architecture.assert_called_with(base_ami_architecture)
+
+
+@pytest.mark.parametrize(
+    "post_install_script_url, expected_url",
+    [
+        ("https://bucket.s3.us-east-1.amazonaws.com/script.sh", True),
+        ("https://bucket.s3.us-east-1.amazonaws.com/cookbooks/script.sh", True),
+        ("file://script.sh", True),
+        # Invalid url
+        ("script", False),
+        # Script not specified
+        (None, False),
+    ],
+)
+def test_get_post_install_script_dir(mocker, post_install_script_url, expected_url):
+    mocker.patch("pcluster.createami.os.mkdir")
+    mocker.patch("pcluster.createami.urlretrieve")
+    mocker.patch("pcluster.createami.copyfile")
+    mocker.patch("pcluster.createami._get_current_timestamp").return_value = "now"
+
+    if not post_install_script_url or expected_url:
+        assert_that(createami._get_post_install_script_dir(post_install_script_url, "/tmp")).is_equal_to(
+            os.path.join("/tmp/script", "now-script.sh") if post_install_script_url else None
+        )
+    else:
+        with pytest.raises(SystemExit) as sysexit:
+            createami._get_post_install_script_dir(post_install_script_url, "/tmp")
+        assert_that(sysexit.value.code).is_not_equal_to(0)
