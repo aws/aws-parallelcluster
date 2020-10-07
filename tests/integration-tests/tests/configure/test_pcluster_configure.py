@@ -104,7 +104,7 @@ def test_pcluster_configure_avoid_bad_subnets(
         os,
         instance,
         vpc_stack.cfn_outputs["VpcId"],
-        vpc_stack.cfn_outputs["PublicSubnetId"],
+        None,
         None,
         config_path,
     )
@@ -143,7 +143,7 @@ def assert_configure_workflow(stages, config_path):
 
 
 def assert_config_contains_expected_values(
-    region, key_name, scheduler, os, instance, vpc_id, public_subnet_id, private_subnet_id, config_path
+    region, key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
 ):
     pcluster_config = PclusterConfig(config_file=config_path, fail_on_file_absence=True, fail_on_error=True)
 
@@ -162,8 +162,8 @@ def assert_config_contains_expected_values(
         },
         {"section_name": "cluster", "parameter_name": "master_instance_type", "expected_value": instance},
         {"section_name": "vpc", "parameter_name": "vpc_id", "expected_value": vpc_id},
-        {"section_name": "vpc", "parameter_name": "master_subnet_id", "expected_value": public_subnet_id},
-        {"section_name": "vpc", "parameter_name": "compute_subnet_id", "expected_value": private_subnet_id},
+        {"section_name": "vpc", "parameter_name": "master_subnet_id", "expected_value": headnode_subnet_id},
+        {"section_name": "vpc", "parameter_name": "compute_subnet_id", "expected_value": compute_subnet_id},
     ]
 
     if scheduler == "slurm":
@@ -186,10 +186,14 @@ def assert_config_contains_expected_values(
         ]
 
     for validator in param_validators:
+        expected_value = validator.get("expected_value")
+        if not expected_value:
+            # if expected_value is empty, skip the assertion.
+            continue
         observed_value = pcluster_config.get_section(validator.get("section_name")).get_param_value(
             validator.get("parameter_name")
         )
-        assert_that(observed_value).is_equal_to(validator.get("expected_value"))
+        assert_that(observed_value).is_equal_to(expected_value)
 
 
 def orchestrate_pcluster_configure_stages(
@@ -205,8 +209,8 @@ def orchestrate_pcluster_configure_stages(
     omitted_subnets_num=0,
 ):
     compute_units = "vcpus" if scheduler == "awsbatch" else "instances"
-    # Due to the order of creation,PublicSubnet is the first in the list of subnets. Therefore it is the default value.
-    vpc_stack_public_subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
+    # Default compute subnet follows the selection of headnode subnet
+    default_compute_subnet = headnode_subnet_id if headnode_subnet_id else "subnet-.+"
     # When there are omitted subnets, a note should be printed
     omitted_note = "Note:  {0} subnet.+not listed.+".format(omitted_subnets_num) if omitted_subnets_num else ""
     stage_list = [
@@ -222,11 +226,11 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
         {
-            "prompt": fr"{omitted_note}Master Subnet ID \[{vpc_stack_public_subnet_id}\]: ",
+            "prompt": fr"{omitted_note}Master Subnet ID \[subnet-.+\]: ",
             "response": headnode_subnet_id,
         },
         {
-            "prompt": fr"{omitted_note}Compute Subnet ID \[{vpc_stack_public_subnet_id}\]: ",
+            "prompt": fr"{omitted_note}Compute Subnet ID \[{default_compute_subnet}\]: ",
             "response": compute_subnet_id,
         },
     ]
