@@ -205,6 +205,20 @@ def delete_s3_bucket(bucket_name):
         )
 
 
+def _add_file_to_zip(zip_file, path, arcname):
+    """
+    Add the file at path under the name arcname to the archive represented by zip_file.
+
+    :param zip_file: zipfile.ZipFile object
+    :param path: string; path to file being added
+    :param arcname: string; filename to put bytes from path under in created archive
+    """
+    with open(path, "rb") as input_file:
+        zinfo = zipfile.ZipInfo(filename=arcname)
+        zinfo.external_attr = 0o644 << 16
+        zip_file.writestr(zinfo, input_file.read())
+
+
 def zip_dir(path):
     """
     Create a zip archive containing all files and dirs rooted in path.
@@ -217,7 +231,11 @@ def zip_dir(path):
     with zipfile.ZipFile(file_out, "w", zipfile.ZIP_DEFLATED) as ziph:
         for root, _, files in os.walk(path):
             for file in files:
-                ziph.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), start=path))
+                _add_file_to_zip(
+                    ziph,
+                    os.path.join(root, file),
+                    os.path.relpath(os.path.join(root, file), start=path),
+                )
     file_out.seek(0)
     return file_out
 
