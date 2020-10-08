@@ -34,6 +34,7 @@ from pcluster.config.validators import (
     queue_validator,
     settings_validator,
 )
+from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
 
@@ -697,7 +698,12 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
 
     config_parser_dict = {
         "cluster default": {"fsx_settings": "fsx"},
-        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": kms_key_id, "deployment_type": "PERSISTENT_1"},
+        "fsx fsx": {
+            "storage_capacity": 1200,
+            "fsx_kms_key_id": kms_key_id,
+            "deployment_type": "PERSISTENT_1",
+            "per_unit_storage_throughput": 50,
+        },
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_error=expected_message if expected_message else None
@@ -766,6 +772,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
                 "deployment_type": "PERSISTENT_1",
                 "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
                 "storage_capacity": 1200,
+                "per_unit_storage_throughput": 50,
             },
             None,
             None,
@@ -794,7 +801,18 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             0,
         ),
         (
-            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "automatic_backup_retention_days": 2},
+            {"deployment_type": "PERSISTENT_1", "storage_capacity": 1200},
+            None,
+            "'per_unit_storage_throughput' must be specified when 'deployment_type = PERSISTENT_1'",
+            0,
+        ),
+        (
+            {
+                "storage_capacity": 1200,
+                "per_unit_storage_throughput": "50",
+                "deployment_type": "PERSISTENT_1",
+                "automatic_backup_retention_days": 2,
+            },
             None,
             None,
             0,
@@ -803,6 +821,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             {
                 "storage_capacity": 1200,
                 "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": "50",
                 "automatic_backup_retention_days": 2,
                 "daily_automatic_backup_start_time": "03:00",
                 "copy_tags_to_backups": True,
@@ -868,6 +887,79 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             "Backups cannot be created on S3-linked file systems",
             0,
         ),
+        (
+            {
+                "deployment_type": "SCRATCH_1",
+                "storage_type": "HDD",
+                "per_unit_storage_throughput": 12,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "For HDD filesystems, 'deployment_type' must be 'PERSISTENT_1'",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "HDD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "For HDD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                FSX_HDD_THROUGHPUT
+            ),
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 12,
+                "storage_capacity": 1200,
+            },
+            None,
+            "For SSD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                FSX_SSD_THROUGHPUT
+            ),
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "NONE",
+            },
+            None,
+            "The configuration parameter 'drive_cache_type' has an invalid value 'NONE'",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+            },
+            None,
+            None,
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "'drive_cache_type' features can be used only with HDD filesystems",
+            0,
+        ),
     ],
 )
 def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):
@@ -876,6 +968,8 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
     if "fsx_kms_key_id" in section_dict:
         _kms_key_stubber(mocker, boto3_stubber, section_dict.get("fsx_kms_key_id"), None, 0 if expected_error else 1)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
+    if expected_error:
+        expected_error = re.escape(expected_error)
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
 
 
@@ -896,12 +990,12 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
         (
-            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1"},
+            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
             None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
         (
-            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1"},
+            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
             None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
@@ -909,6 +1003,46 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
         (
             {"deployment_type": "SCRATCH_1"},
             "When specifying 'fsx' section, the 'storage_capacity' option must be specified",
+            None,
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 1801,
+                "per_unit_storage_throughput": 40,
+            },
+            None,
+            "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 6001,
+                "per_unit_storage_throughput": 12,
+            },
+            None,
+            "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 1800,
+                "per_unit_storage_throughput": 40,
+            },
+            None,
+            None,
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 6000,
+                "per_unit_storage_throughput": 12,
+            },
+            None,
             None,
         ),
     ],
@@ -2055,7 +2189,11 @@ def test_instances_architecture_compatibility_validator(
     "section_dict, bucket, num_calls, expected_error",
     [
         (
-            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+            },
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
@@ -2092,13 +2230,18 @@ def test_instances_architecture_compatibility_validator(
                 "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
                 "fsx_kms_key_id": "somekey",
                 "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
             },
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
         ),
         (
-            {"fsx_backup_id": "backup-00000000000000000", "deployment_type": "PERSISTENT_1"},
+            {
+                "fsx_backup_id": "backup-00000000000000000",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+            },
             None,
             0,
             "Failed to retrieve backup with Id 'backup-00000000000000000'",

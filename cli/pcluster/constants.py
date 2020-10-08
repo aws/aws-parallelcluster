@@ -16,3 +16,5 @@ PCLUSTER_ISSUES_LINK = "https://github.com/aws/aws-parallelcluster/issues"
 CIDR_ALL_IPS = "0.0.0.0/0"
 DEFAULT_ARCHITECTURE = "x86_64"
 SUPPORTED_ARCHITECTURES = ["x86_64", "arm64"]
+FSX_SSD_THROUGHPUT = [50, 100, 200]
+FSX_HDD_THROUGHPUT = [12, 40]

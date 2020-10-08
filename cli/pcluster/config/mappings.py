@@ -95,7 +95,7 @@ from pcluster.config.validators import (
     tags_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHITECTURES
+from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
@@ -142,10 +142,13 @@ ALLOWED_VALUES = {
     "volume_id": r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$",
     "volume_types": ["standard", "io1", "gp2", "st1", "sc1"],
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
-    "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
-    "per_unit_storage_throughput": [50, 100, 200],
+    "fsx_deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
+    "fsx_ssd_throughput": FSX_SSD_THROUGHPUT,
+    "fsx_hdd_throughput": FSX_HDD_THROUGHPUT,
     "architectures": SUPPORTED_ARCHITECTURES,
-    "auto_import_policy": ["NONE", "NEW", "NEW_CHANGED"]
+    "fsx_auto_import_policy": ["NEW", "NEW_CHANGED"],
+    "fsx_storage_type": ["SSD", "HDD"],
+    "fsx_drive_cache_type": ["READ"]
 }
 
 AWS = {
@@ -497,12 +500,12 @@ FSX = {
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
-                "allowed_values": ALLOWED_VALUES["deployment_type"],
+                "allowed_values": ALLOWED_VALUES["fsx_deployment_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("per_unit_storage_throughput", {
                 "type": IntCfnParam,
-                "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
+                "allowed_values": ALLOWED_VALUES["fsx_ssd_throughput"] + ALLOWED_VALUES["fsx_hdd_throughput"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("daily_automatic_backup_start_time", {
@@ -525,7 +528,16 @@ FSX = {
             }),
             ("auto_import_policy", {
                 "validators": [fsx_lustre_auto_import_validator],
-                "allowed_values": ALLOWED_VALUES["auto_import_policy"],
+                "allowed_values": ALLOWED_VALUES["fsx_auto_import_policy"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("storage_type", {
+                "allowed_values": ALLOWED_VALUES["fsx_storage_type"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("drive_cache_type", {
+                "default": "NONE",
+                "allowed_values": ALLOWED_VALUES["fsx_drive_cache_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             })
         ]
