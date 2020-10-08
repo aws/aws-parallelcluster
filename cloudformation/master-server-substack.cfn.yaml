@@ -326,6 +326,18 @@ Resources:
                 Value: !Ref 'NetworkingTagValue'
               - Key: aws-parallelcluster-filesystem
                 Value: !Ref 'FilesystemTagValue'
+          - ResourceType: volume
+            Tags:
+              - Key: ClusterName
+                Value: !Select
+                  - '1'
+                  - !Split
+                    - parallelcluster-
+                    - !Ref 'MainStackName'
+              - Key: Application
+                Value: !Ref 'MainStackName'
+              - Key: aws-parallelcluster-node-type
+                Value: Master
         NetworkInterfaces:
           - NetworkInterfaceId: !Ref 'MasterENI'
             DeviceIndex: 0
