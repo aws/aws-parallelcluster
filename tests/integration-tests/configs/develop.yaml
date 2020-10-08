@@ -509,3 +509,15 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["sge"]
+    test_update.py::test_sit_update_compute_instance_disable_ht:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
+    test_update.py::test_sit_update_compute_instance_extra_json:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
