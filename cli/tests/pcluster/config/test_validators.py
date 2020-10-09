@@ -191,7 +191,7 @@ def test_ec2_ami_validator(mocker, boto3_stubber, image_architecture, bad_ami_me
         ({"tags": {"key": "value", "key2": "value2"}}, None),
         (
             {"tags": {"key": "value", "Version": "value2"}},
-            r".*Version.*reserved",
+            r"Version.*reserved",
         ),
     ],
 )

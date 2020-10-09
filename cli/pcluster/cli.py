@@ -383,6 +383,11 @@ Variables substituted::
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
     )
     pami.add_argument(
+        "--post-install",
+        dest="post_install_script",
+        help="Specifies the post install script to use to build the AWS ParallelCluster AMI.",
+    )
+    pami.add_argument(
         "--no-public-ip",
         dest="associate_public_ip",
         action="store_false",
