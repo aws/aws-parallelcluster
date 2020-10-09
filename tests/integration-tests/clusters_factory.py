@@ -38,15 +38,18 @@ class Cluster:
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
         return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
 
-    def update(self, reset_desired=False, extra_params=None):
+    def update(self, reset_desired=False, extra_params=None, force=True):
         """
         Update a cluster with an already updated config.
         :param reset_desired: reset the current ASG desired capacity to initial config values
         :param extra_params: extra parameters to pass to stack update
+        :param force: if to use --force flag when update
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
-        command = ["pcluster", "update", "--config", self.config_file, "--force", "--yes"]
+        command = ["pcluster", "update", "--config", self.config_file, "--yes"]
+        if force:
+            command.append("--force")
         if reset_desired:
             command.append("--reset-desired")
         if extra_params:
