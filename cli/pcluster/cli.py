@@ -339,6 +339,7 @@ Variables substituted::
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=ssh_example,
     )
+    _addarg_region(pssh)
     pssh.add_argument("cluster_name", help="Name of the cluster to connect to.")
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
     pssh.set_defaults(func=ssh)
