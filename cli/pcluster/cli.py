@@ -429,6 +429,7 @@ Variables substituted::
     pdcv_connect = dcv_subparsers.add_parser(
         "connect", help="Permits to connect to the master node through an interactive session by using NICE DCV."
     )
+    _addarg_region(pdcv_connect)
     pdcv_connect.add_argument("cluster_name", help="Name of the cluster to connect to")
     pdcv_connect.add_argument(
         "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"
