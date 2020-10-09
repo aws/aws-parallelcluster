@@ -306,10 +306,6 @@ def _validate_createami_args_ami_compatibility(args):
 def create_ami(args):
     LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
 
-    # Ensure AWS_DEFAULT_REGION env is set.
-    # Set it explicitly if the CLI arg was passed. Otherwise let the config object do it.
-    if args.region:
-        os.environ["AWS_DEFAULT_REGION"] = args.region
     pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
 
     ami_info = _validate_createami_args_ami_compatibility(args)
