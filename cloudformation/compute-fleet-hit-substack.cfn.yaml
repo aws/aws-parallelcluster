@@ -244,7 +244,16 @@ Resources:
 
               #!/bin/bash -x
 
-              which yum && echo "proxy=${YumProxy}" >> /etc/yum.conf || echo "Not yum system"
+              which dnf 2>/dev/null; dnf=$?
+              which yum 2>/dev/null; yum=$?
+
+              if [ "${!dnf}" == "0" ]; then
+                echo "proxy=${DnfProxy}" >> /etc/dnf/dnf.conf
+              elif [ "${!yum}" == "0" ]; then
+                echo "proxy=${YumProxy}" >> /etc/yum.conf
+              else
+                echo "Not yum system"
+              fi
 
               which apt-get && echo "Acquire::http::Proxy \"${AptProxy}\";" >> /etc/apt/apt.conf || echo "Not apt system"
 
@@ -424,6 +433,10 @@ Resources:
               # End of file
               --==BOUNDARY==
             - YumProxy: !If
+                - UseProxy
+                - !Ref 'ProxyServer'
+                - _none_
+              DnfProxy: !If
                 - UseProxy
                 - !Ref 'ProxyServer'
                 - ''
