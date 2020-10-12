@@ -104,6 +104,17 @@ UpdatePolicy.ACTIONS_NEEDED = {
 }
 
 
+def _check_min_count(change, patch):
+    is_fleet_stopped = not utils.cluster_has_running_capacity(patch.stack_name)
+    if is_fleet_stopped:
+        return True
+
+    new_min, old_min = change.new_value, change.old_value
+    old_max = patch.base_config.get_section(change.section_key, change.section_label).get_param_value("max_count")
+    new_max = patch.target_config.get_section(change.section_key, change.section_label).get_param_value("max_count")
+    return new_min >= old_min and new_max - new_min >= old_max - old_min
+
+
 # Base policies
 
 # Update is ignored
@@ -121,6 +132,24 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
     condition_checker=lambda change, patch: utils.get_batch_ce_capacity(patch.stack_name)
     <= patch.target_config.get_section("cluster").get_param_value("max_vcpus"),
+)
+
+# Checks resize of max_count
+UpdatePolicy.MAX_COUNT = UpdatePolicy(
+    level=1,
+    fail_reason=lambda change, patch: "Shrinking a queue requires the compute fleet to be stopped first",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name)
+    or change.new_value >= change.old_value,
+)
+
+# Checks resize of min_count
+UpdatePolicy.MIN_COUNT = UpdatePolicy(
+    level=1,
+    fail_reason=lambda change, patch: "The applied change may cause existing nodes to be terminated hence requires "
+    "the compute fleet to be stopped first",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=_check_min_count,
 )
 
 # Checks that the value of the parameter has not been decreased

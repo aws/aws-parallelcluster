@@ -13,6 +13,8 @@ CHANGELOG
 **CHANGES**
 
 * Upgrade image used by CodeBuild environment when building container images for Batch clusters.
+* Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
+  necessary when existing instances risk to be terminated.
 
 2.9.1
 =====
