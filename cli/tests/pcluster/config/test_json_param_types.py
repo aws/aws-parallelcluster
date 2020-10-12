@@ -33,6 +33,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": False},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                "MemoryInfo": {"SizeInMiB": 7680},
             }
         ]
     },
@@ -46,6 +47,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
                 "NetworkInfo": {"EfaSupported": True},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                "MemoryInfo": {"SizeInMiB": 393216},
             }
         ]
     },
@@ -58,6 +60,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
                 "NetworkInfo": {"EfaSupported": True},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                "MemoryInfo": {"SizeInMiB": 786432},
             }
         ]
     },
@@ -70,6 +73,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
                 "NetworkInfo": {"EfaSupported": False},
                 "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                "MemoryInfo": {"SizeInMiB": 16384},
             }
         ]
     },
@@ -82,6 +86,7 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
                 "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 4, "DefaultThreadsPerCore": 1},
                 "NetworkInfo": {"EfaSupported": False},
                 "ProcessorInfo": {"SupportedArchitectures": ["arm64"]},
+                "MemoryInfo": {"SizeInMiB": 16384},
             }
         ]
     },

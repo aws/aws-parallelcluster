@@ -628,6 +628,13 @@ COMPUTE_RESOURCE = {
             "visibility": Visibility.PRIVATE,
             "default": 0
         }),
+        ("memory", {
+            "type": IntJsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": 0
+        }),
         ("enable_efa", {
             "type": BooleanJsonParam,
             # This param is managed automatically

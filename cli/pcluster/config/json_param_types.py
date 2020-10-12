@@ -302,6 +302,11 @@ class QueueJsonSection(JsonSection):
                     [gpus.get("Count") for gpus in gpu_info.get("Gpus")]
                 )
 
+            # Set memory according to instance features
+            memory_info = instance_type.get("MemoryInfo", None)
+            if memory_info:
+                compute_resource_section.get_param("memory").value = memory_info.get("SizeInMiB")
+
             # Set enable_efa according to queues' enable_efa and instance features
             enable_efa = self.get_param_value("enable_efa")
             compute_resource_section.get_param("enable_efa").value = enable_efa and instance_type.get(
