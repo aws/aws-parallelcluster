@@ -1022,16 +1022,21 @@ def get_base_additional_iam_policies():
 
 
 def cluster_has_running_capacity(stack_name):
-    stack = get_stack(stack_name)
-    scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
-    if is_hit_enabled_cluster(stack):
-        return ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
-    else:
-        return (
-            get_batch_ce_capacity(stack_name) > 0
-            if scheduler == "awsbatch"
-            else get_asg_settings(stack_name).get("DesiredCapacity") > 0
-        )
+    if not hasattr(cluster_has_running_capacity, "cached_result"):
+        stack = get_stack(stack_name)
+        scheduler = get_cfn_param(stack.get("Parameters", []), "Scheduler")
+        if is_hit_enabled_cluster(stack):
+            cluster_has_running_capacity.cached_result = (
+                ComputeFleetStatusManager(get_cluster_name(stack_name)).get_status() != ComputeFleetStatus.STOPPED
+            )
+        else:
+            cluster_has_running_capacity.cached_result = (
+                get_batch_ce_capacity(stack_name) > 0
+                if scheduler == "awsbatch"
+                else get_asg_settings(stack_name).get("DesiredCapacity") > 0
+            )
+
+    return cluster_has_running_capacity.cached_result
 
 
 def get_instance_type(instance_type):

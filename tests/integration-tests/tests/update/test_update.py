@@ -26,7 +26,7 @@ from tests.common.scaling_common import (
     get_max_asg_capacity,
     get_min_asg_capacity,
 )
-from tests.common.schedulers_common import get_scheduler_commands
+from tests.common.schedulers_common import SlurmCommands, get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
@@ -153,11 +153,11 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
     cluster.config_file = str(init_config_file)
-    cluster.update(force=False)
+    cluster.update(force=True)
 
     # Command executors
     command_executor = RemoteCommandExecutor(cluster)
-    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
+    slurm_commands = SlurmCommands(command_executor)
 
     # Create shared dir for script results
     command_executor.run_remote_command("mkdir -p /shared/script_results")
@@ -181,44 +181,61 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
                 },
             },
             "compute_type": "ondemand",
-        }
+        },
+        "queue2": {
+            "compute_resources": {
+                "queue2_i1": {
+                    "instance_type": "c5n.18xlarge",
+                    "expected_running_instances": 0,
+                    "expected_power_saved_instances": 10,
+                    "enable_efa": False,
+                    "disable_hyperthreading": False,
+                },
+            },
+            "compute_type": "ondemand",
+        },
     }
 
-    _assert_scheduler_nodes(queues_config=initial_queues_config, slurm_commands=scheduler_commands)
+    _assert_scheduler_nodes(queues_config=initial_queues_config, slurm_commands=slurm_commands)
     _assert_launch_templates_config(queues_config=initial_queues_config, cluster_name=cluster.name, region=region)
+
+    # Submit a job in order to verify that jobs are not affected by an update of the queue size
+    result = slurm_commands.submit_command("sleep infinity", constraint="static")
+    job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
     updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini", bucket=bucket_name)
     cluster.config_file = str(updated_config_file)
-    cluster.stop()
-    time.sleep(60)  # wait for the cluster to stop
     cluster.update()
-    cluster.start()
-    time.sleep(90)  # wait for the cluster to start
 
-    assert_initial_conditions(scheduler_commands, 1, 0, partition="queue1")
+    # Here is the expected list of nodes. Note that queue1-dy-t2micro-1 comes from the initial_count set when creating
+    # the cluster:
+    # queue1-dy-t2micro-1
+    # queue1-st-c5xlarge-1
+    # queue1-st-c5xlarge-2
+    assert_initial_conditions(slurm_commands, 2, 1, partition="queue1")
 
     updated_queues_config = {
         "queue1": {
             "compute_resources": {
                 "queue1_i1": {
                     "instance_type": "c5.xlarge",
-                    "expected_running_instances": 1,
-                    "expected_power_saved_instances": 1,
-                    "disable_hyperthreading": True,
+                    "expected_running_instances": 2,
+                    "expected_power_saved_instances": 2,
+                    "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
                 "queue1_i2": {
                     "instance_type": "c5.2xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
-                    "disable_hyperthreading": True,
+                    "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
                 "queue1_i3": {
                     "instance_type": "t2.micro",
-                    "expected_running_instances": 0,
-                    "expected_power_saved_instances": 10,
+                    "expected_running_instances": 1,  # This comes from initial_count before update
+                    "expected_power_saved_instances": 9,
                     "disable_hyperthreading": False,
                     "enable_efa": False,
                 },
@@ -230,11 +247,23 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
                 "queue2_i1": {
                     "instance_type": "c5n.18xlarge",
                     "expected_running_instances": 0,
+                    "expected_power_saved_instances": 1,
+                    "enable_efa": True,
+                    "disable_hyperthreading": True,
+                },
+            },
+            "compute_type": "ondemand",
+        },
+        "queue3": {
+            "compute_resources": {
+                "queue3_i1": {
+                    "instance_type": "c5n.18xlarge",
+                    "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
                     "disable_hyperthreading": True,
                     "enable_efa": True,
                 },
-                "queue2_i2": {
+                "queue3_i2": {
                     "instance_type": "t2.xlarge",
                     "expected_running_instances": 0,
                     "expected_power_saved_instances": 10,
@@ -246,7 +275,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
         },
     }
 
-    _assert_scheduler_nodes(queues_config=updated_queues_config, slurm_commands=scheduler_commands)
+    _assert_scheduler_nodes(queues_config=updated_queues_config, slurm_commands=slurm_commands)
     _assert_launch_templates_config(queues_config=updated_queues_config, cluster_name=cluster.name, region=region)
 
     # Read updated configuration
@@ -259,6 +288,9 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
+
+    # Assert that the job submitted before the update is still running
+    assert_that(slurm_commands.get_job_info(job_id)).contains("JobState=RUNNING")
 
     # TODO add following tests:
     # - Check Additional IAM policies
@@ -303,7 +335,9 @@ def _assert_scheduler_nodes(queues_config, slurm_commands):
     for queue, queue_config in queues_config.items():
         for compute_resource_config in queue_config["compute_resources"].values():
             instance_type = compute_resource_config["instance_type"].replace(".", "")
-            running_instances = len(re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle\n").findall(slurm_nodes_str))
+            running_instances = len(
+                re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ (idle|mixed|alloc)\n").findall(slurm_nodes_str)
+            )
             power_saved_instances = len(
                 re.compile(fr"{queue}-(dy|st)-{instance_type}-\d+ idle~\n").findall(slurm_nodes_str)
             )

@@ -624,16 +624,17 @@ COMPUTE_RESOURCE = {
         ("min_count", {
             "type": IntJsonParam,
             "default": 0,
-            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+            "update_policy": UpdatePolicy.MIN_COUNT
         }),
         ("max_count", {
             "type": IntJsonParam,
             "default": 10,
-            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+            "update_policy": UpdatePolicy.MAX_COUNT
         }),
         ("initial_count", {
             "type": IntJsonParam,
-            "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
+            # initial_count only takes effect on cluster creation
+            "update_policy": UpdatePolicy.IGNORED
         }),
         ("spot_price", {
             "type": FloatJsonParam,
