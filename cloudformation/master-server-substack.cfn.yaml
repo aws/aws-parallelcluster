@@ -480,55 +480,62 @@ Resources:
         deployConfigFiles:
           files:
             /tmp/dna.json:
-              mode: '000644'
-              owner: root
-              group: root
-              content:
-                cfncluster:
-                  stack_name: !Ref 'MainStackName'
-                  enable_efa: !Ref 'EFA'
-                  cfn_raid_vol_ids: !Ref 'RAIDVolIds'
-                  cfn_raid_parameters: !Ref 'RAIDOptions'
-                  cfn_scheduler_slots: !If
+              content: !Sub
+                - |
+                  {
+                    "cfncluster": {
+                      "stack_name": "${MainStackName}",
+                      "enable_efa": "${EFA}",
+                      "cfn_raid_vol_ids": "${RAIDVolIds}",
+                      "cfn_raid_parameters": "${RAIDOptions}",
+                      "cfn_scheduler_slots": "${SchedulerSlots}",
+                      "cfn_disable_hyperthreading_manually": "${DisableHyperthreadingManually}",
+                      "cfn_base_os": "${BaseOS}",
+                      "cfn_preinstall": "${PreInstallScript}",
+                      "cfn_preinstall_args": "${PreInstallArgs}",
+                      "cfn_postinstall": "${PostInstallScript}",
+                      "cfn_postinstall_args": "${PostInstallArgs}",
+                      "cfn_region": "${AWS::Region}",
+                      "cfn_efs": "${EFSId}",
+                      "cfn_efs_shared_dir": "${EFSOptions}",
+                      "cfn_fsx_fs_id": "${FSXId}",
+                      "cfn_fsx_options": "${FSXOptions}",
+                      "cfn_volume": "${EBSVolIds}",
+                      "cfn_scheduler": "${Scheduler}",
+                      "cfn_encrypted_ephemeral": "${EncryptedEphemeral}",
+                      "cfn_ephemeral_dir": "${EphemeralDir}",
+                      "cfn_shared_dir": "${SharedDir}",
+                      "cfn_proxy": "${ProxyServer}",
+                      "cfn_dns_domain": "${ClusterDNSDomain}",
+                      "cfn_hosted_zone": "${ClusterHostedZone}",
+                      "cfn_max_queue_size": "${MaxSize}",
+                      "compute_instance_type": "${ComputeInstanceType}",
+                      "cfn_node_type": "MasterServer",
+                      "cfn_cluster_user": "${OSUser}",
+                      "cfn_ddb_table": "${DynamoDBTable}",
+                      "cfn_sqs_queue": "${SQSQueueName}",
+                      "dcv_enabled": "${DCVEnabled}",
+                      "dcv_port": "${DCVPort}",
+                      "enable_intel_hpc_platform": "${IntelHPCPlatform}",
+                      "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
+                      "cluster_s3_bucket": "${ResourcesS3Bucket}",
+                      "cluster_config_s3_key": "configs/cluster-config.json",
+                      "cluster_config_version": "${HITConfigVersion}"
+                    },
+                    "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"
+                  }
+                - SchedulerSlots: !If
                     - DisableComputeHyperthreading
                     - !Ref 'ComputeCoreCount'
-                    - !Ref 'AWS::NoValue'
-                  cfn_disable_hyperthreading_manually: !If
+                    - vcpus
+                  DisableHyperthreadingManually: !If
                     - DisableMasterHyperthreadingManually
                     - 'true'
                     - 'false'
-                  cfn_base_os: !Ref 'BaseOS'
-                  cfn_preinstall: !Ref 'PreInstallScript'
-                  cfn_preinstall_args: !Ref 'PreInstallArgs'
-                  cfn_postinstall: !Ref 'PostInstallScript'
-                  cfn_postinstall_args: !Ref 'PostInstallArgs'
-                  cfn_region: !Ref 'AWS::Region'
-                  cfn_efs: !Ref 'EFSId'
-                  cfn_efs_shared_dir: !Ref 'EFSOptions'
-                  cfn_fsx_fs_id: !Ref 'FSXId'
-                  cfn_fsx_options: !Ref 'FSXOptions'
-                  cfn_volume: !Ref 'EBSVolIds'
-                  cfn_scheduler: !Ref 'Scheduler'
-                  cfn_encrypted_ephemeral: !Ref 'EncryptedEphemeral'
-                  cfn_ephemeral_dir: !Ref 'EphemeralDir'
-                  cfn_shared_dir: !Ref 'SharedDir'
-                  cfn_proxy: !Ref 'ProxyServer'
-                  cfn_dns_domain: !Ref 'ClusterDNSDomain'
-                  cfn_hosted_zone: !Ref 'ClusterHostedZone'
-                  cfn_max_queue_size: !Ref 'MaxSize'
-                  compute_instance_type: !Ref 'ComputeInstanceType'
-                  cfn_node_type: MasterServer
-                  cfn_cluster_user: !Ref 'OSUser'
-                  cfn_ddb_table: !Ref 'DynamoDBTable'
-                  cfn_sqs_queue: !Ref 'SQSQueueName'
-                  dcv_enabled: !Ref 'DCVEnabled'
-                  dcv_port: !Ref 'DCVPort'
-                  enable_intel_hpc_platform: !Ref 'IntelHPCPlatform'
-                  cfn_cluster_cw_logging_enabled: !Ref 'CWLoggingEnabled'
-                  cluster_s3_bucket: !Ref 'ResourcesS3Bucket'
-                  cluster_config_s3_key: configs/cluster-config.json
-                  cluster_config_version: !Ref 'HITConfigVersion'
-                run_list: !Sub 'recipe[aws-parallelcluster::${Scheduler}_config]'
+              mode: '000644'
+              owner: root
+              group: root
+              encoding: plain
             /etc/chef/client.rb:
               mode: '000644'
               owner: root

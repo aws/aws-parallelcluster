@@ -87,6 +87,13 @@ def test_param_to_cfn_value(mocker, section_definition, param_key, param_value, 
         (CLUSTER_SIT, "shared_dir", "test", {"SharedDir": "test"}),
         # (CLUSTER_SIT, "shared_dir", {"ebs": [], "shared_dir": "test"}, {"SharedDir": "test"}),
         # (CLUSTER_SIT, "shared_dir", {"ebs": [{"label": "fake_ebs"}], "shared_dir": "unused_value"}, {}),
+        # ArgsParam
+        (CLUSTER_SIT, "pre_install_args", '"R wget"', {"PreInstallArgs": '\\"R wget\\"'}),
+        (CLUSTER_SIT, "pre_install_args", "'R wget'", {"PreInstallArgs": "'R wget'"}),
+        (CLUSTER_SIT, "pre_install_args", "R wget", {"PreInstallArgs": "R wget"}),
+        (CLUSTER_SIT, "post_install_args", '"R wget"', {"PostInstallArgs": '\\"R wget\\"'}),
+        (CLUSTER_SIT, "post_install_args", "'R wget'", {"PostInstallArgs": "'R wget'"}),
+        (CLUSTER_SIT, "post_install_args", "R wget", {"PostInstallArgs": "R wget"}),
     ],
 )
 def test_param_to_cfn(mocker, section_definition, param_key, param_value, expected_cfn_params):
