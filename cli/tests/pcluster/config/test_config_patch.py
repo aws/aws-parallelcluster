@@ -97,13 +97,22 @@ def test_single_param_change(
     _check_patch(src_conf, dst_conf, [expected_change], change_update_policy)
 
 
-def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
+@pytest.mark.parametrize(
+    "src_cluster_label, dst_cluster_label",
+    [  # If label of cluster section is changed, change check should still work
+        ("default", "default"),
+        ("default", "default2"),
+        ("defualt2", "default"),
+    ],
+)
+def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir, src_cluster_label, dst_cluster_label):
     _do_mocking_for_tests(mocker)
     dst_config_file = "pcluster.config.dst.ini"
     duplicate_config_file(dst_config_file, test_datadir)
 
     src_dict = {}
     src_dict.update(default_cluster_params)
+    src_dict["cluster_label"] = src_cluster_label
     src_dict["master_subnet_id"] = "subnet-12345678"
     src_dict["compute_subnet_id"] = "subnet-12345678"
     src_dict["additional_sg"] = "sg-12345678"
@@ -113,6 +122,7 @@ def test_multiple_param_changes(mocker, pcluster_config_reader, test_datadir):
 
     dst_dict = {}
     dst_dict.update(default_cluster_params)
+    dst_dict["cluster_label"] = dst_cluster_label
     dst_dict["master_subnet_id"] = "subnet-1234567a"
     dst_dict["compute_subnet_id"] = "subnet-1234567a"
     dst_dict["additional_sg"] = "sg-1234567a"
