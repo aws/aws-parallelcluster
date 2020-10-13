@@ -33,7 +33,8 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 
 
 @pytest.mark.parametrize(
-    "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
+    "deployment_type, per_unit_storage_throughput, auto_import_policy",
+    [("PERSISTENT_1", 200, "NEW_CHANGED"), ("SCRATCH_1", None, "NEW"), ("SCRATCH_2", None, "NONE")],
 )
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
@@ -48,6 +49,7 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 def test_fsx_lustre(
     deployment_type,
     per_unit_storage_throughput,
+    auto_import_policy,
     region,
     pcluster_config_reader,
     clusters_factory,
@@ -70,6 +72,7 @@ def test_fsx_lustre(
         mount_dir=mount_dir,
         deployment_type=deployment_type,
         per_unit_storage_throughput=per_unit_storage_throughput,
+        auto_import_policy=auto_import_policy,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -80,7 +83,7 @@ def test_fsx_lustre(
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
-    _test_auto_import(remote_command_executor, mount_dir, bucket_name, region)
+    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
@@ -236,15 +239,34 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
 
 
-def _test_auto_import(remote_command_executor, mount_dir, bucket_name, region):
-    # TO-DO: Add testing for AutoImportPolicy NONE and NEW_CHANGED
+def _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region):
     s3 = boto3.client("s3", region_name=region)
-    s3.put_object(Bucket=bucket_name, Key="fileToAutoImport", Body="AutoImported by FSx Lustre")
+    new_file_body = "New File AutoImported by FSx Lustre"
+    modified_file_body = "File Modification AutoImported by FSx Lustre"
+    filename = "fileToAutoImport"
+
+    # Test new file
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=new_file_body)
     # AutoImport has a P99.9 of 1 min for new/changed files to be imported onto the filesystem
     remote_command_executor.run_remote_command("sleep 1m")
+    if auto_import_policy in ("NEW", "NEW_CHANGED"):
+        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}")
+        assert_that(result.stdout).is_equal_to(new_file_body)
+    else:
+        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
+        assert_that(result.stdout).does_not_contain(filename)
 
-    result = remote_command_executor.run_remote_command("cat {mount_dir}/fileToAutoImport".format(mount_dir=mount_dir))
-    assert_that(result.stdout).is_equal_to("AutoImported by FSx Lustre")
+    # Test modified file
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=modified_file_body)
+    remote_command_executor.run_remote_command("sleep 1m")
+    if auto_import_policy in ("NEW", "NEW_CHANGED"):
+        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}".format(mount_dir=mount_dir))
+        assert_that(result.stdout).is_equal_to(
+            modified_file_body if auto_import_policy == "NEW_CHANGED" else new_file_body
+        )
+    else:
+        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
+        assert_that(result.stdout).does_not_contain(filename)
 
 
 @retry(
