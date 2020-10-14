@@ -298,6 +298,19 @@ Resources:
             Ebs:
               VolumeSize: !Ref 'RootVolumeSize'
               VolumeType: gp2
+        TagSpecifications:
+          - ResourceType: volume
+            Tags:
+              - Key: ClusterName
+                Value: !Select
+                  - '1'
+                  - !Split
+                    - parallelcluster-
+                    - !Ref 'MainStackName'
+              - Key: Application
+                Value: !Ref 'MainStackName'
+              - Key: aws-parallelcluster-node-type
+                Value: Compute
         UserData: !Base64
           Fn::Sub:
             - |

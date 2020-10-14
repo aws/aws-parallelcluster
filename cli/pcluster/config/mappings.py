@@ -32,6 +32,7 @@ from pcluster.config.cfn_param_types import (
     SpotBidPercentageCfnParam,
     SpotPriceCfnParam,
     TagsParam,
+    VolumeSizeParam,
 )
 from pcluster.config.json_param_types import (
     BooleanJsonParam,
@@ -57,9 +58,9 @@ from pcluster.config.validators import (
     disable_hyperthreading_validator,
     ebs_settings_validator,
     ebs_volume_iops_validator,
+    ebs_volume_size_snapshot_validator,
     ebs_volume_type_size_validator,
     ec2_ami_validator,
-    ec2_ebs_snapshot_validator,
     ec2_iam_policies_validator,
     ec2_iam_role_validator,
     ec2_instance_type_validator,
@@ -295,7 +296,7 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator],
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator],
     "params": {
         "shared_dir": {
             "allowed_values": ALLOWED_VALUES["file_path"],
@@ -306,7 +307,6 @@ EBS = {
         "ebs_snapshot_id": {
             "allowed_values": ALLOWED_VALUES["snapshot_id"],
             "cfn_param_mapping": "EBSSnapshotId",
-            "validators": [ec2_ebs_snapshot_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         },
         "volume_type": {
@@ -319,8 +319,7 @@ EBS = {
             )
         },
         "volume_size": {
-            "type": IntCfnParam,
-            "default": 20,
+            "type": VolumeSizeParam,
             "cfn_param_mapping": "VolumeSize",
             "update_policy": UpdatePolicy(
                 UpdatePolicy.UNSUPPORTED,

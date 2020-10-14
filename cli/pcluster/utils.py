@@ -1101,7 +1101,7 @@ def read_remote_file(url):
         raise e
 
 
-def render_template(template_str, params_dict, config_version):
+def render_template(template_str, params_dict, config_version, tags):
     """
     Render a Jinjia template and return the rendered output.
 
@@ -1112,7 +1112,7 @@ def render_template(template_str, params_dict, config_version):
         environment = Environment(loader=BaseLoader)
         environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
         template = environment.from_string(template_str)
-        output_from_parsed_template = template.render(config=params_dict, config_version=config_version)
+        output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
         return output_from_parsed_template
     except Exception as e:
         LOGGER.error("Error when rendering template: %s", e)
@@ -1130,3 +1130,32 @@ def get_bucket_url(region):
 def get_file_section_name(section_key, section_label=None):
     """Build a section name as in the config file, given section key and label."""
     return section_key + (" {0}".format(section_label) if section_label else "")
+
+
+def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
+    """
+    Return a dict described the information of an EBS snapshot returned by EC2's DescribeSnapshots API.
+
+    Example of output:
+    {
+        "Description": "This is my snapshot",
+        "Encrypted": False,
+        "VolumeId": "vol-049df61146c4d7901",
+        "State": "completed",
+        "VolumeSize": 120,
+        "StartTime": "2014-02-28T21:28:32.000Z",
+        "Progress": "100%",
+        "OwnerId": "012345678910",
+        "SnapshotId": "snap-1234567890abcdef0",
+    }
+    """
+    try:
+        return boto3.client("ec2").describe_snapshots(SnapshotIds=[ebs_snapshot_id]).get("Snapshots")[0]
+    except ClientError as e:
+        if raise_exceptions:
+            raise
+        error(
+            "Failed when calling DescribeSnapshot for {0}: {1}".format(
+                ebs_snapshot_id, e.response.get("Error").get("Message")
+            )
+        )
