@@ -306,7 +306,9 @@ def _validate_createami_args_ami_compatibility(args):
 def create_ami(args):
     LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
 
-    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
+    # Do not autofresh; pcluster_config is only used to get info on vpc section, aws section, and template url
+    # Logic in autofresh could make unexpected validations not needed in createami
+    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True, auto_refresh=False)
 
     ami_info = _validate_createami_args_ami_compatibility(args)
     ami_architecture = ami_info.get("Architecture")
