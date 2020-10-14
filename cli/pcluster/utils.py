@@ -1101,7 +1101,7 @@ def read_remote_file(url):
         raise e
 
 
-def render_template(template_str, params_dict, config_version):
+def render_template(template_str, params_dict, config_version, tags):
     """
     Render a Jinjia template and return the rendered output.
 
@@ -1112,7 +1112,7 @@ def render_template(template_str, params_dict, config_version):
         environment = Environment(loader=BaseLoader)
         environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
         template = environment.from_string(template_str)
-        output_from_parsed_template = template.render(config=params_dict, config_version=config_version)
+        output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
         return output_from_parsed_template
     except Exception as e:
         LOGGER.error("Error when rendering template: %s", e)

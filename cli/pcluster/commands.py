@@ -38,7 +38,7 @@ from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PC
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(pcluster_config, json_params):
+def _create_bucket_with_resources(pcluster_config, json_params, tags):
     """Create a bucket associated to the given stack and upload specified resources."""
     scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
     if scheduler not in ["awsbatch", "slurm"]:
@@ -61,7 +61,7 @@ def _create_bucket_with_resources(pcluster_config, json_params):
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
         if utils.is_hit_enabled_scheduler(scheduler):
-            _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
+            _upload_hit_resources(s3_bucket_name, pcluster_config, json_params, tags)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -70,7 +70,7 @@ def _create_bucket_with_resources(pcluster_config, json_params):
     return s3_bucket_name
 
 
-def _upload_hit_resources(bucket_name, pcluster_config, json_params):
+def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags):
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
     ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
@@ -83,7 +83,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
             Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json"
         )
         file_contents = utils.read_remote_file(hit_template_url)
-        rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"))
+        rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"), tags)
     except ClientError as client_error:
         LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
         raise
@@ -148,7 +148,10 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data.json_params)
+        # merge tags from configuration, command-line and internal ones
+        tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
+
+        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data.json_params, tags)
         if bucket_name:
             cfn_params["ResourcesS3Bucket"] = bucket_name
 
@@ -156,9 +159,6 @@ def create(args):  # noqa: C901 FIXME!!!
 
         # determine the CloudFormation Template URL to use
         template_url = _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
-
-        # merge tags from configuration, command-line and internal ones
-        tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
 
         # append extra parameters from command-line
         if args.extra_parameters:
