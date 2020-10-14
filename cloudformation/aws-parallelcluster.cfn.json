@@ -62,7 +62,7 @@
     "VolumeSize": {
       "Description": "Comma delimited list of size of EBS volume in GB, if creating a new one",
       "Type": "String",
-      "Default": "20,20,20,20,20"
+      "Default": "NONE,NONE,NONE,NONE,NONE"
     },
     "VolumeType": {
       "Description": "Comma delimited list of type of volume to create either new or from snapshot",
