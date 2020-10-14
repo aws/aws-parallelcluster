@@ -309,15 +309,15 @@ class ExtraJsonCfnParam(JsonCfnParam):
             self.value["cfncluster"] = self.value.pop("cluster")
         return self.get_string_value()
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section.
+    def refresh(self):
+        """
+        Refresh the extra_jason.
 
         The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but
-        we are writing "cluster" in the file to suggest the users the recommended syntax.
+        we are using "cluster" in CLI to suggest the users the recommended syntax.
         """
         if self.value and "cfncluster" in self.value:
             self.value["cluster"] = self.value.pop("cfncluster")
-        super(ExtraJsonCfnParam, self).to_file(config_parser)
 
 
 class SharedDirCfnParam(CfnParam):
