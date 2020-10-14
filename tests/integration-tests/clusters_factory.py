@@ -33,20 +33,25 @@ class Cluster:
         self.create_complete = False
         self.__cfn_outputs = None
         self.__cfn_resources = None
+        self.__head_node_substack_cfn_resources = None
+        self.__ebs_substack_cfn_resources = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
         return "{class_name}({attrs})".format(class_name=self.__class__.__name__, attrs=attrs)
 
-    def update(self, reset_desired=False, extra_params=None):
+    def update(self, reset_desired=False, extra_params=None, force=True):
         """
         Update a cluster with an already updated config.
         :param reset_desired: reset the current ASG desired capacity to initial config values
         :param extra_params: extra parameters to pass to stack update
+        :param force: if to use --force flag when update
         """
         # update the cluster
         logging.info("Updating cluster {0} with config {1}".format(self.name, self.config_file))
-        command = ["pcluster", "update", "--config", self.config_file, "--force", "--yes"]
+        command = ["pcluster", "update", "--config", self.config_file, "--yes"]
+        if force:
+            command.append("--force")
         if reset_desired:
             command.append("--reset-desired")
         if extra_params:
@@ -60,8 +65,7 @@ class Cluster:
         logging.info("Cluster {0} updated successfully".format(self.name))
 
         # reset cached properties
-        self.__cfn_outputs = None
-        self.__cfn_resources = None
+        self._reset_cached_properties()
 
         return result
 
@@ -124,15 +128,19 @@ class Cluster:
             )
             raise
 
-    def instances(self):
+    def instances(self, desired_instance_role=None):
         """Run pcluster stop and return the result."""
+        if desired_instance_role and desired_instance_role not in ("MasterServer", "ComputeFleet"):
+            raise ValueError
         cmd_args = ["pcluster", "instances", "--config", self.config_file, self.name]
         try:
             result = run_command(cmd_args, log_error=False)
             logging.info("Get cluster {0} instances successfully".format(self.name))
             cluster_instances = []
             for entry in result.stdout.splitlines():
-                cluster_instances.append(entry.split()[1])
+                instance_role, instance_id = entry.split()
+                if not desired_instance_role or desired_instance_role == instance_role:
+                    cluster_instances.append(instance_id)
             return cluster_instances
         except subprocess.CalledProcessError as e:
             logging.error(
@@ -196,6 +204,37 @@ class Cluster:
             self.__cfn_resources = retrieve_cfn_resources(self.cfn_name, self.region)
         return self.__cfn_resources
 
+    @property
+    def head_node_substack_cfn_resources(self):
+        """
+        Return the CloudFormation stack resources for the cluster's head node substack.
+        Resources are retrieved only once and then cached.
+        """
+        if not self.__head_node_substack_cfn_resources:
+            self.__head_node_substack_cfn_resources = retrieve_cfn_resources(
+                self.cfn_resources.get("MasterServerSubstack"), self.region
+            )
+        return self.__head_node_substack_cfn_resources
+
+    @property
+    def ebs_substack_cfn_resources(self):
+        """
+        Return the CloudFormation stack resources for the cluster's EBS substack.
+        Resources are retrieved only once and then cached.
+        """
+        if not self.__ebs_substack_cfn_resources:
+            self.__ebs_substack_cfn_resources = retrieve_cfn_resources(
+                self.cfn_resources.get("EBSCfnStack"), self.region
+            )
+        return self.__ebs_substack_cfn_resources
+
+    def _reset_cached_properties(self):
+        """Discard cached data."""
+        self.__cfn_outputs = None
+        self.__cfn_resources = None
+        self.__head_node_substack_cfn_resources = None
+        self.__ebs_substack_cfn_resources = None
+
 
 class ClustersFactory:
     """Manage creation and destruction of pcluster clusters."""
@@ -204,10 +243,11 @@ class ClustersFactory:
         self.__created_clusters = {}
         self._keep_logs_on_failure = keep_logs_on_failure
 
-    def create_cluster(self, cluster):
+    def create_cluster(self, cluster, extra_args=None):
         """
         Create a cluster with a given config.
         :param cluster: cluster to create.
+        :param extra_args: list of strings; extra args to pass to `pcluster create`
         """
         name = cluster.name
         config = cluster.config_file
@@ -217,7 +257,11 @@ class ClustersFactory:
         # create the cluster
         logging.info("Creating cluster {0} with config {1}".format(name, config))
         self.__created_clusters[name] = cluster
-        result = run_command(["pcluster", "create", "--norollback", "--config", config, name], timeout=7200)
+        create_cmd_args = ["pcluster", "create", "--norollback", "--config", config]
+        if extra_args:
+            create_cmd_args.extend(extra_args)
+        create_cmd_args.append(name)
+        result = run_command(create_cmd_args, timeout=7200)
         if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)

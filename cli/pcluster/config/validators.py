@@ -1129,6 +1129,19 @@ def base_os_validator(param_key, param_value, pcluster_config):
     return [], warnings
 
 
+def tags_validator(param_key, param_value, pcluster_config):
+    errors = []
+
+    for key in param_value.keys():
+        if key == "Version":
+            errors.append(
+                "The key 'Version' used in your 'tags' configuration parameter is a reserved one, please change it."
+            )
+            break
+
+    return errors, []
+
+
 def queue_settings_validator(param_key, param_value, pcluster_config):
     errors = []
     cluster_section = pcluster_config.get_section("cluster")

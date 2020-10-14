@@ -339,6 +339,7 @@ Variables substituted::
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=ssh_example,
     )
+    _addarg_region(pssh)
     pssh.add_argument("cluster_name", help="Name of the cluster to connect to.")
     pssh.add_argument("-d", "--dryrun", action="store_true", default=False, help="Prints command and exits.")
     pssh.set_defaults(func=ssh)
@@ -383,6 +384,11 @@ Variables substituted::
         help="Specifies the cookbook to use to build the AWS ParallelCluster AMI.",
     )
     pami.add_argument(
+        "--post-install",
+        dest="post_install_script",
+        help="Specifies the post install script to use to build the AWS ParallelCluster AMI.",
+    )
+    pami.add_argument(
         "--no-public-ip",
         dest="associate_public_ip",
         action="store_false",
@@ -424,6 +430,7 @@ Variables substituted::
     pdcv_connect = dcv_subparsers.add_parser(
         "connect", help="Permits to connect to the master node through an interactive session by using NICE DCV."
     )
+    _addarg_region(pdcv_connect)
     pdcv_connect.add_argument("cluster_name", help="Name of the cluster to connect to")
     pdcv_connect.add_argument(
         "--key-path", "-k", dest="key_path", help="Key path of the SSH key to use for the connection"

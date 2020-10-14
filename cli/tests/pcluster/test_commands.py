@@ -56,14 +56,14 @@ def test_create_bucket_with_resources_success(
 
     storage_data = pcluster_config_mock.to_storage()
 
-    bucket_name = _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
+    bucket_name = _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params, {})
 
     delete_s3_bucket_mock.assert_not_called()
     upload_resources_artifacts_mock.assert_has_calls(
         [mocker.call(bucket_name, root=pkg_resources.resource_filename(utils.__name__, dir)) for dir in expected_dirs]
     )
     if expect_upload_hit_resources:
-        upload_hit_resources_mock.assert_called_with(bucket_name, pcluster_config_mock, storage_data.json_params)
+        upload_hit_resources_mock.assert_called_with(bucket_name, pcluster_config_mock, storage_data.json_params, {})
     assert_that(bucket_name).is_equal_to(expected_bucket_name)
 
 
@@ -83,7 +83,7 @@ def test_create_bucket_with_resources_creation_failure(mocker, caplog):
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params, {})
     delete_s3_bucket_mock.assert_not_called()
     assert_that(caplog.text).contains("Unable to create S3 bucket")
 
@@ -104,7 +104,7 @@ def test_create_bucket_with_resources_upload_failure(mocker, caplog):
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params, {})
     # if resource upload fails we delete the bucket
     delete_s3_bucket_mock.assert_called_with(bucket_name)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
@@ -128,7 +128,7 @@ def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
 
     # force upload failure to trigger a bucket deletion and then check the behaviour when the deletion fails
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params)
+        _create_bucket_with_resources(pcluster_config_mock, storage_data.json_params, {})
     delete_s3_bucket_mock.assert_called_with(bucket_name)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
 

@@ -26,8 +26,10 @@ import sys
 import tarfile
 import time
 from builtins import str
-from shutil import rmtree
+from shutil import copyfile, rmtree
 from tempfile import mkdtemp, mkstemp
+from urllib.error import URLError
+from urllib.parse import urlparse
 
 import boto3
 from botocore.exceptions import ClientError
@@ -111,6 +113,58 @@ def _get_cookbook_dir(region, template_url, args, tmpdir):
         sys.exit(1)
 
 
+def _is_valid_post_install_script(post_install_script_url):
+    return urlparse(post_install_script_url).scheme in ["s3", "https", "file"]
+
+
+def _get_current_timestamp():
+    return datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+
+
+def _get_post_install_script_dir(post_install_script_url, tmp_dir):
+    try:
+        tmp_post_install_script_folder = os.path.join(tmp_dir, "script")
+        os.mkdir(tmp_post_install_script_folder)
+
+        if post_install_script_url:
+            LOGGER.info("Post install script url: %s", post_install_script_url)
+            if not _is_valid_post_install_script(post_install_script_url):
+                raise URLError(
+                    "URL {0} is invalid. URLs starting with https, s3 and file are acceptable.".format(
+                        post_install_script_url
+                    )
+                )
+
+            tmp_post_install_script_path = os.path.join(
+                tmp_post_install_script_folder, _get_current_timestamp() + "-" + post_install_script_url.split("/")[-1]
+            )
+
+            if urlparse(post_install_script_url).scheme == "https":
+                urlretrieve(post_install_script_url, filename=tmp_post_install_script_path)
+            elif urlparse(post_install_script_url).scheme == "s3":
+                output = urlparse(post_install_script_url)
+                boto3.client("s3").download_file(output.netloc, output.path.lstrip("/"), tmp_post_install_script_path)
+            elif urlparse(post_install_script_url).scheme == "file":
+                copyfile(post_install_script_url.replace("file://", ""), tmp_post_install_script_path)
+        else:
+            tmp_post_install_script_path = None
+
+        LOGGER.info(
+            "Post install script dir %s",
+            tmp_post_install_script_path if tmp_post_install_script_path else "not specified.",
+        )
+        return tmp_post_install_script_path
+    except IOError as err:
+        LOGGER.critical("I/O error: {0}".format(err))
+        sys.exit(1)
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.exit(1)
+    except URLError as e:
+        LOGGER.critical(e.reason)
+        sys.exit(1)
+
+
 def _dispose_packer_instance(results):
     time.sleep(2)
     try:
@@ -132,7 +186,7 @@ def _run_packer(packer_command, packer_env):
     erase_line = "\x1b[2K"
     _command = shlex.split(packer_command)
     results = {}
-    _, path_log = mkstemp(prefix="packer.log." + datetime.datetime.now().strftime("%Y%m%d-%H%M%S" + "."), text=True)
+    _, path_log = mkstemp(prefix="packer.log." + _get_current_timestamp() + ".", text=True)
     LOGGER.info("Packer log: %s", path_log)
     try:
         dev_null = open(os.devnull, "rb")
@@ -252,10 +306,6 @@ def _validate_createami_args_ami_compatibility(args):
 def create_ami(args):
     LOGGER.info("Building AWS ParallelCluster AMI. This could take a while...")
 
-    # Ensure AWS_DEFAULT_REGION env is set.
-    # Set it explicitly if the CLI arg was passed. Otherwise let the config object do it.
-    if args.region:
-        os.environ["AWS_DEFAULT_REGION"] = args.region
     pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_file_absence=True)
 
     ami_info = _validate_createami_args_ami_compatibility(args)
@@ -297,6 +347,8 @@ def create_ami(args):
 
         tmp_dir = mkdtemp()
         cookbook_dir = _get_cookbook_dir(aws_region, template_url, args, tmp_dir)
+
+        _get_post_install_script_dir(args.post_install_script, tmp_dir)
 
         packer_command = (
             cookbook_dir

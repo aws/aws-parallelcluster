@@ -10,6 +10,10 @@ CHANGELOG
 * Enable support for NICE DCV in GovCloud regions.
 * Enable support for AWS Batch scheduler in GovCloud regions.
 
+**CHANGES**
+
+* Upgrade image used by CodeBuild environment when building container images for Batch clusters.
+
 2.9.1
 =====
 

@@ -309,15 +309,15 @@ class ExtraJsonCfnParam(JsonCfnParam):
             self.value["cfncluster"] = self.value.pop("cluster")
         return self.get_string_value()
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section.
+    def refresh(self):
+        """
+        Refresh the extra_jason.
 
         The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but
-        we are writing "cluster" in the file to suggest the users the recommended syntax.
+        we are using "cluster" in CLI to suggest the users the recommended syntax.
         """
         if self.value and "cfncluster" in self.value:
             self.value["cluster"] = self.value.pop("cfncluster")
-        super(ExtraJsonCfnParam, self).to_file(config_parser)
 
 
 class SharedDirCfnParam(CfnParam):
@@ -814,6 +814,30 @@ class BaseOSCfnParam(CfnParam):
             master_inst_type = self.owner_section.get_param_value("master_instance_type")
             architecture = self.get_instance_type_architecture(master_inst_type)
             self.owner_section.get_param("architecture").value = architecture
+
+
+class TagsParam(JsonCfnParam):
+    """
+    Class to manage the tags json configuration parameter.
+
+    Tags are stored in CFN as a separate field instead of inside parameters in CFN.
+    Therefore, we need to overwrite the from_storage function
+    """
+
+    def from_storage(self, storage_params):
+        """Load the param from the related storage data structure."""
+        return self.from_cfn_tag(storage_params.cfn_tags)
+
+    def from_cfn_tag(self, cfn_tags):
+        """Initialize custom tags."""
+        if cfn_tags:
+            for tag in cfn_tags:
+                key = tag.get("Key")
+                if key == "Version":
+                    # Skip default "Version" tag
+                    continue
+                self.value[key] = tag.get("Value")
+        return self
 
 
 # ---------------------- SettingsParams ---------------------- #
