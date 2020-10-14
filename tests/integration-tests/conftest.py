@@ -236,7 +236,7 @@ def clusters_factory(request):
     """
     factory = ClustersFactory(keep_logs_on_failure=request.config.getoption("keep_logs_on_cluster_failure"))
 
-    def _cluster_factory(cluster_config):
+    def _cluster_factory(cluster_config, extra_args=None):
         cluster_config = _write_cluster_config_to_outdir(request, cluster_config)
         cluster = Cluster(
             name=request.config.getoption("cluster")
@@ -250,7 +250,7 @@ def clusters_factory(request):
             ssh_key=request.config.getoption("key_path"),
         )
         if not request.config.getoption("cluster"):
-            factory.create_cluster(cluster)
+            factory.create_cluster(cluster, extra_args=extra_args)
         return cluster
 
     yield _cluster_factory
