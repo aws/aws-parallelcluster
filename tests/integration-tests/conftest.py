@@ -71,6 +71,7 @@ def pytest_addoption(parser):
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
     parser.addoption("--hit-template-url", help="url to a custom HIT cfn template")
+    parser.addoption("--cw-dashboard-template-url", help="url to a custom Dashboard cfn template")
     parser.addoption("--custom-awsbatchcli-package", help="url to a custom awsbatch cli package")
     parser.addoption("--custom-node-package", help="url to a custom node package")
     parser.addoption("--custom-ami", help="custom AMI to use in the tests")
@@ -364,6 +365,7 @@ def add_custom_packages_configs(cluster_config, request, region):
     for custom_option in [
         "template_url",
         "hit_template_url",
+        "cw_dashboard_template_url",
         "custom_chef_cookbook",
         "custom_ami",
         "pre_install",

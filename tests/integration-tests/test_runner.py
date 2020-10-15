@@ -56,6 +56,7 @@ TEST_DEFAULTS = {
     "custom_template_url": None,
     "custom_awsbatchcli_url": None,
     "custom_hit_template_url": None,
+    "custom_cw_dashboard_template_url": None,
     "custom_ami": None,
     "pre_install": None,
     "post_install": None,
@@ -222,6 +223,11 @@ def _init_argparser():
         help="URL to a custom hit cfn template.",
         default=TEST_DEFAULTS.get("custom_hit_template_url"),
         type=_is_url,
+    )
+    custom_group.add_argument(
+        "--custom-cw-dashboard-template-url",
+        help="URL to a custom dashboard cfn template.",
+        default=TEST_DEFAULTS.get("custom_cw_dashboard_template_url"),
     )
     custom_group.add_argument(
         "--custom-awsbatchcli-url",
@@ -425,6 +431,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 
     if args.custom_hit_template_url:
         pytest_args.extend(["--hit-template-url", args.custom_hit_template_url])
+
+    if args.custom_cw_dashboard_template_url:
+        pytest_args.extend(["--cw-dashboard-template-url", args.custom_cw_dashboard_template_url])
 
     if args.custom_awsbatchcli_url:
         pytest_args.extend(["--custom-awsbatchcli-package", args.custom_awsbatchcli_url])
