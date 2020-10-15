@@ -1,0 +1,56 @@
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License").
+# You may not use this file except in compliance with the License.
+# A copy of the License is located at
+#
+# http://aws.amazon.com/apache2.0/
+#
+# or in the "LICENSE.txt" file accompanying this file.
+# This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
+# See the License for the specific language governing permissions and limitations under the License.
+
+# This file defines the yaml schema validated by pykwalify
+# https://pykwalify.readthedocs.io/en/master/
+type: map
+mapping:
+  test-suites:
+    type: map
+    required:  yes
+    mapping:
+      regex;(.+):
+        type: map
+        required: yes
+        mapping:
+          regex;(.+\.py::.+):
+            type: map
+            required: yes
+            mapping:
+              dimensions:
+                type: seq
+                required: yes
+                sequence:
+                  - type: map
+                    required: yes
+                    mapping:
+                      regions:
+                        type: seq
+                        required: yes
+                        sequence:
+                          - type: str
+                      instances:
+                        type: seq
+                        required: no
+                        sequence:
+                          - type: str
+                      oss:
+                        type: seq
+                        required: no
+                        allowempty: False
+                        sequence:
+                          - type: str
+                      schedulers:
+                        type: seq
+                        required: no
+                        sequence:
+                          - type: str

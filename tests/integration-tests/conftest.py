@@ -34,6 +34,9 @@ from conftest_markers import (
     check_marker_skip_dimensions,
     check_marker_skip_list,
 )
+from conftest_tests_config import apply_cli_dimensions_filtering, parametrize_from_config, remove_disabled_tests
+from framework.tests_configuration.config_renderer import read_config_file
+from framework.tests_configuration.config_utils import get_all_regions
 from jinja2 import Environment, FileSystemLoader
 from network_template_builder import Gateways, NetworkTemplateBuilder, SubnetConfig, VPCConfig
 from retrying import retry
@@ -51,13 +54,11 @@ from utils import (
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
-    parser.addoption("--regions", help="aws region where tests are executed", default=["us-east-1"], nargs="+")
-    parser.addoption(
-        "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
-    )
-    parser.addoption("--instances", help="aws instances under test", default=["c5.xlarge"], nargs="+")
-    parser.addoption("--oss", help="OSs under test", default=["alinux"], nargs="+")
-    parser.addoption("--schedulers", help="schedulers under test", default=["slurm"], nargs="+")
+    parser.addoption("--tests-config-file", help="config file to specify tests and dimensions")
+    parser.addoption("--regions", help="aws region where tests are executed", nargs="*")
+    parser.addoption("--instances", help="aws instances under test", nargs="*")
+    parser.addoption("--oss", help="OSs under test", nargs="*")
+    parser.addoption("--schedulers", help="schedulers under test", nargs="*")
     parser.addoption("--tests-log-file", help="file used to write test logs", default="pytest.log")
     parser.addoption("--output-dir", help="output dir for tests artifacts")
     # Can't mark fields as required due to: https://github.com/pytest-dev/pytest/issues/2026
@@ -78,6 +79,9 @@ def pytest_addoption(parser):
     parser.addoption("--vpc-stack", help="Name of an existing vpc stack.")
     parser.addoption("--cluster", help="Use an existing cluster instead of creating one.")
     parser.addoption(
+        "--credential", help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>.", nargs="+"
+    )
+    parser.addoption(
         "--no-delete", action="store_true", default=False, help="Don't delete stacks after tests are complete."
     )
     parser.addoption("--benchmarks-target-capacity", help="set the target capacity for benchmarks tests", type=int)
@@ -95,14 +99,21 @@ def pytest_addoption(parser):
 
 def pytest_generate_tests(metafunc):
     """Generate (multiple) parametrized calls to a test function."""
-    _parametrize_from_option(metafunc, "region", "regions")
-    _parametrize_from_option(metafunc, "instance", "instances")
-    _parametrize_from_option(metafunc, "os", "oss")
-    _parametrize_from_option(metafunc, "scheduler", "schedulers")
+    if metafunc.config.getoption("tests_config", None):
+        parametrize_from_config(metafunc)
+    else:
+        _parametrize_from_option(metafunc, "region", "regions")
+        _parametrize_from_option(metafunc, "instance", "instances")
+        _parametrize_from_option(metafunc, "os", "oss")
+        _parametrize_from_option(metafunc, "scheduler", "schedulers")
 
 
 def pytest_configure(config):
     """This hook is called for every plugin and initial conftest file after command line options have been parsed."""
+    # read tests config file if used
+    if config.getoption("tests_config_file", None):
+        config.option.tests_config = read_config_file(config.getoption("tests_config_file"))
+
     # register additional markers
     config.addinivalue_line("markers", "instances(instances_list): run test only against the listed instances.")
     config.addinivalue_line("markers", "regions(regions_list): run test only against the listed regions")
@@ -135,20 +146,26 @@ def pytest_runtest_logfinish(nodeid, location):
 
 def pytest_collection_modifyitems(config, items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
-    add_default_markers(items)
+    if config.getoption("tests_config", None):
+        # Remove tests not declared in config file from the collected ones
+        remove_disabled_tests(config, items)
+        # Apply filtering based on dimensions passed as CLI options
+        # ("--regions", "--instances", "--oss", "--schedulers")
+        apply_cli_dimensions_filtering(config, items)
+    else:
+        add_default_markers(items)
+        check_marker_list(items, "instances", "instance")
+        check_marker_list(items, "regions", "region")
+        check_marker_list(items, "oss", "os")
+        check_marker_list(items, "schedulers", "scheduler")
+        check_marker_skip_list(items, "skip_instances", "instance")
+        check_marker_skip_list(items, "skip_regions", "region")
+        check_marker_skip_list(items, "skip_oss", "os")
+        check_marker_skip_list(items, "skip_schedulers", "scheduler")
+        check_marker_dimensions(items)
+        check_marker_skip_dimensions(items)
 
-    check_marker_list(items, "instances", "instance")
-    check_marker_list(items, "regions", "region")
-    check_marker_list(items, "oss", "os")
-    check_marker_list(items, "schedulers", "scheduler")
-    check_marker_skip_list(items, "skip_instances", "instance")
-    check_marker_skip_list(items, "skip_regions", "region")
-    check_marker_skip_list(items, "skip_oss", "os")
-    check_marker_skip_list(items, "skip_schedulers", "scheduler")
-    check_marker_dimensions(items)
-    check_marker_skip_dimensions(items)
-
-    _add_filename_markers(items)
+    _add_filename_markers(items, config)
 
 
 def pytest_collection_finish(session):
@@ -161,10 +178,11 @@ def _log_collected_tests(session):
     # Write collected tests in a single worker
     # get_xdist_worker_id returns the id of the current worker ('gw0', 'gw1', etc) or 'master'
     if get_xdist_worker_id(session) in ["master", "gw0"]:
-        logging.info("Collected test=%d", len(session.items))
+        collected_tests = list(map(lambda item: item.nodeid, session.items))
+        logging.info("Collected test (total=%d):\n%s", len(session.items), json.dumps(collected_tests, indent=2))
         out_dir = session.config.getoption("output_dir")
         with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
-            out_f.write("\n".join(map(lambda item: item.nodeid, session.items)))
+            out_f.write("\n".join(collected_tests))
 
 
 def pytest_exception_interact(node, call, report):
@@ -183,10 +201,14 @@ def _extract_tested_component_from_filename(item):
     return re.sub(r"test_|_test", "", test_location)
 
 
-def _add_filename_markers(items):
+def _add_filename_markers(items, config):
     """Add a marker based on the name of the file where the test case is defined."""
     for item in items:
-        item.add_marker(_extract_tested_component_from_filename(item))
+        marker = _extract_tested_component_from_filename(item)
+        # This dynamically registers markers in pytest so that warning for the usage of undefined markers are not
+        # displayed
+        config.addinivalue_line("markers", marker)
+        item.add_marker(marker)
 
 
 def _parametrize_from_option(metafunc, test_arg_name, option_name):
@@ -517,7 +539,7 @@ def get_availability_zones(region, credential):
 @pytest.fixture(scope="session", autouse=True)
 def vpc_stacks(cfn_stacks_factory, request):
     """Create VPC used by integ tests in all configured regions."""
-    regions = request.config.getoption("regions")
+    regions = request.config.getoption("regions") or get_all_regions(request.config.getoption("tests_config"))
     vpc_stacks = {}
 
     for region in regions:
