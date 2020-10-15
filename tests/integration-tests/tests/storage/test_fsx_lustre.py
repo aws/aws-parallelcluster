@@ -33,7 +33,14 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 
 
 @pytest.mark.parametrize(
-    "deployment_type, per_unit_storage_throughput, auto_import_policy, storage_type, drive_cache_type, storage_capacity",
+    (
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "auto_import_policy",
+        "storage_type",
+        "drive_cache_type",
+        "storage_capacity",
+    ),
     [
         ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200),
         ("SCRATCH_1", None, "NEW", None, None, 1200),
