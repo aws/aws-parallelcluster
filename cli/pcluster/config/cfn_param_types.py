@@ -1207,8 +1207,8 @@ class VolumeSizeParam(IntCfnParam):
         """
         We need this method to check whether the user have an input on ebs volume_size.
 
-        If the volume_size is not specified by an user, we will crate an EBS volume with default volume size. The
-        default volume size would be 20 if it is not created from a specified snapshot, Otherwise it will be equal to
+        If the volume_size is not specified by an user, we will create an EBS volume with default volume size. The
+        default volume size would be 20 if it is not created from a specified snapshot, otherwise it will be equal to
         the size of the specified EBS snapshot.
         """
         section = self.pcluster_config.get_section(self.section_key, self.section_label)
