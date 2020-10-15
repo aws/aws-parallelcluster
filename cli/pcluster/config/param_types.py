@@ -68,6 +68,11 @@ class Param(ABC):
         self.value = None
         self._from_definition()
 
+    def is_in_config_file(self):
+        """Tell if the param is in the configuration file."""
+        section_name = get_file_section_name(self.section_key, self.section_label)
+        return self.pcluster_config.config_parser.has_option(section_name, self.key)
+
     def get_value_from_string(self, string_value):
         """Return internal representation starting from CFN/user-input value."""
         param_value = self.get_default_value()
