@@ -20,6 +20,11 @@ matrix:
     python: 3.6
     stage: linters
     env: TOXENV=cfn-format-check,cfn-lint,cfn-tests
+  - name: Validate integration tests configs
+    python: 3.6
+    stage: linters
+    env: TOXENV=validate-test-configs
+    script: cd tests/integration-tests && tox
 
 install:
   - pip install tox-travis
