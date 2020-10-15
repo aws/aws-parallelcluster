@@ -24,6 +24,7 @@ from pcluster.utils import (
     get_availability_zone_of_subnet,
     get_cfn_param,
     get_default_threads_per_core,
+    get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
     get_instance_vcpus,
@@ -1193,3 +1194,24 @@ class ClusterCfnSection(CfnSection):
 
         super(ClusterCfnSection, self).to_storage(storage_params)
         return storage_params
+
+
+class VolumeSizeParam(IntCfnParam):
+    """Class to manage ebs volume_size parameter."""
+
+    def refresh(self):
+        """
+        We need this method to check whether the user have an input on ebs volume_size.
+
+        If the volume_size is not specified by an user, we will crate an EBS volume with default volume size. The
+        default volume size would be 20 if it is not created from a specified snapshot, Otherwise it will be equal to
+        the size of the specified EBS snapshot.
+        """
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+        if section and section.get_param_value("volume_size") is None:
+            if section.get_param_value("ebs_snapshot_id"):
+                ebs_snapshot_id = section.get_param_value("ebs_snapshot_id")
+                default_volume_size = get_ebs_snapshot_info(ebs_snapshot_id).get("VolumeSize")
+            else:
+                default_volume_size = 20
+            self.value = default_volume_size

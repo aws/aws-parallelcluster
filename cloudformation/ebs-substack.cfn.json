@@ -1141,24 +1141,16 @@
         },
         "Size": {
           "Fn::If": [
-            "Vol1_UseEBSSnapshot",
+            "Vol1_UseVolumeSize",
             {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Fn::If": [
-                "Vol1_UseVolumeSize",
+              "Fn::Select": [
+                "0",
                 {
-                  "Fn::Select": [
-                    "0",
-                    {
-                      "Ref": "VolumeSize"
-                    }
-                  ]
-                },
-                20
+                  "Ref": "VolumeSize"
+                }
               ]
-            }
+            },
+            20
           ]
         },
         "SnapshotId": {
@@ -1250,24 +1242,16 @@
         },
         "Size": {
           "Fn::If": [
-            "Vol2_UseEBSSnapshot",
+            "Vol2_UseVolumeSize",
             {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Fn::If": [
-                "Vol2_UseVolumeSize",
+              "Fn::Select": [
+                "1",
                 {
-                  "Fn::Select": [
-                    "1",
-                    {
-                      "Ref": "VolumeSize"
-                    }
-                  ]
-                },
-                20
+                  "Ref": "VolumeSize"
+                }
               ]
-            }
+            },
+            20
           ]
         },
         "SnapshotId": {
@@ -1359,24 +1343,16 @@
         },
         "Size": {
           "Fn::If": [
-            "Vol3_UseEBSSnapshot",
+            "Vol3_UseVolumeSize",
             {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Fn::If": [
-                "Vol3_UseVolumeSize",
+              "Fn::Select": [
+                "2",
                 {
-                  "Fn::Select": [
-                    "2",
-                    {
-                      "Ref": "VolumeSize"
-                    }
-                  ]
-                },
-                20
+                  "Ref": "VolumeSize"
+                }
               ]
-            }
+            },
+            20
           ]
         },
         "SnapshotId": {
@@ -1468,24 +1444,16 @@
         },
         "Size": {
           "Fn::If": [
-            "Vol4_UseEBSSnapshot",
+            "Vol4_UseVolumeSize",
             {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Fn::If": [
-                "Vol4_UseVolumeSize",
+              "Fn::Select": [
+                "3",
                 {
-                  "Fn::Select": [
-                    "3",
-                    {
-                      "Ref": "VolumeSize"
-                    }
-                  ]
-                },
-                20
+                  "Ref": "VolumeSize"
+                }
               ]
-            }
+            },
+            20
           ]
         },
         "SnapshotId": {
@@ -1577,24 +1545,16 @@
         },
         "Size": {
           "Fn::If": [
-            "Vol5_UseEBSSnapshot",
+            "Vol5_UseVolumeSize",
             {
-              "Ref": "AWS::NoValue"
-            },
-            {
-              "Fn::If": [
-                "Vol5_UseVolumeSize",
+              "Fn::Select": [
+                "4",
                 {
-                  "Fn::Select": [
-                    "4",
-                    {
-                      "Ref": "VolumeSize"
-                    }
-                  ]
-                },
-                20
+                  "Ref": "VolumeSize"
+                }
               ]
-            }
+            },
+            20
           ]
         },
         "SnapshotId": {
