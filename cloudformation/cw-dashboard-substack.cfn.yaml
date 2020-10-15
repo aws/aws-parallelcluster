@@ -286,22 +286,21 @@ Resources:
           {%- endif %}
           {{- update_coord_after_section(graph_height) }}
 
-          {#- Head Node Logs #}
+          {#- Head Node Logs, only if CW Logs are enabled #}
+          {%- set cw_logs_enabled = cfn_params.CWLogOptions.split(',')[0] | bool %}
+          {%- if cw_logs_enabled %}
           - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n#
             Head Node Logs\n"}}'
-          {{- update_coord_after_section(1) }}
-          {%- set dcv_enabled = (cfn_params.DCVOptions.split(',')[0]=='master') %}
-          {%- set sections_widgets =
+            {{- update_coord_after_section(1) }}
+            {%- set dcv_enabled = (cfn_params.DCVOptions.split(',')[0]=='master') %}
+            {%- set sections_widgets =
             [
               {
                 'section_title': "ParallelCluster''s logs",
                 'widgets': [
                   {
                     'title': "jobwatcher",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*jobwatcher"}],
                     'sort': "@timestamp desc",
@@ -309,10 +308,7 @@ Resources:
                   },
                   {
                     'title': "sqswatcher",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["sge","torque"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*sqswatcher"}],
                     'sort': "@timestamp desc",
@@ -320,10 +316,7 @@ Resources:
                   },
                   {
                     'title': "clustermgtd",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters':
                       [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*clustermgtd"}],
@@ -332,10 +325,7 @@ Resources:
                   },
                   {
                     'title': "slurm_resume",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*slurm_resume"}],
                     'sort': "@timestamp desc",
@@ -343,10 +333,7 @@ Resources:
                   },
                   {
                     'title': "slurm_suspend",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*slurm_suspend"}],
                     'sort': "@timestamp desc",
@@ -359,10 +346,7 @@ Resources:
                 'widgets': [
                   {
                     'title': "slurmctld",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["slurm"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*slurmctld"}],
                     'sort': "@timestamp desc",
@@ -371,7 +355,6 @@ Resources:
                   {
                     'title': "sge-qmaster",
                     'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
                       {'param': cfn_params.Scheduler, 'allowed_values': ["sge"]}
                     ],
                     'fields': ["@timestamp", "@message"],
@@ -381,10 +364,7 @@ Resources:
                   },
                   {
                     'title': "torque-server",
-                    'conditions': [
-                      {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]},
-                      {'param': cfn_params.Scheduler, 'allowed_values': ["torque"]}
-                    ],
+                    'conditions': [{'param': cfn_params.Scheduler, 'allowed_values': ["torque"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*torque-server"}],
                     'sort': "@timestamp desc",
@@ -458,7 +438,7 @@ Resources:
                 'widgets': [
                   {
                     'title': "system-messages",
-                    'conditions': {'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7"]},
+                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*system-messages"}],
                     'sort': "@timestamp desc",
@@ -474,7 +454,6 @@ Resources:
                   },
                   {
                     'title': "cfn-init",
-                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*cfn-init"}],
                     'sort': "@timestamp desc",
@@ -482,7 +461,6 @@ Resources:
                   },
                   {
                     'title': "chef-client",
-                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*chef-client"}],
                     'sort': "@timestamp desc",
@@ -490,7 +468,6 @@ Resources:
                   },
                   {
                     'title': "cloud-init",
-                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*cloud-init$"}],
                     'sort': "@timestamp desc",
@@ -498,7 +475,6 @@ Resources:
                   },
                   {
                     'title': "supervisord",
-                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["alinux","alinux2","centos6","centos7","ubuntu1604","ubuntu1804"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*supervisord"}],
                     'sort': "@timestamp desc",
@@ -507,35 +483,43 @@ Resources:
                 ]
               }
             ]
-          -%}
-          {%- for section_widgets in sections_widgets %}
-            {{- is_logs_section_empty(section_widgets) }}
-            {%- if not empty_section.bool %}
+            -%}
+            {%- for section_widgets in sections_widgets %}
+              {{- is_logs_section_empty(section_widgets) }}
+              {%- if not empty_section.bool %}
           - ',{"type":"text","x":{{ coord.x }},"y":{{ coord.y }},"width":24,"height":1,"properties":{"markdown":"\n##
             {{ section_widgets.section_title }}\n"}}'
-            {{- update_coord_after_section(1) }}
-              {%- for log_params in section_widgets.widgets %}
-                {%- set passed_condition = {'bool': True} %}
-                {%- for cond_dict in log_params.conditions %}
-                  {%- if cond_dict.param not in cond_dict.allowed_values %}
-                    {%- if passed_condition.update({'bool': False}) %} {% endif %}
-                  {%- endif %}
-                {%- endfor %}
-                {%- if passed_condition.bool %}
+              {{- update_coord_after_section(1) }}
+                {%- for log_params in section_widgets.widgets %}
+                  {%- set passed_condition = {'bool': True} %}
+                  {%- for cond_dict in log_params.conditions %}
+                    {%- if cond_dict.param not in cond_dict.allowed_values %}
+                      {%- if passed_condition.update({'bool': False}) %} {% endif %}
+                    {%- endif %}
+                  {%- endfor %}
+                  {%- if passed_condition.bool %}
           - ',{"type":"log","x":{{ coord.x }},"y":{{ coord.y }},"width":{{ logs_width }},"height":{{ logs_height }},"properties":{"view":"table","stacked":false,'
           - !Sub '"region":"${AWS::Region}","title":"{{ log_params.title }}",'
           - !Sub '"query":"SOURCE ''${CWLogGroupName}'''
           - '| fields {{ log_params.fields|join(', ') }}'
-                  {%- for filter in log_params.filters %}
+                    {%- for filter in log_params.filters %}
           - !Sub '| filter {{ filter.param }} like /{{ filter.pattern }}/'
-                  {%- endfor %}
+                    {%- endfor %}
           - '| sort {{ log_params.sort }}'
           - '| limit {{ log_params.limit }}"}}'
-                  {{- update_coord(logs_width, logs_height) }}
-                {%- endif %}
-              {%- endfor %}
-            {%- endif %}
-          {%- endfor %}
+                    {{- update_coord(logs_width, logs_height) }}
+                  {%- endif %}
+                {%- endfor %}
+              {%- endif %}
+            {%- endfor %}
+          {%- endif %}
           - ']}'
     Condition: CreateDashboard
+Metadata:
+  {#- The following metadata are needed because if CW log is disabled these variables are not used elsewhere. #}
+  MasterPrivateIP: !Ref 'MasterPrivateIP'
+  RAIDVolumesIds: !Ref 'RAIDVolumesIds'
+  EFSFileSystemId: !Ref 'EFSFileSystemId'
+  FSXFileSystemId: !Ref 'FSXFileSystemId'
+  CWLogGroupName: !Ref 'CWLogGroupName'
 

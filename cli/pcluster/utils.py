@@ -1111,6 +1111,7 @@ def render_template(template_str, params_dict, tags, config_version=None):
     try:
         environment = Environment(loader=BaseLoader)
         environment.filters["sha1"] = lambda value: hashlib.sha1(value.strip().encode()).hexdigest()
+        environment.filters["bool"] = lambda value: value.lower() == "true"
         template = environment.from_string(template_str)
         output_from_parsed_template = template.render(config=params_dict, config_version=config_version, tags=tags)
         return output_from_parsed_template
