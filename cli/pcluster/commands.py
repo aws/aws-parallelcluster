@@ -70,7 +70,9 @@ def _create_bucket_with_resources(pcluster_config, json_params, tags):
     return s3_bucket_name
 
 
-def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags):
+def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
+    if tags is None:
+        tags = []
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
     ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
