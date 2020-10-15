@@ -66,6 +66,8 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "arm64": ["ubuntu1804", "alinux2"],
 }
 
+FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
+
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "standard": (1, 1024),
     "io1": (4, 16 * 1024),
@@ -1314,10 +1316,9 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
 
     # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
     relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
-    PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
     if fsx_section.get_param_value("fsx_fs_id") is not None:
         for fsx_param in fsx_section.params:
-            if fsx_param not in relevant_when_using_existing_fsx and PARAM_WITH_DEFAULT.get(
+            if fsx_param not in relevant_when_using_existing_fsx and FSX_PARAM_WITH_DEFAULT.get(
                 fsx_param, None
             ) != fsx_section.get_param_value(fsx_param):
                 errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
@@ -1514,7 +1515,7 @@ def validate_storage_type_options(
                 )
             )
     else:  # SSD or None
-        if fsx_drive_cache_type is not "NONE":
+        if fsx_drive_cache_type != "NONE":
             errors.append("'drive_cache_type' features can be used only with HDD filesystems")
         if fsx_per_unit_storage_throughput and fsx_per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
             errors.append(
