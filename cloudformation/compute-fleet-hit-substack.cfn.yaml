@@ -157,6 +157,28 @@ Resources:
                 Value: !Ref 'FilesystemTagValue'
               - Key: aws-parallelcluster-node-type
                 Value: Compute
+    {%- for tag in tags %}
+              - Key: {{ tag.Key }}
+                Value: {{ tag.Value }}
+    {%- endfor %}
+          - ResourceType: volume
+            Tags:
+              - Key: ClusterName
+                Value: !Select
+                  - '1'
+                  - !Split
+                    - parallelcluster-
+                    - !Ref 'MainStackName'
+              - Key: QueueName
+                Value: {{ queue }}
+              - Key: Application
+                Value: !Ref 'MainStackName'
+              - Key: aws-parallelcluster-node-type
+                Value: Compute
+    {%- for tag in tags %}
+              - Key: {{ tag.Key }}
+                Value: {{ tag.Value }}
+    {%- endfor %}
         BlockDeviceMappings:
           - DeviceName: /dev/xvdba
             VirtualName: ephemeral0

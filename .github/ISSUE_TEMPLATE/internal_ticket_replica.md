@@ -1,6 +1,6 @@
 ---
 name: Known Issue Report
-about: ''
+about: 'Report known issues on github'
 title: ''
 labels: 'known-issue-report'
 assignees: ''

@@ -169,6 +169,7 @@ def _test_less_target_sections(base_conf, target_conf):
                 ),
             ),
             Change("ebs", "ebs-1", "shared_dir", "vol1", "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-1", "volume_size", 20, "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -197,6 +198,7 @@ def _test_more_target_sections(base_conf, target_conf):
                 ),
             ),
             Change("ebs", "ebs-1", "shared_dir", "-", "vol1", UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-1", "volume_size", "-", 20, UpdatePolicy(UpdatePolicy.SUPPORTED)),
         ],
         UpdatePolicy.UNSUPPORTED,
     )
@@ -245,6 +247,10 @@ def _test_different_labels(base_conf, target_conf):
             Change("ebs", "ebs-1_updated", "shared_dir", "vol1", "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
             Change("ebs", "ebs-2", "shared_dir", "-", "vol2", UpdatePolicy(UpdatePolicy.SUPPORTED)),
             Change("ebs", "ebs-2_updated", "shared_dir", "vol2", "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-1", "volume_size", "-", 20, UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-1_updated", "volume_size", 20, "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-2", "volume_size", "-", 20, UpdatePolicy(UpdatePolicy.SUPPORTED)),
+            Change("ebs", "ebs-2_updated", "volume_size", 20, "-", UpdatePolicy(UpdatePolicy.SUPPORTED)),
             Change(
                 "cluster",
                 "default",

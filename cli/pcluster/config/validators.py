@@ -22,6 +22,7 @@ from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     ellipsize,
     get_base_additional_iam_policies,
+    get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
     get_instance_vcpus,
@@ -819,19 +820,6 @@ def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def ec2_ebs_snapshot_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        test = boto3.client("ec2").describe_snapshots(SnapshotIds=[param_value]).get("Snapshots")[0]
-        if test.get("State") != "completed":
-            warnings.append("Snapshot {0} is in state '{1}' not 'completed'".format(param_value, test.get("State")))
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
 def ebs_settings_validator(param_key, param_value, pcluster_config):
     """
     Validate the following cases.
@@ -927,7 +915,7 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     warnings = []
 
     if param_value == "awsbatch":
-        if pcluster_config.region in ["ap-northeast-3", "us-gov-east-1", "us-gov-west-1"]:
+        if pcluster_config.region in ["ap-northeast-3"]:
             errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
 
     supported_os = get_supported_os_for_scheduler(param_value)
@@ -1433,3 +1421,66 @@ def validate_backup_options(
         fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path or fsx_auto_import_policy
     ) and fsx_automatic_backup_retention_days:
         errors.append("Backups cannot be created on S3-linked file systems")
+
+
+def ebs_volume_size_snapshot_validator(section_key, section_label, pcluster_config):
+    """
+    Validate the following cases.
+
+    The EBS snapshot is in "completed" state if it is specified
+    If user specified the volume size, the volume must be larger than then volume size of the EBS snapshot
+    """
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    if section.get_param_value("ebs_snapshot_id"):
+        try:
+            ebs_snapshot_id = section.get_param_value("ebs_snapshot_id")
+            snapshot_response_dict = get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=True)
+            # validate that the input volume size is larger than the volume size of the EBS snapshot
+            snapshot_volume_size = snapshot_response_dict.get("VolumeSize")
+            volume_size = section.get_param_value("volume_size")
+            if snapshot_volume_size is None:
+                errors.append(
+                    "Unable to get volume size for snapshot {snapshot_id}".format(snapshot_id=ebs_snapshot_id)
+                )
+            elif volume_size < snapshot_volume_size:
+                errors.append("The EBS volume size must not be smaller than the volume size of EBS snapshot.")
+            elif volume_size > snapshot_volume_size:
+                warnings.append(
+                    "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+                    "volume, you'll need to manually resize the partition "
+                    "according to this doc: "
+                    "https://{partition_url}/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html".format(
+                        partition_url="docs.amazonaws.cn" if get_partition() == "aws-cn" else "docs.aws.amazon.com"
+                    )
+                )
+
+                # validate that the state of ebs snapshot
+            if snapshot_response_dict.get("State") != "completed":
+                warnings.append(
+                    "Snapshot {0} is in state '{1}' not 'completed'".format(
+                        ebs_snapshot_id, snapshot_response_dict.get("State")
+                    )
+                )
+        except Exception as exception:
+            if isinstance(exception, ClientError) and exception.response.get("Error").get("Code") in [
+                "InvalidSnapshot.NotFound",
+                "InvalidSnapshot.Malformed",
+            ]:
+                errors.append(
+                    "The snapshot {0} does not appear to exist: {1}".format(
+                        ebs_snapshot_id, exception.response.get("Error").get("Message")
+                    )
+                )
+            else:
+                errors.append(
+                    "Issue getting info for snapshot {0}: {1}".format(
+                        ebs_snapshot_id,
+                        exception.response.get("Error").get("Message")
+                        if isinstance(exception, ClientError)
+                        else exception,
+                    )
+                )
+    return errors, warnings
