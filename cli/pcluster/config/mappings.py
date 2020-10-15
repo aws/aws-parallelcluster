@@ -56,6 +56,7 @@ from pcluster.config.validators import (
     dcv_enabled_validator,
     disable_hyperthreading_architecture_validator,
     disable_hyperthreading_validator,
+    duplicate_shared_dir_validator,
     ebs_settings_validator,
     ebs_volume_iops_validator,
     ebs_volume_size_snapshot_validator,
@@ -97,6 +98,7 @@ from pcluster.config.validators import (
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
+CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
 
@@ -933,7 +935,7 @@ CLUSTER_SIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "SIT",
-    "validators": [cluster_validator],
+    "validators": [cluster_validator] + CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
@@ -1030,6 +1032,7 @@ CLUSTER_HIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "HIT",
+    "validators": CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("default_queue", {

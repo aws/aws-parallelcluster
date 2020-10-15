@@ -2505,3 +2505,62 @@ def test_ebs_volume_size_snapshot_validator(
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_error=expected_error, capsys=capsys, expected_warning=expected_warning
     )
+
+
+@pytest.mark.parametrize(
+    "cluster_section_dict, ebs_section_dict1, ebs_section_dict2, expected_message",
+    [
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1"},
+            {"volume_size": 30},
+            {},
+            None,
+        ),
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1"},
+            {"shared_dir": "shared_directory1"},
+            {},
+            "'shared_dir' can not be specified both in cluster section and EBS section",
+        ),
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1, vol2"},
+            {"shared_dir": "shared_directory1", "volume_size": 30},
+            {"shared_dir": "shared_directory2", "volume_size": 30},
+            "'shared_dir' can not be specified in cluster section when using multiple EBS volumes",
+        ),
+        (
+            {"ebs_settings": "vol1, vol2"},
+            {"shared_dir": "shared_directory1", "volume_size": 30},
+            {"shared_dir": "shared_directory2", "volume_size": 30},
+            None,
+        ),
+        (
+            {"ebs_settings": "vol1"},
+            {"volume_size": 30},
+            {},
+            None,
+        ),
+        (
+            {"ebs_settings": "vol1"},
+            {},
+            {},
+            None,
+        ),
+        (
+            {"shared_dir": "shared_directory"},
+            {},
+            {},
+            None,
+        ),
+    ],
+)
+def test_duplicate_shared_dir_validator(
+    mocker, cluster_section_dict, ebs_section_dict1, ebs_section_dict2, expected_message
+):
+    config_parser_dict = {
+        "cluster default": cluster_section_dict,
+        "ebs vol1": ebs_section_dict1,
+        "ebs vol2": ebs_section_dict2,
+    }
+
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_message)
