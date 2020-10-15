@@ -9,16 +9,14 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
-
 import logging
 
 import boto3
+import configparser
 import pexpect
 import pytest
 from assertpy import assert_that
 from conftest import add_custom_packages_configs
-
-from pcluster.config.pcluster_config import PclusterConfig
 
 
 @pytest.mark.regions(["us-east-1"])
@@ -145,44 +143,46 @@ def assert_configure_workflow(stages, config_path):
 def assert_config_contains_expected_values(
     region, key_name, scheduler, os, instance, vpc_id, headnode_subnet_id, compute_subnet_id, config_path
 ):
-    pcluster_config = PclusterConfig(config_file=config_path, fail_on_file_absence=True, fail_on_error=True)
-
-    # Assert that the config is valid
-    pcluster_config.validate()
+    config = configparser.ConfigParser()
+    config.read(config_path)
 
     # Assert that the config object contains the expected values
     param_validators = [
         {"section_name": "aws", "parameter_name": "aws_region_name", "expected_value": region},
-        {"section_name": "cluster", "parameter_name": "key_name", "expected_value": key_name},
-        {"section_name": "cluster", "parameter_name": "scheduler", "expected_value": scheduler},
+        {"section_name": "cluster default", "parameter_name": "key_name", "expected_value": key_name},
+        {"section_name": "cluster default", "parameter_name": "scheduler", "expected_value": scheduler},
         {
-            "section_name": "cluster",
+            "section_name": "cluster default",
             "parameter_name": "base_os",
             "expected_value": os if scheduler != "awsbatch" else "alinux2",
         },
-        {"section_name": "cluster", "parameter_name": "master_instance_type", "expected_value": instance},
-        {"section_name": "vpc", "parameter_name": "vpc_id", "expected_value": vpc_id},
-        {"section_name": "vpc", "parameter_name": "master_subnet_id", "expected_value": headnode_subnet_id},
-        {"section_name": "vpc", "parameter_name": "compute_subnet_id", "expected_value": compute_subnet_id},
+        {"section_name": "cluster default", "parameter_name": "master_instance_type", "expected_value": instance},
+        {"section_name": "vpc default", "parameter_name": "vpc_id", "expected_value": vpc_id},
+        {"section_name": "vpc default", "parameter_name": "master_subnet_id", "expected_value": headnode_subnet_id},
+        {"section_name": "vpc default", "parameter_name": "compute_subnet_id", "expected_value": compute_subnet_id},
     ]
 
     if scheduler == "slurm":
         param_validators += [
-            {"section_name": "cluster", "parameter_name": "queue_settings", "expected_value": "compute"},
-            {"section_name": "queue", "parameter_name": "compute_resource_settings", "expected_value": "default"},
-            {"section_name": "compute_resource", "parameter_name": "instance_type", "expected_value": instance},
-            {"section_name": "compute_resource", "parameter_name": "min_count", "expected_value": 1},
+            {"section_name": "cluster default", "parameter_name": "queue_settings", "expected_value": "compute"},
+            {
+                "section_name": "queue compute",
+                "parameter_name": "compute_resource_settings",
+                "expected_value": "default",
+            },
+            {"section_name": "compute_resource default", "parameter_name": "instance_type", "expected_value": instance},
+            {"section_name": "compute_resource default", "parameter_name": "min_count", "expected_value": 1},
         ]
     elif scheduler == "awsbatch":
         param_validators += [
-            {"section_name": "cluster", "parameter_name": "min_vcpus", "expected_value": 1},
-            {"section_name": "cluster", "parameter_name": "desired_vcpus", "expected_value": 1},
+            {"section_name": "cluster default", "parameter_name": "min_vcpus", "expected_value": 1},
+            {"section_name": "cluster default", "parameter_name": "desired_vcpus", "expected_value": 1},
         ]
     else:
         param_validators += [
-            {"section_name": "cluster", "parameter_name": "initial_queue_size", "expected_value": 1},
-            {"section_name": "cluster", "parameter_name": "maintain_initial_size", "expected_value": True},
-            {"section_name": "cluster", "parameter_name": "compute_instance_type", "expected_value": instance},
+            {"section_name": "cluster default", "parameter_name": "initial_queue_size", "expected_value": 1},
+            {"section_name": "cluster default", "parameter_name": "maintain_initial_size", "expected_value": True},
+            {"section_name": "cluster default", "parameter_name": "compute_instance_type", "expected_value": instance},
         ]
 
     for validator in param_validators:
@@ -190,9 +190,7 @@ def assert_config_contains_expected_values(
         if not expected_value:
             # if expected_value is empty, skip the assertion.
             continue
-        observed_value = pcluster_config.get_section(validator.get("section_name")).get_param_value(
-            validator.get("parameter_name")
-        )
+        observed_value = config[validator.get("section_name")][validator.get("parameter_name")]
         assert_that(observed_value).is_equal_to(expected_value)
 
 

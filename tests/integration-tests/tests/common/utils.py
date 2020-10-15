@@ -12,11 +12,10 @@ import logging
 import sys
 
 import boto3
+import pkg_resources
 from botocore.exceptions import ClientError
 from retrying import retry
 from utils import get_instance_info
-
-from pcluster.utils import get_installed_version
 
 LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +67,8 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
     try:
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
-                version=get_installed_version(), ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name")
+                version=_get_installed_parallelcluste_version(),
+                ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
             )
         else:
             ami_name = AMI_TYPE_DICT.get(ami_type).get(os).get("name")
@@ -93,3 +93,8 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
 def fetch_instance_slots(region, instance_type):
     return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
+
+
+def _get_installed_parallelcluste_version():
+    """Get the version of the installed aws-parallelcluster package."""
+    return pkg_resources.get_distribution("aws-parallelcluster").version
