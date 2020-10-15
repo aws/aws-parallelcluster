@@ -1314,10 +1314,10 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
 
     # If fsx_fs_id is specified, all parameters besides shared_dir are ignored.
     relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
-    PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
+    param_with_default = {"drive_cache_type": "NONE"}
     if fsx_section.get_param_value("fsx_fs_id") is not None:
         for fsx_param in fsx_section.params:
-            if fsx_param not in relevant_when_using_existing_fsx and PARAM_WITH_DEFAULT.get(
+            if fsx_param not in relevant_when_using_existing_fsx and param_with_default.get(
                 fsx_param, None
             ) != fsx_section.get_param_value(fsx_param):
                 errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
@@ -1514,7 +1514,7 @@ def validate_storage_type_options(
                 )
             )
     else:  # SSD or None
-        if fsx_drive_cache_type is not "NONE":
+        if fsx_drive_cache_type != "NONE":
             errors.append("'drive_cache_type' features can be used only with HDD filesystems")
         if fsx_per_unit_storage_throughput and fsx_per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
             errors.append(
