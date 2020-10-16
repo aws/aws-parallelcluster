@@ -67,7 +67,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
     try:
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
-                version=_get_installed_parallelcluste_version(),
+                version=_get_installed_parallelcluster_version(),
                 ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
             )
         else:
@@ -95,6 +95,6 @@ def fetch_instance_slots(region, instance_type):
     return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
 
 
-def _get_installed_parallelcluste_version():
+def _get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     return pkg_resources.get_distribution("aws-parallelcluster").version

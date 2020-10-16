@@ -179,7 +179,12 @@ def _log_collected_tests(session):
     # get_xdist_worker_id returns the id of the current worker ('gw0', 'gw1', etc) or 'master'
     if get_xdist_worker_id(session) in ["master", "gw0"]:
         collected_tests = list(map(lambda item: item.nodeid, session.items))
-        logging.info("Collected test (total=%d):\n%s", len(session.items), json.dumps(collected_tests, indent=2))
+        logging.info(
+            "Collected tests in regions %s (total=%d):\n%s",
+            session.config.getoption("regions") or get_all_regions(session.config.getoption("tests_config")),
+            len(session.items),
+            json.dumps(collected_tests, indent=2),
+        )
         out_dir = session.config.getoption("output_dir")
         with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
             out_f.write("\n".join(collected_tests))

@@ -59,10 +59,7 @@ def generate_junitxml_merged_report(test_results_dir):
     for dir, _, files in os.walk(test_results_dir):
         for file in files:
             if file.endswith("results.xml"):
-                if not merged_xml:
-                    merged_xml = JUnitXml.fromfile(os.path.join(dir, file))
-                else:
-                    merged_xml += JUnitXml.fromfile(os.path.join(dir, file))
+                merged_xml += JUnitXml.fromfile(os.path.join(dir, file))
 
     merged_xml.write("{0}/test_report.xml".format(test_results_dir), pretty=True)
 
