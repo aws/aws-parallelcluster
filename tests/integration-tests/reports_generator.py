@@ -55,14 +55,11 @@ def generate_junitxml_merged_report(test_results_dir):
     Merge all junitxml generated reports in a single one.
     :param test_results_dir: output dir containing the junitxml reports to merge.
     """
-    merged_xml = None
+    merged_xml = JUnitXml()
     for dir, _, files in os.walk(test_results_dir):
         for file in files:
             if file.endswith("results.xml"):
-                if not merged_xml:
-                    merged_xml = JUnitXml.fromfile(os.path.join(dir, file))
-                else:
-                    merged_xml += JUnitXml.fromfile(os.path.join(dir, file))
+                merged_xml += JUnitXml.fromfile(os.path.join(dir, file))
 
     merged_xml.write("{0}/test_report.xml".format(test_results_dir), pretty=True)
 

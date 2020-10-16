@@ -15,10 +15,15 @@ import multiprocessing
 import os
 import sys
 import time
+import urllib.request
 from tempfile import TemporaryDirectory
 
 import argparse
 import pytest
+from assertpy import assert_that
+from framework.tests_configuration.config_renderer import dump_rendered_config_file, read_config_file
+from framework.tests_configuration.config_utils import get_all_regions
+from framework.tests_configuration.config_validator import assert_valid_config
 from reports_generator import generate_cw_report, generate_json_report, generate_junitxml_merged_report
 
 logger = logging.getLogger()
@@ -34,25 +39,10 @@ TEST_DEFAULTS = {
     "parallelism": None,
     "retry_on_failures": False,
     "features": "",  # empty string means all
-    "regions": [
-        "us-east-1",
-        "us-east-2",
-        "us-west-1",
-        "us-west-2",
-        "ca-central-1",
-        "eu-west-1",
-        "eu-west-2",
-        "eu-central-1",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "ap-northeast-1",
-        "ap-south-1",
-        "sa-east-1",
-        "eu-west-3",
-    ],
-    "oss": ["alinux", "alinux2", "centos6", "centos7", "ubuntu1804", "ubuntu1604"],
-    "schedulers": ["sge", "slurm", "torque", "awsbatch"],
-    "instances": ["c4.xlarge", "c5.xlarge"],
+    "regions": [],
+    "oss": [],
+    "schedulers": [],
+    "instances": [],
     "dry_run": False,
     "reports": [],
     "cw_region": "us-east-1",
@@ -78,6 +68,7 @@ TEST_DEFAULTS = {
     "stackname_suffix": "",
     "keep_logs_on_cluster_failure": False,
     "keep_logs_on_test_failure": False,
+    "tests_root_dir": "./tests",
 }
 
 
@@ -85,33 +76,28 @@ def _init_argparser():
     parser = argparse.ArgumentParser(
         description="Run integration tests suite.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
+
+    parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
+    parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
     parser.add_argument(
-        "-f",
-        "--features",
-        help="Run only tests for the listed features. Prepending the not keyword to the feature name causes the "
-        "feature to be excluded.",
-        default=TEST_DEFAULTS.get("features"),
-        nargs="+",
+        "-n", "--parallelism", help="Tests parallelism for every region.", default=TEST_DEFAULTS.get("parallelism")
     )
     parser.add_argument(
-        "-r", "--regions", help="AWS region where tests are executed.", default=TEST_DEFAULTS.get("regions"), nargs="+"
+        "--sequential",
+        help="Run tests in a single process. When not specified tests will spawn a process for each region under test.",
+        action="store_true",
+        default=TEST_DEFAULTS.get("sequential"),
     )
     parser.add_argument(
         "--credential",
         action="append",
-        help="STS credential endpoint, in the format <region>,<endpoint>,<ARN>,<externalId>. "
-        "Could be specified multiple times.",
+        help="STS credential to assume when running tests in a specific region."
+        "Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can"
+        " be specified multiple times. <region> represents the region credentials are used for, <endpoint> is the sts "
+        " endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role to "
+        " assume is defined, <externalId> is the id to use when assuming the role. "
+        "(e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId)",
         required=False,
-    )
-    parser.add_argument(
-        "-i", "--instances", help="AWS instances under test.", default=TEST_DEFAULTS.get("instances"), nargs="+"
-    )
-    parser.add_argument("-o", "--oss", help="OSs under test.", default=TEST_DEFAULTS.get("oss"), nargs="+")
-    parser.add_argument(
-        "-s", "--schedulers", help="Schedulers under test.", default=TEST_DEFAULTS.get("schedulers"), nargs="+"
-    )
-    parser.add_argument(
-        "-n", "--parallelism", help="Tests parallelism for every region.", default=TEST_DEFAULTS.get("parallelism")
     )
     parser.add_argument(
         "--retry-on-failures",
@@ -120,24 +106,66 @@ def _init_argparser():
         default=TEST_DEFAULTS.get("retry_on_failures"),
     )
     parser.add_argument(
-        "--dry-run",
-        help="Only show the list of tests that would run with specified options.",
-        action="store_true",
-        default=TEST_DEFAULTS.get("dry_run"),
+        "--tests-root-dir",
+        help="Root dir where integration tests are defined",
+        default=TEST_DEFAULTS.get("tests_root_dir"),
     )
-    parser.add_argument(
+
+    dimensions_group = parser.add_argument_group("Test dimensions")
+    dimensions_group.add_argument(
+        "-c",
+        "--tests-config",
+        help="Config file that specifies the tests to run and the dimensions to enable for each test. "
+        "Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. "
+        "Refer to the docs for further details on the config format: "
+        "https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md",
+        type=_test_config_file,
+    )
+    dimensions_group.add_argument(
+        "-i",
+        "--instances",
+        help="AWS instances under test. Ignored when tests-config is used.",
+        default=TEST_DEFAULTS.get("instances"),
+        nargs="*",
+    )
+    dimensions_group.add_argument(
+        "-o",
+        "--oss",
+        help="OSs under test. Ignored when tests-config is used.",
+        default=TEST_DEFAULTS.get("oss"),
+        nargs="*",
+    )
+    dimensions_group.add_argument(
+        "-s",
+        "--schedulers",
+        help="Schedulers under test. Ignored when tests-config is used.",
+        default=TEST_DEFAULTS.get("schedulers"),
+        nargs="*",
+    )
+    dimensions_group.add_argument(
+        "-r",
+        "--regions",
+        help="AWS regions where tests are executed. Ignored when tests-config is used.",
+        default=TEST_DEFAULTS.get("regions"),
+        nargs="*",
+    )
+    dimensions_group.add_argument(
+        "-f",
+        "--features",
+        help="Run only tests for the listed features. Prepending the not keyword to the feature name causes the "
+        "feature to be excluded.",
+        default=TEST_DEFAULTS.get("features"),
+        nargs="+",
+    )
+
+    reports_group = parser.add_argument_group("Test reports")
+    reports_group.add_argument(
         "--show-output",
         help="Do not redirect tests stdout to file. Not recommended when running in multiple regions.",
         action="store_true",
         default=TEST_DEFAULTS.get("show_output"),
     )
-    parser.add_argument(
-        "--sequential",
-        help="Run tests in a single process. When not specified tests will run concurrently in all regions.",
-        action="store_true",
-        default=TEST_DEFAULTS.get("sequential"),
-    )
-    parser.add_argument(
+    reports_group.add_argument(
         "--reports",
         help="create tests report files. junitxml creates a junit-xml style report file. html creates an html "
         "style report file. json creates a summary with details for each dimensions. cw publishes tests metrics into "
@@ -146,102 +174,126 @@ def _init_argparser():
         choices=["html", "junitxml", "json", "cw"],
         default=TEST_DEFAULTS.get("reports"),
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-region", help="Region where to publish CloudWatch metrics", default=TEST_DEFAULTS.get("cw_region")
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-namespace",
         help="CloudWatch namespace where to publish metrics",
         default=TEST_DEFAULTS.get("cw_namespace"),
     )
-    parser.add_argument(
+    reports_group.add_argument(
         "--cw-timestamp-day-start",
         action="store_true",
         help="CloudWatch metrics pushed with at timestamp equal to the start of the current day (midnight)",
         default=TEST_DEFAULTS.get("cw_timestamp_day_start"),
     )
-    parser.add_argument("--key-name", help="Key to use for EC2 instances", required=True)
-    parser.add_argument("--key-path", help="Path to the key to use for SSH connections", required=True, type=_is_file)
-    parser.add_argument(
+    reports_group.add_argument(
         "--output-dir", help="Directory where tests outputs are generated", default=TEST_DEFAULTS.get("output_dir")
     )
-    parser.add_argument(
-        "--custom-node-url", help="URL to a custom node package.", default=TEST_DEFAULTS.get("custom_node_url")
+
+    custom_group = parser.add_argument_group("Custom packages and templates")
+    custom_group.add_argument(
+        "--custom-node-url",
+        help="URL to a custom node package.",
+        default=TEST_DEFAULTS.get("custom_node_url"),
+        type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-cookbook-url",
         help="URL to a custom cookbook package.",
         default=TEST_DEFAULTS.get("custom_cookbook_url"),
+        type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--createami-custom-cookbook-url",
         help="URL to a custom cookbook package for the createami command.",
         default=TEST_DEFAULTS.get("createami_custom_cookbook_url"),
+        type=_is_url,
     )
-    parser.add_argument(
-        "--custom-template-url", help="URL to a custom cfn template.", default=TEST_DEFAULTS.get("custom_template_url")
+    custom_group.add_argument(
+        "--custom-template-url",
+        help="URL to a custom cfn template.",
+        default=TEST_DEFAULTS.get("custom_template_url"),
+        type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-hit-template-url",
         help="URL to a custom hit cfn template.",
         default=TEST_DEFAULTS.get("custom_hit_template_url"),
+        type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-awsbatchcli-url",
         help="URL to a custom awsbatch cli package.",
         default=TEST_DEFAULTS.get("custom_awsbatchcli_url"),
+        type=_is_url,
     )
-    parser.add_argument(
+    custom_group.add_argument(
         "--custom-ami", help="custom AMI to use for all tests.", default=TEST_DEFAULTS.get("custom_ami")
     )
-    parser.add_argument("--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install"))
-    parser.add_argument(
+    custom_group.add_argument(
+        "--pre-install", help="URL to a pre install script", default=TEST_DEFAULTS.get("pre_install")
+    )
+    custom_group.add_argument(
         "--post-install", help="URL to a post install script", default=TEST_DEFAULTS.get("post_install")
     )
-    parser.add_argument("--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack"))
-    parser.add_argument(
-        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
-    )
-    parser.add_argument(
-        "--no-delete",
-        action="store_true",
-        help="Don't delete stacks after tests are complete.",
-        default=TEST_DEFAULTS.get("no_delete"),
-    )
-    parser.add_argument(
+
+    banchmarks_group = parser.add_argument_group("Benchmarks")
+    banchmarks_group.add_argument(
         "--benchmarks",
         help="run benchmarks tests. This disables the execution of all tests defined under the tests directory.",
         action="store_true",
         default=TEST_DEFAULTS.get("benchmarks"),
     )
-    parser.add_argument(
+    banchmarks_group.add_argument(
         "--benchmarks-target-capacity",
         help="set the target capacity for benchmarks tests",
         default=TEST_DEFAULTS.get("benchmarks_target_capacity"),
         type=int,
     )
-    parser.add_argument(
+    banchmarks_group.add_argument(
         "--benchmarks-max-time",
         help="set the max waiting time in minutes for benchmarks tests",
         default=TEST_DEFAULTS.get("benchmarks_max_time"),
         type=int,
     )
-    parser.add_argument(
-        "--stackname-suffix",
-        help="set a suffix in the integration tests stack names",
-        default=TEST_DEFAULTS.get("stackname_suffix"),
+
+    debug_group = parser.add_argument_group("Debugging/Development options")
+    debug_group.add_argument(
+        "--vpc-stack", help="Name of an existing vpc stack.", default=TEST_DEFAULTS.get("vpc_stack")
     )
-    parser.add_argument(
+    debug_group.add_argument(
+        "--cluster", help="Use an existing cluster instead of creating one.", default=TEST_DEFAULTS.get("cluster")
+    )
+    debug_group.add_argument(
+        "--no-delete",
+        action="store_true",
+        help="Don't delete stacks after tests are complete.",
+        default=TEST_DEFAULTS.get("no_delete"),
+    )
+    debug_group.add_argument(
         "--keep-logs-on-cluster-failure",
         help="preserve CloudWatch logs when a cluster fails to be created",
         action="store_true",
         default=TEST_DEFAULTS.get("keep_logs_on_cluster_failure"),
     )
-    parser.add_argument(
+    debug_group.add_argument(
         "--keep-logs-on-test-failure",
         help="preserve CloudWatch logs when a test fails",
         action="store_true",
         default=TEST_DEFAULTS.get("keep_logs_on_test_failure"),
+    )
+    debug_group.add_argument(
+        "--stackname-suffix",
+        help="set a suffix in the integration tests stack names",
+        default=TEST_DEFAULTS.get("stackname_suffix"),
+    )
+    debug_group.add_argument(
+        "--dry-run",
+        help="Only show the list of tests that would run with specified options.",
+        action="store_true",
+        default=TEST_DEFAULTS.get("dry_run"),
     )
 
     return parser
@@ -249,8 +301,25 @@ def _init_argparser():
 
 def _is_file(value):
     if not os.path.isfile(value):
-        raise argparse.ArgumentTypeError("'{0}' is not a valid key".format(value))
+        raise argparse.ArgumentTypeError("'{0}' is not a valid file".format(value))
     return value
+
+
+def _is_url(value):
+    try:
+        urllib.request.urlopen(value)
+    except Exception:
+        raise argparse.ArgumentTypeError("'{0}' is not a valid url".format(value))
+    return value
+
+
+def _test_config_file(value):
+    _is_file(value)
+    try:
+        config = read_config_file(value)
+        return config
+    except Exception:
+        raise argparse.ArgumentTypeError("'{0}' is not a valid test config".format(value))
 
 
 def _join_with_not(args):
@@ -272,8 +341,14 @@ def _join_with_not(args):
         yield current
 
 
-def _get_pytest_args(args, regions, log_file, out_dir):
+def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     pytest_args = ["-s", "-vv", "-l"]
+
+    pytest_args.append("--tests-log-file={0}/{1}".format(args.output_dir, log_file))
+    pytest_args.append("--output-dir={0}/{1}".format(args.output_dir, out_dir))
+    pytest_args.append(f"--key-name={args.key_name}")
+    pytest_args.append(f"--key-path={args.key_path}")
+    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
 
     if args.benchmarks:
         pytest_args.append("--ignore=./tests")
@@ -281,27 +356,29 @@ def _get_pytest_args(args, regions, log_file, out_dir):
         pytest_args.append("--benchmarks-target-capacity={0}".format(args.benchmarks_target_capacity))
         pytest_args.append("--benchmarks-max-time={0}".format(args.benchmarks_max_time))
     else:
-        pytest_args.append("--rootdir=./tests")
+        pytest_args.extend(["--rootdir", args.tests_root_dir])
         pytest_args.append("--ignore=./benchmarks")
 
     # Show all tests durations
     pytest_args.append("--durations=0")
     # Run only tests with the given markers
-    pytest_args.append("-m")
-    pytest_args.append(" or ".join(list(_join_with_not(args.features))))
-    pytest_args.append("--regions")
-    pytest_args.extend(regions)
-    pytest_args.append("--instances")
-    pytest_args.extend(args.instances)
-    pytest_args.append("--oss")
-    pytest_args.extend(args.oss)
-    pytest_args.append("--schedulers")
-    pytest_args.extend(args.schedulers)
-    pytest_args.extend(["--tests-log-file", "{0}/{1}".format(args.output_dir, log_file)])
-    pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
-    pytest_args.extend(["--key-name", args.key_name])
-    pytest_args.extend(["--key-path", args.key_path])
-    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
+    if args.features:
+        pytest_args.append("-m")
+        pytest_args.append(" or ".join(list(_join_with_not(args.features))))
+    if args.tests_config:
+        _set_tests_config_args(args, pytest_args, out_dir)
+    if regions:
+        pytest_args.append("--regions")
+        pytest_args.extend(regions)
+    if args.instances:
+        pytest_args.append("--instances")
+        pytest_args.extend(args.instances)
+    if args.oss:
+        pytest_args.append("--oss")
+        pytest_args.extend(args.oss)
+    if args.schedulers:
+        pytest_args.append("--schedulers")
+        pytest_args.extend(args.schedulers)
 
     if args.keep_logs_on_cluster_failure:
         pytest_args.append("--keep-logs-on-cluster-failure")
@@ -373,33 +450,41 @@ def _set_custom_stack_args(args, pytest_args):
         pytest_args.append("--no-delete")
 
 
-def _get_pytest_regionalized_args(region, args):
+def _set_tests_config_args(args, pytest_args, out_dir):
+    # Dump the rendered file to avoid re-rendering in pytest processes
+    rendered_config_file = f"{args.output_dir}/{out_dir}/tests_config.yaml"
+    with open(rendered_config_file, "x") as text_file:
+        text_file.write(dump_rendered_config_file(args.tests_config))
+    pytest_args.append(f"--tests-config-file={rendered_config_file}")
+
+
+def _get_pytest_regionalized_args(region, args, our_dir, logs_dir):
     return _get_pytest_args(
         args=args,
         regions=[region],
-        log_file="{0}/{1}.log".format(LOGS_DIR, region),
-        out_dir="{0}/{1}".format(OUT_DIR, region),
+        log_file="{0}/{1}.log".format(logs_dir, region),
+        out_dir="{0}/{1}".format(our_dir, region),
     )
 
 
-def _get_pytest_non_regionalized_args(args):
+def _get_pytest_non_regionalized_args(args, out_dir, logs_dir):
     return _get_pytest_args(
-        args=args, regions=args.regions, log_file="{0}/all_regions.log".format(LOGS_DIR), out_dir=OUT_DIR
+        args=args, regions=args.regions, log_file="{0}/all_regions.log".format(logs_dir), out_dir=out_dir
     )
 
 
-def _run_test_in_region(region, args):
-    out_dir = "{base_dir}/{out_dir}/{region}".format(base_dir=args.output_dir, out_dir=OUT_DIR, region=region)
-    os.makedirs(out_dir, exist_ok=True)
+def _run_test_in_region(region, args, out_dir, logs_dir):
+    out_dir_region = "{base_dir}/{out_dir}/{region}".format(base_dir=args.output_dir, out_dir=out_dir, region=region)
+    os.makedirs(out_dir_region, exist_ok=True)
 
     # Redirect stdout to file
     if not args.show_output:
-        sys.stdout = open("{0}/pytest.out".format(out_dir), "w")
+        sys.stdout = open("{0}/pytest.out".format(out_dir_region), "w")
 
-    pytest_args_regionalized = _get_pytest_regionalized_args(region, args)
+    pytest_args_regionalized = _get_pytest_regionalized_args(region, args, out_dir, logs_dir)
     with TemporaryDirectory() as temp_dir:
         pytest_args_regionalized.extend(["--basetemp", temp_dir])
-        logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
+        logger.info("Starting pytest in region {0} with params {1}".format(region, pytest_args_regionalized))
         pytest.main(pytest_args_regionalized)
 
 
@@ -414,8 +499,12 @@ def _make_logging_dirs(base_dir):
 
 def _run_parallel(args):
     jobs = []
-    for region in args.regions:
-        p = multiprocessing.Process(target=_run_test_in_region, args=[region, args])
+    if args.regions:
+        enabled_regions = args.regions
+    else:
+        enabled_regions = get_all_regions(args.tests_config)
+    for region in enabled_regions:
+        p = multiprocessing.Process(target=_run_test_in_region, args=(region, args, OUT_DIR, LOGS_DIR))
         jobs.append(p)
         p.start()
 
@@ -433,14 +522,26 @@ def _check_args(args):
             )
             exit(1)
 
+    if not args.tests_config:
+        assert_that(args.regions).described_as("--regions cannot be empty").is_not_empty()
+        assert_that(args.instances).described_as("--instances cannot be empty").is_not_empty()
+        assert_that(args.oss).described_as("--oss cannot be empty").is_not_empty()
+        assert_that(args.schedulers).described_as("--schedulers cannot be empty").is_not_empty()
+    else:
+        try:
+            assert_valid_config(args.tests_config, args.tests_root_dir)
+            logger.info("Found valid config file:\n%s", dump_rendered_config_file(args.tests_config))
+        except Exception:
+            raise argparse.ArgumentTypeError("'{0}' is not a valid test config".format(args.tests_config))
+
 
 def _run_sequential(args):
     # Redirect stdout to file
     if not args.show_output:
         sys.stdout = open("{0}/{1}/pytest.out".format(args.output_dir, OUT_DIR), "w")
 
-    pytest_args_non_regionalized = _get_pytest_non_regionalized_args(args)
-    logger.info("Starting tests with params {0}".format(pytest_args_non_regionalized))
+    pytest_args_non_regionalized = _get_pytest_non_regionalized_args(args, OUT_DIR, LOGS_DIR)
+    logger.info("Starting pytest with params {0}".format(pytest_args_non_regionalized))
     pytest.main(pytest_args_non_regionalized)
 
 
@@ -452,7 +553,7 @@ def main():
 
     args = _init_argparser().parse_args()
     _check_args(args)
-    logger.info("Starting tests with parameters {0}".format(args))
+    logger.info("Parsed test_runner parameters {0}".format(args))
 
     _make_logging_dirs(args.output_dir)
 

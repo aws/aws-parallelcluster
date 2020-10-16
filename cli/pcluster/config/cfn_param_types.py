@@ -951,7 +951,11 @@ class EBSSettingsCfnParam(SettingsCfnParam):
                             param_type = param_definition.get("type", CfnParam)
                             cfn_value = get_cfn_param(cfn_params, cfn_converter).split(",")[index]
                             param = param_type(
-                                self.section_key, self.section_label, param_key, param_definition, self.pcluster_config
+                                referred_section.key,
+                                referred_section.label,
+                                param_key,
+                                param_definition,
+                                self.pcluster_config,
                             ).from_cfn_value(cfn_value)
                             referred_section.add_param(param)
 

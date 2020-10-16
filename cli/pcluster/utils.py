@@ -857,7 +857,7 @@ def get_master_server_state(stack_name):
     :param stack_name: The name of the cloudformation stack
     :return master server state name
     """
-    instances = describe_cluster_instances(stack_name, filter_by_name="Master")
+    instances = describe_cluster_instances(stack_name, "Master")
     if not instances:
         error("MasterServer not running.")
     return instances[0].get("State").get("Name")

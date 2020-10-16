@@ -4,7 +4,7 @@ The framework used to implement and run integration tests for AWS ParallelCluste
 * **Integration Tests Orchestrator**: is a cli that allows to submit the integration tests. It takes care of setting
 up the test environment, it orchestrates parallel tests execution and generates the final tests reports.
 * **Integration Tests Framework**: the actual testing framework, based on pytest, which defines a series of
-fixtures and markers that allows to parametrize tests execution across several dimensions, to easily manage clusters
+fixtures and markers that allow to parametrize tests execution across several dimensions, to easily manage clusters
 lifecycle and re-usage and to perform cleanup on failures. It also offers a set of utility functions
 that implement features which are common to all tests such as remote command execution and ParallelCluster
 config generation.
@@ -13,7 +13,9 @@ config generation.
 
 ## Run Integration Tests
 
-To run the integration tests you have to use Python 3.7.
+### Requirements
+
+To run the integration tests you have to use Python >= 3.7.
 
 Before executing integration tests it is required to install all the python dependencies required by the framework.
 In order to do that simply run the following command:
@@ -21,10 +23,113 @@ In order to do that simply run the following command:
 pip install -r tests/integration-tests/requirements.txt
 ```
 
-Once this is done you can look at the helper of the orchestrator cli in order to list all the available options:
-```bash
+After that you can run the CLI by simply executing the following
+```
 cd tests/integration-tests
-python -m test_runner -h
+python -m test_runner --help
+```
+
+### The test_runner CLI
+
+The test_runner CLI is the main entry point to be used in order to run tests. Here is the output of the helper function
+that lists all the available options:
+
+```
+python -m test_runner --help
+usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
+                      [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
+                      [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
+                      [--custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--custom-ami CUSTOM_AMI] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
+                      [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
+                      [--keep-logs-on-cluster-failure] [--keep-logs-on-test-failure] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
+
+Run integration tests suite.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --key-name KEY_NAME   Key to use for EC2 instances (default: None)
+  --key-path KEY_PATH   Path to the key to use for SSH connections (default: None)
+  -n PARALLELISM, --parallelism PARALLELISM
+                        Tests parallelism for every region. (default: None)
+  --sequential          Run tests in a single process. When not specified tests will spawn a process for each region under test. (default: False)
+  --credential CREDENTIAL
+                        STS credential to assume when running tests in a specific region.Credentials need to be in the format <region>,<endpoint>,<ARN>,<externalId> and can be specified multiple times.
+                        <region> represents the region credentials are used for, <endpoint> is the sts endpoint to contact in order to assume credentials, <account-id> is the id of the account where the role
+                        to assume is defined, <externalId> is the id to use when assuming the role. (e.g. ap-east-1,https://sts.us-east-1.amazonaws.com,arn:aws:iam::<account-id>:role/role-to-assume,externalId)
+                        (default: None)
+  --retry-on-failures   Retry once more the failed tests after a delay of 60 seconds. (default: False)
+  --tests-root-dir TESTS_ROOT_DIR
+                        Root dir where integration tests are defined (default: ./tests)
+
+Test dimensions:
+  -c TESTS_CONFIG, --tests-config TESTS_CONFIG
+                        Config file that specifies the tests to run and the dimensions to enable for each test. Note that when a config file is used the following flags are ignored: instances, regions, oss,
+                        schedulers. Refer to the docs for further details on the config format. (default: None)
+  -i [INSTANCES [INSTANCES ...]], --instances [INSTANCES [INSTANCES ...]]
+                        AWS instances under test. Ignored when tests-config is used. (default: [])
+  -o [OSS [OSS ...]], --oss [OSS [OSS ...]]
+                        OSs under test. Ignored when tests-config is used. (default: [])
+  -s [SCHEDULERS [SCHEDULERS ...]], --schedulers [SCHEDULERS [SCHEDULERS ...]]
+                        Schedulers under test. Ignored when tests-config is used. (default: [])
+  -r [REGIONS [REGIONS ...]], --regions [REGIONS [REGIONS ...]]
+                        AWS regions where tests are executed. Ignored when tests-config is used. (default: [])
+  -f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]
+                        Run only tests for the listed features. Prepending the not keyword to the feature name causes the feature to be excluded. (default: )
+
+Test reports:
+  --show-output         Do not redirect tests stdout to file. Not recommended when running in multiple regions. (default: None)
+  --reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]
+                        create tests report files. junitxml creates a junit-xml style report file. html creates an html style report file. json creates a summary with details for each dimensions. cw publishes
+                        tests metrics into CloudWatch (default: [])
+  --cw-region CW_REGION
+                        Region where to publish CloudWatch metrics (default: us-east-1)
+  --cw-namespace CW_NAMESPACE
+                        CloudWatch namespace where to publish metrics (default: ParallelCluster/IntegrationTests)
+  --cw-timestamp-day-start
+                        CloudWatch metrics pushed with at timestamp equal to the start of the current day (midnight) (default: False)
+  --output-dir OUTPUT_DIR
+                        Directory where tests outputs are generated (default: tests_outputs)
+
+Custom packages and templates:
+  --custom-node-url CUSTOM_NODE_URL
+                        URL to a custom node package. (default: None)
+  --custom-cookbook-url CUSTOM_COOKBOOK_URL
+                        URL to a custom cookbook package. (default: None)
+  --createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL
+                        URL to a custom cookbook package for the createami command. (default: None)
+  --custom-template-url CUSTOM_TEMPLATE_URL
+                        URL to a custom cfn template. (default: None)
+  --custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL
+                        URL to a custom hit cfn template. (default: None)
+  --custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL
+                        URL to a custom awsbatch cli package. (default: None)
+  --custom-ami CUSTOM_AMI
+                        custom AMI to use for all tests. (default: None)
+  --pre-install PRE_INSTALL
+                        URL to a pre install script (default: None)
+  --post-install POST_INSTALL
+                        URL to a post install script (default: None)
+
+Benchmarks:
+  --benchmarks          run benchmarks tests. This disables the execution of all tests defined under the tests directory. (default: False)
+  --benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY
+                        set the target capacity for benchmarks tests (default: 200)
+  --benchmarks-max-time BENCHMARKS_MAX_TIME
+                        set the max waiting time in minutes for benchmarks tests (default: 30)
+
+Debugging/Development options:
+  --vpc-stack VPC_STACK
+                        Name of an existing vpc stack. (default: None)
+  --cluster CLUSTER     Use an existing cluster instead of creating one. (default: None)
+  --no-delete           Don't delete stacks after tests are complete. (default: False)
+  --keep-logs-on-cluster-failure
+                        preserve CloudWatch logs when a cluster fails to be created (default: False)
+  --keep-logs-on-test-failure
+                        preserve CloudWatch logs when a test fails (default: False)
+  --stackname-suffix STACKNAME_SUFFIX
+                        set a suffix in the integration tests stack names (default: )
+  --dry-run             Only show the list of tests that would run with specified options. (default: False)
 ```
 
 Here is an example of tests submission:
@@ -32,10 +137,7 @@ Here is an example of tests submission:
 python -m test_runner \
     --key-name "ec2-key-name" \
     --key-path "~/.ssh/ec2-key.pem" \
-    --regions "eu-west-1" "us-east-1" \
-    --instances "c4.xlarge" "c5.xlarge" \
-    --oss "alinux" "centos7" \
-    --schedulers "awsbatch" "sge" \
+    --tests-config configs/develop.yaml \
     --parallelism 8 \
     --retry-on-failures \
     --reports html junitxml json
@@ -44,11 +146,129 @@ python -m test_runner \
 Executing the command will run an integration testing suite with the following features:
 * "ec2-key-name" is used to configure EC2 keys
 * "~/.ssh/ec2-key.pem" is used to ssh into cluster instances and corresponds to the EC2 key ec2-key-name
-* tests are executed in all combinations of (region, instance, os, scheduler) where each dimension is expanded
-with the specified values.
+* configs/develop.yaml is the configuration file containing the tests suite to run
 * tests are executed in parallel in all regions and for each region 8 tests are executed concurrently
 * in case of failures the failed tests are retried once more after a delay of 60 seconds
 * tests reports are generated in html, junitxml and json formats
+
+### Parametrize and select the tests to run
+
+Each test contained in the suite can be parametrized, at submission time, across four different dimensions: regions,
+instances, operative systems and schedulers. These dimensions allow to dynamically customize the combination of cluster
+parameters the need to be validated by the scheduler. Some tests, due to the specific feature they are validating,
+might not be compatible with the entire set of available dimensions. 
+
+In order to specify what tests to execute and the dimensions to select there are two different possibilities:
+1. The recommended approach consists into passing to the `test_runner` a YAML configuration file that declares the tests
+   suite and the dimensions to use for each test
+2. The alternative approach is to use some of the CLI arguments to limit the dimensions and the features under test
+
+#### The tests suite configuration file
+
+When executing the `test_runner` CLI, the `--tests-config` argument can be used to specify a configuration file
+containing the list of tests that need to be executed. The configuration file is a YAML document, with optionally Jinja
+templating directives, that needs to comply with the following schema: 
+https://github.com/aws/aws-parallelcluster/tree/develop/tests/integration-tests/framework/tests_configuration/config_schema.yaml
+
+Here is an example of a tests suite definition file:
+```
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+  cfn-init:
+    test_cfn_init.py::test_replace_compute_on_failure:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: ["slurm", "sge"]
+  cli_commands:
+    test_cli_commands.py::test_hit_cli_commands:
+      dimensions:
+        - regions: ["us-east-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+    test_cli_commands.py::test_sit_cli_commands:
+      dimensions:
+        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        # 1) run the test for all of the schedulers with alinux2
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: {{ common.SCHEDULERS_ALL }}
+        # 2) run the test for all of the OSes with slurm
+        - regions: ["ap-east-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm"]
+        # 3) run the test for a single scheduler-OS combination on an ARM instance
+        - regions: ["eu-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+```
+
+As shown in the example above, the configuration file groups tests by the name of the package where these are defined. 
+For each test function, identified by the test module and the function name, an array of dimensions are specified in 
+order to define how this specific test is parametrized. Each element of the dimensions array generates a parametrization
+of the selected test function which consist in the combination of all defined dimensions. For example the
+cloudwatch_logging suite defined above will produce the following parametrization:
+
+```
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos6-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1604-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-sge]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-slurm]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-torque]
+cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[eu-west-1-m6g.xlarge-alinux2-slurm]
+```
+  
+Jinja directives can be used to simplify the declaration of the tests suites.
+
+Some tox commands are offered in order to simplify the generation and validation of such configuration files:
+* ` tox -e validate-test-configs` can be executed to validate all configuration files defined in the 
+  `tests/integration-tests/configs` directory. The directory or the specific file to validate can be also selected
+  with the additional arguments: `--tests-configs-dir` and `--tests-config-file`
+  (e.g. tox -e validate-test-configs -- --tests-config-file configs/develop.yaml)
+* `tox -e generate-test-config my-config-file` can be used to automatically generate a configuration file pre-filled
+  with the list of all available file. The config file is generated in the `tests/integration-tests/configs` directory.
+
+#### Using CLI options
+ 
+The following options can be used to control the parametrization of test cases:
+* `-r REGIONS [REGIONS ...], --regions REGIONS [REGIONS ...]`: AWS region where tests are executed.
+* `-i INSTANCES [INSTANCES ...], --instances INSTANCES [INSTANCES ...]`: AWS instances under test.
+* `-o OSS [OSS ...], --oss OSS [OSS ...]`: OSs under test.
+* `-s SCHEDULERS [SCHEDULERS ...], --schedulers SCHEDULERS [SCHEDULERS ...]`: Schedulers under test.
+
+Note that each test case can specify a subset of dimensions it is allowed to run against (for example
+a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler).
+This means that the final parametrization of the tests is given by an intersection of the input dimensions and
+the tests specific dimensions so that all constraints are verified.
+
+The `-f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]` option allows to limit the number of test
+cases to execute by only running those that are meant to verify a specific feature or subset of features.
+
+To execute a subset of features simply pass with the `-f` option a list of markers that identify the test cases
+to run. For example when passing `-f "awsbatch" "not advanced"` all test cases marked with `@pytest.mark.awsbatch` and
+not marked with `@pytest.mark.advanced` are executed.
+
+It is a good practice to mark test cases with a series of markers that allow to identify the feature under test.
+Every test is marked by default with a marker matching its filename with the `test_` prefix or `_test` suffix removed.
+
+Note: These options can be used also in combination with a tests suite configuration file
 
 ### Tests Outputs & Reports
 
@@ -64,16 +284,18 @@ and `--reports html junitxml json`:
 ```
 tests_outputs
 ├── $timestamp.logs: directory containing log files
-│   ├── $region_i.log: log outputs for a single region
-│   └── ...
+│         ├── $region_i.log: log outputs for a single region
+│         └── ...
 └── $timestamp.out: directory containing tests reports
     ├── $region_i: directory containing tests reports for a single region
-    │   ├── clusters_configs: directory storing all cluster configs used by test
-    │   │   ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux-awsbatch].config
-    │   │   └── ...
-    │   ├── pytest.out: stdout of pytest for the given region
-    │   ├── results.html: html report for the given region
-    │   └── results.xml: junitxml report for the given region
+    │         ├── clusters_configs: directory storing all cluster configs used by test
+    │         │         ├── test_awsbatch.py::test_job_submission[c5.xlarge-eu-west-1-alinux-awsbatch].config
+    │         │         └── ...
+    │         ├── pytest.out: stdout of pytest for the given region
+    │         ├── results.html: html report for the given region
+    │         ├── results.xml: junitxml report for the given region
+    │         ├── collected_tests.txt: the list of collected parametrized tests that are executed in the specific region
+    │         └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
     ├── test_report.json: global json report
     └── test_report.xml: global junitxml report
 ```
@@ -82,34 +304,24 @@ If tests are ran sequentially by adding the `--sequential` option the result is 
 ```
 tests_outputs
 ├── $timestamp..logs
-│   └── all_regions.log: log outputs for all regions
+│         └── all_regions.log: log outputs for all regions
 └── $timestamp..out
     ├── clusters_configs: directory storing all cluster configs used by test
-    │   ├── test_playground.py::test_factory.config
-    │   └── ...
+    │        ├── test_playground.py::test_factory.config
+    │        └── ...
     ├── pytest.out: global pytest stdout
     ├── results.html: global html report
     ├── results.xml: same as test_report.xml
     ├── test_report.json: global json report
-    └── test_report.xml: global junitxml report
+    ├── test_report.xml: global junitxml report
+    ├── collected_tests.txt: the list of collected parametrized tests
+    └── tests_config.yaml: the configuration file used to defined the tests to run (if present)
 ```
 
 By specifying the option `--reports cw`, the results of the tests run will be published as a series of CloudWatch
 metrics. You can use the options `--cw-region` (default `us-east-1`) and `--cw-namespace`
 (default `ParallelCluster/IntegrationTests`) to specify what region and what metric namespace
 you want to use for the published metrics.
-
-### Specify Tests Dimensions
-The following options can be used to control the parametrization of test cases:
-* `-r REGIONS [REGIONS ...], --regions REGIONS [REGIONS ...]`: AWS region where tests are executed.
-* `-i INSTANCES [INSTANCES ...], --instances INSTANCES [INSTANCES ...]`: AWS instances under test.
-* `-o OSS [OSS ...], --oss OSS [OSS ...]`: OSs under test.
-* `-s SCHEDULERS [SCHEDULERS ...], --schedulers SCHEDULERS [SCHEDULERS ...]`: Schedulers under test.
-
-Note that each test case can specify a subset of dimensions it is allowed to run against (for example
-a test case written specifically for the awsbatch scheduler should only be executed against the awsbatch scheduler).
-This means that the final parametrization of the tests is given by an intersection of the input dimensions and
-the tests specific dimensions so that all constraints are verified.
 
 ### Parallelize Tests Execution
 The following options can be used to control tests parallelism:
@@ -122,17 +334,6 @@ can be guaranteed.
 ### Retry On Failures
 When passing the `--retry-on-failures` flag failed tests are retried once more after a delay of 60 seconds.
 
-### Run Tests For Specific Features
-The `-f FEATURES [FEATURES ...], --features FEATURES [FEATURES ...]` option allows to limit the number of test
-cases to execute by only running those that are meant to verify a specific feature or subset of features.
-
-To execute a subset of features simply pass with the `-f` option a list of markers that identify the test cases
-to run. For example when passing `-f "awsbatch" "not advanced"` all test cases marked with `@pytest.mark.awsbatch` and
-not marked with `@pytest.mark.advanced` are executed.
-
-It is a good practice to mark test cases with a series of markers that allow to identify the feature under test.
-Every test is marked by default with a marker matching its filename with the `test_` prefix or `_test` suffix removed.
-
 ### Custom Templates, Packages and AMI
 
 To use custom templates or packages URLs or to run tests against a given custom AMI
@@ -141,10 +342,10 @@ use the following options:
 * `--custom-cookbook-url`: URL to a custom cookbook package.
 * `--createami-custom-cookbook-url`: URL to a custom cookbook package for the createami command.
 * `--custom-template-url`: URL to a custom cfn template.
-* `--custom-awsbatch-template-url`: URL to a custom awsbatch cfn template.
 * `--custom-awsbatchcli-url`: URL to a custom awsbatch cli package.
 * `--custom-ami`: custom AMI to use for all tests. Note that this custom AMI will be used
   for all tests, no matter the region.
+* `--custom-hit-template-url`: URL to a custom hit cfn template.
 
 The configuration for the custom templates and packages are automatically injected into
 all cluster configs when these are rendered. In case any of these parameters is already set
@@ -192,7 +393,7 @@ The output produced by the performance tests is stored under the following direc
 tests_outputs
 └── $timestamp..out
     └── benchmarks: directory storing all cluster configs used by test
-            ├── test_scaling_speed.py-test_scaling_speed[c5.xlarge-eu-west-1-centos7-slurm].png
+                  ├── test_scaling_speed.py-test_scaling_speed[c5.xlarge-eu-west-1-centos7-slurm].png
             └── ...
 ```
 
@@ -235,9 +436,9 @@ related to storage options could be grouped in the following fashion:
 ```
 tests_outputs
 └──  tests
-    └── storage
-         ├── test_ebs.py
-         ├── test_raid.py
+          └── storage
+               ├── test_ebs.py
+               ├── test_raid.py
          └── test_efs.py
 ```
 
@@ -284,6 +485,8 @@ def test_case_2(cluster_max_size):
 ```
 
 ### Restrict Test Cases Dimensions
+
+Note: this does not apply when using a test configuration file to select and parametrized the tests to execute
 
 It is possible to restrict the dimensions each test is compatible with by using some custom markers.
 The available markers are the following:
@@ -339,14 +542,14 @@ Tests data and resources are organized in the following directories:
 ```
 integration-tests
 └── tests
-   ├── $test_file_i.py: contains resources for test cases defined in file $test_file_i.py
-   │   └── $test_case_i: contains resources for test case $test_case_i
-   │       ├── data_file
-   │       ├── pcluster.config.ini
-   │       └── test_script.sh
-   └── data: contains common resources to share across all tests
-       └── shared_dir_1
-           └── shared_file_1
+         ├── $test_file_i.py: contains resources for test cases defined in file $test_file_i.py
+         │         └── $test_case_i: contains resources for test case $test_case_i
+         │             ├── data_file
+         │             ├── pcluster.config.ini
+         │             └── test_script.sh
+         └── data: contains common resources to share across all tests
+                └── shared_dir_1
+                       └── shared_file_1
 ```
 
 [pytest-datadir](https://github.com/gabrielcnr/pytest-datadir) is a pytest plugin that is used for manipulating test
@@ -426,30 +629,37 @@ A VPC and the related subnets are automatically configured at the start of the i
 test. These resources are shared across all the tests and deleted when all tests are completed.
 
 The idea is to create a single VPC per region and have multiple subnets that allow to test different networking setups.
-At the moment two subnets are generated (a private one and a public one) with the current configuration:
+At the moment three subnets are generated with the following configuration:
 
 ```python
 public_subnet = SubnetConfig(
-    name="PublicSubnet",
-    cidr="10.0.0.0/24",
+    name="Public",
+    cidr="192.168.32.0/19",  # 8190 IPs
     map_public_ip_on_launch=True,
     has_nat_gateway=True,
+    availability_zone=availability_zones[0],
     default_gateway=Gateways.INTERNET_GATEWAY,
 )
 private_subnet = SubnetConfig(
-    name="PrivateSubnet",
-    cidr="10.0.1.0/24",
+    name="Private",
+    cidr="192.168.64.0/18",  # 16382 IPs
     map_public_ip_on_launch=False,
     has_nat_gateway=False,
+    availability_zone=availability_zones[0],
     default_gateway=Gateways.NAT_GATEWAY,
 )
-vpc = VPCConfig(
-    name="vpc",
-    cidr="10.0.0.0/16",
-    enable_dns_support=True,
-    enable_dns_hostnames=True,
-    has_internet_gateway=True,
-    subnets = [private_subnet, public_subnet],
+private_subnet_different_cidr = SubnetConfig(
+    name="PrivateAdditionalCidr",
+    cidr="192.168.128.0/17",  # 32766 IPs
+    map_public_ip_on_launch=False,
+    has_nat_gateway=False,
+    availability_zone=availability_zones[1],
+    default_gateway=Gateways.NAT_GATEWAY,
+)
+vpc_config = VPCConfig(
+    cidr="192.168.0.0/17",
+    additional_cidr_blocks=["192.168.128.0/17"],
+    subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
 )
 ```
 
@@ -517,11 +727,11 @@ and here is the structure of the datadir if the test case is defined in the `tes
 ```
 integration-tests
 └── tests
-    └──  test_feature
-        └── test_case_1
-            ├── data_file
-            ├── pcluster.config.ini
-            └── test_script.sh
+          └──  test_feature
+                    └── test_case_1
+                        ├── data_file
+                        ├── pcluster.config.ini
+                        └── test_script.sh
 
 ```
 
