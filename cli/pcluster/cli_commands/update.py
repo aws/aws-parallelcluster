@@ -22,7 +22,7 @@ from tabulate import tabulate
 
 import pcluster.utils as utils
 from pcluster.cluster_model import ClusterModel
-from pcluster.commands import _evaluate_pcluster_template_url, _upload_dashboard_resource, _upload_hit_resources
+from pcluster.commands import evaluate_pcluster_template_url, upload_dashboard_resource, upload_hit_resources
 from pcluster.config.config_patch import ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.config.update_policy import UpdatePolicy
@@ -60,13 +60,13 @@ def execute(args):
         template_url = None
         if is_hit:
             try:
-                _upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params)
+                upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params)
             except Exception:
                 utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
-            template_url = _evaluate_pcluster_template_url(target_config)
+            template_url = evaluate_pcluster_template_url(target_config)
 
         try:
-            _upload_dashboard_resource(
+            upload_dashboard_resource(
                 s3_bucket_name,
                 target_config,
                 target_config.to_storage().json_params,

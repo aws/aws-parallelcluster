@@ -59,9 +59,9 @@ def _create_bucket_with_resources(pcluster_config, storage_data, tags):
                 resources = pkg_resources.resource_filename(__name__, resources_dir)
                 utils.upload_resources_artifacts(s3_bucket_name, root=resources)
             if utils.is_hit_enabled_scheduler(scheduler):
-                _upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
+                upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
 
-        _upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
+        upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -70,7 +70,7 @@ def _create_bucket_with_resources(pcluster_config, storage_data, tags):
     return s3_bucket_name
 
 
-def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
+def upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
     if tags is None:
         tags = []
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
@@ -102,7 +102,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
         raise
 
 
-def _upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_params):
+def upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_params):
     params = {"json_params": json_params, "cfn_params": cfn_params}
     cw_dashboard_template_url = pcluster_config.get_section("cluster").get_param_value(
         "cw_dashboard_template_url"
@@ -188,7 +188,7 @@ def create(args):  # noqa: C901 FIXME!!!
         LOGGER.info("Creating stack named: %s", stack_name)
 
         # determine the CloudFormation Template URL to use
-        template_url = _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
+        template_url = evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
 
         # append extra parameters from command-line
         if args.extra_parameters:
@@ -239,7 +239,7 @@ def create(args):  # noqa: C901 FIXME!!!
         sys.exit(1)
 
 
-def _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
+def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
     """
     Determine the CloudFormation Template URL to use.
 
