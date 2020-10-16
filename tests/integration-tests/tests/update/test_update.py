@@ -30,7 +30,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos7", "sge")
+@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "sge")
 @pytest.mark.usefixtures("os")
 def test_update_sit(
     region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory
@@ -138,7 +138,7 @@ def test_update_sit(
     )
 
 
-@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "*", "slurm")
+@pytest.mark.dimensions("us-west-1", "c5.xlarge", "*", "slurm")
 @pytest.mark.usefixtures("os", "instance")
 def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory, test_datadir, s3_bucket_factory):
     # Create S3 bucket for pre/post install scripts
