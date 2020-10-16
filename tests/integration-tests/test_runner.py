@@ -117,7 +117,8 @@ def _init_argparser():
         "--tests-config",
         help="Config file that specifies the tests to run and the dimensions to enable for each test. "
         "Note that when a config file is used the following flags are ignored: instances, regions, oss, schedulers. "
-        "Refer to the docs for further details on the config format.",
+        "Refer to the docs for further details on the config format: "
+        "https://github.com/aws/aws-parallelcluster/blob/develop/tests/integration-tests/README.md",
         type=_test_config_file,
     )
     dimensions_group.add_argument(
@@ -343,6 +344,12 @@ def _join_with_not(args):
 def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     pytest_args = ["-s", "-vv", "-l"]
 
+    pytest_args.append("--tests-log-file={0}/{1}".format(args.output_dir, log_file))
+    pytest_args.append("--output-dir={0}/{1}".format(args.output_dir, out_dir))
+    pytest_args.append(f"--key-name={args.key_name}")
+    pytest_args.append(f"--key-path={args.key_path}")
+    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
+
     if args.benchmarks:
         pytest_args.append("--ignore=./tests")
         pytest_args.append("--rootdir=./benchmarks")
@@ -355,23 +362,23 @@ def _get_pytest_args(args, regions, log_file, out_dir):  # noqa: C901
     # Show all tests durations
     pytest_args.append("--durations=0")
     # Run only tests with the given markers
-    pytest_args.append("-m")
-    pytest_args.append(" or ".join(list(_join_with_not(args.features))))
+    if args.features:
+        pytest_args.append("-m")
+        pytest_args.append(" or ".join(list(_join_with_not(args.features))))
     if args.tests_config:
         _set_tests_config_args(args, pytest_args, out_dir)
-    pytest_args.append("--regions")
-    pytest_args.extend(regions)
-    pytest_args.append("--instances")
-    pytest_args.extend(args.instances)
-    pytest_args.append("--oss")
-    pytest_args.extend(args.oss)
-    pytest_args.append("--schedulers")
-    pytest_args.extend(args.schedulers)
-    pytest_args.extend(["--tests-log-file", "{0}/{1}".format(args.output_dir, log_file)])
-    pytest_args.extend(["--output-dir", "{0}/{1}".format(args.output_dir, out_dir)])
-    pytest_args.extend(["--key-name", args.key_name])
-    pytest_args.extend(["--key-path", args.key_path])
-    pytest_args.extend(["--stackname-suffix", args.stackname_suffix])
+    if regions:
+        pytest_args.append("--regions")
+        pytest_args.extend(regions)
+    if args.instances:
+        pytest_args.append("--instances")
+        pytest_args.extend(args.instances)
+    if args.oss:
+        pytest_args.append("--oss")
+        pytest_args.extend(args.oss)
+    if args.schedulers:
+        pytest_args.append("--schedulers")
+        pytest_args.extend(args.schedulers)
 
     if args.keep_logs_on_cluster_failure:
         pytest_args.append("--keep-logs-on-cluster-failure")
@@ -448,7 +455,7 @@ def _set_tests_config_args(args, pytest_args, out_dir):
     rendered_config_file = f"{args.output_dir}/{out_dir}/tests_config.yaml"
     with open(rendered_config_file, "x") as text_file:
         text_file.write(dump_rendered_config_file(args.tests_config))
-    pytest_args.extend(["--tests-config-file", rendered_config_file])
+    pytest_args.append(f"--tests-config-file={rendered_config_file}")
 
 
 def _get_pytest_regionalized_args(region, args, our_dir, logs_dir):
@@ -477,7 +484,7 @@ def _run_test_in_region(region, args, out_dir, logs_dir):
     pytest_args_regionalized = _get_pytest_regionalized_args(region, args, out_dir, logs_dir)
     with TemporaryDirectory() as temp_dir:
         pytest_args_regionalized.extend(["--basetemp", temp_dir])
-        logger.info("Starting tests in region {0} with params {1}".format(region, pytest_args_regionalized))
+        logger.info("Starting pytest in region {0} with params {1}".format(region, pytest_args_regionalized))
         pytest.main(pytest_args_regionalized)
 
 
@@ -516,10 +523,10 @@ def _check_args(args):
             exit(1)
 
     if not args.tests_config:
-        assert_that(args.regions).is_not_empty()
-        assert_that(args.instances).is_not_empty()
-        assert_that(args.oss).is_not_empty()
-        assert_that(args.schedulers).is_not_empty()
+        assert_that(args.regions).described_as("--regions cannot be empty").is_not_empty()
+        assert_that(args.instances).described_as("--instances cannot be empty").is_not_empty()
+        assert_that(args.oss).described_as("--oss cannot be empty").is_not_empty()
+        assert_that(args.schedulers).described_as("--schedulers cannot be empty").is_not_empty()
     else:
         try:
             assert_valid_config(args.tests_config, args.tests_root_dir)
@@ -534,7 +541,7 @@ def _run_sequential(args):
         sys.stdout = open("{0}/{1}/pytest.out".format(args.output_dir, OUT_DIR), "w")
 
     pytest_args_non_regionalized = _get_pytest_non_regionalized_args(args, OUT_DIR, LOGS_DIR)
-    logger.info("Starting tests with params {0}".format(pytest_args_non_regionalized))
+    logger.info("Starting pytest with params {0}".format(pytest_args_non_regionalized))
     pytest.main(pytest_args_non_regionalized)
 
 
@@ -546,7 +553,7 @@ def main():
 
     args = _init_argparser().parse_args()
     _check_args(args)
-    logger.info("Starting tests with parameters {0}".format(args))
+    logger.info("Parsed test_runner parameters {0}".format(args))
 
     _make_logging_dirs(args.output_dir)
 

@@ -191,7 +191,7 @@ def assert_config_contains_expected_values(
             # if expected_value is empty, skip the assertion.
             continue
         observed_value = config[validator.get("section_name")][validator.get("parameter_name")]
-        assert_that(observed_value).is_equal_to(expected_value)
+        assert_that(observed_value).is_equal_to(str(expected_value))
 
 
 def orchestrate_pcluster_configure_stages(
