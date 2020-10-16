@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.constants import CIDR_ALL_IPS
+from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     ellipsize,
@@ -65,6 +65,8 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
     "arm64": ["ubuntu1804", "alinux2"],
 }
+
+FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "standard": (1, 1024),
@@ -187,6 +189,8 @@ def fsx_validator(section_key, section_label, pcluster_config):
     fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
     fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
     fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
+    fsx_storage_type = fsx_section.get_param_value("storage_type")
+    fsx_drive_cache_type = fsx_section.get_param_value("drive_cache_type")
 
     validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy)
     validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput)
@@ -200,7 +204,11 @@ def fsx_validator(section_key, section_label, pcluster_config):
         fsx_import_path,
         fsx_export_path,
         fsx_auto_import_policy,
+    ),
+    validate_storage_type_options(
+        errors, fsx_storage_type, fsx_deployment_type, fsx_per_unit_storage_throughput, fsx_drive_cache_type
     )
+
     return errors, warnings
 
 
@@ -287,11 +295,10 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
     fsx_section = pcluster_config.get_section(section_key, section_label)
     storage_capacity = fsx_section.get_param_value("storage_capacity")
     deployment_type = fsx_section.get_param_value("deployment_type")
-
-    if fsx_section.get_param_value("fsx_fs_id"):
+    storage_type = fsx_section.get_param_value("storage_type")
+    per_unit_storage_throughput = fsx_section.get_param_value("per_unit_storage_throughput")
+    if fsx_section.get_param_value("fsx_fs_id") or fsx_section.get_param_value("fsx_backup_id"):
         # if fsx_fs_id is provided, don't validate storage_capacity
-        return errors, warnings
-    elif fsx_section.get_param_value("fsx_backup_id"):
         # if fsx_backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
         return errors, warnings
     elif not storage_capacity:
@@ -300,6 +307,11 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
     elif deployment_type == "SCRATCH_1":
         if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
             warnings.append("Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB")
+    elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
+        if per_unit_storage_throughput == 12 and not (storage_capacity % 6000 == 0):
+            warnings.append("Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB")
+        elif per_unit_storage_throughput == 40 and not (storage_capacity % 1800 == 0):
+            warnings.append("Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB")
     elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
         if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
             warnings.append(
@@ -1306,9 +1318,10 @@ def fsx_ignored_parameters_validator(section_key, section_label, pcluster_config
     relevant_when_using_existing_fsx = ["fsx_fs_id", "shared_dir"]
     if fsx_section.get_param_value("fsx_fs_id") is not None:
         for fsx_param in fsx_section.params:
-            if fsx_param not in relevant_when_using_existing_fsx and fsx_section.get_param_value(fsx_param) is not None:
+            if fsx_param not in relevant_when_using_existing_fsx and FSX_PARAM_WITH_DEFAULT.get(
+                fsx_param, None
+            ) != fsx_section.get_param_value(fsx_param):
                 errors.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=fsx_param))
-
     return errors, warnings
 
 
@@ -1384,11 +1397,14 @@ def validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, f
         errors.append("When specifying 'export_path', the 'import_path' option must be specified")
 
     if fsx_auto_import_policy and not fsx_import_path:
-        errors.append("When specifying 'auto_import_policy', the 'import_path' option msut be specified")
+        errors.append("When specifying 'auto_import_policy', the 'import_path' option must be specified")
 
 
 def validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput):
-    if fsx_deployment_type != "PERSISTENT_1":
+    if fsx_deployment_type == "PERSISTENT_1":
+        if not fsx_per_unit_storage_throughput:
+            errors.append("'per_unit_storage_throughput' must be specified when 'deployment_type = PERSISTENT_1'")
+    else:
         if fsx_kms_key_id:
             errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
         if fsx_per_unit_storage_throughput:
@@ -1484,3 +1500,26 @@ def ebs_volume_size_snapshot_validator(section_key, section_label, pcluster_conf
                     )
                 )
     return errors, warnings
+
+
+def validate_storage_type_options(
+    errors, fsx_storage_type, fsx_deployment_type, fsx_per_unit_storage_throughput, fsx_drive_cache_type
+):
+    if fsx_storage_type == "HDD":
+        if fsx_deployment_type != "PERSISTENT_1":
+            errors.append("For HDD filesystems, 'deployment_type' must be 'PERSISTENT_1'")
+        if fsx_per_unit_storage_throughput not in FSX_HDD_THROUGHPUT:
+            errors.append(
+                "For HDD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                    FSX_HDD_THROUGHPUT
+                )
+            )
+    else:  # SSD or None
+        if fsx_drive_cache_type != "NONE":
+            errors.append("'drive_cache_type' features can be used only with HDD filesystems")
+        if fsx_per_unit_storage_throughput and fsx_per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
+            errors.append(
+                "For SSD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                    FSX_SSD_THROUGHPUT
+                )
+            )

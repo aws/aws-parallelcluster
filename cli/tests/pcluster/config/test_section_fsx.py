@@ -21,21 +21,21 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         (DefaultCfnParams["fsx"].value, DefaultDict["fsx"].value),
         ({}, DefaultDict["fsx"].value),
         (
-            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             DefaultDict["fsx"].value,
         ),
         (
-            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"FSXOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             utils.merge_dicts(DefaultDict["fsx"].value, {"shared_dir": "test"}),
         ),
         (
             {
                 "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
-                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,READ"
             },
             {
                 "shared_dir": "test",
@@ -53,6 +53,80 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                 "copy_tags_to_backups": False,
                 "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
                 "auto_import_policy": "NEW_CHANGED",
+                "storage_type": "HDD",
+                "drive_cache_type": "READ",
+            },
+        ),
+        (
+            {
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,HDD,NONE"
+            },
+            {
+                "shared_dir": "test",
+                "fsx_fs_id": "test1",
+                "storage_capacity": 10,
+                "fsx_kms_key_id": "test2",
+                "imported_file_chunk_size": 20,
+                "export_path": "test3",
+                "import_path": "test4",
+                "weekly_maintenance_start_time": "test5",
+                "deployment_type": "SCRATCH_1",
+                "per_unit_storage_throughput": 50,
+                "daily_automatic_backup_start_time": "01:00",
+                "automatic_backup_retention_days": 5,
+                "copy_tags_to_backups": False,
+                "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
+                "auto_import_policy": "NEW_CHANGED",
+                "storage_type": "HDD",
+                "drive_cache_type": "NONE",
+            },
+        ),
+        (
+            {
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NEW_CHANGED,SSD,NONE"
+            },
+            {
+                "shared_dir": "test",
+                "fsx_fs_id": "test1",
+                "storage_capacity": 10,
+                "fsx_kms_key_id": "test2",
+                "imported_file_chunk_size": 20,
+                "export_path": "test3",
+                "import_path": "test4",
+                "weekly_maintenance_start_time": "test5",
+                "deployment_type": "SCRATCH_1",
+                "per_unit_storage_throughput": 50,
+                "daily_automatic_backup_start_time": "01:00",
+                "automatic_backup_retention_days": 5,
+                "copy_tags_to_backups": False,
+                "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
+                "auto_import_policy": "NEW_CHANGED",
+                "storage_type": "SSD",
+            },
+        ),
+        (
+            {
+                "FSXOptions": "test,test1,10,test2,20,test3,test4,test5,SCRATCH_1,"
+                "50,01:00,5,false,backup-0a1b2c3d4e5f6a7b8,NONE,NONE,NONE"
+            },
+            {
+                "shared_dir": "test",
+                "fsx_fs_id": "test1",
+                "storage_capacity": 10,
+                "fsx_kms_key_id": "test2",
+                "imported_file_chunk_size": 20,
+                "export_path": "test3",
+                "import_path": "test4",
+                "weekly_maintenance_start_time": "test5",
+                "deployment_type": "SCRATCH_1",
+                "per_unit_storage_throughput": 50,
+                "daily_automatic_backup_start_time": "01:00",
+                "automatic_backup_retention_days": 5,
+                "copy_tags_to_backups": False,
+                "fsx_backup_id": "backup-0a1b2c3d4e5f6a7b8",
+                "auto_import_policy": None,
             },
         ),
     ],
@@ -177,6 +251,8 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
             "INVALID_VALUE",
             " 'deployment_type' has an invalid value 'INVALID_VALUE'",
         ),
+        ("per_unit_storage_throughput", "12", 12, None),
+        ("per_unit_storage_throughput", "40", 40, None),
         ("per_unit_storage_throughput", "50", 50, None),
         ("per_unit_storage_throughput", "100", 100, None),
         ("per_unit_storage_throughput", "200", 200, None),
@@ -223,9 +299,25 @@ def test_fsx_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ),
         ("fsx_backup_id", "backup-0a1b2c3d4e5f6a7b8", "backup-0a1b2c3d4e5f6a7b8", None),
         ("auto_import_policy", None, None, None),
-        ("auto_import_policy", "NONE", "NONE", None),
         ("auto_import_policy", "NEW", "NEW", None),
         ("auto_import_policy", "NEW_CHANGED", "NEW_CHANGED", None),
+        ("storage_type", None, None, None),
+        ("storage_type", "SSD", "SSD", None),
+        ("storage_type", "HDD", "HDD", None),
+        (
+            "storage_type",
+            "INVALID_VALUE",
+            "INVALID_VALUE",
+            " 'storage_type' has an invalid value 'INVALID_VALUE'",
+        ),
+        ("drive_cache_type", None, "NONE", None),
+        ("drive_cache_type", "READ", "READ", None),
+        (
+            "drive_cache_type",
+            "INVALID_VALUE",
+            "INVALID_VALUE",
+            " 'drive_cache_type' has an invalid value 'INVALID_VALUE'",
+        ),
     ],
 )
 def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -250,7 +342,8 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+                    "NONE,NONE",
                 },
             ),
         ),
@@ -262,7 +355,19 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
                     "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
-                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED",
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ",
+                },
+            ),
+        ),
+        (
+            "test3",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster_sit"].value,
+                {
+                    "MasterSubnetId": "subnet-12345678",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NEW_CHANGED,HDD,READ",
                 },
             ),
         ),
@@ -276,7 +381,45 @@ def test_fsx_param_from_file(mocker, param_key, param_value, expected_value, exp
                 {
                     "MasterSubnetId": "subnet-12345678",
                     "AvailabilityZone": "mocked_avail_zone",
-                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "/fsx,NONE,3600,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+                    "NONE,"
+                    "NONE",
+                },
+            ),
+        ),
+        (
+            "test7",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster_sit"].value,
+                {
+                    "MasterSubnetId": "subnet-12345678",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,NONE",
+                },
+            ),
+        ),
+        (
+            "test8",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster_sit"].value,
+                {
+                    "MasterSubnetId": "subnet-12345678",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,HDD,READ",
+                },
+            ),
+        ),
+        (
+            "test9",
+            utils.merge_dicts(
+                DefaultCfnParams["cluster_sit"].value,
+                {
+                    "MasterSubnetId": "subnet-12345678",
+                    "AvailabilityZone": "mocked_avail_zone",
+                    "FSXOptions": "fsx,fs-12345678901234567,10,key1,1020,s3://test-export,"
+                    "s3://test-import,1:10:17,SCRATCH_1,50,01:00,5,false,NONE,NONE,SSD,NONE",
                 },
             ),
         ),

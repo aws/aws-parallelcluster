@@ -33,8 +33,22 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 
 
 @pytest.mark.parametrize(
-    "deployment_type, per_unit_storage_throughput, auto_import_policy",
-    [("PERSISTENT_1", 200, "NEW_CHANGED"), ("SCRATCH_1", None, "NEW"), ("SCRATCH_2", None, "NONE")],
+    (
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "auto_import_policy",
+        "storage_type",
+        "drive_cache_type",
+        "storage_capacity",
+    ),
+    [
+        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200),
+        ("SCRATCH_1", None, "NEW", None, None, 1200),
+        ("SCRATCH_2", None, None, None, None, 1200),
+        ("PERSISTENT_1", 200, None, "SSD", None, 1200),
+        ("PERSISTENT_1", 40, None, "HDD", None, 1800),
+        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000),
+    ],
 )
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
@@ -57,6 +71,9 @@ def test_fsx_lustre(
     test_datadir,
     os,
     scheduler,
+    storage_type,
+    drive_cache_type,
+    storage_capacity,
 ):
     """
     Test all FSx Lustre related features.
@@ -73,6 +90,9 @@ def test_fsx_lustre(
         deployment_type=deployment_type,
         per_unit_storage_throughput=per_unit_storage_throughput,
         auto_import_policy=auto_import_policy,
+        storage_type=storage_type,
+        drive_cache_type=drive_cache_type,
+        storage_capacity=storage_capacity,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -82,6 +102,7 @@ def test_fsx_lustre(
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
+    _test_storage_type(storage_type, fsx_fs_id, region)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
     _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
@@ -170,8 +191,9 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, r
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     mount_name = get_mount_name(fsx_fs_id, region)
     assert_that(result.stdout).matches(
-        r"[0-9\.]+@tcp:/{mount_name}\s+1\.[12]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
+        r"[0-9\.]+@tcp:/{mount_name}\s+[15]\.[1278]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
     )
+    # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = {
@@ -201,6 +223,19 @@ def get_mount_name(fsx_fs_id, region):
 def get_fsx_fs_id(cluster, region):
     fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
     return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
+
+
+def get_storage_type(fsx_fs_id, region):
+    logging.info("Getting StorageType from DescribeFilesystem API.")
+    fsx = boto3.client("fsx", region_name=region)
+    return fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("StorageType")
+
+
+def _test_storage_type(storage_type, fsx_fs_id, region):
+    if storage_type == "HDD":
+        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("HDD")
+    else:
+        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("SSD")
 
 
 def _test_import_path(remote_command_executor, mount_dir):
