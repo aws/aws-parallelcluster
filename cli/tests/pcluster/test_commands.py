@@ -51,8 +51,8 @@ def test_create_bucket_with_resources_success(
     mocker.patch("pcluster.utils.create_s3_bucket")
     upload_resources_artifacts_mock = mocker.patch("pcluster.utils.upload_resources_artifacts")
     delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
-    upload_hit_resources_mock = mocker.patch("pcluster.commands._upload_hit_resources")
-    upload_dashboard_resource = mocker.patch("pcluster.commands._upload_dashboard_resource")
+    upload_hit_resources_mock = mocker.patch("pcluster.commands.upload_hit_resources")
+    upload_dashboard_resource = mocker.patch("pcluster.commands.upload_dashboard_resource")
     pcluster_config_mock = _mock_pcluster_config(mocker, scheduler, region)
 
     storage_data = pcluster_config_mock.to_storage()

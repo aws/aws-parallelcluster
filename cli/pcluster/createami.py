@@ -35,6 +35,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 import pcluster.utils as utils
+from pcluster.commands import evaluate_pcluster_template_url
 from pcluster.config.pcluster_config import PclusterConfig
 
 if sys.version_info[0] >= 3:
@@ -43,21 +44,6 @@ else:
     from urllib import urlretrieve  # pylint: disable=no-name-in-module
 
 LOGGER = logging.getLogger(__name__)
-
-
-def _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
-    """
-    Determine the CloudFormation Template URL to use.
-
-    Order is 1) preferred_template_url 2) Config file 3) default for version + region.
-
-    :param pcluster_config: PclusterConfig, it can contain the template_url
-    :param preferred_template_url: preferred template url to use, if not None
-    :return: the evaluated template url
-    """
-    configured_template_url = pcluster_config.get_section("cluster").get_param_value("template_url")
-
-    return preferred_template_url or configured_template_url or _get_default_template_url(pcluster_config.region)
 
 
 def _get_cookbook_url(region, template_url, args, tmpdir):
@@ -345,7 +331,7 @@ def create_ami(args):
         LOGGER.info("VPC ID: %s", vpc_id)
         LOGGER.info("Subnet ID: %s", subnet_id)
 
-        template_url = _evaluate_pcluster_template_url(pcluster_config)
+        template_url = evaluate_pcluster_template_url(pcluster_config)
 
         tmp_dir = mkdtemp()
         cookbook_dir = _get_cookbook_dir(aws_region, template_url, args, tmp_dir)
