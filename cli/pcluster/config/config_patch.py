@@ -200,7 +200,10 @@ class ConfigPatch(object):
         :param section: The section to be matched
         :return: The matching section
         """
-        config_section = config.get_section(section.key, section.label)
+        section_key = section.key
+        # We compare the cluster sections of base_config and target_config no matter the label change or not
+        section_label = section.label if section_key != "cluster" else None
+        config_section = config.get_section(section_key, section_label)
 
         # If section is not present in base config, a default copy is generated
         if not config_section:
