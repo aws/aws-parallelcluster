@@ -189,6 +189,7 @@ def _log_collected_tests(session):
         out_dir = session.config.getoption("output_dir")
         with open(f"{out_dir}/collected_tests.txt", "a") as out_f:
             out_f.write("\n".join(collected_tests))
+            out_f.write("\n")
 
 
 def pytest_exception_interact(node, call, report):
