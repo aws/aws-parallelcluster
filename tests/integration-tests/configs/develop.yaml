@@ -242,14 +242,22 @@ test-suites:
         - regions: {{ common.REGIONS_COMMERCIAL }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm", "sge"]
         - regions: {{ common.REGIONS_CHINA }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_CHINA_X86 }}
-          schedulers: {{ common.SCHEDULERS_TRAD }}
+          schedulers: ["slurm", "sge"]
         - regions: {{ common.REGIONS_GOVCLOUD }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_GOVCLOUD_X86 }}
+          schedulers: ["slurm", "sge"]
+        - regions: ["ap-south-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["torque"]
+        - regions: ["us-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
           schedulers: {{ common.SCHEDULERS_TRAD }}
     test_scaling.py::test_nodewatcher_terminates_failing_node:
       dimensions:
