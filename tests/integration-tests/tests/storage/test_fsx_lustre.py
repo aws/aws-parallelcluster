@@ -51,16 +51,12 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
     ],
 )
 @pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
+@pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("instance", "deployment_type")
+@pytest.mark.usefixtures("instance")
 # FSx is not supported on CentOS 6
 @pytest.mark.skip_oss(["centos6"])
-# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
-def test_fsx_lustre(
+def test_fsx_lustre_configuration_options(
     deployment_type,
     per_unit_storage_throughput,
     auto_import_policy,
@@ -75,11 +71,6 @@ def test_fsx_lustre(
     drive_cache_type,
     storage_capacity,
 ):
-    """
-    Test all FSx Lustre related features.
-
-    Grouped all tests in a single function so that cluster can be reused for all of them.
-    """
     mount_dir = "/fsx_mount_dir"
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
@@ -95,6 +86,47 @@ def test_fsx_lustre(
         storage_capacity=storage_capacity,
     )
     cluster = clusters_factory(cluster_config)
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+
+
+@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.usefixtures("instance")
+# FSx is not supported on CentOS 6
+@pytest.mark.skip_oss(["centos6"])
+# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
+@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
+def test_fsx_lustre(
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    s3_bucket_factory,
+    test_datadir,
+    os,
+    scheduler,
+):
+    """
+    Test all FSx Lustre related features.
+
+    Grouped all tests in a single function so that cluster can be reused for all of them.
+    """
+    mount_dir = "/fsx_mount_dir"
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        mount_dir=mount_dir,
+        storage_capacity=1200,
+    )
+    cluster = clusters_factory(cluster_config)
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+
+
+def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
