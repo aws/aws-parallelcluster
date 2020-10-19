@@ -46,6 +46,7 @@ def test_ebs_snapshot(
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
     volume_size = 21
+    # This volume_size is set to be larger than snapshot size(10G), to test create volumes larger than its snapshot size
 
     logging.info("Creating snapshot")
 
@@ -133,11 +134,43 @@ def _test_home_correctly_shared(remote_command_executor, scheduler_commands):
 
 
 def _test_ebs_resize(remote_command_executor, mount_dir, volume_size):
-    logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
+    """
+    This test verifies the following case:
+
+    If the volume is created from a snapshot with a size larger than the snapshot, the size of the volume is correct.
+    """
+    logging.info("Testing ebs has correct volume size")
+
+    # get the filesystem that the shared_dir is mounted on
+    # example output of "df -h -t ext4"
+    #     Filesystem      Size  Used Avail Use% Mounted on
+    # /dev/nvme1n1p1  9.8G   37M  9.3G   1% /ebs_mount_dir
+    # /dev/nvme2n1p1  9.8G   37M  9.3G   1% /existing_mount_dir
+    filesystem_name = remote_command_executor.run_remote_command(
+        "df -h -t ext4 | tail -n +2 |grep '{mount_dir}' | awk '{{print $1}}'".format(mount_dir=mount_dir)
+    ).stdout
+
+    # get the volume name given the filesystem name
+    # example input: /dev/nvme1n1p1
+    # example output: nvme1n1
+    volume_name = remote_command_executor.run_remote_command(
+        "lsblk -no pkname {filesystem_name}".format(filesystem_name=filesystem_name)
+    ).stdout
+
+    # get the volume size of the volume
+    # example output of "lsblk"
+    # NAME          MAJ:MIN RM SIZE RO TYPE MOUNTPOINT
+    # nvme0n1       259:0    0  25G  0 disk
+    # ├─nvme0n1p1   259:1    0  25G  0 part /
+    # └─nvme0n1p128 259:2    0   1M  0 part
+    # nvme1n1       259:3    0  21G  0 disk
+    # └─nvme1n1p1   259:4    0  10G  0 part /ebs_mount_dir
+    # nvme2n1       259:5    0  10G  0 disk
+    # └─nvme2n1p1   259:6    0  10G  0 part /existing_mount_dir
     result = remote_command_executor.run_remote_command(
-        "VOLUME=$(lsblk -no pkname `df -h -t ext4 | tail -n +2 |grep '{size}' | awk '{{print $1}}'`)"
-        "&&lsblk | tail -n +2 | grep $VOLUME| awk '{{print $4}}' | sed -n '1p'''".format(size=mount_dir)
+        "lsblk | tail -n +2 | grep {volume_name}| awk '{{print $4}}' | sed -n '1p'''".format(volume_name=volume_name)
     )
+
     assert_that(result.stdout).matches(r"{size}G".format(size=volume_size))
 
 
