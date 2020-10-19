@@ -2411,7 +2411,7 @@ def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
             50,
             "completed",
             "aws-cn",
-            "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+            "The specified volume size is larger than snapshot size. In order to use the full capacity of the "
             "volume, you'll need to manually resize the partition "
             "according to this doc: "
             "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
@@ -2423,7 +2423,7 @@ def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
             50,
             "completed",
             "aws-us-gov",
-            "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+            "The specified volume size is larger than snapshot size. In order to use the full capacity of the "
             "volume, you'll need to manually resize the partition "
             "according to this doc: "
             "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
@@ -2446,7 +2446,8 @@ def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
             "completed",
             "aws-us-gov",
             None,
-            "The EBS volume size must not be smaller than the volume size of EBS snapshot",
+            "The EBS volume size of the section 'default' must not be smaller than 120, because it is the size of the "
+            "provided snapshot snap-1234567891abcdef0",
             False,
         ),
         (

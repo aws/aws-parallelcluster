@@ -1444,7 +1444,7 @@ def ebs_volume_size_snapshot_validator(section_key, section_label, pcluster_conf
     Validate the following cases.
 
     The EBS snapshot is in "completed" state if it is specified
-    If user specified the volume size, the volume must be larger than then volume size of the EBS snapshot
+    If users specify the volume size, the volume must be not smaller than the volume size of the EBS snapshot
     """
     errors = []
     warnings = []
@@ -1462,10 +1462,17 @@ def ebs_volume_size_snapshot_validator(section_key, section_label, pcluster_conf
                     "Unable to get volume size for snapshot {snapshot_id}".format(snapshot_id=ebs_snapshot_id)
                 )
             elif volume_size < snapshot_volume_size:
-                errors.append("The EBS volume size must not be smaller than the volume size of EBS snapshot.")
+                errors.append(
+                    "The EBS volume size of the section '{section_label}' must not be smaller than "
+                    "{snapshot_volume_size}, because it is the size of the provided snapshot {ebs_snapshot_id}".format(
+                        section_label=section_label,
+                        snapshot_volume_size=snapshot_volume_size,
+                        ebs_snapshot_id=ebs_snapshot_id,
+                    )
+                )
             elif volume_size > snapshot_volume_size:
                 warnings.append(
-                    "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+                    "The specified volume size is larger than snapshot size. In order to use the full capacity of the "
                     "volume, you'll need to manually resize the partition "
                     "according to this doc: "
                     "https://{partition_url}/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html".format(
