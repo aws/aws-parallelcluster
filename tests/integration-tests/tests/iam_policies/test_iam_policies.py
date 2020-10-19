@@ -21,7 +21,7 @@ from tests.common.assertions import assert_no_errors_in_logs
 @pytest.mark.regions(["ap-northeast-2"])
 @pytest.mark.schedulers(["slurm", "awsbatch"])
 @pytest.mark.oss(["alinux2"])
-@pytest.mark.usefixtures("os")
+@pytest.mark.usefixtures("os", "instance")
 def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factory):
     """Test IAM Policies"""
     cluster_config = pcluster_config_reader(
