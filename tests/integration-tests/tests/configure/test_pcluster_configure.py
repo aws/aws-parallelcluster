@@ -181,7 +181,7 @@ def assert_config_contains_expected_values(
     else:
         param_validators += [
             {"section_name": "cluster default", "parameter_name": "initial_queue_size", "expected_value": 1},
-            {"section_name": "cluster default", "parameter_name": "maintain_initial_size", "expected_value": True},
+            {"section_name": "cluster default", "parameter_name": "maintain_initial_size", "expected_value": "true"},
             {"section_name": "cluster default", "parameter_name": "compute_instance_type", "expected_value": instance},
         ]
 
