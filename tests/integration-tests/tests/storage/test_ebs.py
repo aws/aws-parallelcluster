@@ -45,7 +45,7 @@ def test_ebs_snapshot(
 ):
     logging.info("Testing ebs snapshot")
     mount_dir = "ebs_mount_dir"
-    volume_size = 10
+    volume_size = 21
 
     logging.info("Creating snapshot")
 
@@ -60,6 +60,7 @@ def test_ebs_snapshot(
     mount_dir = "/" + mount_dir
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size="9.8")
+    _test_ebs_resize(remote_command_executor, mount_dir, volume_size=volume_size)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
     # Checks for test data
@@ -129,6 +130,15 @@ def _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_com
 def _test_home_correctly_shared(remote_command_executor, scheduler_commands):
     logging.info("Testing home dir correctly mounted on compute nodes")
     verify_directory_correctly_shared(remote_command_executor, "/home", scheduler_commands)
+
+
+def _test_ebs_resize(remote_command_executor, mount_dir, volume_size):
+    logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
+    result = remote_command_executor.run_remote_command(
+        "VOLUME=$(lsblk -no pkname `df -h -t ext4 | tail -n +2 |grep '{size}' | awk '{{print $1}}'`)"
+        "&&lsblk | tail -n +2 | grep $VOLUME| awk '{{print $4}}' | sed -n '1p'''".format(size=mount_dir)
+    )
+    assert_that(result.stdout).matches(r"{size}G".format(size=volume_size))
 
 
 @pytest.fixture()
