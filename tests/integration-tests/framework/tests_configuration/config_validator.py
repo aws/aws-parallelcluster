@@ -9,8 +9,10 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 import os
+from copy import deepcopy
 
 import argparse
 from assertpy import assert_that, soft_assertions
@@ -65,14 +67,18 @@ def _check_declared_tests_exist(config, tests_root_dir):
     """Check that all the tests declared in the config file correspond to actual valid test functions"""
     logging.info("Checking that configured tests exist")
     test_functions = discover_all_test_functions(tests_root_dir)
+    unused_test_functions = deepcopy(test_functions)
     try:
         with soft_assertions():
             for dirname, configured_tests in config["test-suites"].items():
                 assert_that(test_functions).contains_key(dirname)
                 assert_that(test_functions.get(dirname, [])).contains(*[test for test in configured_tests.keys()])
+                unused_test_functions[dirname] = list(unused_test_functions[dirname] - configured_tests.keys())
     except AssertionError as e:
         logging.error("Some of the configured tests do not exist: %s", e)
         raise
+
+    logging.info("Found following unused test functions: %s", json.dumps(unused_test_functions, indent=2))
 
 
 if __name__ == "__main__":
