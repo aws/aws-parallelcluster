@@ -24,7 +24,7 @@ def readme():
 VERSION = "2.9.1"
 REQUIRES = [
     "setuptools",
-    "boto3>=1.14.3",
+    "boto3==1.15.18" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "boto3>=1.15.18",
     "future>=0.16.0,<=0.18.2",
     "tabulate==0.8.5" if sys.version_info.major == 3 and sys.version_info.minor <= 4 else "tabulate>=0.8.2,<=0.8.7",
     "ipaddress>=1.0.22",
