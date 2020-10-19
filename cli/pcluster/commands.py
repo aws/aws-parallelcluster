@@ -50,16 +50,15 @@ def _create_bucket_with_resources(pcluster_config, storage_data, tags):
 
     try:
         scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
-        if scheduler in ["awsbatch", "slurm"]:
-            resources_dirs = ["resources/custom_resources"]
-            if scheduler == "awsbatch":
-                resources_dirs.append("resources/batch")
+        resources_dirs = ["resources/custom_resources"]
+        if scheduler == "awsbatch":
+            resources_dirs.append("resources/batch")
 
-            for resources_dir in resources_dirs:
-                resources = pkg_resources.resource_filename(__name__, resources_dir)
-                utils.upload_resources_artifacts(s3_bucket_name, root=resources)
-            if utils.is_hit_enabled_scheduler(scheduler):
-                upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
+        for resources_dir in resources_dirs:
+            resources = pkg_resources.resource_filename(__name__, resources_dir)
+            utils.upload_resources_artifacts(s3_bucket_name, root=resources)
+        if utils.is_hit_enabled_scheduler(scheduler):
+            upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
 
         upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
     except Exception:
