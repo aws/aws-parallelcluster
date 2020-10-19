@@ -86,6 +86,13 @@ test-suites:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
+  dashboard:
+    test_dashboard.py::test_dashboard:
+      dimensions:
+        - regions: ["ap-northeast-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
   dcv:
     test_dcv.py::test_dcv_configuration:
       dimensions:
