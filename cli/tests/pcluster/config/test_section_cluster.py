@@ -494,6 +494,8 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
+        ("cw_log_settings", "test1", None, "Section .* not found in the config file"),
+        ("dashboard_settings", "test1", None, "Section .* not found in the config file"),
     ],
 )
 def test_sit_cluster_param_from_file(
@@ -697,6 +699,8 @@ def test_sit_cluster_param_from_file(
         ("efs_settings", "test1", None, "Section .* not found in the config file"),
         ("raid_settings", "test1", None, "Section .* not found in the config file"),
         ("fsx_settings", "test1", None, "Section .* not found in the config file"),
+        ("cw_log_settings", "test1", None, "Section .* not found in the config file"),
+        ("dashboard_settings", "test1", None, "Section .* not found in the config file"),
     ],
 )
 def test_hit_cluster_param_from_file(
@@ -1002,7 +1006,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "40,20,20,20,20",
+                    "VolumeSize": "40,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "200,100,100,100,100",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
@@ -1022,7 +1026,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "2",
                     "SharedDir": "ebs1,ebs2,NONE,NONE,NONE",
                     "VolumeType": "io1,standard,gp2,gp2,gp2",
-                    "VolumeSize": "40,30,20,20,20",
+                    "VolumeSize": "40,30,NONE,NONE,NONE",
                     "VolumeIOPS": "200,300,100,100,100",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
@@ -1042,7 +1046,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "/shared",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "30,20,20,20,20",
+                    "VolumeSize": "30,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "300,100,100,100,100",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
@@ -1062,7 +1066,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "/work",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "30,20,20,20,20",
+                    "VolumeSize": "30,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "300,100,100,100,100",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
@@ -1082,7 +1086,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "40,20,20,20,20",
+                    "VolumeSize": "40,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "200,100,100,100,100",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
@@ -1110,7 +1114,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "40,20,20,20,20",
+                    "VolumeSize": "40,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "200,100,100,100,100",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
@@ -1120,7 +1124,8 @@ def test_cluster_section_to_cfn(
                     # raid
                     "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+                    "NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                     "Scheduler": "sge",
@@ -1175,7 +1180,7 @@ def test_cluster_section_to_cfn(
                     "NumberOfEBSVol": "1",
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
-                    "VolumeSize": "40,20,20,20,20",
+                    "VolumeSize": "40,NONE,NONE,NONE,NONE",
                     "VolumeIOPS": "200,100,100,100,100",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
@@ -1185,7 +1190,8 @@ def test_cluster_section_to_cfn(
                     # raid
                     "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
                     # fsx
-                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+                    "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
+                    "NONE,NONE",
                     # dcv
                     "DCVOptions": "master,8555,10.0.0.0/0",
                 },

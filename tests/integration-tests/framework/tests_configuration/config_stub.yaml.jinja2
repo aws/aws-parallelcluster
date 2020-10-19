@@ -1,0 +1,14 @@
+{% raw %}{%- import 'common.jinja2' as common -%}{% endraw %}
+---
+test-suites:
+{%- for feature, tests in test_functions.items() %}
+  {{ feature }}:
+    {%- for test in tests %}
+    {{ test }}:
+      dimensions:
+        - regions: []
+          instances: []
+          oss: []
+          schedulers: []
+    {%- endfor %}
+{%- endfor %}

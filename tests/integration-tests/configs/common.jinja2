@@ -1,0 +1,17 @@
+{%- set REGIONS_COMMERCIAL = ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "ca-central-1", "eu-central-1", "eu-west-1", "eu-west-2", "eu-west-3", "sa-east-1", "ap-east-1", "ap-northeast-1", "ap-northeast-2", "ap-south-1", "ap-southeast-1", "ap-southeast-2", "eu-north-1"] -%}
+{%- set REGIONS_CHINA = ["cn-north-1", "cn-northwest-1"] -%}
+{%- set REGIONS_GOVCLOUD = ["us-gov-west-1", "us-gov-east-1"] -%}
+{%- set REGIONS_ALL = REGIONS_COMMERCIAL + REGIONS_CHINA + REGIONS_GOVCLOUD -%}
+{%- set SCHEDULERS_ALL = ["slurm", "sge", "torque", "awsbatch"] -%}
+{%- set SCHEDULERS_TRAD = ["slurm", "sge", "torque"] -%}
+{%- set OSS_BATCH = ["alinux", "alinux2"] -%}
+{%- set OSS_COMMERCIAL_X86 = ["alinux", "alinux2", "centos7", "centos6", "ubuntu1604", "ubuntu1804"] -%}
+{%- set OSS_CHINA_X86 = ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] -%}
+{%- set OSS_GOVCLOUD_X86 = ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] -%}
+{%- set OSS_COMMERCIAL_ARM = ["alinux2", "ubuntu1804"] -%}
+{%- set OSS_CHINA_ARM = [] -%}
+{%- set OSS_GOVCLOUD_ARM = [] -%}
+{%- set OSS_ONE_PER_DISTRO = ["centos7", "alinux2", "ubuntu1804"] -%}
+{%- set INSTANCES_DEFAULT_X86 = ["c5.xlarge"] -%}
+{%- set INSTANCES_DEFAULT_ARM = ["m6g.xlarge"] -%}
+{%- set INSTANCES_DEFAULT = ["c5.xlarge", "m6g.xlarge"] -%}

@@ -34,6 +34,7 @@ from pcluster.config.validators import (
     queue_validator,
     settings_validator,
 )
+from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
 
@@ -200,39 +201,6 @@ def test_tags_validator(mocker, capsys, section_dict, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_message)
 
 
-def test_ec2_ebs_snapshot_validator(mocker, boto3_stubber):
-    describe_snapshots_response = {
-        "Snapshots": [
-            {
-                "Description": "This is my snapshot",
-                "Encrypted": False,
-                "VolumeId": "vol-049df61146c4d7901",
-                "State": "completed",
-                "VolumeSize": 8,
-                "StartTime": "2014-02-28T21:28:32.000Z",
-                "Progress": "100%",
-                "OwnerId": "012345678910",
-                "SnapshotId": "snap-1234567890abcdef0",
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_snapshots",
-            response=describe_snapshots_response,
-            expected_params={"SnapshotIds": ["snap-1234567890abcdef0"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {
-        "cluster default": {"ebs_settings": "default"},
-        "ebs default": {"shared_dir": "test", "ebs_snapshot_id": "snap-1234567890abcdef0"},
-    }
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
 def test_ec2_volume_validator(mocker, boto3_stubber):
     describe_volumes_response = {
         "Volumes": [
@@ -280,8 +248,8 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     [
         # verify awsbatch supported regions
         ("ap-northeast-3", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-east-1", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-west-1", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
+        ("us-gov-east-1", "alinux", "awsbatch", None),
+        ("us-gov-west-1", "alinux", "awsbatch", None),
         ("eu-west-1", "alinux", "awsbatch", None),
         ("us-east-1", "alinux", "awsbatch", None),
         ("eu-north-1", "alinux", "awsbatch", None),
@@ -730,7 +698,12 @@ def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
 
     config_parser_dict = {
         "cluster default": {"fsx_settings": "fsx"},
-        "fsx fsx": {"storage_capacity": 1200, "fsx_kms_key_id": kms_key_id, "deployment_type": "PERSISTENT_1"},
+        "fsx fsx": {
+            "storage_capacity": 1200,
+            "fsx_kms_key_id": kms_key_id,
+            "deployment_type": "PERSISTENT_1",
+            "per_unit_storage_throughput": 50,
+        },
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_error=expected_message if expected_message else None
@@ -799,6 +772,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
                 "deployment_type": "PERSISTENT_1",
                 "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
                 "storage_capacity": 1200,
+                "per_unit_storage_throughput": 50,
             },
             None,
             None,
@@ -827,7 +801,18 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             0,
         ),
         (
-            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "automatic_backup_retention_days": 2},
+            {"deployment_type": "PERSISTENT_1", "storage_capacity": 1200},
+            None,
+            "'per_unit_storage_throughput' must be specified when 'deployment_type = PERSISTENT_1'",
+            0,
+        ),
+        (
+            {
+                "storage_capacity": 1200,
+                "per_unit_storage_throughput": "50",
+                "deployment_type": "PERSISTENT_1",
+                "automatic_backup_retention_days": 2,
+            },
             None,
             None,
             0,
@@ -836,6 +821,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             {
                 "storage_capacity": 1200,
                 "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": "50",
                 "automatic_backup_retention_days": 2,
                 "daily_automatic_backup_start_time": "03:00",
                 "copy_tags_to_backups": True,
@@ -901,6 +887,79 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             "Backups cannot be created on S3-linked file systems",
             0,
         ),
+        (
+            {
+                "deployment_type": "SCRATCH_1",
+                "storage_type": "HDD",
+                "per_unit_storage_throughput": 12,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "For HDD filesystems, 'deployment_type' must be 'PERSISTENT_1'",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "HDD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "For HDD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                FSX_HDD_THROUGHPUT
+            ),
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 12,
+                "storage_capacity": 1200,
+            },
+            None,
+            "For SSD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
+                FSX_SSD_THROUGHPUT
+            ),
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "NONE",
+            },
+            None,
+            "The configuration parameter 'drive_cache_type' has an invalid value 'NONE'",
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "storage_type": "SSD",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+            },
+            None,
+            None,
+            0,
+        ),
+        (
+            {
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+                "storage_capacity": 1200,
+                "drive_cache_type": "READ",
+            },
+            None,
+            "'drive_cache_type' features can be used only with HDD filesystems",
+            0,
+        ),
     ],
 )
 def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):
@@ -909,6 +968,8 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
     if "fsx_kms_key_id" in section_dict:
         _kms_key_stubber(mocker, boto3_stubber, section_dict.get("fsx_kms_key_id"), None, 0 if expected_error else 1)
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
+    if expected_error:
+        expected_error = re.escape(expected_error)
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_error)
 
 
@@ -929,12 +990,12 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
         (
-            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1"},
+            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
             None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
         (
-            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1"},
+            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
             None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
         ),
@@ -942,6 +1003,46 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
         (
             {"deployment_type": "SCRATCH_1"},
             "When specifying 'fsx' section, the 'storage_capacity' option must be specified",
+            None,
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 1801,
+                "per_unit_storage_throughput": 40,
+            },
+            None,
+            "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 6001,
+                "per_unit_storage_throughput": 12,
+            },
+            None,
+            "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 1800,
+                "per_unit_storage_throughput": 40,
+            },
+            None,
+            None,
+        ),
+        (
+            {
+                "storage_type": "HDD",
+                "deployment_type": "PERSISTENT_1",
+                "storage_capacity": 6000,
+                "per_unit_storage_throughput": 12,
+            },
+            None,
             None,
         ),
     ],
@@ -2088,7 +2189,11 @@ def test_instances_architecture_compatibility_validator(
     "section_dict, bucket, num_calls, expected_error",
     [
         (
-            {"fsx_backup_id": "backup-0ff8da96d57f3b4e3", "deployment_type": "PERSISTENT_1"},
+            {
+                "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+            },
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
@@ -2125,13 +2230,18 @@ def test_instances_architecture_compatibility_validator(
                 "fsx_backup_id": "backup-0ff8da96d57f3b4e3",
                 "fsx_kms_key_id": "somekey",
                 "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
             },
             None,
             0,
             "When restoring an FSx Lustre file system from backup, 'fsx_kms_key_id' cannot be specified.",
         ),
         (
-            {"fsx_backup_id": "backup-00000000000000000", "deployment_type": "PERSISTENT_1"},
+            {
+                "fsx_backup_id": "backup-00000000000000000",
+                "deployment_type": "PERSISTENT_1",
+                "per_unit_storage_throughput": 50,
+            },
             None,
             0,
             "Failed to retrieve backup with Id 'backup-00000000000000000'",
@@ -2290,3 +2400,167 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
 def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, snapshot_size, state, partition, expected_warning, expected_error, "
+    "raise_error_when_getting_snapshot_info",
+    [
+        (
+            {"volume_size": 100, "ebs_snapshot_id": "snap-1234567890abcdef0"},
+            50,
+            "completed",
+            "aws-cn",
+            "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+            "volume, you'll need to manually resize the partition "
+            "according to this doc: "
+            "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
+            None,
+            False,
+        ),
+        (
+            {"volume_size": 100, "ebs_snapshot_id": "snap-1234567890abcdef0"},
+            50,
+            "completed",
+            "aws-us-gov",
+            "The specifed volume size is larger than snapshot size. In order to use the full capacity of the "
+            "volume, you'll need to manually resize the partition "
+            "according to this doc: "
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
+            None,
+            False,
+        ),
+        (
+            {"volume_size": 100, "ebs_snapshot_id": "snap-1234567890abcdef0"},
+            50,
+            "incompleted",
+            "aws-us-gov",
+            "Snapshot snap-1234567890abcdef0 is in state 'incompleted' not 'completed'",
+            None,
+            False,
+        ),
+        ({"ebs_snapshot_id": "snap-1234567890abcdef0"}, 50, "completed", "partition", None, None, False),
+        (
+            {"volume_size": 100, "ebs_snapshot_id": "snap-1234567891abcdef0"},
+            120,
+            "completed",
+            "aws-us-gov",
+            None,
+            "The EBS volume size must not be smaller than the volume size of EBS snapshot",
+            False,
+        ),
+        (
+            {"volume_size": 100, "ebs_snapshot_id": "snap-1234567890abcdef0"},
+            None,
+            "completed",
+            "aws-cn",
+            None,
+            "Unable to get volume size for snapshot snap-1234567890abcdef0",
+            False,
+        ),
+        (
+            {"ebs_snapshot_id": "snap-1234567890abcdef0"},
+            20,
+            "completed",
+            "aws",
+            None,
+            "some message",
+            True,
+        ),
+    ],
+)
+def test_ebs_volume_size_snapshot_validator(
+    section_dict,
+    snapshot_size,
+    state,
+    partition,
+    mocker,
+    expected_warning,
+    expected_error,
+    raise_error_when_getting_snapshot_info,
+    capsys,
+):
+    ebs_snapshot_id = section_dict["ebs_snapshot_id"]
+
+    describe_snapshots_response = {
+        "Description": "This is my snapshot",
+        "Encrypted": False,
+        "VolumeId": "vol-049df61146c4d7901",
+        "State": state,
+        "VolumeSize": snapshot_size,
+        "StartTime": "2014-02-28T21:28:32.000Z",
+        "Progress": "100%",
+        "OwnerId": "012345678910",
+        "SnapshotId": ebs_snapshot_id,
+    }
+    mocker.patch("pcluster.config.cfn_param_types.get_ebs_snapshot_info", return_value=describe_snapshots_response)
+    if raise_error_when_getting_snapshot_info:
+        mocker.patch("pcluster.config.validators.get_ebs_snapshot_info", side_effect=Exception(expected_error))
+    else:
+        mocker.patch("pcluster.config.validators.get_ebs_snapshot_info", return_value=describe_snapshots_response)
+    mocker.patch(
+        "pcluster.config.validators.get_partition", return_value="aws-cn" if partition == "aws-cn" else "aws-us-gov"
+    )
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_error=expected_error, capsys=capsys, expected_warning=expected_warning
+    )
+
+
+@pytest.mark.parametrize(
+    "cluster_section_dict, ebs_section_dict1, ebs_section_dict2, expected_message",
+    [
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1"},
+            {"volume_size": 30},
+            {},
+            None,
+        ),
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1"},
+            {"shared_dir": "shared_directory1"},
+            {},
+            "'shared_dir' can not be specified both in cluster section and EBS section",
+        ),
+        (
+            {"shared_dir": "shared_directory", "ebs_settings": "vol1, vol2"},
+            {"shared_dir": "shared_directory1", "volume_size": 30},
+            {"shared_dir": "shared_directory2", "volume_size": 30},
+            "'shared_dir' can not be specified in cluster section when using multiple EBS volumes",
+        ),
+        (
+            {"ebs_settings": "vol1, vol2"},
+            {"shared_dir": "shared_directory1", "volume_size": 30},
+            {"shared_dir": "shared_directory2", "volume_size": 30},
+            None,
+        ),
+        (
+            {"ebs_settings": "vol1"},
+            {"volume_size": 30},
+            {},
+            None,
+        ),
+        (
+            {"ebs_settings": "vol1"},
+            {},
+            {},
+            None,
+        ),
+        (
+            {"shared_dir": "shared_directory"},
+            {},
+            {},
+            None,
+        ),
+    ],
+)
+def test_duplicate_shared_dir_validator(
+    mocker, cluster_section_dict, ebs_section_dict1, ebs_section_dict2, expected_message
+):
+    config_parser_dict = {
+        "cluster default": cluster_section_dict,
+        "ebs vol1": ebs_section_dict1,
+        "ebs vol2": ebs_section_dict2,
+    }
+
+    utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_message)

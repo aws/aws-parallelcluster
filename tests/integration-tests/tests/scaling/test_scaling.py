@@ -83,7 +83,7 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["sge", "torque"])
 @pytest.mark.oss(["alinux2", "centos7", "ubuntu1804"])
-@pytest.mark.usefixtures("region", "instance")
+@pytest.mark.usefixtures("region", "instance", "os")
 @pytest.mark.nodewatcher
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     # slurm test use more nodes because of internal request to test in multi-node settings

@@ -24,6 +24,7 @@ from pcluster.utils import (
     get_availability_zone_of_subnet,
     get_cfn_param,
     get_default_threads_per_core,
+    get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
     get_instance_vcpus,
@@ -309,15 +310,15 @@ class ExtraJsonCfnParam(JsonCfnParam):
             self.value["cfncluster"] = self.value.pop("cluster")
         return self.get_string_value()
 
-    def to_file(self, config_parser, write_defaults=False):
-        """Set parameter in the config_parser in the right section.
+    def refresh(self):
+        """
+        Refresh the extra_jason.
 
         The extra_json configuration parameter can contain both "cfncluster" or "cluster" keys but
-        we are writing "cluster" in the file to suggest the users the recommended syntax.
+        we are using "cluster" in CLI to suggest the users the recommended syntax.
         """
         if self.value and "cfncluster" in self.value:
             self.value["cluster"] = self.value.pop("cfncluster")
-        super(ExtraJsonCfnParam, self).to_file(config_parser)
 
 
 class SharedDirCfnParam(CfnParam):
@@ -984,7 +985,11 @@ class EBSSettingsCfnParam(SettingsCfnParam):
                             param_type = param_definition.get("type", CfnParam)
                             cfn_value = get_cfn_param(cfn_params, cfn_converter).split(",")[index]
                             param = param_type(
-                                self.section_key, self.section_label, param_key, param_definition, self.pcluster_config
+                                referred_section.key,
+                                referred_section.label,
+                                param_key,
+                                param_definition,
+                                self.pcluster_config,
                             ).from_cfn_value(cfn_value)
                             referred_section.add_param(param)
 
@@ -1227,3 +1232,24 @@ class ClusterCfnSection(CfnSection):
 
         super(ClusterCfnSection, self).to_storage(storage_params)
         return storage_params
+
+
+class VolumeSizeParam(IntCfnParam):
+    """Class to manage ebs volume_size parameter."""
+
+    def refresh(self):
+        """
+        We need this method to check whether the user have an input on ebs volume_size.
+
+        If the volume_size is not specified by an user, we will create an EBS volume with default volume size. The
+        default volume size would be 20 if it is not created from a specified snapshot, otherwise it will be equal to
+        the size of the specified EBS snapshot.
+        """
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+        if section and section.get_param_value("volume_size") is None:
+            if section.get_param_value("ebs_snapshot_id"):
+                ebs_snapshot_id = section.get_param_value("ebs_snapshot_id")
+                default_volume_size = get_ebs_snapshot_info(ebs_snapshot_id).get("VolumeSize")
+            else:
+                default_volume_size = 20
+            self.value = default_volume_size

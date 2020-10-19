@@ -38,15 +38,10 @@ from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PC
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(pcluster_config, json_params):
+def _create_bucket_with_resources(pcluster_config, storage_data, tags):
     """Create a bucket associated to the given stack and upload specified resources."""
-    scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
-    if scheduler not in ["awsbatch", "slurm"]:
-        return None
-
     s3_bucket_name = utils.generate_random_bucket_name("parallelcluster")
     LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
-
     try:
         utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
     except Exception:
@@ -54,14 +49,18 @@ def _create_bucket_with_resources(pcluster_config, json_params):
         raise
 
     try:
+        scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
         resources_dirs = ["resources/custom_resources"]
         if scheduler == "awsbatch":
             resources_dirs.append("resources/batch")
+
         for resources_dir in resources_dirs:
             resources = pkg_resources.resource_filename(__name__, resources_dir)
             utils.upload_resources_artifacts(s3_bucket_name, root=resources)
         if utils.is_hit_enabled_scheduler(scheduler):
-            _upload_hit_resources(s3_bucket_name, pcluster_config, json_params)
+            upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
+
+        upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
     except Exception:
         LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
         utils.delete_s3_bucket(s3_bucket_name)
@@ -70,7 +69,9 @@ def _create_bucket_with_resources(pcluster_config, json_params):
     return s3_bucket_name
 
 
-def _upload_hit_resources(bucket_name, pcluster_config, json_params):
+def upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
+    if tags is None:
+        tags = []
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
         "hit_template_url"
     ) or "{bucket_url}/templates/compute-fleet-hit-substack-{version}.cfn.yaml".format(
@@ -83,7 +84,7 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
             Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json"
         )
         file_contents = utils.read_remote_file(hit_template_url)
-        rendered_template = utils.render_template(file_contents, json_params, result.get("VersionId"))
+        rendered_template = utils.render_template(file_contents, json_params, tags, result.get("VersionId"))
     except ClientError as client_error:
         LOGGER.error("Error when uploading cluster configuration file to bucket %s: %s", bucket_name, client_error)
         raise
@@ -98,6 +99,34 @@ def _upload_hit_resources(bucket_name, pcluster_config, json_params):
     except Exception as e:
         LOGGER.error("Error when uploading CloudFormation template to bucket %s: %s", bucket_name, e)
         raise
+
+
+def upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_params):
+    params = {"json_params": json_params, "cfn_params": cfn_params}
+    cw_dashboard_template_url = pcluster_config.get_section("cluster").get_param_value(
+        "cw_dashboard_template_url"
+    ) or "{bucket_url}/templates/cw-dashboard-substack-{version}.cfn.yaml".format(
+        bucket_url=utils.get_bucket_url(pcluster_config.region),
+        version=utils.get_installed_version(),
+    )
+
+    try:
+        file_contents = utils.read_remote_file(cw_dashboard_template_url)
+        rendered_template = utils.render_template(file_contents, params, {})
+    except Exception as e:
+        LOGGER.error(
+            "Error when generating CloudWatch Dashboard template from path %s: %s", cw_dashboard_template_url, e
+        )
+        raise
+
+    try:
+        boto3.client("s3").put_object(
+            Bucket=bucket_name,
+            Body=rendered_template,
+            Key="templates/cw-dashboard-substack.rendered.cfn.yaml",
+        )
+    except Exception as e:
+        LOGGER.error("Error when uploading CloudWatch Dashboard template to bucket %s: %s", bucket_name, e)
 
 
 def version():
@@ -148,17 +177,17 @@ def create(args):  # noqa: C901 FIXME!!!
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
 
-        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data.json_params)
+        # merge tags from configuration, command-line and internal ones
+        tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
+
+        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data, tags)
         if bucket_name:
             cfn_params["ResourcesS3Bucket"] = bucket_name
 
         LOGGER.info("Creating stack named: %s", stack_name)
 
         # determine the CloudFormation Template URL to use
-        template_url = _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
-
-        # merge tags from configuration, command-line and internal ones
-        tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
+        template_url = evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
 
         # append extra parameters from command-line
         if args.extra_parameters:
@@ -209,7 +238,7 @@ def create(args):  # noqa: C901 FIXME!!!
         sys.exit(1)
 
 
-def _evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
+def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
     """
     Determine the CloudFormation Template URL to use.
 

@@ -39,7 +39,7 @@ DEFAULT_EBS_DICT = {
     "shared_dir": None,
     "ebs_snapshot_id": None,
     "volume_type": "gp2",
-    "volume_size": 20,
+    "volume_size": None,
     "volume_iops": 100,
     "encrypted": False,
     "ebs_kms_key_id": None,
@@ -83,6 +83,8 @@ DEFAULT_FSX_DICT = {
     "copy_tags_to_backups": None,
     "fsx_backup_id": None,
     "auto_import_policy": None,
+    "storage_type": None,
+    "drive_cache_type": "NONE",
 }
 
 DEFAULT_DCV_DICT = {"enable": None, "port": 8443, "access_from": "0.0.0.0/0"}
@@ -91,6 +93,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "key_name": None,
     "template_url": None,
     "hit_template_url": None,
+    "cw_dashboard_template_url": None,
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
@@ -136,6 +139,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "dashboard_settings": None,
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
 }
@@ -144,6 +148,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "key_name": None,
     "template_url": None,
     "hit_template_url": None,
+    "cw_dashboard_template_url": None,
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
@@ -178,6 +183,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "fsx_settings": None,
     "dcv_settings": None,
     "cw_log_settings": None,
+    "dashboard_settings": None,
     "queue_settings": None,
     "default_queue": None,
     "cluster_config_metadata": {"sections": {}},
@@ -185,6 +191,8 @@ DEFAULT_CLUSTER_HIT_DICT = {
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
+
+DEFAULT_DASHBOARD_DICT = {"enable": True}
 
 DEFAULT_PCLUSTER_DICT = {"cluster": DEFAULT_CLUSTER_SIT_DICT}
 
@@ -205,6 +213,7 @@ class DefaultDict(Enum):
     fsx = DEFAULT_FSX_DICT
     dcv = DEFAULT_DCV_DICT
     cw_log = DEFAULT_CW_LOG_DICT
+    dashboard = DEFAULT_DASHBOARD_DICT
     pcluster = DEFAULT_PCLUSTER_DICT
 
 
@@ -236,7 +245,7 @@ DEFAULT_EBS_CFN_PARAMS = {
     "SharedDir": "NONE,NONE,NONE,NONE,NONE",
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
-    "VolumeSize": "20,20,20,20,20",
+    "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
     "VolumeIOPS": "100,100,100,100,100",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
@@ -247,7 +256,9 @@ DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE
 
 DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_FSX_CFN_PARAMS = {"FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_FSX_CFN_PARAMS = {
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+}
 
 DEFAULT_DCV_CFN_PARAMS = {"DCVOptions": "NONE,NONE,NONE"}
 DEFAULT_CW_LOG_CFN_PARAMS = {"CWLogOptions": "true,14"}
@@ -304,7 +315,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     # "SharedDir": "NONE,NONE,NONE,NONE,NONE",  # not existing with single ebs volume
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
-    "VolumeSize": "20,20,20,20,20",
+    "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
     "VolumeIOPS": "100,100,100,100,100",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
@@ -314,7 +325,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings
@@ -369,7 +380,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     # "SharedDir": "NONE,NONE,NONE,NONE,NONE",  # not existing with single ebs volume
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
-    "VolumeSize": "20,20,20,20,20",
+    "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
     "VolumeIOPS": "100,100,100,100,100",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
@@ -379,7 +390,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     # raid
     "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
-    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
     "DCVOptions": "NONE,NONE,NONE",
     # cw_log_settings

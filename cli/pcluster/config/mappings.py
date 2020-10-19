@@ -33,6 +33,7 @@ from pcluster.config.cfn_param_types import (
     SpotBidPercentageCfnParam,
     SpotPriceCfnParam,
     TagsParam,
+    VolumeSizeParam,
 )
 from pcluster.config.json_param_types import (
     BooleanJsonParam,
@@ -56,11 +57,12 @@ from pcluster.config.validators import (
     dcv_enabled_validator,
     disable_hyperthreading_architecture_validator,
     disable_hyperthreading_validator,
+    duplicate_shared_dir_validator,
     ebs_settings_validator,
     ebs_volume_iops_validator,
+    ebs_volume_size_snapshot_validator,
     ebs_volume_type_size_validator,
     ec2_ami_validator,
-    ec2_ebs_snapshot_validator,
     ec2_iam_policies_validator,
     ec2_iam_role_validator,
     ec2_instance_type_validator,
@@ -95,8 +97,9 @@ from pcluster.config.validators import (
     tags_validator,
     url_validator,
 )
-from pcluster.constants import CIDR_ALL_IPS, SUPPORTED_ARCHITECTURES
+from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
+CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
 
@@ -142,10 +145,13 @@ ALLOWED_VALUES = {
     "volume_id": r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$",
     "volume_types": ["standard", "io1", "gp2", "st1", "sc1"],
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
-    "deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
-    "per_unit_storage_throughput": [50, 100, 200],
+    "fsx_deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
+    "fsx_ssd_throughput": FSX_SSD_THROUGHPUT,
+    "fsx_hdd_throughput": FSX_HDD_THROUGHPUT,
     "architectures": SUPPORTED_ARCHITECTURES,
-    "auto_import_policy": ["NONE", "NEW", "NEW_CHANGED"]
+    "fsx_auto_import_policy": ["NEW", "NEW_CHANGED"],
+    "fsx_storage_type": ["SSD", "HDD"],
+    "fsx_drive_cache_type": ["READ"]
 }
 
 AWS = {
@@ -296,7 +302,7 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator],
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator],
     "params": {
         "shared_dir": {
             "allowed_values": ALLOWED_VALUES["file_path"],
@@ -307,7 +313,6 @@ EBS = {
         "ebs_snapshot_id": {
             "allowed_values": ALLOWED_VALUES["snapshot_id"],
             "cfn_param_mapping": "EBSSnapshotId",
-            "validators": [ec2_ebs_snapshot_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         },
         "volume_type": {
@@ -320,8 +325,7 @@ EBS = {
             )
         },
         "volume_size": {
-            "type": IntCfnParam,
-            "default": 20,
+            "type": VolumeSizeParam,
             "cfn_param_mapping": "VolumeSize",
             "update_policy": UpdatePolicy(
                 UpdatePolicy.UNSUPPORTED,
@@ -499,12 +503,12 @@ FSX = {
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
-                "allowed_values": ALLOWED_VALUES["deployment_type"],
+                "allowed_values": ALLOWED_VALUES["fsx_deployment_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("per_unit_storage_throughput", {
                 "type": IntCfnParam,
-                "allowed_values": ALLOWED_VALUES["per_unit_storage_throughput"],
+                "allowed_values": ALLOWED_VALUES["fsx_ssd_throughput"] + ALLOWED_VALUES["fsx_hdd_throughput"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("daily_automatic_backup_start_time", {
@@ -527,7 +531,16 @@ FSX = {
             }),
             ("auto_import_policy", {
                 "validators": [fsx_lustre_auto_import_validator],
-                "allowed_values": ALLOWED_VALUES["auto_import_policy"],
+                "allowed_values": ALLOWED_VALUES["fsx_auto_import_policy"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("storage_type", {
+                "allowed_values": ALLOWED_VALUES["fsx_storage_type"],
+                "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("drive_cache_type", {
+                "default": "NONE",
+                "allowed_values": ALLOWED_VALUES["fsx_drive_cache_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             })
         ]
@@ -578,6 +591,19 @@ CW_LOG = {
             "allowed_values": [
                 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
             ],
+            "update_policy": UpdatePolicy.SUPPORTED,
+        }),
+    ])
+}
+
+DASHBOARD = {
+    "type": JsonSection,
+    "key": "dashboard",
+    "default_label": "default",
+    "params": OrderedDict([
+        ("enable", {
+            "type": BooleanJsonParam,
+            "default": True,
             "update_policy": UpdatePolicy.SUPPORTED,
         }),
     ])
@@ -898,6 +924,11 @@ CLUSTER_COMMON_PARAMS = [
         "referred_section": CW_LOG,
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
+    ("dashboard_settings", {
+        "type": SettingsJsonParam,
+        "referred_section": DASHBOARD,
+        "update_policy": UpdatePolicy.SUPPORTED,
+    }),
     # Moved from the "Access and Networking" section because its configuration is
     # dependent on multiple other parameters from within this section.
     ("additional_iam_policies", {
@@ -917,6 +948,11 @@ CLUSTER_COMMON_PARAMS = [
         "validators": [url_validator],
         "update_policy": UpdatePolicy.IGNORED
     }),
+    ("cw_dashboard_template_url", {
+        # TODO add regex
+        "validators": [url_validator],
+        "update_policy": UpdatePolicy.IGNORED
+    }),
 ]
 
 
@@ -925,7 +961,7 @@ CLUSTER_SIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "SIT",
-    "validators": [cluster_validator],
+    "validators": [cluster_validator] + CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
@@ -1022,6 +1058,7 @@ CLUSTER_HIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "HIT",
+    "validators": CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("default_queue", {

@@ -62,7 +62,7 @@
     "VolumeSize": {
       "Description": "Comma delimited list of size of EBS volume in GB, if creating a new one",
       "Type": "String",
-      "Default": "20,20,20,20,20"
+      "Default": "NONE,NONE,NONE,NONE,NONE"
     },
     "VolumeType": {
       "Description": "Comma delimited list of type of volume to create either new or from snapshot",
@@ -320,9 +320,9 @@
       "Default": "1"
     },
     "FSXOptions": {
-      "Description": "Comma separated list of FSx related options, 15 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy]",
+      "Description": "Comma separated list of FSx related options, 17 parameters in total, [shared_dir,fsx_fs_id,storage_capacity,fsx_kms_key_id,imported_file_chunk_size,export_path,import_path,weekly_maintenance_start_time,deployment_type,per_unit_storage_throughput,daily_automatic_backup_start_time,automatic_backup_retention_days,copy_tags_to_backups,fsx_backup_id,auto_import_policy,storage_type,drive_cache_type]",
       "Type": "String",
-      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
+      "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
       "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
@@ -3876,6 +3876,106 @@
         }
       },
       "Condition": "CreateHITSubstack"
+    },
+    "CloudWatchDashboardSubstack": {
+      "Type": "AWS::CloudFormation::Stack",
+      "Properties": {
+        "Parameters": {
+          "PclusterStackName": {
+            "Ref": "AWS::StackName"
+          },
+          "CWLogGroupName": {
+            "Fn::Sub": [
+              "/aws/parallelcluster/${cluster_name}",
+              {
+                "cluster_name": {
+                  "Fn::Select": [
+                    "1",
+                    {
+                      "Fn::Split": [
+                        "parallelcluster-",
+                        {
+                          "Ref": "AWS::StackName"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          "MasterInstanceId": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterInstanceID"
+            ]
+          },
+          "MasterPrivateIP": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterPrivateIP"
+            ]
+          },
+          "EBSVolumesIds": {
+            "Fn::GetAtt": [
+              "EBSCfnStack",
+              "Outputs.Volumeids"
+            ]
+          },
+          "RAIDVolumesIds": {
+            "Fn::If": [
+              "CreateRAIDSubstack",
+              {
+                "Fn::GetAtt": [
+                  "RAIDSubstack",
+                  "Outputs.Volumeids"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "EFSFileSystemId": {
+            "Fn::If": [
+              "CreateEFSSubstack",
+              {
+                "Fn::GetAtt": [
+                  "EFSSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          },
+          "FSXFileSystemId": {
+            "Fn::If": [
+              "CreateFSXSubstack",
+              {
+                "Fn::GetAtt": [
+                  "FSXSubstack",
+                  "Outputs.FileSystemId"
+                ]
+              },
+              "NONE"
+            ]
+          }
+        },
+        "TemplateURL": {
+          "Fn::Sub": [
+            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/templates/cw-dashboard-substack.rendered.cfn.yaml",
+            {
+              "s3_url": {
+                "Fn::FindInMap": [
+                  "Partition2Url",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "url"
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {

@@ -326,6 +326,18 @@ Resources:
                 Value: !Ref 'NetworkingTagValue'
               - Key: aws-parallelcluster-filesystem
                 Value: !Ref 'FilesystemTagValue'
+          - ResourceType: volume
+            Tags:
+              - Key: ClusterName
+                Value: !Select
+                  - '1'
+                  - !Split
+                    - parallelcluster-
+                    - !Ref 'MainStackName'
+              - Key: Application
+                Value: !Ref 'MainStackName'
+              - Key: aws-parallelcluster-node-type
+                Value: Master
         NetworkInterfaces:
           - NetworkInterfaceId: !Ref 'MasterENI'
             DeviceIndex: 0
@@ -628,6 +640,9 @@ Resources:
       ServiceToken: !Ref 'UpdateWaiterFunctionArn'
     Condition: HasUpdateWaiterFunction
 Outputs:
+  MasterInstanceID:
+    Description: ID of the Master instance
+    Value: !Ref 'MasterServer'
   MasterPrivateIP:
     Description: Private IP Address of the Master host
     Value: !GetAtt 'MasterServer.PrivateIp'

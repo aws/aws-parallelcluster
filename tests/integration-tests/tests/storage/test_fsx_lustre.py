@@ -33,12 +33,66 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 
 
 @pytest.mark.parametrize(
-    "deployment_type, per_unit_storage_throughput", [("PERSISTENT_1", 200), ("SCRATCH_1", None), ("SCRATCH_2", None)]
+    (
+        "deployment_type",
+        "per_unit_storage_throughput",
+        "auto_import_policy",
+        "storage_type",
+        "drive_cache_type",
+        "storage_capacity",
+    ),
+    [
+        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200),
+        ("SCRATCH_1", None, "NEW", None, None, 1200),
+        ("SCRATCH_2", None, None, None, None, 1200),
+        ("PERSISTENT_1", 200, None, "SSD", None, 1200),
+        ("PERSISTENT_1", 40, None, "HDD", None, 1800),
+        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000),
+    ],
 )
+@pytest.mark.regions(["eu-west-1"])
+@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.schedulers(["slurm"])
+@pytest.mark.usefixtures("instance")
+# FSx is not supported on CentOS 6
+@pytest.mark.skip_oss(["centos6"])
+def test_fsx_lustre_configuration_options(
+    deployment_type,
+    per_unit_storage_throughput,
+    auto_import_policy,
+    region,
+    pcluster_config_reader,
+    clusters_factory,
+    s3_bucket_factory,
+    test_datadir,
+    os,
+    scheduler,
+    storage_type,
+    drive_cache_type,
+    storage_capacity,
+):
+    mount_dir = "/fsx_mount_dir"
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        mount_dir=mount_dir,
+        deployment_type=deployment_type,
+        per_unit_storage_throughput=per_unit_storage_throughput,
+        auto_import_policy=auto_import_policy,
+        storage_type=storage_type,
+        drive_cache_type=drive_cache_type,
+        storage_capacity=storage_capacity,
+    )
+    cluster = clusters_factory(cluster_config)
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+
+
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("instance", "deployment_type")
+@pytest.mark.usefixtures("instance")
 # FSx is not supported on CentOS 6
 @pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
@@ -46,8 +100,6 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(
-    deployment_type,
-    per_unit_storage_throughput,
     region,
     pcluster_config_reader,
     clusters_factory,
@@ -68,10 +120,13 @@ def test_fsx_lustre(
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         mount_dir=mount_dir,
-        deployment_type=deployment_type,
-        per_unit_storage_throughput=per_unit_storage_throughput,
+        storage_capacity=1200,
     )
     cluster = clusters_factory(cluster_config)
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+
+
+def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
@@ -79,8 +134,9 @@ def test_fsx_lustre(
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
+    _test_storage_type(storage_type, fsx_fs_id, region)
     _test_export_path(remote_command_executor, mount_dir, bucket_name)
-    _test_auto_import(remote_command_executor, mount_dir, bucket_name, region)
+    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
@@ -167,8 +223,9 @@ def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, r
     result = remote_command_executor.run_remote_command("df -h -t lustre | tail -n +2 | awk '{print $1, $2, $6}'")
     mount_name = get_mount_name(fsx_fs_id, region)
     assert_that(result.stdout).matches(
-        r"[0-9\.]+@tcp:/{mount_name}\s+1\.[12]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
+        r"[0-9\.]+@tcp:/{mount_name}\s+[15]\.[1278]T\s+{mount_dir}".format(mount_name=mount_name, mount_dir=mount_dir)
     )
+    # example output: "192.168.46.168@tcp:/cg7k7bmv 1.7T /fsx_mount_dir"
 
     result = remote_command_executor.run_remote_command("cat /etc/fstab")
     mount_options = {
@@ -198,6 +255,19 @@ def get_mount_name(fsx_fs_id, region):
 def get_fsx_fs_id(cluster, region):
     fsx_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="FSXSubstack")[0]
     return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
+
+
+def get_storage_type(fsx_fs_id, region):
+    logging.info("Getting StorageType from DescribeFilesystem API.")
+    fsx = boto3.client("fsx", region_name=region)
+    return fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("StorageType")
+
+
+def _test_storage_type(storage_type, fsx_fs_id, region):
+    if storage_type == "HDD":
+        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("HDD")
+    else:
+        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("SSD")
 
 
 def _test_import_path(remote_command_executor, mount_dir):
@@ -236,15 +306,34 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")
 
 
-def _test_auto_import(remote_command_executor, mount_dir, bucket_name, region):
-    # TO-DO: Add testing for AutoImportPolicy NONE and NEW_CHANGED
+def _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region):
     s3 = boto3.client("s3", region_name=region)
-    s3.put_object(Bucket=bucket_name, Key="fileToAutoImport", Body="AutoImported by FSx Lustre")
+    new_file_body = "New File AutoImported by FSx Lustre"
+    modified_file_body = "File Modification AutoImported by FSx Lustre"
+    filename = "fileToAutoImport"
+
+    # Test new file
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=new_file_body)
     # AutoImport has a P99.9 of 1 min for new/changed files to be imported onto the filesystem
     remote_command_executor.run_remote_command("sleep 1m")
+    if auto_import_policy in ("NEW", "NEW_CHANGED"):
+        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}")
+        assert_that(result.stdout).is_equal_to(new_file_body)
+    else:
+        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
+        assert_that(result.stdout).does_not_contain(filename)
 
-    result = remote_command_executor.run_remote_command("cat {mount_dir}/fileToAutoImport".format(mount_dir=mount_dir))
-    assert_that(result.stdout).is_equal_to("AutoImported by FSx Lustre")
+    # Test modified file
+    s3.put_object(Bucket=bucket_name, Key=filename, Body=modified_file_body)
+    remote_command_executor.run_remote_command("sleep 1m")
+    if auto_import_policy in ("NEW", "NEW_CHANGED"):
+        result = remote_command_executor.run_remote_command(f"cat {mount_dir}/{filename}".format(mount_dir=mount_dir))
+        assert_that(result.stdout).is_equal_to(
+            modified_file_body if auto_import_policy == "NEW_CHANGED" else new_file_body
+        )
+    else:
+        result = remote_command_executor.run_remote_command(f"ls {mount_dir}/")
+        assert_that(result.stdout).does_not_contain(filename)
 
 
 @retry(

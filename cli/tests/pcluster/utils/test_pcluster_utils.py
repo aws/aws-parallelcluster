@@ -961,3 +961,48 @@ def test_get_instance_families_from_types(caplog, instance_types, error_expected
 def test_is_instance_type_format(candidate, expected_return_value):
     """Verify function that decides whether or not a string represents an instance type behaves as expected."""
     assert_that(utils.is_instance_type_format(candidate)).is_equal_to(expected_return_value)
+
+
+@pytest.mark.parametrize(
+    "snapshot_id, raise_exceptions, error_message",
+    [
+        ("snap-1234567890abcdef0", False, None),
+        ("snap-1234567890abcdef0", True, None),
+        ("snap-1234567890abcdef0", False, "Some error message"),
+        ("snap-1234567890abcdef0", True, "Some error message"),
+    ],
+)
+def test_get_ebs_snapshot_info(boto3_stubber, snapshot_id, raise_exceptions, error_message):
+    """Verify that get_snapshot_info makes the expected API call."""
+    response = {
+        "Description": "This is my snapshot",
+        "Encrypted": False,
+        "VolumeId": "vol-049df61146c4d7901",
+        "State": "completed",
+        "VolumeSize": 120,
+        "StartTime": "2014-02-28T21:28:32.000Z",
+        "Progress": "100%",
+        "OwnerId": "012345678910",
+        "SnapshotId": "snap-1234567890abcdef0",
+    }
+    describe_snapshots_response = {"Snapshots": [response]}
+
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_snapshots",
+            response=describe_snapshots_response if error_message is None else error_message,
+            expected_params={"SnapshotIds": ["snap-1234567890abcdef0"]},
+            generate_error=error_message is not None,
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+    if error_message is None:
+        assert_that(utils.get_ebs_snapshot_info(snapshot_id, raise_exceptions=raise_exceptions)).is_equal_to(response)
+    elif error_message and raise_exceptions:
+        with pytest.raises(ClientError, match=error_message) as clienterror:
+            utils.get_ebs_snapshot_info(snapshot_id, raise_exceptions=raise_exceptions)
+            assert_that(clienterror.value.code).is_not_equal_to(0)
+    else:
+        with pytest.raises(SystemExit, match=error_message) as sysexit:
+            utils.get_ebs_snapshot_info(snapshot_id, raise_exceptions=raise_exceptions)
+            assert_that(sysexit.value.code).is_not_equal_to(0)
