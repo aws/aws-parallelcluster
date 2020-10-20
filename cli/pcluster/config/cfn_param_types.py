@@ -817,6 +817,40 @@ class BaseOSCfnParam(CfnParam):
             self.owner_section.get_param("architecture").value = architecture
 
 
+class ArgsCfnParam(CfnParam):
+    """
+    Class to manage the pre/post_install_args configuration parameter.
+
+    We need this class in order to escape the args to json param.
+    """
+
+    def from_cfn_params(self, cfn_params):
+        """
+        Initialize parameter value by parsing CFN input parameters.
+
+        :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
+        """
+        cfn_converter = self.definition.get("cfn_param_mapping", None)
+        if cfn_params:
+            cfn_value = get_cfn_param(cfn_params, cfn_converter) if cfn_converter else "NONE"
+            self.value = self.get_value_from_string(json.loads('"' + cfn_value + '"'))
+
+        return self
+
+    def to_cfn(self):
+        """Convert param to CFN representation, if "cfn_param_mapping" attribute is present in the Param definition."""
+        cfn_params = {}
+        cfn_converter = self.definition.get("cfn_param_mapping", None)
+
+        if cfn_converter:
+            cfn_value = self.get_cfn_value()
+            # use index to trim the redundant quotes, for example, config file "R wget" -> cfn_value = '"R wget"'
+            # after json escape, cfn_value = '"/"R wget/""' -> we need '/"R wget/"' for pre/post install args
+            cfn_params[cfn_converter] = json.dumps(cfn_value)[1:-1]
+
+        return cfn_params
+
+
 class TagsParam(JsonCfnParam):
     """
     Class to manage the tags json configuration parameter.
