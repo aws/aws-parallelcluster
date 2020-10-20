@@ -67,7 +67,7 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
     try:
         if ami_type == "pcluster":
             ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
-                version=_get_installed_parallelcluster_version(),
+                version=get_installed_parallelcluster_version(),
                 ami_name=AMI_TYPE_DICT.get(ami_type).get(os).get("name"),
             )
         else:
@@ -90,11 +90,53 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
         sys.exit(1)
 
 
+def retrieve_pcluster_ami_without_standard_naming(region, os, version="2.8.1", architecture="x86_64"):
+    try:
+        client = boto3.client("ec2", region_name=region)
+        ami_name = f"ami-for-testing-pcluster-version-validation-without-standard-naming-{version}-{os}"
+        amis = client.describe_images(
+            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}],
+        ).get("Images", [])
+        if amis:
+            # If the AMI is found, return the AMI
+            return amis[0]["ImageId"]
+        else:
+            # If no AMI is found, copy from an official AMI
+            official_ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
+                version=version, ami_name=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("name")
+            )
+            official_amis = client.describe_images(
+                Filters=[
+                    {"Name": "name", "Values": [official_ami_name]},
+                    {"Name": "architecture", "Values": [architecture]},
+                ],
+                Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
+            ).get("Images", [])
+            return client.copy_image(
+                Description="This AMI is a copy from an official AMI but uses a different naming. "
+                "It is used to bypass the AMI's name validation of pcluster version "
+                "to test the validation in Cookbook.",
+                Name=ami_name,
+                SourceImageId=official_amis[0]["ImageId"],
+                SourceRegion=region,
+            ).get("ImageId")
+
+    except ClientError as e:
+        LOGGER.critical(e.response.get("Error").get("Message"))
+        sys.exit(1)
+    except AttributeError as e:
+        LOGGER.critical("Error no attribute {0} in dict: {1}".format(os, e))
+        sys.exit(1)
+    except IndexError as e:
+        LOGGER.critical("Error no ami retrieved: {0}".format(e))
+        sys.exit(1)
+
+
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
 def fetch_instance_slots(region, instance_type):
     return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
 
 
-def _get_installed_parallelcluster_version():
+def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     return pkg_resources.get_distribution("aws-parallelcluster").version

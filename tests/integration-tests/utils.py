@@ -28,7 +28,7 @@ def retry_if_subprocess_error(exception):
     return isinstance(exception, subprocess.CalledProcessError)
 
 
-def run_command(command, capture_output=True, log_error=True, env=None, timeout=None):
+def run_command(command, capture_output=True, log_error=True, env=None, timeout=None, raise_on_error=True):
     """Execute shell command."""
     if isinstance(command, str):
         command = shlex.split(command)
@@ -45,11 +45,13 @@ def run_command(command, capture_output=True, log_error=True, env=None, timeout=
                     " ".join(command), result.stderr, result.stdout
                 )
             )
-        raise
+        if raise_on_error:
+            raise
     except subprocess.TimeoutExpired:
         if log_error:
             logging.error("Command {0} timed out after {1} sec".format(" ".join(command), timeout))
-        raise
+        if raise_on_error:
+            raise
 
     return result
 
