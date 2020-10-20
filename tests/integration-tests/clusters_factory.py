@@ -243,11 +243,12 @@ class ClustersFactory:
         self.__created_clusters = {}
         self._keep_logs_on_failure = keep_logs_on_failure
 
-    def create_cluster(self, cluster, extra_args=None):
+    def create_cluster(self, cluster, extra_args=None, raise_on_error=True):
         """
         Create a cluster with a given config.
         :param cluster: cluster to create.
         :param extra_args: list of strings; extra args to pass to `pcluster create`
+        :param raise_on_error: raise exception if cluster creation fails
         """
         name = cluster.name
         config = cluster.config_file
@@ -261,11 +262,16 @@ class ClustersFactory:
         if extra_args:
             create_cmd_args.extend(extra_args)
         create_cmd_args.append(name)
-        result = run_command(create_cmd_args, timeout=7200)
+        result = run_command(
+            create_cmd_args,
+            timeout=7200,
+            raise_on_error=raise_on_error,
+        )
         if "Status: {0} - CREATE_COMPLETE".format(cluster.cfn_name) not in result.stdout:
             error = "Cluster creation failed for {0} with output: {1}".format(name, result.stdout)
             logging.error(error)
-            raise Exception(error)
+            if raise_on_error:
+                raise Exception(error)
         elif "WARNING" in result.stdout:
             error = "Cluster creation for {0} generated a warning: {1}".format(name, result.stdout)
             logging.warning(error)
