@@ -357,7 +357,7 @@ test-suites:
           schedulers: ["slurm"]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
-        - regions: ["ap-northeast-1"]
+        - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]

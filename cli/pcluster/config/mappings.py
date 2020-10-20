@@ -12,6 +12,7 @@ from future.moves.collections import OrderedDict
 
 from pcluster.config.cfn_param_types import (
     AdditionalIamPoliciesCfnParam,
+    ArgsCfnParam,
     BaseOSCfnParam,
     BoolCfnParam,
     CfnSection,
@@ -834,6 +835,7 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
     ("pre_install_args", {
+        "type": ArgsCfnParam,
         "cfn_param_mapping": "PreInstallArgs",
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
@@ -844,6 +846,7 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
     ("post_install_args", {
+        "type": ArgsCfnParam,
         "cfn_param_mapping": "PostInstallArgs",
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),

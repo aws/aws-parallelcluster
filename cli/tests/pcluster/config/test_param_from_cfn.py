@@ -140,6 +140,13 @@ def test_param_from_cfn_value(mocker, section_definition, param_key, cfn_value, 
         (CLUSTER_SIT, "additional_iam_policies", {"EC2IAMPolicies": "test"}, ["test"]),
         (CLUSTER_SIT, "additional_iam_policies", {"EC2IAMPolicies": "policy1,policy2"}, ["policy1", "policy2"]),
         (CLUSTER_SIT, "additional_iam_policies", {"EC2IAMPolicies": "policy1, policy2"}, ["policy1", "policy2"]),
+        # ArgsParam
+        (CLUSTER_SIT, "pre_install_args", {"PreInstallArgs": '\\"R wget\\"'}, '"R wget"'),
+        (CLUSTER_SIT, "pre_install_args", {"PreInstallArgs": "'R wget'"}, "'R wget'"),
+        (CLUSTER_SIT, "pre_install_args", {"PreInstallArgs": "R wget"}, "R wget"),
+        (CLUSTER_SIT, "post_install_args", {"PostInstallArgs": '\\"R wget\\"'}, '"R wget"'),
+        (CLUSTER_SIT, "post_install_args", {"PostInstallArgs": "'R wget'"}, "'R wget'"),
+        (CLUSTER_SIT, "post_install_args", {"PostInstallArgs": "R wget"}, "R wget"),
     ],
 )
 def test_param_from_cfn(mocker, section_definition, param_key, cfn_params_dict, expected_value):
