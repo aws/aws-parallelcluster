@@ -145,11 +145,11 @@ def pytest_runtest_logfinish(nodeid, location):
     set_logger_formatter(logging.Formatter(fmt="%(asctime)s - %(levelname)s - %(module)s - %(message)s"))
 
 
-def pytest_collection_modifyitems(config, items):
+def pytest_collection_modifyitems(session, config, items):
     """Called after collection has been performed, may filter or re-order the items in-place."""
     if config.getoption("tests_config", None):
         # Remove tests not declared in config file from the collected ones
-        remove_disabled_tests(config, items)
+        remove_disabled_tests(session, config, items)
         # Apply filtering based on dimensions passed as CLI options
         # ("--regions", "--instances", "--oss", "--schedulers")
         apply_cli_dimensions_filtering(config, items)
