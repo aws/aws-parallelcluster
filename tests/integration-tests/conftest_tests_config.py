@@ -4,6 +4,7 @@ from itertools import product
 
 from conftest_markers import DIMENSIONS_MARKER_ARGS
 from framework.tests_configuration.config_utils import get_enabled_tests
+from xdist import get_xdist_worker_id
 
 
 def parametrize_from_config(metafunc):
@@ -53,12 +54,14 @@ def _get_combinations_of_dimensions_values(configured_dimensions_items):
     return argnames, argvalues
 
 
-def remove_disabled_tests(config, items):
+def remove_disabled_tests(session, config, items):
     """Remove all tests that are not defined in the config file"""
     enabled_tests = get_enabled_tests(config.getoption("tests_config"))
     for item in list(items):
         if item.nodeid.split("[")[0] not in enabled_tests:
-            logging.warning("Skipping test %s because not defined in config", item.nodeid)
+            if get_xdist_worker_id(session) in ["master", "gw0"]:
+                # log only in master process to avoid duplicate log entries
+                logging.warning("Skipping test %s because not defined in config", item.nodeid)
             items.remove(item)
 
 
