@@ -5,5 +5,4 @@ pytest-datadir
 pytest-html
 pytest-mock
 assertpy
-codecov
 recordclass

@@ -8,6 +8,12 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: {{ common.OSS_ONE_PER_DISTRO }}
           schedulers: ["slurm", "sge"]
+    test_cfn_init.py::test_install_args_quotes:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["slurm"]
   cli_commands:
     test_cli_commands.py::test_hit_cli_commands:
       dimensions:
@@ -66,6 +72,17 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["slurm"]
+  create:
+    test_create.py::test_create_wrong_os:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+    test_create.py::test_create_wrong_pcluster_version:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux"]
   createami:
     test_createami.py::test_createami:
       dimensions:
@@ -86,6 +103,16 @@ test-suites:
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["alinux2"]
+    test_createami.py::test_createami_wrong_os:
+      dimensions:
+        - regions: ["eu-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux"]
+    test_createami.py::test_createami_wrong_pcluster_version:
+      dimensions:
+        - regions: ["ca-central-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux"]
   dashboard:
     test_dashboard.py::test_dashboard:
       dimensions:
