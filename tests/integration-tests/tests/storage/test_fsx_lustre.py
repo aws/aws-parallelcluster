@@ -86,7 +86,7 @@ def test_fsx_lustre_configuration_options(
         storage_capacity=storage_capacity,
     )
     cluster = clusters_factory(cluster_config)
-    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy)
 
 
 @pytest.mark.regions(["eu-west-1"])

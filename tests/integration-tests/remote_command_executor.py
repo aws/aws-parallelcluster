@@ -27,8 +27,9 @@ class RemoteCommandExecutionError(Exception):
 class RemoteCommandExecutor:
     """Execute remote commands on the cluster master node."""
 
-    def __init__(self, cluster):
-        username = get_username_for_os(cluster.os)
+    def __init__(self, cluster, username=None):
+        if not username:
+            username = get_username_for_os(cluster.os)
         self.__connection = Connection(
             host=cluster.master_ip,
             user=username,
