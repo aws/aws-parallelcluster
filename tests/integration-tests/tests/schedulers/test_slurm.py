@@ -24,7 +24,7 @@ from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 
 
 @pytest.mark.regions(["us-east-2"])
-@pytest.mark.instances(["c5.xlarge"])
+@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance", "scheduler")
 def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
@@ -65,22 +65,18 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
     _test_cluster_gpu_limits(
         slurm_commands, partition="gpu", instance_type="g3.8xlarge", max_count=5, gpu_per_instance=2
     )
+    _test_slurm_pmix(os, architecture, remote_command_executor)
     # Test torque command wrapper
     _test_torque_job_submit(remote_command_executor, test_datadir)
     assert_no_errors_in_logs(remote_command_executor, "slurm")
 
 
-@pytest.mark.regions(["eu-west-1"])
-@pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
-@pytest.mark.schedulers(["slurm"])
-@pytest.mark.skip_oss(["centos6"])
-@pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
+def _test_slurm_pmix(os, architecture, remote_command_executor):
     """Test interactive job submission using PMIx."""
-    num_computes = 2
-    cluster_config = pcluster_config_reader(queue_size=num_computes)
-    cluster = clusters_factory(cluster_config)
-    remote_command_executor = RemoteCommandExecutor(cluster)
+    logging.info("Testing interactive job submission using PMIx")
+    if os == "centos6":
+        logging.info("Skipping pmix test for Centos6")
+        return
 
     # Ensure the expected PMIx version is listed when running `srun --mpi=list`.
     # Since we're installing PMIx v3.1.5, we expect to see pmix and pmix_v3 in the output.
@@ -100,6 +96,7 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
     mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
     binary_path = "/shared/ring"
     compile_mpi_ring(mpi_module, remote_command_executor, binary_path=binary_path)
+    num_computes = 2
     interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} {binary_path}"
     remote_command_executor.run_remote_command(interactive_command)
 
