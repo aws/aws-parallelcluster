@@ -198,7 +198,7 @@ test-suites:
           instances: ["c5n.18xlarge"]
           # EFA not working on Centos6
           oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
-          schedulers: ["sge", "slurm"]
+          schedulers: ["sge", "torque"]
   iam_policies:
     test_iam_policies.py::test_iam_policies:
       dimensions:
