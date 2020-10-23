@@ -978,26 +978,26 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
     [
         (
             {"storage_capacity": 1, "deployment_type": "SCRATCH_1"},
-            None,
             "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
+            None,
         ),
         ({"storage_capacity": 1200, "deployment_type": "SCRATCH_1"}, None, None),
         ({"storage_capacity": 2400, "deployment_type": "SCRATCH_1"}, None, None),
         ({"storage_capacity": 3600, "deployment_type": "SCRATCH_1"}, None, None),
         (
             {"storage_capacity": 3600, "deployment_type": "SCRATCH_2"},
-            None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            None,
         ),
         (
             {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
-            None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            None,
         ),
         (
             {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
-            None,
             "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
+            None,
         ),
         ({"storage_capacity": 7200}, None, None),
         (
@@ -1012,8 +1012,8 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
                 "storage_capacity": 1801,
                 "per_unit_storage_throughput": 40,
             },
-            None,
             "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
+            None,
         ),
         (
             {
@@ -1022,8 +1022,8 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
                 "storage_capacity": 6001,
                 "per_unit_storage_throughput": 12,
             },
-            None,
             "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
+            None,
         ),
         (
             {
