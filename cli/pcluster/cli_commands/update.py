@@ -227,10 +227,9 @@ def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, tar
     elif scheduler == "awsbatch":
         LOGGER.info("reset_desired flag does not work with awsbatch scheduler")
 
-    if scheduler in {"awsbatch", "slurm"}:
-        # Autofill ResourcesS3Bucket cfn param
-        params = utils.get_stack(stack_name, cfn_boto3_client).get("Parameters")
-        cfn_params["ResourcesS3Bucket"] = utils.get_cfn_param(params, "ResourcesS3Bucket")
+    # Autofill ResourcesS3Bucket cfn param
+    params = utils.get_stack(stack_name, cfn_boto3_client).get("Parameters")
+    cfn_params["ResourcesS3Bucket"] = utils.get_cfn_param(params, "ResourcesS3Bucket")
 
 
 def _restore_desired_size(cfn_params, stack_name, scheduler):
