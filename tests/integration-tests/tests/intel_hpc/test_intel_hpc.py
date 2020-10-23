@@ -59,9 +59,9 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_inst
     # <!--
     # <network_interface>ens5</network_interface>
     # -->
-    # /opt/intel/clck/2019.3.5/etc/clck.xml
+    # /opt/intel/clck/2019.9/etc/clck.xml
     remote_command_executor.run_remote_command(
-        "sudo cp ~/clck.xml /opt/intel/clck/2019.3.5/etc/clck.xml", additional_files=[str(test_datadir / "clck.xml")]
+        "sudo cp ~/clck.xml /opt/intel/clck/2019.9/etc/clck.xml", additional_files=[str(test_datadir / "clck.xml")]
     )
 
     # Load modules in ~/.bashrc
@@ -73,7 +73,7 @@ def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_inst
     # Run Cluster Checker
     result = remote_command_executor.run_remote_script(str(test_datadir / "run_clck.sh"))
     try:
-        assert_that(result.stdout).contains("Overall Result: PASS")
+        assert_that(result.stdout).contains("Overall Result: No issues found")
     except AssertionError as e:
         logging.error(remote_command_executor.run_remote_command("cat clck_results.log").stdout)
         raise e
