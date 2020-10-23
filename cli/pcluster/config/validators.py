@@ -306,15 +306,15 @@ def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
         errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
     elif deployment_type == "SCRATCH_1":
         if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
-            warnings.append("Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB")
+            errors.append("Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB")
     elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
         if per_unit_storage_throughput == 12 and not (storage_capacity % 6000 == 0):
-            warnings.append("Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB")
+            errors.append("Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB")
         elif per_unit_storage_throughput == 40 and not (storage_capacity % 1800 == 0):
-            warnings.append("Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB")
+            errors.append("Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB")
     elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
         if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
-            warnings.append(
+            errors.append(
                 "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB"
             )
 
