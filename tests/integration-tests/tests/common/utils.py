@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import sys
 
 import boto3
 import pkg_resources
@@ -81,16 +80,16 @@ def retrieve_latest_ami(region, os, ami_type="official", architecture="x86_64"):
         return amis[0]["ImageId"]
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
+        raise
     except AttributeError as e:
         LOGGER.critical("Error no attribute {0} in dict: {1}".format(os, e))
-        sys.exit(1)
+        raise
     except IndexError as e:
         LOGGER.critical("Error no ami retrieved: {0}".format(e))
-        sys.exit(1)
+        raise
 
 
-def retrieve_pcluster_ami_without_standard_naming(region, os, version="2.8.1", architecture="x86_64"):
+def retrieve_pcluster_ami_without_standard_naming(region, os, version, architecture):
     try:
         client = boto3.client("ec2", region_name=region)
         ami_name = f"ami-for-testing-pcluster-version-validation-without-standard-naming-{version}-{os}"
@@ -123,13 +122,13 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version="2.8.1", a
 
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.exit(1)
+        raise
     except AttributeError as e:
         LOGGER.critical("Error no attribute {0} in dict: {1}".format(os, e))
-        sys.exit(1)
+        raise
     except IndexError as e:
         LOGGER.critical("Error no ami retrieved: {0}".format(e))
-        sys.exit(1)
+        raise
 
 
 @retry(stop_max_attempt_number=3, wait_fixed=5000)

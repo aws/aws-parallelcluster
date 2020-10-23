@@ -51,6 +51,8 @@ from utils import (
     unset_credentials,
 )
 
+from tests.common.utils import retrieve_pcluster_ami_without_standard_naming
+
 
 def pytest_addoption(parser):
     """Register argparse-style options and ini-style config values, called once at the beginning of a test run."""
@@ -691,3 +693,24 @@ def architecture(request, instance, region):
 def key_name(request):
     """Return the EC2 key pair name to be used."""
     return request.config.getoption("key_name")
+
+
+@pytest.fixture()
+def pcluster_ami_without_standard_naming(region, os, architecture):
+    """
+    Define a fixture to manage the creation and deletion of AMI without standard naming.
+
+    This AMI is used to test the validation of pcluster version in Cookbook
+    """
+    ami_id = None
+
+    def _pcluster_ami_without_standard_naming(version):
+        nonlocal ami_id
+        ami_id = retrieve_pcluster_ami_without_standard_naming(region, os, version, architecture)
+        return ami_id
+
+    yield _pcluster_ami_without_standard_naming
+
+    if ami_id:
+        client = boto3.client("ec2", region_name=region)
+        client.deregister_image(ImageId=ami_id)

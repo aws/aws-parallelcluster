@@ -18,11 +18,7 @@ from assertpy import assert_that
 from packaging import version
 from utils import run_command
 
-from tests.common.utils import (
-    get_installed_parallelcluster_version,
-    retrieve_latest_ami,
-    retrieve_pcluster_ami_without_standard_naming,
-)
+from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
@@ -113,7 +109,7 @@ def test_createami_post_install(
 
 
 @pytest.mark.dimensions("eu-central-1", "c5.xlarge", "alinux", "*")
-def test_createami_wrong_os(region, os, instance, request, pcluster_config_reader, vpc_stack, architecture):
+def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture):
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
@@ -146,7 +142,7 @@ def test_createami_wrong_os(region, os, instance, request, pcluster_config_reade
 
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux", "*")
 def test_createami_wrong_pcluster_version(
-    region, os, instance, request, pcluster_config_reader, vpc_stack, architecture
+    region, instance, os, request, pcluster_config_reader, vpc_stack, pcluster_ami_without_standard_naming
 ):
     """Test error message when AMI provided was baked by a pcluster whose version is different from current version"""
     cluster_config = pcluster_config_reader()
@@ -156,9 +152,7 @@ def test_createami_wrong_pcluster_version(
     assert_that(current_version != wrong_version).is_true()
     # Retrieve an AMI without 'aws-parallelcluster-<version>' in its name.
     # Therefore, we can bypass the version check in CLI and test version check of .bootstrapped file in Cookbook.
-    wrong_ami = retrieve_pcluster_ami_without_standard_naming(
-        region, os, version=wrong_version, architecture=architecture
-    )
+    wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
     subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
@@ -175,6 +169,6 @@ def test_createami_wrong_pcluster_version(
     createami_process = pexpect.spawn(command, timeout=600)
     logging.info("Verifying errors in stdout")
     createami_process.expect("RuntimeError")
-    createami_process.expect(fr"AMI was created.+{wrong_version}.+is.+used.+{os}")
+    createami_process.expect(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
     createami_process.expect("No custom AMI created")
     createami_process.close()
