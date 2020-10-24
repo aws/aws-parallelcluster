@@ -139,6 +139,42 @@ def test_ebs_single_empty(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
+@pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "centos7", "sge")
+@pytest.mark.usefixtures("os", "instance")
+def test_ebs_existing(
+    request, vpc_stacks, region, scheduler, pcluster_config_reader, clusters_factory, snapshots_factory
+):
+    logging.info("Testing ebs existing")
+    existing_mount_dir = "existing_mount_dir"
+
+    logging.info("Creating volume")
+
+    volume_id = snapshots_factory.create_existing_volume(
+        request, vpc_stacks[region].cfn_outputs["PublicSubnetId"], region
+    )
+
+    logging.info("Existing Volume id: %s" % volume_id)
+    cluster_config = pcluster_config_reader(
+        volume_id=volume_id,
+        existing_mount_dir=existing_mount_dir,
+    )
+
+    cluster = clusters_factory(cluster_config)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    existing_mount_dir = "/" + existing_mount_dir
+    _test_ebs_correctly_mounted(remote_command_executor, existing_mount_dir, volume_size="9.8")
+    _test_ebs_correctly_shared(remote_command_executor, existing_mount_dir, scheduler_commands)
+    # Checks for test data
+    result = remote_command_executor.run_remote_command("cat {}/test.txt".format(existing_mount_dir))
+    assert_that(result.stdout.strip()).is_equal_to("hello world")
+
+    # delete the cluster before detaching the EBS volume
+    cluster.delete()
+    # check the volume still exists after deleting the cluster
+    _assert_volume_exist(volume_id, region)
+
+
 def _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size):
     logging.info("Testing ebs {0} is correctly mounted".format(mount_dir))
     result = remote_command_executor.run_remote_command(
@@ -213,6 +249,13 @@ def describe_volume(volume_id, region):
     volume_type = volume.get("VolumeType")
     volume_iops = volume.get("Iops")
     return volume_type, volume_iops
+
+
+def _assert_volume_exist(volume_id, region):
+    volume_status = (
+        boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0].get("State")
+    )
+    assert_that(volume_status).is_equal_to("available")
 
 
 @pytest.fixture()

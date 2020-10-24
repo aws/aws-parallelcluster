@@ -56,7 +56,29 @@ class EBSSnapshotsFactory:
         self.snapshot = self._create_snapshot(region, snapshot_config)
         return self.snapshot.id
 
-    def _create_snapshot(self, region, snapshot_config):
+    def create_existing_volume(self, request, subnet_id, region):
+        """
+        Create a volume in a given region.
+        :param request: The current request
+        :param subnet_id: The subnet id where to get the snapshot
+        :param region: The region where to get the snapshot
+        """
+        # Only one volume creation per factory allowed
+        if self.volume:
+            raise Exception("Volume already created")
+
+        self.ec2 = boto3.resource("ec2", region_name=region)
+        self.boto_client = boto3.client("ec2", region_name=region)
+        volume_config = SnapshotConfig(
+            request.config.getoption("key_path"),
+            request.config.getoption("key_name"),
+            self.ec2.Subnet(subnet_id).vpc_id,
+            subnet_id,
+        )
+        self._create_volume_process(region, volume_config)
+        return self.volume.id
+
+    def _create_volume_process(self, region, snapshot_config):
         self.config = snapshot_config
         ami_id = self._get_amazonlinux_ami()
 
@@ -77,6 +99,8 @@ class EBSSnapshotsFactory:
         # Stops the instance before taking the snapshot
         self._release_instance()
 
+    def _create_snapshot(self, region, snapshot_config):
+        self._create_volume_process(region, snapshot_config)
         self.snapshot = self._create_volume_snapshot()
         return self.snapshot
 
