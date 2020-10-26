@@ -305,8 +305,7 @@
     },
     "ResourcesS3Bucket": {
       "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
-      "Type": "String",
-      "Default": "NONE"
+      "Type": "String"
     },
     "RAIDOptions": {
       "Description": "Comma Separated List of RAID related options, 8 parameters in total, [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,ebs_kms_key_id]",
@@ -743,18 +742,6 @@
         "awsbatch"
       ]
     },
-    "HasResourcesS3Bucket": {
-      "Fn::Not": [
-        {
-          "Fn::Equals": [
-            {
-              "Ref": "ResourcesS3Bucket"
-            },
-            "NONE"
-          ]
-        }
-      ]
-    },
     "EnableDCV": {
       "Fn::Equals": [
         {
@@ -779,16 +766,6 @@
           "Ref": "Architecture"
         },
         "arm64"
-      ]
-    },
-    "CreateCleanupResourcesFunction": {
-      "Fn::Or": [
-        {
-          "Condition": "HasResourcesS3Bucket"
-        },
-        {
-          "Condition": "CreateHITSubstack"
-        }
       ]
     }
   },
@@ -1289,13 +1266,6 @@
                   }
                 ]
               }
-            ]
-          },
-          "CreateCleanupResourcesFunctionLogGroup": {
-            "Fn::If": [
-              "CreateCleanupResourcesFunction",
-              "true",
-              "false"
             ]
           },
           "CreateCleanupRoute53FunctionLogGroup": {
@@ -2484,8 +2454,7 @@
             "PolicyName": "LambdaPolicy"
           }
         ]
-      },
-      "Condition": "CreateCleanupResourcesFunction"
+      }
     },
     "CleanupResourcesS3BucketCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
@@ -2500,8 +2469,7 @@
             "Arn"
           ]
         }
-      },
-      "Condition": "HasResourcesS3Bucket"
+      }
     },
     "TerminateComputeFleetCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
@@ -2562,8 +2530,7 @@
         },
         "Runtime": "python3.8",
         "Timeout": 900
-      },
-      "Condition": "CreateCleanupResourcesFunction"
+      }
     },
     "RAIDSubstack": {
       "Type": "AWS::CloudFormation::Stack",
@@ -4051,8 +4018,7 @@
       "Description": "S3 user bucket where AWS ParallelCluster resources are stored",
       "Value": {
         "Ref": "ResourcesS3Bucket"
-      },
-      "Condition": "HasResourcesS3Bucket"
+      }
     },
     "BatchComputeEnvironmentArn": {
       "Value": {
