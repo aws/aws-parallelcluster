@@ -18,14 +18,6 @@
         "true"
       ]
     },
-    "CreateCleanupResourcesFunctionLogGroup": {
-      "Fn::Equals": [
-        {
-          "Ref": "CreateCleanupResourcesFunctionLogGroup"
-        },
-        "true"
-      ]
-    },
     "CreateCleanupRoute53FunctionLogGroup": {
       "Fn::Equals": [
         {
@@ -58,10 +50,6 @@
     },
     "MainStackUniqueId": {
       "Description": "Final 36 digits of the main CloudFormation stack id",
-      "Type": "String"
-    },
-    "CreateCleanupResourcesFunctionLogGroup": {
-      "Description": "Set to true in order to create the log group for CreateCleanupResourcesFunction",
       "Type": "String"
     },
     "CreateCleanupRoute53FunctionLogGroup": {
@@ -115,8 +103,7 @@
             }
           ]
         }
-      },
-      "Condition": "CreateCleanupResourcesFunctionLogGroup"
+      }
     },
     "CleanupRoute53FunctionLogGroup": {
       "Type": "AWS::Logs::LogGroup",
