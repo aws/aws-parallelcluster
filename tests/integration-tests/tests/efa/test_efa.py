@@ -26,7 +26,9 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
 @pytest.mark.skip_oss(["centos6"])
-@pytest.mark.schedulers(["sge", "torque"])
+# Torque is not supported by OpenMPI distributed with EFA
+# Slurm test is to verify EFA works correctly when using the SIT model in the config file
+@pytest.mark.schedulers(["sge", "slurm"])
 def test_sit_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all EFA Features.

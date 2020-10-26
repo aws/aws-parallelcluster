@@ -198,7 +198,9 @@ test-suites:
           instances: ["c5n.18xlarge"]
           # EFA not working on Centos6
           oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
-          schedulers: ["sge", "torque"]
+          # Torque is not supported by OpenMPI distributed with EFA
+          # Slurm test is to verify EFA works correctly when using the SIT model in the config file
+          schedulers: ["sge", "slurm"]
   iam_policies:
     test_iam_policies.py::test_iam_policies:
       dimensions:
