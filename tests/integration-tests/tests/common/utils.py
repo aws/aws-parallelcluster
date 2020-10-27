@@ -12,8 +12,10 @@ import logging
 
 import boto3
 import pkg_resources
+from assertpy import assert_that
 from botocore.exceptions import ClientError
 from retrying import retry
+from time_utils import seconds
 from utils import get_instance_info
 
 LOGGER = logging.getLogger(__name__)
@@ -108,10 +110,11 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
                 Filters=[
                     {"Name": "name", "Values": [official_ami_name]},
                     {"Name": "architecture", "Values": [architecture]},
+                    {"Name": "is-public", "Values": ["true"]},
                 ],
                 Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
             ).get("Images", [])
-            return client.copy_image(
+            ami_id = client.copy_image(
                 Description="This AMI is a copy from an official AMI but uses a different naming. "
                 "It is used to bypass the AMI's name validation of pcluster version "
                 "to test the validation in Cookbook.",
@@ -119,6 +122,8 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
                 SourceImageId=official_amis[0]["ImageId"],
                 SourceRegion=region,
             ).get("ImageId")
+            _assert_ami_is_available(region, ami_id)
+            return ami_id
 
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
@@ -134,6 +139,13 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
 @retry(stop_max_attempt_number=3, wait_fixed=5000)
 def fetch_instance_slots(region, instance_type):
     return get_instance_info(instance_type, region).get("VCpuInfo").get("DefaultVCpus")
+
+
+@retry(stop_max_attempt_number=10, wait_fixed=seconds(50))
+def _assert_ami_is_available(region, ami_id):
+    LOGGER.info("Asserting the ami is available")
+    ami_state = boto3.client("ec2", region_name=region).describe_images(ImageIds=[ami_id]).get("Images")[0].get("State")
+    assert_that(ami_state).is_equal_to("available")
 
 
 def get_installed_parallelcluster_version():

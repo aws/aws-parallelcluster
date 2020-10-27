@@ -12,7 +12,6 @@
 
 import logging
 
-import pexpect
 import pytest
 from assertpy import assert_that
 from packaging import version
@@ -119,25 +118,8 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     assert_that(os != wrong_os).is_true()
     base_ami = retrieve_latest_ami(region, wrong_os, ami_type="pcluster", architecture=architecture)
 
-    # Networking
-    vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
-    networking_args = f"--vpc-id {vpc_id} --subnet-id {subnet_id}"
-
-    # Custom Cookbook
-    custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
-    custom_cookbook_args = "" if not custom_cookbook else f"-cc {custom_cookbook}"
-
-    command = (
-        f"pcluster createami -ai {base_ami} -os {os} -r {region} -c {cluster_config.as_posix()} "
-        f"{custom_cookbook_args} -i {instance} {networking_args}"
-    )
-    createami_process = pexpect.spawn(command, timeout=600)
-    logging.info("Verifying errors in stdout")
-    createami_process.expect("RuntimeError")
-    createami_process.expect(fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
-    createami_process.expect("No custom AMI created")
-    createami_process.close()
+    command = _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config)
+    _createami_and_assert_error(command, fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
 
 
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux", "*")
@@ -153,22 +135,59 @@ def test_createami_wrong_pcluster_version(
     # Retrieve an AMI without 'aws-parallelcluster-<version>' in its name.
     # Therefore, we can bypass the version check in CLI and test version check of .bootstrapped file in Cookbook.
     wrong_ami = pcluster_ami_without_standard_naming(wrong_version)
+
+    command = _compose_command(region, instance, os, request, vpc_stack, wrong_ami, cluster_config)
+    _createami_and_assert_error(command, fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
+
+
+def _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster_config):
     # Networking
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    subnet_id = vpc_stack.cfn_outputs["PublicSubnetId"]
-    networking_args = f"--vpc-id {vpc_id} --subnet-id {subnet_id}"
+    networking_args = ["--vpc-id", vpc_id, "--subnet-id", vpc_stack.cfn_outputs["PublicSubnetId"]]
 
     # Custom Cookbook
     custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
-    custom_cookbook_args = "" if not custom_cookbook else f"-cc {custom_cookbook}"
+    custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
-    command = (
-        f"pcluster createami -ai {wrong_ami} -os {os} -r {region} -c {cluster_config.as_posix()} "
-        f"{custom_cookbook_args} -i {instance} {networking_args}"
+    return (
+        [
+            "pcluster",
+            "createami",
+            "-ai",
+            base_ami,
+            "-os",
+            os,
+            "-r",
+            region,
+            "-c",
+            cluster_config.as_posix(),
+            "-i",
+            instance,
+        ]
+        + custom_cookbook_args
+        + networking_args
     )
-    createami_process = pexpect.spawn(command, timeout=600)
-    logging.info("Verifying errors in stdout")
-    createami_process.expect("RuntimeError")
-    createami_process.expect(fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}")
-    createami_process.expect("No custom AMI created")
-    createami_process.close()
+
+
+def _createami_and_assert_error(command, expected_error):
+    pcluster_createami_result = run_command(command, raise_on_error=False)
+
+    logging.info("Verifying errors in createami stdout and packer log")
+    stdout = pcluster_createami_result.stdout
+    packer_log_path = _get_packer_log_path(stdout)
+    with open(packer_log_path) as f:
+        packer_log = f.read()
+    logging.info(packer_log)
+    assert_that(packer_log).contains("RuntimeError")
+    assert_that(packer_log).matches(expected_error)
+    assert_that(stdout).contains("No custom AMI created")
+
+
+def _get_packer_log_path(createami_stdout):
+    packer_log_key = "Packer log: "
+    for line in createami_stdout.split("\n"):
+        if line.startswith(packer_log_key):
+            packer_log_key_len = len(packer_log_key)
+            return line[packer_log_key_len:]
+    logging.error("Packer log path is not found in stdout of createami")
+    raise Exception
