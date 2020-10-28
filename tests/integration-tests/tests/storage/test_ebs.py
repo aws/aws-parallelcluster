@@ -76,13 +76,23 @@ def test_ebs_snapshot(
 def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
+
+    # for volume type sc1 and st1, the minimum volume sizes are 500G
+    volume_sizes[3] = 500
+    volume_sizes[4] = 500
     cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     for mount_dir, volume_size in zip(mount_dirs, volume_sizes):
-        _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size)
+        # for volume size equal to 500G, the filesystem size is only 492G
+        # This is because the file systems use some of the total space available on a device for storing internal
+        # structures and data (the file system's metadata). The overhead of the XFS filesystem is around 0.5%.
+        # If we test with small volume size(eg: 40G), the number is not large enough to show the gap between the
+        # partition size and the filesystem size. For sc1 and st1, the minimum size is 500G, so there will be a size
+        # difference.
+        _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size if volume_size != 500 else 492)
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
