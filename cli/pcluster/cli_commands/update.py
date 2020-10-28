@@ -55,12 +55,13 @@ def execute(args):
         _restore_cfn_only_params(cfn_client, args, cfn_params, stack_name, target_config)
 
         s3_bucket_name = cfn_params["ResourcesS3Bucket"]
+        tags = _get_target_config_tags_list(target_config)
 
         is_hit = utils.is_hit_enabled_cluster(base_config.cfn_stack)
         template_url = None
         if is_hit:
             try:
-                upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params)
+                upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params, tags)
             except Exception:
                 utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
             template_url = evaluate_pcluster_template_url(target_config)
@@ -76,14 +77,28 @@ def execute(args):
             utils.error("Failed when uploading the dashboard resource to cluster S3 bucket {0}".format(s3_bucket_name))
 
         _update_cluster(
-            args, cfn_client, cfn_params, stack_name, use_previous_template=not is_hit, template_url=template_url
+            args,
+            cfn_client,
+            cfn_params,
+            stack_name,
+            use_previous_template=not is_hit,
+            template_url=template_url,
+            tags=tags,
         )
     else:
         LOGGER.info("Update aborted.")
         sys.exit(1)
 
 
-def _update_cluster(args, cfn, cfn_params, stack_name, use_previous_template, template_url):
+def _update_cluster(
+    args,
+    cfn,
+    cfn_params,
+    stack_name,
+    use_previous_template,
+    template_url,
+    tags,
+):
     LOGGER.info("Updating: %s", args.cluster_name)
     LOGGER.debug("Updating based on args %s", str(args))
     try:
@@ -99,6 +114,7 @@ def _update_cluster(args, cfn, cfn_params, stack_name, use_previous_template, te
             "UsePreviousTemplate": use_previous_template,
             "Parameters": cfn_params,
             "Capabilities": ["CAPABILITY_IAM"],
+            "Tags": tags,
         }
         if template_url:
             update_stack_args["TemplateURL"] = template_url
@@ -291,3 +307,14 @@ def _check_cluster_models(base_config, target_config, cluster_template):
             )
 
     return same_cluster_model
+
+
+def _get_target_config_tags_list(target_config):
+    """Construct the target config's tag list."""
+    # At cluster creation time we add a version tag.
+    # Make sure that's included as well to avoid an unintended change.
+    tags_dict = {"Version": utils.get_installed_version()}
+    target_config_tags_dict = target_config.get_section("cluster").get_param_value("tags")
+    if target_config_tags_dict:
+        tags_dict.update(target_config_tags_dict)
+    return [{"Key": tag_name, "Value": tag_value} for tag_name, tag_value in tags_dict.items()]
