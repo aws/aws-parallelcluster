@@ -6,16 +6,6 @@ from assertpy import assert_that
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
 from tests.common.schedulers_common import get_scheduler_commands
 
-OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE = {
-    "alinux": {"x86_64": "openmpi"},
-    "alinux2": {"x86_64": "openmpi", "arm64": "openmpi"},
-    "centos7": {"x86_64": "openmpi"},
-    "centos8": {"x86_64": "openmpi", "arm64": "openmpi"},
-    "ubuntu1604": {"x86_64": "openmpi"},
-    "centos6": {"x86_64": "openmpi-x86_64"},
-    "ubuntu1804": {"x86_64": "openmpi", "arm64": "openmpi"},
-}
-
 MPI_COMMON_DATADIR = pathlib.Path(__file__).parent / "data/mpi/"
 
 
@@ -33,8 +23,6 @@ def _test_mpi(
     remote_command_executor,
     slots_per_instance,
     scheduler,
-    os,
-    architecture,
     region=None,
     stack_name=None,
     scaledown_idletime=None,
@@ -42,7 +30,7 @@ def _test_mpi(
     partition=None,
 ):
     logging.info("Testing mpi job")
-    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
+    mpi_module = "openmpi"
     # Compile mpi script
     compile_mpi_ring(mpi_module, remote_command_executor)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)

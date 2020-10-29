@@ -317,13 +317,13 @@ While the following test case:
 ```python
 @pytest.mark.skip_regions(["us-east-1", "eu-west-1"])
 @pytest.mark.skip_dimensions("*", "c5.xlarge", "alinux", "awsbatch")
-@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos6", "sge")
+@pytest.mark.skip_dimensions("*", "c4.xlarge", "centos7", "sge")
 def test_case_2(region, instance, os, scheduler):
 ```
 is allowed to run only if:
 * region is not `["us-east-1", "eu-west-1"]`
 * the triplet (instance, os, scheduler) is not `("c5.xlarge", "alinux", "awsbatch")` or
-`("c4.xlarge", "centos6", "sge")`
+`("c4.xlarge", "centos7", "sge")`
 
 #### Default Invalid Dimensions
 

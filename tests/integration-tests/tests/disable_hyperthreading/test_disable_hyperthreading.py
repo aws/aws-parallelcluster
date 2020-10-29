@@ -22,7 +22,7 @@ from tests.common.utils import fetch_instance_slots
 
 
 @pytest.mark.dimensions("sa-east-1", "m4.xlarge", "alinux", "sge")
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "centos6", "torque")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1604", "torque")
 @pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
 def test_sit_disable_hyperthreading(region, scheduler, instance, os, pcluster_config_reader, clusters_factory):
     """Test Disable Hyperthreading for SIT clusters."""

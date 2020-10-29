@@ -198,7 +198,6 @@
       "Default": "alinux2",
       "ConstraintDescription": "must be a supported base OS",
       "AllowedValues": [
-        "centos6",
         "centos7",
         "centos8",
         "alinux",
@@ -798,7 +797,6 @@
       "ap-east-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0b1789c8ce0e1361b",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -807,7 +805,6 @@
       "ap-northeast-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0b2c7869c84cfcdf9",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -816,7 +813,6 @@
       "ap-northeast-2": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-054760536d417dada",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -825,7 +821,6 @@
       "ap-northeast-3": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -834,7 +829,6 @@
       "ap-south-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-07170e86bf56428f0",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -843,7 +837,6 @@
       "ap-southeast-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-013a7edc0a01fccb2",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -852,7 +845,6 @@
       "ap-southeast-2": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-05d7a684db818a384",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -861,7 +853,6 @@
       "ca-central-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-080c38cd77eedcf80",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -870,7 +861,6 @@
       "cn-north-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -879,7 +869,6 @@
       "cn-northwest-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -888,7 +877,6 @@
       "eu-central-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-05725353e212666a7",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -897,7 +885,6 @@
       "eu-north-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0bffc4468662970ec",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -906,7 +893,6 @@
       "eu-west-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-06965b7902525f263",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -915,7 +901,6 @@
       "eu-west-2": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0f426bc942ffa4154",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -924,7 +909,6 @@
       "eu-west-3": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-01d75aec60c2b82ee",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -933,7 +917,6 @@
       "sa-east-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0ad2863a224e142ac",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -942,7 +925,6 @@
       "us-east-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0c34a1866d05f5238",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -951,7 +933,6 @@
       "us-east-2": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0f1ee909e278123a7",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -960,7 +941,6 @@
       "us-gov-east-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -969,7 +949,6 @@
       "us-gov-west-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -978,7 +957,6 @@
       "us-west-1": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-042e035e4412ae42e",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -987,7 +965,6 @@
       "us-west-2": {
         "alinux": "UNSUPPORTED",
         "alinux2": "ami-0aedc96abdfbb5c95",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -998,7 +975,6 @@
       "ap-east-1": {
         "alinux": "ami-0200926e5e71cdc8f",
         "alinux2": "ami-0bda3885c81b36ec3",
-        "centos6": "ami-061182a1ab5ebc92f",
         "centos7": "ami-0ef7db728059ec829",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0137edcd2c94cceb4",
@@ -1007,7 +983,6 @@
       "ap-northeast-1": {
         "alinux": "ami-029202a2ba894d878",
         "alinux2": "ami-018f60df4947b9d80",
-        "centos6": "ami-04752a36d4423c007",
         "centos7": "ami-0a1a5d0499582d741",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-05df0664af290b377",
@@ -1016,7 +991,6 @@
       "ap-northeast-2": {
         "alinux": "ami-0aef59761a0a4bb49",
         "alinux2": "ami-0e7ac39721c047810",
-        "centos6": "ami-074d24583f4c2d9aa",
         "centos7": "ami-0d80f933f49d19d8f",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0e51d1204cc730c44",
@@ -1025,7 +999,6 @@
       "ap-northeast-3": {
         "alinux": "UNSUPPORTED",
         "alinux2": "UNSUPPORTED",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "UNSUPPORTED",
@@ -1034,7 +1007,6 @@
       "ap-south-1": {
         "alinux": "ami-06a547b7f9d9a6ac0",
         "alinux2": "ami-00c1ae06cd84eb4e1",
-        "centos6": "ami-0f20ac5a3c949fad6",
         "centos7": "ami-0de2d00af74becbbe",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-07ccf5288bd8652c1",
@@ -1043,7 +1015,6 @@
       "ap-southeast-1": {
         "alinux": "ami-0b2e6e0b8c3f3d8d1",
         "alinux2": "ami-02ff1f11961b57b08",
-        "centos6": "ami-04d2232b9bf74336a",
         "centos7": "ami-0b33c58a15fa2eba5",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-00355b4eeda4b3bac",
@@ -1052,7 +1023,6 @@
       "ap-southeast-2": {
         "alinux": "ami-0d88d862bcad21611",
         "alinux2": "ami-0a726e265859b6e70",
-        "centos6": "ami-0e04fed02a8b90712",
         "centos7": "ami-0148479404e4f87ad",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0dfab2bfc2ed1ab14",
@@ -1061,7 +1031,6 @@
       "ca-central-1": {
         "alinux": "ami-0053626a03e1d7daf",
         "alinux2": "ami-04dd037b7d4ea811c",
-        "centos6": "ami-07109635321746c67",
         "centos7": "ami-084ad8397539615b1",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-00dd298f92c1f3e1f",
@@ -1070,7 +1039,6 @@
       "cn-north-1": {
         "alinux": "ami-0ce11c9fa44e9cae1",
         "alinux2": "ami-0ae3a0d3fb699260d",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-047a454a069fb7a4c",
@@ -1079,7 +1047,6 @@
       "cn-northwest-1": {
         "alinux": "ami-0392558d4d39108fe",
         "alinux2": "ami-00f21a5ab45d5269c",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0f4e8991e84303d0c",
@@ -1088,7 +1055,6 @@
       "eu-central-1": {
         "alinux": "ami-0a4e672cd1fa5ac00",
         "alinux2": "ami-044b8c505d00a095d",
-        "centos6": "ami-024e870cb2d591469",
         "centos7": "ami-00e337df0810b8600",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-01457f904a9f99900",
@@ -1097,7 +1063,6 @@
       "eu-north-1": {
         "alinux": "ami-02af95d5d7a3638be",
         "alinux2": "ami-032646dc4e018d4ce",
-        "centos6": "ami-09c5e1981d0c8e2a9",
         "centos7": "ami-0245ac58f1f766d43",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0bfdec0bbb9795147",
@@ -1106,7 +1071,6 @@
       "eu-west-1": {
         "alinux": "ami-0715877820a8f6b61",
         "alinux2": "ami-0f70f45b2398b8327",
-        "centos6": "ami-0f5d96a9cfb7923e6",
         "centos7": "ami-0b2c1929139662d8f",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-035714aae4ddbc12e",
@@ -1115,7 +1079,6 @@
       "eu-west-2": {
         "alinux": "ami-01ada59a7c32b5bde",
         "alinux2": "ami-04b52e173a28e2c3f",
-        "centos6": "ami-00dd7695035bbe196",
         "centos7": "ami-035b29d8442570457",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-06a38766b95a38342",
@@ -1124,7 +1087,6 @@
       "eu-west-3": {
         "alinux": "ami-04f091e5a026d894d",
         "alinux2": "ami-023fdf59b1b9f9e7b",
-        "centos6": "ami-0391f4b219627a927",
         "centos7": "ami-08862b25e184c29c1",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-049deeaf3cf441bbf",
@@ -1133,7 +1095,6 @@
       "sa-east-1": {
         "alinux": "ami-031c196be6cfa057b",
         "alinux2": "ami-052f02c460d5379d7",
-        "centos6": "ami-0b95aef1aa29a6325",
         "centos7": "ami-059b58852dfb4e68a",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0fd6d6f83a89f20ab",
@@ -1142,7 +1103,6 @@
       "us-east-1": {
         "alinux": "ami-0ad52bd7626e8b567",
         "alinux2": "ami-0927e675ddd8094bc",
-        "centos6": "ami-006e29fa34278d9f1",
         "centos7": "ami-0e0b3193dc5f27d30",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0d73b9449a3b0f9ea",
@@ -1151,7 +1111,6 @@
       "us-east-2": {
         "alinux": "ami-02947b531a45bb6d9",
         "alinux2": "ami-0db2c740e9cfda206",
-        "centos6": "ami-0fda3f34e174720bf",
         "centos7": "ami-09094215d9c4e8272",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-00ee10596e02c312d",
@@ -1160,7 +1119,6 @@
       "us-gov-east-1": {
         "alinux": "ami-076a6108a0bb1efce",
         "alinux2": "ami-03ca3310850fd4dae",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-08402c16f9cb21b05",
@@ -1169,7 +1127,6 @@
       "us-gov-west-1": {
         "alinux": "ami-0f147a91dbf9f6c8c",
         "alinux2": "ami-01b7db87ca3d0235d",
-        "centos6": "UNSUPPORTED",
         "centos7": "UNSUPPORTED",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-09a381edce0180444",
@@ -1178,7 +1135,6 @@
       "us-west-1": {
         "alinux": "ami-083c805acc0a9c1ba",
         "alinux2": "ami-0c283443a1ebb5c17",
-        "centos6": "ami-0c531c0dcd5a21194",
         "centos7": "ami-0b37b8636efa15100",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-0bc695b19eef12bdd",
@@ -1187,7 +1143,6 @@
       "us-west-2": {
         "alinux": "ami-0f1a524fd3c09f02b",
         "alinux2": "ami-09975e5a942d87be0",
-        "centos6": "ami-076c28670516219e0",
         "centos7": "ami-0bbb41e6db63dee98",
         "centos8": "UNSUPPORTED",
         "ubuntu1604": "ami-051b005bbcdda7bcd",
@@ -1195,10 +1150,6 @@
       }
     },
     "OSFeatures": {
-      "centos6": {
-        "User": "centos",
-        "RootDevice": "/dev/sda1"
-      },
       "centos7": {
         "User": "centos",
         "RootDevice": "/dev/sda1"

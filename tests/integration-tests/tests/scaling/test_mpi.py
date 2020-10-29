@@ -15,7 +15,7 @@ import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
-from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, _test_mpi
+from tests.common.mpi_common import _test_mpi
 from tests.common.schedulers_common import get_scheduler_commands
 from tests.common.utils import fetch_instance_slots
 
@@ -23,7 +23,8 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.regions(["us-east-1"])
 @pytest.mark.instances(["c5.xlarge", "c5n.18xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
-def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_factory, architecture):
+@pytest.mark.usefixtures("os")
+def test_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 3
     slots_per_instance = fetch_instance_slots(region, instance)
@@ -36,8 +37,6 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
         remote_command_executor,
         slots_per_instance,
         scheduler,
-        os,
-        architecture,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -49,8 +48,6 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
         remote_command_executor,
         slots_per_instance,
         scheduler,
-        os,
-        architecture,
         region,
         cluster.cfn_name,
         scaledown_idletime,
@@ -61,20 +58,18 @@ def test_mpi(scheduler, region, os, instance, pcluster_config_reader, clusters_f
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm", "sge"])
-# Known ssh issue on CentOS6+SLURM
-@pytest.mark.skip_dimensions("*", "*", "centos6", "slurm")
-@pytest.mark.usefixtures("region", "instance")
-def test_mpi_ssh(scheduler, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+@pytest.mark.usefixtures("region", "instance", "os")
+def test_mpi_ssh(scheduler, pcluster_config_reader, clusters_factory, test_datadir):
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
-    _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architecture)
+    _test_mpi_ssh(remote_command_executor, scheduler, test_datadir)
 
 
-def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architecture):
+def _test_mpi_ssh(remote_command_executor, scheduler, test_datadir):
     logging.info("Testing mpi SSH")
-    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os].get(architecture)
+    mpi_module = "openmpi"
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     compute_node = scheduler_commands.get_compute_nodes()
@@ -93,7 +88,7 @@ def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architec
 
     # mpirun_out_ip = ["Warning: Permanently added '192.168.60.89' (ECDSA) to the list of known hosts.",
     # '', 'ip-192-168-60-89']
-    assert_that(len(mpirun_out_ip)).is_equal_to(1 if os == "centos6" else 3)
+    assert_that(len(mpirun_out_ip)).is_equal_to(3)
     assert_that(mpirun_out_ip[-1]).is_equal_to(remote_host)
 
     mpirun_out = remote_command_executor.run_remote_script(
@@ -102,5 +97,5 @@ def _test_mpi_ssh(remote_command_executor, scheduler, os, test_datadir, architec
 
     # mpirun_out = ["Warning: Permanently added 'ip-192-168-60-89,192.168.60.89' (ECDSA) to the list of known hosts.",
     # '', 'ip-192-168-60-89']
-    assert_that(len(mpirun_out)).is_equal_to(1 if os == "centos6" else 3)
+    assert_that(len(mpirun_out)).is_equal_to(3)
     assert_that(mpirun_out[-1]).is_equal_to(remote_host)

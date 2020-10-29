@@ -565,7 +565,7 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-23456789", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=False
@@ -583,7 +583,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, i
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -604,7 +604,7 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -622,7 +622,7 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir, inst
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -690,7 +690,7 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir, instance_
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -706,7 +706,7 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir, in
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
     input_composer.mock_input(mocker)
@@ -735,7 +735,7 @@ def test_bad_config_file(mocker, capsys, test_datadir, instance_type_offerings_s
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -749,7 +749,7 @@ def general_wrapper_for_prompt_testing(
     mocker,
     region="eu-west-1",
     scheduler="torque",
-    op_sys="centos6",
+    op_sys="centos7",
     min_size="0",
     max_size="10",
     master_instance="t2.nano",
@@ -782,7 +782,7 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
     instance_type_offerings_stub()
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos6", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)

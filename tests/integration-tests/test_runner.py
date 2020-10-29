@@ -50,7 +50,7 @@ TEST_DEFAULTS = {
         "sa-east-1",
         "eu-west-3",
     ],
-    "oss": ["alinux", "alinux2", "centos6", "centos7", "centos8", "ubuntu1804", "ubuntu1604"],
+    "oss": ["alinux", "alinux2", "centos7", "centos8", "ubuntu1804", "ubuntu1604"],
     "schedulers": ["sge", "slurm", "torque", "awsbatch"],
     "instances": ["c4.xlarge", "c5.xlarge"],
     "dry_run": False,

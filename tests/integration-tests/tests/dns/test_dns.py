@@ -23,9 +23,8 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.regions(["eu-west-2"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-def test_hit_no_cluster_dns_mpi(
-    scheduler, region, os, instance, pcluster_config_reader, clusters_factory, architecture, test_datadir
-):
+@pytest.mark.usefixtures("os")
+def test_hit_no_cluster_dns_mpi(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
     logging.info("Testing HIT cluster with cluster DNS disabled.")
     scaledown_idletime = 3
     max_queue_size = 3
@@ -51,8 +50,6 @@ def test_hit_no_cluster_dns_mpi(
         remote_command_executor,
         slots_per_instance,
         scheduler,
-        os,
-        architecture,
         region,
         cluster.cfn_name,
         scaledown_idletime,

@@ -697,7 +697,7 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7", "centos8"],
+        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
         "validators": [base_os_validator, architecture_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED

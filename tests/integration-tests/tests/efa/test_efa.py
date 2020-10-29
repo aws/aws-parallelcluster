@@ -25,9 +25,9 @@ from tests.common.utils import fetch_instance_slots
 
 @pytest.mark.regions(["us-east-1", "us-gov-west-1"])
 @pytest.mark.instances(["c5n.18xlarge", "p3dn.24xlarge", "i3en.24xlarge"])
-@pytest.mark.skip_oss(["centos6"])
 @pytest.mark.schedulers(["sge", "slurm"])
-def test_sit_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+@pytest.mark.usefixtures("os")
+def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir):
     """
     Test all EFA Features.
 
@@ -41,7 +41,7 @@ def test_sit_efa(region, scheduler, instance, os, pcluster_config_reader, cluste
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, os, architecture)
+    _test_mpi(remote_command_executor, slots_per_instance, scheduler)
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
@@ -54,7 +54,8 @@ def test_sit_efa(region, scheduler, instance, os, pcluster_config_reader, cluste
 @pytest.mark.instances(["c5n.18xlarge"])
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.schedulers(["slurm"])
-def test_hit_efa(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+@pytest.mark.usefixtures("os")
+def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir):
     """
     Test all EFA Features.
 
@@ -69,7 +70,7 @@ def test_hit_efa(region, scheduler, instance, os, pcluster_config_reader, cluste
 
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True, partition="efa-enabled")
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled")
-    _test_mpi(remote_command_executor, slots_per_instance, scheduler, os, architecture, partition="efa-enabled")
+    _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks(
         "openmpi",

@@ -18,7 +18,6 @@ UNSUPPORTED_DIMENSIONS = [
     ("eu-north-1", "c4.xlarge", "*", "*"),
     ("eu-west-3", "c4.xlarge", "*", "*"),
     ("ap-east-1", "c4.xlarge", "*", "*"),
-    ("*", "*", "centos6", "awsbatch"),
     ("*", "*", "centos7", "awsbatch"),
     ("*", "*", "centos8", "awsbatch"),
     ("*", "*", "ubuntu1804", "awsbatch"),
@@ -38,7 +37,7 @@ class InvalidMarkerError(Exception):
 def _add_unsupported_arm_dimensions():
     """Add invalid dimensions due to lack of ARM instance types in some regions and ARM AMIs for certain OSes."""
     arm_instance_types = ["m6g.xlarge"]
-    oses_unsupported_by_arm = ["centos6", "centos7", "alinux", "ubuntu1604"]
+    oses_unsupported_by_arm = ["centos7", "alinux", "ubuntu1604"]
     regions_unsupported_by_arm = [
         "us-west-1",
         "ca-central-1",
