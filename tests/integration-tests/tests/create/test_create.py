@@ -68,7 +68,7 @@ def test_create_wrong_pcluster_version(
     assert_errors_in_logs(
         remote_command_executor,
         ["/var/log/cloud-init-output.log"],
-        ["RuntimeError", fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],
+        ["error_exit", fr"AMI was created.+{wrong_version}.+is.+used.+{current_version}"],
     )
 
 
