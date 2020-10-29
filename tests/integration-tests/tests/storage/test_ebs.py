@@ -36,7 +36,6 @@ def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
 
 
-# centos6 does not support GPT
 @pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "centos8", "slurm")

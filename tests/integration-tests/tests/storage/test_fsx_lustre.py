@@ -93,8 +93,6 @@ def test_fsx_lustre_configuration_options(
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is not supported on CentOS 6
-@pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
@@ -144,8 +142,6 @@ def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, sto
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
-# FSx is not supported on CentOS 6
-@pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")

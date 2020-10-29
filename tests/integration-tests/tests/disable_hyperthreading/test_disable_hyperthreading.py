@@ -23,7 +23,7 @@ from tests.common.utils import fetch_instance_slots
 
 # Manually disabled HT
 @pytest.mark.dimensions("sa-east-1", "m4.xlarge", "alinux", "sge")
-@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "centos6", "torque")
+@pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1604", "torque")
 @pytest.mark.dimensions("sa-east-1", "m4.xlarge", "ubuntu1804", "sge")
 # HT disabled via CpuOptions
 @pytest.mark.dimensions("sa-east-1", "c5.xlarge", "alinux2", "sge")
