@@ -34,11 +34,10 @@ Allowed values for Scheduler:
 Allowed values for Operating System:
 1. alinux
 2. alinux2
-3. centos6
-4. centos7
-5. centos8
-6. ubuntu1604
-7. ubuntu1804
+3. centos7
+4. centos8
+5. ubuntu1604
+6. ubuntu1804
 Allowed values for Network Configuration:
 1. Master in a public subnet and compute fleet in a private subnet
 2. Master and compute fleet in the same public subnet

@@ -470,7 +470,7 @@ def _verify_head_node_logs_conditions(rendered_template, cw_log_options, os, sch
             assert_that(rendered_template).does_not_contain("NICE DCV integration logs")
 
         # Conditional System logs
-        if os in ["alinux", "alinux2", "centos6", "centos7", "centos8" ]:
+        if os in ["alinux", "alinux2", "centos7", "centos8"]:
             assert_that(rendered_template).contains("system-messages")
             assert_that(rendered_template).does_not_contain("syslog")
         elif os in ["ubuntu1604", "ubuntu1804"]:

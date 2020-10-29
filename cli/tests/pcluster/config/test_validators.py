@@ -264,7 +264,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("cn-northwest-1", "alinux", "torque", None),
         ("ap-northeast-3", "alinux", "torque", None),
         # verify awsbatch supported OSes
-        ("eu-west-1", "centos6", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "ubuntu1604", "awsbatch", "scheduler supports the following Operating Systems"),
@@ -272,7 +271,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-west-1", "alinux", "awsbatch", None),
         ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
-        ("eu-west-1", "centos6", "sge", None),
         ("eu-west-1", "centos7", "sge", None),
         ("eu-west-1", "centos8", "sge", None),
         ("eu-west-1", "ubuntu1604", "sge", None),
@@ -280,7 +278,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-west-1", "alinux", "sge", None),
         ("eu-west-1", "alinux2", "sge", None),
         # verify slurm supports all the OSes
-        ("eu-west-1", "centos6", "slurm", None),
         ("eu-west-1", "centos7", "slurm", None),
         ("eu-west-1", "centos8", "slurm", None),
         ("eu-west-1", "ubuntu1604", "slurm", None),
@@ -288,7 +285,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         ("eu-west-1", "alinux", "slurm", None),
         ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
-        ("eu-west-1", "centos6", "torque", None),
         ("eu-west-1", "centos7", "torque", None),
         ("eu-west-1", "centos8", "torque", None),
         ("eu-west-1", "ubuntu1604", "torque", None),
@@ -1273,7 +1269,6 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        ({"enable_intel_hpc_platform": "true", "base_os": "centos6"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
         ({"enable_intel_hpc_platform": "true", "base_os": "centos8"}, None),
         ({"enable_intel_hpc_platform": "true", "base_os": "alinux"}, "it is required to set the 'base_os'"),
@@ -1362,11 +1357,6 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             {"enable_efa": "compute", "compute_instance_type": "t2.large", "scheduler": "sge"},
             None,
             "You may see better performance using a cluster placement group",
-        ),
-        (
-            {"enable_efa": "compute", "compute_instance_type": "t2.large", "base_os": "centos6", "scheduler": "sge"},
-            "it is required to set the 'base_os'",
-            None,
         ),
         (
             {
@@ -1551,7 +1541,6 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
     "base_os, instance_type, access_from, expected_error, expected_warning",
     [
         ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
-        ("centos6", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
         ("ubuntu1604", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
         ("centos7", "t2.medium", None, None, None),
         ("centos8", "t2.medium", None, None, None),
@@ -1611,20 +1600,6 @@ def test_dcv_enabled_validator(
             "alinux2",
             FSX_MESSAGES["errors"]["unsupported_architecture"].format(
                 supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
-            ),
-        ),
-        (
-            "x86_64",
-            "centos6",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="x86_64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("x86_64")
-            ),
-        ),
-        (
-            "arm64",
-            "centos6",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
         ),
         (
@@ -1690,7 +1665,6 @@ def test_maintain_initial_size_validator(mocker, section_dict, expected_message)
         ("centos8", None),
         ("ubuntu1604", None),
         ("ubuntu1804", None),
-        ("centos6", "centos6.*will reach end-of-life in late 2020"),
         ("alinux", "alinux.*will reach end-of-life in late 2020"),
     ],
 )
@@ -2088,7 +2062,6 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         # All OSes supported for x86_64
         ("alinux", "x86_64", []),
         ("alinux2", "x86_64", []),
-        ("centos6", "x86_64", []),
         ("centos7", "x86_64", []),
         ("centos8", "x86_64", []),
         ("ubuntu1604", "x86_64", []),
@@ -2096,7 +2069,6 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
         # Only a subset of OSes supported for arm64
         ("alinux", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("alinux2", "arm64", []),
-        ("centos6", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("centos8", "arm64", []),
         ("ubuntu1604", "arm64", ["arm64 is only supported for the following operating systems"]),

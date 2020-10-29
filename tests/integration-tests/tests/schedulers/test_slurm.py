@@ -19,25 +19,24 @@ from retrying import retry
 from time_utils import minutes, seconds
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_no_node_in_ec2, assert_scaling_worked
-from tests.common.mpi_common import OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE, compile_mpi_ring
+from tests.common.mpi_common import compile_mpi_ring
 from tests.common.schedulers_common import SlurmCommands, TorqueCommands
 
 
 @pytest.mark.regions(["us-east-2"])
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.usefixtures("instance", "scheduler")
-def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+@pytest.mark.usefixtures("instance", "scheduler", "os")
+def test_slurm(region, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all AWS Slurm related features.
 
     Grouped all tests in a single function so that cluster can be reused for all of them.
     """
     scaledown_idletime = 3
-    # IntelMPI not available on centos6
     # For OSs running _test_mpi_job_termination, spin up 2 compute nodes at cluster creation to run test
     # Else do not spin up compute node and start running regular slurm tests
-    supports_impi = os not in ["centos6"] and architecture == "x86_64"
+    supports_impi = architecture == "x86_64"
     cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
@@ -73,9 +72,8 @@ def test_slurm(region, os, pcluster_config_reader, clusters_factory, test_datadi
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
-@pytest.mark.skip_oss(["centos6"])
 @pytest.mark.usefixtures("os", "instance", "scheduler")
-def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
+def test_slurm_pmix(pcluster_config_reader, clusters_factory):
     """Test interactive job submission using PMIx."""
     num_computes = 2
     cluster_config = pcluster_config_reader(queue_size=num_computes)
@@ -97,7 +95,7 @@ def test_slurm_pmix(pcluster_config_reader, clusters_factory, os, architecture):
     assert_that(mpi_list_output).matches(r"\s+pmix_v3($|\s+)")
 
     # Compile and run an MPI program interactively
-    mpi_module = OS_TO_ARCHITECTURE_TO_OPENMPI_MODULE[os][architecture]
+    mpi_module = "openmpi"
     binary_path = "/shared/ring"
     compile_mpi_ring(mpi_module, remote_command_executor, binary_path=binary_path)
     interactive_command = f"module load {mpi_module} && srun --mpi=pmix -N {num_computes} {binary_path}"
@@ -112,7 +110,6 @@ def _test_mpi_job_termination(remote_command_executor, test_datadir):
     i.e. using ProctrackType=proctrack/pgid
     Test IntelMPI script to make sure no stray processes after the job is cancelled
     This bug cannot be reproduced using OpenMPI
-    Test should run on all OSs except for centos6, where IntelMPI is not available
     """
     logging.info("Testing no stray process left behind after mpirun job is terminated")
     slurm_commands = SlurmCommands(remote_command_executor)
