@@ -149,7 +149,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["centos7", "centos8"]
           schedulers: ["sge"]
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
@@ -199,6 +199,7 @@ test-suites:
         - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
           # EFA not working on Centos6
+          # TODO: use INSTANCES_DEFAULT_X86 once there is centos8 support for efa
           oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
           # Torque is not supported by OpenMPI distributed with EFA
           # Slurm test is to verify EFA works correctly when using the SIT model in the config file
@@ -383,8 +384,8 @@ test-suites:
           schedulers: ["slurm"]
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
-          oss: ["alinux2", "ubuntu1804"]
+          # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
+          oss: ["alinux2", "ubuntu1804", "centos8"]
           schedulers: ["slurm"]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
@@ -400,8 +401,8 @@ test-suites:
           schedulers: ["sge"]
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
-          oss: ["alinux2", "ubuntu1804"]
+          # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
+          oss: ["alinux2", "ubuntu1804", "centos8"]
           schedulers: ["sge"]
     test_efs.py::test_efs_compute_az:
       dimensions:

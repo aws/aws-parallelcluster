@@ -26,17 +26,16 @@ from tests.common.utils import fetch_instance_slots
 @pytest.mark.schedulers(["slurm"])
 def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clusters_factory, test_datadir):
     """Test Intel Cluster Checker"""
-    slots_per_instance = fetch_instance_slots(region, instance)
     cluster_config = pcluster_config_reader()
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
-    _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_instance, test_datadir)
+    _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _test_intel_clck(remote_command_executor, scheduler_commands, slots_per_instance, test_datadir):
+def _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir):
     # Install Intel Cluster Checker CLCK Master
     logging.info("Installing Intel Cluster Checker")
     remote_command_executor.run_remote_script(str(test_datadir / "install_clck.sh"), hide=False)
