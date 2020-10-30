@@ -10,6 +10,8 @@
 # limitations under the License.
 from future.moves.collections import OrderedDict
 
+import boto3
+
 from pcluster.config.cfn_param_types import (
     AdditionalIamPoliciesCfnParam,
     ArgsCfnParam,
@@ -166,7 +168,7 @@ AWS = {
             "update_policy": UpdatePolicy.IGNORED
         },
         "aws_region_name": {
-            "default": "us-east-1",  # TODO add regex
+            "default": boto3.session.Session().region_name,
             "update_policy": UpdatePolicy.IGNORED
         },
     }

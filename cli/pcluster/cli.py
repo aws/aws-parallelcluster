@@ -412,6 +412,7 @@ Variables substituted::
     # configure command subparser
     pconfigure = subparsers.add_parser("configure", help="Start the AWS ParallelCluster configuration.")
     _addarg_config(pconfigure)
+    _addarg_region(pconfigure)
     pconfigure.set_defaults(func=configure)
 
     # version command subparser
