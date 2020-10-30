@@ -23,6 +23,7 @@ from tests.common.utils import get_installed_parallelcluster_version, retrieve_l
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
+@pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos8", "*")
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "*")
