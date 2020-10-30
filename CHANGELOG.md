@@ -8,12 +8,18 @@ CHANGELOG
 
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.
+- Add ``-r/-region`` arg to ``pcluster configure``. If this arg is provided, configuration will skip region selection.
 
 **CHANGES**
 
 - Upgrade image used by CodeBuild environment when building container images for Batch clusters.
 - Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
   necessary when existing instances risk to be terminated.
+- Remove default region us-east-1. After the change, pcluster will adhere to the following lookup order for region:
+  1. ```-r/--region``` arg.
+  2. ``AWS_DEFAULT_REGION`` environment variable.
+  3. ``aws_region_name`` in parallelcluster config file
+  4. ``region`` in aws config file.
 
 2.9.1
 -----

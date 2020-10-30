@@ -10,6 +10,7 @@
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
+from os import environ
 
 import boto3
 import configparser
@@ -42,7 +43,7 @@ def test_pcluster_configure(
         vpc_stack.cfn_outputs["PrivateSubnetId"],
         vpc_stack,
     )
-    assert_configure_workflow(stages, config_path)
+    assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
         region,
         key_name,
@@ -94,7 +95,7 @@ def test_pcluster_configure_avoid_bad_subnets(
         vpc_stack,
         omitted_subnets_num=1,
     )
-    assert_configure_workflow(stages, config_path)
+    assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
         region,
         key_name,
@@ -122,8 +123,9 @@ def get_unsupported_test_runner_options(request):
     return [option for option in unsupported_options if request.config.getoption(option) is not None]
 
 
-def assert_configure_workflow(stages, config_path):
+def assert_configure_workflow(region, stages, config_path):
     logging.info(f"Using `pcluster configure` to write a configuration to {config_path}")
+    environ["AWS_DEFAULT_REGION"] = region
     configure_process = pexpect.spawn(f"pcluster configure -c {config_path}")
     for stage in stages:
         configure_prompt_status = configure_process.expect(stage.get("prompt"))

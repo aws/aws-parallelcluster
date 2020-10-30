@@ -17,8 +17,6 @@ from pcluster.config.mappings import AWS
 @pytest.mark.parametrize(
     "config_parser_dict, expected_dict_params, expected_message",
     [
-        # default
-        ({"aws": {}}, {}, None),
         # right value
         (
             {"aws": {"aws_access_key_id": "test", "aws_secret_access_key": "test2", "aws_region_name": "eu-west-1"}},
@@ -59,7 +57,6 @@ def test_aws_section_to_file(mocker, section_dict, expected_config_parser_dict, 
         ("aws_secret_access_key", "", "", None),
         ("aws_secret_access_key", "NONE", "NONE", None),  # NONE is considered valid
         ("aws_secret_access_key", "test", "test", None),
-        ("aws_region_name", None, "us-east-1", None),
         ("aws_region_name", "", "", None),
         ("aws_region_name", "NONE", "NONE", None),  # TODO NONE is considered valid --> add regex
         ("aws_region_name", "eu-west-1", "eu-west-1", None),

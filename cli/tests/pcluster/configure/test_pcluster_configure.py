@@ -71,6 +71,10 @@ def _mock_aws_region(mocker, partition="commercial"):
         "china": ["cn-north-1", "cn-northwest-1"],
     }
     mocker.patch(EASYCONFIG + "get_regions", return_value=regions.get(partition))
+    if partition == "commercial":
+        os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+    elif partition == "china":
+        os.environ["AWS_DEFAULT_REGION"] = "cn-north-1"
 
 
 def _mock_availability_zone(mocker, availability_zones=("eu-west-1a", "eu-west-1b", "eu-west-1c")):
@@ -319,11 +323,12 @@ def _mock_parallel_cluster_config(mocker):
         mock_get_instance_type(mocker, instance_type)
 
 
-def _run_configuration(mocker, path, with_config=False):
+def _run_configuration(mocker, path, with_config=False, region=None):
     if not with_config and os.path.isfile(path):
         os.remove(path)
     args = mocker.MagicMock(autospec=True)
     args.config_file = path
+    args.region = region
     configure(args)
 
 
@@ -354,7 +359,11 @@ def _assert_output_error_are_correct(capsys, output, error, config_path):
 class ComposeInput:
     def __init__(self, aws_region_name, key, scheduler):
         self.is_not_aws_batch = scheduler != "awsbatch"
-        self.input_list = [aws_region_name, key, scheduler]
+        if aws_region_name is None:
+            self.input_list = []
+        else:
+            self.input_list = [aws_region_name]
+        self.input_list.extend([key, scheduler])
 
     def add_first_flow(self, op_sys, min_size, max_size, master_instance, compute_instance):
         if self.is_not_aws_batch:
@@ -411,8 +420,8 @@ def get_file_path(test_datadir):
     return str(config), str(error), str(output)
 
 
-def _run_and_assert(mocker, capsys, output, error, expected_config, path_for_config, with_config=False):
-    _run_configuration(mocker, path_for_config, with_config)
+def _run_and_assert(mocker, capsys, output, error, expected_config, path_for_config, with_config=False, region=None):
+    _run_configuration(mocker, path_for_config, with_config, region)
     _assert_configurations_are_equal(expected_config, path_for_config)
     _assert_output_error_are_correct(capsys, output, error, path_for_config)
     print(output)
@@ -484,8 +493,43 @@ def test_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_
     _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
 
 
+def test_with_region_arg_with_config_file(mocker, capsys, test_datadir, instance_type_offerings_stub):
+    """
+    Testing easy config with -r/-region provided.
+
+    The region arg should overwrite region specified in config file and environment variable
+    """
+    config, error, output = get_file_path(test_datadir)
+
+    MockHandler(mocker)
+    instance_type_offerings_stub()
+
+    input_composer = ComposeInput(aws_region_name=None, key="key1", scheduler="torque")
+    input_composer.add_first_flow(
+        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+    )
+    input_composer.add_no_automation_no_empty_vpc(
+        vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
+    )
+    input_composer.mock_input(mocker)
+    os.environ["AWS_DEFAULT_REGION"] = "env_region_name_to_be_overwritten"
+    _run_and_assert(mocker, capsys, output, error, config, TEMP_PATH_FOR_CONFIG, region="eu-west-1", with_config=True)
+
+
+def test_region_env_overwrite_region_config(mocker, capsys, test_datadir, instance_type_offerings_stub):
+    """Testing environment variable AWS_DEFAULT_REGION overwrites aws_region_name in parallelcluster config file."""
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file.ini")
+
+    MockHandler(mocker)
+    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+    instance_type_offerings_stub()
+
+    _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
+
+
 def test_no_available_no_input_no_automation_no_errors_with_config_file(
-    mocker, capsys, test_datadir, boto3_stubber, shared_datadir
+    mocker, capsys, test_datadir, boto3_stubber, shared_datadir, instance_type_offerings_stub
 ):
     """
     Testing easy config with user hitting return on all prompts.
@@ -499,16 +543,7 @@ def test_no_available_no_input_no_automation_no_errors_with_config_file(
 
     MockHandler(mocker, partition="china")
     _mock_availability_zone(mocker, ["cn-north-1a"])
-    boto3_stubber(
-        "ec2",
-        MockedBoto3Request(
-            method="describe_instance_type_offerings",
-            response=json.loads(
-                read_text(shared_datadir / "aws_api_responses/describe_instance_type_offerings_euw1.json")
-            ),
-            expected_params={},
-        ),
-    )
+    instance_type_offerings_stub()
 
     _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
 
