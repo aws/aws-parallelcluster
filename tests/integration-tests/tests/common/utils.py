@@ -96,35 +96,27 @@ def retrieve_pcluster_ami_without_standard_naming(region, os, version, architect
     try:
         client = boto3.client("ec2", region_name=region)
         ami_name = f"ami-for-testing-pcluster-version-validation-without-standard-naming-{version}-{os}"
-        amis = client.describe_images(
-            Filters=[{"Name": "name", "Values": [ami_name]}, {"Name": "architecture", "Values": [architecture]}],
+        official_ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
+            version=version, ami_name=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("name")
+        )
+        official_amis = client.describe_images(
+            Filters=[
+                {"Name": "name", "Values": [official_ami_name]},
+                {"Name": "architecture", "Values": [architecture]},
+                {"Name": "is-public", "Values": ["true"]},
+            ],
+            Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
         ).get("Images", [])
-        if amis:
-            # If the AMI is found, return the AMI
-            return amis[0]["ImageId"]
-        else:
-            # If no AMI is found, copy from an official AMI
-            official_ami_name = "aws-parallelcluster-{version}-{ami_name}".format(
-                version=version, ami_name=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("name")
-            )
-            official_amis = client.describe_images(
-                Filters=[
-                    {"Name": "name", "Values": [official_ami_name]},
-                    {"Name": "architecture", "Values": [architecture]},
-                    {"Name": "is-public", "Values": ["true"]},
-                ],
-                Owners=OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP.get(os).get("owners"),
-            ).get("Images", [])
-            ami_id = client.copy_image(
-                Description="This AMI is a copy from an official AMI but uses a different naming. "
-                "It is used to bypass the AMI's name validation of pcluster version "
-                "to test the validation in Cookbook.",
-                Name=ami_name,
-                SourceImageId=official_amis[0]["ImageId"],
-                SourceRegion=region,
-            ).get("ImageId")
-            _assert_ami_is_available(region, ami_id)
-            return ami_id
+        ami_id = client.copy_image(
+            Description="This AMI is a copy from an official AMI but uses a different naming. "
+            "It is used to bypass the AMI's name validation of pcluster version "
+            "to test the validation in Cookbook.",
+            Name=ami_name,
+            SourceImageId=official_amis[0]["ImageId"],
+            SourceRegion=region,
+        ).get("ImageId")
+        _assert_ami_is_available(region, ami_id)
+        return ami_id
 
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
