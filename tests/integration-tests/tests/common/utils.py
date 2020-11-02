@@ -24,7 +24,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux": {"name": "amzn-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"]},
-    "centos8": {"name": "CentOS 8.*", "owners": ["125523088429"]},
+    "centos8": {"name": "CentOS 8.*", "owners": ["125523088429", "247102896272"]},
     "ubuntu1404": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
