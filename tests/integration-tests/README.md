@@ -104,6 +104,8 @@ Custom packages and templates:
                         URL to a custom hit cfn template. (default: None)
   --custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL
                         URL to a custom awsbatch cli package. (default: None)
+  --custom-cw-dashboard-template-url CUSTOM_CW_DASHBOARD_TEMPLATE_URL
+                        URL to a custom cw dashboard template. (default: None)
   --custom-ami CUSTOM_AMI
                         custom AMI to use for all tests. (default: None)
   --pre-install PRE_INSTALL
