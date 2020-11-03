@@ -49,8 +49,8 @@ from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pclu
         (
             CLUSTER_SIT,
             "extra_json",
-            '{ "cfncluster" : { "enable_ganglia" : "true" } }',
-            {"cfncluster": {"enable_ganglia": "true"}},
+            '{ "cfncluster" : { "ganglia_enabled" : "true" } }',
+            {"cfncluster": {"ganglia_enabled": "true"}},
         ),
         # Tags
         (CLUSTER_SIT, "tags", "", {}),
