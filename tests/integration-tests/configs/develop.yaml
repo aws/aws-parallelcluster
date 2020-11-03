@@ -90,7 +90,7 @@ test-suites:
       dimensions:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
+          oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1604", "ubuntu1804"]

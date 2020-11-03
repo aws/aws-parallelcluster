@@ -42,8 +42,7 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
 OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux": {"name": "Deep Learning Base AMI (Amazon Linux)*", "owners": ["amazon"]},
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
-    # temporary disable FPGA AMI since there is not enough free space on root partition
-    # "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
+    "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
     "ubuntu1604": {"name": "Deep Learning Base AMI (Ubuntu 16.04)*", "owners": ["amazon"]},
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
 }
