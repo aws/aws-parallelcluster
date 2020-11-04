@@ -268,6 +268,12 @@ class SgeCommands(SchedulerCommands):
         """Not implemented."""
         raise NotImplementedError
 
+    @retry(retry_on_result=lambda result: result == [], wait_fixed=seconds(3), stop_max_delay=minutes(7))
+    def get_nodes_used_slots(self):  # noqa: D102
+        """Return a list that contains number of slots used by each node."""
+        result = self._remote_command_executor.run_remote_command("qstat -f | grep 'r ' | awk '{print$8}'")
+        return result.stdout.splitlines()
+
 
 class SlurmCommands(SchedulerCommands):
     """Implement commands for slurm scheduler."""
