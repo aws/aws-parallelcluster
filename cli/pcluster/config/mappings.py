@@ -75,6 +75,7 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
+    extra_json_validator,
     fsx_architecture_os_validator,
     fsx_id_validator,
     fsx_ignored_parameters_validator,
@@ -853,7 +854,11 @@ CLUSTER_COMMON_PARAMS = [
     ("extra_json", {
         "type": ExtraJsonCfnParam,
         "cfn_param_mapping": "ExtraJson",
-        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+        "validators": [extra_json_validator],
+        "update_policy": UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["extra_json_update"],
+        )
     }),
     ("additional_cfn_template", {
         "cfn_param_mapping": "AdditionalCfnTemplate",
