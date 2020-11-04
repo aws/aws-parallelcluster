@@ -352,6 +352,19 @@ def disable_hyperthreading_architecture_validator(param_key, param_value, pclust
     return errors, warnings
 
 
+def extra_json_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value and param_value.get("cluster") and param_value.get("cluster").get("cfn_scheduler_slots"):
+        warnings.append(
+            "It is highly recommended to use the disable_hyperthreading parameter in order to control the "
+            "hyper-threading configuration in the cluster rather than using cfn_scheduler_slots in extra_json"
+        )
+
+    return errors, warnings
+
+
 def dcv_enabled_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
