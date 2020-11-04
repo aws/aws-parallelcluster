@@ -6,11 +6,13 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
+- Add support for CentOS 8 in all Commercial regions.
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.
 
 **CHANGES**
 
+- CentOS 6 is no longer supported.
 - Upgrade image used by CodeBuild environment when building container images for Batch clusters.
 - Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
   necessary when existing instances risk to be terminated.

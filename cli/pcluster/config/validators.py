@@ -62,8 +62,8 @@ FSX_MESSAGES = {
 }
 
 FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
-    "arm64": ["ubuntu1804", "alinux2"],
+    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "arm64": ["ubuntu1804", "alinux2", "centos8"],
 }
 
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
@@ -1069,7 +1069,7 @@ def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
-    allowed_oses = ["centos7"]
+    allowed_oses = ["centos7", "centos8"]
 
     cluster_section = pcluster_config.get_section("cluster")
     if param_value and cluster_section.get_param_value("base_os") not in allowed_oses:
@@ -1132,7 +1132,7 @@ def architecture_os_validator(param_key, param_value, pcluster_config):
 def base_os_validator(param_key, param_value, pcluster_config):
     warnings = []
 
-    eol_2020 = ["centos6", "alinux"]
+    eol_2020 = ["alinux"]
     if param_value in eol_2020:
         warnings.append(
             "The operating system you are using ({0}) will reach end-of-life in late 2020. It will be deprecated in "
