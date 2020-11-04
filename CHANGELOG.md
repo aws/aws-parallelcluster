@@ -17,6 +17,10 @@ CHANGELOG
 - Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
   necessary when existing instances risk to be terminated.
 
+**BUG FIXES**
+
+- Fix cfn_scheduler_slots don't update when updating compute instance type by ``pcluster update``. 
+
 2.9.1
 -----
 

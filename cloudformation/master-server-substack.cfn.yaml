@@ -555,7 +555,7 @@ Resources:
                   }
                 - SchedulerSlots: !If
                     - DisableComputeHyperthreading
-                    - !Ref 'ComputeCoreCount'
+                    - cores
                     - vcpus
                   DisableHyperthreadingManually: !If
                     - DisableMasterHyperthreadingManually
