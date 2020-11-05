@@ -198,8 +198,7 @@ test-suites:
       dimensions:
         - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
-          # TODO: use INSTANCES_DEFAULT_X86 once there is centos8 support for efa
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           # Torque is not supported by OpenMPI distributed with EFA
           # Slurm test is to verify EFA works correctly when using the SIT model in the config file
           schedulers: ["sge", "slurm"]
