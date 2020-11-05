@@ -438,6 +438,7 @@ def test_url_validator(mocker, boto3_stubber, capsys):
     ],
 )
 def test_auto_import_policy_validator(mocker, boto3_stubber, config, num_calls, error_code, bucket, expected_message):
+    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
     head_bucket_response = {
         "ResponseMetadata": {
             "AcceptRanges": "bytes",

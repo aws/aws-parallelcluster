@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import configparser
 import pytest
 from assertpy import assert_that
@@ -169,6 +171,9 @@ def boto3_stubber_path():
 def test_hit_converter(boto3_stubber, src_config_dict, dst_config_dict):
     scheduler = src_config_dict["cluster default"]["scheduler"]
     instance_type = src_config_dict["cluster default"]["compute_instance_type"]
+    # We need to provide a region to boto3 to avoid no region exception.
+    # Which region to provide is arbitrary.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
     if is_hit_enabled_scheduler(scheduler):
         mocked_requests = [
