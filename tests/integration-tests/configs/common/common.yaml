@@ -1,3 +1,10 @@
+arm_pl:
+  test_arm_pl.py::test_arm_pl:
+    dimensions:
+      - regions: ["ap-northeast-1"]
+        instances: {{ common.INSTANCES_DEFAULT_ARM }}
+        oss: ["alinux2", "centos8", "ubuntu1804"]
+        schedulers: ["slurm"]
 cfn-init:
   test_cfn_init.py::test_replace_compute_on_failure:
     dimensions:
