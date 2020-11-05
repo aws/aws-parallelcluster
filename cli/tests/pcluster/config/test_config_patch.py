@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import pytest
 from assertpy import assert_that
 
@@ -33,6 +35,9 @@ def _do_mocking_for_tests(mocker):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
+    # We need to provide a region to boto3 to avoid no region exception.
+    # Which region to provide is arbitrary.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
 
 def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
