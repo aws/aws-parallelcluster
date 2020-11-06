@@ -394,7 +394,7 @@ def init_pcluster_config_from_configparser(config_parser, validate=True, auto_re
             config_parser.write(cf)
 
         if "AWS_DEFAULT_REGION" not in os.environ:
-            # We need to provide a region to boto3 to avoid no region exception.
+            # We need to provide a region to PclusterConfig to avoid no region exception.
             # Which region to provide is arbitrary.
             os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 

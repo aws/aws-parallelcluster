@@ -359,10 +359,7 @@ def _assert_output_error_are_correct(capsys, output, error, config_path):
 class ComposeInput:
     def __init__(self, aws_region_name, key, scheduler):
         self.is_not_aws_batch = scheduler != "awsbatch"
-        if aws_region_name is None:
-            self.input_list = []
-        else:
-            self.input_list = [aws_region_name]
+        self.input_list = [] if aws_region_name is None else [aws_region_name]
         self.input_list.extend([key, scheduler])
 
     def add_first_flow(self, op_sys, min_size, max_size, master_instance, compute_instance):

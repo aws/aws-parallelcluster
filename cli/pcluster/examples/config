@@ -8,9 +8,8 @@ update_check = true
 sanity_check = true
 
 [aws]
-# Uncomment to specify a different Amazon AWS region  (OPTIONAL)
-# (Defaults to us-east-1 if not defined in environment or below)
-#aws_region_name = #region
+# Specify a Amazon AWS region
+aws_region_name = region
 
 [aliases]
 # This is the aliases section, you can configure
