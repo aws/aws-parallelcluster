@@ -143,7 +143,7 @@ def test_get_post_install_script_dir(mocker, post_install_script_url, expected_u
 
     if not post_install_script_url or expected_url:
         assert_that(createami._get_post_install_script_dir(post_install_script_url, "/tmp")).is_equal_to(
-            os.path.join("/tmp/script", "now-script.sh") if post_install_script_url else None
+            os.path.join("/tmp", "script", "now-script.sh") if post_install_script_url else None
         )
     else:
         with pytest.raises(SystemExit) as sysexit:

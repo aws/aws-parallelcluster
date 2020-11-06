@@ -529,3 +529,110 @@ def _test_max_vcpus(region, stack_name, vcpus):
 def _test_min_vcpus(region, stack_name, vcpus):
     asg_min_size = get_batch_ce_min_size(stack_name, region)
     assert_that(asg_min_size).is_equal_to(vcpus)
+
+
+@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
+@pytest.mark.usefixtures("os", "instance")
+def test_sit_update_compute_instance_disable_ht(
+    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
+):
+    # check case disable_hyperthreading = true, update compute instance
+    _check_update_compute(
+        pcluster_config_reader,
+        clusters_factory,
+        "pcluster.config.disable_ht.ini",
+        "pcluster.config.disable_ht.update.ini",
+        scheduler,
+        region,
+        disable_hyperthreading=True,
+    )
+
+
+@pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
+@pytest.mark.usefixtures("os", "instance")
+def test_sit_update_compute_instance_extra_json(
+    region, scheduler, pcluster_config_reader, clusters_factory, s3_bucket_factory
+):
+    # check case extra_json is {"cfn_scheduler_slots" : "cores"}, update compute instance
+    _check_update_compute(
+        pcluster_config_reader,
+        clusters_factory,
+        "pcluster.config.extra_json.cores.ini",
+        "pcluster.config.extra_json.cores.update.ini",
+        scheduler,
+        region,
+        cfn_scheduler_slots="cores",
+    )
+
+
+def _check_update_compute(
+    pcluster_config_reader,
+    clusters_factory,
+    init_config_name,
+    update_config_name,
+    scheduler,
+    region,
+    disable_hyperthreading=False,
+    cfn_scheduler_slots=None,
+):
+    # Create cluster with initial configuration
+    init_config_file = pcluster_config_reader(config_file=init_config_name)
+    cluster = clusters_factory(init_config_file)
+
+    # Check cfn_scheduler_slots before changing compute instance type
+    _check_compute_node_slots(
+        cluster,
+        scheduler,
+        region,
+        "c5.xlarge",
+        disable_hyperthreading=disable_hyperthreading,
+        cfn_scheduler_slots=cfn_scheduler_slots,
+        nodes_number=2,
+    )
+    cluster.stop()
+
+    # Update cluster with new configuration and change the compute instance type to c5.2xlarge
+    updated_config_file = pcluster_config_reader(update_config_name)
+    cluster.config_file = str(updated_config_file)
+    cluster.update()
+
+    # Check cfn_scheduler_slots changed by changing compute instance type
+    _check_compute_node_slots(
+        cluster,
+        scheduler,
+        region,
+        "c5.2xlarge",
+        disable_hyperthreading=disable_hyperthreading,
+        cfn_scheduler_slots=cfn_scheduler_slots,
+    )
+
+
+def _check_compute_node_slots(
+    cluster, scheduler, region, new_compute_instance_type, disable_hyperthreading, cfn_scheduler_slots, nodes_number=1
+):
+    # Command executors
+    command_executor = RemoteCommandExecutor(cluster)
+    scheduler_commands = get_scheduler_commands(scheduler, command_executor)
+
+    # Get new slots_per_instance
+    slots_per_instance = fetch_instance_slots(region, new_compute_instance_type)
+    if disable_hyperthreading or cfn_scheduler_slots == "cores":
+        slots_per_instance = slots_per_instance // 2
+    elif cfn_scheduler_slots and cfn_scheduler_slots.isdigit():
+        slots_per_instance = int(cfn_scheduler_slots)
+
+    # assert number of slots assigned to scheduler is correct
+    assert_that(slots_per_instance * nodes_number).is_equal_to(4)
+
+    # submit a job to check cfn_scheduler_slot has been updated
+    result = scheduler_commands.submit_command("sleep 10", nodes=nodes_number, slots=slots_per_instance)
+    job_id = scheduler_commands.assert_job_submitted(result.stdout)
+
+    # assert the slots used for each node in scheduler
+    expected_nodes_used_slots = ["4"] if nodes_number == 1 else ["2", "2"]
+    actual_nodes_used_slots = scheduler_commands.get_nodes_used_slots()
+    for expected_slots, actual_slots in zip(expected_nodes_used_slots, actual_nodes_used_slots):
+        assert_that(expected_slots).is_equal_to(actual_slots)
+    scheduler_commands.wait_job_completed(job_id)
+    assert_that(scheduler_commands.compute_nodes_count()).is_equal_to(nodes_number)
+    scheduler_commands.assert_job_succeeded(job_id)

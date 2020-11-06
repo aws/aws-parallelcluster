@@ -15,5 +15,8 @@ DCV_CONNECT_SCRIPT = "/opt/parallelcluster/scripts/pcluster_dcv_connect.sh"
 
 def get_supported_dcv_os(architecture):
     """Return a list of all the operating system supported by DCV."""
-    architectures_dict = {"x86_64": ["centos7", "ubuntu1804", "alinux2"], "arm64": ["ubuntu1804", "alinux2"]}
+    architectures_dict = {
+        "x86_64": ["centos7", "centos8", "ubuntu1804", "alinux2"],
+        "arm64": ["ubuntu1804", "alinux2", "centos8"],
+    }
     return architectures_dict.get(architecture, [])

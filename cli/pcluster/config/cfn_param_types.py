@@ -966,10 +966,8 @@ class EBSSettingsCfnParam(SettingsCfnParam):
             # FIXME: remove NumberOfEBSVol Parameter and use EBS section params to manage EBS Volumes in cfn template
             # fix ebs substack - this code can be reused for back compatibility
             num_of_ebs = int(get_cfn_param(cfn_params, "NumberOfEBSVol"))
-            if num_of_ebs >= 1 and "," in get_cfn_param(cfn_params, "SharedDir"):
-                # When the SharedDir doesn't contain commas, it has been created from a single EBS volume
-                # specified through the shared_dir configuration parameter only
-                # If SharedDir contains comma, we need to create at least one ebs section
+            if num_of_ebs >= 1 and "ebs" in get_cfn_param(cfn_params, "ClusterConfigMetadata"):
+                # If "ebs" is in "ClusterConfigMetadata", there are at least one ebs section configured
                 labels = self.get_metadata_labels(expected_num_labels=num_of_ebs, include_none_values=False)
                 for index in range(len(labels)):
                     # create empty section
@@ -990,7 +988,14 @@ class EBSSettingsCfnParam(SettingsCfnParam):
                                 param_key,
                                 param_definition,
                                 self.pcluster_config,
-                            ).from_cfn_value(cfn_value)
+                            ).from_cfn_value(
+                                None
+                                if param_key == "shared_dir" and "," not in get_cfn_param(cfn_params, "SharedDir")
+                                else cfn_value
+                            )
+                            # When the SharedDir doesn't contain commas, it has been created from a single EBS volume
+                            # specified through the shared_dir configuration parameter in the cluster section
+                            # If SharedDir contains comma, we need to create at least one ebs section
                             referred_section.add_param(param)
 
                     self.pcluster_config.add_section(referred_section)

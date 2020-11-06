@@ -6,12 +6,25 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
+- Add support for CentOS 8 in all Commercial regions.
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.
 - Add ``-r/-region`` arg to ``pcluster configure``. If this arg is provided, configuration will skip region selection.
 
 **CHANGES**
 
+- Upgrade EFA installer to version 1.10.1
+  - EFA configuration: ``efa-config-1.5`` (from efa-config-1.4)
+  - EFA profile: ``efa-profile-1.1`` (from efa-profile-1.0.0)
+  - EFA kernel module: ``efa-1.10.2`` (from efa-1.6.0)
+  - RDMA core: ``rdma-core-31.amzn0`` (from rdma-core-28.amzn0)
+  - Libfabric: ``libfabric-1.11.1amazon1.1`` (from libfabric-1.10.1amazon1.1)
+  - Open MPI: ``openmpi40-aws-4.0.5`` (from openmpi40-aws-4.0.3)
+  - Unifies installer runtime options across x86 and aarch64
+  - Introduces ``-g/--enable-gdr`` switch to install packages with GPUDirect RDMA support
+  - Updates to OMPI collectives decision file packaging, migrated from efa-config to efa-profile
+  - Introduces CentOS 8 support
+- CentOS 6 is no longer supported.
 - Upgrade image used by CodeBuild environment when building container images for Batch clusters.
 - Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
   necessary when existing instances risk to be terminated.
@@ -20,6 +33,10 @@ CHANGELOG
   2. ``AWS_DEFAULT_REGION`` environment variable.
   3. ``aws_region_name`` in parallelcluster config file
   4. ``region`` in aws config file.
+
+**BUG FIXES**
+
+- Fix cfn_scheduler_slots don't update when updating compute instance type by ``pcluster update``. 
 
 2.9.1
 -----
