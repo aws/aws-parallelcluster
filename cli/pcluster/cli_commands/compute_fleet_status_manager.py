@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
-import os
 import time
 from enum import Enum
 
@@ -66,9 +65,6 @@ class ComputeFleetStatusManager:
 
     def __init__(self, cluster_name):
         self._table_name = "parallelcluster-" + cluster_name
-        # We need to provide a region to boto3 to avoid no region exception.
-        # Which region to provide is arbitrary.
-        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         self._ddb_resource = boto3.resource("dynamodb")
         self._table = self._ddb_resource.Table(self._table_name)
 
