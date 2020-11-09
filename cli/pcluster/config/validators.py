@@ -81,6 +81,9 @@ EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
 LABELS_MAX_LENGTH = 64
 LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
 
+# Maximum number of compute nodes supported in an HIT cluster
+MAX_HIT_COMPUTE_NODES = 10000
+
 
 def _get_sts_endpoint():
     """Get regionalized STS endpoint."""
@@ -1166,7 +1169,29 @@ def queue_settings_validator(param_key, param_value, pcluster_config):
                 ).format(label)
             )
 
+    max_possible_compute_node_count = _get_max_hit_compute_node_count(pcluster_config, param_value.split(","))
+    if max_possible_compute_node_count > MAX_HIT_COMPUTE_NODES:
+        errors.append(
+            "The maximum number of compute nodes is too large. "
+            "The maximum number of compute nodes must be no greater than {0}. "
+            "The current configuration implies a maximum compute node count of {1}.".format(
+                MAX_HIT_COMPUTE_NODES, max_possible_compute_node_count
+            )
+        )
+
     return errors, []
+
+
+def _get_max_hit_compute_node_count(pcluster_config, queue_settings):
+    """Return sum of max_count params contained in [compute_resource] sections referred to by queue_settings."""
+    count = 0
+    for queue_settings_name in queue_settings:
+        queue_settings = pcluster_config.get_section("queue", queue_settings_name)
+        compute_resource_settings = queue_settings.get_param_value("compute_resource_settings")
+        for compute_resource_name in compute_resource_settings.split(","):
+            compute_resource = pcluster_config.get_section("compute_resource", compute_resource_name)
+            count += compute_resource.get_param_value("max_count")
+    return count
 
 
 def queue_validator(section_key, section_label, pcluster_config):

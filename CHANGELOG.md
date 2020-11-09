@@ -33,6 +33,7 @@ CHANGELOG
   2. ``AWS_DEFAULT_REGION`` environment variable.
   3. ``aws_region_name`` in parallelcluster config file
   4. ``region`` in aws config file.
+- Limit Slurm clusters to a maximum size of 10,000 compute nodes.
 
 **BUG FIXES**
 

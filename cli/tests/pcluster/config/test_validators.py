@@ -25,6 +25,7 @@ from pcluster.config.validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     LOGFILE_LOGGER,
+    MAX_HIT_COMPUTE_NODES,
     architecture_os_validator,
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
@@ -1742,6 +1743,86 @@ def test_queue_settings_validator(mocker, cluster_section_dict, expected_message
             config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
 
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "queue_dicts, compute_node_counts",
+    [
+        (
+            [{"compute_resource_settings": "cr0"}],
+            [10000],
+        ),
+        (
+            [{"compute_resource_settings": "cr0"}],
+            [10001],
+        ),
+        (
+            [{"compute_resource_settings": "cr0,cr1,cr2"}],
+            [3333, 3333, 3334],
+        ),
+        (
+            [{"compute_resource_settings": "cr0,cr1,cr2"}],
+            [3333, 3334, 3334],
+        ),
+        (
+            [
+                {"compute_resource_settings": "cr0,cr1,cr2"},
+                {"compute_resource_settings": "cr3,cr4,cr5"},
+                {"compute_resource_settings": "cr6,cr7,cr8"},
+                {"compute_resource_settings": "cr9,cr10,cr11"},
+                {"compute_resource_settings": "cr12,cr13,cr14"},
+            ],
+            [600] * 12 + [900, 900, 1000],
+        ),
+        (
+            [
+                {"compute_resource_settings": "cr0,cr1,cr2"},
+                {"compute_resource_settings": "cr3,cr4,cr5"},
+                {"compute_resource_settings": "cr6,cr7,cr8"},
+                {"compute_resource_settings": "cr9,cr10,cr11"},
+                {"compute_resource_settings": "cr12,cr13,cr14"},
+            ],
+            [600] * 12 + [900, 900, 1001],
+        ),
+    ],
+)
+def test_max_hit_compute_node_count_validator(mocker, queue_dicts, compute_node_counts):
+    """Test validator that ensures max compute nodes supported for HIT clusters isn't exceeded."""
+    # Create patches for dummy instance types
+    instance_types = ["t2.micro", "t2.medium", "t2.large"]
+    extra_patches = {
+        "pcluster.config.validators.get_supported_instance_types": instance_types,
+        "pcluster.config.validators.get_supported_compute_instance_types": instance_types,
+    }
+
+    # Error expected based on sum of maximum compute node counts across all compute resources in all queues
+    # NOTE: it's important to set this before generating the config because the modifies the
+    #       compute_node_counts list in-place.
+    expected_message = (
+        None
+        if sum(compute_node_counts) <= MAX_HIT_COMPUTE_NODES
+        else (
+            "too large.*maximum number of compute nodes must be no greater than {0}.*node count of 10001".format(
+                MAX_HIT_COMPUTE_NODES
+            )
+        )
+    )
+
+    # Generate cluster config dict
+    queue_section_names = ["q{0}".format(queue_num) for queue_num in range(len(queue_dicts))]
+    config_parser_dict = {
+        "cluster default": {"queue_settings": ",".join(queue_section_names), "scheduler": "slurm"},
+    }
+    for queue_name, queue_dict in zip(queue_section_names, queue_dicts):
+        config_parser_dict["queue {0}".format(queue_name)] = queue_dict
+        compute_resource_names = queue_dict.get("compute_resource_settings").split(",")
+        for compute_resource_name, instance_type in zip(compute_resource_names, instance_types):
+            config_parser_dict["compute_resource {0}".format(compute_resource_name)] = {
+                "instance_type": instance_type,
+                "initial_count": 0,
+                "max_count": compute_node_counts.pop(0),
+            }
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 
 
 @pytest.mark.parametrize(
