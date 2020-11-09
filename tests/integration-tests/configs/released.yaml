@@ -1,0 +1,6 @@
+{%- import 'common.jinja2' as common -%}
+---
+test-suites:
+{% filter indent(2) %}
+{% include 'common/common.yaml' %}
+{% endfilter %}
