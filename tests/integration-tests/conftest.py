@@ -43,6 +43,7 @@ from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    generate_stack_name,
     get_architecture_supported_by_instance_type,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -329,7 +330,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
+def pcluster_config_reader(test_datadir, vpc_stack, region, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -349,7 +350,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
-        default_values = _get_default_template_values(vpc_stacks, region, request)
+        default_values = _get_default_template_values(vpc_stack, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
@@ -441,9 +442,9 @@ def _enable_sanity_check_if_unset(cluster_config):
         config.write(f)
 
 
-def _get_default_template_values(vpc_stacks, region, request):
+def _get_default_template_values(vpc_stack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
-    default_values = get_vpc_snakecase_value(region, vpc_stacks)
+    default_values = get_vpc_snakecase_value(vpc_stack)
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
@@ -635,11 +636,7 @@ def _create_vpc_stack(request, template, region, cfn_stacks_factory):
         stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
     else:
         stack = CfnStack(
-            name="integ-tests-vpc-{0}{1}{2}".format(
-                random_alphanumeric(),
-                "-" if request.config.getoption("stackname_suffix") else "",
-                request.config.getoption("stackname_suffix"),
-            ),
+            name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
             region=region,
             template=template.to_json(),
         )
