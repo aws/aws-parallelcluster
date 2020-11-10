@@ -75,6 +75,7 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
+    extra_json_validator,
     fsx_architecture_os_validator,
     fsx_id_validator,
     fsx_ignored_parameters_validator,
@@ -733,7 +734,7 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos6", "centos7"],
+        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
         "validators": [base_os_validator, architecture_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
@@ -853,7 +854,11 @@ CLUSTER_COMMON_PARAMS = [
     ("extra_json", {
         "type": ExtraJsonCfnParam,
         "cfn_param_mapping": "ExtraJson",
-        "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
+        "validators": [extra_json_validator],
+        "update_policy": UpdatePolicy(
+            UpdatePolicy.UNSUPPORTED,
+            fail_reason=UpdatePolicy.FAIL_REASONS["extra_json_update"],
+        )
     }),
     ("additional_cfn_template", {
         "cfn_param_mapping": "AdditionalCfnTemplate",
@@ -862,6 +867,7 @@ CLUSTER_COMMON_PARAMS = [
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("tags", {
+        # There is no cfn_param_mapping because it's not converted to a CFN Input parameter
         "type": TagsParam,
         "validators": [tags_validator],
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,

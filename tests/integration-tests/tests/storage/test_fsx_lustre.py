@@ -93,8 +93,6 @@ def test_fsx_lustre_configuration_options(
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is not supported on CentOS 6
-@pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
@@ -135,7 +133,7 @@ def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, sto
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_storage_type(storage_type, fsx_fs_id, region)
-    _test_export_path(remote_command_executor, mount_dir, bucket_name)
+    _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
     _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
@@ -144,8 +142,6 @@ def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, sto
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
-# FSx is not supported on CentOS 6
-@pytest.mark.skip_oss(["centos6"])
 # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
@@ -291,7 +287,7 @@ def _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executo
     remote_command_executor.run_remote_command("cat {mount_dir}/compute_output".format(mount_dir=mount_dir))
 
 
-def _test_export_path(remote_command_executor, mount_dir, bucket_name):
+def _test_export_path(remote_command_executor, mount_dir, bucket_name, region):
     logging.info("Testing fsx lustre export path")
     remote_command_executor.run_remote_command(
         "echo 'Exported by FSx Lustre' > {mount_dir}/file_to_export".format(mount_dir=mount_dir)
@@ -300,7 +296,9 @@ def _test_export_path(remote_command_executor, mount_dir, bucket_name):
         "sudo lfs hsm_archive {mount_dir}/file_to_export && sleep 5".format(mount_dir=mount_dir)
     )
     remote_command_executor.run_remote_command(
-        "aws s3 cp s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(bucket_name=bucket_name)
+        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+            region=region, bucket_name=bucket_name
+        )
     )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to("Exported by FSx Lustre")

@@ -31,8 +31,8 @@ DISTROS = OrderedDict(
     [
         ("alinux", "amzn"),
         ("alinux2", "amzn2"),
-        ("centos6", "centos6"),
         ("centos7", "centos7"),
+        ("centos8", "centos8"),
         ("ubuntu1604", "ubuntu-1604"),
         ("ubuntu1804", "ubuntu-1804"),
     ]

@@ -90,7 +90,7 @@ test-suites:
       dimensions:
         - regions: ["eu-west-3"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
+          oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
         - regions: ["us-gov-east-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["ubuntu1604", "ubuntu1804"]
@@ -149,7 +149,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["centos7"]
+          oss: ["centos7", "centos8"]
           schedulers: ["sge"]
   disable_hyperthreading:
     test_disable_hyperthreading.py::test_hit_disable_hyperthreading:
@@ -167,7 +167,7 @@ test-suites:
     test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
       dimensions:
         # Manually disabled HT
-        {%- for os, scheduler in [("alinux", "sge"), ("centos6", "torque"), ("ubuntu1804", "sge")] %}
+        {%- for os, scheduler in [("alinux", "sge"), ("centos7", "torque"), ("ubuntu1804", "sge")] %}
         - regions: ["sa-east-1"]
           instances: ["m4.xlarge"]
           oss: ["{{ os }}"]
@@ -198,8 +198,7 @@ test-suites:
       dimensions:
         - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
-          # EFA not working on Centos6
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           # Torque is not supported by OpenMPI distributed with EFA
           # Slurm test is to verify EFA works correctly when using the SIT model in the config file
           schedulers: ["sge", "slurm"]
@@ -215,7 +214,7 @@ test-suites:
       dimensions:
         - regions: ["us-east-1"]
           instances: ["c5n.18xlarge"]
-          oss: ["centos7"]
+          oss: ["centos7", "centos8"]
           schedulers: ["slurm"]
   networking:
     test_cluster_networking.py::test_cluster_in_private_subnet:
@@ -310,7 +309,7 @@ test-suites:
       dimensions:
         - regions: ["eu-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]  # Known ssh issue on CentOS6+SLURM
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: ["ca-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
@@ -339,7 +338,7 @@ test-suites:
           schedulers: ["torque"]
     test_awsbatch.py::test_awsbatch:
       dimensions:
-        - regions: ["eu-north-1", "ap-south-1", "us-gov-west-1", "cn-north-1"]
+        - regions: ["eu-north-1", "us-gov-west-1", "cn-north-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["alinux2"]
           schedulers: ["awsbatch"]
@@ -361,7 +360,7 @@ test-suites:
       dimensions:
         - regions: ["ap-southeast-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
           schedulers: ["slurm"]
         - regions: ["ap-northeast-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -379,13 +378,17 @@ test-suites:
       dimensions:
         - regions: ["us-east-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
-          oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]  # FSx is not supported on CentOS 6
+          oss: ["alinux2", "centos7", "centos8", "ubuntu1604", "ubuntu1804"]
           schedulers: ["slurm"]
         - regions: ["eu-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
-          oss: ["alinux2", "ubuntu1804"]
+          # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
+          oss: ["alinux2", "ubuntu1804", "centos8"]
           schedulers: ["slurm"]
+        - regions: [ "cn-north-1" ]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: [ "alinux" ]
+          schedulers: [ "slurm" ]
     test_fsx_lustre.py::test_fsx_lustre_configuration_options:
       dimensions:
         - regions: ["us-east-2"]
@@ -400,8 +403,8 @@ test-suites:
           schedulers: ["sge"]
         - regions: ["us-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
-          # FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
-          oss: ["alinux2", "ubuntu1804"]
+          # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
+          oss: ["alinux2", "ubuntu1804", "centos8"]
           schedulers: ["sge"]
     test_efs.py::test_efs_compute_az:
       dimensions:
@@ -506,6 +509,18 @@ test-suites:
     test_update.py::test_update_sit:
       dimensions:
         - regions: ["eu-west-2"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
+    test_update.py::test_sit_update_compute_instance_disable_ht:
+      dimensions:
+        - regions: ["us-west-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
+    test_update.py::test_sit_update_compute_instance_extra_json:
+      dimensions:
+        - regions: ["us-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["sge"]

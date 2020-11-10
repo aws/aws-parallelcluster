@@ -90,6 +90,11 @@ UpdatePolicy.FAIL_REASONS = {
     "ebs_volume_resize": "Updating the file system after a resize operation requires commands specific to your "
     "operating system.",
     "ebs_sections_change": "EBS sections cannot be added or removed during a 'pcluster update' operation",
+    "extra_json_update": lambda change, patch: "Updating the extra_json parameter is not supported because it only "
+    "applies updates to compute nodes. If you still want to proceed, first stop the cluster with the "
+    "following command:\n{0} -c {1} {2} and then run an update with the --force flag".format(
+        "pcluster stop", patch.config_file, patch.cluster_name
+    ),
 }
 
 # Common action_needed messages

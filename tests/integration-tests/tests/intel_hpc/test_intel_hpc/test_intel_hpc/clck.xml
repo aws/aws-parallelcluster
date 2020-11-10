@@ -74,14 +74,14 @@
          files.
     -->
     <!--
-    <provider_auxiliary_path>/opt/intel/clck/2019.3.5/provider/share</provider_auxiliary_path>
+    <provider_auxiliary_path>/opt/intel/clck/2019.9/provider/share</provider_auxiliary_path>
     -->
 
     <!-- This can be used to override the default location for data
          providers.
     -->
     <!--
-    <provider_config_dir>/opt/intel/clck/2019.3.5/provider/etc</provider_config_dir>
+    <provider_config_dir>/opt/intel/clck/2019.9/provider/etc</provider_config_dir>
     -->
 
     <!-- This tag can be used to collect missing or old data. The default
