@@ -1,3 +1,5 @@
+import os
+
 import boto3
 import pytest
 from assertpy import assert_that
@@ -8,6 +10,10 @@ from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatu
 class TestComputeFleetStatusManager:
     @pytest.fixture
     def compute_fleet_status_manager(self, mocker):
+        if "AWS_DEFAULT_REGION" not in os.environ:
+            # We need to provide a region to boto3 to avoid no region exception.
+            # Which region to provide is arbitrary.
+            os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         status_manager = ComputeFleetStatusManager("cluster-name")
         mocker.patch.object(status_manager, "_table")
 

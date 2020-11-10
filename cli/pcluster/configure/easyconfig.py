@@ -134,6 +134,19 @@ def configure(args):
     print(msg.format(pcluster_config.config_file))
     print("Press CTRL-C to interrupt the procedure.\n\n")
 
+    if not args.region:
+        # Use built in boto regions as an available option
+        available_regions = get_regions()
+        default_region = pcluster_config.get_section("aws").get_param_value("aws_region_name")
+        aws_region_name = prompt_iterable("AWS Region ID", available_regions, default_value=default_region)
+        # Set provided region into os environment for suggestions and validations from here on
+        if os.environ["AWS_DEFAULT_REGION"] != aws_region_name:
+            os.environ["AWS_DEFAULT_REGION"] = aws_region_name
+            # Read config file again, because region change can cause change of the initial values in PclusterConfig
+            pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False)
+    else:
+        aws_region_name = args.region
+
     cluster_section = pcluster_config.get_section("cluster")
 
     global_config = pcluster_config.get_section("global")
@@ -141,13 +154,6 @@ def configure(args):
 
     vpc_section = pcluster_config.get_section("vpc")
     vpc_label = vpc_section.label
-
-    # Use built in boto regions as an available option
-    available_regions = get_regions()
-    default_region = pcluster_config.get_section("aws").get_param_value("aws_region_name")
-    aws_region_name = prompt_iterable("AWS Region ID", available_regions, default_value=default_region)
-    # Set provided region into os environment for suggestions and validations from here on
-    os.environ["AWS_DEFAULT_REGION"] = aws_region_name
 
     # Get the key name from the current region, if any
     available_keys = _get_keys()

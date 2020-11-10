@@ -239,6 +239,10 @@ def get_mocked_pcluster_config(mocker, auto_refresh=False):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
+    if "AWS_DEFAULT_REGION" not in os.environ:
+        # We need to provide a region to PclusterConfig to avoid no region exception.
+        # Which region to provide is arbitrary.
+        os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     pcluster_config = PclusterConfig(config_file="wrong-file")
     pcluster_config.auto_refresh = auto_refresh
     return pcluster_config
@@ -388,6 +392,11 @@ def init_pcluster_config_from_configparser(config_parser, validate=True, auto_re
 
         with open(config_file.name, "w") as cf:
             config_parser.write(cf)
+
+        if "AWS_DEFAULT_REGION" not in os.environ:
+            # We need to provide a region to PclusterConfig to avoid no region exception.
+            # Which region to provide is arbitrary.
+            os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
 
         pcluster_config = PclusterConfig(
             config_file=config_file.name, cluster_label="default", fail_on_file_absence=True, auto_refresh=auto_refresh

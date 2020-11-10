@@ -13,7 +13,7 @@ from enum import Enum
 
 # ------------------ Default internal representation values ------------------ #
 
-DEFAULT_AWS_DICT = {"aws_access_key_id": None, "aws_secret_access_key": None, "aws_region_name": "us-east-1"}
+DEFAULT_AWS_DICT = {"aws_access_key_id": None, "aws_secret_access_key": None, "aws_region_name": None}
 
 DEFAULT_GLOBAL_DICT = {"cluster_template": "default", "update_check": True, "sanity_check": True}
 

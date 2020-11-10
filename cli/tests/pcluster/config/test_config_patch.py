@@ -8,6 +8,8 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import pytest
 from assertpy import assert_that
 
@@ -46,6 +48,9 @@ def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):
 
 def test_config_patch(mocker):
     _do_mocking_for_tests(mocker)
+    # We need to provide a region to PclusterConfig to avoid no region exception.
+    # Which region to provide is arbitrary.
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     src_conf = PclusterConfig()
     dst_conf = PclusterConfig()
     # Two new configs must always be equal

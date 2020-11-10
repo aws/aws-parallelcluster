@@ -282,12 +282,18 @@ class PclusterConfig(object):
         """
         Evaluate region to use and set in the environment to be available for all the boto3 calls.
 
-        Order is 1) AWS_DEFAULT_REGION env 2) Config file 3) default from mapping
+        Order is 1) AWS_DEFAULT_REGION env 2) Config file 3) default from aws config file
         """
         if os.environ.get("AWS_DEFAULT_REGION"):
             self.region = os.environ.get("AWS_DEFAULT_REGION")
-        else:
+        elif self.region:
             os.environ["AWS_DEFAULT_REGION"] = self.region
+        else:
+            self.error(
+                "You must specify a region"
+                "\nRun `aws configure`, or add the `-r <REGION_NAME>` arg to the command you are trying to"
+                " run, or set the `AWS_DEFAULT_REGION` environment variable."
+            )
 
     @property
     def fail_on_error(self):

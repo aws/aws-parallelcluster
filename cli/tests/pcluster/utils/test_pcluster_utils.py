@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 from itertools import product
 from re import escape
 
@@ -378,6 +379,7 @@ def test_generate_random_bucket_name(bucket_prefix):
 def test_create_s3_bucket(region, create_error_message, configure_error_message, boto3_stubber, mocker):
     bucket_name = "test"
     expected_params = {"Bucket": bucket_name}
+    os.environ["AWS_DEFAULT_REGION"] = region
     if region != "us-east-1":
         # LocationConstraint specifies the region where the bucket will be created.
         # When the region is us-east-1 we are not specifying this parameter because it's the default region.

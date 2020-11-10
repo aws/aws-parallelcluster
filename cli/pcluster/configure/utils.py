@@ -28,9 +28,8 @@ def handle_client_exception(func):
             return func(*args, **kwargs)
         except (BotoCoreError, ClientError) as e:
             LOGGER.error("Failed with error: %s" % e)
-            LOGGER.error("Hint: please check your AWS credentials.")
-            LOGGER.error("Run `aws configure` or set the credentials as environment variables.")
-            sys.exit(1)
+            if isinstance(e, ClientError) and "credentials" in str(e):
+                LOGGER.error("To set the credentials, run 'aws configure' or set them as environment variables")
 
     return wrapper
 

@@ -13,6 +13,12 @@ from botocore.stub import Stubber
 from jinja2 import Environment, FileSystemLoader
 
 
+@pytest.fixture(autouse=True)
+def clear_env():
+    if "AWS_DEFAULT_REGION" in os.environ:
+        del os.environ["AWS_DEFAULT_REGION"]
+
+
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""
@@ -88,6 +94,10 @@ def boto3_stubber(mocker, boto3_stubber_path):
     mocked_client_factory.client.side_effect = lambda x, **kwargs: mocked_clients[x]
 
     def _boto3_stubber(service, mocked_requests):
+        if "AWS_DEFAULT_REGION" not in os.environ:
+            # We need to provide a region to boto3 to avoid no region exception.
+            # Which region to provide is arbitrary.
+            os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
         client = boto3.client(service)
         stubber = Stubber(client)
         # Save a ref to the stubber so that we can deactivate it at the end of the test.
