@@ -49,6 +49,10 @@
       "Description": "S3 Bucket where resources needed by this stack are located.",
       "Type": "String"
     },
+    "ArtifactS3RootDirectory": {
+      "Description": "Root directory in S3 bucket where cluster artifacts are stored, i.e. cluster artifacts would be under {ResourcesS3Bucket}/{ArtifactS3RootDirectory}.",
+      "Type": "String"
+    },
     "SharedDir": {
       "Description": "The path/mountpoint for the shared drive",
       "Type": "String"
@@ -181,7 +185,7 @@
                   "Action": "s3:PutObject",
                   "Resource": [
                     {
-                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/batch/*"
                     }
                   ]
                 }
@@ -284,7 +288,7 @@
                       "Fn::Sub": "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/parallelcluster-*/*"
                     },
                     {
-                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/batch/*"
                     },
                     {
                       "Fn::GetAtt": [
@@ -669,7 +673,7 @@
         },
         "Source": {
           "Location": {
-            "Fn::Sub": "${ResourcesS3Bucket}/docker/artifacts.zip"
+            "Fn::Sub": "${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/docker/artifacts.zip"
           },
           "Type": "S3"
         },
@@ -731,7 +735,7 @@
               ],
               "Effect": "Allow",
               "Resource": {
-                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
+                "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*"
               },
               "Sid": "S3GetObjectPolicy"
             }
@@ -794,7 +798,9 @@
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
           },
-          "S3Key": "custom_resources_code/artifacts.zip"
+          "S3Key": {
+            "Fn::Sub": "${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip"
+          }
         },
         "Handler": "manage_docker_images.handler",
         "MemorySize": 128,
@@ -942,7 +948,9 @@
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
           },
-          "S3Key": "custom_resources_code/artifacts.zip"
+          "S3Key": {
+            "Fn::Sub": "${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip"
+          }
         },
         "Handler": "send_build_notification.handler",
         "MemorySize": 128,
@@ -1046,6 +1054,12 @@
       "Description": "S3 user bucket where resources are stored",
       "Value": {
         "Ref": "ResourcesS3Bucket"
+      }
+    },
+    "ArtifactS3RootDirectory": {
+      "Description": "Root directory in S3 bucket where cluster artifacts are stored",
+      "Value": {
+        "Ref": "ArtifactS3RootDirectory"
       }
     },
     "MNPJobDefinitionArn": {

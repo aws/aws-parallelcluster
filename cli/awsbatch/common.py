@@ -253,6 +253,7 @@ class AWSBatchCliConfig(object):
                 # or the region from the [main] section
                 self.region = config.get(cluster_section, "region")
                 self.s3_bucket = config.get(cluster_section, "s3_bucket")
+                self.artifact_directory = config.get(cluster_section, "artifact_directory")
                 self.compute_environment = config.get(cluster_section, "compute_environment")
                 self.job_queue = config.get(cluster_section, "job_queue")
                 self.job_definition = config.get(cluster_section, "job_definition")
@@ -306,6 +307,8 @@ class AWSBatchCliConfig(object):
                     output_value = output.get("OutputValue")
                     if output_key == "ResourcesS3Bucket":
                         self.s3_bucket = output_value
+                    elif output_key == "ArtifactS3RootDirectory":
+                        self.artifact_directory = output_value
                     elif output_key == "BatchComputeEnvironmentArn":
                         self.compute_environment = output_value
                     elif output_key == "BatchJobQueueArn":

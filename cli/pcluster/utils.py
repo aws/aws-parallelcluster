@@ -132,16 +132,15 @@ def paginate_boto3(method, **kwargs):
             yield result
 
 
-def generate_random_bucket_name(bucket_name_prefix):
+def generate_random_name_with_prefix(name_prefix):
     """
-    Generate a random bucket name, with the given prefix.
+    Generate a random name that is no more than 63 characters long, with the given prefix.
 
-    Bucket name must be at least 3 and no more than 63 characters long.
-    Example: <bucket_name_prefix>-4htvo26lchkqeho1
+    Example: <name_prefix>-4htvo26lchkqeho1
     """
     random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
-    s3_bucket_name = "-".join([bucket_name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
-    return s3_bucket_name
+    output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
+    return output_name
 
 
 def create_s3_bucket(bucket_name, region):
@@ -164,6 +163,21 @@ def create_s3_bucket(bucket_name, region):
     except Exception as e:
         LOGGER.error("Failed when configuring cluster S3 bucket with error %s", e)
         delete_s3_bucket(bucket_name)
+        raise
+
+
+def check_s3_bucket_exists(bucket_name):
+    """
+    Check that an S3 bucket exists.
+
+    :param bucket_name: name of the S3 bucket to check
+    """
+    s3_client = boto3.client("s3")
+    """ :type : pyboto3.s3 """
+    try:
+        s3_client.head_bucket(Bucket=bucket_name)
+    except Exception as e:
+        LOGGER.debug("Cannot retrieve S3 bucket %s: %s", bucket_name, e)
         raise
 
 
@@ -206,6 +220,44 @@ def delete_s3_bucket(bucket_name):
         )
 
 
+def delete_s3_artifacts(bucket_name, artifact_directory):
+    """
+    Delete cluster artifacts under {bucket_name}/{artifact_directory}.
+
+    :param bucket_name: name of the S3 bucket to delete
+    :param artifact_directory: root directory for all cluster artifacts
+    """
+    try:
+        LOGGER.info("Deleting artifacts under %s/%s", bucket_name, artifact_directory)
+        bucket = boto3.resource("s3").Bucket(bucket_name)
+        bucket.objects.filter(Prefix="%s/" % artifact_directory).delete()
+        bucket.object_versions.filter(Prefix="%s/" % artifact_directory).delete()
+    except boto3.client("s3").exceptions.NoSuchBucket:
+        pass
+    except ClientError as client_err:
+        LOGGER.warning(
+            "Failed to delete cluster S3 artifact under %s/%s with error %s. Please delete them manually.",
+            bucket_name,
+            artifact_directory,
+            client_err.response.get("Error").get("Message"),
+        )
+
+
+def cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket=True):
+    """Cleanup S3 bucket and/or artifact directory."""
+    LOGGER.debug(
+        "Cleaning up S3 resources bucket_name=%s, artifact_directory=%s, remove_bucket=%s",
+        bucket_name,
+        artifact_directory,
+        cleanup_bucket,
+    )
+    if bucket_name:
+        if artifact_directory:
+            delete_s3_artifacts(bucket_name, artifact_directory)
+        if cleanup_bucket:
+            delete_s3_bucket(bucket_name)
+
+
 def _add_file_to_zip(zip_file, path, arcname):
     """
     Add the file at path under the name arcname to the archive represented by zip_file.
@@ -241,7 +293,7 @@ def zip_dir(path):
     return file_out
 
 
-def upload_resources_artifacts(bucket_name, root):
+def upload_resources_artifacts(bucket_name, artifact_directory, root):
     """
     Upload to the specified S3 bucket the content of the directory rooted in root path.
 
@@ -254,9 +306,9 @@ def upload_resources_artifacts(bucket_name, root):
     bucket = boto3.resource("s3").Bucket(bucket_name)
     for res in os.listdir(root):
         if os.path.isdir(os.path.join(root, res)):
-            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/artifacts.zip" % res)
+            bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
         elif os.path.isfile(os.path.join(root, res)):
-            bucket.upload_file(os.path.join(root, res), res)
+            bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
 
 
 def get_instance_vcpus(instance_type, instance_info=None):

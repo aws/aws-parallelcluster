@@ -38,16 +38,49 @@ from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PC
 LOGGER = logging.getLogger(__name__)
 
 
-def _create_bucket_with_resources(pcluster_config, storage_data, tags):
-    """Create a bucket associated to the given stack and upload specified resources."""
-    s3_bucket_name = utils.generate_random_bucket_name("parallelcluster")
-    LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
-    try:
-        utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
-    except Exception:
-        LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
-        raise
+def _setup_bucket_with_resources(pcluster_config, storage_data, stack_name, tags):
+    """
+    Create pcluster bucket if needed and upload cluster specific resources.
 
+    If no bucket specified, create a bucket associated to the given stack.
+    Created bucket needs to be removed on cluster deletion.
+    Artifacts are uploaded to {bucket_name}/{artifact_directory}/.
+    {artifact_directory}/ will be always be cleaned up on cluster deletion or in case of failure.
+    """
+    s3_bucket_name = pcluster_config.get_section("cluster").get_param_value("cluster_resource_bucket")
+    remove_bucket_on_deletion = False
+    # Use "{stack_name}-{random_string}" as directory in bucket
+    artifact_directory = utils.generate_random_name_with_prefix(stack_name)
+    if not s3_bucket_name or s3_bucket_name == "NONE":
+        # Create 1 bucket per cluster named "parallelcluster-{random_string}" if bucket is not provided
+        # This bucket needs to be removed on cluster deletion
+        s3_bucket_name = utils.generate_random_name_with_prefix("parallelcluster")
+        LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
+        try:
+            utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
+        except Exception:
+            LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
+            raise
+        remove_bucket_on_deletion = True
+    else:
+        # Use user-provided bucket
+        # Do not remove this bucket on deletion, but cleanup artifact directory
+        try:
+            utils.check_s3_bucket_exists(s3_bucket_name)
+        except Exception as e:
+            LOGGER.error("Unable to access config-specified S3 bucket %s: %s", s3_bucket_name, e)
+            raise
+
+    _upload_cluster_artifacts(
+        s3_bucket_name, artifact_directory, pcluster_config, storage_data, tags, remove_bucket_on_deletion
+    )
+
+    return s3_bucket_name, artifact_directory, remove_bucket_on_deletion
+
+
+def _upload_cluster_artifacts(
+    s3_bucket_name, artifact_directory, pcluster_config, storage_data, tags, remove_bucket_on_deletion
+):
     try:
         scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
         resources_dirs = ["resources/custom_resources"]
@@ -56,20 +89,24 @@ def _create_bucket_with_resources(pcluster_config, storage_data, tags):
 
         for resources_dir in resources_dirs:
             resources = pkg_resources.resource_filename(__name__, resources_dir)
-            utils.upload_resources_artifacts(s3_bucket_name, root=resources)
+            utils.upload_resources_artifacts(
+                s3_bucket_name,
+                artifact_directory,
+                root=resources,
+            )
         if utils.is_hit_enabled_scheduler(scheduler):
-            upload_hit_resources(s3_bucket_name, pcluster_config, storage_data.json_params, tags)
+            upload_hit_resources(s3_bucket_name, artifact_directory, pcluster_config, storage_data.json_params, tags)
 
-        upload_dashboard_resource(s3_bucket_name, pcluster_config, storage_data.json_params, storage_data.cfn_params)
-    except Exception:
-        LOGGER.error("Unable to upload cluster resources to the S3 bucket %s.", s3_bucket_name)
-        utils.delete_s3_bucket(s3_bucket_name)
+        upload_dashboard_resource(
+            s3_bucket_name, artifact_directory, pcluster_config, storage_data.json_params, storage_data.cfn_params
+        )
+    except Exception as e:
+        LOGGER.error("Unable to upload cluster resources to the S3 bucket %s due to exception: %s", s3_bucket_name, e)
+        utils.cleanup_s3_resources(s3_bucket_name, artifact_directory, remove_bucket_on_deletion)
         raise
 
-    return s3_bucket_name
 
-
-def upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
+def upload_hit_resources(bucket_name, artifact_directory, pcluster_config, json_params, tags=None):
     if tags is None:
         tags = []
     hit_template_url = pcluster_config.get_section("cluster").get_param_value(
@@ -81,7 +118,9 @@ def upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
 
     try:
         result = s3_client.put_object(
-            Bucket=bucket_name, Body=json.dumps(json_params), Key="configs/cluster-config.json"
+            Bucket=bucket_name,
+            Body=json.dumps(json_params),
+            Key="{artifact_directory}/configs/cluster-config.json".format(artifact_directory=artifact_directory),
         )
         file_contents = utils.read_remote_file(hit_template_url)
         rendered_template = utils.render_template(file_contents, json_params, tags, result.get("VersionId"))
@@ -94,14 +133,18 @@ def upload_hit_resources(bucket_name, pcluster_config, json_params, tags=None):
 
     try:
         s3_client.put_object(
-            Bucket=bucket_name, Body=rendered_template, Key="templates/compute-fleet-hit-substack.rendered.cfn.yaml"
+            Bucket=bucket_name,
+            Body=rendered_template,
+            Key="{artifact_directory}/templates/compute-fleet-hit-substack.rendered.cfn.yaml".format(
+                artifact_directory=artifact_directory
+            ),
         )
     except Exception as e:
         LOGGER.error("Error when uploading CloudFormation template to bucket %s: %s", bucket_name, e)
         raise
 
 
-def upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_params):
+def upload_dashboard_resource(bucket_name, artifact_directory, pcluster_config, json_params, cfn_params):
     params = {"json_params": json_params, "cfn_params": cfn_params}
     cw_dashboard_template_url = pcluster_config.get_section("cluster").get_param_value(
         "cw_dashboard_template_url"
@@ -123,7 +166,9 @@ def upload_dashboard_resource(bucket_name, pcluster_config, json_params, cfn_par
         boto3.client("s3").put_object(
             Bucket=bucket_name,
             Body=rendered_template,
-            Key="templates/cw-dashboard-substack.rendered.cfn.yaml",
+            Key="{artifact_directory}/templates/cw-dashboard-substack.rendered.cfn.yaml".format(
+                artifact_directory=artifact_directory
+            ),
         )
     except Exception as e:
         LOGGER.error("Error when uploading CloudWatch Dashboard template to bucket %s: %s", bucket_name, e)
@@ -173,6 +218,7 @@ def create(args):  # noqa: C901 FIXME!!!
     _check_for_updates(pcluster_config)
 
     bucket_name = None
+    artifact_directory = None
     try:
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
@@ -180,9 +226,12 @@ def create(args):  # noqa: C901 FIXME!!!
         # merge tags from configuration, command-line and internal ones
         tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
 
-        bucket_name = _create_bucket_with_resources(pcluster_config, storage_data, tags)
-        if bucket_name:
-            cfn_params["ResourcesS3Bucket"] = bucket_name
+        bucket_name, artifact_directory, cleanup_bucket = _setup_bucket_with_resources(
+            pcluster_config, storage_data, stack_name, tags
+        )
+        cfn_params["ResourcesS3Bucket"] = bucket_name
+        cfn_params["ArtifactS3RootDirectory"] = artifact_directory
+        cfn_params["RemoveBucketOnDeletion"] = str(cleanup_bucket)
 
         LOGGER.info("Creating stack named: %s", stack_name)
 
@@ -220,21 +269,21 @@ def create(args):  # noqa: C901 FIXME!!!
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
         sys.stdout.flush()
-        if bucket_name:
-            utils.delete_s3_bucket(bucket_name)
+        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
         sys.exit(1)
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
+        if not utils.stack_exists(stack_name):
+            # Cleanup S3 artifacts if stack is not created yet
+            utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
         sys.exit(0)
     except KeyError as e:
         LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
-        if bucket_name:
-            utils.delete_s3_bucket(bucket_name)
+        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
         sys.exit(1)
     except Exception as e:
         LOGGER.critical(e)
-        if bucket_name:
-            utils.delete_s3_bucket(bucket_name)
+        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
         sys.exit(1)
 
 

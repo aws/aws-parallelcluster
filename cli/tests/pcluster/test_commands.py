@@ -18,15 +18,15 @@ from botocore.exceptions import ClientError
 import pcluster.utils as utils
 from pcluster.cli_commands import update
 from pcluster.cluster_model import ClusterModel
-from pcluster.commands import _create_bucket_with_resources, _validate_cluster_name
+from pcluster.commands import _setup_bucket_with_resources, _validate_cluster_name
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH
 
 
-def _mock_pcluster_config(mocker, scheduler, region):
+def _mock_pcluster_config(mocker, scheduler, region, bucket_name=None):
     pcluster_config = mocker.MagicMock()
     pcluster_config.region = region
     cluster_section_mock = mocker.MagicMock()
-    cluster_config = {"scheduler": scheduler}
+    cluster_config = {"scheduler": scheduler, "cluster_resource_bucket": bucket_name}
     cluster_section_mock.get_param_value = mocker.MagicMock(side_effect=lambda param: cluster_config[param])
     pcluster_config.get_section = mocker.MagicMock(return_value=cluster_section_mock)
 
@@ -34,106 +34,169 @@ def _mock_pcluster_config(mocker, scheduler, region):
 
 
 @pytest.mark.parametrize(
-    "scheduler, expected_dirs, expect_upload_hit_resources, expected_bucket_name",
+    (
+        "scheduler",
+        "expected_dirs",
+        "expect_upload_hit_resources",
+        "mock_generated_bucket_name",
+        "expected_bucket_name",
+        "provided_bucket_name",
+        "expected_remove_bucket",
+    ),
     [
-        ("slurm", ["resources/custom_resources"], True, "bucket"),
-        ("awsbatch", ["resources/custom_resources", "resources/batch"], False, "bucket"),
-        ("sge", [], False, None),
+        ("slurm", ["resources/custom_resources"], True, "bucket", "bucket", None, True),
+        ("awsbatch", ["resources/custom_resources", "resources/batch"], False, "bucket", "bucket", None, True),
+        ("sge", [], False, None, None, None, True),
+        (
+            "slurm",
+            ["resources/custom_resources"],
+            True,
+            "bucket",
+            "user_provided_bucket",
+            "user_provided_bucket",
+            False,
+        ),
     ],
 )
-def test_create_bucket_with_resources_success(
-    mocker, scheduler, expected_dirs, expect_upload_hit_resources, expected_bucket_name
+def test_setup_bucket_with_resources_success(
+    mocker,
+    scheduler,
+    expected_dirs,
+    expect_upload_hit_resources,
+    mock_generated_bucket_name,
+    expected_bucket_name,
+    provided_bucket_name,
+    expected_remove_bucket,
 ):
     """Verify that create_bucket_with_batch_resources behaves as expected."""
     region = "us-east-1"
+    mock_artifact_dir = "artifact_dir"
+    stack_name = "test-stack"
 
-    mocker.patch("pcluster.utils.generate_random_bucket_name", return_value=expected_bucket_name)
+    mocker.patch(
+        "pcluster.utils.generate_random_name_with_prefix", side_effect=[mock_artifact_dir, mock_generated_bucket_name]
+    )
     mocker.patch("pcluster.utils.create_s3_bucket")
+    check_bucket_mock = mocker.patch("pcluster.utils.check_s3_bucket_exists")
     upload_resources_artifacts_mock = mocker.patch("pcluster.utils.upload_resources_artifacts")
-    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
+    cleanup_s3_mock = mocker.patch("pcluster.utils.cleanup_s3_resources")
     upload_hit_resources_mock = mocker.patch("pcluster.commands.upload_hit_resources")
     upload_dashboard_resource = mocker.patch("pcluster.commands.upload_dashboard_resource")
-    pcluster_config_mock = _mock_pcluster_config(mocker, scheduler, region)
+    pcluster_config_mock = _mock_pcluster_config(mocker, scheduler, region, bucket_name=provided_bucket_name)
 
     storage_data = pcluster_config_mock.to_storage()
 
-    bucket_name = _create_bucket_with_resources(pcluster_config_mock, storage_data, {})
+    bucket_name, artifact_dir, remove_bucket = _setup_bucket_with_resources(
+        pcluster_config_mock, storage_data, stack_name, {}
+    )
 
-    delete_s3_bucket_mock.assert_not_called()
+    if provided_bucket_name:
+        check_bucket_mock.assert_called_with(provided_bucket_name)
+    else:
+        check_bucket_mock.assert_not_called()
+    cleanup_s3_mock.assert_not_called()
     upload_resources_artifacts_mock.assert_has_calls(
-        [mocker.call(bucket_name, root=pkg_resources.resource_filename(utils.__name__, dir)) for dir in expected_dirs]
+        [
+            mocker.call(bucket_name, mock_artifact_dir, root=pkg_resources.resource_filename(utils.__name__, dir))
+            for dir in expected_dirs
+        ]
     )
     if expect_upload_hit_resources:
-        upload_hit_resources_mock.assert_called_with(bucket_name, pcluster_config_mock, storage_data.json_params, {})
+        upload_hit_resources_mock.assert_called_with(
+            bucket_name, mock_artifact_dir, pcluster_config_mock, storage_data.json_params, {}
+        )
     upload_dashboard_resource.assert_called_with(
-        bucket_name, pcluster_config_mock, storage_data.json_params, storage_data.cfn_params
+        bucket_name, mock_artifact_dir, pcluster_config_mock, storage_data.json_params, storage_data.cfn_params
     )
     assert_that(bucket_name).is_equal_to(expected_bucket_name)
+    assert_that(artifact_dir).is_equal_to(mock_artifact_dir)
+    assert_that(remove_bucket).is_equal_to(expected_remove_bucket)
 
 
-def test_create_bucket_with_resources_creation_failure(mocker, caplog):
+def test_setup_bucket_with_resources_creation_failure(mocker, caplog):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of bucket creation failure."""
     region = "eu-west-1"
     bucket_name = "parallelcluster-123"
+    mock_artifact_dir = "artifact_dir"
+    stack_name = "test-stack"
     error = "BucketAlreadyExists"
     client_error = ClientError({"Error": {"Code": error}}, "create_bucket")
 
-    mocker.patch("pcluster.utils.generate_random_bucket_name", return_value=bucket_name)
+    mocker.patch("pcluster.utils.generate_random_name_with_prefix", side_effect=[mock_artifact_dir, bucket_name])
     mocker.patch("pcluster.utils.create_s3_bucket", side_effect=client_error)
     mocker.patch("pcluster.utils.upload_resources_artifacts")
-    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
+    cleanup_s3_mock = mocker.patch("pcluster.utils.cleanup_s3_resources")
 
     pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data, {})
-    delete_s3_bucket_mock.assert_not_called()
+        _setup_bucket_with_resources(pcluster_config_mock, storage_data, stack_name, {})
+    cleanup_s3_mock.assert_not_called()
     assert_that(caplog.text).contains("Unable to create S3 bucket")
 
 
-def test_create_bucket_with_resources_upload_failure(mocker, caplog):
+@pytest.mark.parametrize(
+    ("mock_generated_bucket_name", "expected_bucket_name", "provided_bucket_name", "expected_remove_bucket"),
+    [
+        ("parallelcluster-123", "parallelcluster-123", None, True),
+        (None, "user-provided-bucket", "user-provided-bucket", False),
+    ],
+)
+def test_setup_bucket_with_resources_upload_failure(
+    mocker, caplog, mock_generated_bucket_name, expected_bucket_name, provided_bucket_name, expected_remove_bucket
+):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of upload failure."""
     region = "eu-west-1"
-    bucket_name = "parallelcluster-123"
+    mock_artifact_dir = "artifact_dir"
+    stack_name = "test-stack"
     error = "ExpiredToken"
     client_error = ClientError({"Error": {"Code": error}}, "upload_fileobj")
 
-    mocker.patch("pcluster.utils.generate_random_bucket_name", return_value=bucket_name)
+    mocker.patch(
+        "pcluster.utils.generate_random_name_with_prefix", side_effect=[mock_artifact_dir, mock_generated_bucket_name]
+    )
     mocker.patch("pcluster.utils.create_s3_bucket")
+    check_bucket_mock = mocker.patch("pcluster.utils.check_s3_bucket_exists")
     mocker.patch("pcluster.utils.upload_resources_artifacts", side_effect=client_error)
-    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket")
+    cleanup_s3_mock = mocker.patch("pcluster.utils.cleanup_s3_resources")
 
-    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
+    pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region, provided_bucket_name)
     storage_data = pcluster_config_mock.to_storage()
 
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data, {})
+        _setup_bucket_with_resources(pcluster_config_mock, storage_data, stack_name, {})
+    if provided_bucket_name:
+        check_bucket_mock.assert_called_with(provided_bucket_name)
+    else:
+        check_bucket_mock.assert_not_called()
     # if resource upload fails we delete the bucket
-    delete_s3_bucket_mock.assert_called_with(bucket_name)
+    cleanup_s3_mock.assert_called_with(expected_bucket_name, mock_artifact_dir, expected_remove_bucket)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
 
 
-def test_create_bucket_with_resources_deletion_failure(mocker, caplog):
+def test_setup_bucket_with_resources_deletion_failure(mocker, caplog):
     """Verify that create_bucket_with_batch_resources behaves as expected in case of deletion failure."""
     region = "eu-west-1"
     bucket_name = "parallelcluster-123"
+    mock_artifact_dir = "artifact_dir"
+    stack_name = "test-stack"
     error = "AccessDenied"
     client_error = ClientError({"Error": {"Code": error}}, "delete")
 
-    mocker.patch("pcluster.utils.generate_random_bucket_name", return_value=bucket_name)
+    mocker.patch("pcluster.utils.generate_random_name_with_prefix", side_effect=[mock_artifact_dir, bucket_name])
     mocker.patch("pcluster.utils.create_s3_bucket")
     # to check bucket deletion we need to trigger a failure in the upload
     mocker.patch("pcluster.utils.upload_resources_artifacts", side_effect=client_error)
-    delete_s3_bucket_mock = mocker.patch("pcluster.utils.delete_s3_bucket", side_effect=client_error)
+    cleanup_s3_mock = mocker.patch("pcluster.utils.delete_s3_artifacts", side_effect=client_error)
 
     pcluster_config_mock = _mock_pcluster_config(mocker, "slurm", region)
     storage_data = pcluster_config_mock.to_storage()
 
     # force upload failure to trigger a bucket deletion and then check the behaviour when the deletion fails
     with pytest.raises(ClientError, match=error):
-        _create_bucket_with_resources(pcluster_config_mock, storage_data, {})
-    delete_s3_bucket_mock.assert_called_with(bucket_name)
+        _setup_bucket_with_resources(pcluster_config_mock, storage_data, stack_name, {})
+    cleanup_s3_mock.assert_called_with(bucket_name, mock_artifact_dir)
     assert_that(caplog.text).contains("Unable to upload cluster resources to the S3 bucket")
 
 

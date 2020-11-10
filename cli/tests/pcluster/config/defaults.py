@@ -144,6 +144,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
     "network_interfaces_count": ["1", "1"],
+    "cluster_resource_bucket": None,
 }
 
 DEFAULT_CLUSTER_HIT_DICT = {
@@ -192,6 +193,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "cluster_config_metadata": {"sections": {}},
     "architecture": "x86_64",
     "network_interfaces_count": ["1", "1"],
+    "cluster_resource_bucket": None,  # cluster_resource_bucket no default, but this is here to make testing easier
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -224,11 +226,11 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 60
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 61
 CFN_HIT_CONFIG_NUM_OF_PARAMS = 52
 
 # CFN parameters created by the pcluster CLI
-CFN_CLI_RESERVED_PARAMS = ["ResourcesS3Bucket"]
+CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]
 
 
 DEFAULT_SCALING_CFN_PARAMS = {"ScaleDownIdleTime": "10"}
@@ -303,7 +305,9 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "NumberOfEBSVol": "1",
     "Cores": "NONE,NONE,NONE,NONE",
     "IntelHPCPlatform": "false",
-    # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
+    "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
+    # "ArtifactS3RootDirectory": "NONE",  # parameter added by the CLI
+    # "RemoveBucketOnDeletion": "NONE",  # parameter added by the CLI
     # scaling
     "ScaleDownIdleTime": "10",
     # vpc
@@ -370,7 +374,9 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "NumberOfEBSVol": "1",
     "Cores": "NONE,NONE,NONE,NONE",
     "IntelHPCPlatform": "false",
-    # "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
+    "ResourcesS3Bucket": "NONE",  # parameter added by the CLI
+    # "ArtifactS3RootDirectory": "NONE",  # parameter added by the CLI
+    # "RemoveBucketOnDeletion": "NONE",  # parameter added by the CLI
     # scaling
     "ScaleDownIdleTime": "10",
     # vpc

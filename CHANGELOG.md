@@ -11,6 +11,8 @@ CHANGELOG
 - Enable support for AWS Batch scheduler in GovCloud regions.
 - Add support for P4d instance type 
 - Add ``-r/-region`` arg to ``pcluster configure``. If this arg is provided, configuration will skip region selection.
+- Add `cluster_resource_bucket` parameter under `cluster` section of cluster config to allow using user-provided bucket 
+  for hosting S3 resources used by cluster
 
 **CHANGES**
 

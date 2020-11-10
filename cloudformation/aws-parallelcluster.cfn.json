@@ -304,7 +304,15 @@
       "Default": "NONE"
     },
     "ResourcesS3Bucket": {
-      "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion.",
+      "Description": "S3 bucket where resources needed by the stack are located. The bucket gets deleted on stack deletion if it is not user-provided.",
+      "Type": "String"
+    },
+    "ArtifactS3RootDirectory": {
+      "Description": "Root directory in S3 bucket where cluster artifacts are stored, i.e. cluster artifacts would be under {ResourcesS3Bucket}/{ArtifactS3RootDirectory}.",
+      "Type": "String"
+    },
+    "RemoveBucketOnDeletion": {
+      "Description": "Parameter to control if bucket is removed on cluster deletion. pcluster created buckets are alway removed, user provided buckets are kept.",
       "Type": "String"
     },
     "RAIDOptions": {
@@ -776,6 +784,14 @@
           "Ref": "Architecture"
         },
         "arm64"
+      ]
+    },
+    "UseProvidedResourcesS3Bucket": {
+      "Fn::Equals": [
+        {
+          "Ref": "RemoveBucketOnDeletion"
+        },
+        "False"
       ]
     }
   },
@@ -1645,7 +1661,7 @@
               "Effect": "Allow",
               "Resource": [
                 {
-                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/batch/*"
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/batch/*"
                 }
               ]
             },
@@ -1737,13 +1753,24 @@
             {
               "Sid": "ResourcesS3Bucket",
               "Effect": "Allow",
-              "Action": "s3:*",
+              "Action": {
+                "Fn::If": [
+                  "UseProvidedResourcesS3Bucket",
+                  [
+                    "s3:ListBucket",
+                    "s3:ListBucketVersions",
+                    "s3:GetObject*",
+                    "s3:PutObject*"
+                  ],
+                  "s3:*"
+                ]
+              },
               "Resource": [
                 {
                   "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
                 },
                 {
-                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
+                  "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*"
                 }
               ]
             },
@@ -2284,6 +2311,9 @@
           "ResourcesS3Bucket": {
             "Ref": "ResourcesS3Bucket"
           },
+          "ArtifactS3RootDirectory": {
+            "Ref": "ArtifactS3RootDirectory"
+          },
           "SharedDir": {
             "Ref": "SharedDir"
           },
@@ -2401,20 +2431,31 @@
                   "Sid": "CloudWatchLogsPolicy"
                 },
                 {
-                  "Action": [
-                    "s3:DeleteBucket",
-                    "s3:DeleteObject",
-                    "s3:DeleteObjectVersion",
-                    "s3:ListBucket",
-                    "s3:ListBucketVersions"
-                  ],
+                  "Action": {
+                    "Fn::If": [
+                      "UseProvidedResourcesS3Bucket",
+                      [
+                        "s3:DeleteObject",
+                        "s3:DeleteObjectVersion",
+                        "s3:ListBucket",
+                        "s3:ListBucketVersions"
+                      ],
+                      [
+                        "s3:DeleteBucket",
+                        "s3:DeleteObject",
+                        "s3:DeleteObjectVersion",
+                        "s3:ListBucket",
+                        "s3:ListBucketVersions"
+                      ]
+                    ]
+                  },
                   "Effect": "Allow",
                   "Resource": [
                     {
                       "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}"
                     },
                     {
-                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/*"
+                      "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*"
                     }
                   ],
                   "Sid": "S3BucketPolicy"
@@ -2472,7 +2513,13 @@
         "ResourcesS3Bucket": {
           "Ref": "ResourcesS3Bucket"
         },
-        "Action": "DELETE_S3_BUCKET",
+        "ArtifactS3RootDirectory": {
+          "Ref": "ArtifactS3RootDirectory"
+        },
+        "RemoveBucketOnDeletion": {
+          "Ref": "RemoveBucketOnDeletion"
+        },
+        "Action": "DELETE_S3_ARTIFACTS",
         "ServiceToken": {
           "Fn::GetAtt": [
             "CleanupResourcesFunction",
@@ -2528,7 +2575,9 @@
           "S3Bucket": {
             "Ref": "ResourcesS3Bucket"
           },
-          "S3Key": "custom_resources_code/artifacts.zip"
+          "S3Key": {
+            "Fn::Sub": "${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip"
+          }
         },
         "Handler": "cleanup_resources.handler",
         "MemorySize": 128,
@@ -3059,6 +3108,9 @@
           },
           "ResourcesS3Bucket": {
             "Ref": "ResourcesS3Bucket"
+          },
+          "ArtifactS3RootDirectory": {
+            "Ref": "ArtifactS3RootDirectory"
           },
           "DependsOnCustomResources": {
             "Fn::If": [
@@ -3895,11 +3947,14 @@
           },
           "ResourcesS3Bucket": {
             "Ref": "ResourcesS3Bucket"
+          },
+          "ArtifactS3RootDirectory": {
+            "Ref": "ArtifactS3RootDirectory"
           }
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/templates/compute-fleet-hit-substack.rendered.cfn.yaml",
+            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/${ArtifactS3RootDirectory}/templates/compute-fleet-hit-substack.rendered.cfn.yaml",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4000,7 +4055,7 @@
         },
         "TemplateURL": {
           "Fn::Sub": [
-            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/templates/cw-dashboard-substack.rendered.cfn.yaml",
+            "https://${ResourcesS3Bucket}.s3.${AWS::Region}.${s3_url}/${ArtifactS3RootDirectory}/templates/cw-dashboard-substack.rendered.cfn.yaml",
             {
               "s3_url": {
                 "Fn::FindInMap": [
@@ -4090,6 +4145,12 @@
       "Description": "S3 user bucket where AWS ParallelCluster resources are stored",
       "Value": {
         "Ref": "ResourcesS3Bucket"
+      }
+    },
+    "ArtifactS3RootDirectory": {
+      "Description": "Root directory in S3 bucket where cluster artifacts are stored",
+      "Value": {
+        "Ref": "ArtifactS3RootDirectory"
       }
     },
     "BatchComputeEnvironmentArn": {

@@ -354,8 +354,8 @@ def _generate_stack_event():
 @pytest.mark.parametrize(
     "bucket_prefix", ["test", "test-", "prefix-63-characters-long--------------------------------to-cut"]
 )
-def test_generate_random_bucket_name(bucket_prefix):
-    bucket_name = utils.generate_random_bucket_name(bucket_prefix)
+def test_generate_random_name_with_prefix(bucket_prefix):
+    bucket_name = utils.generate_random_name_with_prefix(bucket_prefix)
     max_bucket_name_length = 63
     random_suffix_length = 17  # 16 digits + 1 separator
 

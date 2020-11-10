@@ -106,6 +106,8 @@ Parameters:
     Type: String
   ResourcesS3Bucket:
     Type: String
+  ArtifactS3RootDirectory:
+    Type: String
   DependsOnCustomResources:
     Type: String
     Description: This is needed to set a conditional dependency on the TerminateComputeFleetCustomResource
@@ -595,7 +597,7 @@ Resources:
                       "enable_intel_hpc_platform": "${IntelHPCPlatform}",
                       "cfn_cluster_cw_logging_enabled": "${CWLoggingEnabled}",
                       "cluster_s3_bucket": "${ResourcesS3Bucket}",
-                      "cluster_config_s3_key": "configs/cluster-config.json",
+                      "cluster_config_s3_key": "${ArtifactS3RootDirectory}/configs/cluster-config.json",
                       "cluster_config_version": "${HITConfigVersion}"
                     },
                     "run_list": "recipe[aws-parallelcluster::${Scheduler}_config]"

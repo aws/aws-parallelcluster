@@ -95,6 +95,7 @@ from pcluster.config.validators import (
     queue_settings_validator,
     queue_validator,
     raid_volume_iops_validator,
+    s3_bucket_uri_validator,
     s3_bucket_validator,
     scheduler_validator,
     shared_dir_validator,
@@ -495,11 +496,11 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("export_path", {
-                "validators": [s3_bucket_validator],
+                "validators": [s3_bucket_uri_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("import_path", {
-                "validators": [s3_bucket_validator],
+                "validators": [s3_bucket_uri_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
@@ -993,6 +994,11 @@ CLUSTER_COMMON_PARAMS = [
         # This param is managed automatically
         "update_policy": UpdatePolicy.IGNORED,
         "visibility": Visibility.PRIVATE,
+    }),
+    ("cluster_resource_bucket", {
+        "cfn_param_mapping": "ResourcesS3Bucket",
+        "validators": [s3_bucket_validator],
+        "update_policy": UpdatePolicy.IGNORED,
     }),
 ]
 
