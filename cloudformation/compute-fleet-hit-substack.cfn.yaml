@@ -84,6 +84,8 @@ Parameters:
     Type: String
   ResourcesS3Bucket:
     Type: String
+  ArtifactS3RootDirectory:
+    Type: String
 Conditions:
   UseProxy: !Not
     - !Equals
@@ -526,7 +528,7 @@ Resources:
               - !Ref 'AWS::StackId'
       Code:
         S3Bucket: !Ref 'ResourcesS3Bucket'
-        S3Key: custom_resources_code/artifacts.zip
+        S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
       Handler: cleanup_resources.handler
       MemorySize: 128
       Role: !GetAtt 'CleanupRoute53FunctionExecutionRole.Arn'
@@ -577,7 +579,7 @@ Resources:
     Properties:
       Code:
         S3Bucket: !Ref 'ResourcesS3Bucket'
-        S3Key: custom_resources_code/artifacts.zip
+        S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
       Handler: wait_for_update.handler
       MemorySize: 128
       Role: !GetAtt 'UpdateWaiterFunctionExecutionRole.Arn'

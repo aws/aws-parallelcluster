@@ -70,7 +70,11 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
     [
         (
             # ResourceS3Bucket available
-            {"Scheduler": "slurm", "ResourcesS3Bucket": "valid_bucket"},
+            {
+                "Scheduler": "slurm",
+                "ResourcesS3Bucket": "valid_bucket",
+                "ArtifactS3RootDirectory": "valid_dir",
+            },
             "2.9.0",
             {"test_key": "test_value"},
         ),

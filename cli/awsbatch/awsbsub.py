@@ -537,7 +537,7 @@ def main():
 
         # generate an internal unique job-id
         job_key = _generate_unique_job_key(job_name)
-        job_s3_folder = "batch/{0}/".format(job_key)
+        job_s3_folder = "{prefix}/batch/{job_key}/".format(prefix=config.artifact_directory, job_key=job_key)
         # upload script, if needed, and get related command
         command = _upload_and_get_command(boto3_factory, args, job_s3_folder, job_name, config, log)
         # parse and validate depends_on parameter

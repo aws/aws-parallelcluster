@@ -507,15 +507,17 @@ class PclusterConfig(object):
         json_config = None
         if is_hit_enabled_cluster(cfn_stack):
             s3_bucket_name = get_cfn_param(cfn_stack.get("Parameters"), "ResourcesS3Bucket")
-
+            artifact_directory = get_cfn_param(cfn_stack.get("Parameters"), "ArtifactS3RootDirectory")
             if not s3_bucket_name or s3_bucket_name == "NONE":
                 self.error("Unable to retrieve configuration: ResourceS3Bucket not available.")
+            if not artifact_directory or artifact_directory == "NONE":
+                self.error("Unable to retrieve configuration: ArtifactS3RootDirectory not available.")
 
-            json_config = self.__retrieve_cluster_config(s3_bucket_name)
+            json_config = self.__retrieve_cluster_config(s3_bucket_name, artifact_directory)
 
         return json_config
 
-    def __retrieve_cluster_config(self, bucket):
+    def __retrieve_cluster_config(self, bucket, artifact_directory):
         table = boto3.resource("dynamodb").Table(get_stack_name(self.cluster_name))
         config_version = None  # Use latest if not found
         try:
@@ -527,11 +529,17 @@ class PclusterConfig(object):
 
         try:
             config_version_args = {"VersionId": config_version} if config_version else {}
-            s3_object = boto3.resource("s3").Object(bucket, "configs/cluster-config.json")
+            s3_object = boto3.resource("s3").Object(
+                bucket, "{prefix}/configs/cluster-config.json".format(prefix=artifact_directory)
+            )
             json_str = s3_object.get(**config_version_args)["Body"].read().decode("utf-8")
             return json.loads(json_str, object_pairs_hook=OrderedDict)
         except Exception as e:
-            self.error("Unable to load configuration from bucket '{0}'.\n{1}".format(bucket, e))
+            self.error(
+                "Unable to load configuration from bucket '{bucket}/{prefix}'.\n{error}".format(
+                    bucket=bucket, prefix=artifact_directory, error=e
+                )
+            )
 
     def __test_configuration(self):  # noqa: C901
         """

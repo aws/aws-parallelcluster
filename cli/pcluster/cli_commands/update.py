@@ -56,12 +56,15 @@ def execute(args):
 
         s3_bucket_name = cfn_params["ResourcesS3Bucket"]
         tags = _get_target_config_tags_list(target_config)
+        artifact_directory = cfn_params["ArtifactS3RootDirectory"]
 
         is_hit = utils.is_hit_enabled_cluster(base_config.cfn_stack)
         template_url = None
         if is_hit:
             try:
-                upload_hit_resources(s3_bucket_name, target_config, target_config.to_storage().json_params, tags)
+                upload_hit_resources(
+                    s3_bucket_name, artifact_directory, target_config, target_config.to_storage().json_params, tags
+                )
             except Exception:
                 utils.error("Failed when uploading resources to cluster S3 bucket {0}".format(s3_bucket_name))
             template_url = evaluate_pcluster_template_url(target_config)
@@ -69,6 +72,7 @@ def execute(args):
         try:
             upload_dashboard_resource(
                 s3_bucket_name,
+                artifact_directory,
                 target_config,
                 target_config.to_storage().json_params,
                 target_config.to_storage().cfn_params,
@@ -243,9 +247,11 @@ def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, tar
     elif scheduler == "awsbatch":
         LOGGER.info("reset_desired flag does not work with awsbatch scheduler")
 
-    # Autofill ResourcesS3Bucket cfn param
+    # Autofill S3 bucket related cfn param
     params = utils.get_stack(stack_name, cfn_boto3_client).get("Parameters")
     cfn_params["ResourcesS3Bucket"] = utils.get_cfn_param(params, "ResourcesS3Bucket")
+    cfn_params["ArtifactS3RootDirectory"] = utils.get_cfn_param(params, "ArtifactS3RootDirectory")
+    cfn_params["RemoveBucketOnDeletion"] = utils.get_cfn_param(params, "RemoveBucketOnDeletion")
 
 
 def _restore_desired_size(cfn_params, stack_name, scheduler):

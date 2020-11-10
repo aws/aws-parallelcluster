@@ -702,7 +702,7 @@ def s3_uri_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def s3_bucket_validator(param_key, param_value, pcluster_config):
+def s3_bucket_uri_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
 
@@ -711,30 +711,56 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
             bucket = get_bucket_name_from_s3_url(param_value)
             boto3.client("s3").head_bucket(Bucket=bucket)
         except ClientError as client_error:
-            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-                errors.append(
-                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-                        param_value, client_error.response.get("Error").get("Message")
-                    )
-                )
-            elif client_error.response.get("Error").get("Code") == "AccessDenied":
-                errors.append(
-                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
-                        param_value, client_error.response.get("Error").get("Message")
-                    )
-                )
-            else:
-                errors.append(
-                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-                        param_value, client_error.response.get("Error").get("Message")
-                    )
-                )
+            _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
     else:
         errors.append(
             "The value '{0}' used for the parameter '{1}' is not a valid S3 URI.".format(param_value, param_key)
         )
 
     return errors, warnings
+
+
+def s3_bucket_validator(param_key, param_value, pcluster_config):
+    """Validate S3 bucket can be used to store cluster artifacts."""
+    errors = []
+    warnings = []
+    s3_client = boto3.client("s3")
+    try:
+        s3_client.head_bucket(Bucket=param_value)
+        # Check versioning is enabled on the bucket
+        response = s3_client.get_bucket_versioning(Bucket=param_value)
+        if response.get("Status") != "Enabled":
+            errors.append(
+                (
+                    "The S3 bucket {0} specified cannot be used by cluster "
+                    "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning."
+                ).format(param_value, response.get("Status"))
+            )
+    except ClientError as client_error:
+        _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
+
+    return errors, warnings
+
+
+def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors):
+    if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+        errors.append(
+            "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                bucket_name, client_error.response.get("Error").get("Message")
+            )
+        )
+    elif client_error.response.get("Error").get("Code") == "AccessDenied":
+        errors.append(
+            "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                bucket_name, client_error.response.get("Error").get("Message")
+            )
+        )
+    else:
+        errors.append(
+            "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                bucket_name, client_error.response.get("Error").get("Message")
+            )
+        )
 
 
 def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
