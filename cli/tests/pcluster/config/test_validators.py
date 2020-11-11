@@ -99,12 +99,13 @@ def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
         ("awsbatch", "t2", None),  # t2 family
         ("awsbatch", "optimal", None),
         ("sge", "p4d.24xlarge", "has 4 Network Interfaces."),
+        ("slurm", "p4d.24xlarge", None),
     ],
 )
 def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message):
     config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
     extra_patches = {
-        "pcluster.config.cfn_param_types.get_instance_network_interfaces": 4 if instance_type == "p4d.s4xlarge" else 1,
+        "pcluster.config.validators.get_instance_network_interfaces": 4 if instance_type == "p4d.24xlarge" else 1,
     }
     utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
 

@@ -373,7 +373,7 @@ Resources:
           - !If
             - UseNIC2
             - DeviceIndex: 2
-              NetworkCardIndex: 1
+              NetworkCardIndex: 2
               Groups: !Ref 'MasterSecurityGroups'
               SubnetId: !Ref 'MasterSubnetId'
             - !Ref 'AWS::NoValue'
