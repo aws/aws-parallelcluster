@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-import json
 import logging
 import re
 import urllib.error
@@ -16,9 +15,7 @@ import urllib.request
 from urllib.parse import urlparse
 
 import boto3
-import pkg_resources
 from botocore.exceptions import ClientError
-from jinja2 import Environment, FileSystemLoader
 
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.dcv.utils import get_supported_dcv_os
@@ -516,38 +513,6 @@ def ec2_key_pair_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def ec2_iam_role_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        iam = boto3.client("iam")
-        arn = iam.get_role(RoleName=param_value).get("Role").get("Arn")
-        account_id = boto3.client("sts", endpoint_url=_get_sts_endpoint()).get_caller_identity().get("Account")
-        scheduler = pcluster_config.get_section("cluster").get_param_value("scheduler")
-        # To-do: Add logic to handle user provided bucket in the future
-        cluster_bucket_name = "parallelcluster-*"
-        iam_policy = _get_pcluster_instance_policy(
-            scheduler, get_partition(), get_region(), account_id, cluster_bucket_name
-        )
-
-        for actions, resource_arn in iam_policy:
-            response = iam.simulate_principal_policy(
-                PolicySourceArn=arn, ActionNames=actions, ResourceArns=resource_arn
-            )
-            for decision in response.get("EvaluationResults"):
-                if decision.get("EvalDecision") != "allowed":
-                    errors.append(
-                        "IAM role error on user provided role {0}: action {1} is {2}.\n"
-                        "See https://docs.aws.amazon.com/parallelcluster/latest/ug/iam.html".format(
-                            param_value, decision.get("EvalActionName"), decision.get("EvalDecision")
-                        )
-                    )
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
 def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
@@ -561,22 +526,6 @@ def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
         errors.append(e.response.get("Error").get("Message"))
 
     return errors, warnings
-
-
-def _get_pcluster_instance_policy(scheduler, partition, region, account_id, cluster_bucket_name):
-    """Return instance policy applicable for chosen scheduler."""
-    # Load and render instance policy file with Jinja
-    # Policy file should be consistent with what is published in documentation
-    file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "../resources/iam_policy"))
-    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
-    policy_filename = "batch_instance_policy.json" if scheduler == "awsbatch" else "traditional_instance_policy.json"
-
-    rendered_policy = json.loads(
-        env.get_template(policy_filename).render(
-            partition=partition, region=region, account_id=account_id, cluster_bucket_name=cluster_bucket_name
-        )
-    )
-    return [(statement.get("Action"), statement.get("Resource")) for statement in rendered_policy.get("Statement")]
 
 
 def ec2_instance_type_validator(param_key, param_value, pcluster_config):

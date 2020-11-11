@@ -35,11 +35,11 @@ CHANGELOG
   2. ``AWS_DEFAULT_REGION`` environment variable.
   3. ``aws_region_name`` in parallelcluster config file
   4. ``region`` in aws config file.
+- Remove validation on ``ec2_iam_role`` parameter.
 
 **BUG FIXES**
 
 - Fix cfn_scheduler_slots don't update when updating compute instance type by ``pcluster update``. 
-- Fix ec2_iam_role validation to check for updated instance policies published in official documentation.
 
 2.9.1
 -----
