@@ -67,7 +67,6 @@ from pcluster.config.validators import (
     ebs_volume_type_size_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
-    ec2_iam_role_validator,
     ec2_instance_type_validator,
     ec2_key_pair_validator,
     ec2_placement_group_validator,
@@ -801,7 +800,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("ec2_iam_role", {
         "cfn_param_mapping": "EC2IAMRoleName",
-        "validators": [ec2_iam_role_validator],  # TODO add regex
         "update_policy": UpdatePolicy.SUPPORTED
     }),
     ("s3_read_resource", {
