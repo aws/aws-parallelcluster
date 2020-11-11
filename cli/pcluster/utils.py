@@ -258,7 +258,7 @@ def upload_resources_artifacts(bucket_name, root):
             bucket.upload_file(os.path.join(root, res), res)
 
 
-def get_instance_vcpus(instance_type):
+def get_instance_vcpus(instance_type, instance_info=None):
     """
     Get number of vcpus for the given instance type.
 
@@ -266,8 +266,10 @@ def get_instance_vcpus(instance_type):
     :return: the number of vcpus or -1 if the instance type cannot be found
     """
     try:
-        instance_type_info = get_instance_type(instance_type)
-        vcpus_info = instance_type_info.get("VCpuInfo")
+        if not instance_info:
+            instance_info = get_instance_type(instance_type)
+
+        vcpus_info = instance_info.get("VCpuInfo")
         vcpus = vcpus_info.get("DefaultVCpus")
     except (ClientError):
         vcpus = -1

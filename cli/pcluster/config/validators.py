@@ -25,6 +25,7 @@ from pcluster.utils import (
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
+    get_instance_network_interfaces,
     get_instance_vcpus,
     get_partition,
     get_region,
@@ -1065,6 +1066,15 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
                     )
     else:
         errors, warnings = ec2_instance_type_validator(param_key, param_value, pcluster_config)
+
+        instance_nics = get_instance_network_interfaces(param_value)
+        if instance_nics > 1:
+            errors.append(
+                "The instance type '{0}' has {1} Network Interfaces. "
+                "Instances with multiple network interfaces are currently not supported with '{2}' scheduler".format(
+                    param_value, instance_nics, scheduler
+                )
+            )
 
     return errors, warnings
 

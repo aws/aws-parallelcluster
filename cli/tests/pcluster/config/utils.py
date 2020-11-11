@@ -102,7 +102,7 @@ def assert_param_from_file(
 def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
     """Return mocks for a set of functions that should be mocked by default because they access the network."""
     architectures = ["x86_64"]
-    master_instances = ["t2.micro", "t2.large", "c4.xlarge"]
+    master_instances = ["t2.micro", "t2.large", "c4.xlarge", "p4d.24xlarge"]
     compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else master_instances
     patches = {
         "pcluster.config.validators.get_supported_instance_types": master_instances,
