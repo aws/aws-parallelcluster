@@ -462,11 +462,13 @@ AVAILABILITY_ZONE_OVERRIDES = {
     # c5.xlarge is not supported in use1-az3
     # FSx Lustre file system creation is currently not supported for use1-az3
     # m6g.xlarge is not supported in use1-az2 or use1-az3
-    "us-east-1": ["use1-az6", "use1-az1", "use1-az4", "use1-az5"],
+    # p4d.24xlarge is only available on use1-az6
+    "us-east-1": ["use1-az6"],
     # m6g.xlarge is not supported in use2-az1
     "us-east-2": ["use2-az2", "use2-az3"],
     # c4.xlarge is not supported in usw2-az4
-    "us-west-2": ["usw2-az2", "usw2-az1", "usw2-az3"],
+    # p4d.24xlarge is only available on uw2-az2
+    "us-west-2": ["usw2-az2"],
     # c5.xlarge is not supported in apse2-az3
     "ap-southeast-2": ["apse2-az1", "apse2-az2"],
     # m6g.xlarge is not supported in apne1-az2
