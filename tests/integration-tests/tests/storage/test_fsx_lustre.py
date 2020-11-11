@@ -370,7 +370,9 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(task.get("Lifecycle")).is_equal_to("SUCCEEDED")
 
     remote_command_executor.run_remote_command(
-        "aws s3 cp s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(bucket_name=bucket_name)
+        "aws s3 cp --region {region} s3://{bucket_name}/export_dir/file_to_export ./file_to_export".format(
+            region=region, bucket_name=bucket_name
+        )
     )
     result = remote_command_executor.run_remote_command("cat ./file_to_export")
     assert_that(result.stdout).is_equal_to(file_contents)
