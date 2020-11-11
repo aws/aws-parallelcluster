@@ -194,6 +194,10 @@ test-suites:
           instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
+        - regions: ["us-east-1"]
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux2", "ubuntu1604", "centos8"]
+          schedulers: ["slurm"]
     test_efa.py::test_sit_efa:
       dimensions:
         - regions: ["us-east-1"]
@@ -202,6 +206,11 @@ test-suites:
           # Torque is not supported by OpenMPI distributed with EFA
           # Slurm test is to verify EFA works correctly when using the SIT model in the config file
           schedulers: ["sge", "slurm"]
+          # P4d instances are currently not supported in SIT clusters
+        - regions: ["us-west-2"]
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux", "ubuntu1804", "centos7"]
+          schedulers: ["slurm"]
   iam_policies:
     test_iam_policies.py::test_iam_policies:
       dimensions:
@@ -524,3 +533,14 @@ test-suites:
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["centos7"]
           schedulers: ["sge"]
+  multiple_nics:
+    test_multiple_nics.py::test_multiple_nics:
+      dimensions:
+        - regions: ["us-west-2"]
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux2", "ubuntu1604", "centos8"]
+          schedulers: ["slurm"]
+        - regions: ["us-east-1"]
+          instances: ["p4d.24xlarge"]
+          oss: ["alinux", "ubuntu1804", "centos7"]
+          schedulers: ["slurm"]

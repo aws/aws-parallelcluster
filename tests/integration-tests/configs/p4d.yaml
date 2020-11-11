@@ -1,5 +1,5 @@
 {%- import 'common.jinja2' as common -%}
-  {%- set regions = ["us-east-1"] -%}
+  {%- set regions = ["us-east-1", "us-west-2"] -%}
   {%- set instances = ["p4d.24xlarge"] -%}
 
 ---
@@ -11,7 +11,7 @@ test-suites:
           instances: {{ instances }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
           # Torque is not supported by OpenMPI distributed with EFA
-          schedulers: ["sge", "slurm"]
+          schedulers: ["slurm"]
   dns:
     test_dns.py::test_hit_no_cluster_dns_mpi:
       dimensions:
@@ -31,11 +31,11 @@ test-suites:
         - regions: {{ regions }}
           instances: {{ instances }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
         - regions: {{ regions }}
           instances: {{ instances }}
           oss: {{ common.OSS_COMMERCIAL_X86 }}
-          schedulers: ["slurm", "sge"]
+          schedulers: ["slurm"]
