@@ -33,6 +33,7 @@ import boto3
 import pkg_resources
 from botocore.exceptions import ClientError, EndpointConnectionError
 from jinja2 import BaseLoader, Environment
+from pkg_resources import packaging
 
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatus, ComputeFleetStatusManager
 from pcluster.constants import PCLUSTER_STACK_PREFIX, SUPPORTED_ARCHITECTURES
@@ -1089,8 +1090,10 @@ def is_hit_enabled_scheduler(scheduler):
 
 def is_hit_enabled_cluster(cfn_stack):
     scheduler = get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
-    version = get_stack_version(cfn_stack)
-    return is_hit_enabled_scheduler(scheduler) and version >= "2.9.0"
+    stack_version = get_stack_version(cfn_stack)
+    return is_hit_enabled_scheduler(scheduler) and packaging.version.parse(stack_version) >= packaging.version.parse(
+        "2.9.0"
+    )
 
 
 def read_remote_file(url):

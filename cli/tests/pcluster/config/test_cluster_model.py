@@ -27,6 +27,14 @@ from pcluster.cluster_model import ClusterModel, infer_cluster_model
             {},
             {
                 "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "slurm"}],
+                "Tags": [{"Key": "Version", "Value": "2.10.0"}],
+            },
+            ClusterModel.HIT,
+        ),
+        (
+            {},
+            {
+                "Parameters": [{"ParameterKey": "Scheduler", "ParameterValue": "slurm"}],
                 "Tags": [{"Key": "Version", "Value": "2.9.0"}],
             },
             ClusterModel.HIT,
