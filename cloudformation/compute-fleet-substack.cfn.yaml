@@ -249,6 +249,7 @@ Resources:
           - !If
             - UseNIC1
             - DeviceIndex: 1
+              NetworkCardIndex: 1
               InterfaceType: !If
                 - EnableEFA
                 - efa
@@ -259,6 +260,7 @@ Resources:
           - !If
             - UseNIC2
             - DeviceIndex: 2
+              NetworkCardIndex: 2
               InterfaceType: !If
                 - EnableEFA
                 - efa
@@ -269,6 +271,7 @@ Resources:
           - !If
             - UseNIC3
             - DeviceIndex: 3
+              NetworkCardIndex: 3
               InterfaceType: !If
                 - EnableEFA
                 - efa
@@ -599,6 +602,11 @@ Resources:
                 - DisableComputeHyperthreadingManually
                 - 'true'
                 - 'false'
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3002
 Outputs:
   ASGName:
     Value: !Ref 'ComputeFleet'

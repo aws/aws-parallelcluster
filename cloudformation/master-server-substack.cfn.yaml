@@ -123,10 +123,6 @@ Parameters:
   MasterSecurityGroups:
     Type: List<AWS::EC2::SecurityGroup::Id>
 Conditions:
-  EnableEFA: !Not
-    - !Equals
-      - !Ref 'EFA'
-      - NONE
   DisableMasterHyperthreading: !Not
     - !Or
       - !Equals
@@ -371,7 +367,6 @@ Resources:
             - UseNIC1
             - DeviceIndex: 1
               NetworkCardIndex: 1
-              InterfaceType: !Ref 'AWS::NoValue'
               Groups: !Ref 'MasterSecurityGroups'
               SubnetId: !Ref 'MasterSubnetId'
             - !Ref 'AWS::NoValue'
@@ -379,10 +374,6 @@ Resources:
             - UseNIC2
             - DeviceIndex: 2
               NetworkCardIndex: 1
-              InterfaceType: !If
-                - EnableEFA
-                - efa
-                - !Ref 'AWS::NoValue'
               Groups: !Ref 'MasterSecurityGroups'
               SubnetId: !Ref 'MasterSubnetId'
             - !Ref 'AWS::NoValue'
@@ -390,10 +381,6 @@ Resources:
             - UseNIC3
             - DeviceIndex: 3
               NetworkCardIndex: 3
-              InterfaceType: !If
-                - EnableEFA
-                - efa
-                - !Ref 'AWS::NoValue'
               Groups: !Ref 'MasterSecurityGroups'
               SubnetId: !Ref 'MasterSubnetId'
             - !Ref 'AWS::NoValue'
@@ -548,6 +535,10 @@ Resources:
                 - !Ref 'ProxyServer'
                 - 'false'
     Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - E3002
       Comment: AWS ParallelCluster Master server
       AWS::CloudFormation::Init:
         configSets:
