@@ -1178,10 +1178,6 @@ def get_instance_network_interfaces(instance_type, instance_info=None):
     # Until maximumNetworkCards is not available, 1 is a safe value for all instance types
     needed_interfaces = int(instance_info.get("NetworkInfo").get("MaximumNetworkCards", 1))
 
-    # FIXME: temporary patch for P4d instances - remove after new API is GA
-    if instance_type == "p4d.24xlarge" and needed_interfaces == 1:
-        needed_interfaces = 4
-
     return needed_interfaces
 
 
@@ -1194,8 +1190,5 @@ def get_instance_gpus(instance_type, instance_info=None):
 
     # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
     gpus = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")]) if gpu_info else 0
-    # FIXME: temporary patch for P4d instances - remove after new API is GA
-    if instance_type == "p4d.24xlarge" and gpus == 0:
-        gpus = 8
 
     return gpus
