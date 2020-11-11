@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.9.1",
+  "Description": "AWS ParallelCluster Template. Version: aws-parallelcluster-2.10.0",
   "Parameters": {
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
@@ -1154,8 +1154,8 @@
     },
     "PackagesVersions": {
       "default": {
-        "parallelcluster": "2.9.1",
-        "cookbook": "aws-parallelcluster-cookbook-2.9.1",
+        "parallelcluster": "2.10.0",
+        "cookbook": "aws-parallelcluster-cookbook-2.10.0",
         "chef": "15.11.8",
         "berkshelf": "7.0.10",
         "ami": "dev"
