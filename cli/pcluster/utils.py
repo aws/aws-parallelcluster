@@ -11,6 +11,9 @@
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
 from future import standard_library  # isort:skip
+
+from pcluster.cache import Cache
+
 standard_library.install_aliases()
 # fmt: on
 
@@ -1041,6 +1044,7 @@ def cluster_has_running_capacity(stack_name):
     return cluster_has_running_capacity.cached_result
 
 
+@Cache.cached
 def get_instance_type(instance_type):
     ec2_client = boto3.client("ec2")
     try:

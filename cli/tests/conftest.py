@@ -17,6 +17,8 @@ from jinja2 import Environment, FileSystemLoader
 def clear_env():
     if "AWS_DEFAULT_REGION" in os.environ:
         del os.environ["AWS_DEFAULT_REGION"]
+    # Disable functions cache for tests
+    os.environ["PCLUSTER_CACHE_DISABLED"] = "yes"
 
 
 @pytest.fixture
