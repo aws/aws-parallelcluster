@@ -1294,7 +1294,7 @@
               }
             ]
           },
-          "CreateCleanupRoute53FunctionLogGroup": {
+          "CreateHITSubstack": {
             "Fn::If": [
               "CreateHITSubstack",
               "true",
@@ -3658,6 +3658,19 @@
           },
           "MainStackName": {
             "Ref": "AWS::StackName"
+          },
+          "MainStackUniqueId": {
+            "Fn::Select": [
+              "2",
+              {
+                "Fn::Split": [
+                  "/",
+                  {
+                    "Ref": "AWS::StackId"
+                  }
+                ]
+              }
+            ]
           },
           "AttributesTagValue": {
             "Fn::Sub": [

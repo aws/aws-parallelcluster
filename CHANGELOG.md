@@ -42,6 +42,7 @@ CHANGELOG
 **BUG FIXES**
 
 - Fix cfn_scheduler_slots don't update when updating compute instance type by ``pcluster update``. 
+- Fix CloudWatch Log Group creation for AWS Lambda functions handling CloudFormation Custom Resources.
 
 2.9.1
 -----

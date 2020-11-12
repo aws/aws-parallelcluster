@@ -18,10 +18,10 @@
         "true"
       ]
     },
-    "CreateCleanupRoute53FunctionLogGroup": {
+    "CreateHITSubstackLogGroups": {
       "Fn::Equals": [
         {
-          "Ref": "CreateCleanupRoute53FunctionLogGroup"
+          "Ref": "CreateHITSubstack"
         },
         "true"
       ]
@@ -52,8 +52,8 @@
       "Description": "Final 36 digits of the main CloudFormation stack id",
       "Type": "String"
     },
-    "CreateCleanupRoute53FunctionLogGroup": {
-      "Description": "Set to true in order to create the log group for CreateCleanupRoute53Function",
+    "CreateHITSubstack": {
+      "Description": "Set to true in order to create the log groups for ComputeFleetHITSubstack",
       "Type": "String"
     },
     "CreateAWSBatchLogGroups": {
@@ -125,7 +125,29 @@
           ]
         }
       },
-      "Condition": "CreateCleanupRoute53FunctionLogGroup"
+      "Condition": "CreateHITSubstackLogGroups"
+    },
+    "UpdateWaiterFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": {
+          "Fn::Sub": "/aws/lambda/pcluster-UpdateWaiter-${MainStackUniqueId}"
+        },
+        "RetentionInDays": {
+          "Fn::Select": [
+            "1",
+            {
+              "Fn::Split": [
+                ",",
+                {
+                  "Ref": "CWLogOptions"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Condition": "CreateHITSubstackLogGroups"
     },
     "CodeBuildLogGroup": {
       "Type": "AWS::Logs::LogGroup",
