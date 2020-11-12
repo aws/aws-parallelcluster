@@ -78,6 +78,8 @@ EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "sc1": (500, 16 * 1024),
 }
 
+HEADNODE_UNSUPPORTED_INSTANCE_TYPES = ["p4d.24xlarge"]
+
 # Constants for section labels
 LABELS_MAX_LENGTH = 64
 LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
@@ -538,6 +540,15 @@ def ec2_instance_type_validator(param_key, param_value, pcluster_config):
                 param_value, param_key
             )
         )
+    return errors, warnings
+
+
+def head_node_instance_type_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value in HEADNODE_UNSUPPORTED_INSTANCE_TYPES:
+        errors.append("The instance type '{0}' is not supported as head node.".format(param_value))
     return errors, warnings
 
 

@@ -87,6 +87,7 @@ from pcluster.config.validators import (
     fsx_lustre_backup_validator,
     fsx_storage_capacity_validator,
     fsx_validator,
+    head_node_instance_type_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
@@ -772,7 +773,7 @@ CLUSTER_COMMON_PARAMS = [
     ("master_instance_type", {
         "default": "t2.micro",
         "cfn_param_mapping": "MasterInstanceType",
-        "validators": [ec2_instance_type_validator],
+        "validators": [head_node_instance_type_validator, ec2_instance_type_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("master_root_volume_size", {
