@@ -14,6 +14,7 @@ from future import standard_library  # isort:skip
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config.hit_converter import HitConverter
+from pcluster.config.validators import HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES, HEAD_NODE_UNSUPPORTED_MESSAGE
 
 standard_library.install_aliases()
 # fmt: on
@@ -324,6 +325,13 @@ def _prompt_for_subnet(default_subnet, all_subnets, qualified_subnets, message):
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 
 
+def _is_instance_type_supported_for_head_node(instance_type):
+    if instance_type in HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES:
+        print(HEAD_NODE_UNSUPPORTED_MESSAGE.format(instance_type))
+        return False
+    return True
+
+
 class ClusterConfigureHelper:
     """Handle prompts for cluster section."""
 
@@ -360,21 +368,15 @@ class ClusterConfigureHelper:
 
     def prompt_instance_types(self):
         """Ask for master_instance_type and compute_instance_type (if necessary)."""
-        ec2_client = boto3.client("ec2")
-        instance_type_offerings = [
-            offering["InstanceType"]
-            for offering in ec2_client.describe_instance_type_offerings()["InstanceTypeOfferings"]
-        ]
-
         self.master_instance_type = prompt(
             "Master instance type",
-            lambda x: x in get_supported_instance_types() and x in instance_type_offerings,
+            lambda x: _is_instance_type_supported_for_head_node(x) and x in get_supported_instance_types(),
             default_value=self.cluster_section.get_param_value("master_instance_type"),
         )
         if not self.is_aws_batch:
             self.compute_instance_type = prompt(
                 "Compute instance type",
-                lambda x: x in get_supported_compute_instance_types(self.scheduler) and x in instance_type_offerings,
+                lambda x: x in get_supported_compute_instance_types(self.scheduler),
                 default_value=self.cluster_section.get_param_value("compute_instance_type"),
             )
         # Cache availability zones offering the selected instance type(s) for later use
