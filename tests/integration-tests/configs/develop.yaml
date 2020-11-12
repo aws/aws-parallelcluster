@@ -544,3 +544,10 @@ test-suites:
           instances: ["p4d.24xlarge"]
           oss: ["alinux", "ubuntu1804", "centos7"]
           schedulers: ["slurm"]
+  resource_bucket:
+    test_resource_bucket.py::test_resource_bucket:
+      dimensions:
+        - regions: ["ap-southeast-1"]
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm", "awsbatch"]
