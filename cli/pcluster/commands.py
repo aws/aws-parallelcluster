@@ -219,6 +219,7 @@ def create(args):  # noqa: C901 FIXME!!!
 
     bucket_name = None
     artifact_directory = None
+    cleanup_bucket = False
     try:
         cfn_client = boto3.client("cloudformation")
         stack_name = utils.get_stack_name(args.cluster_name)
