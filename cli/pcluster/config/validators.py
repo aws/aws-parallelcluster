@@ -1022,9 +1022,11 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
             # Multiple NICs instance types are currently supported only with Slurm clusters
             instance_nics = get_instance_network_interfaces(param_value)
             if instance_nics > 1:
-                errors.append(
-                    "The instance type '{0}' has {1} Network Interfaces. Instances with multiple network interfaces "
-                    "are currently not supported with '{2}' scheduler".format(param_value, instance_nics, scheduler)
+                warnings.append(
+                    "Some services needed to support clusters with instance type '{0}' with multiple "
+                    "network interfaces and job scheduler '{1}' may not yet be generally available. "
+                    "Please refer to https://docs.aws.amazon.com/autoscaling/ec2/userguide/create-launch-template.html "
+                    "for more information.".format(param_value, scheduler)
                 )
 
     return errors, warnings

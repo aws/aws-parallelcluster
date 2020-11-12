@@ -88,26 +88,28 @@ def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
 
 
 @pytest.mark.parametrize(
-    "scheduler, instance_type, expected_message",
+    "scheduler, instance_type, expected_message, expected_warnings",
     [
-        ("sge", "t2.micro", None),
-        ("sge", "c4.xlarge", None),
-        ("sge", "c5.xlarge", "is not supported"),
+        ("sge", "t2.micro", None, None),
+        ("sge", "c4.xlarge", None, None),
+        ("sge", "c5.xlarge", "is not supported", None),
         # NOTE: compute_instance_type_validator calls ec2_instance_type_validator only if the scheduler is not awsbatch
-        ("awsbatch", "t2.micro", None),
-        ("awsbatch", "c4.xlarge", "is not supported"),
-        ("awsbatch", "t2", None),  # t2 family
-        ("awsbatch", "optimal", None),
-        ("sge", "p4d.24xlarge", "has 4 Network Interfaces."),
-        ("slurm", "p4d.24xlarge", None),
+        ("awsbatch", "t2.micro", None, None),
+        ("awsbatch", "c4.xlarge", "is not supported", None),
+        ("awsbatch", "t2", None, None),  # t2 family
+        ("awsbatch", "optimal", None, None),
+        ("sge", "p4d.24xlarge", None, "has 4 Network Interfaces."),
+        ("slurm", "p4d.24xlarge", None, None),
     ],
 )
-def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message):
+def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message, expected_warnings):
     config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
     extra_patches = {
         "pcluster.config.validators.get_instance_network_interfaces": 4 if instance_type == "p4d.24xlarge" else 1,
     }
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message, extra_patches=extra_patches)
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_message, expected_warnings, extra_patches=extra_patches
+    )
 
 
 def test_ec2_key_pair_validator(mocker, boto3_stubber):
