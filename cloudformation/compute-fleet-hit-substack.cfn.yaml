@@ -12,6 +12,9 @@ Parameters:
     Type: String
   MainStackName:
     Type: String
+  MainStackUniqueId:
+    Description: Final 36 digits of the main CloudFormation stack id
+    Type: String
   AttributesTagValue:
     Type: String
   NetworkingTagValue:
@@ -519,13 +522,7 @@ Resources:
   CleanupRoute53Function:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: !Sub
-        - pcluster-CleanupRoute53-${StackId}
-        - StackId: !Select
-            - '2'
-            - !Split
-              - /
-              - !Ref 'AWS::StackId'
+      FunctionName: !Sub 'pcluster-CleanupRoute53-${MainStackUniqueId}'
       Code:
         S3Bucket: !Ref 'ResourcesS3Bucket'
         S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
@@ -577,6 +574,7 @@ Resources:
   UpdateWaiterFunction:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: !Sub 'pcluster-UpdateWaiter-${MainStackUniqueId}'
       Code:
         S3Bucket: !Ref 'ResourcesS3Bucket'
         S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
