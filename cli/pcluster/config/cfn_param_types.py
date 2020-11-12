@@ -1278,3 +1278,26 @@ class VolumeSizeParam(IntCfnParam):
             else:
                 default_volume_size = 20
             self.value = default_volume_size
+
+
+class ClusterResourceBucketCfnParam(CfnParam):
+    """Class to manage cluster_resource_bucket parameter."""
+
+    def from_cfn_params(self, cfn_params):
+        """
+        Initialize parameter value by parsing CFN input parameters.
+
+        :param cfn_params: list of all the CFN parameters, used if "cfn_param_mapping" is specified in the definition
+        """
+        cfn_converter = self.definition.get("cfn_param_mapping", None)
+        if cfn_params:
+            cfn_value = get_cfn_param(cfn_params, cfn_converter) if cfn_converter else "NONE"
+            self.value = (
+                None
+                if get_cfn_param(cfn_params, "RemoveBucketOnDeletion") == "True"
+                else self.get_value_from_string(cfn_value)
+            )
+            # When the value of "RemoveBucketOnDeletion" is "True",
+            # the "cluster_resource_bucket" is not created by the user.
+
+        return self

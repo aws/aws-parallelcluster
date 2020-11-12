@@ -20,6 +20,7 @@ from pcluster.config.cfn_param_types import (
     CfnSection,
     ClusterCfnSection,
     ClusterConfigMetadataCfnParam,
+    ClusterResourceBucketCfnParam,
     ComputeAvailabilityZoneCfnParam,
     DisableHyperThreadingCfnParam,
     EBSSettingsCfnParam,
@@ -996,9 +997,10 @@ CLUSTER_COMMON_PARAMS = [
         "visibility": Visibility.PRIVATE,
     }),
     ("cluster_resource_bucket", {
+        "type": ClusterResourceBucketCfnParam,
         "cfn_param_mapping": "ResourcesS3Bucket",
         "validators": [s3_bucket_validator],
-        "update_policy": UpdatePolicy.IGNORED,
+        "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
 ]
 
