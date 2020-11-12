@@ -678,7 +678,10 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
                 master_instance_type
             )
 
-            if self.pcluster_config.cluster_model.name == "SIT":
+            if (
+                self.pcluster_config.cluster_model.name == "SIT"
+                and cluster_config.get_param_value("scheduler") != "awsbatch"
+            ):
                 # compute_instance_type parameter is valid only in SIT clusters
                 compute_instance_type = cluster_config.get_param_value("compute_instance_type")
                 compute_cores, disable_compute_ht_via_cpu_options = self._get_cfn_params_for_instance_type(
@@ -1081,10 +1084,11 @@ class NetworkInterfacesCountCfnParam(CommaSeparatedCfnParam):
     def refresh(self):
         """Compute the number of network interfaces for master and compute nodes."""
         cluster_section = self.pcluster_config.get_section("cluster")
+        scheduler = cluster_section.get_param_value("scheduler")
         self.value = [
             str(get_instance_network_interfaces(cluster_section.get_param_value("master_instance_type"))),
             str(get_instance_network_interfaces(cluster_section.get_param_value("compute_instance_type")))
-            if self.pcluster_config.cluster_model.name == "SIT"
+            if self.pcluster_config.cluster_model.name == "SIT" and scheduler != "awsbatch"
             else "1",
         ]
 
