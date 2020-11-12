@@ -762,7 +762,7 @@ def check_if_latest_version():
         latest = json.loads(urllib.request.urlopen("https://pypi.python.org/pypi/aws-parallelcluster/json").read())[
             "info"
         ]["version"]
-        if get_installed_version() < latest:
+        if packaging.version.parse(get_installed_version()) < packaging.version.parse(latest):
             print("Info: There is a newer version %s of AWS ParallelCluster available." % latest)
     except Exception:
         pass
