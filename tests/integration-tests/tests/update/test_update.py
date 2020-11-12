@@ -42,7 +42,7 @@ def test_update_sit(
     bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
@@ -148,7 +148,7 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     bucket.upload_file(str(test_datadir / "postinstall.sh"), "scripts/postinstall.sh")
 
     # Create cluster with initial configuration
-    init_config_file = pcluster_config_reader()
+    init_config_file = pcluster_config_reader(resource_bucket=bucket_name)
     cluster = clusters_factory(init_config_file)
 
     # Update cluster with the same configuration, command should not result any error even if not using force update
@@ -204,7 +204,9 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     job_id = slurm_commands.assert_job_submitted(result.stdout)
 
     # Update cluster with new configuration
-    updated_config_file = pcluster_config_reader(config_file="pcluster.config.update.ini", bucket=bucket_name)
+    updated_config_file = pcluster_config_reader(
+        config_file="pcluster.config.update.ini", bucket=bucket_name, resource_bucket=bucket_name
+    )
     cluster.config_file = str(updated_config_file)
     cluster.update()
 

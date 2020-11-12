@@ -195,6 +195,8 @@ def create_s3_bucket(bucket_name, region):
         s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
     else:
         s3_client.create_bucket(Bucket=bucket_name)
+    # Enable versioning on bucket
+    s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
 
 
 @retry(wait_exponential_multiplier=500, wait_exponential_max=5000, stop_max_attempt_number=3)
@@ -208,6 +210,7 @@ def delete_s3_bucket(bucket_name, region):
     try:
         bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
         bucket.objects.all().delete()
+        bucket.object_versions.all().delete()
         bucket.delete()
     except boto3.client("s3").exceptions.NoSuchBucket:
         pass
