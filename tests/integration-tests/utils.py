@@ -362,3 +362,13 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     assert_that(len(instance_architectures)).is_equal_to(1)
 
     return instance_architectures[0]
+
+
+def check_headnode_security_group(region, cluster, port, expected_cidr):
+    """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
+    security_group_id = cluster.cfn_resources.get("MasterSecurityGroup")
+    response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
+
+    ips = response["SecurityGroups"][0]["IpPermissions"]
+    target = next(filter(lambda x: x.get("FromPort", -1) == port, ips), {})
+    assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
