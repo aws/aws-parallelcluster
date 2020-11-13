@@ -32,16 +32,17 @@ def test_dashboard(
     )
     cluster = clusters_factory(cluster_config)
     cw_client = boto3.client("cloudwatch", region_name=region)
+    dashboard_name = "{0}-{1}".format(cluster.cfn_name, region)
 
     if dashboard_enabled:
-        response = cw_client.get_dashboard(DashboardName=cluster.cfn_name)
-        assert_that(response["DashboardName"]).is_equal_to(cluster.cfn_name)
+        response = cw_client.get_dashboard(DashboardName=dashboard_name)
+        assert_that(response["DashboardName"]).is_equal_to(dashboard_name)
         if cw_log_enabled:
             assert_that(response["DashboardBody"]).contains("Head Node Logs")
         else:
             assert_that(response["DashboardBody"]).does_not_contain("Head Node Logs")
     else:
         try:
-            cw_client.get_dashboard(DashboardName=cluster.cfn_name)
+            cw_client.get_dashboard(DashboardName=dashboard_name)
         except ClientError as e:
             assert_that(e.response["Error"]["Code"]).is_equal_to("ResourceNotFound")
