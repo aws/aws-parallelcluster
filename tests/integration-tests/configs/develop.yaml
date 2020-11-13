@@ -207,7 +207,7 @@ test-suites:
           # Slurm test is to verify EFA works correctly when using the SIT model in the config file
           schedulers: ["sge", "slurm"]
           # P4d instances are currently not supported in SIT clusters
-        - regions: ["us-west-2"]
+        - regions: ["us-east-1"]
           instances: ["p4d.24xlarge"]
           oss: ["alinux", "ubuntu1804", "centos7"]
           schedulers: ["slurm"]
@@ -536,7 +536,7 @@ test-suites:
   multiple_nics:
     test_multiple_nics.py::test_multiple_nics:
       dimensions:
-        - regions: ["us-west-2"]
+        - regions: ["us-east-1"]
           instances: ["p4d.24xlarge"]
           oss: ["alinux2", "ubuntu1604", "centos8"]
           schedulers: ["slurm"]
