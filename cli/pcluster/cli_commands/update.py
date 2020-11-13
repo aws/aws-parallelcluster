@@ -249,6 +249,8 @@ def _restore_cfn_only_params(cfn_boto3_client, args, cfn_params, stack_name, tar
 
     # Autofill S3 bucket related cfn param
     params = utils.get_stack(stack_name, cfn_boto3_client).get("Parameters")
+    # Update of cluster_resource_bucket/ResourcesS3Bucket is not supported
+    # We will always restore the value of this parameter from CFN stack
     cfn_params["ResourcesS3Bucket"] = utils.get_cfn_param(params, "ResourcesS3Bucket")
     cfn_params["ArtifactS3RootDirectory"] = utils.get_cfn_param(params, "ArtifactS3RootDirectory")
     cfn_params["RemoveBucketOnDeletion"] = utils.get_cfn_param(params, "RemoveBucketOnDeletion")

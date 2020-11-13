@@ -232,7 +232,10 @@ class ConfigPatch(object):
 
                 if check_result != UpdatePolicy.CheckResult.SUCCEEDED:
                     patch_allowed = False
-
+                if change.update_policy == UpdatePolicy.READ_ONLY_RESOURCE_BUCKET and patch_allowed:
+                    # Special case for cluster_resource_bucket/ResourcesS3Bucket
+                    # Do not append diff if patch is allowed
+                    continue
                 rows.append(
                     [
                         section_name,
