@@ -999,7 +999,7 @@ CLUSTER_COMMON_PARAMS = [
     ("cluster_resource_bucket", {
         "cfn_param_mapping": "ResourcesS3Bucket",
         "validators": [s3_bucket_validator],
-        "update_policy": UpdatePolicy.IGNORED,
+        "update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET,
     }),
 ]
 

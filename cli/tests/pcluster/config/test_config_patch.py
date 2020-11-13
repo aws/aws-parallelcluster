@@ -297,3 +297,81 @@ def test_adaptation(mocker, test_datadir, pcluster_config_reader, test):
     target_conf = PclusterConfig(config_file=target_config_file, fail_on_file_absence=True)
 
     test(base_conf, target_conf)
+
+
+@pytest.mark.parametrize(
+    ("old_bucket_name", "new_bucket_name", "is_generated_bucket", "expected_error_row"),
+    [
+        # pcluster generated bucket, got old value from CFN, no new value in update config
+        # Proceed with update without printing diff
+        ("parallelcluster-generated-bucket", None, True, False),
+        # pcluster generated bucket, no old value for some reason, no new value in update config
+        # Proceed with update, no diff
+        (None, None, True, False),
+        # pcluster generated bucket, got old value from CFN, specifies generated bucket in update config
+        # Proceed with update, no diff
+        ("parallelcluster-generated-bucket", "parallelcluster-generated-bucket", True, False),
+        # pcluster generated bucket, got old value from CFN, specifies different bucket in update config
+        # Block update, print diff
+        ("parallelcluster-generated-bucket", "user-provided-bucket", True, True),
+        # user-provided-bucket in old config, no bucket specified in update config
+        # Block update, print diff
+        ("user-provided-bucket", None, False, True),
+        # user-provided-bucket in old config, different bucket specified in update config
+        # Block update, print diff
+        ("user-provided-bucket-old", "user-provided-bucket-new", False, True),
+        # user-provided-bucket in old config, same bucket specified in update config
+        # Proceed with update, no diff
+        ("user-provided-bucket-consistent", "user-provided-bucket-consistent", False, False),
+    ],
+)
+def test_patch_check_cluster_resource_bucket(
+    old_bucket_name,
+    new_bucket_name,
+    is_generated_bucket,
+    expected_error_row,
+    mocker,
+    test_datadir,
+    pcluster_config_reader,
+):
+    _do_mocking_for_tests(mocker)
+    mocker.patch("pcluster.config.update_policy._is_bucket_pcluster_generated", return_value=is_generated_bucket)
+    expected_message_rows = [
+        ["section", "parameter", "old value", "new value", "check", "reason", "action_needed"],
+        # ec2_iam_role is to make sure other parameters are not affected by cluster_resource_bucket custom logic
+        ["cluster some_cluster", "ec2_iam_role", "some_old_role", "some_new_role", "SUCCEEDED", "-", None],
+    ]
+    if expected_error_row:
+        error_message_row = [
+            "cluster some_cluster",
+            "cluster_resource_bucket",
+            old_bucket_name,
+            new_bucket_name,
+            "ACTION NEEDED",
+            (
+                "'cluster_resource_bucket' parameter is a read_only parameter that cannot be updated. "
+                "New value '{0}' will be ignored and old value '{1}' will be used if you force the update.".format(
+                    new_bucket_name, old_bucket_name
+                )
+            ),
+            "Restore the value of parameter 'cluster_resource_bucket' to '{0}'".format(old_bucket_name),
+        ]
+        expected_message_rows.append(error_message_row)
+    src_dict = {"cluster_resource_bucket": old_bucket_name, "ec2_iam_role": "some_old_role"}
+    dst_dict = {"cluster_resource_bucket": new_bucket_name, "ec2_iam_role": "some_new_role"}
+    dst_config_file = "pcluster.config.dst.ini"
+    duplicate_config_file(dst_config_file, test_datadir)
+
+    src_config_file = pcluster_config_reader(**src_dict)
+    src_conf = PclusterConfig(config_file=src_config_file, fail_on_file_absence=True)
+    dst_config_file = pcluster_config_reader(dst_config_file, **dst_dict)
+    dst_conf = PclusterConfig(config_file=dst_config_file, fail_on_file_absence=True)
+    patch = ConfigPatch(base_config=src_conf, target_config=dst_conf)
+
+    patch_allowed, rows = patch.check()
+    assert_that(len(rows)).is_equal_to(len(expected_message_rows))
+    for line in rows:
+        # Handle unicode string
+        line = ["{0}".format(element) if isinstance(element, str) else element for element in line]
+        assert_that(expected_message_rows).contains(line)
+    assert_that(patch_allowed).is_equal_to(not expected_error_row)

@@ -120,6 +120,31 @@ def _check_min_count(change, patch):
     return new_min >= old_min and new_max - new_min >= old_max - old_min
 
 
+def _is_bucket_pcluster_generated(stack_name):
+    params = utils.get_stack(stack_name).get("Parameters")
+    return utils.get_cfn_param(params, "RemoveBucketOnDeletion") == "True"
+
+
+def _check_generated_bucket(change, patch):
+
+    # If bucket is generated (no cluster_resource_bucket specified when creating) and no change in config
+    # Old value is retrieve from CFN's ResourcesS3Bucket param, and new value is from config(not specified)
+    # Diff based on config should be:
+    #
+    # old value                         new value
+    # ---------------------------------------------
+    # {ResourcesS3Bucket}               -
+    #
+    # Actual ResourcesS3Bucket will not change when updating, so no actual change when update is applied
+    # Since there is no change, user should not be informed of a change/diff
+    # Print no diff and proceed with updating other parameters
+    if _is_bucket_pcluster_generated(patch.stack_name) and (not change.new_value or change.new_value == "NONE"):
+        return True
+    # Else display diff
+    # Inform user cluster_resource_bucket/ResourcesS3Bucket will not be updated even if force update
+    return False
+
+
 # Base policies
 
 # Update is ignored
@@ -181,6 +206,25 @@ UpdatePolicy.MASTER_STOP = UpdatePolicy(
     fail_reason="To perform this update action, the master node must be in a stopped state",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
     condition_checker=lambda change, patch: utils.get_master_server_state(patch.stack_name) == "stopped",
+)
+
+# Expected Behavior:
+# No bucket specified when create, no bucket specified when update: Display no diff, proceed with update
+# For all other cases: Display diff and block, value will not be updated even if forced
+UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
+    level=30,
+    fail_reason=lambda change, patch: (
+        "'{0}' parameter is a read_only parameter that cannot be updated. "
+        "New value '{1}' will be ignored and old value '{2}' will be used if you force the update."
+    ).format(
+        change.param_key,
+        change.new_value,
+        change.old_value,
+    ),
+    action_needed=lambda change, patch: "Restore the value of parameter '{0}' to '{1}'".format(
+        change.param_key, change.old_value
+    ),
+    condition_checker=_check_generated_bucket,
 )
 
 # Update effects are unknown.
