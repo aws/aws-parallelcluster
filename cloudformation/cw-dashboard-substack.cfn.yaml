@@ -83,7 +83,7 @@ Resources:
   HeadNodeDashboard:
     Type: AWS::CloudWatch::Dashboard
     Properties:
-      DashboardName: !Ref 'PclusterStackName'
+      DashboardName: !Sub '${PclusterStackName}-${AWS::Region}'
       DashboardBody: !Join
         - ''
         - - '{"widgets":['
