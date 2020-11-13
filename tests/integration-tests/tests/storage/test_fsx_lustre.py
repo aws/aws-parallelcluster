@@ -86,14 +86,16 @@ def test_fsx_lustre_configuration_options(
         storage_capacity=storage_capacity,
     )
     cluster = clusters_factory(cluster_config)
-    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy)
+    _test_fsx_lustre(
+        cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy, deployment_type
+    )
 
 
 @pytest.mark.regions(["eu-west-1"])
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
+# FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
@@ -121,10 +123,22 @@ def test_fsx_lustre(
         storage_capacity=1200,
     )
     cluster = clusters_factory(cluster_config)
-    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type=None, auto_import_policy=None)
+    _test_fsx_lustre(
+        cluster,
+        region,
+        scheduler,
+        os,
+        mount_dir,
+        bucket_name,
+        storage_type=None,
+        auto_import_policy=None,
+        deployment_type=None,
+    )
 
 
-def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy):
+def _test_fsx_lustre(
+    cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy, deployment_type
+):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     fsx_fs_id = get_fsx_fs_id(cluster, region)
@@ -133,6 +147,7 @@ def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, sto
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
     _test_storage_type(storage_type, fsx_fs_id, region)
+    _test_deployment_type(deployment_type, fsx_fs_id, region)
     _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
     _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
@@ -142,7 +157,7 @@ def _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name, sto
 @pytest.mark.instances(["c5.xlarge", "m6g.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("instance")
-# FSx is only supported on ARM instances for Ubuntu 18.04 and Amazon Linux 2
+# FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
@@ -264,6 +279,23 @@ def _test_storage_type(storage_type, fsx_fs_id, region):
         assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("HDD")
     else:
         assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("SSD")
+
+
+def _get_deployment_type(fsx_fs_id, region):
+    deployment_type = (
+        boto3.client("fsx", region_name=region)
+        .describe_file_systems(FileSystemIds=[fsx_fs_id])
+        .get("FileSystems")[0]
+        .get("LustreConfiguration")
+        .get("DeploymentType")
+    )
+    logging.info(f"Getting DeploymentType {deployment_type} from DescribeFilesystem API.")
+    return deployment_type
+
+
+def _test_deployment_type(deployment_type, fsx_fs_id, region):
+    if deployment_type:
+        assert_that(_get_deployment_type(fsx_fs_id, region)).is_equal_to(deployment_type)
 
 
 def _test_import_path(remote_command_executor, mount_dir):
