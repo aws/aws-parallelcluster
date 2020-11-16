@@ -23,10 +23,19 @@ class UpdatePolicy(object):
         ACTION_NEEDED = "ACTION NEEDED"
         FAILED = "FAILED"
 
-    def __init__(self, base_policy=None, level=None, fail_reason=None, action_needed=None, condition_checker=None):
+    def __init__(
+        self,
+        base_policy=None,
+        level=None,
+        fail_reason=None,
+        action_needed=None,
+        condition_checker=None,
+        print_succeeded=True,
+    ):
         self.fail_reason = None
         self.action_needed = None
         self.condition_checker = None
+        self.print_succeeded = print_succeeded
         self.level = 0
 
         if base_policy:
@@ -58,16 +67,19 @@ class UpdatePolicy(object):
                 result = UpdatePolicy.CheckResult.SUCCEEDED
                 fail_reason = "-"
                 action_needed = None
+                print_change = self.print_succeeded
             else:
                 result = UpdatePolicy.CheckResult.ACTION_NEEDED
                 fail_reason = self.fail_reason
                 action_needed = self.action_needed
+                print_change = True
         else:
             # No condition checker means no chance of getting a successful check result, so CheckResult.FAILED is
             # returned unconditionally
             result = UpdatePolicy.CheckResult.FAILED
             fail_reason = self.fail_reason
             action_needed = self.action_needed
+            print_change = True
 
         if callable(action_needed):
             action_needed = action_needed(change, patch)
@@ -75,7 +87,7 @@ class UpdatePolicy(object):
         if callable(fail_reason):
             fail_reason = fail_reason(change, patch)
 
-        return result, fail_reason, action_needed
+        return result, fail_reason, action_needed, print_change
 
     def __eq__(self, other):
         if not isinstance(other, UpdatePolicy):
@@ -148,7 +160,13 @@ def _check_generated_bucket(change, patch):
 # Base policies
 
 # Update is ignored
-UpdatePolicy.IGNORED = UpdatePolicy(level=-10, fail_reason="-", condition_checker=(lambda change, patch: True))
+UpdatePolicy.IGNORED = UpdatePolicy(
+    level=-10,
+    fail_reason="-",
+    condition_checker=(lambda change, patch: True),
+    # Ignored changes are not shown
+    print_succeeded=False,
+)
 
 # Update supported
 UpdatePolicy.SUPPORTED = UpdatePolicy(level=0, fail_reason="-", condition_checker=(lambda change, patch: True))
@@ -225,6 +243,8 @@ UpdatePolicy.READ_ONLY_RESOURCE_BUCKET = UpdatePolicy(
         change.param_key, change.old_value
     ),
     condition_checker=_check_generated_bucket,
+    # We don't want to show the change if allowed (e.g local value is empty)
+    print_succeeded=False,
 )
 
 # Update effects are unknown.
