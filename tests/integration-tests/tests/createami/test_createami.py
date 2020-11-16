@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import logging
+from os import environ
 
 import pytest
 from assertpy import assert_that
@@ -20,7 +21,6 @@ from utils import run_command
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.skip(reason="Temporarily disable this test")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
@@ -46,6 +46,13 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
     custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
     custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
+    # Custom Node
+    # inject PARALLELCLUSTER_NODE_URL into packer environment
+    custom_node = request.config.getoption("createami_custom_node_package")
+    if custom_node:
+        env = environ.copy()
+        env["PARALLELCLUSTER_NODE_URL"] = custom_node
+
     # Instance type
     pcluster_version_result = run_command(["pcluster", "version"])
     instance_args = (
@@ -56,7 +63,8 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
         ["pcluster", "createami", "-ai", base_ami, "-os", os, "-r", region, "-c", cluster_config.as_posix()]
         + custom_cookbook_args
         + instance_args
-        + networking_args
+        + networking_args,
+        env=env,
     )
 
     stdout_lower = pcluster_createami_result.stdout.lower()

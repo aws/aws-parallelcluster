@@ -39,7 +39,8 @@ python -m test_runner --help
 usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
                       [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] 
+                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
                       [--custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--custom-ami CUSTOM_AMI] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
                       [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
                       [--keep-logs-on-cluster-failure] [--keep-logs-on-test-failure] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
@@ -98,6 +99,8 @@ Custom packages and templates:
                         URL to a custom cookbook package. (default: None)
   --createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL
                         URL to a custom cookbook package for the createami command. (default: None)
+  --createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL
+                        URL to a custom node package for the createami command. (default: None)
   --custom-template-url CUSTOM_TEMPLATE_URL
                         URL to a custom cfn template. (default: None)
   --custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL
