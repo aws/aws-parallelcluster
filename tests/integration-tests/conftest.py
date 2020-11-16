@@ -70,6 +70,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
+    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
     parser.addoption("--hit-template-url", help="url to a custom HIT cfn template")
