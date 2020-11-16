@@ -7,41 +7,80 @@ CHANGELOG
 **ENHANCEMENTS**
 
 - Add support for CentOS 8 in all Commercial regions.
+- Add support for P4d instance type as compute node.
+- Add the possibilty to enable NVIDIA GPUDirect RDMA support on EFA by using the new `enable_efa_gdr` configuration
+  parameter.
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.
-- Add support for P4d instance type as compute node.
-- Add ``-r/-region`` arg to ``pcluster configure``. If this arg is provided, configuration will skip region selection.
-- Add `cluster_resource_bucket` parameter under `cluster` section of cluster config to allow using user-provided bucket 
-  for hosting S3 resources used by cluster.
+- FSx Lustre:
+  - Add possibility to configure Auto Import policy through the new `auto_import_policy` parameter.
+  - Add support to HDD storage type and the new `storage_type` and `drive_cache_type` configuration parameters.
+- Create a CloudWatch Dashboard for the cluster, named `<clustername>-<region>`, including head node EC2 metrics and 
+  cluster logs. It can be disabled by configuring the `enable` parameter in the `dashboard` section.
+- Add `-r/-region` arg to `pcluster configure` command. If this arg is provided, configuration will 
+  skip region selection.
+- Add `-r/-region` arg to`ssh` and `dcv connect` commands.
+- Add `cluster_resource_bucket` parameter under `cluster` section to allow the user to specify an existing S3 bucket.
+- `createami`:
+  - Add validation step to fail when using a base AMI created by a different version of ParallelCluster.
+  - Add validation step for AMI creation process to fail if the selected OS and the base AMI OS are not consistent.
+  - Add `--post-install` parameter to use a post installation script when building an AMI.
+  - Add the possibility to use a ParallelCluster base AMI.
+- Add possibility to change tags when performing a `pcluster update`.
+- Add new `all_or_nothing_batch` configuration parameter for `slurm_resume` script. When `True`, `slurm_resume` will
+  succeed only if all the instances required by all the pending jobs in Slurm will be available.
+- Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
+  necessary when existing instances risk to be terminated.
+- Add validator for EBS volume size, type and IOPS.
+- Add validators for `shared_dir` parameter when used in both `cluster` and `ebs` sections.
+- Add validator `cfn_scheduler_slots` key in the `extra_json` parameter.
+
 
 **CHANGES**
 
+- CentOS 6 is no longer supported.
 - Upgrade EFA installer to version 1.10.1
-  - EFA configuration: ``efa-config-1.5`` (from efa-config-1.4)
-  - EFA profile: ``efa-profile-1.1`` (from efa-profile-1.0.0)
-  - EFA kernel module: ``efa-1.10.2`` (from efa-1.6.0)
-  - RDMA core: ``rdma-core-31.amzn0`` (from rdma-core-28.amzn0)
-  - Libfabric: ``libfabric-1.11.1amazon1.1`` (from libfabric-1.10.1amazon1.1)
-  - Open MPI: ``openmpi40-aws-4.0.5`` (from openmpi40-aws-4.0.3)
+  - EFA configuration: `efa-config-1.5` (from efa-config-1.4)
+  - EFA profile: `efa-profile-1.1` (from efa-profile-1.0.0)
+  - EFA kernel module: `efa-1.10.2` (from efa-1.6.0)
+  - RDMA core: `rdma-core-31.amzn0` (from rdma-core-28.amzn0)
+  - Libfabric: `libfabric-1.11.1amazon1.1` (from libfabric-1.10.1amazon1.1)
+  - Open MPI: `openmpi40-aws-4.0.5` (from openmpi40-aws-4.0.3)
   - Unifies installer runtime options across x86 and aarch64
-  - Introduces ``-g/--enable-gdr`` switch to install packages with GPUDirect RDMA support
+  - Introduces `-g/--enable-gdr` switch to install packages with GPUDirect RDMA support
   - Updates to OMPI collectives decision file packaging, migrated from efa-config to efa-profile
   - Introduces CentOS 8 support
-- CentOS 6 is no longer supported.
-- Upgrade image used by CodeBuild environment when building container images for Batch clusters.
-- Enable queue resizing on update without requiring to stop the compute fleet. Stopping the compute fleet is only
-  necessary when existing instances risk to be terminated.
-- Upgrade NVIDIA driver to version 450.80.02
-- Remove default region us-east-1. After the change, pcluster will adhere to the following lookup order for region:
-  1. ```-r/--region``` arg.
-  2. ``AWS_DEFAULT_REGION`` environment variable.
-  3. ``aws_region_name`` in parallelcluster config file
-  4. ``region`` in aws config file.
-- Remove validation on ``ec2_iam_role`` parameter.
+- Upgrade NVIDIA driver to version 450.80.02.
+- Install NVIDIA Fabric manager to enable NVIDIA NVSwitch on supported platforms.
+- Remove default region `us-east-1`. After the change, `pcluster` will adhere to the following lookup order for region:
+  1. `-r/--region` arg.
+  2. `AWS_DEFAULT_REGION` environment variable.
+  3. `aws_region_name` in ParallelCluster configuration file.
+  4. `region` in AWScli configuration file.
+- Slurm: change `SlurmctldPort` to 6820-6829 to not overlap with default `slurmdbd` port (6819).
+- Slurm: add `compute_resource` name and `efa` as node features.
+- Remove validation on `ec2_iam_role` parameter.
+- Improve retrieval of instance type info by using `DescribeInstanceType` API.
+- Remove `custom_awsbatch_template_url` configuration parameter.
+- Upgrade `pip` to latest version in virtual environments.
+- Upgrade image used by CodeBuild environment when building container images for Batch clusters, from
+  `aws/codebuild/amazonlinux2-x86_64-standard:1.0` to `aws/codebuild/amazonlinux2-x86_64-standard:3.0`.
 
 **BUG FIXES**
 
-- Fix cfn_scheduler_slots don't update when updating compute instance type by ``pcluster update``. 
+- Retrieve the right number of compute instance slots when instance type is updated.
+- Include user tags in compute nodes and EBS volumes.
+- Fix `pcluster status` output when head node is stopped.
+- `pcluster update`:
+  - Fix issue when tags are specified but not changed.
+  - Fix issue when the `cluster` section label changed.
+  - Fix issue when `shared_dir` and `ebs_settings` are both configured in the `cluster` section.
+  - Fix `cluster` and `cfncluster` compatibility in `extra_json` parameter.
+- Fix pre/post install script arguments management when using double quotes.
+- Fix a bug that was causing `clustermgtd` and `computemgtd` sleep interval to be incorrectly computed when
+  system timezone is not set to UTC.
+- Fix queue name validator to properly check for capital letters.
+- Fix `enable_efa` parameter validation for `queue` section.
 - Fix CloudWatch Log Group creation for AWS Lambda functions handling CloudFormation Custom Resources.
 
 2.9.1
