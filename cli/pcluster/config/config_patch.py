@@ -226,11 +226,12 @@ class ConfigPatch(object):
 
         for change in self.changes:
             check_result, reason, action_needed, print_change = change.update_policy.check(change, self)
+
+            if check_result != UpdatePolicy.CheckResult.SUCCEEDED:
+                patch_allowed = False
+
             if print_change:
                 section_name = get_file_section_name(change.section_key, change.section_label)
-
-                if check_result != UpdatePolicy.CheckResult.SUCCEEDED:
-                    patch_allowed = False
                 rows.append(
                     [
                         section_name,

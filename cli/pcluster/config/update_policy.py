@@ -141,20 +141,12 @@ def _check_generated_bucket(change, patch):
 
     # If bucket is generated (no cluster_resource_bucket specified when creating) and no change in config
     # Old value is retrieve from CFN's ResourcesS3Bucket param, and new value is from config(not specified)
-    # Diff based on config should be:
-    #
-    # old value                         new value
-    # ---------------------------------------------
-    # {ResourcesS3Bucket}               -
-    #
     # Actual ResourcesS3Bucket will not change when updating, so no actual change when update is applied
     # Since there is no change, user should not be informed of a change/diff
     # Print no diff and proceed with updating other parameters
-    if _is_bucket_pcluster_generated(patch.stack_name) and (not change.new_value or change.new_value == "NONE"):
-        return True
     # Else display diff
     # Inform user cluster_resource_bucket/ResourcesS3Bucket will not be updated even if force update
-    return False
+    return _is_bucket_pcluster_generated(patch.stack_name) and not change.new_value
 
 
 # Base policies
