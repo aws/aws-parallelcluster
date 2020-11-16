@@ -15,7 +15,7 @@ import urllib.request
 from urllib.parse import urlparse
 
 import boto3
-from botocore.exceptions import ClientError
+from botocore.exceptions import ClientError, ParamValidationError
 
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.dcv.utils import get_supported_dcv_os
@@ -750,6 +750,10 @@ def s3_bucket_validator(param_key, param_value, pcluster_config):
             )
     except ClientError as client_error:
         _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
+    except ParamValidationError as validation_error:
+        errors.append(
+            "Error validating parameter '{0}'. Failed with exception: {1}".format(param_key, str(validation_error))
+        )
 
     return errors, warnings
 
