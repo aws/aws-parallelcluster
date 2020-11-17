@@ -118,7 +118,7 @@ def configure(args):
     if args.config_file and os.path.exists(args.config_file) and not os.path.isfile(args.config_file):
         error("Invalid configuration file path: {0}".format(args.config_file))
 
-    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False)
+    pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False, auto_refresh=False)
 
     # FIXME: Overriding HIT config files is currently not supported.
     if pcluster_config.cluster_model == ClusterModel.HIT:
@@ -141,10 +141,7 @@ def configure(args):
         default_region = pcluster_config.get_section("aws").get_param_value("aws_region_name")
         aws_region_name = prompt_iterable("AWS Region ID", available_regions, default_value=default_region)
         # Set provided region into os environment for suggestions and validations from here on
-        if os.environ["AWS_DEFAULT_REGION"] != aws_region_name:
-            os.environ["AWS_DEFAULT_REGION"] = aws_region_name
-            # Read config file again, because region change can cause change of the initial values in PclusterConfig
-            pcluster_config = PclusterConfig(config_file=args.config_file, fail_on_error=False)
+        os.environ["AWS_DEFAULT_REGION"] = aws_region_name
     else:
         aws_region_name = args.region
 
@@ -191,6 +188,10 @@ def configure(args):
     for param_key, param_value in vpc_parameters.items():
         param = vpc_section.get_param(param_key)
         param.value = param.get_value_from_string(param_value)
+
+    # Update internal params according to provided parameters and enable auto-refresh before eventual hit conversion
+    pcluster_config.refresh()
+    pcluster_config.auto_refresh = True
 
     # Convert file if needed
     HitConverter(pcluster_config).convert(prepare_to_file=True)
