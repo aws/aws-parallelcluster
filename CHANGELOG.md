@@ -44,7 +44,7 @@ CHANGELOG
   - EFA profile: `efa-profile-1.1` (from efa-profile-1.0.0)
   - EFA kernel module: `efa-1.10.2` (from efa-1.6.0)
   - RDMA core: `rdma-core-31.amzn0` (from rdma-core-28.amzn0)
-  - Libfabric: `libfabric-1.11.1amazon1.1` (from libfabric-1.10.1amazon1.1)
+  - Libfabric: `libfabric-1.11.1amzn1.1` (from libfabric-1.10.1amzn1.1)
   - Open MPI: `openmpi40-aws-4.0.5` (from openmpi40-aws-4.0.3)
   - Unifies installer runtime options across x86 and aarch64
   - Introduces `-g/--enable-gdr` switch to install packages with GPUDirect RDMA support
@@ -116,7 +116,7 @@ CHANGELOG
   - EFA profile: ``efa-profile-1.0.0``
   - EFA kernel module: ``efa-1.6.0`` (no change)
   - RDMA core: ``rdma-core-28.amzn0`` (no change)
-  - Libfabric: ``libfabric-1.10.1amazon1.1`` (no change)
+  - Libfabric: ``libfabric-1.10.1amzn1.1`` (no change)
   - Open MPI: ``openmpi40-aws-4.0.3`` (no change)
 - Upgrade Slurm to version 20.02.4.
 - Upgrade NICE DCV to version 2020.1-9012.
@@ -166,7 +166,7 @@ CHANGELOG
 - Upgrade EFA installer to version 1.9.4:
   - Kernel module: ``efa-2.6.0`` (from efa-1.5.1)
   - RDMA core: ``rdma-core-28.amzn0`` (from rdma-core-25.0)
-  - Libfabric: ``libfabric-1.10.1amazon1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
+  - Libfabric: ``libfabric-1.10.1amzn1.1`` (updated from libfabric-aws-1.9.0amzn1.1) 
   - Open MPI: openmpi40-aws-4.0.3 (no change)
 - Avoid unnecessary validation of IAM policies.
 - Removed unused dependency on supervisor from the Batch Dockerfile.
