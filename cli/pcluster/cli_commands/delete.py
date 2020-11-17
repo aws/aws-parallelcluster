@@ -34,7 +34,7 @@ def delete(args):
                     args.cluster_name
                 )
             )
-        utils.warn("Cluster {0} has already been deleted.".format(args.cluster_name))
+        utils.warn("Cluster {0} has already been deleted or does not exist.".format(args.cluster_name))
         _terminate_cluster_nodes(stack_name)
         sys.exit(0)
     elif args.keep_logs:
@@ -130,9 +130,7 @@ def _delete_cluster(cluster_name, nowait):
 
 def _terminate_cluster_nodes(stack_name):
     try:
-        LOGGER.debug("Compute fleet clean-up: STARTED")
-        # FIXME: improve messaging when cluster does not exist
-        LOGGER.info("\nChecking if there are any running compute fleet nodes that require termination")
+        LOGGER.info("\nChecking if there are running compute nodes that require termination...")
         ec2 = boto3.client("ec2", config=Config(retries={"max_attempts": 10}))
 
         for instance_ids in _describe_instance_ids_iterator(stack_name):
@@ -140,7 +138,7 @@ def _terminate_cluster_nodes(stack_name):
             if instance_ids:
                 ec2.terminate_instances(InstanceIds=instance_ids)
 
-        LOGGER.debug("Compute fleet clean-up: COMPLETED")
+        LOGGER.info("Compute fleet cleaned up.")
     except Exception as e:
         LOGGER.error("Failed when checking for running EC2 instances with error: %s", e)
 

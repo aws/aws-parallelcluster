@@ -59,7 +59,9 @@ def test_delete(
 
     assert_that(warn_mock.call_count).is_equal_to(warn_call_count)
     if warn_call_count > 0:
-        warn_mock.assert_called_with("Cluster {0} has already been deleted.".format(args.cluster_name))
+        warn_mock.assert_called_with(
+            "Cluster {0} has already been deleted or does not exist.".format(args.cluster_name)
+        )
 
     assert_that(persist_cloudwatch_log_groups_mock.called).is_equal_to(persist_called)
     if persist_called:
