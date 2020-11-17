@@ -76,6 +76,7 @@ CHANGELOG
   - Fix issue when the `cluster` section label changed.
   - Fix issue when `shared_dir` and `ebs_settings` are both configured in the `cluster` section.
   - Fix `cluster` and `cfncluster` compatibility in `extra_json` parameter.
+- Fix `pcluster configure` to avoid using default/initial values for internal parameter initialization.
 - Fix pre/post install script arguments management when using double quotes.
 - Fix a bug that was causing `clustermgtd` and `computemgtd` sleep interval to be incorrectly computed when
   system timezone is not set to UTC.

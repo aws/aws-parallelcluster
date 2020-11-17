@@ -504,6 +504,31 @@ def test_region_env_overwrite_region_config(mocker, capsys, test_datadir):
     _run_input_test_with_config(mocker, config, old_config_file, error, output, capsys, with_input=False)
 
 
+def test_unexisting_instance_type(mocker, capsys, test_datadir):
+    """
+    Test configuration file with wrong values that must be overridden by user inputs.
+
+    This test verifies that the validation steps are not performed with initial or default values
+    (e.g. t2.micro as instance type in a region that doesn't support it).
+    """
+    config, error, output = get_file_path(test_datadir)
+    old_config_file = str(test_datadir / "original_config_file.ini")
+
+    MockHandler(mocker)
+
+    _run_input_test_with_config(
+        mocker,
+        config,
+        old_config_file,
+        error,
+        output,
+        capsys,
+        with_input=True,
+        master_instance="m6g.xlarge",
+        compute_instance="m6g.xlarge",
+    )
+
+
 def test_no_available_no_input_no_automation_no_errors_with_config_file(mocker, capsys, test_datadir):
     """
     Testing easy config with user hitting return on all prompts.
