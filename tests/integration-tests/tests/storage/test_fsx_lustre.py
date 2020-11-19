@@ -54,8 +54,6 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("instance")
-# FSx is not supported on CentOS 6
-@pytest.mark.skip_oss(["centos6"])
 def test_fsx_lustre_configuration_options(
     deployment_type,
     per_unit_storage_throughput,
