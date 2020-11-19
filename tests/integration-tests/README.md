@@ -229,7 +229,6 @@ cloudwatch_logging suite defined above will produce the following parametrizatio
 ```
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos6-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1604-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]

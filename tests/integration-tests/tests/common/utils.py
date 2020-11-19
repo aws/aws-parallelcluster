@@ -52,8 +52,8 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
 OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux": {"name": "amzn-hvm-x86_64-*", "owners": ["amazon"]},
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": ["amazon"]},
-    "centos6": {"name": "centos6-hvm-x86_64-*", "owners": ["amazon"]},
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": ["amazon"]},
+    "centos8": {"name": "centos8-hvm-x86_64-*", "owners": ["amazon"]},
     "ubuntu1604": {"name": "ubuntu-1604-lts-hvm-x86_64-*", "owners": ["amazon"]},
     "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": ["amazon"]},
 }
