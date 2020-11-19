@@ -55,7 +55,7 @@ def test_datadir(request, datadir):
 @pytest.fixture()
 def convert_to_date_mock(request, mocker):
     """Mock convert_to_date function by enforcing the timezone to UTC."""
-    module_under_test = request.module.__name__.replace("test_", "")
+    module_under_test = request.node.fspath.purebasename.replace("test_", "")
 
     def _convert_to_date_utc(*args, **kwargs):
         from dateutil import tz
@@ -147,7 +147,7 @@ DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG = {
 @pytest.fixture()
 def awsbatchcliconfig_mock(request, mocker):
     """Mock AWSBatchCliConfig object with a default mock."""
-    module_under_test = request.module.__name__.replace("test_", "")
+    module_under_test = request.node.fspath.purebasename.replace("test_", "")
     mock = mocker.patch("awsbatch." + module_under_test + ".AWSBatchCliConfig", autospec=True)
     for key, value in DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG.items():
         setattr(mock.return_value, key, value)
