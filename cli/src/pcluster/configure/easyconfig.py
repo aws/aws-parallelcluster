@@ -11,11 +11,6 @@
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
 from future import standard_library  # isort:skip
-
-from pcluster.cluster_model import ClusterModel
-from pcluster.config.hit_converter import HitConverter
-from pcluster.config.validators import HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES, HEAD_NODE_UNSUPPORTED_MESSAGE
-
 standard_library.install_aliases()
 # fmt: on
 
@@ -26,7 +21,10 @@ from collections import OrderedDict
 
 import boto3
 
+from pcluster.cluster_model import ClusterModel
+from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.config.validators import HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES, HEAD_NODE_UNSUPPORTED_MESSAGE
 from pcluster.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
