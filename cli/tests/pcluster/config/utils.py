@@ -22,6 +22,7 @@ from pcluster.cluster_model import ClusterModel
 from pcluster.config.cfn_param_types import CfnParam
 from pcluster.config.param_types import StorageData
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.utils import InstanceTypeInfo
 from tests.pcluster.config.defaults import CFN_HIT_CONFIG_NUM_OF_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultDict
 
 # List of parameters ignored by default when comparing sections
@@ -110,8 +111,12 @@ def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_availability_zone_of_subnet": "mocked_avail_zone",
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.validators.get_instance_vcpus": 1,
-        "pcluster.config.cfn_param_types.get_instance_network_interfaces": 1,
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type": InstanceTypeInfo(
+            {
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
+            }
+        ),
     }
     if extra_patches:
         patches = merge_dicts(patches, extra_patches)
@@ -126,14 +131,16 @@ def mock_pcluster_config(mocker, scheduler=None, extra_patches=None, patch_funcs
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
-def mock_get_instance_type(mocker, instance_type="t2.micro"):
+def mock_instance_type_info(mocker, instance_type="t2.micro"):
     mocker.patch(
-        "pcluster.utils.get_instance_type",
-        return_value={
-            "InstanceType": instance_type,
-            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-            "NetworkInfo": {"EfaSupported": False},
-        },
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
     )
 
 
@@ -174,7 +181,7 @@ def assert_param_validator(
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
-    mock_get_instance_type(mocker)
+    mock_instance_type_info(mocker)
 
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
@@ -355,12 +362,14 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
     mocker.patch(
-        "pcluster.utils.get_instance_type",
-        return_value={
-            "InstanceType": "t2.micro",
-            "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
-            "NetworkInfo": {"EfaSupported": False},
-        },
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "t2.micro",
+                "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
     )
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):

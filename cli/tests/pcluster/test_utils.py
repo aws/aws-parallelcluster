@@ -11,7 +11,7 @@ from assertpy import assert_that
 from botocore.exceptions import ClientError, EndpointConnectionError
 
 import pcluster.utils as utils
-from pcluster.utils import get_bucket_url
+from pcluster.utils import Cache, get_bucket_url
 from tests.common import MockedBoto3Request
 
 FAKE_CLUSTER_NAME = "cluster_name"
@@ -500,47 +500,6 @@ def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
 
 
 @pytest.mark.parametrize(
-    "instance_types, error_message, fail_on_error",
-    [
-        # Test when calling for single instance types
-        (["t2.micro"], None, None),
-        (["bad.instance.type"], "some error message", True),
-        (["bad.instance.type"], "some error message", False),
-        # Test when calling for multiple instance types
-        (["t2.micro", "t2.xlarge"], None, None),
-        (["a1.medium", "m6g.xlarge"], None, None),
-        (["bad.instance.type1", "bad.instance.type2"], "some error message", True),
-        (["bad.instance.type1", "bad.instance.type2"], "some error message", False),
-    ],
-)
-def test_get_instance_types_info(boto3_stubber, capsys, instance_types, error_message, fail_on_error):
-    """Verify that get_instance_types_info makes the expected API call."""
-    response_dict = {"InstanceTypes": [{"InstanceType": instance_type} for instance_type in instance_types]}
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_instance_types",
-            response=response_dict if error_message is None else error_message,
-            expected_params={"InstanceTypes": instance_types},
-            generate_error=error_message,
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-    if error_message and fail_on_error:
-        full_error_message = "calling DescribeInstanceTypes for instances {0}: {1}".format(
-            ", ".join(instance_types), error_message
-        )
-        with pytest.raises(SystemExit, match=full_error_message) as sysexit:
-            utils.get_instance_types_info(instance_types, fail_on_error)
-        assert_that(sysexit.value.code).is_not_equal_to(0)
-    elif error_message:
-        utils.get_instance_types_info(instance_types, fail_on_error)
-        assert_that(capsys.readouterr().out).matches(error_message)
-    else:
-        instance_types_info = utils.get_instance_types_info(instance_types, fail_on_error)
-        assert_that(instance_types_info).is_equal_to(response_dict.get("InstanceTypes"))
-
-
-@pytest.mark.parametrize(
     "instance_type, supported_architectures, error_message",
     [
         ("optimal", ["x86_64"], None),
@@ -552,8 +511,8 @@ def test_get_instance_types_info(boto3_stubber, capsys, instance_types, error_me
 def test_get_supported_architectures_for_instance_type(mocker, instance_type, supported_architectures, error_message):
     """Verify that get_supported_architectures_for_instance_type behaves as expected for various cases."""
     get_instance_types_info_patch = mocker.patch(
-        "pcluster.utils.get_instance_types_info",
-        return_value=[{"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}],
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=utils.InstanceTypeInfo({"ProcessorInfo": {"SupportedArchitectures": supported_architectures}}),
     )
     observed_architectures = utils.get_supported_architectures_for_instance_type(instance_type)
     expected_architectures = list(set(supported_architectures) & set(["x86_64", "arm64"]))
@@ -562,7 +521,7 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
     if instance_type == "optimal":
         get_instance_types_info_patch.assert_not_called()
     else:
-        get_instance_types_info_patch.assert_called_with([instance_type])
+        get_instance_types_info_patch.assert_called_with(instance_type)
 
 
 @pytest.mark.parametrize(
@@ -1008,3 +967,140 @@ def test_get_ebs_snapshot_info(boto3_stubber, snapshot_id, raise_exceptions, err
         with pytest.raises(SystemExit, match=error_message) as sysexit:
             utils.get_ebs_snapshot_info(snapshot_id, raise_exceptions=raise_exceptions)
             assert_that(sysexit.value.code).is_not_equal_to(0)
+
+
+@pytest.mark.cache
+class TestCache:
+    invocations = []
+
+    @pytest.fixture(autouse=True)
+    def clear_cache(self):
+        utils.Cache.clear_all()
+
+    @pytest.fixture(autouse=True)
+    def clear_invocations(self):
+        del self.invocations[:]
+
+    @pytest.fixture
+    def disabled_cache(self):
+        os.environ["PCLUSTER_CACHE_DISABLED"] = "true"
+        yield
+        del os.environ["PCLUSTER_CACHE_DISABLED"]
+
+    @staticmethod
+    @Cache.cached
+    def _cached_method_1(arg1, arg2):
+        TestCache.invocations.append((arg1, arg2))
+        return arg1, arg2
+
+    @staticmethod
+    @Cache.cached
+    def _cached_method_2(arg1, arg2):
+        TestCache.invocations.append((arg1, arg2))
+        return arg1, arg2
+
+    def test_cached_method(self):
+        for _ in range(0, 2):
+            assert_that(self._cached_method_1(1, 2)).is_equal_to((1, 2))
+            assert_that(self._cached_method_2(1, 2)).is_equal_to((1, 2))
+            assert_that(self._cached_method_1(2, 1)).is_equal_to((2, 1))
+            assert_that(self._cached_method_1(1, arg2=2)).is_equal_to((1, 2))
+            assert_that(self._cached_method_1(arg1=1, arg2=2)).is_equal_to((1, 2))
+
+        assert_that(self.invocations).is_length(5)
+
+    def test_disabled_cache(self, disabled_cache):
+        assert_that(self._cached_method_1(1, 2)).is_equal_to((1, 2))
+        assert_that(self._cached_method_1(1, 2)).is_equal_to((1, 2))
+
+        assert_that(self.invocations).is_length(2)
+
+    def test_clear_all(self):
+        for _ in range(0, 2):
+            assert_that(self._cached_method_1(1, 2)).is_equal_to((1, 2))
+            assert_that(self._cached_method_2(1, 2)).is_equal_to((1, 2))
+
+        Cache.clear_all()
+
+        for _ in range(0, 2):
+            assert_that(self._cached_method_1(1, 2)).is_equal_to((1, 2))
+            assert_that(self._cached_method_2(1, 2)).is_equal_to((1, 2))
+
+        assert_that(self.invocations).is_length(4)
+
+
+class TestInstanceTypeInfo:
+    @pytest.fixture(autouse=True)
+    def clear_cache(self):
+        utils.Cache.clear_all()
+
+    def test_init_from_instance_type(self, boto3_stubber):
+        mocked_requests = [
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response={
+                    "InstanceTypes": [
+                        {
+                            "InstanceType": "c4.xlarge",
+                            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2, "DefaultThreadsPerCore": 2},
+                            "NetworkInfo": {"EfaSupported": False, "MaximumNetworkCards": 1},
+                            "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                        }
+                    ]
+                },
+                expected_params={"InstanceTypes": ["c4.xlarge"]},
+            ),
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response={
+                    "InstanceTypes": [
+                        {
+                            "InstanceType": "g4dn.metal",
+                            "VCpuInfo": {"DefaultVCpus": 96},
+                            "GpuInfo": {"Gpus": [{"Name": "T4", "Manufacturer": "NVIDIA", "Count": 8}]},
+                            "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 4},
+                            "ProcessorInfo": {"SupportedArchitectures": ["x86_64"]},
+                        }
+                    ]
+                },
+                expected_params={"InstanceTypes": ["g4dn.metal"]},
+            ),
+        ]
+        boto3_stubber("ec2", mocked_requests)
+
+        for _ in range(0, 2):
+            c4_instance_info = utils.InstanceTypeInfo.init_from_instance_type("c4.xlarge")
+            g4dn_instance_info = utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal")
+
+        assert_that(c4_instance_info.gpu_count()).is_equal_to(0)
+        assert_that(c4_instance_info.max_network_interface_count()).is_equal_to(1)
+        assert_that(c4_instance_info.default_threads_per_core()).is_equal_to(2)
+        assert_that(c4_instance_info.vcpus_count()).is_equal_to(4)
+        assert_that(c4_instance_info.supported_architecture()).is_equal_to(["x86_64"])
+        assert_that(c4_instance_info.is_efa_supported()).is_equal_to(False)
+
+        assert_that(g4dn_instance_info.gpu_count()).is_equal_to(8)
+        assert_that(g4dn_instance_info.max_network_interface_count()).is_equal_to(4)
+        assert_that(g4dn_instance_info.default_threads_per_core()).is_equal_to(2)
+        assert_that(g4dn_instance_info.vcpus_count()).is_equal_to(96)
+        assert_that(g4dn_instance_info.supported_architecture()).is_equal_to(["x86_64"])
+        assert_that(g4dn_instance_info.is_efa_supported()).is_equal_to(True)
+
+    def test_init_from_instance_type_failure(self, boto3_stubber):
+        boto3_stubber(
+            "ec2",
+            2
+            * [
+                MockedBoto3Request(
+                    method="describe_instance_types",
+                    expected_params={"InstanceTypes": ["g4dn.metal"]},
+                    generate_error=True,
+                    response="Error message",
+                )
+            ],
+        )
+        error_message = "Failed when retrieving instance type data for instance g4dn.metal: Error message"
+        with pytest.raises(SystemExit, match=error_message):
+            utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal")
+
+        utils.InstanceTypeInfo.init_from_instance_type("g4dn.metal", exit_on_error=False)

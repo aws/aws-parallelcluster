@@ -288,35 +288,34 @@ class QueueJsonSection(JsonSection):
         instance_type_param = compute_resource_section.get_param("instance_type")
 
         if instance_type_param.value:
-            instance_type = utils.get_instance_type(instance_type_param.value)
+            instance_type_info = utils.InstanceTypeInfo.init_from_instance_type(instance_type_param.value)
 
             # Set vcpus according to queue's disable_hyperthreading and instance features
             ht_disabled = self.get_param_value("disable_hyperthreading")
-            vcpus_info = instance_type.get("VCpuInfo")
-            default_threads_per_core = utils.get_default_threads_per_core(instance_type_param.value, instance_type)
+            default_threads_per_core = instance_type_info.default_threads_per_core()
             vcpus = (
-                (vcpus_info.get("DefaultVCpus") // default_threads_per_core)
+                (instance_type_info.vcpus_count() // default_threads_per_core)
                 if ht_disabled
-                else vcpus_info.get("DefaultVCpus")
+                else instance_type_info.vcpus_count()
             )
             compute_resource_section.get_param("vcpus").value = vcpus
 
             # Set gpus according to instance features
-            gpus = utils.get_instance_gpus(instance_type_param.value, instance_type)
+            gpus = instance_type_info.gpu_count()
             compute_resource_section.get_param("gpus").value = gpus
 
             # Set enable_efa according to queues' enable_efa and instance features
             # Instance type must support EFA
             enable_efa = self.get_param_value("enable_efa")
-            compute_resource_section.get_param("enable_efa").value = enable_efa and instance_type.get(
-                "NetworkInfo"
-            ).get("EfaSupported")
+            compute_resource_section.get_param("enable_efa").value = (
+                enable_efa and instance_type_info.is_efa_supported()
+            )
 
             # Set enable_efa_gdr according to queues' enable_efa_gdr and instance features
             # Instance type must support EFA and have GPUs
             enable_efa_gdr = self.get_param_value("enable_efa_gdr")
             compute_resource_section.get_param("enable_efa_gdr").value = (
-                enable_efa_gdr and instance_type.get("NetworkInfo").get("EfaSupported") and (gpus > 0)
+                enable_efa_gdr and instance_type_info.is_efa_supported() and (gpus > 0)
             )
 
             # Set disable_hyperthreading according to queues' disable_hyperthreading and instance features
@@ -331,7 +330,7 @@ class QueueJsonSection(JsonSection):
             ).value = compute_resource_section.get_param(
                 "disable_hyperthreading"
             ).value and utils.disable_ht_via_cpu_options(
-                instance_type_param.value, utils.get_default_threads_per_core(instance_type_param.value, instance_type)
+                instance_type_param.value, instance_type_info.default_threads_per_core()
             )
 
             # Set initial_count to min_count if not manually set
@@ -340,9 +339,9 @@ class QueueJsonSection(JsonSection):
                 initial_count_param.value = compute_resource_section.get_param_value("min_count")
 
             # Set number of network interfaces
-            compute_resource_section.get_param("network_interfaces").value = utils.get_instance_network_interfaces(
-                instance_type_param.value, instance_type
-            )
+            compute_resource_section.get_param(
+                "network_interfaces"
+            ).value = instance_type_info.max_network_interface_count()
 
 
 # ---------------------- Common functions ---------------------- #

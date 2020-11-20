@@ -20,13 +20,12 @@ from botocore.exceptions import ClientError, ParamValidationError
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
+    InstanceTypeInfo,
     ellipsize,
     get_base_additional_iam_policies,
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
-    get_instance_network_interfaces,
-    get_instance_vcpus,
     get_partition,
     get_region,
     get_supported_architectures_for_instance_type,
@@ -1019,7 +1018,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
         if "," not in param_value and "." in param_value:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max_vcpus limit
-            vcpus = get_instance_vcpus(param_value)
+            vcpus = InstanceTypeInfo.init_from_instance_type(param_value).vcpus_count()
             if vcpus <= 0:
                 warnings.append(
                     "Unable to get the number of vcpus for the compute_instance_type '{0}'. "
@@ -1036,7 +1035,7 @@ def compute_instance_type_validator(param_key, param_value, pcluster_config):
 
         if scheduler != "slurm":
             # Multiple NICs instance types are currently supported only with Slurm clusters
-            instance_nics = get_instance_network_interfaces(param_value)
+            instance_nics = InstanceTypeInfo.init_from_instance_type(param_value).max_network_interface_count()
             if instance_nics > 1:
                 warnings.append(
                     "Some services needed to support clusters with instance type '{0}' with multiple "

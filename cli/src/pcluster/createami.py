@@ -244,9 +244,9 @@ def _get_default_createami_instance_type(ami_architecture):
         LOGGER.error("Base AMI used in createami has an unsupported architecture: {0}".format(ami_architecture))
         sys.exit(1)
 
-    # Ensure instance type is avaiable in the selected region
+    # Ensure instance type is available in the selected region
     try:
-        utils.get_instance_types_info([instance_type], fail_on_error=True)
+        utils.InstanceTypeInfo.init_from_instance_type(instance_type)
     except SystemExit as system_exit:
         if "instance types do not exist" in str(system_exit):
             LOGGER.error(

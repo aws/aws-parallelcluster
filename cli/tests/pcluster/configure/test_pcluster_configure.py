@@ -8,7 +8,7 @@ from configparser import ConfigParser
 
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
-from tests.pcluster.config.utils import mock_get_instance_type
+from tests.pcluster.config.utils import mock_instance_type_info
 
 EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
@@ -303,7 +303,7 @@ def _mock_parallel_cluster_config(mocker):
     )
 
     for instance_type in supported_instance_types:
-        mock_get_instance_type(mocker, instance_type)
+        mock_instance_type_info(mocker, instance_type)
 
 
 def _run_configuration(mocker, path, with_config=False, region=None):

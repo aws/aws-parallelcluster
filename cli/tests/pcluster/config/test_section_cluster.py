@@ -804,8 +804,12 @@ def test_cluster_section_to_cfn(
     utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=4)
-    mocker.patch("pcluster.config.cfn_param_types.get_default_threads_per_core", side_effect=default_threads_per_core)
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.vcpus_count.return_value = 4
+    instance_type_info_mock.default_threads_per_core.side_effect = default_threads_per_core
     utils.assert_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params)
 
 
@@ -1210,7 +1214,7 @@ def test_sit_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_l
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
 
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=2)
+    mocker.patch("pcluster.config.cfn_param_types.InstanceTypeInfo.vcpus_count", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
 
 

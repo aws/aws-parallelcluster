@@ -12,7 +12,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config import mappings
-from pcluster.utils import disable_ht_via_cpu_options, get_default_threads_per_core, get_instance_type
+from pcluster.utils import InstanceTypeInfo, disable_ht_via_cpu_options
 
 
 class HITClusterModel(ClusterModel):
@@ -59,14 +59,12 @@ class HITClusterModel(ClusterModel):
 
         # Initialize CpuOptions
         disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
-        master_instance_type_info = get_instance_type(master_instance_type)
+        master_instance_type_info = InstanceTypeInfo.init_from_instance_type(master_instance_type)
 
         # Set vcpus according to queue's disable_hyperthreading and instance features
-        vcpus_info = master_instance_type_info.get("VCpuInfo")
-        master_vcpus = vcpus_info.get("DefaultVCpus")
+        master_vcpus = master_instance_type_info.vcpus_count()
 
-        master_cpu_options = {"CoreCount": master_vcpus // 2, "ThreadsPerCore": 1} if disable_hyperthreading else {}
-        master_threads_per_core = get_default_threads_per_core(master_instance_type)
+        master_threads_per_core = master_instance_type_info.default_threads_per_core()
         master_cpu_options = (
             {"CoreCount": master_vcpus // master_threads_per_core, "ThreadsPerCore": 1}
             if disable_hyperthreading and disable_ht_via_cpu_options(master_instance_type, master_threads_per_core)
