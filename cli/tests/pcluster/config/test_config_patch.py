@@ -16,6 +16,7 @@ from assertpy import assert_that
 from pcluster.config.config_patch import Change, ConfigPatch
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.config.update_policy import UpdatePolicy
+from pcluster.utils import InstanceTypeInfo
 from tests.pcluster.config.utils import duplicate_config_file
 
 default_cluster_params = {
@@ -35,7 +36,16 @@ def _do_mocking_for_tests(mocker):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "g4dn.metal",
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
+            }
+        ),
+    )
 
 
 def _check_patch(src_conf, dst_conf, expected_changes, expected_patch_policy):

@@ -19,16 +19,14 @@ from pcluster.config.param_types import LOGGER, Param, Section, SettingsParam, S
 from pcluster.config.resource_map import ResourceMap
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.utils import (
+    InstanceTypeInfo,
     disable_ht_via_cpu_options,
     error,
     get_availability_zone_of_subnet,
     get_cfn_param,
-    get_default_threads_per_core,
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
-    get_instance_network_interfaces,
-    get_instance_vcpus,
     get_supported_architectures_for_instance_type,
 )
 
@@ -655,12 +653,13 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
         HT is disabled (or "NONE" if it shouldn't be disabled). The second item is a boolean expressing
         if HT should be disabled via CPU Options for the given instance type.
         """
-        default_threads_per_core = get_default_threads_per_core(instance_type)
+        instance_type_info = InstanceTypeInfo.init_from_instance_type(instance_type)
+        default_threads_per_core = instance_type_info.default_threads_per_core()
         if default_threads_per_core == 1:
             # no action is required to disable hyperthreading
             cores = "NONE"
         else:
-            cores = get_instance_vcpus(instance_type) // default_threads_per_core
+            cores = instance_type_info.vcpus_count() // default_threads_per_core
 
         return cores, disable_ht_via_cpu_options(instance_type, default_threads_per_core)
 
@@ -1086,8 +1085,16 @@ class NetworkInterfacesCountCfnParam(CommaSeparatedCfnParam):
         cluster_section = self.pcluster_config.get_section("cluster")
         scheduler = cluster_section.get_param_value("scheduler")
         self.value = [
-            str(get_instance_network_interfaces(cluster_section.get_param_value("master_instance_type"))),
-            str(get_instance_network_interfaces(cluster_section.get_param_value("compute_instance_type")))
+            str(
+                InstanceTypeInfo.init_from_instance_type(
+                    cluster_section.get_param_value("master_instance_type")
+                ).max_network_interface_count()
+            ),
+            str(
+                InstanceTypeInfo.init_from_instance_type(
+                    cluster_section.get_param_value("compute_instance_type")
+                ).max_network_interface_count()
+            )
             if self.pcluster_config.cluster_model.name == "SIT" and scheduler != "awsbatch"
             else "1",
         ]

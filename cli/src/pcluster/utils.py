@@ -10,6 +10,9 @@
 # limitations under the License.
 # fmt: off
 from __future__ import absolute_import, print_function  # isort:skip
+
+import functools
+
 from future import standard_library  # isort:skip
 standard_library.install_aliases()
 # fmt: on
@@ -309,25 +312,6 @@ def upload_resources_artifacts(bucket_name, artifact_directory, root):
             bucket.upload_fileobj(zip_dir(os.path.join(root, res)), "%s/%s/artifacts.zip" % (artifact_directory, res))
         elif os.path.isfile(os.path.join(root, res)):
             bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
-
-
-def get_instance_vcpus(instance_type, instance_info=None):
-    """
-    Get number of vcpus for the given instance type.
-
-    :param instance_type: the instance type to search for.
-    :return: the number of vcpus or -1 if the instance type cannot be found
-    """
-    try:
-        if not instance_info:
-            instance_info = get_instance_type(instance_type)
-
-        vcpus_info = instance_info.get("VCpuInfo")
-        vcpus = vcpus_info.get("DefaultVCpus")
-    except (ClientError):
-        vcpus = -1
-
-    return vcpus
 
 
 def get_supported_instance_types():
@@ -939,20 +923,6 @@ def validate_pcluster_version_based_on_ami_name(ami_name):
             )
 
 
-def get_instance_types_info(instance_types, fail_on_error=True):
-    """Return InstanceTypes list returned by EC2's DescribeInstanceTypes API."""
-    try:
-        ec2_client = boto3.client("ec2")
-        return ec2_client.describe_instance_types(InstanceTypes=instance_types).get("InstanceTypes")
-    except ClientError as e:
-        error(
-            "Error when calling DescribeInstanceTypes for instances {0}: {1}".format(
-                ", ".join(instance_types), e.response.get("Error").get("Message")
-            ),
-            fail_on_error,
-        )
-
-
 def get_supported_architectures_for_instance_type(instance_type):
     """Get a list of architectures supported for the given instance type."""
     # "optimal" compute instance type (when using batch) implies the use of instances from the
@@ -961,8 +931,8 @@ def get_supported_architectures_for_instance_type(instance_type):
     if instance_type == "optimal":
         return ["x86_64"]
 
-    instance_info = get_instance_types_info([instance_type])[0]
-    supported_architectures = instance_info.get("ProcessorInfo").get("SupportedArchitectures")
+    instance_info = InstanceTypeInfo.init_from_instance_type(instance_type)
+    supported_architectures = instance_info.supported_architecture()
 
     # Some instance types support multiple architectures (x86_64 and i386). Filter unsupported ones.
     supported_architectures = list(set(supported_architectures) & set(SUPPORTED_ARCHITECTURES))
@@ -1094,35 +1064,10 @@ def cluster_has_running_capacity(stack_name):
     return cluster_has_running_capacity.cached_result
 
 
-def get_instance_type(instance_type):
-    ec2_client = boto3.client("ec2")
-    try:
-        return ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
-    except Exception as e:
-        LOGGER.error("Failed when retrieving instance type data for instance type %s: %s", instance_type, e)
-        raise e
-
-
-def get_default_threads_per_core(instance_type, instance_info=None):
-    """Return the default threads per core for the given instance type."""
-    # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
-    #       attribute in their VCpuInfo section. This is a known issue with the
-    #       ec2 DescribeInstanceTypes API. For these instance types an assumption
-    #       is made that if the instance's supported architectures list includes
-    #       x86_64 then the default is 2, otherwise it's 1.
-    if instance_info is None:
-        instance_info = get_instance_type(instance_type)
-    threads_per_core = instance_info.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
-    if threads_per_core is None:
-        supported_architectures = instance_info.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
-        threads_per_core = 2 if "x86_64" in supported_architectures else 1
-    return threads_per_core
-
-
 def disable_ht_via_cpu_options(instance_type, default_threads_per_core=None):
     """Return a boolean describing whether hyperthreading should be disabled via CPU options for instance_type."""
     if default_threads_per_core is None:
-        default_threads_per_core = get_default_threads_per_core(instance_type)
+        default_threads_per_core = InstanceTypeInfo.init_from_instance_type(instance_type).default_threads_per_core()
     res = all(
         [
             # If default threads per core is 1, HT doesn't need to be disabled
@@ -1225,25 +1170,122 @@ def get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=False):
         )
 
 
-def get_instance_network_interfaces(instance_type, instance_info=None):
-    """Return the number of network interfaces to configure for the instance type."""
-    if not instance_info:
-        instance_info = get_instance_type(instance_type)
+class Cache:
+    """Simple utility class providing a cache mechanism for expensive functions."""
 
-    # Until maximumNetworkCards is not available, 1 is a safe value for all instance types
-    needed_interfaces = int(instance_info.get("NetworkInfo").get("MaximumNetworkCards", 1))
+    _caches = []
 
-    return needed_interfaces
+    @staticmethod
+    def is_enabled():
+        """Tell if the cache is enabled."""
+        return not os.environ.get("PCLUSTER_CACHE_DISABLED")
+
+    @staticmethod
+    def clear_all():
+        """Clear the content of all caches."""
+        for cache in Cache._caches:
+            cache.clear()
+
+    @staticmethod
+    def _make_key(args, kwargs):
+        key = args
+        if kwargs:
+            for item in kwargs.items():
+                key += item
+        return hash(key)
+
+    @staticmethod
+    def cached(function):
+        """
+        Decorate a function to make it use a results cache based on passed arguments.
+
+        Note: all arguments must be hashable for this function to work properly.
+        """
+        cache = {}
+        Cache._caches.append(cache)
+
+        @functools.wraps(function)
+        def wrapper(*args, **kwargs):
+            cache_key = Cache._make_key(args, kwargs)
+
+            if Cache.is_enabled() and cache_key in cache:
+                return cache[cache_key]
+            else:
+                return_value = function(*args, **kwargs)
+                if Cache.is_enabled():
+                    cache[cache_key] = return_value
+                return return_value
+
+        return wrapper
 
 
-def get_instance_gpus(instance_type, instance_info=None):
-    """Return the number of GPUs provided by the instance type."""
-    if not instance_info:
-        instance_info = get_instance_type(instance_type)
+class InstanceTypeInfo:
+    """Data object wrapping the result of a describe_instance_types call."""
 
-    gpu_info = instance_info.get("GpuInfo", None)
+    def __init__(self, instance_type_data):
+        self.instance_type_data = instance_type_data
 
-    # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
-    gpus = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")]) if gpu_info else 0
+    @staticmethod
+    @Cache.cached
+    def init_from_instance_type(instance_type, exit_on_error=True):
+        """
+        Init InstanceTypeInfo by performing a describe_instance_types call.
 
-    return gpus
+        Multiple calls for the same instance_type are cached.
+        The function exits with error if exit_on_error is set to True.
+        """
+        try:
+            ec2_client = boto3.client("ec2")
+            return InstanceTypeInfo(
+                ec2_client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+            )
+        except ClientError as e:
+            error(
+                "Failed when retrieving instance type data for instance {0}: {1}".format(
+                    instance_type, e.response.get("Error").get("Message")
+                ),
+                exit_on_error,
+            )
+
+    def gpu_count(self):
+        """Return the number of GPUs for the instance."""
+        gpu_info = self.instance_type_data.get("GpuInfo", None)
+        # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
+        gpus = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")]) if gpu_info else 0
+        return gpus
+
+    def max_network_interface_count(self):
+        """Max number of NICs for the instance."""
+        needed_interfaces = int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
+        return needed_interfaces
+
+    def default_threads_per_core(self):
+        """Return the default threads per core for the given instance type."""
+        # NOTE: currently, .metal instances do not contain the DefaultThreadsPerCore
+        #       attribute in their VCpuInfo section. This is a known issue with the
+        #       ec2 DescribeInstanceTypes API. For these instance types an assumption
+        #       is made that if the instance's supported architectures list includes
+        #       x86_64 then the default is 2, otherwise it's 1.
+        threads_per_core = self.instance_type_data.get("VCpuInfo", {}).get("DefaultThreadsPerCore")
+        if threads_per_core is None:
+            supported_architectures = self.instance_type_data.get("ProcessorInfo", {}).get("SupportedArchitectures", [])
+            threads_per_core = 2 if "x86_64" in supported_architectures else 1
+        return threads_per_core
+
+    def vcpus_count(self):
+        """Get number of vcpus for the given instance type."""
+        try:
+            vcpus_info = self.instance_type_data.get("VCpuInfo")
+            vcpus = vcpus_info.get("DefaultVCpus")
+        except ClientError:
+            vcpus = -1
+
+        return vcpus
+
+    def supported_architecture(self):
+        """Return the list of supported architectures."""
+        return self.instance_type_data.get("ProcessorInfo").get("SupportedArchitectures")
+
+    def is_efa_supported(self):
+        """Check whether EFA is supported."""
+        return self.instance_type_data.get("NetworkInfo").get("EfaSupported")

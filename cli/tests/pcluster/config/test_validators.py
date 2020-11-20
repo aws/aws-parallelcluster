@@ -113,7 +113,9 @@ def test_head_node_instance_type_validator(mocker, instance_type, expected_messa
 def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message, expected_warnings):
     config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
     extra_patches = {
-        "pcluster.config.validators.get_instance_network_interfaces": 4 if instance_type == "p4d.24xlarge" else 1,
+        "pcluster.config.validators.InstanceTypeInfo.max_network_interface_count": 4
+        if instance_type == "p4d.24xlarge"
+        else 1,
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_message, expected_warnings, extra_patches=extra_patches
@@ -2010,7 +2012,11 @@ def test_compute_resource_validator(mocker, section_dict, expected_message):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.max_network_interface_count.return_value = 1
     mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)

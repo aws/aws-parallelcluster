@@ -114,6 +114,13 @@ DESCRIBE_INSTANCE_TYPES_RESPONSES = {
 }
 
 
+@pytest.fixture(autouse=True)
+def clear_cache():
+    from pcluster.utils import Cache
+
+    Cache.clear_all()
+
+
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.utils.boto3"
@@ -241,26 +248,23 @@ def _mock_boto3(boto3_stubber, expected_json_params, master_instance_type=None):
     """Mock the boto3 client based on the expected json configuration."""
     expected_json_queue_settings = expected_json_params["cluster"].get("queue_settings", {})
     mocked_requests = []
-
+    instance_types = []
     # One describe_instance_type for the Master node
     if master_instance_type:
-        mocked_requests.append(
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response=DESCRIBE_INSTANCE_TYPES_RESPONSES[master_instance_type],
-                expected_params={"InstanceTypes": [master_instance_type]},
-            )
-        )
+        instance_types.append(master_instance_type)
 
     # One describe_instance_type per compute resource
     for _, queue in expected_json_queue_settings.items():
         for _, compute_resource in queue.get("compute_resource_settings", {}).items():
-            instance_type = compute_resource["instance_type"]
-            mocked_requests.append(
-                MockedBoto3Request(
-                    method="describe_instance_types",
-                    response=DESCRIBE_INSTANCE_TYPES_RESPONSES[instance_type],
-                    expected_params={"InstanceTypes": [instance_type]},
-                )
+            if compute_resource["instance_type"] not in instance_types:
+                instance_types.append(compute_resource["instance_type"])
+
+    for instance_type in instance_types:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="describe_instance_types",
+                response=DESCRIBE_INSTANCE_TYPES_RESPONSES[instance_type],
+                expected_params={"InstanceTypes": [instance_type]},
             )
+        )
     boto3_stubber("ec2", mocked_requests)
