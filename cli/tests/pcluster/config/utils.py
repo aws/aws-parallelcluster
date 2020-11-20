@@ -46,7 +46,7 @@ def merge_dicts(*args):
 
 def get_pcluster_config_example():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "..", "..", "pcluster", "examples", "config")
+    return os.path.join(current_dir, "..", "..", "..", "src", "pcluster", "examples", "config")
 
 
 def set_default_values_for_required_cluster_section_params(cluster_section_dict, only_if_not_present=False):

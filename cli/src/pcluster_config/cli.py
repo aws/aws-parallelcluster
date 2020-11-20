@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and limitations under the License.
 #
 
-import argparse
 import os
 import sys
+
+import argparse
 
 from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig, default_config_file_path
@@ -31,9 +32,7 @@ def _parse_args(argv=None):
     default_config_file = default_config_file_path()
 
     parser = argparse.ArgumentParser(
-        description=(
-            "Updates the AWS ParallelCluster configuration file."
-        ),
+        description=("Updates the AWS ParallelCluster configuration file."),
         epilog='For command specific flags, please run: "pcluster-config [command] --help"',
     )
     subparsers = parser.add_subparsers()

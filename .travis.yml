@@ -2,27 +2,40 @@ language: python
 sudo: required
 dist: xenial
 
-python:
-  - "2.7"
-  - "3.4"
-  - "3.5"
-  - "3.6"
-  - "3.7"
-  - "3.8"
-
 matrix:
   include:
+  - name: Python 2.7 Tests
+    python: 2.7
+    env: TOXENV=py27-nocov
+  - name: Python 3.4 Tests
+    python: 3.4
+    env: TOXENV=py34-nocov
+  - name: Python 3.5 Tests
+    python: 3.5
+    env: TOXENV=py35-nocov
+  - name: Python 3.6 Tests
+    python: 3.6
+    env: TOXENV=py36-nocov
+  - name: Python 3.7 Tests
+    python: 3.7
+    env: TOXENV=py37-nocov
+  - name: Python 3.8 Tests
+    python: 3.8
+    env: TOXENV=py38-nocov
+  - name: Python 3.9 Tests
+    python: 3.9
+    env: TOXENV=py39-nocov
+  - name: Python 3.8 Tests Coverage
+    python: 3.8
+    env: TOXENV=py38-cov
   - name: Code Checks
     python: 3.6
-    stage: linters
     env: TOXENV=code-linters
   - name: CloudFormation Templates Checks
     python: 3.6
-    stage: linters
     env: TOXENV=cfn-format-check,cfn-lint,cfn-tests
   - name: Validate integration tests configs
     python: 3.6
-    stage: linters
     env: TOXENV=validate-test-configs
     script: cd tests/integration-tests && tox
 
