@@ -245,6 +245,26 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
+  test_security_groups.py::test_additional_sg_and_ssh_from:
+    dimensions:
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
+  test_security_groups.py::test_overwrite_sg:
+    dimensions:
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["centos7"]
+        schedulers: ["slurm"]
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["awsbatch"]
 scaling:
   test_scaling.py::test_hit_scaling:
     dimensions:

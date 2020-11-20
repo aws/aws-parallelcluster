@@ -617,7 +617,7 @@ def vpc_stacks(cfn_stacks_factory, request):
     return vpc_stacks
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
 def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
 
