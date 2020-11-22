@@ -20,7 +20,6 @@ from utils import run_command
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.skip(reason="Temporarily disable this test")
 @pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
