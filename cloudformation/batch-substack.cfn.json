@@ -95,6 +95,10 @@
         "x86_64",
         "arm64"
       ]
+    },
+    "MasterPrivateIP": {
+      "Description": "Private IP of the head node",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -525,6 +529,12 @@
               "Value": {
                 "Ref": "RAIDSharedDir"
               }
+            },
+            {
+              "Name": "PCLUSTER_MASTER_IP",
+              "Value": {
+                "Ref": "MasterPrivateIP"
+              }
             }
           ]
         }
@@ -588,6 +598,12 @@
                     "Name": "PCLUSTER_RAID_SHARED_DIR",
                     "Value": {
                       "Ref": "RAIDSharedDir"
+                    }
+                  },
+                  {
+                    "Name": "PCLUSTER_MASTER_IP",
+                    "Value": {
+                      "Ref": "MasterPrivateIP"
                     }
                   }
                 ]

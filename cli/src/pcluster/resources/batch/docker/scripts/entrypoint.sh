@@ -9,16 +9,9 @@ echo "Starting ssh agents..."
 eval $(ssh-agent -s) && ssh-add ${SSHDIR}/id_rsa
 /usr/sbin/sshd -f /root/.ssh/sshd_config -h /root/.ssh/ssh_host_rsa_key
 
-# get private Master IP
-_master_ip="$(aws --region "${PCLUSTER_AWS_REGION}" cloudformation describe-stacks --stack-name "${PCLUSTER_STACK_NAME}" --query "Stacks[0].Outputs[?OutputKey=='MasterPrivateIP'].OutputValue" --output text)"
-if [[ -z "${_master_ip}" ]]; then
-    echo "Error getting Master IP"
-    exit 1
-fi
-
 # mount nfs
 echo "Mounting /home..."
-/parallelcluster/bin/mount_nfs.sh "${_master_ip}" "/home"
+/parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "/home"
 
 echo "Mounting shared file system..."
 ebs_shared_dirs=$(echo "${PCLUSTER_SHARED_DIRS}" | tr "," " ")
@@ -27,7 +20,7 @@ for ebs_shared_dir in ${ebs_shared_dirs}
 do
   if [[ ${ebs_shared_dir} != "NONE" ]]; then
     # mount nfs
-    /parallelcluster/bin/mount_nfs.sh "${_master_ip}" "${ebs_shared_dir}"
+    /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "${ebs_shared_dir}"
   fi
 done
 
@@ -41,7 +34,7 @@ fi
 
 # mount RAID via nfs
 if [[ ${PCLUSTER_RAID_SHARED_DIR} != "NONE" ]]; then
-  /parallelcluster/bin/mount_nfs.sh "${_master_ip}" "${PCLUSTER_RAID_SHARED_DIR}"
+  /parallelcluster/bin/mount_nfs.sh "${PCLUSTER_MASTER_IP}" "${PCLUSTER_RAID_SHARED_DIR}"
 fi
 
 # create hostfile if mnp job

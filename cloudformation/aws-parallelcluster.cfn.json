@@ -2345,6 +2345,12 @@
           },
           "Architecture": {
             "Ref": "Architecture"
+          },
+          "MasterPrivateIP": {
+            "Fn::GetAtt": [
+              "MasterServerSubstack",
+              "Outputs.MasterPrivateIP"
+            ]
           }
         },
         "TemplateURL": {
