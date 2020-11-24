@@ -4,6 +4,11 @@ CHANGELOG
 2.10.1
 ------
 
+**ENHANCEMENTS**
+
+- Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
+  failures due to CloudFormation throttling.
+
 2.10.0
 ------
 
