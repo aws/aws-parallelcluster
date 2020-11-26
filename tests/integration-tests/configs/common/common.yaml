@@ -203,11 +203,6 @@ efa:
         # Torque is not supported by OpenMPI distributed with EFA
         # Slurm test is to verify EFA works correctly when using the SIT model in the config file
         schedulers: ["sge", "slurm"]
-        # P4d instances are currently not supported in SIT clusters
-      - regions: ["us-east-1"]
-        instances: ["p4d.24xlarge"]
-        oss: ["alinux", "ubuntu1804", "centos7"]
-        schedulers: ["slurm"]
 iam_policies:
   test_iam_policies.py::test_iam_policies:
     dimensions:
