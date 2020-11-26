@@ -118,15 +118,15 @@ def efs_id_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
     try:
-        # Get master availability zone
-        master_avail_zone = pcluster_config.get_master_availability_zone()
-        mount_target_id = get_efs_mount_target_id(efs_fs_id=param_value, avail_zone=master_avail_zone)
+        # Get head node availability zone
+        head_node_avail_zone = pcluster_config.get_head_node_availability_zone()
+        head_node_target_id = get_efs_mount_target_id(efs_fs_id=param_value, avail_zone=head_node_avail_zone)
         # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-        if mount_target_id:
+        if head_node_target_id:
             # Get list of security group IDs of the mount target
             sg_ids = (
                 boto3.client("efs")
-                .describe_mount_target_security_groups(MountTargetId=mount_target_id)
+                .describe_mount_target_security_groups(MountTargetId=head_node_target_id)
                 .get("SecurityGroups")
             )
             if not _check_in_out_access(sg_ids, port=2049):
@@ -134,7 +134,7 @@ def efs_id_validator(param_key, param_value, pcluster_config):
                     "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
                     "but it does not have a security group that allows inbound and outbound rules to support NFS. "
                     "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
-                        mount_target_id, master_avail_zone, param_value
+                        head_node_target_id, head_node_avail_zone, param_value
                     )
                 )
     except ClientError as e:
@@ -383,12 +383,12 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
                 "Please double check the 'base_os' configuration parameter".format(allowed_oses)
             )
 
-        master_instance_type = cluster_section.get_param_value("master_instance_type")
-        if re.search(r"(micro)|(nano)", master_instance_type):
+        head_node_instance_type = cluster_section.get_param_value("master_instance_type")
+        if re.search(r"(micro)|(nano)", head_node_instance_type):
             warnings.append(
                 "The packages required for desktop virtualization in the selected instance type '{0}' "
                 "may cause instability of the master instance. If you want to use NICE DCV it is recommended "
-                "to use an instance type with at least 1.7 GB of memory.".format(master_instance_type)
+                "to use an instance type with at least 1.7 GB of memory.".format(head_node_instance_type)
             )
 
         if pcluster_config.get_section("dcv").get_param_value("access_from") == CIDR_ALL_IPS:
@@ -956,7 +956,7 @@ def instances_architecture_compatibility_validator(param_key, param_value, pclus
     errors = []
     warnings = []
 
-    master_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
+    head_node_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
     # When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
     compute_instance_types = param_value.split(",")
     for compute_instance_type in compute_instance_types:
@@ -970,11 +970,11 @@ def instances_architecture_compatibility_validator(param_key, param_value, pclus
             )
             continue
         compute_architectures = get_supported_architectures_for_instance_type(compute_instance_type)
-        if master_architecture not in compute_architectures:
+        if head_node_architecture not in compute_architectures:
             errors.append(
                 "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
                 "compatible with the architecture supported by the master_instance_type ({2}).".format(
-                    compute_instance_type, compute_architectures, master_architecture
+                    compute_instance_type, compute_architectures, head_node_architecture
                 )
             )
 

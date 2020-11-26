@@ -18,7 +18,7 @@ from fabric import Connection
 from retrying import retry
 from utils import random_alphanumeric
 
-SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "master_subnet_id"])
+SnapshotConfig = namedtuple("ClusterConfig", ["ssh_key", "key_name", "vpc_id", "head_node_subnet_id"])
 
 
 class EBSSnapshotsFactory:
@@ -84,7 +84,7 @@ class EBSSnapshotsFactory:
 
         self.security_group_id = self._get_security_group_id()
 
-        subnet = self.ec2.Subnet(self.config.master_subnet_id)
+        subnet = self.ec2.Subnet(self.config.head_node_subnet_id)
 
         # Create a new volume and attach to the instance
         self.volume = self._create_volume(subnet)

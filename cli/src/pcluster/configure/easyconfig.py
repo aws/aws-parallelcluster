@@ -230,8 +230,8 @@ def _create_vpc_parameters(vpc_section, cluster_config):
             vpc_id = prompt_iterable("VPC ID", vpc_list, default_value=default_vpc)
             vpc_parameters["vpc_id"] = vpc_id
             subnet_list = vpc_and_subnets["vpc_subnets"][vpc_id]
-            qualified_master_subnets = _filter_subnets_offering_instance_type(
-                subnet_list, cluster_config.master_instance_type
+            qualified_head_node_subnets = _filter_subnets_offering_instance_type(
+                subnet_list, cluster_config.head_node_instance_type
             )
             if cluster_config.scheduler != "awsbatch":
                 qualified_compute_subnets = _filter_subnets_offering_instance_type(
@@ -241,20 +241,20 @@ def _create_vpc_parameters(vpc_section, cluster_config):
                 # Special case of awsbatch, where compute instance type is not specified
                 qualified_compute_subnets = subnet_list
             if (
-                not qualified_master_subnets
+                not qualified_head_node_subnets
                 or not qualified_compute_subnets
                 or (prompt("Automate Subnet creation? (y/n)", lambda x: x in ("y", "n"), default_value="y") == "y")
             ):
                 # Start auto subnets creation in the absence of qualified subnets.
                 # Otherwise, user selects between manual and automate subnets creation
-                if not qualified_master_subnets or not qualified_compute_subnets:
+                if not qualified_head_node_subnets or not qualified_compute_subnets:
                     print("There are no qualified subnets. Starting automatic creation of subnets...")
                 vpc_parameters.update(
                     automate_subnet_creation(vpc_id, _choose_network_configuration(cluster_config), min_subnet_size)
                 )
             else:
                 vpc_parameters.update(
-                    _ask_for_subnets(subnet_list, vpc_section, qualified_master_subnets, qualified_compute_subnets)
+                    _ask_for_subnets(subnet_list, vpc_section, qualified_head_node_subnets, qualified_compute_subnets)
                 )
     return vpc_parameters
 
@@ -264,20 +264,20 @@ def _filter_subnets_offering_instance_type(subnet_list, instance_type):
     return [subnet_entry for subnet_entry in subnet_list if subnet_entry["availability_zone"] in qualified_azs]
 
 
-def _ask_for_subnets(subnet_list, vpc_section, qualified_master_subnets, qualified_compute_subnets):
-    master_subnet_id = _prompt_for_subnet(
-        vpc_section.get_param_value("master_subnet_id"), subnet_list, qualified_master_subnets, "Master Subnet ID"
+def _ask_for_subnets(subnet_list, vpc_section, qualified_head_node_subnets, qualified_compute_subnets):
+    head_node_subnet_id = _prompt_for_subnet(
+        vpc_section.get_param_value("master_subnet_id"), subnet_list, qualified_head_node_subnets, "Master Subnet ID"
     )
     compute_subnet_id = _prompt_for_subnet(
-        vpc_section.get_param_value("compute_subnet_id") or master_subnet_id,
+        vpc_section.get_param_value("compute_subnet_id") or head_node_subnet_id,
         subnet_list,
         qualified_compute_subnets,
         "Compute Subnet ID",
     )
 
-    vpc_parameters = {"master_subnet_id": master_subnet_id}
+    vpc_parameters = {"master_subnet_id": head_node_subnet_id}
 
-    if master_subnet_id != compute_subnet_id:
+    if head_node_subnet_id != compute_subnet_id:
         vpc_parameters["compute_subnet_id"] = compute_subnet_id
 
     return vpc_parameters
@@ -286,9 +286,9 @@ def _ask_for_subnets(subnet_list, vpc_section, qualified_master_subnets, qualifi
 def _choose_network_configuration(cluster_config):
     if cluster_config.scheduler == "awsbatch":
         return PublicPrivateNetworkConfig()
-    azs_for_master_type = get_supported_az_for_one_instance_type(cluster_config.master_instance_type)
+    azs_for_head_node_type = get_supported_az_for_one_instance_type(cluster_config.head_node_instance_type)
     azs_for_compute_type = get_supported_az_for_one_instance_type(cluster_config.compute_instance_type)
-    common_availability_zones = set(azs_for_master_type) & set(azs_for_compute_type)
+    common_availability_zones = set(azs_for_head_node_type) & set(azs_for_compute_type)
 
     if not common_availability_zones:
         # Automate subnet creation only allows subnets to reside in a single az.
@@ -297,7 +297,7 @@ def _choose_network_configuration(cluster_config):
             "Error: There is no single availability zone offering master and compute in current region.\n"
             "To create your cluster, make sure you have a subnet for master node in {0}"
             ", and a subnet for compute nodes in {1}. Then run pcluster configure again"
-            "and avoid using Automate VPC/Subnet creation.".format(azs_for_master_type, azs_for_compute_type)
+            "and avoid using Automate VPC/Subnet creation.".format(azs_for_head_node_type, azs_for_compute_type)
         )
         print("Exiting...")
         sys.exit(1)
@@ -366,8 +366,8 @@ class ClusterConfigureHelper:
             )
 
     def prompt_instance_types(self):
-        """Ask for master_instance_type and compute_instance_type (if necessary)."""
-        self.master_instance_type = prompt(
+        """Ask for head_node_instance_type and compute_instance_type (if necessary)."""
+        self.head_node_instance_type = prompt(
             "Master instance type",
             lambda x: _is_instance_type_supported_for_head_node(x) and x in get_supported_instance_types(),
             default_value=self.cluster_section.get_param_value("master_instance_type"),
@@ -399,7 +399,7 @@ class ClusterConfigureHelper:
         """Return a dict containing the scheduler dependent parameters."""
         scheduler_parameters = {
             "base_os": self.base_os,
-            "master_instance_type": self.master_instance_type,
+            "master_instance_type": self.head_node_instance_type,
             "compute_instance_type": self.compute_instance_type,
             self.max_size_name: self.max_cluster_size,
             self.min_size_name: self.min_cluster_size,
@@ -424,4 +424,4 @@ class ClusterConfigureHelper:
         Cache is done inside get get_supported_az_for_instance_types.
         """
         if not self.is_aws_batch:
-            get_supported_az_for_multi_instance_types([self.master_instance_type, self.compute_instance_type])
+            get_supported_az_for_multi_instance_types([self.head_node_instance_type, self.compute_instance_type])

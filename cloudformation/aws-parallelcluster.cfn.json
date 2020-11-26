@@ -332,7 +332,7 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
-      "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
+      "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]",
       "Type": "String",
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },

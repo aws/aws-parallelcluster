@@ -223,11 +223,11 @@ def _test_efs_correctly_mounted(remote_command_executor, mount_dir):
 
 def _assert_subnet_az_relations(region, vpc_stack, expected_in_same_az):
     vpc = get_vpc_snakecase_value(vpc_stack)
-    master_subnet_id = vpc["public_subnet_id"]
+    head_node_subnet_id = vpc["public_subnet_id"]
     compute_subnet_id = vpc["private_subnet_id"] if expected_in_same_az else vpc["private_additional_cidr_subnet_id"]
-    master_subnet_az = boto3.resource("ec2", region_name=region).Subnet(master_subnet_id).availability_zone
+    head_node_subnet_az = boto3.resource("ec2", region_name=region).Subnet(head_node_subnet_id).availability_zone
     compute_subnet_az = boto3.resource("ec2", region_name=region).Subnet(compute_subnet_id).availability_zone
     if expected_in_same_az:
-        assert_that(master_subnet_az).is_equal_to(compute_subnet_az)
+        assert_that(head_node_subnet_az).is_equal_to(compute_subnet_az)
     else:
-        assert_that(master_subnet_az).is_not_equal_to(compute_subnet_az)
+        assert_that(head_node_subnet_az).is_not_equal_to(compute_subnet_az)

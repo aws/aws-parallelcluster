@@ -13,7 +13,7 @@
 # ANY KIND, express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-# Usage: mount_filesystem.sh master_ip shared_dir
+# Usage: mount_filesystem.sh head_node_ip shared_dir
 
 error_exit_usage() {
     echo "Error executing script: $1"
@@ -28,20 +28,20 @@ error_exit() {
 
 usage() {
     cat <<ENDUSAGE
-This script mounts the shared dir from master instance on the nodes in the batch job.
+This script mounts the shared dir from head node instance on the nodes in the batch job.
 The shared directory will be created if it does not exist.
 
 USAGE:
-mount_nfs <master_ip> <shared_dir>
-master_ip: ip address of the main node
-shared_dir: directory from master to be shared. If directory doesn't exist on compute, will be created
+mount_nfs <head_node_ip> <shared_dir>
+head_node_ip: ip address of the main node
+shared_dir: directory from head node to be shared. If directory doesn't exist on compute, will be created
 ENDUSAGE
 }
 
 # Check that the arguments are valid
 check_arguments_valid(){
-    if [ -z "${master_ip}" ]; then
-        error_exit_usage "Master IP is a required argument"
+    if [ -z "${head_node_ip}" ]; then
+        error_exit_usage "Head Node IP is a required argument"
     fi
 
     if [ -z "${shared_dir}" ]; then
@@ -58,22 +58,22 @@ mount_nfs() {
     fi
 
     mkdir -p ${shared_dir}
-    error_message=$(mount -t nfs -o hard,intr,noatime,_netdev "${master_ip}":"${shared_dir}" "${shared_dir}" 2>&1)
+    error_message=$(mount -t nfs -o hard,intr,noatime,_netdev "${head_node_ip}":"${shared_dir}" "${shared_dir}" 2>&1)
     if [[ $? -ne 0 ]]; then
-        error_exit "Failed to mount nfs volume from ${master_ip}:${shared_dir} with error_message: ${error_message}"
+        error_exit "Failed to mount nfs volume from ${head_node_ip}:${shared_dir} with error_message: ${error_message}"
     fi
 
     # Check that the filesystem is mounted as appropriate
-    mount_line=$(mount | grep "${master_ip}:${shared_dir}")
+    mount_line=$(mount | grep "${head_node_ip}:${shared_dir}")
     if [[ -z "${mount_line}" ]]; then
-        error_exit "mount succeeded but nfs volume from ${master_ip}:${shared_dir} was not mounted as expected"
+        error_exit "mount succeeded but nfs volume from ${head_node_ip}:${shared_dir} was not mounted as expected"
     fi
 }
 
 
 # main function
 main() {
-    master_ip=${1}
+    head_node_ip=${1}
     shared_dir=${2}
     if [[ "${shared_dir:0:1}" != '/' ]]; then
       shared_dir="/${shared_dir}"

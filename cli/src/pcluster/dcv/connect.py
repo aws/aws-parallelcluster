@@ -16,7 +16,7 @@ import webbrowser
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
-from pcluster.utils import error, get_cfn_param, get_master_ip_and_username, get_stack, get_stack_name, retry
+from pcluster.utils import error, get_cfn_param, get_head_node_ip_and_username, get_stack, get_stack_name, retry
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,17 +43,17 @@ def dcv_connect(args):
     # Prepare ssh command to execute in the master instance
     stack = get_stack(get_stack_name(args.cluster_name))
     shared_dir = get_cfn_param(stack.get("Parameters"), "SharedDir")
-    master_ip, username = get_master_ip_and_username(args.cluster_name)
-    cmd = 'ssh {CFN_USER}@{MASTER_IP} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
+    head_node_ip, username = get_head_node_ip_and_username(args.cluster_name)
+    cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
         CFN_USER=username,
-        MASTER_IP=master_ip,
+        HEAD_NODE_IP=head_node_ip,
         KEY="-i {0}".format(args.key_path) if args.key_path else "",
         REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
         DCV_SHARED_DIR=shared_dir,
     )
 
     try:
-        url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, master_ip], attempts=4)
+        url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
         url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
     except DCVConnectionError as e:
         error(
@@ -73,7 +73,7 @@ def dcv_connect(args):
         LOGGER.info("{0}\n{1}".format(e, url_message))
 
 
-def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
+def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
     """Connect by ssh to the master instance, prepare DCV session and return the DCV session URL."""
     try:
         LOGGER.debug("SSH command: {0}".format(ssh_cmd))
@@ -106,5 +106,5 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
             raise DCVConnectionError(e.output)
 
     return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
-        IP=master_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
+        IP=head_node_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )
