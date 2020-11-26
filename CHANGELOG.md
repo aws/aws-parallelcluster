@@ -9,6 +9,13 @@ CHANGELOG
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
   failures due to CloudFormation throttling.
 
+**CHANGES**
+
+- Pull Amazon Linux Docker images from ECR when building docker image for `awsbatch` scheduler. This only applies to
+  images built for `x86` architecture.
+
+**BUG FIXES**
+
 2.10.0
 ------
 
