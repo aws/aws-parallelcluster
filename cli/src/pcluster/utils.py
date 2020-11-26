@@ -840,7 +840,7 @@ def describe_cluster_instances(stack_name, node_type):
     return instances
 
 
-def _get_master_server_ip(stack_name):
+def _get_head_node_ip(stack_name):
     """
     Get the IP Address of the MasterServer.
 
@@ -851,17 +851,17 @@ def _get_master_server_ip(stack_name):
     instances = describe_cluster_instances(stack_name, node_type=NodeType.master)
     if not instances:
         error("MasterServer not running. Can't SSH")
-    master_instance = instances[0]
-    ip_address = master_instance.get("PublicIpAddress")
+    head_node = instances[0]
+    ip_address = head_node.get("PublicIpAddress")
     if ip_address is None:
-        ip_address = master_instance.get("PrivateIpAddress")
-    state = master_instance.get("State").get("Name")
+        ip_address = head_node.get("PrivateIpAddress")
+    state = head_node.get("State").get("Name")
     if state != "running" or ip_address is None:
         error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
 
 
-def get_master_ip_and_username(cluster_name):
+def get_head_node_ip_and_username(cluster_name):
     cfn = boto3.client("cloudformation")
     try:
         stack_name = get_stack_name(cluster_name)
@@ -872,13 +872,13 @@ def get_master_ip_and_username(cluster_name):
         if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
             error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
         else:
-            master_ip = _get_master_server_ip(stack_name)
+            head_node_ip = _get_head_node_ip(stack_name)
             template = cfn.get_template(StackName=stack_name)
             mappings = template.get("TemplateBody").get("Mappings").get("OSFeatures")
             base_os = get_cfn_param(stack_result.get("Parameters"), "BaseOS")
             username = mappings.get(base_os).get("User")
 
-        if not master_ip:
+        if not head_node_ip:
             error("Failed to get cluster {0} ip.".format(cluster_name))
         if not username:
             error("Failed to get cluster {0} username.".format(cluster_name))
@@ -886,10 +886,10 @@ def get_master_ip_and_username(cluster_name):
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
 
-    return master_ip, username
+    return head_node_ip, username
 
 
-def get_master_server_state(stack_name):
+def get_head_node_state(stack_name):
     """
     Get the State of the MasterServer.
 

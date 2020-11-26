@@ -2211,7 +2211,7 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
 
 
 @pytest.mark.parametrize(
-    "master_architecture, compute_architecture, compute_instance_type, expected_message",
+    "head_node_architecture, compute_architecture, compute_instance_type, expected_message",
     [
         # Single compute_instance_type
         ("x86_64", "x86_64", "c5.xlarge", []),
@@ -2244,7 +2244,7 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
     ],
 )
 def test_instances_architecture_compatibility_validator(
-    mocker, caplog, master_architecture, compute_architecture, compute_instance_type, expected_message
+    mocker, caplog, head_node_architecture, compute_architecture, compute_instance_type, expected_message
 ):
     def internal_is_instance_type(itype):
         return "." in itype or itype == "optimal"
@@ -2258,7 +2258,7 @@ def test_instances_architecture_compatibility_validator(
     logger_patch = mocker.patch.object(LOGFILE_LOGGER, "debug")
     run_architecture_validator_test(
         mocker,
-        {"cluster": {"architecture": master_architecture}},
+        {"cluster": {"architecture": head_node_architecture}},
         "cluster",
         "architecture",
         "compute_instance_type",

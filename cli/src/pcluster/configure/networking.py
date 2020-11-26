@@ -33,7 +33,7 @@ from pcluster.utils import (
 DEFAULT_AWS_REGION_NAME = "us-east-1"
 LOGGER = logging.getLogger(__name__)
 TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
-MASTER_SUBNET_IPS = 250
+HEAD_NODE_SUBNET_IPS = 250
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
@@ -106,7 +106,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):
         public_cidr = get_subnet_cidr(
-            vpc_cidr=vpc_cidr, occupied_cidr=subnet_cidrs, min_subnet_size=compute_subnet_size + MASTER_SUBNET_IPS
+            vpc_cidr=vpc_cidr, occupied_cidr=subnet_cidrs, min_subnet_size=compute_subnet_size + HEAD_NODE_SUBNET_IPS
         )
         _validate_cidr(public_cidr)
         parameters = self.get_cfn_parameters(vpc_id, internet_gateway_id, public_cidr)
@@ -133,7 +133,7 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
         return parameters
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):  # noqa D102
-        public_cidr = evaluate_cidr(vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=MASTER_SUBNET_IPS)
+        public_cidr = evaluate_cidr(vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=HEAD_NODE_SUBNET_IPS)
         _validate_cidr(public_cidr)
         subnet_cidrs.append(public_cidr)
         private_cidr = get_subnet_cidr(

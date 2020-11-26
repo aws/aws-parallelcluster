@@ -31,12 +31,12 @@ class RemoteCommandExecutor:
         if not username:
             username = get_username_for_os(cluster.os)
         self.__connection = Connection(
-            host=cluster.master_ip,
+            host=cluster.head_node_ip,
             user=username,
             forward_agent=False,
             connect_kwargs={"key_filename": [cluster.ssh_key]},
         )
-        self.__user_at_hostname = "{0}@{1}".format(username, cluster.master_ip)
+        self.__user_at_hostname = "{0}@{1}".format(username, cluster.head_node_ip)
 
     def __del__(self):
         try:

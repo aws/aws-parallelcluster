@@ -103,10 +103,10 @@ def assert_param_from_file(
 def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
     """Return mocks for a set of functions that should be mocked by default because they access the network."""
     architectures = ["x86_64"]
-    master_instances = ["t2.micro", "t2.large", "c4.xlarge", "p4d.24xlarge"]
-    compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else master_instances
+    head_node_instances = ["t2.micro", "t2.large", "c4.xlarge", "p4d.24xlarge"]
+    compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else head_node_instances
     patches = {
-        "pcluster.config.validators.get_supported_instance_types": master_instances,
+        "pcluster.config.validators.get_supported_instance_types": head_node_instances,
         "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_availability_zone_of_subnet": "mocked_avail_zone",

@@ -527,9 +527,9 @@ def test_get_supported_architectures_for_instance_type(mocker, instance_type, su
 @pytest.mark.parametrize(
     "node_type, expected_fallback, expected_response, expected_instances",
     [
-        (utils.NodeType.master, False, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
-        (utils.NodeType.master, True, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
-        (utils.NodeType.master, True, {"Reservations": []}, 0),
+        (utils.NodeType.head_node, False, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.head_node, True, {"Reservations": [{"Groups": [], "Instances": [{}]}]}, 1),
+        (utils.NodeType.head_node, True, {"Reservations": []}, 0),
         (utils.NodeType.compute, False, {"Reservations": [{"Groups": [], "Instances": [{}, {}, {}]}]}, 3),
         (utils.NodeType.compute, True, {"Reservations": [{"Groups": [], "Instances": [{}, {}]}]}, 2),
         (utils.NodeType.compute, True, {"Reservations": []}, 0),
@@ -570,7 +570,7 @@ def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback,
 
 
 @pytest.mark.parametrize(
-    "master_instance, expected_ip, error",
+    "head_node_instance, expected_ip, error",
     [
         (
             {
@@ -594,17 +594,17 @@ def test_describe_cluster_instances(boto3_stubber, node_type, expected_fallback,
     ],
     ids=["public_ip", "private_ip", "stopped"],
 )
-def test_get_master_server_ips(mocker, master_instance, expected_ip, error):
+def test_get_head_node_ips(mocker, head_node_instance, expected_ip, error):
     describe_cluster_instances_mock = mocker.patch(
-        "pcluster.utils.describe_cluster_instances", return_value=[master_instance]
+        "pcluster.utils.describe_cluster_instances", return_value=[head_node_instance]
     )
 
     if error:
         with pytest.raises(SystemExit, match=error):
-            utils._get_master_server_ip("stack-name")
+            utils._get_head_node_ip("stack-name")
     else:
-        assert_that(utils._get_master_server_ip("stack-name")).is_equal_to(expected_ip)
-        describe_cluster_instances_mock.assert_called_with("stack-name", node_type=utils.NodeType.master)
+        assert_that(utils._get_head_node_ip("stack-name")).is_equal_to(expected_ip)
+        describe_cluster_instances_mock.assert_called_with("stack-name", node_type=utils.NodeType.head_node)
 
 
 @pytest.mark.parametrize(

@@ -581,7 +581,7 @@ class AvailabilityZoneCfnParam(CfnParam):
         pass
 
 
-class MasterAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
+class HeadNodeAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
     """
     Class to manage master_availability_zone internal attribute.
 
@@ -596,9 +596,9 @@ class MasterAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
         return self
 
     def from_cfn_params(self, cfn_params):
-        """Initialize the Availability zone by checking the Compute Subnet from cfn."""
-        master_subnet_id = get_cfn_param(cfn_params, "MasterSubnetId")
-        self.value = get_availability_zone_of_subnet(master_subnet_id)
+        """Initialize the Availability zone by checking the head node subnet from cfn."""
+        head_node_subnet_id = get_cfn_param(cfn_params, "MasterSubnetId")
+        self.value = get_availability_zone_of_subnet(head_node_subnet_id)
         return self
 
 
@@ -672,9 +672,9 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
         cfn_params = {self.definition.get("cfn_param_mapping"): "NONE,NONE,NONE,NONE"}
         cluster_config = self.pcluster_config.get_section(self.section_key)
         if self.value:
-            master_instance_type = cluster_config.get_param_value("master_instance_type")
-            master_cores, disable_master_ht_via_cpu_options = self._get_cfn_params_for_instance_type(
-                master_instance_type
+            head_node_instance_type = cluster_config.get_param_value("master_instance_type")
+            head_node_cores, disable_head_node_ht_via_cpu_options = self._get_cfn_params_for_instance_type(
+                head_node_instance_type
             )
 
             if (
@@ -692,7 +692,7 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
                 disable_compute_ht_via_cpu_options = False
 
             for node_label, cores, instance_type in [
-                ("master", master_cores, master_instance_type),
+                ("master", head_node_cores, head_node_instance_type),
                 ("compute", compute_cores, compute_instance_type),
             ]:
                 if isinstance(cores, int) and cores < 0:
@@ -703,9 +703,9 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
             cfn_params.update(
                 {
                     self.definition.get("cfn_param_mapping"): "{0},{1},{2},{3}".format(
-                        master_cores,
+                        head_node_cores,
                         compute_cores,
-                        str(disable_master_ht_via_cpu_options).lower(),
+                        str(disable_head_node_ht_via_cpu_options).lower(),
                         str(disable_compute_ht_via_cpu_options).lower(),
                     )
                 }
@@ -801,22 +801,22 @@ class BaseOSCfnParam(CfnParam):
         """Compute cluster's 'Architecture' CFN parameter based on its master server instance type."""
         if not instance_type:
             error("Cannot infer architecture without master instance type")
-        master_inst_supported_architectures = get_supported_architectures_for_instance_type(instance_type)
+        head_node_supported_architectures = get_supported_architectures_for_instance_type(instance_type)
 
-        if not master_inst_supported_architectures:
+        if not head_node_supported_architectures:
             error("Unable to get architectures supported by instance type {0}.".format(instance_type))
         # If the instance type supports multiple architectures, choose the first one.
         # TODO: this is currently not an issue because none of the instance types we support more than one of the
         #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
         #       probably need to choose based on the subset of the architecutres supported by both the master and
         #       compute instance types.
-        return master_inst_supported_architectures[0]
+        return head_node_supported_architectures[0]
 
     def refresh(self):
         """Initialize the private architecture param."""
         if self.value:
-            master_inst_type = self.owner_section.get_param_value("master_instance_type")
-            architecture = self.get_instance_type_architecture(master_inst_type)
+            head_node_instance_type = self.owner_section.get_param_value("master_instance_type")
+            architecture = self.get_instance_type_architecture(head_node_instance_type)
             self.owner_section.get_param("architecture").value = architecture
 
 
@@ -1215,28 +1215,28 @@ class EFSCfnSection(CfnSection):
                 cfn_items.append(param.get_cfn_value())
 
         if cfn_items[0] == "NONE":
-            master_mt_valid = False
+            head_node_mt_valid = False
             compute_mt_valid = False
-            master_avail_zone = "fake_az1"
+            head_node_avail_zone = "fake_az1"
             compute_avail_zone = "fake_az2"
             # empty dict or first item is NONE --> set all values to NONE
             cfn_items = ["NONE"] * len(self.definition.get("params"))
         else:
             # add another CFN param that will identify if create or not a Mount Target for the given EFS FS Id
-            master_avail_zone = self.pcluster_config.get_master_availability_zone()
-            master_mount_target_id = get_efs_mount_target_id(
-                efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=master_avail_zone
+            head_node_avail_zone = self.pcluster_config.get_head_node_availability_zone()
+            head_node_mount_target_id = get_efs_mount_target_id(
+                efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=head_node_avail_zone
             )
             compute_avail_zone = self.pcluster_config.get_compute_availability_zone()
             compute_mount_target_id = get_efs_mount_target_id(
                 efs_fs_id=self.get_param_value("efs_fs_id"), avail_zone=compute_avail_zone
             )
-            master_mt_valid = bool(master_mount_target_id)
+            head_node_mt_valid = bool(head_node_mount_target_id)
             compute_mt_valid = bool(compute_mount_target_id)
 
-        cfn_items.append("Valid" if master_mt_valid else "NONE")
+        cfn_items.append("Valid" if head_node_mt_valid else "NONE")
         # Do not create additional compute mount target if compute and master subnet in the same AZ
-        cfn_items.append("Valid" if compute_mt_valid or (master_avail_zone == compute_avail_zone) else "NONE")
+        cfn_items.append("Valid" if compute_mt_valid or (head_node_avail_zone == compute_avail_zone) else "NONE")
         cfn_params[cfn_converter] = ",".join(cfn_items)
 
         return storage_params

@@ -26,9 +26,9 @@ from pcluster.config.cfn_param_types import (
     EFSCfnSection,
     ExtraJsonCfnParam,
     FloatCfnParam,
+    HeadNodeAvailabilityZoneCfnParam,
     IntCfnParam,
     MaintainInitialSizeCfnParam,
-    MasterAvailabilityZoneCfnParam,
     NetworkInterfacesCountCfnParam,
     QueueSizeCfnParam,
     SettingsCfnParam,
@@ -288,7 +288,7 @@ VPC = {
         },
         "master_availability_zone": {
             # NOTE: this is not exposed as a configuration parameter
-            "type": MasterAvailabilityZoneCfnParam,
+            "type": HeadNodeAvailabilityZoneCfnParam,
             "cfn_param_mapping": "AvailabilityZone",
             "update_policy": UpdatePolicy.IGNORED,
             "visibility": Visibility.PRIVATE

@@ -494,8 +494,8 @@ class PclusterConfig(object):
         # test provided configuration
         self.__test_configuration()
 
-    def get_master_availability_zone(self):
-        """Get the Availability zone of the Master Subnet."""
+    def get_head_node_availability_zone(self):
+        """Get the Availability zone of the Head Node Subnet."""
         return self.get_section("vpc").get_param_value("master_availability_zone")
 
     def get_compute_availability_zone(self):
