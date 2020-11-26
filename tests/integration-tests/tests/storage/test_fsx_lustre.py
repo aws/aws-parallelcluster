@@ -24,7 +24,7 @@ from time_utils import minutes, seconds
 
 from tests.common.schedulers_common import get_scheduler_commands
 
-BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING"}
+BACKUP_NOT_YET_AVAILABLE_STATES = {"CREATING", "TRANSFERRING", "PENDING"}
 # Maximum number of minutes to wait past when an file system's automatic backup is scheduled to start creating.
 # If after this many minutes past the scheduled time backup creation has not started, the test will fail.
 MAX_MINUTES_TO_WAIT_FOR_AUTOMATIC_BACKUP_START = 5
