@@ -1,4 +1,23 @@
 {
+  "Mappings": {
+    "AmazonLinuxECR": {
+      "aws": {
+        "registry": "137112412989.dkr.ecr.us-east-1.amazonaws.com",
+        "region": "us-east-1",
+        "account": "137112412989"
+      },
+      "aws-us-gov": {
+        "registry": "045324592363.dkr.ecr.us-gov-east-1.amazonaws.com",
+        "region": "us-gov-east-1",
+        "account": "045324592363"
+      },
+      "aws-cn": {
+        "registry": "141808717104.dkr.ecr.cn-north-1.amazonaws.com.cn",
+        "region": "cn-north-1",
+        "account": "141808717104"
+      }
+    }
+  },
   "Parameters": {
     "MinvCpus": {
       "Description": "Min vCPU's for ComputeEnvironment",
@@ -656,9 +675,39 @@
               }
             },
             {
+              "Name": "ARCHITECTURE",
+              "Value": {
+                "Ref": "Architecture"
+              }
+            },
+            {
               "Name": "NOTIFICATION_URL",
               "Value": {
                 "Ref": "DockerBuildWaitHandle"
+              }
+            },
+            {
+              "Name": "ALINUX_ECR_REGISTRY",
+              "Value": {
+                "Fn::FindInMap": [
+                  "AmazonLinuxECR",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "registry"
+                ]
+              }
+            },
+            {
+              "Name": "ALINUX_ECR_REGISTRY_REGION",
+              "Value": {
+                "Fn::FindInMap": [
+                  "AmazonLinuxECR",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  "region"
+                ]
               }
             }
           ],
@@ -754,6 +803,39 @@
                 "Fn::Sub": "arn:${AWS::Partition}:s3:::${ResourcesS3Bucket}/${ArtifactS3RootDirectory}/*"
               },
               "Sid": "S3GetObjectPolicy"
+            },
+            {
+              "Action": [
+                "ecr:BatchGetImage",
+                "ecr:GetDownloadUrlForLayer"
+              ],
+              "Effect": "Allow",
+              "Resource": {
+                "Fn::Sub": [
+                  "arn:${AWS::Partition}:ecr:${alinux_ecr_region}:${alinux_ecr_registry_account}:repository/amazonlinux",
+                  {
+                    "alinux_ecr_region": {
+                      "Fn::FindInMap": [
+                        "AmazonLinuxECR",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        "region"
+                      ]
+                    },
+                    "alinux_ecr_registry_account": {
+                      "Fn::FindInMap": [
+                        "AmazonLinuxECR",
+                        {
+                          "Ref": "AWS::Partition"
+                        },
+                        "account"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "Sid": "AlinuxECRRepoPolicy"
             }
           ],
           "Version": "2012-10-17"

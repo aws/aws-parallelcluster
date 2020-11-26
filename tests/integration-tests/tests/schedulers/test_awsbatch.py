@@ -9,8 +9,10 @@
 # or in the "LICENSE.txt" file accompanying this file.
 # This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, express or implied.
 # See the License for the specific language governing permissions and limitations under the License.
+import json
 import logging
 
+import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
@@ -25,8 +27,8 @@ from tests.common.schedulers_common import AWSBatchCommands
 @pytest.mark.dimensions("cn-north-1", "c4.xlarge", "alinux2", "awsbatch")
 @pytest.mark.dimensions("ap-southeast-1", "c5.xlarge", "alinux", "awsbatch")
 @pytest.mark.dimensions("ap-northeast-1", "m6g.xlarge", "alinux2", "awsbatch")
-@pytest.mark.usefixtures("region", "os", "instance", "scheduler")
-def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog, region):
+@pytest.mark.usefixtures("instance", "scheduler")
+def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog, region, os, architecture):
     """
     Test all AWS Batch related features.
 
@@ -39,10 +41,33 @@ def test_awsbatch(pcluster_config_reader, clusters_factory, test_datadir, caplog
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     timeout = 120 if region.startswith("cn-") else 60  # Longer timeout in china regions due to less reliable networking
+    _assert_successful_codebuild_build(cluster, region, os, architecture)
     _test_simple_job_submission(remote_command_executor, test_datadir, timeout)
     _test_array_submission(remote_command_executor)
     _test_mnp_submission(remote_command_executor, test_datadir)
     _test_job_kill(remote_command_executor, timeout)
+
+
+def _assert_successful_codebuild_build(cluster, region, os, architecture):
+    logging.info("Verifying docker build completed successfully.")
+    codebuild_project = cluster.awsbatch_substack_cfn_resources.get("CodeBuildDockerImageBuilderProject")
+    codebuild_client = boto3.client("codebuild", region_name=region)
+    logs_client = boto3.client("logs", region_name=region)
+
+    build_ids = codebuild_client.list_builds_for_project(projectName=codebuild_project).get("ids")
+    assert_that(build_ids).is_length(1)
+    build = codebuild_client.batch_get_builds(ids=build_ids).get("builds")[0]
+    assert_that(build["buildStatus"]).is_equal_to("SUCCEEDED")
+
+    # check Amazon Linux image is pulled from ECR
+    if os.startswith("alinux") and architecture == "x86_64":
+        response = logs_client.get_log_events(
+            logGroupName=build["logs"]["groupName"],
+            logStreamName=build["logs"]["streamName"],
+            limit=100,
+            startFromHead=True,
+        )
+        assert_that(json.dumps(response)).contains("Successfully pulled Amazon Linux image from ECR")
 
 
 def _test_simple_job_submission(remote_command_executor, test_datadir, timeout):
