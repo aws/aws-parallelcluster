@@ -8,6 +8,7 @@ CHANGELOG
 
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
   failures due to CloudFormation throttling.
+- Add support for io2 EBS volume type.
 
 **CHANGES**
 

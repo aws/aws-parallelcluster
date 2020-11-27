@@ -686,15 +686,26 @@ def test_efs_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        # Testing iops validator
-        ({"volume_iops": 1, "volume_size": 1}, None),
-        ({"volume_iops": 51, "volume_size": 1}, "IOPS to volume size ratio of .* is too hig"),
-        ({"volume_iops": 1, "volume_size": 20}, None),
-        ({"volume_iops": 1001, "volume_size": 20}, "IOPS to volume size ratio of .* is too hig"),
-        # Testing shared_dir validator
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/raid"}, None),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        ),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001}, "IOPS to volume size ratio of .* is too hig"),
     ],
 )
 def test_raid_validators(mocker, section_dict, expected_message):
@@ -2421,10 +2432,9 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         ({"volume_type": "io1", "volume_size": 15}, None),
         ({"volume_type": "io1", "volume_size": 3}, "The size of io1 volumes must be at least 4 GiB"),
         ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
-        # TODO Uncomment these lines after adding support for io2 volume types
-        # ({"volume_type": "io2", "volume_size": 15}, None),
-        # ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
-        # ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes must be at most 16384 GiB"),
+        ({"volume_type": "io2", "volume_size": 15}, None),
+        ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
+        ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes can not exceed 16384 GiB"),
         ({"volume_type": "gp2", "volume_size": 15}, None),
         ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
         ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
@@ -2462,18 +2472,16 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
             "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
         ),
         ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
-        # TODO Uncomment these lines after adding support for io2 volume types
-        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
-        #         (
-        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
-        #         ),
-        #         (
-        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
-        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
-        #         ),
-        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
-        #         "IOPS to volume size ratio of .* is too hig"),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+        ),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001}, "IOPS to volume size ratio of .* is too hig"),
     ],
 )
 def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):

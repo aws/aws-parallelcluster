@@ -120,16 +120,33 @@
       ]
     },
     "Vol1_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "0",
+          "Fn::Equals": [
             {
-              "Ref": "VolumeType"
-            }
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol1_UseEBSSnapshot": {
@@ -258,16 +275,33 @@
       ]
     },
     "Vol2_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "1",
+          "Fn::Equals": [
             {
-              "Ref": "VolumeType"
-            }
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol2_UseEBSSnapshot": {
@@ -396,16 +430,33 @@
       ]
     },
     "Vol3_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "2",
+          "Fn::Equals": [
             {
-              "Ref": "VolumeType"
-            }
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol3_UseEBSSnapshot": {
@@ -534,16 +585,33 @@
       ]
     },
     "Vol4_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "VolumeType"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol4_UseEBSSnapshot": {
@@ -672,16 +740,33 @@
       ]
     },
     "Vol5_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "4",
+          "Fn::Equals": [
             {
-              "Ref": "VolumeType"
-            }
+              "Fn::Select": [
+                "4",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "4",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol5_UseEBSSnapshot": {
@@ -1072,7 +1157,7 @@
       "Type": "Number"
     },
     "VolumeIOPS": {
-      "Description": "Number of IOPS for volume type io1. Not used for other volume types.",
+      "Description": "Number of IOPS for volume type io1 and io2. Not used for other volume types.",
       "Type": "CommaDelimitedList"
     },
     "VolumeSize": {

@@ -68,8 +68,8 @@
       "Description": "Comma delimited list of type of volume to create either new or from snapshot",
       "Type": "String",
       "Default": "gp2,gp2,gp2,gp2,gp2",
-      "ConstraintDescription": "must be a supported volume type: standard, io1, gp2, st1, sc1",
-      "AllowedPattern": "^(NONE|standard|io1|gp2|st1|sc1)((,|, )(NONE|standard|io1|gp2|st1|sc1)){4}$"
+      "ConstraintDescription": "must be a supported volume type: standard, io1, io2, gp2, st1, sc1",
+      "AllowedPattern": "^(NONE|standard|io1|io2|gp2|st1|sc1)((,|, )(NONE|standard|io1|io2|gp2|st1|sc1)){4}$"
     },
     "MasterSubnetId": {
       "Description": "ID of the Subnet you want to provision the Master server into",
@@ -122,7 +122,7 @@
       ]
     },
     "VolumeIOPS": {
-      "Description": "Comma delimited list of number of IOPS for volume type io1. Not used for other volume types.",
+      "Description": "Comma delimited list of number of IOPS for volume type io1 and io2. Not used for other volume types.",
       "Type": "String",
       "Default": "100,100,100,100,100"
     },
@@ -319,7 +319,7 @@
       "Description": "Comma Separated List of RAID related options, 8 parameters in total, [shared_dir,raid_type,num_of_raid_volumes,volume_type,volume_size,volume_iops,encrypted,ebs_kms_key_id]",
       "Type": "String",
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
-      "AllowedPattern": "^(NONE|.+)(,|, )(NONE|\\d)(,|, )(NONE|\\d)(,|, )(NONE|standard|io1|gp2|st1|sc1)(,|, )(NONE|\\d+)(,|, )(NONE|\\d+)(,|, )(NONE|true|false)(,|, )(NONE|.+)$"
+      "AllowedPattern": "^(NONE|.+)(,|, )(NONE|\\d)(,|, )(NONE|\\d)(,|, )(NONE|standard|io1|io2|gp2|st1|sc1)(,|, )(NONE|\\d+)(,|, )(NONE|\\d+)(,|, )(NONE|true|false)(,|, )(NONE|.+)$"
     },
     "NumberOfEBSVol": {
       "Description": "Number of EBS Volumes the user requested, up to 5",

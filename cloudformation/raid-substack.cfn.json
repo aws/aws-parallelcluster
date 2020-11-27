@@ -151,16 +151,33 @@
       ]
     },
     "Vol1_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "RAIDOptions"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol1_UseVolumeSize": {
@@ -235,16 +252,33 @@
       ]
     },
     "Vol2_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "RAIDOptions"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol2_UseVolumeSize": {
@@ -319,16 +353,33 @@
       ]
     },
     "Vol3_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "RAIDOptions"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol3_UseVolumeSize": {
@@ -403,16 +454,33 @@
       ]
     },
     "Vol4_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "RAIDOptions"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol4_UseVolumeSize": {
@@ -487,16 +555,33 @@
       ]
     },
     "Vol5_UseEBSPIOPS": {
-      "Fn::Equals": [
+      "Fn::Or": [
         {
-          "Fn::Select": [
-            "3",
+          "Fn::Equals": [
             {
-              "Ref": "RAIDOptions"
-            }
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
           ]
         },
-        "io1"
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
       ]
     },
     "Vol5_UseVolumeSize": {

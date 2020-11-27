@@ -95,7 +95,6 @@ from pcluster.config.validators import (
     maintain_initial_size_validator,
     queue_settings_validator,
     queue_validator,
-    raid_volume_iops_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
     scheduler_validator,
@@ -149,7 +148,7 @@ ALLOWED_VALUES = {
     "snapshot_id": r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
     "volume_id": r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$",
-    "volume_types": ["standard", "io1", "gp2", "st1", "sc1"],
+    "volume_types": ["standard", "io1", "io2", "gp2", "st1", "sc1"],
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
     "fsx_deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "fsx_ssd_throughput": FSX_SSD_THROUGHPUT,
@@ -415,6 +414,7 @@ RAID = {
     "type": CfnSection,
     "key": "raid",
     "default_label": "default",
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator],
     "cfn_param_mapping": "RAIDOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -448,7 +448,6 @@ RAID = {
             ("volume_iops", {
                 "type": IntCfnParam,
                 "default": 100,
-                "validators": [raid_volume_iops_validator],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("encrypted", {

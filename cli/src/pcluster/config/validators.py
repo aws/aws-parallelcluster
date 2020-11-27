@@ -894,18 +894,6 @@ def efs_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
-def raid_volume_iops_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    raid_iops = float(param_value)
-    raid_vol_size = float(pcluster_config.get_section("raid").get_param_value("volume_size"))
-    if raid_iops > raid_vol_size * 50:
-        errors.append("IOPS to volume size ratio of {0} is too high; maximum is 50.".format(raid_iops / raid_vol_size))
-
-    return errors, warnings
-
-
 def scheduler_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

@@ -11,7 +11,9 @@
 # See the License for the specific language governing permissions and limitations under the License.
 import logging
 
+import boto3
 import pytest
+import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
@@ -73,18 +75,42 @@ def test_ebs_snapshot(
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "awsbatch")
 @pytest.mark.dimensions("ca-central-1", "c5.xlarge", "ubuntu1804", "slurm")
 @pytest.mark.dimensions("eu-west-2", "c5.xlarge", "centos8", "slurm")
-@pytest.mark.usefixtures("region", "os", "instance")
-def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory):
+@pytest.mark.usefixtures("os", "instance")
+def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, region):
     mount_dirs = ["/ebs_mount_dir_{0}".format(i) for i in range(0, 5)]
     volume_sizes = [15 + 5 * i for i in range(0, 5)]
+
+    # for volume type sc1 and st1, the minimum volume sizes are 500G
+    volume_sizes[3] = 500
+    volume_sizes[4] = 500
     cluster_config = pcluster_config_reader(mount_dirs=mount_dirs, volume_sizes=volume_sizes)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
     for mount_dir, volume_size in zip(mount_dirs, volume_sizes):
-        _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size)
+        # for volume size equal to 500G, the filesystem size is only about 492G
+        # This is because the file systems use some of the total space available on a device for storing internal
+        # structures and data (the file system's metadata). The overhead of the XFS filesystem is around 0.5%.
+        # If we test with small volume size(eg: 40G), the number is not large enough to show the gap between the
+        # partition size and the filesystem size. For sc1 and st1, the minimum size is 500G, so there will be a size
+        # difference.
+        _test_ebs_correctly_mounted(
+            remote_command_executor, mount_dir, volume_size if volume_size != 500 else "49[0-9]"
+        )
         _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+
+    volume_ids = get_ebs_volume_ids(cluster, region)
+    for i in range(len(volume_ids)):
+        # test different volume types
+        volume_type = cluster.config.get("ebs ebs{0}".format(i + 1), "volume_type")
+        volume = describe_volume(volume_ids[i], region)
+        assert_that(volume[0]).is_equal_to(volume_type)
+        # test different iops
+        # only the iops of io1 and io2 can be configured by us
+        if volume_type == "io1" or volume_type == "io2":
+            volume_iops = cluster.config.get("ebs ebs{0}".format(i + 1), "volume_iops")
+            assert_that(volume[1]).is_equal_to(int(volume_iops))
 
 
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux", "slurm")
@@ -173,6 +199,20 @@ def _test_ebs_resize(remote_command_executor, mount_dir, volume_size):
     )
 
     assert_that(result.stdout).matches(r"{size}G".format(size=volume_size))
+
+
+def get_ebs_volume_ids(cluster, region):
+    # get the list of configured ebs volume ids
+    # example output: ['vol-000', 'vol-001', 'vol-002']
+    ebs_stack = utils.get_substacks(cluster.cfn_name, region=region, sub_stack_name="EBSCfnStack")[0]
+    return utils.retrieve_cfn_outputs(ebs_stack, region).get("Volumeids").split(",")
+
+
+def describe_volume(volume_id, region):
+    volume = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+    volume_type = volume.get("VolumeType")
+    volume_iops = volume.get("Iops")
+    return volume_type, volume_iops
 
 
 @pytest.fixture()
