@@ -115,20 +115,20 @@ class ClusterModel(ABC):
                     "Please double check your cluster configuration.\n{1}".format(kwargs["InstanceType"], message)
                 )
 
-    def _get_latest_alinux_ami_id(self):
-        """Get latest alinux ami id."""
+    def _get_latest_alinux2_ami_id(self):
+        """Get latest alinux2 ami id."""
         try:
-            alinux_ami_id = (
+            alinux2_ami_id = (
                 boto3.client("ssm")
                 .get_parameters_by_path(Path="/aws/service/ami-amazon-linux-latest")
                 .get("Parameters")[0]
                 .get("Value")
             )
         except ClientError as e:
-            error("Unable to retrieve Amazon Linux AMI id.\n{0}".format(e.response.get("Error").get("Message")))
+            error("Unable to retrieve Amazon Linux 2 AMI id.\n{0}".format(e.response.get("Error").get("Message")))
             raise
 
-        return alinux_ami_id
+        return alinux2_ami_id
 
     def public_ips_in_compute_subnet(self, pcluster_config, network_interfaces_count):
         """Tell if public IPs will be used in compute subnet."""

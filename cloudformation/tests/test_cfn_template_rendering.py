@@ -205,7 +205,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "true,14",
         ),
         (
-            "alinux",
+            "alinux2",
             "sge",
             True,
             "vol1,NONE,NONE,NONE,NONE",  # single ebs section
@@ -487,7 +487,7 @@ def _verify_head_node_logs_conditions(rendered_template, cw_log_options, os, sch
             assert_that(rendered_template).does_not_contain("NICE DCV integration logs")
 
         # Conditional System logs
-        if os in ["alinux", "alinux2", "centos7", "centos8"]:
+        if os in ["alinux2", "centos7", "centos8"]:
             assert_that(rendered_template).contains("system-messages")
             assert_that(rendered_template).does_not_contain("syslog")
         elif os in ["ubuntu1804"]:

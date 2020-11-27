@@ -29,7 +29,6 @@ from common import PARTITION_TO_MAIN_REGION, PARTITIONS
 
 DISTROS = OrderedDict(
     [
-        ("alinux", "amzn"),
         ("alinux2", "amzn2"),
         ("centos7", "centos7"),
         ("centos8", "centos8"),

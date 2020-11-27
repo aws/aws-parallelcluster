@@ -58,7 +58,7 @@ class EBSSnapshotsFactory:
 
     def _create_snapshot(self, region, snapshot_config):
         self.config = snapshot_config
-        ami_id = self._get_amazonlinux_ami()
+        ami_id = self._get_amazonlinux2_ami()
 
         self.security_group_id = self._get_security_group_id()
 
@@ -194,8 +194,8 @@ class EBSSnapshotsFactory:
         logging.info("Public dns: %s" % instance.public_dns_name)
         return instance
 
-    def _get_amazonlinux_ami(self):
-        # Finds most recent alinux ami in region
+    def _get_amazonlinux2_ami(self):
+        # Finds most recent alinux2 ami in region
         response = self.boto_client.describe_images(
             Owners=["amazon"],
             Filters=[

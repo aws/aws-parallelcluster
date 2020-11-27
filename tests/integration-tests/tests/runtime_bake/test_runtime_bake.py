@@ -18,7 +18,6 @@ from tests.common.utils import retrieve_latest_ami
 
 
 @pytest.mark.skip(reason="Temporarily disable this test")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "alinux", "slurm")
 @pytest.mark.dimensions("eu-west-3", "c5.xlarge", "alinux2", "torque")
 @pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos7", "sge")
 @pytest.mark.dimensions("us-east-2", "c5.xlarge", "centos8", "sge")

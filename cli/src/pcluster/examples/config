@@ -100,9 +100,8 @@ key_name = mykey
 # ComputeFleet root volume size in GB. (AMI must support growroot)
 # (defaults to 25)
 #compute_root_volume_size = 25
-# OS type used in the cluster. If the scheduler is awsbatch, only 'alinux' is supported.
-# (defaults to alinux)
-#base_os = alinux
+# OS type used in the cluster. If the scheduler is awsbatch, only 'alinux2' is supported.
+#base_os = alinux2
 # Existing EC2 IAM role to be associated with the EC2 instances
 # (defaults to NONE)
 #ec2_iam_role = NONE

@@ -21,7 +21,6 @@ from utils import run_command
 from tests.common.utils import get_installed_parallelcluster_version, retrieve_latest_ami
 
 
-@pytest.mark.dimensions("eu-west-1", "c5.xlarge", "alinux", "*")
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos8", "*")
@@ -116,12 +115,12 @@ def test_createami_post_install(
     assert_that(stdout_lower).does_not_contain("no custom ami created")
 
 
-@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "alinux", "*")
+@pytest.mark.dimensions("eu-central-1", "c5.xlarge", "ubuntu1804", "*")
 def test_createami_wrong_os(region, instance, os, request, pcluster_config_reader, vpc_stack, architecture):
     """Test error message when os provide is different from the os of custom AMI"""
     cluster_config = pcluster_config_reader()
 
-    # alinux is specified in the config file but an AMI of alinux2 is provided
+    # ubuntu1804 is specified in the config file but an AMI of alinux2 is provided
     wrong_os = "alinux2"
     logging.info("Asserting os fixture is different from wrong_os variable")
     assert_that(os != wrong_os).is_true()
@@ -131,7 +130,7 @@ def test_createami_wrong_os(region, instance, os, request, pcluster_config_reade
     _createami_and_assert_error(command, fr"custom AMI.+{wrong_os}.+base.+os.+config file.+{os}")
 
 
-@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux", "*")
+@pytest.mark.dimensions("ca-central-1", "c5.xlarge", "alinux2", "*")
 def test_createami_wrong_pcluster_version(
     region, instance, os, request, pcluster_config_reader, vpc_stack, pcluster_ami_without_standard_naming
 ):

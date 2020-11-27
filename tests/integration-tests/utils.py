@@ -316,7 +316,6 @@ def get_vpc_snakecase_value(region, vpc_stacks):
 def get_username_for_os(os):
     """Return username for a given os."""
     usernames = {
-        "alinux": "ec2-user",
         "alinux2": "ec2-user",
         "centos7": "centos",
         "centos8": "centos",

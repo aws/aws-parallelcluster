@@ -34,7 +34,7 @@ class InvalidMarkerError(Exception):
 def _add_unsupported_arm_dimensions():
     """Add invalid dimensions due to lack of ARM instance types in some regions and ARM AMIs for certain OSes."""
     arm_instance_types = ["m6g.xlarge"]
-    oses_unsupported_by_arm = ["centos7", "alinux"]
+    oses_unsupported_by_arm = ["centos7"]
     regions_unsupported_by_arm = [
         "us-west-1",
         "ca-central-1",

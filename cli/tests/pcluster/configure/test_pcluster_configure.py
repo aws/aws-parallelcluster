@@ -447,7 +447,7 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     MockHandler(mocker)
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="torque")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux2", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
@@ -483,7 +483,7 @@ def test_with_region_arg_with_config_file(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name=None, key="key1", scheduler="torque")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux2", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
         vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"

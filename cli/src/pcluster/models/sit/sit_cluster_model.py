@@ -112,7 +112,7 @@ class SITClusterModel(ClusterModel):
         )
 
         try:
-            latest_alinux_ami_id = self._get_latest_alinux_ami_id()
+            latest_alinux2_ami_id = self._get_latest_alinux2_ami_id()
 
             master_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
@@ -128,7 +128,7 @@ class SITClusterModel(ClusterModel):
                 InstanceType=master_instance_type,
                 MinCount=1,
                 MaxCount=1,
-                ImageId=latest_alinux_ami_id,
+                ImageId=latest_alinux2_ami_id,
                 CpuOptions=master_cpu_options,
                 NetworkInterfaces=master_network_interfaces,
                 Placement=master_placement_group,
@@ -154,7 +154,7 @@ class SITClusterModel(ClusterModel):
                 InstanceType=compute_instance_type,
                 MinCount=1,
                 MaxCount=1,
-                ImageId=latest_alinux_ami_id,
+                ImageId=latest_alinux2_ami_id,
                 CpuOptions=compute_cpu_options,
                 Placement=compute_placement_group,
                 NetworkInterfaces=network_interfaces,

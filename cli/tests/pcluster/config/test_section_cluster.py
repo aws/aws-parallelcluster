@@ -119,8 +119,8 @@ def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_
             None,
         ),
         (
-            {"cluster default": {"base_os": "alinux"}},
-            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
+            {"cluster default": {"base_os": "alinux2"}},
+            {"base_os": "alinux2", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
             None,
         ),
         # invalid value
@@ -175,8 +175,8 @@ def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
             None,
         ),
         (
-            {"cluster default": {"base_os": "alinux"}},
-            {"base_os": "alinux", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
+            {"cluster default": {"base_os": "alinux2"}},
+            {"base_os": "alinux2", "additional_iam_policies": [], "architecture": None, "scheduler": "slurm"},
             None,
         ),
         # invalid value

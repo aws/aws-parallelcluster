@@ -7,7 +7,7 @@ test-suites:
   runtime_bake:
     test_runtime_bake.py::test_runtime_bake:  # These are currently skipped
       dimensions:
-        {%- for os, scheduler in [("alinux", "slurm"), ("alinux2", "torque"), ("centos7", "sge")] %}
+        {%- for os, scheduler in [("alinux2", "torque"), ("centos7", "sge")] %}
         - regions: ["eu-west-2"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]

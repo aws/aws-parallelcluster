@@ -80,14 +80,14 @@ create:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]
+        oss: ["alinux2"]
         schedulers: ["slurm"]
 createami:
   test_createami.py::test_createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux", "alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
+        oss: ["alinux2", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]
@@ -106,12 +106,12 @@ createami:
     dimensions:
       - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]  # os must be different from alinux2 to test os validation logic when wrong os is provided
+        oss: ["ubuntu1804"]  # os must be different from alinux2 to test os validation logic when wrong os is provided
   test_createami.py::test_createami_wrong_pcluster_version:
     dimensions:
       - regions: ["ca-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]
+        oss: ["alinux2"]
 dashboard:
   test_dashboard.py::test_dashboard:
     dimensions:
@@ -164,7 +164,7 @@ disable_hyperthreading:
   test_disable_hyperthreading.py::test_sit_disable_hyperthreading:
     dimensions:
       # Manually disabled HT
-      {%- for os, scheduler in [("alinux", "sge"), ("centos7", "torque"), ("ubuntu1804", "sge")] %}
+      {%- for os, scheduler in [("centos8", "torque"), ("ubuntu1804", "sge")] %}
       - regions: ["sa-east-1"]
         instances: ["m4.xlarge"]
         oss: ["{{ os }}"]
@@ -206,7 +206,7 @@ efa:
         # P4d instances are currently not supported in SIT clusters
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux", "ubuntu1804", "centos7"]
+        oss: ["ubuntu1804", "centos7"]
         schedulers: ["slurm"]
 iam_policies:
   test_iam_policies.py::test_iam_policies:
@@ -327,7 +327,7 @@ schedulers:
         schedulers: ["awsbatch"]
       - regions: ["ap-southeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]
+        oss: ["alinux2"]
         schedulers: ["awsbatch"]
       - regions: ["ap-northeast-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
@@ -370,7 +370,7 @@ storage:
         schedulers: ["slurm"]
       - regions: ["cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_fsx_lustre.py::test_fsx_lustre_configuration_options:
     dimensions:
@@ -433,7 +433,7 @@ storage:
     dimensions:
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux"]
+        oss: ["alinux2"]
         schedulers: ["slurm"]
   test_ebs.py::test_ebs_multiple:
     dimensions:
@@ -516,7 +516,7 @@ multiple_nics:
         schedulers: ["slurm"]
       - regions: ["us-east-1"]
         instances: ["p4d.24xlarge"]
-        oss: ["alinux", "ubuntu1804", "centos7"]
+        oss: ["ubuntu1804", "centos7"]
         schedulers: ["slurm"]
 resource_bucket:
   test_resource_bucket.py::test_resource_bucket:

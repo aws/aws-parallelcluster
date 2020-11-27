@@ -30,10 +30,6 @@ def boto3_stubber_path():
             {
                 "Parameters": [
                     {
-                        "Name": "/aws/service/ami-amazon-linux-latest/amzn-ami-hvm-x86_64-ebs",
-                        "Value": "ami-0833bb56f241ee002",
-                    },
-                    {
                         "Name": "/aws/service/ami-amazon-linux-latest/amzn2-ami-minimal-hvm-x86_64-ebs",
                         "Value": "ami-00a2133c9940bf8c3",
                     },
@@ -41,10 +37,10 @@ def boto3_stubber_path():
             },
             None,
         ),
-        ("/aws/service/ami-amazon-linux-latest", "Generic Error", "Unable to retrieve Amazon Linux AMI id"),
+        ("/aws/service/ami-amazon-linux-latest", "Generic Error", "Unable to retrieve Amazon Linux 2 AMI id"),
     ],
 )
-def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, expected_message):
+def test_get_latest_alinux2_ami_id(mocker, boto3_stubber, path, boto3_response, expected_message):
     mocked_requests = [
         MockedBoto3Request(
             method="get_parameters_by_path",
@@ -59,9 +55,9 @@ def test_get_latest_alinux_ami_id(mocker, boto3_stubber, path, boto3_response, e
 
     if expected_message:
         with pytest.raises(SystemExit, match=expected_message):
-            _ = pcluster_config.cluster_model._get_latest_alinux_ami_id()
+            _ = pcluster_config.cluster_model._get_latest_alinux2_ami_id()
     else:
-        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux_ami_id()
+        latest_linux_ami_id = pcluster_config.cluster_model._get_latest_alinux2_ami_id()
         assert_that(latest_linux_ami_id).is_equal_to(boto3_response.get("Parameters")[0].get("Value"))
 
 

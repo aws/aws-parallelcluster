@@ -7,6 +7,7 @@ CHANGELOG
 **CHANGES**
 
 - Ubuntu 16.04 is no longer supported.
+- Amazon Linux is no longer supported.
 
 
 2.10.1

@@ -265,45 +265,40 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     "region, base_os, scheduler, expected_message",
     [
         # verify awsbatch supported regions
-        ("ap-northeast-3", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-east-1", "alinux", "awsbatch", None),
-        ("us-gov-west-1", "alinux", "awsbatch", None),
-        ("eu-west-1", "alinux", "awsbatch", None),
-        ("us-east-1", "alinux", "awsbatch", None),
-        ("eu-north-1", "alinux", "awsbatch", None),
-        ("cn-north-1", "alinux", "awsbatch", None),
-        ("cn-northwest-1", "alinux", "awsbatch", None),
+        ("ap-northeast-3", "alinux2", "awsbatch", "scheduler is not supported in the .* region"),
+        ("us-gov-east-1", "alinux2", "awsbatch", None),
+        ("us-gov-west-1", "alinux2", "awsbatch", None),
+        ("eu-west-1", "alinux2", "awsbatch", None),
+        ("us-east-1", "alinux2", "awsbatch", None),
+        ("eu-north-1", "alinux2", "awsbatch", None),
+        ("cn-north-1", "alinux2", "awsbatch", None),
         ("cn-northwest-1", "alinux2", "awsbatch", None),
         # verify traditional schedulers are supported in all the regions
-        ("cn-northwest-1", "alinux", "sge", None),
-        ("ap-northeast-3", "alinux", "sge", None),
-        ("cn-northwest-1", "alinux", "slurm", None),
-        ("ap-northeast-3", "alinux", "slurm", None),
-        ("cn-northwest-1", "alinux", "torque", None),
-        ("ap-northeast-3", "alinux", "torque", None),
+        ("cn-northwest-1", "alinux2", "sge", None),
+        ("ap-northeast-3", "alinux2", "sge", None),
+        ("cn-northwest-1", "alinux2", "slurm", None),
+        ("ap-northeast-3", "alinux2", "slurm", None),
+        ("cn-northwest-1", "alinux2", "torque", None),
+        ("ap-northeast-3", "alinux2", "torque", None),
         # verify awsbatch supported OSes
         ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
         ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "alinux", "awsbatch", None),
         ("eu-west-1", "alinux2", "awsbatch", None),
         # verify sge supports all the OSes
         ("eu-west-1", "centos7", "sge", None),
         ("eu-west-1", "centos8", "sge", None),
         ("eu-west-1", "ubuntu1804", "sge", None),
-        ("eu-west-1", "alinux", "sge", None),
         ("eu-west-1", "alinux2", "sge", None),
         # verify slurm supports all the OSes
         ("eu-west-1", "centos7", "slurm", None),
         ("eu-west-1", "centos8", "slurm", None),
         ("eu-west-1", "ubuntu1804", "slurm", None),
-        ("eu-west-1", "alinux", "slurm", None),
         ("eu-west-1", "alinux2", "slurm", None),
         # verify torque supports all the OSes
         ("eu-west-1", "centos7", "torque", None),
         ("eu-west-1", "centos8", "torque", None),
         ("eu-west-1", "ubuntu1804", "torque", None),
-        ("eu-west-1", "alinux", "torque", None),
         ("eu-west-1", "alinux2", "torque", None),
     ],
 )
@@ -1286,11 +1281,10 @@ def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, networ
     [
         ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
         ({"enable_intel_hpc_platform": "true", "base_os": "centos8"}, None),
-        ({"enable_intel_hpc_platform": "true", "base_os": "alinux"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "alinux2"}, "it is required to set the 'base_os'"),
         ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1804"}, "it is required to set the 'base_os'"),
         # intel hpc disabled, you can use any os
-        ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
+        ({"enable_intel_hpc_platform": "false", "base_os": "alinux2"}, None),
     ],
 )
 def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
@@ -1376,7 +1370,7 @@ def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_d
             {
                 "enable_efa": "compute",
                 "compute_instance_type": "t2.large",
-                "base_os": "alinux",
+                "base_os": "alinux2",
                 "scheduler": "awsbatch",
             },
             "it is required to set the 'scheduler'",
@@ -1586,7 +1580,6 @@ def test_shared_dir_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "base_os, instance_type, access_from, expected_error, expected_warning",
     [
-        ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
         ("centos7", "t2.medium", None, None, None),
         ("centos8", "t2.medium", None, None, None),
         ("ubuntu1804", "t2.medium", None, None, None),
@@ -1630,7 +1623,6 @@ def test_dcv_enabled_validator(
     "architecture, base_os, expected_message",
     [
         # Supported combinations
-        ("x86_64", "alinux", None),
         ("x86_64", "alinux2", None),
         ("x86_64", "centos7", None),
         ("x86_64", "centos8", None),
@@ -1649,13 +1641,6 @@ def test_dcv_enabled_validator(
         (
             "arm64",
             "centos7",
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
-            ),
-        ),
-        (
-            "arm64",
-            "alinux",
             FSX_MESSAGES["errors"]["unsupported_os"].format(
                 architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
             ),
@@ -1692,21 +1677,6 @@ def test_fsx_architecture_os_validator(mocker, architecture, base_os, expected_m
 def test_maintain_initial_size_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "base_os, expected_warning",
-    [
-        ("alinux2", None),
-        ("centos7", None),
-        ("centos8", None),
-        ("ubuntu1804", None),
-        ("alinux", "alinux.*will reach end-of-life in late 2020"),
-    ],
-)
-def test_base_os_validator(mocker, capsys, base_os, expected_warning):
-    config_parser_dict = {"cluster default": {"base_os": base_os}}
-    utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
 
 
 @pytest.mark.parametrize(
@@ -2134,13 +2104,11 @@ def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expecte
     "base_os, architecture, expected_message",
     [
         # All OSes supported for x86_64
-        ("alinux", "x86_64", []),
         ("alinux2", "x86_64", []),
         ("centos7", "x86_64", []),
         ("centos8", "x86_64", []),
         ("ubuntu1804", "x86_64", []),
         # Only a subset of OSes supported for arm64
-        ("alinux", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("alinux2", "arm64", []),
         ("centos7", "arm64", ["arm64 is only supported for the following operating systems"]),
         ("centos8", "arm64", []),
