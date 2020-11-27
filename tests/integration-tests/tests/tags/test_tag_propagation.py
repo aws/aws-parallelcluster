@@ -194,7 +194,6 @@ def get_root_volume_id(instance_id, region, os):
         "centos8": "/dev/sda1",
         "alinux": "/dev/xvda",
         "alinux2": "/dev/xvda",
-        "ubuntu1604": "/dev/sda1",
         "ubuntu1804": "/dev/sda1",
     }
     block_device_mappings = (

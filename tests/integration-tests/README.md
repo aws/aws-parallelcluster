@@ -230,7 +230,6 @@ cloudwatch_logging suite defined above will produce the following parametrizatio
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1604-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-awsbatch]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ca-central-1-c5.xlarge-alinux2-sge]
@@ -460,12 +459,12 @@ def test_case_1(region, instance, os, scheduler):
 ```
 This test case will be automatically parametrized and executed for all combination of input dimensions.
 For example, given as input dimensions `--regions "eu-west-1" --instances "c4.xlarge" --oss "alinux"
-"ubuntu1604" --scheduler "sge" "slurm"`, the following tests will run:
+"ubuntu1804" --scheduler "sge" "slurm"`, the following tests will run:
 ```
 test_case_1[eu-west-1-c4.xlarge-alinux-sge]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1604-sge]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-sge]
 test_case_1[eu-west-1-c4.xlarge-alinux-slurm]
-test_case_1[eu-west-1-c4.xlarge-ubuntu1604-slurm]
+test_case_1[eu-west-1-c4.xlarge-ubuntu1804-slurm]
 ```
 
 If you don't need to reference the parametrized arguments in your test case you can simply replace the

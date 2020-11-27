@@ -96,7 +96,6 @@ def test_fsx_lustre_configuration_options(
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre(
     region,
     pcluster_config_reader,
@@ -158,7 +157,6 @@ def _test_fsx_lustre(
 # FSx is only supported on ARM instances for Ubuntu 18.04, Amazon Linux 2 and CentOS 8
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "alinux", "*")
 @pytest.mark.skip_dimensions("*", "m6g.xlarge", "centos7", "*")
-@pytest.mark.skip_dimensions("*", "m6g.xlarge", "ubuntu1604", "*")
 def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os, scheduler):
     """
     Test FSx Lustre backup feature. As part of this test, following steps are performed

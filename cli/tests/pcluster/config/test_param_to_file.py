@@ -25,6 +25,7 @@ from tests.pcluster.config.utils import get_cfnparam_definition, get_mocked_pclu
         (CLUSTER_SIT, "key_name", "NONE", "NONE"),
         (CLUSTER_SIT, "base_os", "alinux", "alinux"),
         (CLUSTER_SIT, "base_os", "ubuntu1804", "ubuntu1804"),
+        (CLUSTER_SIT, "base_os", "ubuntu1604", "ubuntu1604"),  # no longer supported value
         (CLUSTER_SIT, "base_os", "ubuntu1404", "ubuntu1404"),  # no longer supported value
         # BoolParam
         (CLUSTER_SIT, "encrypted_ephemeral", None, None),

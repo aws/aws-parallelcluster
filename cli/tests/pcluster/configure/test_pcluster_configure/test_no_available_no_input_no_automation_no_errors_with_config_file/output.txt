@@ -19,8 +19,7 @@ Allowed values for Operating System:
 2. alinux2
 3. centos7
 4. centos8
-5. ubuntu1604
-6. ubuntu1804
+5. ubuntu1804
 Allowed values for VPC ID:
   #  id            name                                 number_of_subnets
 ---  ------------  ---------------------------------  -------------------

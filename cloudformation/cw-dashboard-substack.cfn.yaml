@@ -446,7 +446,7 @@ Resources:
                   },
                   {
                     'title': "syslog",
-                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["ubuntu1604","ubuntu1804"]}],
+                    'conditions': [{'param': cfn_params.BaseOS, 'allowed_values': ["ubuntu1804"]}],
                     'fields': ["@timestamp", "@message"],
                     'filters': [{'param': "@logStream", 'pattern': "${MasterPrivateIP}.*syslog"}],
                     'sort': "@timestamp desc",

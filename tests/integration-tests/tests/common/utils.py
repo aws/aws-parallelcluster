@@ -25,14 +25,6 @@ OS_TO_OFFICIAL_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-ami-hvm-*.*.*.*-*-gp2", "owners": ["amazon"]},
     "centos7": {"name": "CentOS 7.*", "owners": ["125523088429"]},
     "centos8": {"name": "CentOS 8.*", "owners": ["125523088429", "247102896272"]},
-    "ubuntu1404": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-trusty-14.04-*-server-*",
-        "owners": ["099720109477", "513442679011", "837727238323"],
-    },
-    "ubuntu1604": {
-        "name": "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-*-server-*",
-        "owners": ["099720109477", "513442679011", "837727238323"],
-    },
     "ubuntu1804": {
         "name": "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-*-server-*",
         "owners": ["099720109477", "513442679011", "837727238323"],
@@ -44,7 +36,6 @@ OS_TO_REMARKABLE_AMI_NAME_OWNER_MAP = {
     "alinux": {"name": "Deep Learning Base AMI (Amazon Linux)*", "owners": ["amazon"]},
     "alinux2": {"name": "Deep Learning Base AMI (Amazon Linux 2)*", "owners": ["amazon"]},
     "centos7": {"name": "FPGA Developer AMI*", "owners": ["679593333241"]},
-    "ubuntu1604": {"name": "Deep Learning Base AMI (Ubuntu 16.04)*", "owners": ["amazon"]},
     "ubuntu1804": {"name": "Deep Learning Base AMI (Ubuntu 18.04)*", "owners": ["amazon"]},
 }
 
@@ -54,7 +45,6 @@ OS_TO_PCLUSTER_AMI_NAME_OWNER_MAP = {
     "alinux2": {"name": "amzn2-hvm-*-*", "owners": ["amazon"]},
     "centos7": {"name": "centos7-hvm-x86_64-*", "owners": ["amazon"]},
     "centos8": {"name": "centos8-hvm-x86_64-*", "owners": ["amazon"]},
-    "ubuntu1604": {"name": "ubuntu-1604-lts-hvm-x86_64-*", "owners": ["amazon"]},
     "ubuntu1804": {"name": "ubuntu-1804-lts-hvm-*-*", "owners": ["amazon"]},
 }
 

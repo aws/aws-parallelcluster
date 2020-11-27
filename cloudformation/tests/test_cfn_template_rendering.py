@@ -241,7 +241,7 @@ def test_hit_substack_rendering(tmp_path, test_config):
             "false,14",  # No Head Node Logs
         ),
         (
-            "ubuntu1604",
+            "ubuntu1804",
             "slurm",
             False,  # No dashboard
             "vol1,vol2,vol3,vol4,vol5",
@@ -490,7 +490,7 @@ def _verify_head_node_logs_conditions(rendered_template, cw_log_options, os, sch
         if os in ["alinux", "alinux2", "centos7", "centos8"]:
             assert_that(rendered_template).contains("system-messages")
             assert_that(rendered_template).does_not_contain("syslog")
-        elif os in ["ubuntu1604", "ubuntu1804"]:
+        elif os in ["ubuntu1804"]:
             assert_that(rendered_template).contains("syslog")
             assert_that(rendered_template).does_not_contain("system-messages")
 

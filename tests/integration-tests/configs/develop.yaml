@@ -13,7 +13,7 @@ test-suites:
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
-        {%- for os, scheduler in [("ubuntu1604", "slurm"), ("ubuntu1804", "sge")] %}
+        {%- for os, scheduler in [("ubuntu1804", "sge")] %}
         - regions: ["us-gov-west-1"]
           instances: {{ common.INSTANCES_DEFAULT_X86 }}
           oss: ["{{ os }}"]

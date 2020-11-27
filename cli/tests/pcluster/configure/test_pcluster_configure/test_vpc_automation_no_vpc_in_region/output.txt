@@ -36,8 +36,7 @@ Allowed values for Operating System:
 2. alinux2
 3. centos7
 4. centos8
-5. ubuntu1604
-6. ubuntu1804
+5. ubuntu1804
 There are no VPC for the given region. Starting automatic creation of VPC and subnets...
 Allowed values for Network Configuration:
 1. Master in a public subnet and compute fleet in a private subnet

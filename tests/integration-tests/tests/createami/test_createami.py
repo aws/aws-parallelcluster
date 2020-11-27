@@ -25,9 +25,7 @@ from tests.common.utils import get_installed_parallelcluster_version, retrieve_l
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "alinux2", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos7", "*")
 @pytest.mark.dimensions("us-west-2", "c5.xlarge", "centos8", "*")
-@pytest.mark.dimensions("eu-west-2", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-east-1", "c5.xlarge", "ubuntu1804", "*")
-@pytest.mark.dimensions("us-gov-east-1", "c5.xlarge", "ubuntu1604", "*")
 @pytest.mark.dimensions("us-gov-west-1", "c5.xlarge", "ubuntu1804", "*")
 @pytest.mark.dimensions("cn-northwest-1", "c4.xlarge", "alinux2", "*")
 def test_createami(region, os, instance, request, pcluster_config_reader, vpc_stack, architecture):
@@ -101,7 +99,7 @@ def test_createami_post_install(
     instance_args = ["-i", instance]
 
     # Post install script
-    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804", "ubuntu1604"] else "post_install.sh"
+    post_install_script_file = "post_install_ubuntu.sh" if os in ["ubuntu1804"] else "post_install.sh"
     post_install_script = "file://{0}".format(test_datadir / post_install_script_file)
     post_install_args = ["--post-install", post_install_script]
 

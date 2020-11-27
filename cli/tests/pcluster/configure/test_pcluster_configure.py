@@ -422,7 +422,7 @@ def _run_input_test_with_config(
     if with_input:
         input_composer = ComposeInput(aws_region_name="us-east-1", key="key2", scheduler="slurm")
         input_composer.add_first_flow(
-            op_sys="ubuntu1604",
+            op_sys="ubuntu1804",
             min_size="7",
             max_size="18",
             master_instance=master_instance,
