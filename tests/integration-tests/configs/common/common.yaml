@@ -514,7 +514,7 @@ multiple_nics:
         instances: ["p4d.24xlarge"]
         oss: ["alinux2", "ubuntu1604", "centos8"]
         schedulers: ["slurm"]
-      - regions: ["us-east-1"]
+      - regions: ["us-west-2"]
         instances: ["p4d.24xlarge"]
         oss: ["alinux", "ubuntu1804", "centos7"]
         schedulers: ["slurm"]
