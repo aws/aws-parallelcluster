@@ -49,6 +49,7 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
     # Custom Node
     # inject PARALLELCLUSTER_NODE_URL into packer environment
     custom_node = request.config.getoption("createami_custom_node_package")
+    env = None
     if custom_node:
         env = environ.copy()
         env["PARALLELCLUSTER_NODE_URL"] = custom_node
