@@ -69,6 +69,7 @@ def test_ebs_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
         ({"volume_type": "gp2"}, {"ebs default": {"volume_type": "gp2"}}, "No section"),
         # other values
         ({"volume_type": "io1"}, {"ebs default": {"volume_type": "io1"}}, None),
+        ({"volume_type": "io2"}, {"ebs default": {"volume_type": "io2"}}, None),
         ({"volume_size": 30}, {"ebs default": {"volume_size": "30"}}, None),
     ],
 )
@@ -155,6 +156,7 @@ def test_ebs_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("volume_type", None, "gp2", None),
         ("volume_type", "wrong_value", None, "Allowed values are"),
         ("volume_type", "io1", "io1", None),
+        ("volume_type", "io2", "io2", None),
         ("volume_type", "standard", "standard", None),
         ("volume_type", "NONE", None, "Allowed values are"),
         ("volume_size", None, None, None),
