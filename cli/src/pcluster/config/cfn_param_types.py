@@ -800,7 +800,7 @@ class BaseOSCfnParam(CfnParam):
     def get_instance_type_architecture(instance_type):
         """Compute cluster's 'Architecture' CFN parameter based on its head node instance type."""
         if not instance_type:
-            error("Cannot infer architecture without master instance type")
+            error("Cannot infer architecture without head node instance type")
         head_node_supported_architectures = get_supported_architectures_for_instance_type(instance_type)
 
         if not head_node_supported_architectures:

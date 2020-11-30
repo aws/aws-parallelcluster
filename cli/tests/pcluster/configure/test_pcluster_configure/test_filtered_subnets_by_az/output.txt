@@ -46,12 +46,12 @@ Allowed values for VPC ID:
   3  vpc-34567891  default                                              3
   4  vpc-45678912  ParallelClusterVPC-20190626095403                    1
 Note:  2 subnet(s) is/are not listed, because the instance type is not in their availability zone(s)
-Allowed values for Master Subnet ID:
+Allowed values for head node Subnet ID:
   #  id               name      size  availability_zone
 ---  ---------------  ------  ------  -------------------
   1  subnet-45678912            4096  eu-west-1a
 Note:  2 subnet(s) is/are not listed, because the instance type is not in their availability zone(s)
-Allowed values for Compute Subnet ID:
+Allowed values for compute Subnet ID:
   #  id               name      size  availability_zone
 ---  ---------------  ------  ------  -------------------
   1  subnet-45678912            4096  eu-west-1a
