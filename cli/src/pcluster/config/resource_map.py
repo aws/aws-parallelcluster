@@ -22,7 +22,7 @@ class ResourceMap(object):
         """
         Represents a set of available resources for a single resource type.
 
-        For instance, this class can represent the available EBS volume resources that can be attached to a master node.
+        For instance, this class can represent the available EBS volume resources that can be attached to a head node.
         """
 
         def __init__(self, resources):

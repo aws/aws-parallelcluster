@@ -23,7 +23,7 @@ key_name = mykey
 # Override path to cloudformation in S3
 # (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
 #template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
-# EC2 instance type for master node
+# EC2 instance type for head node
 # (defaults to t2.micro)
 #master_instance_type = t2.micro
 # EC2 instance type for compute nodes
@@ -94,7 +94,7 @@ key_name = mykey
 # Encrypted ephemeral drives. In-memory keys, non-recoverable.
 # (defaults to false)
 #encrypted_ephemeral = false
-# MasterServer root volume size in GB. (AMI must support growroot)
+# Head node root volume size in GB. (AMI must support growroot)
 # (defaults to 25)
 #master_root_volume_size = 25
 # ComputeFleet root volume size in GB. (AMI must support growroot)
@@ -137,7 +137,7 @@ vpc_settings = public
 [vpc public]
 # ID of the VPC you want to provision cluster into.
 vpc_id = vpc-12345678
-# ID of the Subnet you want to provision the Master server into
+# ID of the Subnet you want to provision the head node into
 master_subnet_id = subnet-12345678
 # SSH from CIDR
 # This is only used when AWS ParallelCluster creates the security group
@@ -153,7 +153,7 @@ master_subnet_id = subnet-12345678
 #[vpc private-new]
 # ID of the VPC you want to provision cluster into.
 #vpc_id = vpc-12345678
-# ID of the Subnet you want to provision the Master server into
+# ID of the Subnet you want to provision the head node into
 #master_subnet_id = subnet-12345678
 # CIDR for new backend subnet i.e. 10.0.100.0/24
 #compute_subnet_cidr = 10.0.100.0/24
@@ -161,7 +161,7 @@ master_subnet_id = subnet-12345678
 #[vpc private-existing]
 # ID of the VPC you want to provision cluster into.
 #vpc_id = vpc-12345678
-# ID of the Subnet you want to provision the Master server into
+# ID of the Subnet you want to provision the head node into
 #master_subnet_id = subnet-12345678
 # CIDR for new backend subnet i.e. 10.0.100.0/24
 #compute_subnet_id = subnet-23456789
@@ -184,7 +184,7 @@ master_subnet_id = subnet-12345678
 # Use encrypted volume (should not be used with snapshots)
 # (defaults to false)
 #encrypted = false
-# Existing EBS volume to be attached to the MasterServer
+# Existing EBS volume to be attached to the head node
 # (defaults to NONE)
 #ebs_volume_id = NONE
 

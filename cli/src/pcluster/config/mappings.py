@@ -768,7 +768,7 @@ CLUSTER_COMMON_PARAMS = [
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
-    # Master
+    # Head node
     ("master_instance_type", {
         "default": "t2.micro",
         "cfn_param_mapping": "MasterInstanceType",

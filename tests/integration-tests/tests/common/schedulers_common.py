@@ -541,7 +541,7 @@ class TorqueCommands(SchedulerCommands):
 
     @retry(retry_on_result=lambda result: "offline" not in result, wait_fixed=seconds(5), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
-        # discard the first node since that is the master server
+        # discard the first node since that is the head node
         return self._remote_command_executor.run_remote_command(r'pbsnodes | grep -e "\sstate = " | tail -n +2').stdout
 
     def get_node_cores(self):

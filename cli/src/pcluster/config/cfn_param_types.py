@@ -590,7 +590,7 @@ class HeadNodeAvailabilityZoneCfnParam(AvailabilityZoneCfnParam):
     """
 
     def from_file(self, config_parser):
-        """Initialize the Availability zone of the cluster by checking the Master Subnet."""
+        """Initialize the Availability zone of the cluster by checking the head node Subnet."""
         self._init_az(config_parser, "master_subnet_id")
 
         return self
@@ -667,7 +667,7 @@ class DisableHyperThreadingCfnParam(BoolCfnParam):
         """
         Define the Cores CFN parameter if disable_hyperthreading = true.
 
-        :return: string (cores_master,cores_compute,master_supports_cpu_options,compute_supports_cpu_options)
+        :return: string (head_node_cores,compute_cores,head_node_supports_cpu_options,compute_supports_cpu_options)
         """
         cfn_params = {self.definition.get("cfn_param_mapping"): "NONE,NONE,NONE,NONE"}
         cluster_config = self.pcluster_config.get_section(self.section_key)
@@ -798,7 +798,7 @@ class BaseOSCfnParam(CfnParam):
 
     @staticmethod
     def get_instance_type_architecture(instance_type):
-        """Compute cluster's 'Architecture' CFN parameter based on its master server instance type."""
+        """Compute cluster's 'Architecture' CFN parameter based on its head node instance type."""
         if not instance_type:
             error("Cannot infer architecture without master instance type")
         head_node_supported_architectures = get_supported_architectures_for_instance_type(instance_type)
@@ -808,7 +808,7 @@ class BaseOSCfnParam(CfnParam):
         # If the instance type supports multiple architectures, choose the first one.
         # TODO: this is currently not an issue because none of the instance types we support more than one of the
         #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
-        #       probably need to choose based on the subset of the architecutres supported by both the master and
+        #       probably need to choose based on the subset of the architecutres supported by both the head node and
         #       compute instance types.
         return head_node_supported_architectures[0]
 
@@ -1077,11 +1077,11 @@ class NetworkInterfacesCountCfnParam(CommaSeparatedCfnParam):
     Class to manage NetworkInterfacesCount Cfn param.
 
     The internal value is a list of two items, which respectively indicate the number of network interfaces to activate
-    on master and compute nodes.
+    on head node and compute nodes.
     """
 
     def refresh(self):
-        """Compute the number of network interfaces for master and compute nodes."""
+        """Compute the number of network interfaces for head node and compute nodes."""
         cluster_section = self.pcluster_config.get_section("cluster")
         scheduler = cluster_section.get_param_value("scheduler")
         self.value = [
@@ -1235,7 +1235,7 @@ class EFSCfnSection(CfnSection):
             compute_mt_valid = bool(compute_mount_target_id)
 
         cfn_items.append("Valid" if head_node_mt_valid else "NONE")
-        # Do not create additional compute mount target if compute and master subnet in the same AZ
+        # Do not create additional compute mount target if compute and head node subnet in the same AZ
         cfn_items.append("Valid" if compute_mt_valid or (head_node_avail_zone == compute_avail_zone) else "NONE")
         cfn_params[cfn_converter] = ",".join(cfn_items)
 

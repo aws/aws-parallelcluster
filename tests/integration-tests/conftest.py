@@ -561,7 +561,7 @@ def vpc_stacks(cfn_stacks_factory, request):
 
     for region in regions:
         # Creating private_subnet_different_cidr in a different AZ for test_efs
-        # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
+        # To-do: isolate this logic and create a compute subnet in different AZ than head node in test_efs
 
         # if region has a non-empty list in AVAILABILITY_ZONE_OVERRIDES, select a subset of those AZs
         credential = request.config.getoption("credential")

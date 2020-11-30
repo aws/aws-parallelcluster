@@ -70,9 +70,9 @@ Automate VPC creation? (y/n) [n]:
 
 Enter ``n`` if you already have a VPC suitable for the cluster. Otherwise you can let ``pcluster configure``
 create a VPC for you. The same choice is given for the subnet: you can select a valid subnet ID for
-both the master and compute nodes, or you can let ``pcluster configure`` set up everything for you.
+both the head node and compute nodes, or you can let ``pcluster configure`` set up everything for you.
 The same choice is given for the subnet configuration: you can select a valid subnet ID for both
-the master and compute nodes, or you can let pcluster configure set up everything for you.
+the head node and compute nodes, or you can let pcluster configure set up everything for you.
 In the latter case, just select the configuration you prefer.
 
 ```

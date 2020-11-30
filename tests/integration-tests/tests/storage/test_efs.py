@@ -35,7 +35,7 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack):
     """
-    Test when compute subnet is in a different AZ from master subnet.
+    Test when compute subnet is in a different AZ from head node subnet.
 
     A compute mount target should be created and the efs correctly mounted on compute.
     """
@@ -57,7 +57,7 @@ def test_efs_compute_az(region, scheduler, pcluster_config_reader, clusters_fact
 @pytest.mark.usefixtures("region", "os", "instance")
 def test_efs_same_az(region, scheduler, pcluster_config_reader, clusters_factory, vpc_stack):
     """
-    Test when compute subnet is in the same AZ as master subnet.
+    Test when compute subnet is in the same AZ as head node subnet.
 
     No compute mount point needed and the efs correctly mounted on compute.
     """

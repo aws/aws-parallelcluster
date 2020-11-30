@@ -88,7 +88,7 @@ class BaseNetworkConfig(ABC):
 
 
 class PublicNetworkConfig(BaseNetworkConfig):
-    """The public configuration that creates one public subnet with master and compute fleet."""
+    """The public configuration that creates one public subnet with head node and compute fleet."""
 
     def __init__(self, availability_zones=None):
         super(PublicNetworkConfig, self).__init__(
@@ -115,7 +115,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
 
 
 class PublicPrivateNetworkConfig(BaseNetworkConfig):
-    """The publicprivate configuration that creates one public subnet for master and one private subnet for compute."""
+    """The public private config that creates one public subnet for head node and one private subnet for compute."""
 
     def __init__(self, availability_zones=None):
         super(PublicPrivateNetworkConfig, self).__init__(

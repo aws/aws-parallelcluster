@@ -19,7 +19,7 @@ def main(args):
         Parameter("ComputeSecurityGroup", Type="String", Description="Security Group for Mount Target")
     )
     head_node_subnet_id = t.add_parameter(
-        Parameter("MasterSubnetId", Type="String", Description="Master subnet id for master mount target")
+        Parameter("MasterSubnetId", Type="String", Description="Head node subnet id for head node mount target")
     )
     compute_subnet_id = t.add_parameter(
         Parameter(

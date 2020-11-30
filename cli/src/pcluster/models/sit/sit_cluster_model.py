@@ -117,7 +117,7 @@ class SITClusterModel(ClusterModel):
 
             head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
-                use_efa=False,  # EFA is not supported on master node
+                use_efa=False,  # EFA is not supported on head node
                 security_group_ids=security_groups_ids,
                 subnet=head_node_subnet,
                 use_public_ips=vpc_section.get_param_value("use_public_ips"),
@@ -138,7 +138,7 @@ class SITClusterModel(ClusterModel):
 
             compute_network_interfaces_count = int(cluster_section.get_param_value("network_interfaces_count")[1])
             enable_efa = "compute" == cluster_section.get_param_value("enable_efa")
-            # TODO: check if master == compute subnet condition is to take into account
+            # TODO: check if head node == compute subnet condition is to take into account
             use_public_ips = self.public_ips_in_compute_subnet(pcluster_config, compute_network_interfaces_count)
 
             network_interfaces = self.build_launch_network_interfaces(
