@@ -696,7 +696,7 @@ Resources:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
                 info --logfile /var/log/chef-client.log --force-formatter --no-color
                 --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist
-                aws-parallelcluster::update_master
+                aws-parallelcluster::update_head_node
               cwd: /etc/chef
   UpdateWaiterCustomResource:
     Type: AWS::CloudFormation::CustomResource
