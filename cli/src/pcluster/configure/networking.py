@@ -92,7 +92,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
 
     def __init__(self, availability_zones=None):
         super(PublicNetworkConfig, self).__init__(
-            config_type="Master and compute fleet in the same public subnet",
+            config_type="Head node and compute fleet in the same public subnet",
             template_name="public",
             stack_name_prefix="pub",
             availability_zones=availability_zones,
@@ -119,7 +119,7 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
 
     def __init__(self, availability_zones=None):
         super(PublicPrivateNetworkConfig, self).__init__(
-            config_type="Master in a public subnet and compute fleet in a private subnet",
+            config_type="Head node in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
             stack_name_prefix="pubpriv",
             availability_zones=availability_zones,

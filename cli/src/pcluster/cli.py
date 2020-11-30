@@ -272,9 +272,9 @@ Examples::
     # stop command subparser
     pstop = subparsers.add_parser(
         "stop",
-        help="Stops the compute fleet, leaving the master server running.",
+        help="Stops the compute fleet, leaving the head node running.",
         epilog="This command sets the Auto Scaling Group parameters to min/max/desired = 0/0/0 and "
-        "terminates the compute fleet. The master will remain running. To terminate "
+        "terminates the compute fleet. The head node will remain running. To terminate "
         "all EC2 resources and avoid EC2 charges, consider deleting the cluster.",
     )
     pstop.add_argument("cluster_name", help="Stops the compute fleet of the cluster name provided here.")
@@ -331,7 +331,7 @@ Variables substituted::
     )
     pssh = subparsers.add_parser(
         "ssh",
-        help="Connects to the master instance using SSH.",
+        help="Connects to the head node instance using SSH.",
         description="Run ssh command with the cluster username and IP address pre-populated. "
         "Arbitrary arguments are appended to the end of the ssh command. "
         "This command can be customized in the aliases "
@@ -429,7 +429,7 @@ Variables substituted::
     dcv_subparsers.required = True
     dcv_subparsers.dest = "subcommand"
     pdcv_connect = dcv_subparsers.add_parser(
-        "connect", help="Permits to connect to the master node through an interactive session by using NICE DCV."
+        "connect", help="Permits to connect to the head node through an interactive session by using NICE DCV."
     )
     _addarg_region(pdcv_connect)
     pdcv_connect.add_argument("cluster_name", help="Name of the cluster to connect to")

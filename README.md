@@ -78,8 +78,8 @@ In the latter case, just select the configuration you prefer.
 ```
 Automate Subnet creation? (y/n) [y]: y
 Allowed values for Network Configuration:
-1. Master in a public subnet and compute fleet in a private subnet
-2. Master and compute fleet in the same public subnet
+1. Head node in a public subnet and compute fleet in a private subnet
+2. Head node and compute fleet in the same public subnet
 ```
 
 

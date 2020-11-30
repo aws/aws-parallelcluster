@@ -387,7 +387,7 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
         if re.search(r"(micro)|(nano)", head_node_instance_type):
             warnings.append(
                 "The packages required for desktop virtualization in the selected instance type '{0}' "
-                "may cause instability of the master instance. If you want to use NICE DCV it is recommended "
+                "may cause instability of the head node instance. If you want to use NICE DCV it is recommended "
                 "to use an instance type with at least 1.7 GB of memory.".format(head_node_instance_type)
             )
 
@@ -625,7 +625,7 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
         if cluster_section.get_param_value("architecture") != ami_architecture:
             errors.append(
                 "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the instance type "
-                "chosen for the master server ({2}). Use either a different AMI or a different instance type.".format(
+                "chosen for the head node ({2}). Use either a different AMI or a different instance type.".format(
                     param_value, ami_architecture, cluster_section.get_param_value("architecture")
                 )
             )
@@ -1075,7 +1075,7 @@ def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
     architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
     if param_value and architecture not in allowed_architectures:
         errors.append(
-            "When using enable_intel_hpc_platform = {0} it is required to use master and compute instance "
+            "When using enable_intel_hpc_platform = {0} it is required to use head node and compute instance "
             "types and an AMI that support these architectures: {1}".format(param_value, allowed_architectures)
         )
 

@@ -59,7 +59,7 @@ def dcv_connect(args):
         error(
             "Something went wrong during DCV connection.\n{0}"
             "Please check the logs in the /var/log/parallelcluster/ folder "
-            "of the master instance and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
+            "of the head node and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
         )
 
     if args.show_url:
@@ -93,7 +93,7 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
             error(
                 "Something went wrong during DCV connection. Please manually execute the command:\n{0}\n"
                 "If the problem persists, please check the logs in the /var/log/parallelcluster/ folder "
-                "of the master instance and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
+                "of the head node and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
             )
 
     except sub.CalledProcessError as e:

@@ -85,8 +85,8 @@ def _test_disable_hyperthreading_settings(
     expected_cpus_per_instance = slots_per_instance // 2 if hyperthreading_disabled else slots_per_instance
     expected_threads_per_core = 1 if hyperthreading_disabled else 2
 
-    # Test disable hyperthreading on Master
-    logging.info("Test Disable Hyperthreading on Master")
+    # Test disable hyperthreading on head node
+    logging.info("Test Disable Hyperthreading on head node")
     result = remote_command_executor.run_remote_command("lscpu")
     if partition:
         # If partition is supplied, assume this is HIT setting where ht settings are at the queue level

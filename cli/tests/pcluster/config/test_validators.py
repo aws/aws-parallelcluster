@@ -147,12 +147,12 @@ def test_ec2_key_pair_validator(mocker, boto3_stubber):
         (
             "arm64",
             None,
-            "incompatible with the architecture supported by the instance type chosen for the master server",
+            "incompatible with the architecture supported by the instance type chosen for the head node",
         ),
         (
             "arm64",
             "Unable to get information for AMI",
-            "incompatible with the architecture supported by the instance type chosen for the master server",
+            "incompatible with the architecture supported by the instance type chosen for the head node",
         ),
     ],
 )

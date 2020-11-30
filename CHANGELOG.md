@@ -14,6 +14,7 @@ CHANGELOG
 
 - Pull Amazon Linux Docker images from ECR when building docker image for `awsbatch` scheduler. This only applies to
   images built for `x86` architecture.
+- Use inclusive language in user facing messages and internal naming convention.
 
 **BUG FIXES**
 
@@ -24,7 +25,7 @@ CHANGELOG
 
 - Add support for CentOS 8 in all Commercial regions.
 - Add support for P4d instance type as compute node.
-- Add the possibilty to enable NVIDIA GPUDirect RDMA support on EFA by using the new `enable_efa_gdr` configuration
+- Add the possibility to enable NVIDIA GPUDirect RDMA support on EFA by using the new `enable_efa_gdr` configuration
   parameter.
 - Enable support for NICE DCV in GovCloud regions.
 - Enable support for AWS Batch scheduler in GovCloud regions.

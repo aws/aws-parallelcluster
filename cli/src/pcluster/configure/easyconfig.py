@@ -266,13 +266,13 @@ def _filter_subnets_offering_instance_type(subnet_list, instance_type):
 
 def _ask_for_subnets(subnet_list, vpc_section, qualified_head_node_subnets, qualified_compute_subnets):
     head_node_subnet_id = _prompt_for_subnet(
-        vpc_section.get_param_value("master_subnet_id"), subnet_list, qualified_head_node_subnets, "Master Subnet ID"
+        vpc_section.get_param_value("master_subnet_id"), subnet_list, qualified_head_node_subnets, "head node Subnet ID"
     )
     compute_subnet_id = _prompt_for_subnet(
         vpc_section.get_param_value("compute_subnet_id") or head_node_subnet_id,
         subnet_list,
         qualified_compute_subnets,
-        "Compute Subnet ID",
+        "compute Subnet ID",
     )
 
     vpc_parameters = {"master_subnet_id": head_node_subnet_id}
@@ -294,8 +294,8 @@ def _choose_network_configuration(cluster_config):
         # Automate subnet creation only allows subnets to reside in a single az.
         # But user can bypass it by using manual subnets creation during configure or modify the config file directly.
         print(
-            "Error: There is no single availability zone offering master and compute in current region.\n"
-            "To create your cluster, make sure you have a subnet for master node in {0}"
+            "Error: There is no single availability zone offering head node and compute in current region.\n"
+            "To create your cluster, make sure you have a subnet for head node in {0}"
             ", and a subnet for compute nodes in {1}. Then run pcluster configure again"
             "and avoid using Automate VPC/Subnet creation.".format(azs_for_head_node_type, azs_for_compute_type)
         )
@@ -368,7 +368,7 @@ class ClusterConfigureHelper:
     def prompt_instance_types(self):
         """Ask for head_node_instance_type and compute_instance_type (if necessary)."""
         self.head_node_instance_type = prompt(
-            "Master instance type",
+            "Head node instance type",
             lambda x: _is_instance_type_supported_for_head_node(x) and x in get_supported_instance_types(),
             default_value=self.cluster_section.get_param_value("master_instance_type"),
         )

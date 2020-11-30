@@ -213,7 +213,7 @@ UpdatePolicy.COMPUTE_FLEET_STOP = UpdatePolicy(
 # Update supported only with head node down
 UpdatePolicy.HEAD_NODE_STOP = UpdatePolicy(
     level=20,
-    fail_reason="To perform this update action, the master node must be in a stopped state",
+    fail_reason="To perform this update action, the head node must be in a stopped state",
     action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
     condition_checker=lambda change, patch: utils.get_head_node_state(patch.stack_name) == "stopped",
 )

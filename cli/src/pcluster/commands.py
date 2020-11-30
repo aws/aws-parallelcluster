@@ -429,7 +429,7 @@ def _poll_head_node_state(stack_name):
     try:
         instances = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.head_node)
         if not instances:
-            LOGGER.error("Cannot retrieve master node status. Exiting...")
+            LOGGER.error("Cannot retrieve head node status. Exiting...")
             sys.exit(1)
         head_node_id = instances[0].get("InstanceId")
         state = instances[0].get("State").get("Name")

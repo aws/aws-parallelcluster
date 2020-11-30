@@ -857,7 +857,7 @@ def _get_head_node_ip(stack_name):
         ip_address = head_node.get("PrivateIpAddress")
     state = head_node.get("State").get("Name")
     if state != "running" or ip_address is None:
-        error("Head node: {0}\nCannot get ip address.".format(state.upper()))
+        error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
 
 
