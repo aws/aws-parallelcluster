@@ -233,6 +233,12 @@ iam:
         schedulers: ["awsbatch", "slurm", "sge"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  test_iam.py::test_s3_read_write_resource:
+    dimensions:
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "awsbatch"]
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
