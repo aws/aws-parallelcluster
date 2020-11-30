@@ -53,10 +53,10 @@ Parameters:
     Type: String
   {#- Head Node parameters #}
   MasterInstanceId:
-    Description: ID of the Master instance
+    Description: ID of the head node instance
     Type: AWS::EC2::Instance::Id
   MasterPrivateIP:
-    Description: Private IP of the Master instance
+    Description: Private IP of the head node instance
     Type: String
   {#- EBS parameters #}
   EBSVolumesIds:
