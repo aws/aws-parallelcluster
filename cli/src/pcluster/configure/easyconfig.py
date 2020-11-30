@@ -419,7 +419,7 @@ class ClusterConfigureHelper:
 
     def cache_qualified_az(self):
         """
-        Call API once for both master and compute instance type.
+        Call API once for both head node and compute instance type.
 
         Cache is done inside get get_supported_az_for_instance_types.
         """

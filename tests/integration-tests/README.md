@@ -706,7 +706,7 @@ included the CloudFormation stack outputs.
 
 ### Execute Remote Commands
 
-To execute remote commands or scripts on the Master instance of the cluster under test, the `RemoteCommandExecutor`
+To execute remote commands or scripts on the head node of the cluster under test, the `RemoteCommandExecutor`
 class can be used. It simply requires a valid `Cluster` object to be initialized and it offers some utility
 methods to execute remote commands and scripts as shown in the example below:
 

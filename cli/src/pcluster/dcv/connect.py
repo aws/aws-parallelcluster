@@ -40,7 +40,7 @@ def dcv_connect(args):
     # Parse configuration file to read the AWS section
     PclusterConfig.init_aws()  # FIXME it always searches for the default configuration file
 
-    # Prepare ssh command to execute in the master instance
+    # Prepare ssh command to execute in the head node instance
     stack = get_stack(get_stack_name(args.cluster_name))
     shared_dir = get_cfn_param(stack.get("Parameters"), "SharedDir")
     head_node_ip, username = get_head_node_ip_and_username(args.cluster_name)
@@ -74,7 +74,7 @@ def dcv_connect(args):
 
 
 def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
-    """Connect by ssh to the master instance, prepare DCV session and return the DCV session URL."""
+    """Connect by ssh to the head node instance, prepare DCV session and return the DCV session URL."""
     try:
         LOGGER.debug("SSH command: {0}".format(ssh_cmd))
         output = _check_command_output(ssh_cmd)

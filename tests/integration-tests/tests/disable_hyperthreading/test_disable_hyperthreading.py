@@ -90,7 +90,7 @@ def _test_disable_hyperthreading_settings(
     result = remote_command_executor.run_remote_command("lscpu")
     if partition:
         # If partition is supplied, assume this is HIT setting where ht settings are at the queue level
-        # In this case, ht is not disabled on master
+        # In this case, ht is not disabled on head node
         assert_that(result.stdout).matches(r"Thread\(s\) per core:\s+{0}".format(2))
         _assert_active_cpus(result.stdout, slots_per_instance)
     else:

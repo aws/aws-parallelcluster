@@ -122,7 +122,7 @@ class CloudWatchLoggingClusterState:
                 for hostname, host_dict in self._cluster_log_state.get(COMPUTE_NODE_ROLE_NAME).items()
             ]
         )
-        assert_that(states).is_length(self.compute_nodes_count + 1)  # computes + master
+        assert_that(states).is_length(self.compute_nodes_count + 1)  # computes + head node
         return states
 
     @staticmethod
@@ -302,7 +302,7 @@ class CloudWatchLoggingClusterState:
         LOGGER.debug("After populating relevant logs:\n{0}".format(self._dump_cluster_log_state()))
 
     def _run_command_on_head_node(self, cmd):
-        """Run cmd on cluster's MasterServer."""
+        """Run cmd on cluster's head node."""
         return self.remote_command_executor.run_remote_command(cmd, timeout=60).stdout.strip()
 
     def _run_command_on_computes(self, cmd, assert_success=True):
@@ -328,7 +328,7 @@ class CloudWatchLoggingClusterState:
         return outputs
 
     def _populate_head_node_log_existence(self):
-        """Figure out which of the relevant logs for the MasterServer don't exist."""
+        """Figure out which of the relevant logs for the head node don't exist."""
         for log_path, log_dict in self._cluster_log_state.get(HEAD_NODE_ROLE_NAME).get("logs").items():
             cmd = "[ -f {path} ] && echo exists || echo does not exist".format(path=log_path)
             output = self._run_command_on_head_node(cmd)
@@ -359,7 +359,7 @@ class CloudWatchLoggingClusterState:
         LOGGER.debug("After populating log existence:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_head_node_log_emptiness_and_tail(self):
-        """Figure out which of the relevant logs for the MasterServer are empty."""
+        """Figure out which of the relevant logs for the head node are empty."""
         for log_path, log_dict in self._cluster_log_state.get(HEAD_NODE_ROLE_NAME).get("logs").items():
             if not log_dict.get("exists"):
                 continue
@@ -397,7 +397,7 @@ class CloudWatchLoggingClusterState:
         LOGGER.debug("After populating log emptiness and tails:\n{0}".format(self._dump_cluster_log_state()))
 
     def _populate_head_node_agent_status(self):
-        """Get the cloudwatch agent's status for the MasterServer."""
+        """Get the cloudwatch agent's status for the head node."""
         status_cmd = "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a status"
         status = json.loads(self._run_command_on_head_node(status_cmd))
         self._cluster_log_state[HEAD_NODE_ROLE_NAME]["agent_status"] = status.get("status")
@@ -424,7 +424,7 @@ class CloudWatchLoggingClusterState:
 
         In particular:
         * Identify which EC2 instances belong to this cluster
-        * Identify which logs are relevant to the MasterServer and ComputeFleet nodes
+        * Identify which logs are relevant to the head node and compute fleet nodes
         * Identify whether each of a node's relevant logs contain data or not. If they do contain
           data, save the last line of the file.
         * Get the CloudWatch agent's status for each node
@@ -511,7 +511,7 @@ class CloudWatchLoggingTestRunner:
         )
 
     def verify_agent_status(self, logs_state):
-        """Verify CloudWatch agent is running on the MasterServer (or not if not enabled)."""
+        """Verify CloudWatch agent is running on the head node (or not if not enabled)."""
         expected_status = "running" if self.enabled else "stopped"
         assert_that(logs_state).extracting("agent_status").contains_only(expected_status)
 

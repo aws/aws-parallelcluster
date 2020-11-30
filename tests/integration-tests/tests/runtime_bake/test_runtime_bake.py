@@ -40,7 +40,7 @@ def test_runtime_bake(scheduler, os, region, pcluster_config_reader, clusters_fa
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # Verify no chef.io endpoint is called in cloud-init-output log to download chef installer or chef packages"""
-    # on master
+    # on head node
     remote_command_executor.run_remote_script(str(test_datadir / "verify_chef_download.sh"))
     # on compute
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)

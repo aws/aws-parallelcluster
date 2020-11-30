@@ -161,7 +161,7 @@ class Cluster:
 
     @property
     def head_node_ip(self):
-        """Return the public ip of the cluster master node."""
+        """Return the public ip of the cluster head node."""
         if "MasterPublicIP" in self.cfn_outputs:
             return self.cfn_outputs["MasterPublicIP"]
         else:

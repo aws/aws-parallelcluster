@@ -49,7 +49,7 @@ STACK_TYPE = "AWS::CloudFormation::Stack"
 class NodeType(Enum):
     """Enum that identifies the cluster node type."""
 
-    master = "Master"
+    head_node = "Master"
     compute = "Compute"
 
     def __str__(self):
@@ -842,22 +842,22 @@ def describe_cluster_instances(stack_name, node_type):
 
 def _get_head_node_ip(stack_name):
     """
-    Get the IP Address of the MasterServer.
+    Get the IP Address of the head node.
 
     :param stack_name: The name of the cloudformation stack
     :param config: Config object
     :return private/public ip address
     """
-    instances = describe_cluster_instances(stack_name, node_type=NodeType.master)
+    instances = describe_cluster_instances(stack_name, node_type=NodeType.head_node)
     if not instances:
-        error("MasterServer not running. Can't SSH")
+        error("Head node not running. Can't SSH")
     head_node = instances[0]
     ip_address = head_node.get("PublicIpAddress")
     if ip_address is None:
         ip_address = head_node.get("PrivateIpAddress")
     state = head_node.get("State").get("Name")
     if state != "running" or ip_address is None:
-        error("MasterServer: {0}\nCannot get ip address.".format(state.upper()))
+        error("Head node: {0}\nCannot get ip address.".format(state.upper()))
     return ip_address
 
 
@@ -870,7 +870,7 @@ def get_head_node_ip_and_username(cluster_name):
         stack_status = stack_result.get("StackStatus")
 
         if stack_status in ["DELETE_COMPLETE", "DELETE_IN_PROGRESS"]:
-            error("Unable to retrieve master_ip and username for a stack in the status: {0}".format(stack_status))
+            error("Unable to retrieve head node ip and username for a stack in the status: {0}".format(stack_status))
         else:
             head_node_ip = _get_head_node_ip(stack_name)
             template = cfn.get_template(StackName=stack_name)
@@ -891,14 +891,14 @@ def get_head_node_ip_and_username(cluster_name):
 
 def get_head_node_state(stack_name):
     """
-    Get the State of the MasterServer.
+    Get the State of the head node.
 
     :param stack_name: The name of the cloudformation stack
-    :return master server state name
+    :return head node state name
     """
     instances = describe_cluster_instances(stack_name, "Master")
     if not instances:
-        error("MasterServer not running.")
+        error("Head node not running.")
     return instances[0].get("State").get("Name")
 
 
@@ -991,7 +991,7 @@ def get_batch_ce(stack_name):
     """
     Get name of the AWS Batch Compute Environment.
 
-    :param stack_name: name of the master stack
+    :param stack_name: name of the head node stack
     :param config: config
     :return: ce_name or exit if not found
     """

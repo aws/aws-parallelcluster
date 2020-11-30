@@ -952,7 +952,7 @@ def cluster_validator(section_key, section_label, pcluster_config):
 
 
 def instances_architecture_compatibility_validator(param_key, param_value, pcluster_config):
-    """Verify that master and compute instance types imply compatible architectures."""
+    """Verify that head node and compute instance types imply compatible architectures."""
     errors = []
     warnings = []
 
