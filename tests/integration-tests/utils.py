@@ -56,6 +56,15 @@ def run_command(command, capture_output=True, log_error=True, env=None, timeout=
     return result
 
 
+def generate_stack_name(prefix, suffix):
+    """Generate a stack name with prefix, suffix, and a random string in the middle"""
+    return prefix + "-{0}{1}{2}".format(
+        random_alphanumeric(),
+        "-" if suffix else "",
+        suffix,
+    )
+
+
 def random_alphanumeric(size=16):
     """Generate a random alphanumeric string."""
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
@@ -304,11 +313,10 @@ def paginate_boto3(method, **kwargs):
             yield result
 
 
-def get_vpc_snakecase_value(region, vpc_stacks):
+def get_vpc_snakecase_value(vpc_stack):
     """Return dict containing snakecase vpc variables."""
     vpc_output_dict = {}
-    vpc = vpc_stacks[region]
-    for key, value in vpc.cfn_outputs.items():
+    for key, value in vpc_stack.cfn_outputs.items():
         vpc_output_dict[to_snake_case(key)] = value
     return vpc_output_dict
 

@@ -17,7 +17,7 @@ from assertpy import assert_that
 from cfn_stacks_factory import CfnStack
 from troposphere import Ref, Template
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress
-from utils import check_headnode_security_group, random_alphanumeric
+from utils import check_headnode_security_group, generate_stack_name
 
 
 @pytest.mark.usefixtures("os", "scheduler", "instance")
@@ -118,11 +118,7 @@ def custom_security_group(vpc_stack, region, request, cfn_stacks_factory):
         )
     )
     stack = CfnStack(
-        name="integ-tests-custom-sg-{0}{1}{2}".format(
-            random_alphanumeric(),
-            "-" if request.config.getoption("stackname_suffix") else "",
-            request.config.getoption("stackname_suffix"),
-        ),
+        name=generate_stack_name("integ-tests-custom-sg", request.config.getoption("stackname_suffix")),
         region=region,
         template=template.to_json(),
     )
