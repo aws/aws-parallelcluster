@@ -99,9 +99,9 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "shared_dir": "/shared",
     "placement_group": None,
     "placement": "compute",
-    "master_instance_type": "t2.micro",
+    "master_instance_type": None,
     "master_root_volume_size": 25,
-    "compute_instance_type": "t2.micro",
+    "compute_instance_type": None,
     "compute_root_volume_size": 25,
     "initial_queue_size": 0,
     "max_queue_size": 10,
@@ -155,7 +155,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
-    "master_instance_type": "t2.micro",
+    "master_instance_type": None,
     "master_root_volume_size": 25,
     "compute_root_volume_size": 25,
     "proxy_server": None,

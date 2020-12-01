@@ -24,6 +24,7 @@ from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
     get_cfn_param,
+    get_default_instance_type,
     get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
@@ -852,6 +853,34 @@ class ArgsCfnParam(CfnParam):
             cfn_params[cfn_converter] = json.dumps(cfn_value)[1:-1]
 
         return cfn_params
+
+
+class ComputeInstanceTypeCfnParam(CfnParam):
+    """
+    Class to manage the compute instance type parameter.
+
+    We need this class in order to set the default instance type from a boto3 call.
+    """
+
+    def refresh(self):
+        """Get default value from a boto3 call for free tier instance type."""
+        if not self.value:
+            scheduler = self.pcluster_config.get_section("cluster").get_param_value("scheduler")
+            if scheduler:
+                self.value = "optimal" if scheduler == "awsbatch" else get_default_instance_type()
+
+
+class MasterInstanceTypeCfnParam(CfnParam):
+    """
+    Class to manage the head node instance type parameter.
+
+    We need this class in order to set the default instance type from a boto3 call.
+    """
+
+    def refresh(self):
+        """Get default value from a boto3 call for free tier instance type."""
+        if not self.value:
+            self.value = get_default_instance_type()
 
 
 class TagsParam(JsonCfnParam):

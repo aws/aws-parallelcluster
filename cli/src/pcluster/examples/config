@@ -24,10 +24,10 @@ key_name = mykey
 # (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
 #template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
 # EC2 instance type for master node
-# (defaults to t2.micro)
+# (defaults to the free tier instance type of the region. If the region does not have free tier, default to t3.micro)
 #master_instance_type = t2.micro
 # EC2 instance type for compute nodes
-# (defaults to t2.micro , 'optimal' when scheduler is awsbatch)
+# (defaults to the free tier instance type of the region, 'optimal' when scheduler is awsbatch)
 #compute_instance_type = t2.micro
 # Initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
 # (defaults to 2)
