@@ -12,6 +12,7 @@
 import os
 import shutil
 import tempfile
+from collections import OrderedDict
 
 import configparser
 import pytest
@@ -144,23 +145,6 @@ def mock_instance_type_info(mocker, instance_type="t2.micro"):
     )
 
 
-def mock_ec2_key_pair(mocker, cluster_section_dict):
-    if cluster_section_dict.get("key_name") is None:
-        cluster_section_dict["key_name"] = "test_key"
-
-        mocker.patch(
-            "pcluster.config.validators._describe_ec2_key_pair",
-            return_value={
-                "KeyPairs": [
-                    {
-                        "KeyFingerprint": "12:bf:7c:56:6c:dd:4f:8c:24:45:75:f1:1b:16:54:89:82:09:a4:26",
-                        "KeyName": "test_key",
-                    }
-                ]
-            },
-        )
-
-
 def assert_param_validator(
     mocker,
     config_parser_dict,
@@ -168,7 +152,6 @@ def assert_param_validator(
     capsys=None,
     expected_warning=None,
     extra_patches=None,
-    use_mock_ec2_key_pair=True,
 ):
     config_parser = configparser.ConfigParser()
 
@@ -177,7 +160,6 @@ def assert_param_validator(
     set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
-    mock_ec2_key_pair(mocker, config_parser_dict.get("cluster default"))
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
@@ -411,8 +393,27 @@ def init_pcluster_config_from_configparser(config_parser, validate=True, auto_re
             config_file=config_file.name, cluster_label="default", fail_on_file_absence=True, auto_refresh=auto_refresh
         )
         if validate:
-            pcluster_config.validate()
+            _validate_config(config_parser, pcluster_config)
     return pcluster_config
+
+
+def _validate_config(config_parser, pcluster_config):
+    """Validate sections and params in config_parser by the order specified in the pcluster_config."""
+    for section_key in pcluster_config.get_section_keys():
+        for section_label in pcluster_config.get_sections(section_key).keys():
+            section_name = section_key + " " + section_label if section_label else section_key
+            if section_name in config_parser.sections():
+                pcluster_config_section = pcluster_config.get_section(section_key, section_label)
+                for validation_func in pcluster_config_section.definition.get("validators", []):
+                    errors, warnings = validation_func(section_key, section_label, pcluster_config)
+                    if errors:
+                        pcluster_config.error(errors)
+                    elif warnings:
+                        pcluster_config.warn(warnings)
+                config_parser_section = OrderedDict(config_parser.items(section_name))
+                for param_key in pcluster_config_section.params:
+                    if param_key in config_parser_section:
+                        pcluster_config_section.get_param(param_key).validate()
 
 
 def duplicate_config_file(dst_config_file, test_datadir):

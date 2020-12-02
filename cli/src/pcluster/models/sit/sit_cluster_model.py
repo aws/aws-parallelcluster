@@ -60,10 +60,8 @@ class SITClusterModel(ClusterModel):
         vpc_section = pcluster_config.get_section("vpc")
 
         if (
-            not cluster_section
-            or cluster_section.get_param_value("scheduler") == "awsbatch"
+            cluster_section.get_param_value("scheduler") == "awsbatch"
             or cluster_section.get_param_value("cluster_type") == "spot"
-            or not vpc_section
         ):
             return
 

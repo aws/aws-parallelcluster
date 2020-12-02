@@ -240,68 +240,70 @@ VPC = {
     "key": "vpc",
     "default_label": "default",
     "autocreate": True,
-    "params": {
-        "vpc_id": {
+    "params": OrderedDict([
+        ("vpc_id", {
             "cfn_param_mapping": "VPCId",
+            "required": True,
             "allowed_values": ALLOWED_VALUES["vpc_id"],
             "validators": [ec2_vpc_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "master_subnet_id": {
+        }),
+        ("master_subnet_id", {
             "cfn_param_mapping": "MasterSubnetId",
+            "required": True,
             "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "ssh_from": {
+        }),
+        ("ssh_from", {
             "default": CIDR_ALL_IPS,
             "allowed_values": ALLOWED_VALUES["cidr"],
             "cfn_param_mapping": "AccessFrom",
             "update_policy": UpdatePolicy.SUPPORTED
-        },
-        "additional_sg": {
+        }),
+        ("additional_sg", {
             "cfn_param_mapping": "AdditionalSG",
             "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
-        },
-        "compute_subnet_id": {
+        }),
+        ("compute_subnet_id", {
             "cfn_param_mapping": "ComputeSubnetId",
             "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
-        },
-        "compute_subnet_cidr": {
+        }),
+        ("compute_subnet_cidr", {
             "cfn_param_mapping": "ComputeSubnetCidr",
             "allowed_values": ALLOWED_VALUES["cidr"],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "use_public_ips": {
+        }),
+        ("use_public_ips", {
             "type": BoolCfnParam,
             "default": True,
             "cfn_param_mapping": "UsePublicIps",
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
-        },
-        "vpc_security_group_id": {
+        }),
+        ("vpc_security_group_id", {
             "cfn_param_mapping": "VPCSecurityGroupId",
             "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
-        },
-        "master_availability_zone": {
+        }),
+        ("master_availability_zone", {
             # NOTE: this is not exposed as a configuration parameter
             "type": HeadNodeAvailabilityZoneCfnParam,
             "cfn_param_mapping": "AvailabilityZone",
             "update_policy": UpdatePolicy.IGNORED,
             "visibility": Visibility.PRIVATE
-        },
-        "compute_availability_zone": {
+        }),
+        ("compute_availability_zone", {
             # NOTE: this is not exposed as a configuration parameter
             "type": ComputeAvailabilityZoneCfnParam,
             "update_policy": UpdatePolicy.IGNORED,
             "visibility": Visibility.PRIVATE
-        }
-    },
+        })
+    ]),
 }
 
 EBS = {
@@ -922,6 +924,7 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("vpc_settings", {
         "type": SettingsCfnParam,
+        "required": True,
         "referred_section": VPC,
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
