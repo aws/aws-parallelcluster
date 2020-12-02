@@ -115,7 +115,7 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
     else:
         assert_that(result.stdout).does_not_contain("1d0f:efa0")
 
-    # Check EFA interface not present on master
+    # Check EFA interface not present on head node
     result = remote_command_executor.run_remote_command("lspci -n")
     assert_that(result.stdout).does_not_contain("1d0f:efa0")
 

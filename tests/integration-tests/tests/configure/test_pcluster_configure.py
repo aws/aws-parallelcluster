@@ -255,17 +255,17 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
         {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
         {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
-        {"prompt": r"Master instance type \[t.\.micro\]: ", "response": instance},
+        {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
         {"prompt": r"Compute instance type \[t.\.micro\]: ", "response": instance, "skip_for_batch": True},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},
         {
-            "prompt": fr"{omitted_note}Master Subnet ID \[subnet-.+\]: ",
+            "prompt": fr"{omitted_note}head node Subnet ID \[subnet-.+\]: ",
             "response": headnode_subnet_id,
         },
         {
-            "prompt": fr"{omitted_note}Compute Subnet ID \[{default_compute_subnet}\]: ",
+            "prompt": fr"{omitted_note}compute Subnet ID \[{default_compute_subnet}\]: ",
             "response": compute_subnet_id,
         },
     ]

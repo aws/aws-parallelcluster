@@ -247,7 +247,7 @@
       "Type": "CommaDelimitedList"
     },
     "MasterSubnetId": {
-      "Description": "Master subnet id for master mount target",
+      "Description": "Head node subnet id for head node mount target",
       "Type": "String"
     }
   },

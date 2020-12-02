@@ -119,13 +119,13 @@ def _test_dcv_configuration(
 
     # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
     host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
-    add_keys_to_known_hosts(cluster.master_ip, host_keys_file)
+    add_keys_to_known_hosts(cluster.head_node_ip, host_keys_file)
 
     try:
         result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
     finally:
         # remove ssh key from jenkins user known hosts file
-        remove_keys_from_known_hosts(cluster.master_ip, host_keys_file, env=env)
+        remove_keys_from_known_hosts(cluster.head_node_ip, host_keys_file, env=env)
 
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"

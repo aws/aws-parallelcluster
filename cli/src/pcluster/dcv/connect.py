@@ -16,7 +16,7 @@ import webbrowser
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_ISSUES_LINK
 from pcluster.dcv.utils import DCV_CONNECT_SCRIPT
-from pcluster.utils import error, get_cfn_param, get_master_ip_and_username, get_stack, get_stack_name, retry
+from pcluster.utils import error, get_cfn_param, get_head_node_ip_and_username, get_stack, get_stack_name, retry
 
 LOGGER = logging.getLogger(__name__)
 
@@ -40,26 +40,26 @@ def dcv_connect(args):
     # Parse configuration file to read the AWS section
     PclusterConfig.init_aws()  # FIXME it always searches for the default configuration file
 
-    # Prepare ssh command to execute in the master instance
+    # Prepare ssh command to execute in the head node instance
     stack = get_stack(get_stack_name(args.cluster_name))
     shared_dir = get_cfn_param(stack.get("Parameters"), "SharedDir")
-    master_ip, username = get_master_ip_and_username(args.cluster_name)
-    cmd = 'ssh {CFN_USER}@{MASTER_IP} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
+    head_node_ip, username = get_head_node_ip_and_username(args.cluster_name)
+    cmd = 'ssh {CFN_USER}@{HEAD_NODE_IP} {KEY} "{REMOTE_COMMAND} {DCV_SHARED_DIR}"'.format(
         CFN_USER=username,
-        MASTER_IP=master_ip,
+        HEAD_NODE_IP=head_node_ip,
         KEY="-i {0}".format(args.key_path) if args.key_path else "",
         REMOTE_COMMAND=DCV_CONNECT_SCRIPT,
         DCV_SHARED_DIR=shared_dir,
     )
 
     try:
-        url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, master_ip], attempts=4)
+        url = retry(_retrieve_dcv_session_url, func_args=[cmd, args.cluster_name, head_node_ip], attempts=4)
         url_message = "Please use the following one-time URL in your browser within 30 seconds:\n{0}".format(url)
     except DCVConnectionError as e:
         error(
             "Something went wrong during DCV connection.\n{0}"
             "Please check the logs in the /var/log/parallelcluster/ folder "
-            "of the master instance and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
+            "of the head node and submit an issue {1}\n".format(e, PCLUSTER_ISSUES_LINK)
         )
 
     if args.show_url:
@@ -73,8 +73,8 @@ def dcv_connect(args):
         LOGGER.info("{0}\n{1}".format(e, url_message))
 
 
-def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
-    """Connect by ssh to the master instance, prepare DCV session and return the DCV session URL."""
+def _retrieve_dcv_session_url(ssh_cmd, cluster_name, head_node_ip):
+    """Connect by ssh to the head node instance, prepare DCV session and return the DCV session URL."""
     try:
         LOGGER.debug("SSH command: {0}".format(ssh_cmd))
         output = _check_command_output(ssh_cmd)
@@ -93,7 +93,7 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
             error(
                 "Something went wrong during DCV connection. Please manually execute the command:\n{0}\n"
                 "If the problem persists, please check the logs in the /var/log/parallelcluster/ folder "
-                "of the master instance and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
+                "of the head node and submit an issue {1}".format(ssh_cmd, PCLUSTER_ISSUES_LINK)
             )
 
     except sub.CalledProcessError as e:
@@ -106,5 +106,5 @@ def _retrieve_dcv_session_url(ssh_cmd, cluster_name, master_ip):
             raise DCVConnectionError(e.output)
 
     return "https://{IP}:{PORT}?authToken={TOKEN}#{SESSION_ID}".format(
-        IP=master_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
+        IP=head_node_ip, PORT=dcv_server_port, TOKEN=dcv_session_token, SESSION_ID=dcv_session_id
     )

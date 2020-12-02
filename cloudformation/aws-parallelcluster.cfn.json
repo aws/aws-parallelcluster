@@ -7,7 +7,7 @@
       "Type": "AWS::EC2::KeyPair::KeyName"
     },
     "MasterInstanceType": {
-      "Description": "MasterServer EC2 instance type",
+      "Description": "Head node EC2 instance type",
       "Type": "String",
       "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
@@ -70,7 +70,7 @@
       "AllowedPattern": "^(NONE|standard|io1|io2|gp2|st1|sc1)((,|, )(NONE|standard|io1|io2|gp2|st1|sc1)){4}$"
     },
     "MasterSubnetId": {
-      "Description": "ID of the Subnet you want to provision the Master server into",
+      "Description": "ID of the Subnet you want to provision the head node into",
       "Type": "AWS::EC2::Subnet::Id"
     },
     "AvailabilityZone": {
@@ -263,7 +263,7 @@
       "Default": "NONE,NONE,NONE,NONE,NONE"
     },
     "MasterRootVolumeSize": {
-      "Description": "Size of MasterServer EBS root volume in GB",
+      "Description": "Size of head node EBS root volume in GB",
       "Type": "Number",
       "Default": "25",
       "MinValue": "25"
@@ -330,12 +330,12 @@
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "EFSOptions": {
-      "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_master_mt,exists_valid_compute_mt]",
+      "Description": "Comma separated list of EFS related options, 9 parameters in total, [shared_dir,efs_fs_id,performance_mode,efs_kms_key_id,provisioned_throughput,encrypted,throughput_mode,exists_valid_head_node_mt,exists_valid_compute_mt]",
       "Type": "String",
       "Default": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
     },
     "Cores": {
-      "Description": "Comma seperated string of [master cores], [compute cores], [master instance type supports disabling hyperthreading via CPU options], [compute instance type supports disabling hyperthreading via CPU options].",
+      "Description": "Comma seperated string of [head node cores], [compute cores], [head node instance type supports disabling hyperthreading via CPU options], [compute instance type supports disabling hyperthreading via CPU options].",
       "Type": "CommaDelimitedList",
       "Default": "NONE,NONE,NONE,NONE"
     },
@@ -368,7 +368,7 @@
       "Default": "true,14"
     },
     "NetworkInterfacesCount": {
-      "Description": "Comma separated string of [master network interfaces], [compute network interfaces].",
+      "Description": "Comma separated string of [head node network interfaces], [compute network interfaces].",
       "Type": "CommaDelimitedList",
       "Default": "1,1"
     }
@@ -1933,7 +1933,7 @@
     "MasterSecurityGroup": {
       "Type": "AWS::EC2::SecurityGroup",
       "Properties": {
-        "GroupDescription": "Enable access to the Master host",
+        "GroupDescription": "Enable access to the head node",
         "VpcId": {
           "Ref": "VPCId"
         },
@@ -2082,7 +2082,7 @@
     "MasterENI": {
       "Type": "AWS::EC2::NetworkInterface",
       "Properties": {
-        "Description": "AWS ParallelCluster Master Server",
+        "Description": "AWS ParallelCluster head node interface",
         "SubnetId": {
           "Ref": "MasterSubnetId"
         },
@@ -4091,7 +4091,7 @@
   },
   "Outputs": {
     "ClusterUser": {
-      "Description": "Username to login to Master host",
+      "Description": "Username to login to head node",
       "Value": {
         "Fn::FindInMap": [
           "OSFeatures",
@@ -4103,7 +4103,7 @@
       }
     },
     "MasterPrivateIP": {
-      "Description": "Private IP Address of the Master host",
+      "Description": "Private IP Address of the head node",
       "Value": {
         "Fn::GetAtt": [
           "MasterServerSubstack",
@@ -4112,7 +4112,7 @@
       }
     },
     "MasterPublicIP": {
-      "Description": "Public IP Address of the Master host",
+      "Description": "Public IP Address of the head node",
       "Value": {
         "Fn::GetAtt": [
           "MasterServerSubstack",

@@ -76,7 +76,7 @@ def _assert_head_node_is_running(region, cluster):
     logging.info("Asserting the head node is running")
     head_node_state = (
         boto3.client("ec2", region_name=region)
-        .describe_instances(Filters=[{"Name": "ip-address", "Values": [cluster.master_ip]}])
+        .describe_instances(Filters=[{"Name": "ip-address", "Values": [cluster.head_node_ip]}])
         .get("Reservations")[0]
         .get("Instances")[0]
         .get("State")

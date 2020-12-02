@@ -271,7 +271,7 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("placement", "wrong_value", None, "has an invalid value"),
         ("placement", "NONE", None, "has an invalid value"),
         ("placement", "cluster", "cluster", None),
-        # Master
+        # Head node
         # TODO add regex for master_instance_type
         ("master_instance_type", "", "", None),
         ("master_instance_type", "test", "test", None),
@@ -545,7 +545,7 @@ def test_sit_cluster_param_from_file(
         ("shared_dir", "/test//test2", None, "has an invalid value"),
         ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
-        # Master
+        # Head node
         # TODO add regex for master_instance_type
         ("master_instance_type", "", "", None),
         ("master_instance_type", "test", "test", None),

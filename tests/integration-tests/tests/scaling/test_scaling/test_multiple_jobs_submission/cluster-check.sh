@@ -19,7 +19,7 @@
 # minutes, one of which (hopefully) requires scaling (note that
 # scaling is currently not tested on Torque, because it's too big of a
 # pain to determine how many slots per node are on a Torque compute
-# node from the master node).
+# node from the head node).
 #
 
 # Usage:

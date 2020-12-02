@@ -67,30 +67,31 @@ class SITClusterModel(ClusterModel):
         ):
             return
 
-        master_instance_type = cluster_section.get_param_value("master_instance_type")
+        head_node_instance_type = cluster_section.get_param_value("master_instance_type")
         compute_instance_type = cluster_section.get_param_value("compute_instance_type")
 
         # Retrieve network parameters
         compute_subnet = vpc_section.get_param_value("compute_subnet_id")
-        master_subnet = vpc_section.get_param_value("master_subnet_id")
+        head_node_subnet = vpc_section.get_param_value("master_subnet_id")
         vpc_security_group = vpc_section.get_param_value("vpc_security_group_id")
         if not compute_subnet:
-            compute_subnet = master_subnet
+            compute_subnet = head_node_subnet
         security_groups_ids = []
         if vpc_security_group:
             security_groups_ids.append(vpc_security_group)
 
         # Initialize CpuOptions
         disable_hyperthreading = cluster_section.get_param_value("disable_hyperthreading")
-        master_instance_type_info = InstanceTypeInfo.init_from_instance_type(master_instance_type)
-        master_vcpus = master_instance_type_info.vcpus_count()
-        master_threads_per_core = master_instance_type_info.default_threads_per_core()
+        head_node_instance_type_info = InstanceTypeInfo.init_from_instance_type(head_node_instance_type)
+        head_node_vcpus = head_node_instance_type_info.vcpus_count()
+        head_node_threads_per_core = head_node_instance_type_info.default_threads_per_core()
         compute_instance_type_info = InstanceTypeInfo.init_from_instance_type(compute_instance_type)
         compute_vcpus = compute_instance_type_info.vcpus_count()
         compute_threads_per_core = compute_instance_type_info.default_threads_per_core()
-        master_cpu_options = (
-            {"CoreCount": master_vcpus // master_threads_per_core, "ThreadsPerCore": 1}
-            if disable_hyperthreading and disable_ht_via_cpu_options(master_instance_type, master_threads_per_core)
+        head_node_cpu_options = (
+            {"CoreCount": head_node_vcpus // head_node_threads_per_core, "ThreadsPerCore": 1}
+            if disable_hyperthreading
+            and disable_ht_via_cpu_options(head_node_instance_type, head_node_threads_per_core)
             else {}
         )
         compute_cpu_options = (
@@ -102,7 +103,7 @@ class SITClusterModel(ClusterModel):
         # Initialize Placement Group Logic
         placement_group = cluster_section.get_param_value("placement_group")
         placement = cluster_section.get_param_value("placement")
-        master_placement_group = (
+        head_node_placement_group = (
             {"GroupName": placement_group}
             if placement_group not in [None, "NONE", "DYNAMIC"] and placement == "cluster"
             else {}
@@ -114,30 +115,30 @@ class SITClusterModel(ClusterModel):
         try:
             latest_alinux_ami_id = self._get_latest_alinux_ami_id()
 
-            master_network_interfaces = self.build_launch_network_interfaces(
+            head_node_network_interfaces = self.build_launch_network_interfaces(
                 network_interfaces_count=int(cluster_section.get_param_value("network_interfaces_count")[0]),
-                use_efa=False,  # EFA is not supported on master node
+                use_efa=False,  # EFA is not supported on head node
                 security_group_ids=security_groups_ids,
-                subnet=master_subnet,
+                subnet=head_node_subnet,
                 use_public_ips=vpc_section.get_param_value("use_public_ips"),
             )
 
-            # Test Master Instance Configuration
+            # Test head node configuration
             self._ec2_run_instance(
                 pcluster_config,
-                InstanceType=master_instance_type,
+                InstanceType=head_node_instance_type,
                 MinCount=1,
                 MaxCount=1,
                 ImageId=latest_alinux_ami_id,
-                CpuOptions=master_cpu_options,
-                NetworkInterfaces=master_network_interfaces,
-                Placement=master_placement_group,
+                CpuOptions=head_node_cpu_options,
+                NetworkInterfaces=head_node_network_interfaces,
+                Placement=head_node_placement_group,
                 DryRun=True,
             )
 
             compute_network_interfaces_count = int(cluster_section.get_param_value("network_interfaces_count")[1])
             enable_efa = "compute" == cluster_section.get_param_value("enable_efa")
-            # TODO: check if master == compute subnet condition is to take into account
+            # TODO: check if head node == compute subnet condition is to take into account
             use_public_ips = self.public_ips_in_compute_subnet(pcluster_config, compute_network_interfaces_count)
 
             network_interfaces = self.build_launch_network_interfaces(

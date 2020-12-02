@@ -33,7 +33,7 @@ from pcluster.utils import (
 DEFAULT_AWS_REGION_NAME = "us-east-1"
 LOGGER = logging.getLogger(__name__)
 TIMESTAMP = "-{:%Y%m%d%H%M%S}".format(datetime.datetime.utcnow())
-MASTER_SUBNET_IPS = 250
+HEAD_NODE_SUBNET_IPS = 250
 
 if sys.version_info >= (3, 4):
     ABC = abc.ABC
@@ -88,11 +88,11 @@ class BaseNetworkConfig(ABC):
 
 
 class PublicNetworkConfig(BaseNetworkConfig):
-    """The public configuration that creates one public subnet with master and compute fleet."""
+    """The public configuration that creates one public subnet with head node and compute fleet."""
 
     def __init__(self, availability_zones=None):
         super(PublicNetworkConfig, self).__init__(
-            config_type="Master and compute fleet in the same public subnet",
+            config_type="Head node and compute fleet in the same public subnet",
             template_name="public",
             stack_name_prefix="pub",
             availability_zones=availability_zones,
@@ -106,7 +106,7 @@ class PublicNetworkConfig(BaseNetworkConfig):
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):
         public_cidr = get_subnet_cidr(
-            vpc_cidr=vpc_cidr, occupied_cidr=subnet_cidrs, min_subnet_size=compute_subnet_size + MASTER_SUBNET_IPS
+            vpc_cidr=vpc_cidr, occupied_cidr=subnet_cidrs, min_subnet_size=compute_subnet_size + HEAD_NODE_SUBNET_IPS
         )
         _validate_cidr(public_cidr)
         parameters = self.get_cfn_parameters(vpc_id, internet_gateway_id, public_cidr)
@@ -115,11 +115,11 @@ class PublicNetworkConfig(BaseNetworkConfig):
 
 
 class PublicPrivateNetworkConfig(BaseNetworkConfig):
-    """The publicprivate configuration that creates one public subnet for master and one private subnet for compute."""
+    """The public private config that creates one public subnet for head node and one private subnet for compute."""
 
     def __init__(self, availability_zones=None):
         super(PublicPrivateNetworkConfig, self).__init__(
-            config_type="Master in a public subnet and compute fleet in a private subnet",
+            config_type="Head node in a public subnet and compute fleet in a private subnet",
             template_name="public-private",
             stack_name_prefix="pubpriv",
             availability_zones=availability_zones,
@@ -133,7 +133,7 @@ class PublicPrivateNetworkConfig(BaseNetworkConfig):
         return parameters
 
     def _create(self, vpc_id, vpc_cidr, subnet_cidrs, internet_gateway_id, compute_subnet_size):  # noqa D102
-        public_cidr = evaluate_cidr(vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=MASTER_SUBNET_IPS)
+        public_cidr = evaluate_cidr(vpc_cidr=vpc_cidr, occupied_cidrs=subnet_cidrs, target_size=HEAD_NODE_SUBNET_IPS)
         _validate_cidr(public_cidr)
         subnet_cidrs.append(public_cidr)
         private_cidr = get_subnet_cidr(

@@ -160,8 +160,8 @@ class Cluster:
         return self.config.get("aws", "aws_region_name", fallback="us-east-1")
 
     @property
-    def master_ip(self):
-        """Return the public ip of the cluster master node."""
+    def head_node_ip(self):
+        """Return the public ip of the cluster head node."""
         if "MasterPublicIP" in self.cfn_outputs:
             return self.cfn_outputs["MasterPublicIP"]
         else:

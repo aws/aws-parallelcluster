@@ -424,33 +424,33 @@ def list_stacks(args):
         sys.exit(0)
 
 
-def _poll_master_server_state(stack_name):
+def _poll_head_node_state(stack_name):
     ec2 = boto3.client("ec2")
     try:
-        instances = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.master)
+        instances = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.head_node)
         if not instances:
-            LOGGER.error("Cannot retrieve master node status. Exiting...")
+            LOGGER.error("Cannot retrieve head node status. Exiting...")
             sys.exit(1)
-        master_id = instances[0].get("InstanceId")
+        head_node_id = instances[0].get("InstanceId")
         state = instances[0].get("State").get("Name")
         sys.stdout.write("\rMasterServer: %s" % state.upper())
         sys.stdout.flush()
         while state not in ["running", "stopped", "terminated", "shutting-down"]:
             time.sleep(5)
             state = (
-                ec2.describe_instance_status(InstanceIds=[master_id])
+                ec2.describe_instance_status(InstanceIds=[head_node_id])
                 .get("InstanceStatuses")[0]
                 .get("InstanceState")
                 .get("Name")
             )
-            master_status = "\r\033[KMasterServer: %s" % state.upper()
-            sys.stdout.write(master_status)
+            head_node_status = "\r\033[KMasterServer: %s" % state.upper()
+            sys.stdout.write(head_node_status)
             sys.stdout.flush()
         if state in ["terminated", "shutting-down"]:
             LOGGER.info("State: %s is irrecoverable. Cluster needs to be re-created.", state)
             sys.exit(1)
-        master_status = "\rMasterServer: %s\n" % state.upper()
-        sys.stdout.write(master_status)
+        head_node_status = "\rMasterServer: %s\n" % state.upper()
+        sys.stdout.write(head_node_status)
         sys.stdout.flush()
     except ClientError as e:
         LOGGER.critical(e.response.get("Error").get("Message"))
@@ -475,9 +475,9 @@ def instances(args):
     scheduler = utils.get_cfn_param(cfn_stack.get("Parameters"), "Scheduler")
 
     instances = []
-    master_server = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.master)
-    if master_server:
-        instances.append(("MasterServer", master_server[0].get("InstanceId")))
+    head_node_server = utils.describe_cluster_instances(stack_name, node_type=utils.NodeType.head_node)
+    if head_node_server:
+        instances.append(("MasterServer", head_node_server[0].get("InstanceId")))
 
     if scheduler != "awsbatch":
         instances.extend(_get_compute_instances(stack_name))
@@ -491,7 +491,7 @@ def instances(args):
 
 def ssh(args, extra_args):  # noqa: C901 FIXME!!!
     """
-    Execute an SSH command to the master instance, according to the [aliases] section if there.
+    Execute an SSH command to the head node instance, according to the [aliases] section if there.
 
     :param args: pcluster CLI args
     :param extra_args: pcluster CLI extra_args
@@ -504,7 +504,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
         ssh_command = "ssh {CFN_USER}@{MASTER_IP} {ARGS}"
 
     try:
-        master_ip, username = utils.get_master_ip_and_username(args.cluster_name)
+        head_node_ip, username = utils.get_head_node_ip_and_username(args.cluster_name)
         try:
             from shlex import quote as cmd_quote
         except ImportError:
@@ -512,7 +512,7 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
 
         # build command
         cmd = ssh_command.format(
-            CFN_USER=username, MASTER_IP=master_ip, ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args)
+            CFN_USER=username, MASTER_IP=head_node_ip, ARGS=" ".join(cmd_quote(str(arg)) for arg in extra_args)
         )
 
         # run command
@@ -558,7 +558,7 @@ def status(args):  # noqa: C901 FIXME!!!
             sys.stdout.write("\rStatus: %s\n" % stack.get("StackStatus"))
             sys.stdout.flush()
             if stack.get("StackStatus") in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                state = _poll_master_server_state(stack_name)
+                state = _poll_head_node_state(stack_name)
                 if state == "running":
                     _print_stack_outputs(stack)
                 _print_compute_fleet_status(args.cluster_name, stack)

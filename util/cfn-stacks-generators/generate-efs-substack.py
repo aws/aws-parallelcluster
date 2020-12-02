@@ -7,7 +7,7 @@ def main(args):
     t = Template()
 
     # [0 shared_dir, 1 efs_fs_id, 2 performance_mode, 3 efs_kms_key_id,
-    # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_master_mt, 8 exists_valid_compute_mt]
+    # 4 provisioned_throughput, 5 encrypted, 6 throughput_mode, 7 exists_valid_head_node_mt, 8 exists_valid_compute_mt]
     efs_options = t.add_parameter(
         Parameter(
             "EFSOptions",
@@ -18,8 +18,8 @@ def main(args):
     compute_security_group = t.add_parameter(
         Parameter("ComputeSecurityGroup", Type="String", Description="Security Group for Mount Target")
     )
-    master_subnet_id = t.add_parameter(
-        Parameter("MasterSubnetId", Type="String", Description="Master subnet id for master mount target")
+    head_node_subnet_id = t.add_parameter(
+        Parameter("MasterSubnetId", Type="String", Description="Head node subnet id for head node mount target")
     )
     compute_subnet_id = t.add_parameter(
         Parameter(
@@ -33,7 +33,7 @@ def main(args):
         "CreateEFS",
         And(Not(Equals(Select(str(0), Ref(efs_options)), "NONE")), Equals(Select(str(1), Ref(efs_options)), "NONE")),
     )
-    create_master_mt = t.add_condition(
+    create_head_node_mt = t.add_condition(
         "CreateMasterMT",
         And(Not(Equals(Select(str(0), Ref(efs_options)), "NONE")), Equals(Select(str(7), Ref(efs_options)), "NONE")),
     )
@@ -43,10 +43,10 @@ def main(args):
     )
     # Need to create compute mount target if:
     # user is providing a compute subnet and
-    # there is no existing MT in compute subnet's AZ(includes case where master AZ == compute AZ).
+    # there is no existing MT in compute subnet's AZ(includes case where head node AZ == compute AZ).
     #
-    # If user is not providing a compute subnet, either we are using the master subnet as compute subnet,
-    # or we will be creating a compute subnet that is in the same AZ as master subnet,
+    # If user is not providing a compute subnet, either we are using the head node subnet as compute subnet,
+    # or we will be creating a compute subnet that is in the same AZ as head node subnet,
     # see ComputeSubnet resource in the main stack.
     # In both cases no compute MT is needed.
     create_compute_mt = t.add_condition(
@@ -82,8 +82,8 @@ def main(args):
             "MasterSubnetEFSMT",
             FileSystemId=If(create_efs, Ref(fs), Select(str(1), Ref(efs_options))),
             SecurityGroups=[Ref(compute_security_group)],
-            SubnetId=Ref(master_subnet_id),
-            Condition=create_master_mt,
+            SubnetId=Ref(head_node_subnet_id),
+            Condition=create_head_node_mt,
         )
     )
 

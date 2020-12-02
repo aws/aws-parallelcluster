@@ -133,11 +133,11 @@ class ClusterModel(ABC):
     def public_ips_in_compute_subnet(self, pcluster_config, network_interfaces_count):
         """Tell if public IPs will be used in compute subnet."""
         vpc_section = pcluster_config.get_section("vpc")
-        master_subnet_id = vpc_section.get_param_value("master_subnet_id")
+        head_node_subnet_id = vpc_section.get_param_value("master_subnet_id")
         compute_subnet_id = vpc_section.get_param_value("compute_subnet_id")
         use_public_ips = vpc_section.get_param_value("use_public_ips") and (
-            # For single NIC instances we check only if subnet is the same of master node
-            (not compute_subnet_id or compute_subnet_id == master_subnet_id)
+            # For single NIC instances we check only if subnet is the same of head node
+            (not compute_subnet_id or compute_subnet_id == head_node_subnet_id)
             # For multiple NICs instances we check also if subnet is different
             # to warn users about the current lack of support for public IPs
             or (network_interfaces_count > 1)

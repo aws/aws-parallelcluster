@@ -27,10 +27,10 @@ from pcluster.config.cfn_param_types import (
     EFSCfnSection,
     ExtraJsonCfnParam,
     FloatCfnParam,
+    HeadNodeAvailabilityZoneCfnParam,
+    HeadNodeInstanceTypeCfnParam,
     IntCfnParam,
     MaintainInitialSizeCfnParam,
-    MasterAvailabilityZoneCfnParam,
-    MasterInstanceTypeCfnParam,
     NetworkInterfacesCountCfnParam,
     QueueSizeCfnParam,
     SettingsCfnParam,
@@ -290,7 +290,7 @@ VPC = {
         },
         "master_availability_zone": {
             # NOTE: this is not exposed as a configuration parameter
-            "type": MasterAvailabilityZoneCfnParam,
+            "type": HeadNodeAvailabilityZoneCfnParam,
             "cfn_param_mapping": "AvailabilityZone",
             "update_policy": UpdatePolicy.IGNORED,
             "visibility": Visibility.PRIVATE
@@ -762,9 +762,9 @@ CLUSTER_COMMON_PARAMS = [
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
-    # Master
+    # Head node
     ("master_instance_type", {
-        "type": MasterInstanceTypeCfnParam,
+        "type": HeadNodeInstanceTypeCfnParam,
         "cfn_param_mapping": "MasterInstanceType",
         "validators": [head_node_instance_type_validator, ec2_instance_type_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
