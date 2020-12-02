@@ -21,12 +21,14 @@ from pcluster.config.cfn_param_types import (
     ClusterCfnSection,
     ClusterConfigMetadataCfnParam,
     ComputeAvailabilityZoneCfnParam,
+    ComputeInstanceTypeCfnParam,
     DisableHyperThreadingCfnParam,
     EBSSettingsCfnParam,
     EFSCfnSection,
     ExtraJsonCfnParam,
     FloatCfnParam,
     HeadNodeAvailabilityZoneCfnParam,
+    HeadNodeInstanceTypeCfnParam,
     IntCfnParam,
     MaintainInitialSizeCfnParam,
     NetworkInterfacesCountCfnParam,
@@ -753,14 +755,6 @@ CLUSTER_COMMON_PARAMS = [
         "validators": [ec2_key_pair_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
-    ("base_os", {
-        "type": BaseOSCfnParam,
-        "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
-        "validators": [base_os_validator, architecture_os_validator],
-        "required": True,
-        "update_policy": UpdatePolicy.UNSUPPORTED
-    }),
     ("scheduler", {
         "cfn_param_mapping": "Scheduler",
         "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
@@ -770,7 +764,7 @@ CLUSTER_COMMON_PARAMS = [
     }),
     # Head node
     ("master_instance_type", {
-        "default": "t2.micro",
+        "type": HeadNodeInstanceTypeCfnParam,
         "cfn_param_mapping": "MasterInstanceType",
         "validators": [head_node_instance_type_validator, ec2_instance_type_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
@@ -785,6 +779,14 @@ CLUSTER_COMMON_PARAMS = [
             fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
             action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
         )
+    }),
+    ("base_os", {
+        "type": BaseOSCfnParam,
+        "cfn_param_mapping": "BaseOS",
+        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
+        "validators": [base_os_validator, architecture_os_validator],
+        "required": True,
+        "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     # Compute fleet
     ("compute_root_volume_size", {
@@ -1024,9 +1026,7 @@ CLUSTER_SIT = {
             }),
             # Compute fleet
             ("compute_instance_type", {
-                "default":
-                    lambda section:
-                    "optimal" if section and section.get_param_value("scheduler") == "awsbatch" else "t2.micro",
+                "type": ComputeInstanceTypeCfnParam,
                 "cfn_param_mapping": "ComputeInstanceType",
                 "validators": [compute_instance_type_validator, instances_architecture_compatibility_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP

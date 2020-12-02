@@ -382,6 +382,7 @@ class MockHandler:
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
         _mock_cache_availability_zones(self.mocker)
+        mocker.patch("pcluster.configure.easyconfig.get_default_instance_type", return_value="t2.micro")
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
 

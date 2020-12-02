@@ -34,6 +34,7 @@ from pcluster.configure.networking import (
 from pcluster.configure.utils import get_regions, get_resource_tag, handle_client_exception, prompt, prompt_iterable
 from pcluster.utils import (
     error,
+    get_default_instance_type,
     get_region,
     get_supported_az_for_multi_instance_types,
     get_supported_az_for_one_instance_type,
@@ -122,7 +123,7 @@ def configure(args):
     if pcluster_config.cluster_model == ClusterModel.HIT:
         error(
             "Configuration in file {0} cannot be overwritten. Please specify a different file path".format(
-                args.config_file
+                pcluster_config.config_file
             )
         )
 
@@ -367,16 +368,22 @@ class ClusterConfigureHelper:
 
     def prompt_instance_types(self):
         """Ask for head_node_instance_type and compute_instance_type (if necessary)."""
+        default_head_node_instance_type = self.cluster_section.get_param_value("master_instance_type")
+        if not default_head_node_instance_type:
+            default_head_node_instance_type = get_default_instance_type()
         self.head_node_instance_type = prompt(
             "Head node instance type",
             lambda x: _is_instance_type_supported_for_head_node(x) and x in get_supported_instance_types(),
-            default_value=self.cluster_section.get_param_value("master_instance_type"),
+            default_value=default_head_node_instance_type,
         )
         if not self.is_aws_batch:
+            default_compute_instance_type = self.cluster_section.get_param_value("compute_instance_type")
+            if not default_compute_instance_type:
+                default_compute_instance_type = get_default_instance_type()
             self.compute_instance_type = prompt(
                 "Compute instance type",
                 lambda x: x in get_supported_compute_instance_types(self.scheduler),
-                default_value=self.cluster_section.get_param_value("compute_instance_type"),
+                default_value=default_compute_instance_type,
             )
         # Cache availability zones offering the selected instance type(s) for later use
         self.cache_qualified_az()

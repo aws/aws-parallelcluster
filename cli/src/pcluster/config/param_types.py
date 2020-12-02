@@ -13,6 +13,7 @@ import logging
 import re
 import sys
 from abc import abstractmethod
+from collections import OrderedDict
 from enum import Enum
 
 from configparser import NoSectionError
@@ -441,7 +442,7 @@ class Section(ABC):
         self.parent_section = parent_section
 
         # initialize section parameters with default values
-        self.params = {}
+        self.params = OrderedDict({})
         self._from_definition()
 
     @property

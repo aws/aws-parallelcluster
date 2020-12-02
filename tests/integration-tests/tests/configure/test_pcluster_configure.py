@@ -41,7 +41,6 @@ def test_pcluster_configure(
         vpc_stack.cfn_outputs["VpcId"],
         vpc_stack.cfn_outputs["PublicSubnetId"],
         vpc_stack.cfn_outputs["PrivateSubnetId"],
-        vpc_stack,
     )
     assert_configure_workflow(region, stages, config_path)
     assert_config_contains_expected_values(
@@ -92,7 +91,6 @@ def test_pcluster_configure_avoid_bad_subnets(
         # and use the first subnet in the remaining list of subnets
         "",
         "",
-        vpc_stack,
         omitted_subnets_num=1,
     )
     assert_configure_workflow(region, stages, config_path)
@@ -105,6 +103,44 @@ def test_pcluster_configure_avoid_bad_subnets(
         vpc_stack.cfn_outputs["VpcId"],
         None,
         None,
+        config_path,
+    )
+
+
+def test_region_without_t2micro(
+    vpc_stack,
+    pcluster_config_reader,
+    key_name,
+    region,
+    os,
+    scheduler,
+    test_datadir,
+):
+    """
+    Verify the default instance type (free tier) is retrieved dynamically according to region.
+    In other words, t3.micro is retrieved when the region does not contain t2.micro
+    """
+    config_path = test_datadir / "config.ini"
+    stages = orchestrate_pcluster_configure_stages(
+        region,
+        key_name,
+        scheduler,
+        os,
+        "",
+        vpc_stack.cfn_outputs["VpcId"],
+        vpc_stack.cfn_outputs["PublicSubnetId"],
+        vpc_stack.cfn_outputs["PrivateSubnetId"],
+    )
+    assert_configure_workflow(region, stages, config_path)
+    assert_config_contains_expected_values(
+        region,
+        key_name,
+        scheduler,
+        os,
+        "",
+        vpc_stack.cfn_outputs["VpcId"],
+        vpc_stack.cfn_outputs["PublicSubnetId"],
+        vpc_stack.cfn_outputs["PrivateSubnetId"],
         config_path,
     )
 
@@ -205,7 +241,6 @@ def orchestrate_pcluster_configure_stages(
     vpc_id,
     headnode_subnet_id,
     compute_subnet_id,
-    vpc_stack,
     omitted_subnets_num=0,
 ):
     compute_units = "vcpus" if scheduler == "awsbatch" else "instances"
@@ -220,8 +255,8 @@ def orchestrate_pcluster_configure_stages(
         {"prompt": r"Operating System \[alinux2\]: ", "response": os, "skip_for_batch": True},
         {"prompt": fr"Minimum cluster size \({compute_units}\) \[0\]: ", "response": "1"},
         {"prompt": fr"Maximum cluster size \({compute_units}\) \[10\]: ", "response": ""},
-        {"prompt": r"Head node instance type \[t2\.micro\]: ", "response": instance},
-        {"prompt": r"Compute instance type \[t2\.micro\]: ", "response": instance, "skip_for_batch": True},
+        {"prompt": r"Head node instance type \[t.\.micro\]: ", "response": instance},
+        {"prompt": r"Compute instance type \[t.\.micro\]: ", "response": instance, "skip_for_batch": True},
         {"prompt": r"Automate VPC creation\? \(y/n\) \[n\]: ", "response": "n"},
         {"prompt": r"VPC ID \[vpc-.+\]: ", "response": vpc_id},
         {"prompt": r"Automate Subnet creation\? \(y/n\) \[y\]: ", "response": "n"},

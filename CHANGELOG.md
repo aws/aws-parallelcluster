@@ -15,6 +15,9 @@ CHANGELOG
 - Pull Amazon Linux Docker images from ECR when building docker image for `awsbatch` scheduler. This only applies to
   images built for `x86` architecture.
 - Use inclusive language in user facing messages and internal naming convention.
+- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
+  (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
+
 
 **BUG FIXES**
 

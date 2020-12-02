@@ -9,13 +9,11 @@
     "MasterInstanceType": {
       "Description": "Head node EC2 instance type",
       "Type": "String",
-      "Default": "t2.micro",
       "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
     "ComputeInstanceType": {
       "Description": "ComputeFleet EC2 instance type",
       "Type": "String",
-      "Default": "t2.micro",
       "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
     "MinSize": {

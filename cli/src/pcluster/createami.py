@@ -358,12 +358,3 @@ def create_ami(args):
         _print_create_ami_results(results)
         if "tmp_dir" in locals() and tmp_dir:
             rmtree(tmp_dir)
-
-
-def _get_default_template_url(region):
-    return (
-        "https://{REGION}-aws-parallelcluster.s3.{REGION}.amazonaws.com{SUFFIX}/templates/"
-        "aws-parallelcluster-{VERSION}.cfn.json".format(
-            REGION=region, SUFFIX=".cn" if region.startswith("cn") else "", VERSION=utils.get_installed_version()
-        )
-    )
