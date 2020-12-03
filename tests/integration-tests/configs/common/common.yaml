@@ -382,7 +382,7 @@ storage:
         schedulers: ["slurm"]
       - regions: ["ap-northeast-1", "cn-north-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_BATCH }}
+        oss: ["alinux2"]
         schedulers: ["awsbatch"]
   test_raid.py::test_raid_fault_tolerance_mode:
     dimensions:
@@ -402,7 +402,7 @@ storage:
         schedulers: ["sge"]
       - regions: ["ap-south-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: {{ common.OSS_BATCH }}
+        oss: ["alinux"]
         schedulers: ["awsbatch"]
   test_ebs.py::test_default_ebs:
     dimensions:
