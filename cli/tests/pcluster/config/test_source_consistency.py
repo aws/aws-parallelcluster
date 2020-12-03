@@ -88,6 +88,10 @@ def test_defaults_consistency():
     # metadata is generated dynamically based on user's configuration.
     ignored_params += ["ClusterConfigMetadata"]
 
+    # ComputeInstanceType parameter is expected to differ from the default value in the CFN template because
+    # it is dynamically generated based on the AWS region
+    ignored_params += ["ComputeInstanceType"]
+
     cfn_params = [section_cfn_params.value for section_cfn_params in DefaultCfnParams]
     default_cfn_values = utils.merge_dicts(*cfn_params)
 
