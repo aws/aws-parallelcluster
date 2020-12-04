@@ -18,6 +18,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.schedulers_common import get_scheduler_commands
+from tests.storage.kms_key_factory import KMSKeyFactory
 from tests.storage.snapshots_factory import EBSSnapshotsFactory
 from tests.storage.storage_common import verify_directory_correctly_shared
 
@@ -26,16 +27,22 @@ from tests.storage.storage_common import verify_directory_correctly_shared
 @pytest.mark.instances(["c4.xlarge", "c5.xlarge"])
 @pytest.mark.schedulers(["sge"])
 @pytest.mark.usefixtures("region", "os", "instance")
-def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory):
+def test_ebs_single(scheduler, pcluster_config_reader, clusters_factory, kms_key_factory, region):
     mount_dir = "ebs_mount_dir"
-    cluster_config = pcluster_config_reader(mount_dir=mount_dir)
+    kms_key_id = kms_key_factory.create_kms_key(region)
+    cluster_config = pcluster_config_reader(
+        mount_dir=mount_dir, ec2_iam_role=kms_key_factory.iam_role, ebs_kms_key_id=kms_key_id
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     mount_dir = "/" + mount_dir
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
+    volume_id = get_ebs_volume_ids(cluster, region)
+
     _test_ebs_correctly_mounted(remote_command_executor, mount_dir, volume_size=20)
     _test_ebs_correctly_shared(remote_command_executor, mount_dir, scheduler_commands)
+    _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id)
 
 
 @pytest.mark.dimensions("ap-northeast-2", "c5.xlarge", "alinux2", "sge")
@@ -258,8 +265,22 @@ def _assert_volume_exist(volume_id, region):
     assert_that(volume_status).is_equal_to("available")
 
 
+def _test_ebs_encrypted_with_kms(volume_id, region, kms_key_id):
+    logging.info("Getting Encrypted information from DescribeVolumes API.")
+    volume_info = boto3.client("ec2", region_name=region).describe_volumes(VolumeIds=volume_id).get("Volumes")[0]
+    assert_that(volume_info.get("Encrypted")).is_true()
+    assert_that(volume_info.get("KmsKeyId")).matches(kms_key_id)
+
+
 @pytest.fixture()
 def snapshots_factory():
     factory = EBSSnapshotsFactory()
+    yield factory
+    factory.release_all()
+
+
+@pytest.fixture(scope="module")
+def kms_key_factory():
+    factory = KMSKeyFactory()
     yield factory
     factory.release_all()
