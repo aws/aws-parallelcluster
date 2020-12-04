@@ -31,7 +31,9 @@ def test_iam_policies(region, scheduler, pcluster_config_reader, clusters_factor
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     _test_s3_access(remote_command_executor, region)
-    _test_batch_access(remote_command_executor, region)
+
+    if scheduler == "awsbatch":
+        _test_batch_access(remote_command_executor, region)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
