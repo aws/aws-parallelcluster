@@ -35,7 +35,6 @@ class Cluster:
         self.__cfn_resources = None
         self.__head_node_substack_cfn_resources = None
         self.__ebs_substack_cfn_resources = None
-        self.__awsbatch_substack_cfn_resources = None
 
     def __repr__(self):
         attrs = ", ".join(["{key}={value}".format(key=key, value=repr(value)) for key, value in self.__dict__.items()])
@@ -228,18 +227,6 @@ class Cluster:
                 self.cfn_resources.get("EBSCfnStack"), self.region
             )
         return self.__ebs_substack_cfn_resources
-
-    @property
-    def awsbatch_substack_cfn_resources(self):
-        """
-        Return the CloudFormation stack resources for the cluster's EBS substack.
-        Resources are retrieved only once and then cached.
-        """
-        if not self.__awsbatch_substack_cfn_resources:
-            self.__awsbatch_substack_cfn_resources = retrieve_cfn_resources(
-                self.cfn_resources.get("AWSBatchStack"), self.region
-            )
-        return self.__awsbatch_substack_cfn_resources
 
     def _reset_cached_properties(self):
         """Discard cached data."""
