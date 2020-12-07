@@ -6,6 +6,11 @@ CHANGELOG
 
 **ENHANCEMENTS**
 
+- Add support for me-south-1 region (Bahrein), af-south-1 region (Cape Town) and eu-south-1 region (Milan)
+  - At the time of this version launch:
+    - AWS Lustre and ARM instance type are not supported in me-south-1, af-south-1 and eu-south-1  
+    - AWS Batch is not supported in af-south-1
+    - EBS io2 is not supported in af-south-1 and eu-south-1 
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
   failures due to CloudFormation throttling.
 - Add support for io2 EBS volume type.
