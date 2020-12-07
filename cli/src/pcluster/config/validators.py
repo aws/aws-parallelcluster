@@ -68,6 +68,11 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
 
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
 
+EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": [],
+    "arm64": ["centos8"],
+}
+
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "standard": (1, 1024),
     "io1": (4, 16 * 1024),
@@ -1537,5 +1542,19 @@ def duplicate_shared_dir_validator(section_key, section_label, pcluster_config):
             # if there are multiple EBS sections configured, provide an error message
             elif len(list_of_ebs_sections) > 1:
                 errors.append("'shared_dir' can not be specified in cluster section when using multiple EBS volumes")
+
+    return errors, warnings
+
+
+def efa_os_arch_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    cluster_section = pcluster_config.get_section("cluster")
+    architecture = cluster_section.get_param_value("architecture")
+    base_os = cluster_section.get_param_value("base_os")
+
+    if base_os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
+        errors.append("EFA currently not supported on {0} for {1} architecture".format(base_os, architecture))
 
     return errors, warnings
