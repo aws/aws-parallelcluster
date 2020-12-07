@@ -21,6 +21,8 @@ CHANGELOG
 
 **BUG FIXES**
 
+- Mandate the presence of `vpc_settings`, `vpc_id`, `master_subnet_id` in the config file to avoid unhandled exceptions.
+
 2.10.0
 ------
 

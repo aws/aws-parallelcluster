@@ -42,7 +42,7 @@ class HITClusterModel(ClusterModel):
         cluster_section = pcluster_config.get_section("cluster")
         vpc_section = pcluster_config.get_section("vpc")
 
-        if not cluster_section or cluster_section.get_param_value("scheduler") == "awsbatch" or not vpc_section:
+        if cluster_section.get_param_value("scheduler") == "awsbatch":
             return
 
         head_node_instance_type = cluster_section.get_param_value("master_instance_type")
