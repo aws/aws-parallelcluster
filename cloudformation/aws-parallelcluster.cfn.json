@@ -14,6 +14,7 @@
     "ComputeInstanceType": {
       "Description": "ComputeFleet EC2 instance type",
       "Type": "String",
+      "Default": "NONE",
       "ConstraintDescription": "Must be a valid EC2 instance type, with support for HVM."
     },
     "MinSize": {

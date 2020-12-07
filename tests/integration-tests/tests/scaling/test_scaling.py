@@ -126,16 +126,16 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
 @pytest.mark.instances(["c5.xlarge"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.oss(["alinux2", "centos7", "centos8", "ubuntu1804"])
-@pytest.mark.usefixtures("region", "os", "instance")
+@pytest.mark.usefixtures("region", "os")
 @pytest.mark.hit_scaling
-def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
+def test_hit_scaling(scheduler, region, instance, pcluster_config_reader, clusters_factory, test_datadir):
     """Test that slurm-specific scaling logic is resistent to manual actions and failures."""
     cluster_config = pcluster_config_reader(scaledown_idletime=3)
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _assert_cluster_initial_conditions(scheduler_commands)
+    _assert_cluster_initial_conditions(scheduler_commands, instance)
     _test_partition_states(
         scheduler_commands,
         cluster.cfn_name,
@@ -144,7 +144,7 @@ def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory
         inactive_partition="ondemand2",
         num_static_nodes=2,
         num_dynamic_nodes=3,
-        dynamic_instance_type="c5.xlarge",
+        dynamic_instance_type=instance,
     )
     _test_reset_terminated_nodes(
         scheduler_commands,
@@ -153,7 +153,7 @@ def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory
         partition="ondemand1",
         num_static_nodes=2,
         num_dynamic_nodes=3,
-        dynamic_instance_type="c5.xlarge",
+        dynamic_instance_type=instance,
     )
     _test_replace_down_nodes(
         remote_command_executor,
@@ -164,7 +164,7 @@ def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory
         partition="ondemand1",
         num_static_nodes=2,
         num_dynamic_nodes=3,
-        dynamic_instance_type="c5.xlarge",
+        dynamic_instance_type=instance,
     )
     _test_keep_or_replace_suspended_nodes(
         scheduler_commands,
@@ -173,7 +173,7 @@ def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory
         partition="ondemand1",
         num_static_nodes=2,
         num_dynamic_nodes=3,
-        dynamic_instance_type="c5.xlarge",
+        dynamic_instance_type=instance,
     )
     _test_computemgtd_logic(
         remote_command_executor,
@@ -184,29 +184,30 @@ def test_hit_scaling(scheduler, region, pcluster_config_reader, clusters_factory
         partition="ondemand1",
         num_static_nodes=2,
         num_dynamic_nodes=3,
-        dynamic_instance_type="c5.xlarge",
+        dynamic_instance_type=instance,
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
 
-def _assert_cluster_initial_conditions(scheduler_commands):
+def _assert_cluster_initial_conditions(scheduler_commands, instance):
     """Assert that expected nodes are in cluster."""
     cluster_node_states = scheduler_commands.get_nodes_status()
-    c4_nodes, c5_nodes, static_nodes, dynamic_nodes = [], [], [], []
+    c5l_nodes, instance_nodes, static_nodes, dynamic_nodes = [], [], [], []
     logging.info(cluster_node_states)
     for nodename, node_states in cluster_node_states.items():
-        if "c4" in nodename:
-            c4_nodes.append(nodename)
-        if "c5" in nodename:
-            c5_nodes.append(nodename)
+        if "c5l" in nodename:
+            c5l_nodes.append(nodename)
+        # "c5.xlarge"[: "c5.xlarge".index(".")+2].replace(".", "") = c5x
+        if instance[: instance.index(".") + 2].replace(".", "") in nodename:
+            instance_nodes.append(nodename)
         if node_states == "idle":
             if "-st-" in nodename:
                 static_nodes.append(nodename)
             if "-dy-" in nodename:
                 dynamic_nodes.append(nodename)
-    assert_that(len(c4_nodes)).is_equal_to(20)
-    assert_that(len(c5_nodes)).is_equal_to(20)
+    assert_that(len(c5l_nodes)).is_equal_to(20)
+    assert_that(len(instance_nodes)).is_equal_to(20)
     assert_that(len(static_nodes)).is_equal_to(4)
     assert_that(len(dynamic_nodes)).is_equal_to(1)
 

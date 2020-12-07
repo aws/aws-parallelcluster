@@ -1113,18 +1113,19 @@ class NetworkInterfacesCountCfnParam(CommaSeparatedCfnParam):
         """Compute the number of network interfaces for head node and compute nodes."""
         cluster_section = self.pcluster_config.get_section("cluster")
         scheduler = cluster_section.get_param_value("scheduler")
+        compute_instance_type = (
+            cluster_section.get_param_value("compute_instance_type")
+            if self.pcluster_config.cluster_model.name == "SIT" and scheduler != "awsbatch"
+            else None
+        )
         self.value = [
             str(
                 InstanceTypeInfo.init_from_instance_type(
                     cluster_section.get_param_value("master_instance_type")
                 ).max_network_interface_count()
             ),
-            str(
-                InstanceTypeInfo.init_from_instance_type(
-                    cluster_section.get_param_value("compute_instance_type")
-                ).max_network_interface_count()
-            )
-            if self.pcluster_config.cluster_model.name == "SIT" and scheduler != "awsbatch"
+            str(InstanceTypeInfo.init_from_instance_type(compute_instance_type).max_network_interface_count())
+            if compute_instance_type
             else "1",
         ]
 
