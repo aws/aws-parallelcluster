@@ -77,7 +77,7 @@ configure:
 create:
   test_create.py::test_create_wrong_os:
     dimensions:
-      - regions: ["af-south-1"]
+      - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["ubuntu1804"]  # os must be different from centos7 to test os validation logic when wrong os is provided
         schedulers: ["slurm"]
@@ -101,7 +101,7 @@ createami:
         oss: ["alinux2"]
   test_createami.py::test_createami_post_install:
     dimensions:
-      - regions: ["eu-south-1"]
+      - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["centos7", "ubuntu1804"]
       - regions: ["eu-west-1"]
@@ -109,7 +109,7 @@ createami:
         oss: ["alinux2"]
   test_createami.py::test_createami_wrong_os:
     dimensions:
-      - regions: ["eu-south-1"]
+      - regions: ["eu-central-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux"]  # os must be different from alinux2 to test os validation logic when wrong os is provided
   test_createami.py::test_createami_wrong_pcluster_version:
@@ -505,7 +505,7 @@ update:
         schedulers: ["awsbatch"]
   test_update.py::test_update_hit:
     dimensions:
-      - regions: ["me-south-1"]
+      - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm"]
