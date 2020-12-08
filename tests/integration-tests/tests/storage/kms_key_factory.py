@@ -16,7 +16,7 @@ class KMSKeyFactory:
         self.iam_client = None
         self.kms_client = None
         self.kms_key_id = None
-        self.account_id = boto3.client("sts").get_caller_identity().get("Account")
+        self.account_id = None
         self.region = None
         self.partition = None
         self.iam_role = None
@@ -29,6 +29,10 @@ class KMSKeyFactory:
         :param region: Different region need to create different keys
         """
         self.region = region
+        self.account_id = (
+            boto3.client("sts", endpoint_url=_get_sts_endpoint(region)).get_caller_identity().get("Account")
+        )
+
         if self.kms_key_id:
             return self.kms_key_id
 
@@ -201,3 +205,8 @@ class KMSKeyFactory:
             # The waiting period is at least 7 days.
             PendingWindowInDays=7,
         )
+
+
+def _get_sts_endpoint(region):
+    """Get regionalized STS endpoint."""
+    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
