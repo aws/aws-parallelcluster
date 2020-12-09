@@ -30,7 +30,9 @@ class KMSKeyFactory:
         """
         self.region = region
         self.account_id = (
-            boto3.client("sts", endpoint_url=_get_sts_endpoint(region)).get_caller_identity().get("Account")
+            boto3.client("sts", endpoint_url=_get_sts_endpoint(region), region_name=region)
+            .get_caller_identity()
+            .get("Account")
         )
 
         if self.kms_key_id:
