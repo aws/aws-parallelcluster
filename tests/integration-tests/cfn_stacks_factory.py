@@ -64,30 +64,24 @@ class CfnStacksFactory:
         """
         name = stack.name
         region = stack.region
+
+        id = self.__get_stack_internal_id(name, region)
+        if id in self.__created_stacks:
+            raise ValueError("Stack {0} already exists in region {1}".format(name, region))
+
+        logging.info("Creating stack {0} in region {1}".format(name, region))
+        self.__created_stacks[id] = stack
         try:
-            set_credentials(region, self.__credentials)
+            cfn_client = boto3.client("cloudformation", region_name=region)
+            result = cfn_client.create_stack(StackName=name, TemplateBody=stack.template, Parameters=stack.parameters)
+            stack.cfn_stack_id = result["StackId"]
+            final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
+            self.__assert_stack_status(final_status, "CREATE_COMPLETE")
+        except Exception as e:
+            logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
+            raise
 
-            id = self.__get_stack_internal_id(name, region)
-            if id in self.__created_stacks:
-                raise ValueError("Stack {0} already exists in region {1}".format(name, region))
-
-            logging.info("Creating stack {0} in region {1}".format(name, region))
-            self.__created_stacks[id] = stack
-            try:
-                cfn_client = boto3.client("cloudformation", region_name=region)
-                result = cfn_client.create_stack(
-                    StackName=name, TemplateBody=stack.template, Parameters=stack.parameters
-                )
-                stack.cfn_stack_id = result["StackId"]
-                final_status = self.__wait_for_stack_creation(stack.cfn_stack_id, cfn_client)
-                self.__assert_stack_status(final_status, "CREATE_COMPLETE")
-            except Exception as e:
-                logging.error("Creation of stack {0} in region {1} failed with exception: {2}".format(name, region, e))
-                raise
-
-            logging.info("Stack {0} created successfully in region {1}".format(name, region))
-        finally:
-            unset_credentials()
+        logging.info("Stack {0} created successfully in region {1}".format(name, region))
 
     @retry(
         stop_max_attempt_number=10,
