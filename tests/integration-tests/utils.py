@@ -232,6 +232,10 @@ def set_credentials(region, credential_arg):
     :param region: region of the bucket
     :param credential_arg: credential list
     """
+    if os.environ.get("AWS_CREDENTIALS_FOR_REGION", "no_region") == region:
+        logging.info(f"AWS credentials are already set for region: {region}")
+        return
+
     if credential_arg:
         # credentials = dict { region1: (endpoint1, arn1, external_id1),
         #                      region2: (endpoint2, arn2, external_id2),
@@ -252,6 +256,8 @@ def set_credentials(region, credential_arg):
                 credential_endpoint, credential_arn, credential_external_id, region
             )
 
+            logging.info(f"Setting AWS credentials for region: {region}")
+
             # Set credential for all boto3 client
             boto3.setup_default_session(
                 aws_access_key_id=aws_credentials["AccessKeyId"],
@@ -263,6 +269,7 @@ def set_credentials(region, credential_arg):
             os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
             os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
+            os.environ["AWS_CREDENTIALS_FOR_REGION"] = region
 
 
 def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_external_id, region):
@@ -283,6 +290,7 @@ def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_ext
 def unset_credentials():
     """Unset credentials"""
     # Unset credential for all boto3 client
+    logging.info("Unsetting AWS credentials")
     boto3.setup_default_session()
     # Unset credential for cli command e.g. pcluster create
     if "AWS_ACCESS_KEY_ID" in os.environ:
@@ -291,6 +299,8 @@ def unset_credentials():
         del os.environ["AWS_SECRET_ACCESS_KEY"]
     if "AWS_SESSION_TOKEN" in os.environ:
         del os.environ["AWS_SESSION_TOKEN"]
+    if "AWS_CREDENTIALS_FOR_REGION" in os.environ:
+        del os.environ["AWS_CREDENTIALS_FOR_REGION"]
 
 
 def set_logger_formatter(formatter):

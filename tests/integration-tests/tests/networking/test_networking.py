@@ -19,6 +19,7 @@ from utils import generate_stack_name
 
 
 @pytest.fixture()
+@pytest.mark.usefixtures("setup_sts_credentials")
 def networking_stack_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory(request.config.getoption("credential"))

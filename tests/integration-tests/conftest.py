@@ -631,16 +631,21 @@ def vpc_stack(vpc_stacks, region):
     retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
 )
 def _create_vpc_stack(request, template, region, cfn_stacks_factory):
-    if request.config.getoption("vpc_stack"):
-        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
-    else:
-        stack = CfnStack(
-            name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
-            region=region,
-            template=template.to_json(),
-        )
-        cfn_stacks_factory.create_stack(stack)
+    try:
+        set_credentials(region, request.config.getoption("credential"))
+        if request.config.getoption("vpc_stack"):
+            logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+            stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+        else:
+            stack = CfnStack(
+                name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
+                region=region,
+                template=template.to_json(),
+            )
+            cfn_stacks_factory.create_stack(stack)
+
+    finally:
+        unset_credentials()
     return stack
 
 
