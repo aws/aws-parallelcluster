@@ -38,6 +38,7 @@ from pcluster.config.cfn_param_types import (
     SpotBidPercentageCfnParam,
     SpotPriceCfnParam,
     TagsParam,
+    VolumeIopsParam,
     VolumeSizeParam,
 )
 from pcluster.config.json_param_types import (
@@ -66,6 +67,7 @@ from pcluster.config.validators import (
     ebs_settings_validator,
     ebs_volume_iops_validator,
     ebs_volume_size_snapshot_validator,
+    ebs_volume_throughput_validator,
     ebs_volume_type_size_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
@@ -151,7 +153,7 @@ ALLOWED_VALUES = {
     "snapshot_id": r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
     "volume_id": r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$",
-    "volume_types": ["standard", "io1", "io2", "gp2", "st1", "sc1"],
+    "volume_types": ["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"],
     "vpc_id": r"^vpc-[0-9a-z]{8}$|^vpc-[0-9a-z]{17}$",
     "fsx_deployment_type": ["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"],
     "fsx_ssd_throughput": FSX_SSD_THROUGHPUT,
@@ -312,20 +314,22 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator],
-    "params": {
-        "shared_dir": {
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator,
+                   ebs_volume_throughput_validator],
+    "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
+        # the test of hit converter
+        ("shared_dir", {
             "allowed_values": ALLOWED_VALUES["file_path"],
             "cfn_param_mapping": "SharedDir",
             "validators": [shared_dir_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "ebs_snapshot_id": {
+        }),
+        ("ebs_snapshot_id", {
             "allowed_values": ALLOWED_VALUES["snapshot_id"],
             "cfn_param_mapping": "EBSSnapshotId",
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "volume_type": {
+        }),
+        ("volume_type", {
             "default": "gp2",
             "allowed_values": ALLOWED_VALUES["volume_types"],
             "cfn_param_mapping": "VolumeType",
@@ -333,8 +337,8 @@ EBS = {
                 UpdatePolicy.UNSUPPORTED,
                 action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
             )
-        },
-        "volume_size": {
+        }),
+        ("volume_size", {
             "type": VolumeSizeParam,
             "cfn_param_mapping": "VolumeSize",
             "update_policy": UpdatePolicy(
@@ -342,31 +346,36 @@ EBS = {
                 fail_reason=UpdatePolicy.FAIL_REASONS["ebs_volume_resize"],
                 action_needed=UpdatePolicy.ACTIONS_NEEDED["ebs_volume_update"]
             )
-        },
-        "volume_iops": {
-            "type": IntCfnParam,
-            "default": 100,
+        }),
+        ("volume_iops", {
+            "type": VolumeIopsParam,
             "cfn_param_mapping": "VolumeIOPS",
             "update_policy": UpdatePolicy.SUPPORTED
-        },
-        "encrypted": {
+        }),
+        ("encrypted", {
             "type": BoolCfnParam,
             "cfn_param_mapping": "EBSEncryption",
             "default": False,
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "ebs_kms_key_id": {
+        }),
+        ("ebs_kms_key_id", {
             "cfn_param_mapping": "EBSKMSKeyId",
             "validators": [kms_key_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-        "ebs_volume_id": {
+        }),
+        ("ebs_volume_id", {
             "cfn_param_mapping": "EBSVolumeId",
             "allowed_values": ALLOWED_VALUES["volume_id"],
             "validators": [ec2_volume_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
-        },
-    },
+        }),
+        ("volume_throughput", {
+            "type": IntCfnParam,
+            "cfn_param_mapping": "VolumeThroughput",
+            "update_policy": UpdatePolicy.SUPPORTED,
+            "default": 125
+        })
+    ]),
 }
 
 EFS = {
@@ -419,7 +428,7 @@ RAID = {
     "type": CfnSection,
     "key": "raid",
     "default_label": "default",
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator],
+    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_throughput_validator],
     "cfn_param_mapping": "RAIDOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -451,8 +460,7 @@ RAID = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("volume_iops", {
-                "type": IntCfnParam,
-                "default": 100,
+                "type": VolumeIopsParam,
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("encrypted", {
@@ -463,6 +471,12 @@ RAID = {
             ("ebs_kms_key_id", {
                 "validators": [kms_key_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
+            }),
+            ("volume_throughput", {
+                "type": IntCfnParam,
+                "default": 125,
+                "cfn_param_mapping": "VolumeThroughput",
+                "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
     )

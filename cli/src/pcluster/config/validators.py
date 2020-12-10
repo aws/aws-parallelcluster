@@ -78,8 +78,15 @@ EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "io1": (4, 16 * 1024),
     "io2": (4, 16 * 1024),
     "gp2": (1, 16 * 1024),
+    "gp3": (1, 16 * 1024),
     "st1": (500, 16 * 1024),
     "sc1": (500, 16 * 1024),
+}
+
+EBS_VOLUME_IOPS_BOUNDS = {
+    "io1": (100, 64000),
+    "io2": (100, 64000),
+    "gp3": (3000, 16000),
 }
 
 HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES = []
@@ -1325,7 +1332,7 @@ def ebs_volume_type_size_validator(section_key, section_label, pcluster_config):
 
     The default value of volume_size for EBS volumes is 20 GiB.
     The volume size of standard ranges from 1 GiB - 1 TiB(1024 GiB)
-    The volume size of gp2 ranges from 1 GiB - 16 TiB(16384 GiB)
+    The volume size of gp2 and gp3 ranges from 1 GiB - 16 TiB(16384 GiB)
     The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
     The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
     """
@@ -1353,11 +1360,11 @@ def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
     section = pcluster_config.get_section(section_key, section_label)
     volume_size = section.get_param_value("volume_size")
     volume_type = section.get_param_value("volume_type")
-    volume_type_to_iops_ratio = {"io1": 50, "io2": 500}
+    volume_type_to_iops_ratio = {"io1": 50, "io2": 500, "gp3": 500}
     volume_iops = section.get_param_value("volume_iops")
-    min_iops = 100
-    max_iops = 64000
-    if volume_type in volume_type_to_iops_ratio:
+
+    if volume_type in EBS_VOLUME_IOPS_BOUNDS:
+        min_iops, max_iops = EBS_VOLUME_IOPS_BOUNDS.get(volume_type)
         if volume_iops and (volume_iops < min_iops or volume_iops > max_iops):
             errors.append(
                 "IOPS rate must be between {min_iops} and {max_iops} when provisioning {volume_type} volumes.".format(
@@ -1556,5 +1563,34 @@ def efa_os_arch_validator(param_key, param_value, pcluster_config):
 
     if base_os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
         errors.append("EFA currently not supported on {0} for {1} architecture".format(base_os, architecture))
+
+    return errors, warnings
+
+
+def ebs_volume_throughput_validator(section_key, section_label, pcluster_config):
+    errors = []
+    warnings = []
+
+    section = pcluster_config.get_section(section_key, section_label)
+    volume_type = section.get_param_value("volume_type")
+    volume_iops = section.get_param_value("volume_iops")
+    volume_throughput = section.get_param_value("volume_throughput")
+    volume_throughput_to_iops_ratio = 0.25
+
+    if volume_type == "gp3":
+        min_throughput, max_throughput = 125, 1000
+        if volume_throughput < min_throughput or volume_throughput > max_throughput:
+            errors.append(
+                "Throughput must be between {min_throughput} MB/s and {max_throughput} MB/s when provisioning "
+                "{volume_type} volumes.".format(
+                    min_throughput=min_throughput, max_throughput=max_throughput, volume_type=volume_type
+                )
+            )
+        if volume_throughput and volume_throughput > volume_iops * volume_throughput_to_iops_ratio:
+            errors.append(
+                "Throughput to IOPS ratio of {0} is too high; maximum is 0.25.".format(
+                    float(volume_throughput) / float(volume_iops)
+                )
+            )
 
     return errors, warnings

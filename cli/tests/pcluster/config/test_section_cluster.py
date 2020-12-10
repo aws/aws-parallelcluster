@@ -1017,7 +1017,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1037,7 +1037,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,ebs2,NONE,NONE,NONE",
                     "VolumeType": "io1,standard,gp2,gp2,gp2",
                     "VolumeSize": "40,30,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,300,100,100,100",
+                    "VolumeIOPS": "200,300,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1057,7 +1057,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "/shared",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
                     "VolumeSize": "30,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "300,100,100,100,100",
+                    "VolumeIOPS": "300,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
@@ -1077,7 +1077,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "/work",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
                     "VolumeSize": "30,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "300,100,100,100,100",
+                    "VolumeIOPS": "300,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
@@ -1097,7 +1097,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1125,14 +1125,14 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
                     "NONE,NONE",
@@ -1191,14 +1191,14 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
                     "NONE,NONE",

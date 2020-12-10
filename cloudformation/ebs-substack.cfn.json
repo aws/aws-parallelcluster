@@ -131,6 +131,19 @@
                 }
               ]
             },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
             "io1"
           ]
         },
@@ -147,6 +160,19 @@
             "io2"
           ]
         }
+      ]
+    },
+    "Vol1_UseEBSThroughput": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "0",
+            {
+              "Ref": "VolumeType"
+            }
+          ]
+        },
+        "gp3"
       ]
     },
     "Vol1_UseEBSSnapshot": {
@@ -286,6 +312,19 @@
                 }
               ]
             },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
             "io1"
           ]
         },
@@ -302,6 +341,19 @@
             "io2"
           ]
         }
+      ]
+    },
+    "Vol2_UseEBSThroughput": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "1",
+            {
+              "Ref": "VolumeType"
+            }
+          ]
+        },
+        "gp3"
       ]
     },
     "Vol2_UseEBSSnapshot": {
@@ -441,6 +493,19 @@
                 }
               ]
             },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
             "io1"
           ]
         },
@@ -457,6 +522,19 @@
             "io2"
           ]
         }
+      ]
+    },
+    "Vol3_UseEBSThroughput": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "2",
+            {
+              "Ref": "VolumeType"
+            }
+          ]
+        },
+        "gp3"
       ]
     },
     "Vol3_UseEBSSnapshot": {
@@ -596,6 +674,19 @@
                 }
               ]
             },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
             "io1"
           ]
         },
@@ -612,6 +703,19 @@
             "io2"
           ]
         }
+      ]
+    },
+    "Vol4_UseEBSThroughput": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "3",
+            {
+              "Ref": "VolumeType"
+            }
+          ]
+        },
+        "gp3"
       ]
     },
     "Vol4_UseEBSSnapshot": {
@@ -751,6 +855,19 @@
                 }
               ]
             },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "4",
+                {
+                  "Ref": "VolumeType"
+                }
+              ]
+            },
             "io1"
           ]
         },
@@ -767,6 +884,19 @@
             "io2"
           ]
         }
+      ]
+    },
+    "Vol5_UseEBSThroughput": {
+      "Fn::Equals": [
+        {
+          "Fn::Select": [
+            "4",
+            {
+              "Ref": "VolumeType"
+            }
+          ]
+        },
+        "gp3"
       ]
     },
     "Vol5_UseEBSSnapshot": {
@@ -1157,7 +1287,11 @@
       "Type": "Number"
     },
     "VolumeIOPS": {
-      "Description": "Number of IOPS for volume type io1 and io2. Not used for other volume types.",
+      "Description": "Number of IOPS for volume type io1, io2 and gp3. Not used for other volume types.",
+      "Type": "CommaDelimitedList"
+    },
+    "VolumeThroughput": {
+      "Description": "Throughput for volume type gp3. Not used for other volume types.",
       "Type": "CommaDelimitedList"
     },
     "VolumeSize": {
@@ -1200,6 +1334,22 @@
                 "0",
                 {
                   "Ref": "VolumeIOPS"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol1_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "0",
+                {
+                  "Ref": "VolumeThroughput"
                 }
               ]
             },
@@ -1309,6 +1459,22 @@
             }
           ]
         },
+        "Throughput": {
+          "Fn::If": [
+            "Vol2_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "1",
+                {
+                  "Ref": "VolumeThroughput"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "KmsKeyId": {
           "Fn::If": [
             "Vol2_UseEBSKMSKey",
@@ -1402,6 +1568,22 @@
                 "2",
                 {
                   "Ref": "VolumeIOPS"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol3_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "2",
+                {
+                  "Ref": "VolumeThroughput"
                 }
               ]
             },
@@ -1511,6 +1693,22 @@
             }
           ]
         },
+        "Throughput": {
+          "Fn::If": [
+            "Vol4_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "VolumeThroughput"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "KmsKeyId": {
           "Fn::If": [
             "Vol4_UseEBSKMSKey",
@@ -1604,6 +1802,22 @@
                 "4",
                 {
                   "Ref": "VolumeIOPS"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol5_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "4",
+                {
+                  "Ref": "VolumeThroughput"
                 }
               ]
             },
