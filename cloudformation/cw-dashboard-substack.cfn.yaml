@@ -144,8 +144,8 @@ Resources:
           {%- endfor %}
 
           {#- Conditional EBS metrics #}
-          {%- set ebs_metrics_conditions = [{'metric': 'VolumeConsumedReadWriteOps', 'supported_vol_types': ["io1", "io2"], 'extra_params': ['"title":"Consumed Read/Write Ops"']},
-                                            {'metric': 'VolumeThroughputPercentage', 'supported_vol_types': ["io1", "io2"], 'extra_params': ['"title":"Throughput Percentage"']},
+          {%- set ebs_metrics_conditions = [{'metric': 'VolumeConsumedReadWriteOps', 'supported_vol_types': ["io1", "io2", "gp3"], 'extra_params': ['"title":"Consumed Read/Write Ops"']},
+                                            {'metric': 'VolumeThroughputPercentage', 'supported_vol_types': ["io1", "io2", "gp3"], 'extra_params': ['"title":"Throughput Percentage"']},
                                             {'metric': 'BurstBalance', 'supported_vol_types': ["gp2", "st1", "sc1"], 'extra_params': ['"title":"Burst Balance"']}]
           %}
           {%- for metric_condition_params in ebs_metrics_conditions %}

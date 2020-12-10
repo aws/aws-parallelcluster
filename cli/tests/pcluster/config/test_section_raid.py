@@ -20,19 +20,20 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
     [
         (DefaultCfnParams["raid"].value, DefaultDict["raid"].value),
         ({}, DefaultDict["raid"].value),
-        ({"RAIDOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"}, DefaultDict["raid"].value),
-        ({"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["raid"].value),
+        ({"RAIDOptions": "NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE, NONE"}, DefaultDict["raid"].value),
+        ({"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}, DefaultDict["raid"].value),
         (
-            {"RAIDOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
+            {"RAIDOptions": "test,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"},
             {
                 "shared_dir": "test",
                 "raid_type": None,
                 "num_of_raid_volumes": 2,
                 "volume_type": "gp2",
                 "volume_size": 20,
-                "volume_iops": 100,
+                "volume_iops": None,
                 "encrypted": False,
                 "ebs_kms_key_id": None,
+                "volume_throughput": 125,
             },
         ),
         (
@@ -79,7 +80,7 @@ def test_raid_section_from_file(mocker, config_parser_dict, expected_dict_params
         # default
         ({}, {"raid default": {}}, None),
         # default values
-        ({"volume_iops": 100}, {"raid default": {"volume_iops": "100"}}, "No section.*"),
+        ({"volume_throughput": 125}, {"raid default": {"volume_throughput": "125"}}, "No section.*"),
         ({"encrypted": False}, {"raid default": {"encrypted": "false"}}, "No section.*"),
         # other values
         ({"volume_iops": 120}, {"raid default": {"volume_iops": "120"}}, None),
@@ -144,7 +145,7 @@ def test_raid_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("volume_size", "wrong_value", None, "must be an Integer"),
         ("volume_size", "10", 10, None),
         ("volume_size", "3", 3, None),
-        ("volume_iops", None, 100, None),
+        ("volume_iops", None, None, None),
         ("volume_iops", "", None, "must be an Integer"),
         ("volume_iops", "NONE", None, "must be an Integer"),
         ("volume_iops", "wrong_value", None, "must be an Integer"),
@@ -160,6 +161,9 @@ def test_raid_section_to_cfn(mocker, section_dict, expected_cfn_params):
         ("ebs_kms_key_id", "fake_value", "fake_value", None),
         ("ebs_kms_key_id", "test", "test", None),
         ("ebs_kms_key_id", "NONE", "NONE", None),  # NONE is evaluated as a valid kms id
+        ("volume_throughput", "NONE", None, "must be an Integer"),
+        ("volume_throughput", "wrong_value", None, "must be an Integer"),
+        ("volume_throughput", "150", 150, None),
     ],
 )
 def test_raid_param_from_file(mocker, param_key, param_value, expected_value, expected_message):

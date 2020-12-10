@@ -115,7 +115,7 @@ def test_ebs_multiple(scheduler, pcluster_config_reader, clusters_factory, regio
         assert_that(volume[0]).is_equal_to(volume_type)
         # test different iops
         # only the iops of io1 and io2 can be configured by us
-        if volume_type == "io1" or volume_type == "io2":
+        if volume_type in ["io1", "io2", "gp3"]:
             volume_iops = cluster.config.get("ebs ebs{0}".format(i + 1), "volume_iops")
             assert_that(volume[1]).is_equal_to(int(volume_iops))
 

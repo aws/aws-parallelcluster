@@ -40,10 +40,11 @@ DEFAULT_EBS_DICT = {
     "ebs_snapshot_id": None,
     "volume_type": "gp2",
     "volume_size": None,
-    "volume_iops": 100,
+    "volume_iops": None,
     "encrypted": False,
     "ebs_kms_key_id": None,
     "ebs_volume_id": None,
+    "volume_throughput": 125,
 }
 
 DEFAULT_EFS_DICT = {
@@ -62,9 +63,10 @@ DEFAULT_RAID_DICT = {
     "num_of_raid_volumes": 2,
     "volume_type": "gp2",
     "volume_size": 20,
-    "volume_iops": 100,
+    "volume_iops": None,
     "encrypted": False,
     "ebs_kms_key_id": None,
+    "volume_throughput": 125,
 }
 
 DEFAULT_FSX_DICT = {
@@ -228,7 +230,7 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 62
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
 CFN_HIT_CONFIG_NUM_OF_PARAMS = 53
 
 # CFN parameters created by the pcluster CLI
@@ -254,15 +256,16 @@ DEFAULT_EBS_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeIdThroughput": "125,125,125,125,125",
 }
 
 DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_FSX_CFN_PARAMS = {
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
@@ -327,14 +330,15 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeThroughput": "125,125,125,125,125",
     # efs
     "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # raid
-    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
@@ -397,14 +401,15 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeThroughput": "125,125,125,125,125",
     # efs
     "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # raid
-    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv

@@ -1317,5 +1317,32 @@ class VolumeSizeParam(IntCfnParam):
                 ebs_snapshot_id = section.get_param_value("ebs_snapshot_id")
                 default_volume_size = get_ebs_snapshot_info(ebs_snapshot_id).get("VolumeSize")
             else:
-                default_volume_size = 20
+                default_volume_size = 500 if section.get_param_value("volume_type") in ["st1", "sc1"] else 20
             self.value = default_volume_size
+
+
+class VolumeIopsParam(IntCfnParam):
+    """Class to manage ebs volume_iops parameter in the EBS section."""
+
+    EBS_VOLUME_TYPE_IOPS_DEFAULT = {
+        "io1": 100,
+        "io2": 100,
+        "gp3": 3000,
+    }
+
+    def refresh(self):
+        """
+        We need this method to set different default value for ebs IOPS for different volume.
+
+        Check whether the user have an input on ebs volume_iops when specify volume type to be "gp3".
+        For "gp3", the default iops is 3000. For other volumes, the default iops are 100. If the volume_iops is not
+        specified by an user, we will create an EBS volume with default volume
+        iops.
+        """
+        section = self.pcluster_config.get_section(self.section_key, self.section_label)
+
+        if section and section.get_param_value("volume_iops") is None:
+            volume_type = section.get_param_value("volume_type")
+            if volume_type in VolumeIopsParam.EBS_VOLUME_TYPE_IOPS_DEFAULT:
+                default_iops = VolumeIopsParam.EBS_VOLUME_TYPE_IOPS_DEFAULT.get(volume_type)
+                self.value = default_iops

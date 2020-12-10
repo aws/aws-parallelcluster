@@ -13,12 +13,12 @@ CHANGELOG
     - EBS io2 is not supported in af-south-1 and eu-south-1 
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
   failures due to CloudFormation throttling.
-- Add support for io2 EBS volume type.
 - Install EFA kernel module also on ARM instances with `alinux2` and `ubuntu1804`
 - Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to 
   be used by AWS Lambda functions in CloudFormation. 
   When using `sge`, `torque`, or `slurm` as the scheduler, 
   `pcluster` will not create any IAM role if both `ec2_iam_role` and `iam_lambda_role` are provided.
+- Add support for io2 and gp3 EBS volume type.
 
 **CHANGES**
 
@@ -38,7 +38,8 @@ CHANGELOG
 **BUG FIXES**
 
 - Mandate the presence of `vpc_settings`, `vpc_id`, `master_subnet_id` in the config file to avoid unhandled exceptions.
-
+- Set the default EBS volume size to 500 GiB when volume type is `st1` or `sc1`.
+  
 2.10.0
 ------
 
