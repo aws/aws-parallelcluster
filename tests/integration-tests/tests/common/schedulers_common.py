@@ -443,7 +443,7 @@ class SlurmCommands(SchedulerCommands):
         return self._remote_command_executor.run_remote_command("scancel {}".format(job_id))
 
     def set_nodes_state(self, compute_nodes, state):
-        """Put nodes into down state."""
+        """Put nodes into a state."""
         self._remote_command_executor.run_remote_command(
             "sudo /opt/slurm/bin/scontrol update NodeName={} state={} reason=testing".format(
                 ",".join(compute_nodes), state
