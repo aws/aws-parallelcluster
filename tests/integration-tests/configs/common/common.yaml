@@ -87,10 +87,14 @@ createami:
     dimensions:
       - regions: ["eu-west-3"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
+        # Ubuntu18.04 disabled due to SGE package missing
+        # see https://github.com/aws/aws-parallelcluster-cookbook/commit/db8c63d900c7837157519ae7eef462ac3af627a5
+        oss: ["alinux", "alinux2", "ubuntu1604"] # temporary disable FPGA AMI since there is not enough free space on root partition
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1604", "ubuntu1804"]
+        # Ubuntu18.04 disabled due to SGE package missing
+        # see https://github.com/aws/aws-parallelcluster-cookbook/commit/db8c63d900c7837157519ae7eef462ac3af627a5
+        oss: ["ubuntu1604"]
       - regions: ["cn-northwest-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
