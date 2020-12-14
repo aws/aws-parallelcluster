@@ -914,12 +914,3 @@ def test_hit_config_file(mocker, capsys, test_datadir):
     # Expected sys exit with error
     with pytest.raises(SystemExit, match="ERROR: Configuration in file .* cannot be overwritten"):
         _run_configuration(mocker, old_config_file, with_config=True)
-
-
-def test_invalid_p4d_head_node_type(mocker):
-    with pytest.raises(StopIteration):
-        assert_that(general_wrapper_for_prompt_testing(mocker, head_node_instance="p4d.24xlarge")).is_true()
-
-
-def test_valid_p4d_compute_node_type(mocker):
-    assert_that(general_wrapper_for_prompt_testing(mocker, compute_instance="p4d.24xlarge")).is_true()

@@ -87,9 +87,7 @@ def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
-@pytest.mark.parametrize(
-    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("p4d.24xlarge", "is not supported")]
-)
+@pytest.mark.parametrize("instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None)])
 def test_head_node_instance_type_validator(mocker, instance_type, expected_message):
     config_parser_dict = {"cluster default": {"master_instance_type": instance_type}}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)

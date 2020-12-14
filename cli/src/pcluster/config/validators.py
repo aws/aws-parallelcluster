@@ -77,7 +77,7 @@ EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "sc1": (500, 16 * 1024),
 }
 
-HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES = ["p4d.24xlarge"]
+HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES = []
 HEAD_NODE_UNSUPPORTED_MESSAGE = "The instance type '{0}' is not supported as head node."
 
 # Constants for section labels

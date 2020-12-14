@@ -21,6 +21,7 @@ CHANGELOG
 - Use inclusive language in user facing messages and internal naming convention.
 - Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
   (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
+- Allow P4d as head node. (P4d was already supported as compute node in 2.10.0)
 
 
 **BUG FIXES**
