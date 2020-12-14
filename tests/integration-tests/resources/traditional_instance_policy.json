@@ -168,6 +168,16 @@
       ],
       "Effect": "Allow",
       "Sid": "Route53"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::aws-parallelcluster-jenkins-*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Chronicle"
     }
   ]
 }

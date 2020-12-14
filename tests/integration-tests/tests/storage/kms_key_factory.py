@@ -48,11 +48,11 @@ class KMSKeyFactory:
         :param region: Create different roles on different regions, since we need to attach different policies
         """
         random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
-        iam_role_name = "Integration_test_ParallelClusterInstanceRole_{0}_{1}".format(self.region, random_string)
+        iam_role_name = "Integ_test_InstanceRole_{0}_{1}".format(self.region, random_string)
 
-        iam_policy_name_batch = "".join("Integ_test_ParallelClusterInstancePolicy_batch" + random_string)
+        iam_policy_name_batch = "".join("Integ_test_InstancePolicy_batch" + random_string)
         logging.info("iam policy for awsbatch is {0}".format(iam_policy_name_batch))
-        iam_policy_name_traditional = "".join("Integ_test_ParallelClusterInstancePolicy" + random_string)
+        iam_policy_name_traditional = "".join("Integ_test_InstancePolicy" + random_string)
         logging.info("iam_policy for traditional scheduler is {0}".format(iam_policy_name_traditional))
 
         self.iam_client = boto3.client("iam", region_name=region)
@@ -130,7 +130,7 @@ class KMSKeyFactory:
         # create KMS key
         self.kms_client = boto3.client("kms", region_name=region)
         random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(8))
-        key_alias = "alias/Integration_test_KMS_key_{0}_{1}".format(self.region, random_string)
+        key_alias = "alias/Integ_test_KMS_{0}_{1}".format(self.region, random_string)
 
         # If the key already existed, use the existing key
         for alias in self.kms_client.list_aliases().get("Aliases"):
