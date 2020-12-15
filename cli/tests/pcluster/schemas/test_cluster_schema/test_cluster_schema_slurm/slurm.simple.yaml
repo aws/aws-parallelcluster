@@ -1,0 +1,46 @@
+Image:
+  Os: String  # alinux2 | centos7 | centos8 | ubuntu1804
+  CustomAmi: String  # ami-xxx
+HeadNode:
+  InstanceType: t2.micro  # t2.micro
+  Networking:
+    SubnetId: String  # subnet-xxx
+    ElasticIp: String  # true|false|EIP-id
+    AssignPublicIp: True  # true|false
+    SecurityGroups:
+      - String  # sg-xxxx
+      - sg-2
+    AdditionalSecurityGroups:
+      - String  # sg-xxxx
+      - sg-3
+  Ssh:
+    KeyName: ec2-key-name
+Scheduling:
+  Scheduler: slurm
+  Queues:
+    - Name: queue1
+      Networking:
+        SubnetIds:
+          - subnet-xxx
+      ComputeResources:
+        - InstanceType: c5.xlarge
+        - InstanceType: c4.xlarge
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-xxx
+      ComputeResources:
+        - InstanceType: c5.2xlarge
+          MaxCount: 5
+        - InstanceType: c4.2xlarge
+SharedStorage:
+  - MountDir: /my/mount/point
+    StorageType: EBS
+    Settings:
+      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 100
+      Size: 150
+      Encrypted: True
+      KmsKeyId: String
+      SnapshotId: String  # snap-xxxx
+      VolumeId: String  # ebs-xxxx

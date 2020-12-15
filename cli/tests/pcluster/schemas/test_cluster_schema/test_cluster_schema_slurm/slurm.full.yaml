@@ -1,0 +1,191 @@
+Image:
+  Os: String  # alinux2 | centos7 | centos8 | ubuntu1804
+  CustomAmi: String  # ami-xxx
+HeadNode:
+  InstanceType: String  # t2.micro
+  Networking:
+    SubnetId: String  # subnet-xxx
+    ElasticIp: String  # true|false|EIP-id
+    AssignPublicIp: Boolean  # true|false
+    SecurityGroups:
+      - String  # sg-xxxx
+      - sg-2
+    AdditionalSecurityGroups:
+      - String  # sg-xxxx
+      - sg-3
+    Proxy:
+      HttpProxyAddress: String  # https://proxy-address:port
+  SimultaneousMultithreading: Boolean  # true
+  Image:
+    CustomAmi: String  # ami-xxx
+  Ssh:
+    KeyName: String  # ec2-key-name
+    AllowedIps: String  # 1.2.3.4/32
+  Storage:
+    RootVolume:
+      Size: Integer  # 25
+      Encrypted: Boolean  # true
+      KmsKeyId: String
+      Type: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: Integer
+      Throughput: integer
+    EphemeralVolume:
+      Encrypted: Boolean  # true
+      MountDir: String  # /scratch
+  Dcv:
+    Enabled: Boolean  # true
+    Port: Integer  # 8443
+    AllowedIps: String  # 0.0.0.0/0
+  Efa:
+    Enabled: Boolean  # false
+    GdrSupport: Boolean  # false
+Scheduling:
+  Scheduler: String  # slurm
+  Settings: # These are scheduler specific settings and will be custom in case of byos
+    ScaledownIdletime: Integer
+    Dns:
+      DisableManagedDns: Boolean  # false
+      Domain: String  # my.custom.domain
+      HostedZoneId: String  # Z23ABC4XYZL05B
+  Queues:
+    - Name: String  # queue
+      Storage:
+        RootVolume:
+          Size: Integer  # 25
+          Encrypted: Boolean  # true
+          KmsKeyId: String
+          Type: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+          Iops: Integer
+          Throughput: Integer
+        EphemeralVolume:
+          Encrypted: Boolean  # true
+          MountDir: String  # /scratch
+      ComputeType: String  # ONDEMAND | SPOT
+      Image:
+        CustomAmi: String  # ami-xxx
+      Networking:
+        SubnetIds:
+          - String
+          - subnet-2
+        AssignPublicIp: Boolean  # true|false
+        SecurityGroups:
+          - String  # sg-xxxx
+        AdditionalSecurityGroups:
+          - String  # sg-xxxx
+        PlacementGroup:
+          Enabled: Boolean  # true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
+      ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
+        - InstanceType: String # comma separated list in case of batch/byos
+          MinCount|MinvCpus: Integer  # 0
+          DesiredvCpus: Integer
+          MaxCount|MaxvCpus: Integer
+          SpotPrice|SpotBidPercentage: Float
+          SimultaneousMultithreading: Boolean  # true
+          Efa:
+            Enabled: Boolean  # true
+            GdrSupport: Boolean  # false
+          AllocationStrategy*: String
+        - InstanceType: instance-2
+    - Name: queue2
+      Networking:
+        SubnetIds:
+          - subnet-xxx
+        ComputeResources:
+          - InstanceType: c5.xlarge
+          - InstanceType: c4.xlarge
+SharedStorage:
+  - MountDir: /my/mount/point
+    StorageType: EBS
+    Settings:
+      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: Integer
+      Size: Integer
+      Encrypted: Boolean
+      KmsKeyId: String
+      SnapshotId: String  # snap-xxxx
+      VolumeId: String  # ebs-xxxx
+      Raid:
+        Type: String  # 0|1
+        NumberOfVolumes: Integer  # [2-5]
+  - MountDir: /my/mount/point2
+    StorageType: EFS
+    Settings:
+      Encrypted: Boolean  # true
+      KmsKeyId: String  # id-xxx
+      PerformanceMode: String  # generalPurpose | maxIO
+      ThroughputMode: String  # bursting | provisioned
+      ProvisionedThroughput: String  # 1024
+      FileSystemId: String  # fs-xxxx
+  - MountDir: /my/mount/point3
+    StorageType: FSxLustre
+    Settings:
+      StorageCapacity: Integer  # 3600
+      DeploymentType: String  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      ImportedFileChunkSize: Integer  # 1024
+      ExportPath: String  # s3://bucket/folder
+      ImportPath: String  # s3://bucket
+      WeeklyMaintenanceStartTime: String  # 1:00:00
+      AutomaticBackupRetentionDays: Integer  # 0
+      CopyTagsToBackups: Boolean  # true
+      DailyAutomaticBackupStartTime: String  # 01:03
+      PerUnitStorageThroughput: Integer  # 200
+      BackupId: String  # backup-fedcba98
+      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      FileSystemId: String  # fsx-xxxx
+      AutoImportPolicy: String  # NEW | NEW_CHANGED
+      DriveCacheType: String  # READ
+      StorageType: String  # HDD | SSD
+IAM:
+  Roles:
+    HeadNode: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+    ComputeNode: String  # arn:aws:iam::aws:role/CustomComputeNodeRole
+    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+  S3Access:
+    - BucketName: String
+      Type: String # READ_ONLY | READ_WRITE
+  AdditionalIAMPolicies:
+    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+      Scope: String  # HEAD | COMPUTE | CLUSTER
+    - Policy: policy2
+      Scope: other
+Monitoring:
+  DetailedMonitoring: Boolean  # false
+  Logs:
+    CloudWatch:
+      Enabled: Boolean  # true
+      RetentionInDays: Integer  # 14
+      LogGroupId: String
+      KmsKeyId: String
+  Dashboards:
+    CloudWatch:
+      Enable: Boolean  # true
+AdditionalPackages:
+  IntelSelectSolutions:
+    InstallIntelSoftware: Boolean  # false
+CustomActions:
+  - Script: String  # s3:// | https:// | file://*
+    Args:
+      - String  # arg1
+      - stirng2
+    NodeType:
+      - String  # HEAD | COMPUTE
+    Event: String  # NODE_START | NODE_CONFIGURED
+    RunAs: String
+ClusterS3ResourceBucket: String
+Tags:
+  - Key: String
+    Value: String
+  - Key: two
+    Value: two22
+ClusterS3Bucket: String
+AdditionalResources: String  # https://template.url
+DevSettings:
+  ClusterTemplate: String
+  Cookbook:
+    ChefCookbook: String
+    ExtraChefAttributes: Object
+  AWSBatchCLIPackage: String
+  NodePackage: String

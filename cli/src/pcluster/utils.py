@@ -314,6 +314,7 @@ def upload_resources_artifacts(bucket_name, artifact_directory, root):
             bucket.upload_file(os.path.join(root, res), "%s/%s" % (artifact_directory, res))
 
 
+# FIXME MOVED into common/boto3/ec2
 def get_supported_instance_types():
     """Return the list of instance types available in the given region."""
     ec2_client = boto3.client("ec2")

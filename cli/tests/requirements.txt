@@ -6,3 +6,6 @@ pytest-html
 pytest-mock
 assertpy
 recordclass
+marshmallow
+aws-cdk.core
+aws-cdk.aws-ec2

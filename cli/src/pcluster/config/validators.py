@@ -542,6 +542,7 @@ def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+# FIXME moved
 def ec2_instance_type_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

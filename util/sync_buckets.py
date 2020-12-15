@@ -20,6 +20,8 @@ import urllib
 from enum import Enum
 
 import argparse
+from s3_factory import S3DocumentManager
+
 from common import (
     PARTITION_TO_MAIN_REGION,
     PARTITIONS,
@@ -27,7 +29,6 @@ from common import (
     get_aws_regions,
     retrieve_sts_credentials,
 )
-from s3_factory import S3DocumentManager
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 

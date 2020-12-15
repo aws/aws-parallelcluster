@@ -80,6 +80,7 @@ def test_cluster_validator(mocker, section_dict, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
+# FIXME Moved
 @pytest.mark.parametrize(
     "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
