@@ -18,11 +18,13 @@ import logging
 import os
 import random
 import re
+import time
 from shutil import copyfile
 from traceback import format_tb
 
 import boto3
 import configparser
+import pkg_resources
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -52,7 +54,7 @@ from utils import (
     unset_credentials,
 )
 
-from tests.common.utils import retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
@@ -291,6 +293,11 @@ def clusters_factory(request):
         factory.destroy_all_clusters(
             keep_logs=request.config.getoption("keep_logs_on_test_failure") and request.node.rep_call.failed
         )
+
+
+@pytest.fixture(scope="class")
+def cluster_model(scheduler):
+    return "HIT" if scheduler == "slurm" else "SIT"
 
 
 def _write_cluster_config_to_outdir(request, cluster_config):
@@ -616,6 +623,108 @@ def vpc_stacks(cfn_stacks_factory, request):
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
 
     return vpc_stacks
+
+
+@pytest.fixture(scope="class")
+def common_pcluster_policies(region):
+    """Create four policies to be attached to ec2_iam_role, iam_lamda_role for awsbatch or traditional schedulers."""
+    policies = {}
+    policies["awsbatch_instance_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterInstancePolicy-batch-" + random_alphanumeric(), region, "batch_instance_policy.json"
+    )
+    policies["traditional_instance_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterInstancePolicy-traditional-" + random_alphanumeric(),
+        region,
+        "traditional_instance_policy.json",
+    )
+    policies["awsbatch_lambda_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterLambdaPolicy-batch-" + random_alphanumeric(),
+        region,
+        "batch_lambda_function_policy.json",
+    )
+    policies["traditional_lambda_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterLambdaPolicy-traditional-" + random_alphanumeric(),
+        region,
+        "traditional_lambda_function_policy.json",
+    )
+
+    yield policies
+
+    iam_client = boto3.client("iam", region_name=region)
+    for policy in policies.values():
+        iam_client.delete_policy(PolicyArn=policy)
+
+
+@pytest.fixture(scope="class")
+def role_factory(region):
+    roles = []
+    iam_client = boto3.client("iam", region_name=region)
+
+    def create_role(trusted_service, policies=()):
+        iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
+
+        partition = _get_arn_partition(region)
+        domain_suffix = ".cn" if partition == "aws-cn" else ""
+
+        trust_relationship_policy_ec2 = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": f"{trusted_service}.amazonaws.com{domain_suffix}"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+        iam_client.create_role(
+            RoleName=iam_role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
+            Description="Role for create custom KMS key",
+        )
+
+        logging.info(f"Attaching iam policy to the role {iam_role_name}...")
+        for policy in policies:
+            iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=policy)
+
+        # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
+        # put_key_policy step for creating KMS key, read the following link for reference :
+        # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
+        time.sleep(60)
+        logging.info(f"Iam role is ready: {iam_role_name}")
+        roles.append({"role_name": iam_role_name, "policies": policies})
+        return iam_role_name
+
+    yield create_role
+
+    for role in roles:
+        role_name = role["role_name"]
+        policies = role["policies"]
+        for policy in policies:
+            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
+        logging.info(f"Deleting iam role {role_name}")
+        iam_client.delete_role(RoleName=role_name)
+
+
+def _create_iam_policies(iam_policy_name, region, policy_filename):
+    logging.info("Creating iam policy {0}...".format(iam_policy_name))
+    file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
+    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
+    partition = _get_arn_partition(region)
+    account_id = (
+        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+        .get_caller_identity()
+        .get("Account")
+    )
+    parallel_cluster_instance_policy = env.get_template(policy_filename).render(
+        partition=partition,
+        region=region,
+        account_id=account_id,
+        cluster_bucket_name="parallelcluster-*",
+    )
+    return boto3.client("iam", region_name=region).create_policy(
+        PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
+    )["Policy"]["Arn"]
 
 
 @pytest.fixture(scope="class")

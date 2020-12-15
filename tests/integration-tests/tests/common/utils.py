@@ -144,3 +144,8 @@ def _assert_ami_is_available(region, ami_id):
 def get_installed_parallelcluster_version():
     """Get the version of the installed aws-parallelcluster package."""
     return pkg_resources.get_distribution("aws-parallelcluster").version
+
+
+def get_sts_endpoint(region):
+    """Get regionalized STS endpoint."""
+    return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")

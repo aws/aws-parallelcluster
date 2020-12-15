@@ -15,6 +15,10 @@ CHANGELOG
   failures due to CloudFormation throttling.
 - Add support for io2 EBS volume type.
 - Install EFA kernel module also on ARM instances with `alinux2` and `ubuntu1804`
+- Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to 
+  be used by AWS Lambda functions in CloudFormation. 
+  When using `sge`, `torque`, or `slurm` as the scheduler, 
+  `pcluster` will not create any IAM role if both `ec2_iam_role` and `iam_lambda_role` are provided.
 
 **CHANGES**
 

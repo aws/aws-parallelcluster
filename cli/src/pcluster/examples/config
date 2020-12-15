@@ -109,6 +109,9 @@ key_name = mykey
 # Existing EC2 IAM policies to be associated with the EC2 instances
 # (defaults to NONE)
 #additional_iam_policies = NONE
+# Existing IAM role to be associated with Lambda functions
+# (defaults to NONE)
+#iam_lambda_role = NONE
 # Disable Hyperthreading on all instances
 # (defaults to False)
 #disable_hyperthreading = false
