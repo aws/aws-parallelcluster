@@ -73,10 +73,13 @@ def generate_rollback_data(regions, dest_bucket, files, sts_credentials):
         rollback_data[bucket_name] = {"region": region, "files": {}}
         doc_manager = S3DocumentManager(region, sts_credentials.get(region))
         for file_type in files:
+            s3_path = FILE_TO_S3_PATH.get(file_type, file_type)
             version = doc_manager.get_current_version(
-                dest_bucket.format(region=region), FILE_TO_S3_PATH[file_type], raise_on_object_not_found=False
+                dest_bucket.format(region=region),
+                s3_path,
+                raise_on_object_not_found=False,
             )
-            rollback_data[bucket_name]["files"][FILE_TO_S3_PATH[file_type]] = version
+            rollback_data[bucket_name]["files"][s3_path] = version
 
     logging.info("Rollback data:\n%s", json.dumps(rollback_data, indent=2))
     rollback_file_name = "rollback-data.json"

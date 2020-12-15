@@ -14,6 +14,7 @@ CHANGELOG
 - Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
   failures due to CloudFormation throttling.
 - Add support for io2 EBS volume type.
+- Install EFA kernel module also on ARM instances with `alinux2` and `ubuntu1804`
 
 **CHANGES**
 
@@ -22,7 +23,13 @@ CHANGELOG
 - Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
   (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
 - Enable support for p4d as head node instance type. (p4d was already supported as compute node in 2.10.0)
-
+- Upgrade EFA installer to version 1.11.0
+  - EFA configuration: ``efa-config-1.6`` (from efa-config-1.5)
+  - EFA profile: ``efa-profile-1.2`` (from efa-profile-1.1)
+  - EFA kernel module: ``efa-1.10.2`` (no change)
+  - RDMA core: ``rdma-core-31.2amzn`` (from rdma-core-31.amzn0)
+  - Libfabric: ``libfabric-1.11.1amzn1.0`` (from libfabric-1.11.1amzn1.1)
+  - Open MPI: ``openmpi40-aws-4.0.5`` (no change)
 
 **BUG FIXES**
 

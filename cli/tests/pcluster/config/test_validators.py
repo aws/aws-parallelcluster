@@ -29,6 +29,7 @@ from pcluster.config.validators import (
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
     efa_gdr_validator,
+    efa_os_arch_validator,
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
@@ -2675,3 +2676,38 @@ def test_duplicate_shared_dir_validator(
 def test_extra_json_validator(mocker, capsys, extra_json, expected_message):
     config_parser_dict = {"cluster default": extra_json}
     utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
+
+
+@pytest.mark.parametrize(
+    "cluster_dict, architecture, expected_error",
+    [
+        ({"base_os": "alinux2", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "alinux2", "enable_efa": "compute"}, "arm64", None),
+        ({"base_os": "centos8", "enable_efa": "compute"}, "x86_64", None),
+        (
+            {"base_os": "centos8", "enable_efa": "compute"},
+            "arm64",
+            "EFA currently not supported on centos8 for arm64 architecture",
+        ),
+        ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "arm64", None),
+    ],
+)
+def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_error):
+    mocker.patch(
+        "pcluster.config.cfn_param_types.BaseOSCfnParam.get_instance_type_architecture", return_value=architecture
+    )
+
+    config_parser_dict = {"cluster default": cluster_dict}
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    pcluster_config.get_section("cluster").get_param("architecture").value = architecture
+    enable_efa_value = pcluster_config.get_section("cluster").get_param_value("enable_efa")
+
+    errors, warnings = efa_os_arch_validator("enable_efa", enable_efa_value, pcluster_config)
+    if expected_error:
+        assert_that(errors[0]).matches(expected_error)
+    else:
+        assert_that(errors).is_empty()

@@ -77,6 +77,7 @@ from pcluster.config.validators import (
     ec2_volume_validator,
     ec2_vpc_id_validator,
     efa_gdr_validator,
+    efa_os_arch_validator,
     efa_validator,
     efs_id_validator,
     efs_validator,
@@ -718,6 +719,7 @@ QUEUE = {
         }),
         ("enable_efa", {
             "type": BooleanJsonParam,
+            "validators": [efa_os_arch_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
         }),
         ("enable_efa_gdr", {
@@ -833,7 +835,7 @@ CLUSTER_COMMON_PARAMS = [
     ("enable_efa", {
         "allowed_values": ["compute"],
         "cfn_param_mapping": "EFA",
-        "validators": [efa_validator],
+        "validators": [efa_validator, efa_os_arch_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa_gdr", {
