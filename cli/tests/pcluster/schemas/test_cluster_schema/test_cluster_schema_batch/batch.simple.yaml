@@ -1,0 +1,28 @@
+Image:
+  Os: alinux2
+Networking:
+  VpcId: String  # vpc-xxx
+HeadNode:
+  InstanceType: String  # t2.micro
+  SSH:
+    KeyName: String  # ec2-key-name
+  Networking:
+    SubnetId: String
+  Image:
+    Os: alinux2
+Scheduling:
+  Scheduler: awsbatch
+  Queues:
+    - Name: queue1
+    queue1:
+      Networking:
+        SubnetIds:
+          - subnet-xxx
+          - subnet-xxx
+      ComputeResources:
+        - InstanceType: c4.xlarge,c5.large|optimal|c5,c4
+          MaxvCpus: 10
+SharedStorage:
+  - MountDir: /shared
+    Type: EBS
+    Settings:

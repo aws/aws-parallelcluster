@@ -15,8 +15,9 @@ import logging
 import os
 
 import argparse
-from common import PARTITION_TO_MAIN_REGION, PARTITIONS, retrieve_sts_credentials
 from s3_factory import S3DocumentManager
+
+from common import PARTITION_TO_MAIN_REGION, PARTITIONS, retrieve_sts_credentials
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 

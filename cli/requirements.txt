@@ -6,3 +6,6 @@ enum34>=1.1.6
 configparser>=3.5.0
 PyYAML>=5.3.1
 jinja2>=2.11.0
+marshmallow
+aws-cdk.core
+aws-cdk.aws-ec2

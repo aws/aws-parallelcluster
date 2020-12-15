@@ -22,10 +22,11 @@ from urllib.request import urlopen
 import argparse
 import boto3
 from botocore.exceptions import ClientError, EndpointConnectionError
-from common import FILE_TO_S3_PATH, generate_rollback_data, get_aws_regions, retrieve_sts_credentials
 from jsonschema import validate
 from rollback_s3_objects import execute_rollback
 from s3_factory import S3DocumentManager
+
+from common import FILE_TO_S3_PATH, generate_rollback_data, get_aws_regions, retrieve_sts_credentials
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(name)s] %(message)s")
 
