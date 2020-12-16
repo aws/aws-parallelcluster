@@ -137,12 +137,12 @@ dcv:
       # DCV on GPU enabled instance
       - regions: ["eu-west-1"]
         instances: ["g3.8xlarge"]
-        oss: ["alinux2", "centos7", "ubuntu1804"]
+        oss: ["alinux2", "centos7", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV on ARM
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2", "ubuntu1804"]
+        oss: ["alinux2", "centos8", "ubuntu1804"]
         schedulers: ["slurm"]
       # DCV in cn regions and non GPU enabled instance
       - regions: ["cn-northwest-1"]
