@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Effect": "Allow",
+      "Resource": "arn:{{ partition }}:logs:*:*:*",
+      "Sid": "CloudWatchLogsPolicy"
+    },
+    {
+      "Action": [
+        "ecr:BatchDeleteImage",
+        "ecr:ListImages"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "ECRPolicy"
+    },
+    {
+      "Action": [
+        "codebuild:BatchGetBuilds",
+        "codebuild:StartBuild"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "CodeBuildPolicy"
+    },
+    {
+      "Action": [
+        "s3:DeleteBucket",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:ListBucket",
+        "s3:ListBucketVersions"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Sid": "S3BucketPolicy"
+    }
+  ]
+}

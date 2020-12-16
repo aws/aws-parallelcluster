@@ -108,8 +108,8 @@ test-suites:
           instances: ["c5n.18xlarge"]
           oss: ["alinux2"]
           schedulers: ["slurm"]
-  iam_policies:
-    test_iam_policies.py::test_iam_policies:
+  iam:
+    test_iam.py::test_iam_policies:
       dimensions:
         - regions: {{ NEW_REGION }}
           instances: {{ common.INSTANCES_DEFAULT_X86 }}

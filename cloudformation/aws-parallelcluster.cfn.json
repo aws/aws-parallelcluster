@@ -285,6 +285,11 @@
       "Type": "CommaDelimitedList",
       "Default": "NONE"
     },
+    "IAMLambdaRoleName": {
+      "Description": "Existing IAM role name for Lambda functions",
+      "Type": "String",
+      "Default": "NONE"
+    },
     "VPCSecurityGroupId": {
       "Description": "Existing VPC security group Id",
       "Type": "String",
@@ -656,6 +661,14 @@
       "Fn::Equals": [
         {
           "Ref": "EC2IAMRoleName"
+        },
+        "NONE"
+      ]
+    },
+    "CreateIAMLambdaRole": {
+      "Fn::Equals": [
+        {
+          "Ref": "IAMLambdaRoleName"
         },
         "NONE"
       ]
@@ -2350,6 +2363,9 @@
               "MasterServerSubstack",
               "Outputs.MasterPrivateIP"
             ]
+          },
+          "IAMLambdaRoleName": {
+            "Ref": "IAMLambdaRoleName"
           }
         },
         "TemplateURL": {
@@ -2510,7 +2526,8 @@
             "PolicyName": "LambdaPolicy"
           }
         ]
-      }
+      },
+      "Condition": "CreateIAMLambdaRole"
     },
     "CleanupResourcesS3BucketCustomResource": {
       "Type": "AWS::CloudFormation::CustomResource",
@@ -2587,9 +2604,17 @@
         "Handler": "cleanup_resources.handler",
         "MemorySize": 128,
         "Role": {
-          "Fn::GetAtt": [
-            "CleanupResourcesFunctionExecutionRole",
-            "Arn"
+          "Fn::If": [
+            "CreateIAMLambdaRole",
+            {
+              "Fn::GetAtt": [
+                "CleanupResourcesFunctionExecutionRole",
+                "Arn"
+              ]
+            },
+            {
+              "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${IAMLambdaRoleName}"
+            }
           ]
         },
         "Runtime": "python3.8",
@@ -3962,6 +3987,9 @@
                 "Ref": "RootRole"
               }
             ]
+          },
+          "IAMLambdaRoleName": {
+            "Ref": "IAMLambdaRoleName"
           },
           "ResourcesS3Bucket": {
             "Ref": "ResourcesS3Bucket"

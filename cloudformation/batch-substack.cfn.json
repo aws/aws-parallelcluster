@@ -99,6 +99,10 @@
     "MasterPrivateIP": {
       "Description": "Private IP of the head node",
       "Type": "String"
+    },
+    "IAMLambdaRoleName": {
+      "Description": "Existing IAM role name for Lambda functions",
+      "Type": "String"
     }
   },
   "Conditions": {
@@ -116,6 +120,14 @@
           "Ref": "Architecture"
         },
         "arm64"
+      ]
+    },
+    "CreateIAMLambdaRole": {
+      "Fn::Equals": [
+        {
+          "Ref": "IAMLambdaRoleName"
+        },
+        "NONE"
       ]
     }
   },
@@ -821,9 +833,17 @@
         "Handler": "manage_docker_images.handler",
         "MemorySize": 128,
         "Role": {
-          "Fn::GetAtt": [
-            "ManageDockerImagesFunctionExecutionRole",
-            "Arn"
+          "Fn::If": [
+            "CreateIAMLambdaRole",
+            {
+              "Fn::GetAtt": [
+                "ManageDockerImagesFunctionExecutionRole",
+                "Arn"
+              ]
+            },
+            {
+              "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${IAMLambdaRoleName}"
+            }
           ]
         },
         "Runtime": "python3.6",
@@ -897,7 +917,8 @@
             "PolicyName": "LambdaPolicy"
           }
         ]
-      }
+      },
+      "Condition": "CreateIAMLambdaRole"
     },
     "DockerBuildWaitHandle": {
       "Type": "AWS::CloudFormation::WaitConditionHandle",
@@ -952,7 +973,8 @@
             "PolicyName": "LambdaPolicy"
           }
         ]
-      }
+      },
+      "Condition": "CreateIAMLambdaRole"
     },
     "SendBuildNotificationFunction": {
       "Type": "AWS::Lambda::Function",
@@ -971,9 +993,17 @@
         "Handler": "send_build_notification.handler",
         "MemorySize": 128,
         "Role": {
-          "Fn::GetAtt": [
-            "SendBuildNotificationFunctionExecutionRole",
-            "Arn"
+          "Fn::If": [
+            "CreateIAMLambdaRole",
+            {
+              "Fn::GetAtt": [
+                "SendBuildNotificationFunctionExecutionRole",
+                "Arn"
+              ]
+            },
+            {
+              "Fn::Sub": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${IAMLambdaRoleName}"
+            }
           ]
         },
         "Runtime": "python3.6",

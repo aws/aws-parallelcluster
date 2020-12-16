@@ -1007,6 +1007,10 @@ CLUSTER_COMMON_PARAMS = [
         "validators": [s3_bucket_validator],
         "update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET,
     }),
+    ("iam_lambda_role", {
+        "cfn_param_mapping": "IAMLambdaRoleName",
+        "update_policy": UpdatePolicy.SUPPORTED,
+    }),
 ]
 
 
