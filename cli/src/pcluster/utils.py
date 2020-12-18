@@ -1270,9 +1270,21 @@ class InstanceTypeInfo:
     def gpu_count(self):
         """Return the number of GPUs for the instance."""
         gpu_info = self.instance_type_data.get("GpuInfo", None)
-        # Currently adding up all gpus. To be reviewed if the case of heterogeneous GPUs arises.
-        gpus = sum([gpus.get("Count") for gpus in gpu_info.get("Gpus")]) if gpu_info else 0
-        return gpus
+
+        gpu_count = 0
+        if gpu_info:
+            for gpus in gpu_info.get("Gpus", []):
+                gpu_manufacturer = gpus.get("Manufacturer", "")
+                if gpu_manufacturer.upper() == "NVIDIA":
+                    gpu_count += gpus.get("Count", 0)
+                else:
+                    warn(
+                        "ParallelCluster currently does not offer native support for '{0}' GPUs. "
+                        "Please make sure to use a custom AMI with the appropriate drivers in order to leverage "
+                        "GPUs functionalities".format(gpu_manufacturer)
+                    )
+
+        return gpu_count
 
     def max_network_interface_count(self):
         """Max number of NICs for the instance."""
