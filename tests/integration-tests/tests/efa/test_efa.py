@@ -111,13 +111,13 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
     # Check if EFA interface is on compute node
     result = remote_command_executor.run_remote_command("cat /shared/lspci.out")
     if efa_installed:
-        assert_that(result.stdout).contains("1d0f:efa0")
+        assert_that(result.stdout).contains("1d0f:efa")
     else:
-        assert_that(result.stdout).does_not_contain("1d0f:efa0")
+        assert_that(result.stdout).does_not_contain("1d0f:efa")
 
     # Check EFA interface not present on head node
     result = remote_command_executor.run_remote_command("lspci -n")
-    assert_that(result.stdout).does_not_contain("1d0f:efa0")
+    assert_that(result.stdout).does_not_contain("1d0f:efa")
 
 
 def _test_osu_benchmarks(
