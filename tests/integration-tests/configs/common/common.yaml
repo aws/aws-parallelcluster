@@ -209,7 +209,7 @@ efa:
         schedulers: ["slurm"]
       - regions: ["us-west-2"]
         instances: ["c6gn.16xlarge"]
-        oss: ["alinux2", "ubuntu1604"]
+        oss: ["alinux2", "ubuntu1804"]
         schedulers: ["slurm"]
   test_efa.py::test_sit_efa:
     dimensions:
