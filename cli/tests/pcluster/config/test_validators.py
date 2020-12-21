@@ -698,14 +698,14 @@ def test_efs_validator(mocker, section_dict, expected_message):
         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
         (
             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
         ),
         (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
-            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
         ),
         (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
             "IOPS to volume size ratio of .* is too high",
         ),
         ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),
@@ -2449,7 +2449,7 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
         ({"volume_type": "io2", "volume_size": 15}, None),
         ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
-        ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "io2", "volume_size": 65537}, "The size of io2 volumes can not exceed 65536 GiB"),
         ({"volume_type": "gp2", "volume_size": 15}, None),
         ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
         ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
@@ -2493,14 +2493,14 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
         (
             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
         ),
         (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
-            "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
         ),
         (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
             "IOPS to volume size ratio of .* is too high",
         ),
         ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),

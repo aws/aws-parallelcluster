@@ -76,7 +76,7 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "standard": (1, 1024),
     "io1": (4, 16 * 1024),
-    "io2": (4, 16 * 1024),
+    "io2": (4, 64 * 1024),
     "gp2": (1, 16 * 1024),
     "gp3": (1, 16 * 1024),
     "st1": (500, 16 * 1024),
@@ -85,7 +85,7 @@ EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
 
 EBS_VOLUME_IOPS_BOUNDS = {
     "io1": (100, 64000),
-    "io2": (100, 64000),
+    "io2": (100, 256000),
     "gp3": (3000, 16000),
 }
 
@@ -1360,7 +1360,7 @@ def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
     section = pcluster_config.get_section(section_key, section_label)
     volume_size = section.get_param_value("volume_size")
     volume_type = section.get_param_value("volume_type")
-    volume_type_to_iops_ratio = {"io1": 50, "io2": 500, "gp3": 500}
+    volume_type_to_iops_ratio = {"io1": 50, "io2": 1000, "gp3": 500}
     volume_iops = section.get_param_value("volume_iops")
 
     if volume_type in EBS_VOLUME_IOPS_BOUNDS:
