@@ -8,7 +8,7 @@ CHANGELOG
 
 - Add support for me-south-1 region (Bahrein), af-south-1 region (Cape Town) and eu-south-1 region (Milan)
   - At the time of this version launch:
-    - AWS Lustre and ARM instance type are not supported in me-south-1, af-south-1 and eu-south-1  
+    - Amazon FSx for Lustre and ARM instance types are not supported in me-south-1, af-south-1 and eu-south-1
     - AWS Batch is not supported in af-south-1
     - EBS io2 is not supported in af-south-1 and eu-south-1
 - Install Arm Performance Libraries (APL) 20.2.1 on ARM AMIs (CentOS8, Alinux2, Ubuntu1804).
