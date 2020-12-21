@@ -1,0 +1,74 @@
+name: ParallelCluster CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        name:
+          - Python 2.7 Tests
+          - Python 3.4 Tests
+          - Python 3.5 Tests
+          - Python 3.6 Tests
+          - Python 3.7 Tests
+          - Python 3.8 Tests
+          - Python 3.9 Tests
+          - Python 3.8 Tests Coverage
+          - Code Checks
+          - CloudFormation Templates Checks
+        include:
+          - name: Python 2.7 Tests
+            python: 2.7
+            toxdir: cli
+            toxenv: py27-nocov
+          - name: Python 3.4 Tests
+            python: 3.4
+            toxdir: cli
+            toxenv: py34-nocov
+          - name: Python 3.5 Tests
+            python: 3.5
+            toxdir: cli
+            toxenv: py35-nocov
+          - name: Python 3.6 Tests
+            python: 3.6
+            toxdir: cli
+            toxenv: py36-nocov
+          - name: Python 3.7 Tests
+            python: 3.7
+            toxdir: cli
+            toxenv: py37-nocov
+          - name: Python 3.8 Tests
+            python: 3.8
+            toxdir: cli
+            toxenv: py38-nocov
+          - name: Python 3.9 Tests
+            python: 3.9
+            toxdir: cli
+            toxenv: py39-nocov
+          - name: Python 3.8 Tests Coverage
+            python: 3.8
+            toxdir: cli
+            toxenv: py38-cov
+          - name: Code Checks
+            python: 3.6
+            toxdir: cli
+            toxenv: code-linters
+          - name: CloudFormation Templates Checks
+            python: 3.6
+            toxdir: tests/integration-tests
+            toxenv: cfn-format-check,cfn-lint,cfn-tests
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Install Tox and any other packages
+        run: pip install tox
+      - name: Run Tox
+        run: cd ${{ matrix.toxdir }} && tox -e ${{ matrix.toxenv }}
