@@ -10,35 +10,49 @@ CHANGELOG
   - At the time of this version launch:
     - AWS Lustre and ARM instance type are not supported in me-south-1, af-south-1 and eu-south-1  
     - AWS Batch is not supported in af-south-1
-    - EBS io2 is not supported in af-south-1 and eu-south-1 
-- Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the possibility of job
-  failures due to CloudFormation throttling.
-- Install EFA kernel module also on ARM instances with `alinux2` and `ubuntu1804`
+    - EBS io2 is not supported in af-south-1 and eu-south-1
+- Install Arm Performance Libraries (APL) 20.2.1 on ARM AMIs (CentOS8, Alinux2, Ubuntu1804).
+- Install EFA kernel module on ARM instances with `alinux2` and `ubuntu1804`. This enables support for `c6gn` instances.
+- Add support for io2 and gp3 EBS volume type.
 - Add `iam_lambda_role` parameter under `cluster` section to enable the possibility to specify an existing IAM role to 
   be used by AWS Lambda functions in CloudFormation. 
   When using `sge`, `torque`, or `slurm` as the scheduler, 
   `pcluster` will not create any IAM role if both `ec2_iam_role` and `iam_lambda_role` are provided.
-- Add support for io2 and gp3 EBS volume type.
+- Improve robustness of a Slurm cluster when clustermgtd is down.
+- Configure NFS threads to be max(8, num_cores) for performance. This enhancement will not take effect on Ubuntu 16.04.
+- Optimize calls to DescribeInstanceTypes EC2 API when validating cluster configuration. 
 
 **CHANGES**
 
-- Pull Amazon Linux Docker images from ECR when building docker image for `awsbatch` scheduler. 
-- Use inclusive language in user facing messages and internal naming convention.
-- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
-  (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
-- Enable support for p4d as head node instance type. (p4d was already supported as compute node in 2.10.0)
-- Upgrade EFA installer to version 1.11.0
+- Upgrade EFA installer to version 1.11.0.
   - EFA configuration: ``efa-config-1.6`` (from efa-config-1.5)
   - EFA profile: ``efa-profile-1.2`` (from efa-profile-1.1)
   - EFA kernel module: ``efa-1.10.2`` (no change)
   - RDMA core: ``rdma-core-31.2amzn`` (from rdma-core-31.amzn0)
   - Libfabric: ``libfabric-1.11.1amzn1.0`` (from libfabric-1.11.1amzn1.1)
   - Open MPI: ``openmpi40-aws-4.0.5`` (no change)
+- Upgrade Intel MPI to version U8.
+- Upgrade NICE DCV to version 2020.2-9662.
+- Set default systemd runlevel to multi-user.target on all OSes during ParallelCluster official AMI creation.
+  The runlevel is set to graphical.target on head node only when DCV is enabled. This prevents the execution of
+  graphical services, such as x/gdm, when they are not required.
+- Download Intel MPI and HPC packages from S3 rather than Intel yum repos.
+- Change the default of instance types from the hardcoded `t2.micro` to the free tier instance type 
+    (`t2.micro` or `t3.micro` dependent on region). In regions without free tier, the default is `t3.micro`.
+- Enable support for p4d as head node instance type (p4d was already supported as compute node in 2.10.0).
+- Pull Amazon Linux Docker images from public ECR when building docker image for `awsbatch` scheduler.
+- Increase max retry attempts when registering Slurm nodes in Route53.
 
 **BUG FIXES**
 
+- Fix pcluster createami for Ubuntu 1804 by downloading SGE sources from Debian repository and not from the EOL
+  Ubuntu 19.10.
+- Remove CloudFormation DescribeStacks API call from AWS Batch Docker entrypoint. This removes the risk of job
+  failures due to CloudFormation throttling.
 - Mandate the presence of `vpc_settings`, `vpc_id`, `master_subnet_id` in the config file to avoid unhandled exceptions.
 - Set the default EBS volume size to 500 GiB when volume type is `st1` or `sc1`.
+- Fix installation of Intel PSXE package on CentOS 7 by using yum4.
+- Fix routing issues with multiple Network Interfaces on Ubuntu 18.04.
   
 2.10.0
 ------
