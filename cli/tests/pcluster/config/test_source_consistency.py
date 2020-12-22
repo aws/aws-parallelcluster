@@ -16,7 +16,6 @@ from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import ALIASES, AWS, CLUSTER_SIT, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC
-from pcluster.config.pcluster_config import PclusterConfig
 from tests.pcluster.config.defaults import CFN_CLI_RESERVED_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultCfnParams
 
 EXISTING_SECTIONS = [ALIASES, AWS, CLUSTER_SIT, CW_LOG, DCV, EBS, EFS, FSX, GLOBAL, RAID, SCALING, VPC]
@@ -68,23 +67,6 @@ def test_mapping_consistency():
                 ).is_not_none()
 
 
-def test_example_config_consistency(mocker):
-    """Validate example file and try to convert to CFN."""
-    mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
-    mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
-    )
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
-    pcluster_config = PclusterConfig(config_file=utils.get_pcluster_config_example(), fail_on_file_absence=True)
-
-    cfn_params = pcluster_config.to_cfn()
-
-    assert_that(len(cfn_params)).is_equal_to(utils.get_cfn_config_num_of_params(pcluster_config))
-
-    # for param_key, param_value in expected_cfn_params.items():
-    # assert_that(cfn_params.get(param_key)).is_equal_to(expected_cfn_params.get(param_key))
-
-
 def test_defaults_consistency():
     """Verifies that the defaults values for the CFN parameters used in the tests are the same in the CFN template."""
     template_num_of_params = _get_pcluster_cfn_num_of_params()
@@ -105,6 +87,10 @@ def test_defaults_consistency():
     # ClusterConfigMetadata parameter is expected to differ from the default value in the CFN template because config
     # metadata is generated dynamically based on user's configuration.
     ignored_params += ["ClusterConfigMetadata"]
+
+    # ComputeInstanceType parameter is expected to differ from the default value in the CFN template because
+    # it is dynamically generated based on the AWS region
+    ignored_params += ["ComputeInstanceType"]
 
     cfn_params = [section_cfn_params.value for section_cfn_params in DefaultCfnParams]
     default_cfn_values = utils.merge_dicts(*cfn_params)

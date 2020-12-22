@@ -29,6 +29,7 @@ from pcluster.config.validators import (
     compute_resource_validator,
     disable_hyperthreading_architecture_validator,
     efa_gdr_validator,
+    efa_os_arch_validator,
     fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
@@ -87,9 +88,7 @@ def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
-@pytest.mark.parametrize(
-    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("p4d.24xlarge", "is not supported")]
-)
+@pytest.mark.parametrize("instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None)])
 def test_head_node_instance_type_validator(mocker, instance_type, expected_message):
     config_parser_dict = {"cluster default": {"master_instance_type": instance_type}}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
@@ -113,7 +112,9 @@ def test_head_node_instance_type_validator(mocker, instance_type, expected_messa
 def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message, expected_warnings):
     config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
     extra_patches = {
-        "pcluster.config.validators.get_instance_network_interfaces": 4 if instance_type == "p4d.24xlarge" else 1,
+        "pcluster.config.validators.InstanceTypeInfo.max_network_interface_count": 4
+        if instance_type == "p4d.24xlarge"
+        else 1,
     }
     utils.assert_param_validator(
         mocker, config_parser_dict, expected_message, expected_warnings, extra_patches=extra_patches
@@ -145,12 +146,12 @@ def test_ec2_key_pair_validator(mocker, boto3_stubber):
         (
             "arm64",
             None,
-            "incompatible with the architecture supported by the instance type chosen for the master server",
+            "incompatible with the architecture supported by the instance type chosen for the head node",
         ),
         (
             "arm64",
             "Unable to get information for AMI",
-            "incompatible with the architecture supported by the instance type chosen for the master server",
+            "incompatible with the architecture supported by the instance type chosen for the head node",
         ),
     ],
 )
@@ -684,15 +685,42 @@ def test_efs_validator(mocker, section_dict, expected_message):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        # Testing iops validator
-        ({"volume_iops": 1, "volume_size": 1}, None),
-        ({"volume_iops": 51, "volume_size": 1}, "IOPS to volume size ratio of .* is too hig"),
-        ({"volume_iops": 1, "volume_size": 20}, None),
-        ({"volume_iops": 1001, "volume_size": 20}, "IOPS to volume size ratio of .* is too hig"),
-        # Testing shared_dir validator
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/raid"}, None),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        (
+            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
+            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
+        ),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too high"),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
+            "IOPS to volume size ratio of .* is too high",
+        ),
+        ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 2900},
+            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
+        ),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 16001},
+            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
+        ),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 10001},
+            "IOPS to volume size ratio of .* is too high",
+        ),
     ],
 )
 def test_raid_validators(mocker, section_dict, expected_message):
@@ -2010,7 +2038,11 @@ def test_compute_resource_validator(mocker, section_dict, expected_message):
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.max_network_interface_count.return_value = 1
     mocker.patch("pcluster.config.validators.get_supported_architectures_for_instance_type", return_value=["x86_64"])
 
     pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)
@@ -2194,7 +2226,7 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
 
 
 @pytest.mark.parametrize(
-    "master_architecture, compute_architecture, compute_instance_type, expected_message",
+    "head_node_architecture, compute_architecture, compute_instance_type, expected_message",
     [
         # Single compute_instance_type
         ("x86_64", "x86_64", "c5.xlarge", []),
@@ -2227,7 +2259,7 @@ def test_disable_hyperthreading_architecture_validator(mocker, disable_hyperthre
     ],
 )
 def test_instances_architecture_compatibility_validator(
-    mocker, caplog, master_architecture, compute_architecture, compute_instance_type, expected_message
+    mocker, caplog, head_node_architecture, compute_architecture, compute_instance_type, expected_message
 ):
     def internal_is_instance_type(itype):
         return "." in itype or itype == "optimal"
@@ -2241,7 +2273,7 @@ def test_instances_architecture_compatibility_validator(
     logger_patch = mocker.patch.object(LOGFILE_LOGGER, "debug")
     run_architecture_validator_test(
         mocker,
-        {"cluster": {"architecture": master_architecture}},
+        {"cluster": {"architecture": head_node_architecture}},
         "cluster",
         "architecture",
         "compute_instance_type",
@@ -2415,13 +2447,15 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         ({"volume_type": "io1", "volume_size": 15}, None),
         ({"volume_type": "io1", "volume_size": 3}, "The size of io1 volumes must be at least 4 GiB"),
         ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
-        # TODO Uncomment these lines after adding support for io2 volume types
-        # ({"volume_type": "io2", "volume_size": 15}, None),
-        # ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
-        # ({"volume_type": "io2", "volume_size": 16385}, "The size of io2 volumes must be at most 16384 GiB"),
+        ({"volume_type": "io2", "volume_size": 15}, None),
+        ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
+        ({"volume_type": "io2", "volume_size": 65537}, "The size of io2 volumes can not exceed 65536 GiB"),
         ({"volume_type": "gp2", "volume_size": 15}, None),
         ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
         ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
+        ({"volume_type": "gp3", "volume_size": 15}, None),
+        ({"volume_type": "gp3", "volume_size": 0}, "The size of gp3 volumes must be at least 1 GiB"),
+        ({"volume_type": "gp3", "volume_size": 16385}, "The size of gp3 volumes can not exceed 16384 GiB"),
         ({"volume_type": "st1", "volume_size": 500}, None),
         ({"volume_type": "st1", "volume_size": 20}, "The size of st1 volumes must be at least 500 GiB"),
         ({"volume_type": "st1", "volume_size": 16385}, "The size of st1 volumes can not exceed 16384 GiB"),
@@ -2455,19 +2489,33 @@ def test_ebs_allowed_values_all_have_volume_size_bounds():
             {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
             "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
         ),
-        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too hig"),
-        # TODO Uncomment these lines after adding support for io2 volume types
-        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
-        #         (
-        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
-        #         ),
-        #         (
-        #             {"volume_type": "io2", "volume_size": 20, "volume_iops": 64001},
-        #             "IOPS rate must be between 100 and 64000 when provisioning io2 volumes.",
-        #         ),
-        #         ({"volume_type": "io2", "volume_size": 20, "volume_iops": 10001},
-        #         "IOPS to volume size ratio of .* is too hig"),
+        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too high"),
+        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
+            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
+        ),
+        (
+            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
+            "IOPS to volume size ratio of .* is too high",
+        ),
+        ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 2900},
+            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
+        ),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 16001},
+            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
+        ),
+        (
+            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 10001},
+            "IOPS to volume size ratio of .* is too high",
+        ),
     ],
 )
 def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
@@ -2663,3 +2711,63 @@ def test_duplicate_shared_dir_validator(
 def test_extra_json_validator(mocker, capsys, extra_json, expected_message):
     config_parser_dict = {"cluster default": extra_json}
     utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
+
+
+@pytest.mark.parametrize(
+    "cluster_dict, architecture, expected_error",
+    [
+        ({"base_os": "alinux2", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "alinux2", "enable_efa": "compute"}, "arm64", None),
+        ({"base_os": "centos8", "enable_efa": "compute"}, "x86_64", None),
+        (
+            {"base_os": "centos8", "enable_efa": "compute"},
+            "arm64",
+            "EFA currently not supported on centos8 for arm64 architecture",
+        ),
+        ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "arm64", None),
+    ],
+)
+def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_error):
+    mocker.patch(
+        "pcluster.config.cfn_param_types.BaseOSCfnParam.get_instance_type_architecture", return_value=architecture
+    )
+
+    config_parser_dict = {"cluster default": cluster_dict}
+    config_parser = configparser.ConfigParser()
+    config_parser.read_dict(config_parser_dict)
+
+    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False, auto_refresh=False)
+    pcluster_config.get_section("cluster").get_param("architecture").value = architecture
+    enable_efa_value = pcluster_config.get_section("cluster").get_param_value("enable_efa")
+
+    errors, warnings = efa_os_arch_validator("enable_efa", enable_efa_value, pcluster_config)
+    if expected_error:
+        assert_that(errors[0]).matches(expected_error)
+    else:
+        assert_that(errors).is_empty()
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"volume_type": "gp3", "volume_throughput": 125}, None),
+        (
+            {"volume_type": "gp3", "volume_throughput": 100},
+            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
+        ),
+        (
+            {"volume_type": "gp3", "volume_throughput": 1001},
+            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
+        ),
+        ({"volume_type": "gp3", "volume_throughput": 125, "volume_iops": 3000}, None),
+        (
+            {"volume_type": "gp3", "volume_throughput": 760, "volume_iops": 3000},
+            "Throughput to IOPS ratio of .* is too high",
+        ),
+        ({"volume_type": "gp3", "volume_throughput": 760, "volume_iops": 10000}, None),
+    ],
+)
+def test_ebs_volume_throughput_validator(mocker, section_dict, expected_message):
+    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
+    utils.assert_param_validator(mocker, config_parser_dict, expected_message)

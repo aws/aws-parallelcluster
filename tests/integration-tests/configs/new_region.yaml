@@ -1,0 +1,169 @@
+{%- import 'common.jinja2' as common -%}
+{%- set NEW_REGION = ["##PLACEHOLDER##"] -%}
+---
+test-suites:
+  scaling:
+    test_scaling.py::test_multiple_jobs_submission:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: {{ common.SCHEDULERS_TRAD }}
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: {{ common.SCHEDULERS_TRAD }}
+    test_mpi.py::test_mpi:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_COMMERCIAL_X86 }}
+          schedulers: ["slurm", "sge"]
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: {{ common.OSS_COMMERCIAL_ARM }}
+          schedulers: ["slurm", "sge"]
+  schedulers:
+    test_awsbatch.py::test_awsbatch:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_ARM }}
+          oss: ["alinux2"]
+          schedulers: ["awsbatch"]
+  cloudwatch_logging:
+    test_cloudwatch_logging.py::test_cloudwatch_logging:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+  configure:
+    test_pcluster_configure.py::test_pcluster_configure:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: {{ common.OSS_ONE_PER_DISTRO }}
+          schedulers: {{ common.SCHEDULERS_TRAD }}
+  cli_commands:
+    test_cli_commands.py::test_hit_cli_commands:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1604"]
+          schedulers: ["slurm"]
+    test_cli_commands.py::test_sit_cli_commands:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos7"]
+          schedulers: ["sge"]
+  update:
+    test_update.py::test_update_hit:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  createami:
+    test_createami.py::test_createami:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
+  dashboard:
+    test_dashboard.py::test_dashboard:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos8"]
+          schedulers: ["slurm"]
+  dcv:
+    test_dcv.py::test_dcv_configuration:
+      dimensions:
+        # DCV on GPU enabled instance
+        - regions: {{ NEW_REGION }}
+          instances: ["g3.8xlarge"]
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+        # DCV om non GPU enabled instance
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  dns:
+    test_dns.py::test_hit_no_cluster_dns_mpi:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  efa:
+    test_efa.py::test_hit_efa:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: ["c5n.18xlarge"]
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  iam:
+    test_iam.py::test_iam_policies:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  networking:
+    test_cluster_networking.py::test_cluster_in_private_subnet:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["ubuntu1804"]
+          schedulers: ["slurm"]
+    test_networking.py::test_public_network_topology:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+    test_networking.py::test_public_private_network_topology:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+    test_multi_cidr.py::test_multi_cidr:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  spot:
+    test_spot.py::test_spot_default:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["centos8"]
+          schedulers: ["slurm"]
+  storage:
+    test_fsx_lustre.py::test_fsx_lustre:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux"]
+          schedulers: ["slurm"]
+    test_efs.py::test_efs_compute_az:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+    test_ebs.py::test_ebs_multiple:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]
+  resource_bucket:
+    test_resource_bucket.py::test_resource_bucket:
+      dimensions:
+        - regions: {{ NEW_REGION }}
+          instances: {{ common.INSTANCES_DEFAULT_X86 }}
+          oss: ["alinux2"]
+          schedulers: ["slurm"]

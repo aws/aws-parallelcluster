@@ -72,7 +72,7 @@ def test_install_args_quotes(region, pcluster_config_reader, clusters_factory, s
     init_config_file = pcluster_config_reader(bucket_name=bucket_name)
     cluster = clusters_factory(init_config_file)
 
-    # Check master and compute node status
+    # Check head node and compute node status
     _assert_server_status(cluster)
 
 

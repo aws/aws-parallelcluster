@@ -12,6 +12,7 @@
 import os
 import shutil
 import tempfile
+from collections import OrderedDict
 
 import configparser
 import pytest
@@ -22,6 +23,7 @@ from pcluster.cluster_model import ClusterModel
 from pcluster.config.cfn_param_types import CfnParam
 from pcluster.config.param_types import StorageData
 from pcluster.config.pcluster_config import PclusterConfig
+from pcluster.utils import InstanceTypeInfo
 from tests.pcluster.config.defaults import CFN_HIT_CONFIG_NUM_OF_PARAMS, CFN_SIT_CONFIG_NUM_OF_PARAMS, DefaultDict
 
 # List of parameters ignored by default when comparing sections
@@ -46,7 +48,7 @@ def merge_dicts(*args):
 
 def get_pcluster_config_example():
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(current_dir, "..", "..", "..", "pcluster", "examples", "config")
+    return os.path.join(current_dir, "..", "..", "..", "src", "pcluster", "examples", "config")
 
 
 def set_default_values_for_required_cluster_section_params(cluster_section_dict, only_if_not_present=False):
@@ -102,16 +104,20 @@ def assert_param_from_file(
 def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
     """Return mocks for a set of functions that should be mocked by default because they access the network."""
     architectures = ["x86_64"]
-    master_instances = ["t2.micro", "t2.large", "c4.xlarge", "p4d.24xlarge"]
-    compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else master_instances
+    head_node_instances = ["t2.micro", "t2.large", "c4.xlarge", "p4d.24xlarge"]
+    compute_instances = ["t2.micro", "t2.large", "t2", "optimal"] if scheduler == "awsbatch" else head_node_instances
     patches = {
-        "pcluster.config.validators.get_supported_instance_types": master_instances,
+        "pcluster.config.validators.get_supported_instance_types": head_node_instances,
         "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
         "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_availability_zone_of_subnet": "mocked_avail_zone",
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.validators.get_instance_vcpus": 1,
-        "pcluster.config.cfn_param_types.get_instance_network_interfaces": 1,
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type": InstanceTypeInfo(
+            {
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
+            }
+        ),
     }
     if extra_patches:
         patches = merge_dicts(patches, extra_patches)
@@ -126,32 +132,17 @@ def mock_pcluster_config(mocker, scheduler=None, extra_patches=None, patch_funcs
     mocker.patch.object(PclusterConfig, "_PclusterConfig__test_configuration")
 
 
-def mock_get_instance_type(mocker, instance_type="t2.micro"):
+def mock_instance_type_info(mocker, instance_type="t2.micro"):
     mocker.patch(
-        "pcluster.utils.get_instance_type",
-        return_value={
-            "InstanceType": instance_type,
-            "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-            "NetworkInfo": {"EfaSupported": False},
-        },
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
     )
-
-
-def mock_ec2_key_pair(mocker, cluster_section_dict):
-    if cluster_section_dict.get("key_name") is None:
-        cluster_section_dict["key_name"] = "test_key"
-
-        mocker.patch(
-            "pcluster.config.validators._describe_ec2_key_pair",
-            return_value={
-                "KeyPairs": [
-                    {
-                        "KeyFingerprint": "12:bf:7c:56:6c:dd:4f:8c:24:45:75:f1:1b:16:54:89:82:09:a4:26",
-                        "KeyName": "test_key",
-                    }
-                ]
-            },
-        )
 
 
 def assert_param_validator(
@@ -161,7 +152,6 @@ def assert_param_validator(
     capsys=None,
     expected_warning=None,
     extra_patches=None,
-    use_mock_ec2_key_pair=True,
 ):
     config_parser = configparser.ConfigParser()
 
@@ -170,11 +160,10 @@ def assert_param_validator(
     set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
-    mock_ec2_key_pair(mocker, config_parser_dict.get("cluster default"))
     config_parser.read_dict(config_parser_dict)
 
     mock_pcluster_config(mocker, config_parser_dict.get("cluster default").get("scheduler"), extra_patches)
-    mock_get_instance_type(mocker)
+    mock_instance_type_info(mocker)
 
     if expected_error:
         with pytest.raises(SystemExit, match=expected_error):
@@ -355,12 +344,14 @@ def assert_section_params(mocker, pcluster_config_reader, settings_label, expect
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
     )
     mocker.patch(
-        "pcluster.utils.get_instance_type",
-        return_value={
-            "InstanceType": "t2.micro",
-            "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
-            "NetworkInfo": {"EfaSupported": False},
-        },
+        "pcluster.utils.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": "t2.micro",
+                "VCpuInfo": {"DefaultVCpus": 1, "DefaultCores": 1, "DefaultThreadsPerCore": 1},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
     )
     if isinstance(expected_cfn_params, SystemExit):
         with pytest.raises(SystemExit):
@@ -402,8 +393,27 @@ def init_pcluster_config_from_configparser(config_parser, validate=True, auto_re
             config_file=config_file.name, cluster_label="default", fail_on_file_absence=True, auto_refresh=auto_refresh
         )
         if validate:
-            pcluster_config.validate()
+            _validate_config(config_parser, pcluster_config)
     return pcluster_config
+
+
+def _validate_config(config_parser, pcluster_config):
+    """Validate sections and params in config_parser by the order specified in the pcluster_config."""
+    for section_key in pcluster_config.get_section_keys():
+        for section_label in pcluster_config.get_sections(section_key).keys():
+            section_name = section_key + " " + section_label if section_label else section_key
+            if section_name in config_parser.sections():
+                pcluster_config_section = pcluster_config.get_section(section_key, section_label)
+                for validation_func in pcluster_config_section.definition.get("validators", []):
+                    errors, warnings = validation_func(section_key, section_label, pcluster_config)
+                    if errors:
+                        pcluster_config.error(errors)
+                    elif warnings:
+                        pcluster_config.warn(warnings)
+                config_parser_section = OrderedDict(config_parser.items(section_name))
+                for param_key in pcluster_config_section.params:
+                    if param_key in config_parser_section:
+                        pcluster_config_section.get_param(param_key).validate()
 
 
 def duplicate_config_file(dst_config_file, test_datadir):

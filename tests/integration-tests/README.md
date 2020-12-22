@@ -39,7 +39,8 @@ python -m test_runner --help
 usage: test_runner.py [-h] --key-name KEY_NAME --key-path KEY_PATH [-n PARALLELISM] [--sequential] [--credential CREDENTIAL] [--retry-on-failures] [--tests-root-dir TESTS_ROOT_DIR] [-c TESTS_CONFIG]
                       [-i [INSTANCES [INSTANCES ...]]] [-o [OSS [OSS ...]]] [-s [SCHEDULERS [SCHEDULERS ...]]] [-r [REGIONS [REGIONS ...]]] [-f FEATURES [FEATURES ...]] [--show-output]
                       [--reports {html,junitxml,json,cw} [{html,junitxml,json,cw} ...]] [--cw-region CW_REGION] [--cw-namespace CW_NAMESPACE] [--cw-timestamp-day-start] [--output-dir OUTPUT_DIR]
-                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
+                      [--custom-node-url CUSTOM_NODE_URL] [--custom-cookbook-url CUSTOM_COOKBOOK_URL] [--createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL] 
+                      [--createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL] [--custom-template-url CUSTOM_TEMPLATE_URL]
                       [--custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL] [--custom-awsbatchcli-url CUSTOM_AWSBATCHCLI_URL] [--custom-ami CUSTOM_AMI] [--pre-install PRE_INSTALL] [--post-install POST_INSTALL]
                       [--benchmarks] [--benchmarks-target-capacity BENCHMARKS_TARGET_CAPACITY] [--benchmarks-max-time BENCHMARKS_MAX_TIME] [--vpc-stack VPC_STACK] [--cluster CLUSTER] [--no-delete]
                       [--keep-logs-on-cluster-failure] [--keep-logs-on-test-failure] [--stackname-suffix STACKNAME_SUFFIX] [--dry-run]
@@ -98,6 +99,8 @@ Custom packages and templates:
                         URL to a custom cookbook package. (default: None)
   --createami-custom-cookbook-url CREATEAMI_CUSTOM_COOKBOOK_URL
                         URL to a custom cookbook package for the createami command. (default: None)
+  --createami-custom-node-url CREATEAMI_CUSTOM_NODE_URL
+                        URL to a custom node package for the createami command. (default: None)
   --custom-template-url CUSTOM_TEMPLATE_URL
                         URL to a custom cfn template. (default: None)
   --custom-hit-template-url CUSTOM_HIT_TEMPLATE_URL
@@ -226,7 +229,6 @@ cloudwatch_logging suite defined above will produce the following parametrizatio
 ```
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-alinux2-slurm]
-cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos6-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-centos7-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1604-slurm]
 cloudwatch_logging/test_cloudwatch_logging.py::test_cloudwatch_logging[ap-east-1-c5.xlarge-ubuntu1804-slurm]
@@ -704,7 +706,7 @@ included the CloudFormation stack outputs.
 
 ### Execute Remote Commands
 
-To execute remote commands or scripts on the Master instance of the cluster under test, the `RemoteCommandExecutor`
+To execute remote commands or scripts on the head node of the cluster under test, the `RemoteCommandExecutor`
 class can be used. It simply requires a valid `Cluster` object to be initialized and it offers some utility
 methods to execute remote commands and scripts as shown in the example below:
 

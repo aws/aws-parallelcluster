@@ -57,7 +57,7 @@ def _convert_and_assert_file_content(
 
     mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet")
     mocker.patch("pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type")
-    mocker.patch("pcluster.config.json_param_types.utils.get_instance_type")
+    mocker.patch("pcluster.config.json_param_types.utils.InstanceTypeInfo.init_from_instance_type")
 
     original_default_region = os.environ.get("AWS_DEFAULT_REGION")
     if original_default_region:

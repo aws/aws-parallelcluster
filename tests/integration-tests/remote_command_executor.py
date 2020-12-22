@@ -25,18 +25,18 @@ class RemoteCommandExecutionError(Exception):
 
 
 class RemoteCommandExecutor:
-    """Execute remote commands on the cluster master node."""
+    """Execute remote commands on the cluster head node."""
 
     def __init__(self, cluster, username=None):
         if not username:
             username = get_username_for_os(cluster.os)
         self.__connection = Connection(
-            host=cluster.master_ip,
+            host=cluster.head_node_ip,
             user=username,
             forward_agent=False,
             connect_kwargs={"key_filename": [cluster.ssh_key]},
         )
-        self.__user_at_hostname = "{0}@{1}".format(username, cluster.master_ip)
+        self.__user_at_hostname = "{0}@{1}".format(username, cluster.head_node_ip)
 
     def __del__(self):
         try:
@@ -57,7 +57,7 @@ class RemoteCommandExecutor:
         timeout=None,
     ):
         """
-        Execute remote command on the cluster master node.
+        Execute remote command on the cluster head node.
 
         :param command: command to execute.
         :param log_error: log errors.
@@ -95,9 +95,9 @@ class RemoteCommandExecutor:
         self, script_file, args=None, log_error=True, additional_files=None, hide=False, timeout=None, run_as_root=False
     ):
         """
-        Execute a script remotely on the cluster master node.
+        Execute a script remotely on the cluster head node.
 
-        Script is copied to the master home dir before being executed.
+        Script is copied to the head node home dir before being executed.
         :param script_file: local path to the script to execute remotely.
         :param args: args to pass to the script when invoked.
         :param log_error: log errors.

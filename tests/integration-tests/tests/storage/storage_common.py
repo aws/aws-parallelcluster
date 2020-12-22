@@ -13,13 +13,13 @@ from utils import random_alphanumeric
 
 
 def verify_directory_correctly_shared(remote_command_executor, mount_dir, scheduler_commands):
-    master_file = random_alphanumeric()
+    head_node_file = random_alphanumeric()
     compute_file = random_alphanumeric()
     remote_command_executor.run_remote_command(
-        "touch {mount_dir}/{master_file}".format(mount_dir=mount_dir, master_file=master_file)
+        "touch {mount_dir}/{head_node_file}".format(mount_dir=mount_dir, head_node_file=head_node_file)
     )
-    job_command = "cat {mount_dir}/{master_file} && touch {mount_dir}/{compute_file}".format(
-        mount_dir=mount_dir, master_file=master_file, compute_file=compute_file
+    job_command = "cat {mount_dir}/{head_node_file} && touch {mount_dir}/{compute_file}".format(
+        mount_dir=mount_dir, head_node_file=head_node_file, compute_file=compute_file
     )
 
     result = scheduler_commands.submit_command(job_command)

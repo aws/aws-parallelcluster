@@ -30,7 +30,7 @@ def test_get_default_createami_instance_type(
 ):
     """Verify that the function to select default instance types for the createami command behaves as expected."""
     instance_type_info_patch = mocker.patch(
-        "pcluster.createami.utils.get_instance_types_info",
+        "pcluster.createami.utils.InstanceTypeInfo.init_from_instance_type",
         side_effect=SystemExit(instance_info_err) if instance_info_err else None,
     )
     logger_error_patch = mocker.patch("pcluster.createami.LOGGER.error")
@@ -56,7 +56,7 @@ def test_get_default_createami_instance_type(
         with pytest.raises(SystemExit) as sysexit:
             createami._get_default_createami_instance_type(ami_architecture)
         assert_that(sysexit.value.code).is_not_equal_to(0)
-        instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
+        instance_type_info_patch.assert_called_with(expected_default_instance_type)
 
         if instance_unavailable_in_region:
             assert_that(logger_error_patch.call_count).is_equal_to(1)
@@ -65,7 +65,7 @@ def test_get_default_createami_instance_type(
         assert_that(createami._get_default_createami_instance_type(ami_architecture)).is_equal_to(
             expected_default_instance_type
         )
-        instance_type_info_patch.assert_called_with([expected_default_instance_type], fail_on_error=True)
+        instance_type_info_patch.assert_called_with(expected_default_instance_type)
 
 
 @pytest.mark.parametrize(

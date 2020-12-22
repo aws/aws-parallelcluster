@@ -12,11 +12,16 @@
 import os as operating_system
 import re
 
-import boto3
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
-from utils import add_keys_to_known_hosts, get_username_for_os, remove_keys_from_known_hosts, run_command
+from utils import (
+    add_keys_to_known_hosts,
+    check_headnode_security_group,
+    get_username_for_os,
+    remove_keys_from_known_hosts,
+    run_command,
+)
 
 from tests.cloudwatch_logging.test_cloudwatch_logging import FeatureSpecificCloudWatchLoggingTestRunner
 
@@ -106,7 +111,7 @@ def _test_dcv_configuration(
     remote_command_executor = RemoteCommandExecutor(cluster)
 
     # check configuration parameters
-    _check_security_group(region, cluster, dcv_port, expected_cidr=access_from)
+    check_headnode_security_group(region, cluster, dcv_port, expected_cidr=access_from)
 
     # dcv connect show url
     env = operating_system.environ.copy()
@@ -114,13 +119,13 @@ def _test_dcv_configuration(
 
     # add ssh key to jenkins user known hosts file to avoid ssh keychecking prompt
     host_keys_file = operating_system.path.expanduser("~/.ssh/known_hosts")
-    add_keys_to_known_hosts(cluster.master_ip, host_keys_file)
+    add_keys_to_known_hosts(cluster.head_node_ip, host_keys_file)
 
     try:
         result = run_command(["pcluster", "dcv", "connect", cluster.name, "--show-url"], env=env)
     finally:
         # remove ssh key from jenkins user known hosts file
-        remove_keys_from_known_hosts(cluster.master_ip, host_keys_file, env=env)
+        remove_keys_from_known_hosts(cluster.head_node_ip, host_keys_file, env=env)
 
     assert_that(result.stdout).matches(
         r"Please use the following one-time URL in your browser within 30 seconds:\n"
@@ -196,15 +201,6 @@ def _check_auth_ok(remote_command_executor, external_authenticator_port, session
             f"-d sessionId={session_id} -d authenticationToken={session_token} -d clientAddr=someIp"
         ).stdout
     ).is_equal_to('<auth result="yes"><username>{0}</username></auth>'.format(username))
-
-
-def _check_security_group(region, cluster, port, expected_cidr):
-    security_group_id = cluster.cfn_resources.get("MasterSecurityGroup")
-    response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
-
-    ips = response["SecurityGroups"][0]["IpPermissions"]
-    target = next(filter(lambda x: x.get("FromPort", -1) == port, ips), {})
-    assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
 
 
 def _check_no_crashes(remote_command_executor, test_datadir):

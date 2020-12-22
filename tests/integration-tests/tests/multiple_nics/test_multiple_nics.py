@@ -27,7 +27,7 @@ def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_facto
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 
-    _test_master_node_nics(remote_command_executor, region)
+    _test_head_node_nics(remote_command_executor, region)
     _test_compute_node_nics(cluster, region, remote_command_executor, scheduler_commands)
 
 
@@ -40,16 +40,16 @@ def _get_private_ip_addresses(instance_id, region, remote_command_executor):
     return result.stdout.strip().split("\n")
 
 
-def _test_master_node_nics(remote_command_executor, region):
-    # On the master node we just check that all the private IPs have been assigned to NICs
-    master_instance_id = remote_command_executor.run_remote_command(
+def _test_head_node_nics(remote_command_executor, region):
+    # On the head node we just check that all the private IPs have been assigned to NICs
+    head_node_instance_id = remote_command_executor.run_remote_command(
         "curl http://169.254.169.254/latest/meta-data/instance-id"
     ).stdout
 
-    master_ip_addresses = _get_private_ip_addresses(master_instance_id, region, remote_command_executor)
+    head_node_ip_addresses = _get_private_ip_addresses(head_node_instance_id, region, remote_command_executor)
     ip_a_result = remote_command_executor.run_remote_command("ip a").stdout
 
-    for ip_address in master_ip_addresses:
+    for ip_address in head_node_ip_addresses:
         assert_that(ip_a_result).matches(".* inet {0}.*".format(ip_address))
 
 

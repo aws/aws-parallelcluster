@@ -1,0 +1,64 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "arn:{{ partition }}:logs:*:*:*",
+      "Effect": "Allow",
+      "Sid": "CloudWatchLogsPolicy"
+    },
+    {
+      "Action": [
+        "s3:DeleteBucket",
+        "s3:DeleteObject",
+        "s3:DeleteObjectVersion",
+        "s3:ListBucket",
+        "s3:ListBucketVersions"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::*"
+      ],
+      "Effect": "Allow",
+      "Sid": "S3BucketPolicy"
+    },
+    {
+      "Action": [
+        "ec2:DescribeInstances"
+      ],
+      "Resource": "*",
+      "Effect": "Allow",
+      "Sid": "DescribeInstances"
+    },
+    {
+      "Action": [
+        "ec2:TerminateInstances"
+      ],
+      "Resource": "*",
+      "Effect": "Allow",
+      "Sid": "FleetTerminatePolicy"
+    },
+    {
+      "Action": [
+        "dynamodb:GetItem",
+        "dynamodb:PutItem"
+      ],
+      "Resource": "arn:{{ partition }}:dynamodb:{{ region }}:{{ account_id }}:table/parallelcluster-*",
+      "Effect": "Allow",
+      "Sid": "DynamoDBTable"
+    },
+    {
+      "Action": [
+        "route53:ListResourceRecordSets",
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:route53:::hostedzone/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Route53DeletePolicy"
+    }
+  ]
+}

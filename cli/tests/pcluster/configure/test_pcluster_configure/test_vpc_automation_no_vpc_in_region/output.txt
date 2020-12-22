@@ -40,8 +40,8 @@ Allowed values for Operating System:
 6. ubuntu1804
 There are no VPC for the given region. Starting automatic creation of VPC and subnets...
 Allowed values for Network Configuration:
-1. Master in a public subnet and compute fleet in a private subnet
-2. Master and compute fleet in the same public subnet
+1. Head node in a public subnet and compute fleet in a private subnet
+2. Head node and compute fleet in the same public subnet
 Beginning VPC creation. Please do not leave the terminal until the creation is finalized
 Configuration file written to {{ CONFIG_FILE }}
 You can edit your configuration file or simply run 'pcluster create -c {{ CONFIG_FILE }} cluster-name' to create your cluster
