@@ -192,7 +192,7 @@ def _test_dynamic_cluster_limits(remote_command_executor, max_queue_size, max_sl
 
     # Make sure cluster is scaled to 0 when this test starts
     assert_that(torque_commands.compute_nodes_count()).is_equal_to(0)
-    # sleeping for 1 second to give time to sqswatcher to reconfigure the master with np = max_nodes * node_slots
+    # sleeping for 1 second to give time to sqswatcher to reconfigure the head node with np = max_nodes * node_slots
     # operation that is performed right after sqswatcher removes the compute nodes from the scheduler
     time.sleep(1)
     _assert_scheduler_configuration(remote_command_executor, torque_commands, max_slots, max_queue_size)

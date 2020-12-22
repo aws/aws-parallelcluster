@@ -15,10 +15,11 @@ import boto3
 import pytest
 from assertpy import assert_that
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
-from utils import random_alphanumeric
+from utils import generate_stack_name
 
 
 @pytest.fixture()
+@pytest.mark.usefixtures("setup_sts_credentials")
 def networking_stack_factory(request):
     """Define a fixture to manage the creation and destruction of CloudFormation stacks."""
     factory = CfnStacksFactory(request.config.getoption("credential"))
@@ -26,11 +27,7 @@ def networking_stack_factory(request):
     def _create_network(region, template_path, parameters):
         file_content = extract_template(template_path)
         stack = CfnStack(
-            name="integ-tests-networking-{0}{1}{2}".format(
-                random_alphanumeric(),
-                "-" if request.config.getoption("stackname_suffix") else "",
-                request.config.getoption("stackname_suffix"),
-            ),
+            name=generate_stack_name("integ-tests-networking", request.config.getoption("stackname_suffix")),
             region=region,
             template=file_content,
             parameters=parameters,

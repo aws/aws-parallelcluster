@@ -8,7 +8,7 @@ from configparser import ConfigParser
 
 from pcluster.configure.easyconfig import configure
 from pcluster.configure.networking import NetworkConfiguration
-from tests.pcluster.config.utils import mock_get_instance_type
+from tests.pcluster.config.utils import mock_instance_type_info
 
 EASYCONFIG = "pcluster.configure.easyconfig."
 NETWORKING = "pcluster.configure.networking."
@@ -303,7 +303,7 @@ def _mock_parallel_cluster_config(mocker):
     )
 
     for instance_type in supported_instance_types:
-        mock_get_instance_type(mocker, instance_type)
+        mock_instance_type_info(mocker, instance_type)
 
 
 def _run_configuration(mocker, path, with_config=False, region=None):
@@ -345,15 +345,15 @@ class ComposeInput:
         self.input_list = [] if aws_region_name is None else [aws_region_name]
         self.input_list.extend([key, scheduler])
 
-    def add_first_flow(self, op_sys, min_size, max_size, master_instance, compute_instance):
+    def add_first_flow(self, op_sys, min_size, max_size, head_node_instance, compute_instance):
         if self.is_not_aws_batch:
             self.input_list.append(op_sys)
-        self.input_list.extend([min_size, max_size, master_instance])
+        self.input_list.extend([min_size, max_size, head_node_instance])
         if self.is_not_aws_batch:
             self.input_list.append(compute_instance)
 
-    def add_no_automation_no_empty_vpc(self, vpc_id, master_id, compute_id):
-        self.input_list.extend(["n", vpc_id, "n", master_id, compute_id])
+    def add_no_automation_no_empty_vpc(self, vpc_id, head_node_id, compute_id):
+        self.input_list.extend(["n", vpc_id, "n", head_node_id, compute_id])
 
     def add_sub_automation(self, vpc_id, network_configuration, vpc_has_subnets=True):
         self.input_list.extend(["n", vpc_id])
@@ -382,6 +382,7 @@ class MockHandler:
         _mock_list_vpcs_and_subnets(self.mocker, empty_region, partition)
         _mock_parallel_cluster_config(self.mocker)
         _mock_cache_availability_zones(self.mocker)
+        mocker.patch("pcluster.configure.easyconfig.get_default_instance_type", return_value="t2.micro")
         if mock_availability_zone:
             _mock_availability_zone(self.mocker)
 
@@ -416,7 +417,7 @@ def _run_input_test_with_config(
     output,
     capsys,
     with_input=False,
-    master_instance="c5.xlarge",
+    head_node_instance="c5.xlarge",
     compute_instance="g3.8xlarge",
 ):
     if with_input:
@@ -425,16 +426,16 @@ def _run_input_test_with_config(
             op_sys="ubuntu1604",
             min_size="7",
             max_size="18",
-            master_instance=master_instance,
+            head_node_instance=head_node_instance,
             compute_instance=compute_instance,
         )
         input_composer.add_no_automation_no_empty_vpc(
-            vpc_id="vpc-34567891", master_id="subnet-34567891", compute_id="subnet-45678912"
+            vpc_id="vpc-34567891", head_node_id="subnet-34567891", compute_id="subnet-45678912"
         )
     else:
         input_composer = ComposeInput(aws_region_name="", key="", scheduler="")
-        input_composer.add_first_flow(op_sys="", min_size="", max_size="", master_instance="", compute_instance="")
-        input_composer.add_no_automation_no_empty_vpc(vpc_id="", master_id="", compute_id="")
+        input_composer.add_first_flow(op_sys="", min_size="", max_size="", head_node_instance="", compute_instance="")
+        input_composer.add_no_automation_no_empty_vpc(vpc_id="", head_node_id="", compute_id="")
 
     input_composer.mock_input(mocker)
 
@@ -447,10 +448,10 @@ def test_no_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
     MockHandler(mocker)
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="torque")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
-        vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
+        vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
     input_composer.mock_input(mocker)
 
@@ -483,10 +484,10 @@ def test_with_region_arg_with_config_file(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name=None, key="key1", scheduler="torque")
     input_composer.add_first_flow(
-        op_sys="alinux", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="alinux", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_no_automation_no_empty_vpc(
-        vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
+        vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
     input_composer.mock_input(mocker)
     os.environ["AWS_DEFAULT_REGION"] = "env_region_name_to_be_overwritten"
@@ -524,7 +525,7 @@ def test_unexisting_instance_type(mocker, capsys, test_datadir):
         output,
         capsys,
         with_input=True,
-        master_instance="m6g.xlarge",
+        head_node_instance="m6g.xlarge",
         compute_instance="m6g.xlarge",
     )
 
@@ -533,7 +534,7 @@ def test_no_available_no_input_no_automation_no_errors_with_config_file(mocker, 
     """
     Testing easy config with user hitting return on all prompts.
 
-    Mocking the case where parameters: aws_region_name, key_name, vpc_id, compute_subnet_id, master_subnet_id.
+    Mocking the case where parameters: aws_region_name, key_name, vpc_id, compute_subnet_id, head_node_subnet_id.
     Are not found in available list under new partition/region/vpc configuration.
     After running easy config, the old original_config_file should be the same as pcluster.config.ini
     """
@@ -565,7 +566,7 @@ def test_with_input_no_automation_no_errors_with_config_file(mocker, capsys, tes
         output,
         capsys,
         with_input=True,
-        master_instance="m6g.xlarge",
+        head_node_instance="m6g.xlarge",
         compute_instance="m6g.xlarge",
     )
 
@@ -577,10 +578,10 @@ def test_no_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
+        op_sys=None, min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance=None
     )
     input_composer.add_no_automation_no_empty_vpc(
-        vpc_id="vpc-12345678", master_id="subnet-12345678", compute_id="subnet-23456789"
+        vpc_id="vpc-12345678", head_node_id="subnet-12345678", compute_id="subnet-23456789"
     )
     input_composer.mock_input(mocker)
 
@@ -595,7 +596,7 @@ def test_subnet_automation_no_awsbatch_no_errors_empty_vpc(mocker, capsys, test_
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-23456789", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=False
@@ -613,7 +614,7 @@ def test_subnet_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -632,7 +633,7 @@ def test_subnet_automation_no_awsbatch_no_errors_with_config_file(mocker, capsys
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -650,7 +651,7 @@ def test_vpc_automation_no_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -666,7 +667,7 @@ def test_vpc_automation_yes_awsbatch_no_errors(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
+        op_sys=None, min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance=None
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -685,7 +686,7 @@ def test_vpc_automation_invalid_vpc_block(mocker, capsys, test_datadir):
 
         input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
         input_composer.add_first_flow(
-            op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
+            op_sys=None, min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance=None
         )
         input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
         input_composer.mock_input(mocker)
@@ -702,7 +703,7 @@ def test_subnet_automation_yes_awsbatch_invalid_vpc(mocker, capsys, test_datadir
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="awsbatch")
     input_composer.add_first_flow(
-        op_sys=None, min_size="13", max_size="14", master_instance="t2.nano", compute_instance=None
+        op_sys=None, min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance=None
     )
     input_composer.add_sub_automation(vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -718,7 +719,7 @@ def test_vpc_automation_no_vpc_in_region(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -734,7 +735,7 @@ def test_vpc_automation_no_vpc_in_region_public(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="slurm")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation_empty_region(network_configuration="2")
     input_composer.mock_input(mocker)
@@ -761,7 +762,7 @@ def test_bad_config_file(mocker, capsys, test_datadir):
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_sub_automation(
         vpc_id="vpc-12345678", network_configuration=PUBLIC_PRIVATE_CONFIGURATION, vpc_has_subnets=True
@@ -778,18 +779,18 @@ def general_wrapper_for_prompt_testing(
     op_sys="centos7",
     min_size="0",
     max_size="10",
-    master_instance="t2.nano",
+    head_node_instance="t2.nano",
     compute_instance="t2.micro",
     key="key1",
     vpc_id="vpc-12345678",
-    master_id="subnet-12345678",
+    head_node_id="subnet-12345678",
     compute_id="subnet-23456789",
 ):
     path = os.path.join(tempfile.gettempdir(), "test_pcluster_configure")
     MockHandler(mocker)
     input_composer = ComposeInput(aws_region_name=region, key=key, scheduler=scheduler)
-    input_composer.add_first_flow(op_sys, min_size, max_size, master_instance, compute_instance)
-    input_composer.add_no_automation_no_empty_vpc(vpc_id, master_id, compute_id)
+    input_composer.add_first_flow(op_sys, min_size, max_size, head_node_instance, compute_instance)
+    input_composer.add_no_automation_no_empty_vpc(vpc_id, head_node_id, compute_id)
     input_composer.mock_input(mocker)
 
     _run_configuration(mocker, path)
@@ -808,7 +809,7 @@ def test_vpc_automation_with_no_single_qualified_az(mocker, capsys, test_datadir
 
     input_composer = ComposeInput(aws_region_name="eu-west-1", key="key1", scheduler="sge")
     input_composer.add_first_flow(
-        op_sys="centos7", min_size="13", max_size="14", master_instance="t2.nano", compute_instance="t2.micro"
+        op_sys="centos7", min_size="13", max_size="14", head_node_instance="t2.nano", compute_instance="t2.micro"
     )
     input_composer.add_vpc_sub_automation(network_configuration=PUBLIC_PRIVATE_CONFIGURATION)
     input_composer.mock_input(mocker)
@@ -878,30 +879,30 @@ def test_invalid_vpc(mocker, vpc_id):
 
 
 @pytest.mark.parametrize(
-    "vpc_id, master_id, compute_id",
+    "vpc_id, head_node_id, compute_id",
     [
         ("vpc-12345678", "subnet-34567891", "subnet-45678912"),
         ("vpc-23456789", "subnet-34567891", "subnet-45678912"),
         ("vpc-34567891", "subnet-12345678", "subnet-23456789"),
     ],
 )
-def test_invalid_subnet(mocker, vpc_id, master_id, compute_id):
+def test_invalid_subnet(mocker, vpc_id, head_node_id, compute_id):
     with pytest.raises(StopIteration):
 
         assert_that(
-            general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, master_id=master_id, compute_id=compute_id)
+            general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id)
         ).is_true()
 
 
 @pytest.mark.parametrize(
-    "vpc_id, master_id, compute_id",
+    "vpc_id, head_node_id, compute_id",
     [("vpc-12345678", "subnet-12345678", "subnet-23456789"), ("vpc-34567891", "subnet-45678912", "subnet-45678912")],
 )
-def test_valid_subnet(mocker, vpc_id, master_id, compute_id):
+def test_valid_subnet(mocker, vpc_id, head_node_id, compute_id):
     # valid subnets
 
     assert_that(
-        general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, master_id=master_id, compute_id=compute_id)
+        general_wrapper_for_prompt_testing(mocker, vpc_id=vpc_id, head_node_id=head_node_id, compute_id=compute_id)
     ).is_true()
 
 
@@ -913,12 +914,3 @@ def test_hit_config_file(mocker, capsys, test_datadir):
     # Expected sys exit with error
     with pytest.raises(SystemExit, match="ERROR: Configuration in file .* cannot be overwritten"):
         _run_configuration(mocker, old_config_file, with_config=True)
-
-
-def test_invalid_p4d_head_node_type(mocker):
-    with pytest.raises(StopIteration):
-        assert_that(general_wrapper_for_prompt_testing(mocker, master_instance="p4d.24xlarge")).is_true()
-
-
-def test_valid_p4d_compute_node_type(mocker):
-    assert_that(general_wrapper_for_prompt_testing(mocker, compute_instance="p4d.24xlarge")).is_true()

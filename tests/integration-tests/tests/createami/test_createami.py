@@ -11,6 +11,7 @@
 # See the License for the specific language governing permissions and limitations under the License.
 
 import logging
+from os import environ
 
 import pytest
 from assertpy import assert_that
@@ -45,6 +46,14 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
     custom_cookbook = request.config.getoption("createami_custom_chef_cookbook")
     custom_cookbook_args = [] if not custom_cookbook else ["-cc", custom_cookbook]
 
+    # Custom Node
+    # inject PARALLELCLUSTER_NODE_URL into packer environment
+    custom_node = request.config.getoption("createami_custom_node_package")
+    env = None
+    if custom_node:
+        env = environ.copy()
+        env["PARALLELCLUSTER_NODE_URL"] = custom_node
+
     # Instance type
     pcluster_version_result = run_command(["pcluster", "version"])
     instance_args = (
@@ -55,7 +64,8 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
         ["pcluster", "createami", "-ai", base_ami, "-os", os, "-r", region, "-c", cluster_config.as_posix()]
         + custom_cookbook_args
         + instance_args
-        + networking_args
+        + networking_args,
+        env=env,
     )
 
     stdout_lower = pcluster_createami_result.stdout.lower()

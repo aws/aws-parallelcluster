@@ -28,12 +28,12 @@ Allowed values for VPC ID:
   2  vpc-bcdefghi  ParallelClusterVPC-20190624105051                    0
   3  vpc-cdefghij  default                                              3
   4  vpc-abdbabcb  ParallelClusterVPC-20190626095403                    1
-Allowed values for Master Subnet ID:
+Allowed values for head node Subnet ID:
   #  id               name                            size  availability_zone
 ---  ---------------  ----------------------------  ------  -------------------
   1  subnet-77777777  ParallelClusterPublicSubnet      256  cn-north-1a
   2  subnet-66666666  ParallelClusterPrivateSubnet    4096  cn-north-1a
-Allowed values for Compute Subnet ID:
+Allowed values for compute Subnet ID:
   #  id               name                            size  availability_zone
 ---  ---------------  ----------------------------  ------  -------------------
   1  subnet-77777777  ParallelClusterPublicSubnet      256  cn-north-1a

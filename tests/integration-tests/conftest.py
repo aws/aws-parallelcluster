@@ -18,11 +18,13 @@ import logging
 import os
 import random
 import re
+import time
 from shutil import copyfile
 from traceback import format_tb
 
 import boto3
 import configparser
+import pkg_resources
 import pytest
 from cfn_stacks_factory import CfnStack, CfnStacksFactory
 from clusters_factory import Cluster, ClustersFactory
@@ -43,6 +45,7 @@ from retrying import retry
 from utils import (
     create_s3_bucket,
     delete_s3_bucket,
+    generate_stack_name,
     get_architecture_supported_by_instance_type,
     get_vpc_snakecase_value,
     random_alphanumeric,
@@ -51,7 +54,7 @@ from utils import (
     unset_credentials,
 )
 
-from tests.common.utils import retrieve_pcluster_ami_without_standard_naming
+from tests.common.utils import get_sts_endpoint, retrieve_pcluster_ami_without_standard_naming
 
 
 def pytest_addoption(parser):
@@ -70,6 +73,7 @@ def pytest_addoption(parser):
     parser.addoption(
         "--createami-custom-chef-cookbook", help="url to a custom cookbook package for the createami command"
     )
+    parser.addoption("--createami-custom-node-package", help="url to a custom node package for the createami command")
     parser.addoption("--custom-awsbatch-template-url", help="url to a custom awsbatch template")
     parser.addoption("--template-url", help="url to a custom cfn template")
     parser.addoption("--hit-template-url", help="url to a custom HIT cfn template")
@@ -291,6 +295,11 @@ def clusters_factory(request):
         )
 
 
+@pytest.fixture(scope="class")
+def cluster_model(scheduler):
+    return "HIT" if scheduler == "slurm" else "SIT"
+
+
 def _write_cluster_config_to_outdir(request, cluster_config):
     out_dir = request.config.getoption("output_dir")
 
@@ -328,7 +337,7 @@ def test_datadir(request, datadir):
 
 
 @pytest.fixture()
-def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
+def pcluster_config_reader(test_datadir, vpc_stack, region, request):
     """
     Define a fixture to render pcluster config templates associated to the running test.
 
@@ -348,7 +357,7 @@ def pcluster_config_reader(test_datadir, vpc_stacks, region, request):
         config_file_path = test_datadir / config_file
         if not os.path.isfile(config_file_path):
             raise FileNotFoundError(f"Cluster config file not found in the expected dir {config_file_path}")
-        default_values = _get_default_template_values(vpc_stacks, region, request)
+        default_values = _get_default_template_values(vpc_stack, request)
         file_loader = FileSystemLoader(str(test_datadir))
         env = Environment(loader=file_loader)
         rendered_template = env.get_template(config_file).render(**{**kwargs, **default_values})
@@ -440,9 +449,9 @@ def _enable_sanity_check_if_unset(cluster_config):
         config.write(f)
 
 
-def _get_default_template_values(vpc_stacks, region, request):
+def _get_default_template_values(vpc_stack, request):
     """Build a dictionary of default values to inject in the jinja templated cluster configs."""
-    default_values = get_vpc_snakecase_value(region, vpc_stacks)
+    default_values = get_vpc_snakecase_value(vpc_stack)
     default_values.update({dimension: request.node.funcargs.get(dimension) for dimension in DIMENSIONS_MARKER_ARGS})
     default_values["key_name"] = request.config.getoption("key_name")
 
@@ -559,7 +568,7 @@ def vpc_stacks(cfn_stacks_factory, request):
 
     for region in regions:
         # Creating private_subnet_different_cidr in a different AZ for test_efs
-        # To-do: isolate this logic and create a compute subnet in different AZ than master in test_efs
+        # To-do: isolate this logic and create a compute subnet in different AZ than head node in test_efs
 
         # if region has a non-empty list in AVAILABILITY_ZONE_OVERRIDES, select a subset of those AZs
         credential = request.config.getoption("credential")
@@ -616,7 +625,109 @@ def vpc_stacks(cfn_stacks_factory, request):
     return vpc_stacks
 
 
-@pytest.fixture()
+@pytest.fixture(scope="class")
+def common_pcluster_policies(region):
+    """Create four policies to be attached to ec2_iam_role, iam_lamda_role for awsbatch or traditional schedulers."""
+    policies = {}
+    policies["awsbatch_instance_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterInstancePolicy-batch-" + random_alphanumeric(), region, "batch_instance_policy.json"
+    )
+    policies["traditional_instance_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterInstancePolicy-traditional-" + random_alphanumeric(),
+        region,
+        "traditional_instance_policy.json",
+    )
+    policies["awsbatch_lambda_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterLambdaPolicy-batch-" + random_alphanumeric(),
+        region,
+        "batch_lambda_function_policy.json",
+    )
+    policies["traditional_lambda_policy"] = _create_iam_policies(
+        "integ-tests-ParallelClusterLambdaPolicy-traditional-" + random_alphanumeric(),
+        region,
+        "traditional_lambda_function_policy.json",
+    )
+
+    yield policies
+
+    iam_client = boto3.client("iam", region_name=region)
+    for policy in policies.values():
+        iam_client.delete_policy(PolicyArn=policy)
+
+
+@pytest.fixture(scope="class")
+def role_factory(region):
+    roles = []
+    iam_client = boto3.client("iam", region_name=region)
+
+    def create_role(trusted_service, policies=()):
+        iam_role_name = f"integ-tests_{trusted_service}_{region}_{random_alphanumeric()}"
+        logging.info(f"Creating iam role {iam_role_name} for {trusted_service}")
+
+        partition = _get_arn_partition(region)
+        domain_suffix = ".cn" if partition == "aws-cn" else ""
+
+        trust_relationship_policy_ec2 = {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": f"{trusted_service}.amazonaws.com{domain_suffix}"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        }
+        iam_client.create_role(
+            RoleName=iam_role_name,
+            AssumeRolePolicyDocument=json.dumps(trust_relationship_policy_ec2),
+            Description="Role for create custom KMS key",
+        )
+
+        logging.info(f"Attaching iam policy to the role {iam_role_name}...")
+        for policy in policies:
+            iam_client.attach_role_policy(RoleName=iam_role_name, PolicyArn=policy)
+
+        # Having time.sleep here because because it take a while for the the IAM role to become valid for use in the
+        # put_key_policy step for creating KMS key, read the following link for reference :
+        # https://stackoverflow.com/questions/20156043/how-long-should-i-wait-after-applying-an-aws-iam-policy-before-it-is-valid
+        time.sleep(60)
+        logging.info(f"Iam role is ready: {iam_role_name}")
+        roles.append({"role_name": iam_role_name, "policies": policies})
+        return iam_role_name
+
+    yield create_role
+
+    for role in roles:
+        role_name = role["role_name"]
+        policies = role["policies"]
+        for policy in policies:
+            iam_client.detach_role_policy(RoleName=role_name, PolicyArn=policy)
+        logging.info(f"Deleting iam role {role_name}")
+        iam_client.delete_role(RoleName=role_name)
+
+
+def _create_iam_policies(iam_policy_name, region, policy_filename):
+    logging.info("Creating iam policy {0}...".format(iam_policy_name))
+    file_loader = FileSystemLoader(pkg_resources.resource_filename(__name__, "/resources"))
+    env = Environment(loader=file_loader, trim_blocks=True, lstrip_blocks=True)
+    partition = _get_arn_partition(region)
+    account_id = (
+        boto3.client("sts", region_name=region, endpoint_url=get_sts_endpoint(region))
+        .get_caller_identity()
+        .get("Account")
+    )
+    parallel_cluster_instance_policy = env.get_template(policy_filename).render(
+        partition=partition,
+        region=region,
+        account_id=account_id,
+        cluster_bucket_name="parallelcluster-*",
+    )
+    return boto3.client("iam", region_name=region).create_policy(
+        PolicyName=iam_policy_name, PolicyDocument=parallel_cluster_instance_policy
+    )["Policy"]["Arn"]
+
+
+@pytest.fixture(scope="class")
 def vpc_stack(vpc_stacks, region):
     return vpc_stacks[region]
 
@@ -629,20 +740,21 @@ def vpc_stack(vpc_stacks, region):
     retry_on_exception=lambda exception: not isinstance(exception, KeyboardInterrupt),
 )
 def _create_vpc_stack(request, template, region, cfn_stacks_factory):
-    if request.config.getoption("vpc_stack"):
-        logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
-        stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
-    else:
-        stack = CfnStack(
-            name="integ-tests-vpc-{0}{1}{2}".format(
-                random_alphanumeric(),
-                "-" if request.config.getoption("stackname_suffix") else "",
-                request.config.getoption("stackname_suffix"),
-            ),
-            region=region,
-            template=template.to_json(),
-        )
-        cfn_stacks_factory.create_stack(stack)
+    try:
+        set_credentials(region, request.config.getoption("credential"))
+        if request.config.getoption("vpc_stack"):
+            logging.info("Using stack {0} in region {1}".format(request.config.getoption("vpc_stack"), region))
+            stack = CfnStack(name=request.config.getoption("vpc_stack"), region=region, template=template.to_json())
+        else:
+            stack = CfnStack(
+                name=generate_stack_name("integ-tests-vpc", request.config.getoption("stackname_suffix")),
+                region=region,
+                template=template.to_json(),
+            )
+            cfn_stacks_factory.create_stack(stack)
+
+    finally:
+        unset_credentials()
     return stack
 
 

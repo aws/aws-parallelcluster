@@ -164,7 +164,8 @@ def test_efs_param_from_file(mocker, param_key, param_value, expected_value, exp
 def test_efs_section_to_cfn(mocker, section_dict, expected_cfn_params):
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
     mocker.patch(
-        "pcluster.config.pcluster_config.PclusterConfig.get_master_availability_zone", return_value="mocked_avail_zone"
+        "pcluster.config.pcluster_config.PclusterConfig.get_head_node_availability_zone",
+        return_value="mocked_avail_zone",
     )
     utils.assert_section_to_cfn(mocker, EFS, section_dict, expected_cfn_params)
 

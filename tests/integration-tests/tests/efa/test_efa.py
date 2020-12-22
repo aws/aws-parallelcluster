@@ -29,7 +29,7 @@ from tests.common.utils import fetch_instance_slots
 # Slurm test is to verify EFA works correctly when using the SIT model in the config file
 @pytest.mark.schedulers(["sge", "slurm"])
 @pytest.mark.usefixtures("os")
-def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all EFA Features.
 
@@ -46,7 +46,8 @@ def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
     _test_mpi(remote_command_executor, slots_per_instance, scheduler)
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
     _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
-    _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
+    if architecture == "x86_64":
+        _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -57,7 +58,7 @@ def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
-def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir):
+def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, architecture):
     """
     Test all EFA Features.
 
@@ -82,14 +83,15 @@ def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
         slots_per_instance,
         partition="efa-enabled",
     )
-    _test_osu_benchmarks(
-        "intelmpi",
-        remote_command_executor,
-        scheduler_commands,
-        test_datadir,
-        slots_per_instance,
-        partition="efa-enabled",
-    )
+    if architecture == "x86_64":
+        _test_osu_benchmarks(
+            "intelmpi",
+            remote_command_executor,
+            scheduler_commands,
+            test_datadir,
+            slots_per_instance,
+            partition="efa-enabled",
+        )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
@@ -111,13 +113,13 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
     # Check if EFA interface is on compute node
     result = remote_command_executor.run_remote_command("cat /shared/lspci.out")
     if efa_installed:
-        assert_that(result.stdout).contains("1d0f:efa0")
+        assert_that(result.stdout).contains("1d0f:efa")
     else:
-        assert_that(result.stdout).does_not_contain("1d0f:efa0")
+        assert_that(result.stdout).does_not_contain("1d0f:efa")
 
-    # Check EFA interface not present on master
+    # Check EFA interface not present on head node
     result = remote_command_executor.run_remote_command("lspci -n")
-    assert_that(result.stdout).does_not_contain("1d0f:efa0")
+    assert_that(result.stdout).does_not_contain("1d0f:efa")
 
 
 def _test_osu_benchmarks(

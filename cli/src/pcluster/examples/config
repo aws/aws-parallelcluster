@@ -1,0 +1,285 @@
+## AWS ParallelCluster config
+[global]
+# Default cluster config section.
+cluster_template = default
+# Check for updates
+update_check = true
+# Check config sanity. (Attempts to validate resources defined in parameters, actually exist)
+sanity_check = true
+
+[aws]
+# Specify a Amazon AWS region
+aws_region_name = region
+
+[aliases]
+# This is the aliases section, you can configure
+# ssh alias here
+ssh = ssh {CFN_USER}@{MASTER_IP} {ARGS}
+
+## AWS ParallelCluster templates
+[cluster default]
+# Name of an existing EC2 KeyPair to enable SSH access to the instances.
+key_name = mykey
+# Override path to cloudformation in S3
+# (defaults to https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json)
+#template_url = https://s3.amazonaws.com/<aws_region_name>-aws-parallelcluster/templates/aws-parallelcluster-<version>.cfn.json
+# EC2 instance type for head node
+# (defaults to the free tier instance type of the region. If the region does not have free tier, default to t3.micro)
+#master_instance_type = t2.micro
+# EC2 instance type for compute nodes
+# (defaults to the free tier instance type of the region, 'optimal' when scheduler is awsbatch)
+#compute_instance_type = t2.micro
+# Initial number of EC2 instances to launch as compute nodes in the cluster for schedulers other than awsbatch.
+# (defaults to 2)
+#initial_queue_size = 2
+# Maximum number of EC2 instances that can be launched in the cluster for schedulers other than awsbatch.
+# (defaults to 10)
+#max_queue_size = 10
+# Boolean flag to set autoscaling group to maintain initial size and scale back for schedulers other than awsbatch.
+# (defaults to false)
+#maintain_initial_size = false
+# Minimum number of vcpus that will be running when scheduler is awsbatch.
+# defaults to 0
+#min_vcpus = 0
+# Initial number of vcpus to launch when scheduler is awsbatch.
+# defaults to 4
+#desired_vcpus = 4
+# Maximum number of vcpus that can be launched when scheduler is awsbatch.
+#max_vcpus = 20
+# Cluster scheduler
+# (defaults to sge)
+#scheduler = sge
+# Type of cluster to launch i.e. ondemand or spot
+# (defaults to ondemand)
+#cluster_type = ondemand
+# Spot price for the ComputeFleet
+#spot_price = 0.00
+# Spot bid percentage when the scheduler is set to awsbatch. Should be between 0 and 100
+#spot_bid_percentage = 85
+# ID of a Custom AMI, to use instead of published AMI's
+#custom_ami = NONE
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-only access
+# (defaults to NONE)
+#s3_read_resource = NONE
+# Specify S3 resource which AWS ParallelCluster nodes will be granted read-write access
+# (defaults to NONE)
+#s3_read_write_resource = NONE
+# URL to a preinstall script. This is executed before any of the boot_as_* scripts are run
+# (defaults to NONE)
+#pre_install = NONE
+# Arguments to be passed to preinstall script
+# (defaults to NONE)
+#pre_install_args = NONE
+# URL to a postinstall script. This is executed after any of the boot_as_* scripts are run
+# (defaults to NONE)
+#post_install = NONE
+# Arguments to be passed to postinstall script
+# (defaults to NONE)
+#post_install_args = NONE
+# HTTP(S) proxy server, typically http://x.x.x.x:8080
+# (defaults to NONE)
+#proxy_server = NONE
+# Cluster placement group. This placement group must already exist.
+# (defaults to NONE)
+#placement_group = NONE
+# Cluster placement logic. This enables the whole cluster or only compute to use the placement group
+# (defaults to compute)
+#placement = compute
+# Path/mountpoint for ephemeral drives
+# (defaults to /scratch)
+#ephemeral_dir = /scratch
+# Path/mountpoint for shared EBS volume
+# (defaults to /shared)
+#shared_dir = /shared
+# Encrypted ephemeral drives. In-memory keys, non-recoverable.
+# (defaults to false)
+#encrypted_ephemeral = false
+# Head node root volume size in GB. (AMI must support growroot)
+# (defaults to 25)
+#master_root_volume_size = 25
+# ComputeFleet root volume size in GB. (AMI must support growroot)
+# (defaults to 25)
+#compute_root_volume_size = 25
+# OS type used in the cluster. If the scheduler is awsbatch, only 'alinux' is supported.
+# (defaults to alinux)
+#base_os = alinux
+# Existing EC2 IAM role to be associated with the EC2 instances
+# (defaults to NONE)
+#ec2_iam_role = NONE
+# Existing EC2 IAM policies to be associated with the EC2 instances
+# (defaults to NONE)
+#additional_iam_policies = NONE
+# Existing IAM role to be associated with Lambda functions
+# (defaults to NONE)
+#iam_lambda_role = NONE
+# Disable Hyperthreading on all instances
+# (defaults to False)
+#disable_hyperthreading = false
+# Install Intel Parallel Studio at /opt/intel
+# (defaults to False)
+#enable_intel_hpc_platform = False
+# Extra Json to be merged with the dna.json used by Chef
+# (defaults to {})
+#extra_json = {}
+# Additional CloudFormation template to launch with the cluster
+#additional_cfn_template = NONE
+# Settings section relating to VPC to be used
+vpc_settings = public
+# Settings section relating to EBS volumes. Enter multiple sections as a comma separated list. Up to 5 EBS volumes are supported
+#ebs_settings = custom1, custom2, ...
+# Settings section relation to scaling
+#scaling_settings = custom
+# Settings section relating to EFS file system
+#efs_settings = customfs
+# Settings section relating to RAID drive
+#raid_settings = rs
+# Settings section relating to NICE DCV connection
+#dcv_settings = dcv-custom
+
+## VPC Settings
+[vpc public]
+# ID of the VPC you want to provision cluster into.
+vpc_id = vpc-12345678
+# ID of the Subnet you want to provision the head node into
+master_subnet_id = subnet-12345678
+# SSH from CIDR
+# This is only used when AWS ParallelCluster creates the security group
+# (defaults to 0.0.0.0/0)
+#ssh_from = 0.0.0.0/0
+# Additional VPC security group Id for all instances
+# (defaults to NONE)
+#additional_sg = sg-12345678
+# Existing EC2 security group to be assosiated with the EC2 instances
+# (defaults to NONE)
+#vpc_security_group_id = sg-23456789
+
+#[vpc private-new]
+# ID of the VPC you want to provision cluster into.
+#vpc_id = vpc-12345678
+# ID of the Subnet you want to provision the head node into
+#master_subnet_id = subnet-12345678
+# CIDR for new backend subnet i.e. 10.0.100.0/24
+#compute_subnet_cidr = 10.0.100.0/24
+
+#[vpc private-existing]
+# ID of the VPC you want to provision cluster into.
+#vpc_id = vpc-12345678
+# ID of the Subnet you want to provision the head node into
+#master_subnet_id = subnet-12345678
+# CIDR for new backend subnet i.e. 10.0.100.0/24
+#compute_subnet_id = subnet-23456789
+
+## First EBS Settings
+#[ebs custom1]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol1
+#shared_dir = vol1
+# Id of EBS snapshot if using snapshot as source for volume
+# (defaults to NONE)
+#ebs_snapshot_id = snap-12345678
+# Type of volume to create either new or from snapshot
+# (defaults to gp2)
+#volume_type = io1
+# Size of volume to be created if not using a snapshot
+# (defaults to 20GB)
+#volume_size = 20
+# Number of IOPS for io1 type volumes
+#volume_iops = 200
+# Use encrypted volume (should not be used with snapshots)
+# (defaults to false)
+#encrypted = false
+# Existing EBS volume to be attached to the head node
+# (defaults to NONE)
+#ebs_volume_id = NONE
+
+## Second EBS Settings
+#[ebs custom2]
+# Path/mountpoint for shared EBS volume. REQUIRED when using > 1 EBS volumes. Example below mounts to /vol2
+#shared_dir = vol2
+# ... More EBS options if needed
+
+## More EBS settings if needed. Supports up to 5 volumes in total
+#[ebs ...]
+#shared_dir = ...
+# ... More EBS options if needed
+
+## Scaling settings
+#[scaling custom]
+# Amount of time in minutes without a job after which the compute node will terminate
+# Defaults to 10
+#scaledown_idletime = 10
+
+## EFS Settings
+#[efs customfs]
+# Shared directory for the file system. REQUIRED if using EFS file system. Below example mounts to /efs
+#shared_dir = efs
+# Use encrypted file system
+# (defaults to false)
+#encrypted = false
+# Performance Mode of the file system; generalPurpose or maxIO (case sensitive)
+# (defaults to generalPurpose)
+#performance_mode = generalPurpose
+# Throughput mode of the file system; bursting or provisioned (case sensitive)
+# (defaults to bursting)
+#throughput_mode = provisioned
+# The throughput, measured in MiB/s, that you want to provision for a file system that you're creating. The limit on throughput is 0.0 - 1024 MiB/s. You can get these limits increased by contacting AWS Support.
+# Can only be used when throughput_mode is set to provisioned
+# (defaults to NONE)
+#provisioned_throughput = 1024
+# File system ID of an existing EFS file system to use. Specifying this option will void all EFS options but shared_dir
+# Requires the given file system to: not have a mount target in the stack's availability zone OR have a mount target with inbound and outbound permissions for NFS traffic from 0.0.0.0/0
+# (defaults to NONE)
+#efs_fs_id = fs-12345678
+
+## RAID Settings
+#[raid rs]
+# Shared directory for the RAID drive. REQUIRED if using RAID drive.  Below example mounts to /raid
+#shared_dir = raid
+# RAID type for the drive. REQUIRED if using RAID drive. Allowed values are 0 and 1.
+#raid_type = 1
+# Number of EBS volumes to use with RAID, min of 2 and max of 5
+# (defaults to 2)
+#num_of_raid_volumes = 4
+# Type of volume for the RAID volumes
+# (defaults to gp2)
+#volume_type = io1
+# Size of volumes to be created
+# (defaults to 20GB)
+#volume_size = 20
+# Number of IOPS for io1 type volumes
+#volume_iops = 500
+# Use encrypted volume
+# (defaults to false)
+#encrypted = false
+
+## DCV settings
+#[dcv dcv-custom]
+# Parameter required to explicitly enable DCV feature
+#enable = master
+# The port to use to connect to the NICE DCV server
+# (defaults to 8443)
+#port = 8443
+# DCV access from CIDR
+# This is used when AWS ParallelCluster creates the security group
+# (defaults to 0.0.0.0/0)
+#access_from = 0.0.0.0/0
+
+## FSx settings
+#[fsx fsx-custom]
+# Mount Point for Shared Dir
+#shared_dir = /fsx
+# Storage Capacity in GiB
+#storage_capacity = 1200
+# Deployment type allows you to launch filesystems with different characteristics
+# Valid options are SCRATCH_1, PERSISTENT_1, SCRATCH_2
+#deployment_type = PERSISTENT_1
+# When using SCRATCH_2 or PERSISTENT_1 you can set storage throughput to 50,100,200
+#per_unit_storage_throughput = 50
+# S3 Bucket to hydrate the fs from
+#import_path = s3://import-path
+# S3 Location to backup too
+#export_path = s3://import-path/export-dir
+# For SCRATCH_2 and PERSISTENT_1 you can provide a KMS Key for in transit encryption
+#fsx_kms_key_id = XXXX-XXXXX-XXX-XXXXX
+# AutoImportPolicy configures how the filesystem is automatically updated with new and changed files from the linked S3 bucket
+# Valid options are NONE, NEW, NEW_CHANGED
+#auto_import_policy = NEW_CHANGED

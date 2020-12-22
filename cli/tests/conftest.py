@@ -19,6 +19,20 @@ def clear_env():
         del os.environ["AWS_DEFAULT_REGION"]
 
 
+@pytest.fixture(autouse=True)
+def mock_default_instance(mocker, request):
+    """
+    Mock get_default_instance_type for all tests.
+
+    To disable the mock for certain tests, add annotation `@pytest.mark.nomockdefaultinstance` to the tests.
+    To disable the mock for an entire file, declare global var `pytestmark = pytest.mark.noassertnopendingresponses`
+    """
+    if "nomockdefaultinstance" in request.keywords:
+        # skip mocking
+        return
+    mocker.patch("pcluster.config.cfn_param_types.get_default_instance_type", return_value="t2.micro")
+
+
 @pytest.fixture
 def failed_with_message(capsys):
     """Assert that the command exited with a specific error message."""
@@ -55,7 +69,7 @@ def test_datadir(request, datadir):
 @pytest.fixture()
 def convert_to_date_mock(request, mocker):
     """Mock convert_to_date function by enforcing the timezone to UTC."""
-    module_under_test = request.module.__name__.replace("test_", "")
+    module_under_test = request.node.fspath.purebasename.replace("test_", "")
 
     def _convert_to_date_utc(*args, **kwargs):
         from dateutil import tz
@@ -147,7 +161,7 @@ DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG = {
 @pytest.fixture()
 def awsbatchcliconfig_mock(request, mocker):
     """Mock AWSBatchCliConfig object with a default mock."""
-    module_under_test = request.module.__name__.replace("test_", "")
+    module_under_test = request.node.fspath.purebasename.replace("test_", "")
     mock = mocker.patch("awsbatch." + module_under_test + ".AWSBatchCliConfig", autospec=True)
     for key, value in DEFAULT_AWSBATCHCLICONFIG_MOCK_CONFIG.items():
         setattr(mock.return_value, key, value)
