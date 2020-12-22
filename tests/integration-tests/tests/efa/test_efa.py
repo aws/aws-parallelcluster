@@ -29,7 +29,16 @@ from tests.common.utils import fetch_instance_slots
 # Slurm test is to verify EFA works correctly when using the SIT model in the config file
 @pytest.mark.schedulers(["sge", "slurm"])
 @pytest.mark.usefixtures("os")
-def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+def test_sit_efa(
+    region,
+    scheduler,
+    instance,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    network_interfaces_count,
+):
     """
     Test all EFA Features.
 
@@ -45,10 +54,18 @@ def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=True)
     _test_mpi(remote_command_executor, slots_per_instance, scheduler)
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-    _test_osu_benchmarks("openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
+    _test_osu_benchmarks_latency(
+        "openmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+    )
     if architecture == "x86_64":
-        _test_osu_benchmarks("intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance)
+        _test_osu_benchmarks_latency(
+            "intelmpi", remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+        )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor)
+    if network_interfaces_count > 1:
+        _test_osu_benchmarks_multiple_bandwidth(
+            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance
+        )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
 
@@ -58,7 +75,16 @@ def test_sit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
 @pytest.mark.oss(["alinux2"])
 @pytest.mark.schedulers(["slurm"])
 @pytest.mark.usefixtures("os")
-def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_factory, test_datadir, architecture):
+def test_hit_efa(
+    region,
+    scheduler,
+    instance,
+    pcluster_config_reader,
+    clusters_factory,
+    test_datadir,
+    architecture,
+    network_interfaces_count,
+):
     """
     Test all EFA Features.
 
@@ -75,7 +101,7 @@ def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
     _test_efa_installation(scheduler_commands, remote_command_executor, efa_installed=False, partition="efa-disabled")
     _test_mpi(remote_command_executor, slots_per_instance, scheduler, partition="efa-enabled")
     logging.info("Running on Instances: {0}".format(get_compute_nodes_instance_ids(cluster.cfn_name, region)))
-    _test_osu_benchmarks(
+    _test_osu_benchmarks_latency(
         "openmpi",
         remote_command_executor,
         scheduler_commands,
@@ -84,13 +110,17 @@ def test_hit_efa(region, scheduler, instance, pcluster_config_reader, clusters_f
         partition="efa-enabled",
     )
     if architecture == "x86_64":
-        _test_osu_benchmarks(
+        _test_osu_benchmarks_latency(
             "intelmpi",
             remote_command_executor,
             scheduler_commands,
             test_datadir,
             slots_per_instance,
             partition="efa-enabled",
+        )
+    if network_interfaces_count > 1:
+        _test_osu_benchmarks_multiple_bandwidth(
+            remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition="efa-enabled"
         )
     _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition="efa-enabled")
 
@@ -122,8 +152,40 @@ def _test_efa_installation(scheduler_commands, remote_command_executor, efa_inst
     assert_that(result.stdout).does_not_contain("1d0f:efa")
 
 
-def _test_osu_benchmarks(
+def _test_osu_benchmarks_latency(
     mpi_version, remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
+):
+    output = run_osu_benchmarks(
+        mpi_version, "latency", partition, remote_command_executor, scheduler_commands, slots_per_instance, test_datadir
+    )
+    latency = re.search(r"0\s+(\d\d)\.", output).group(1)
+    assert_that(int(latency)).is_less_than_or_equal_to(24)
+
+
+def _test_osu_benchmarks_multiple_bandwidth(
+    remote_command_executor, scheduler_commands, test_datadir, slots_per_instance, partition=None
+):
+    run_osu_benchmarks(
+        "openmpi", "mbw_mr", partition, remote_command_executor, scheduler_commands, slots_per_instance, test_datadir
+    )
+    max_bandwidth = remote_command_executor.run_remote_command(
+        "cat /shared/osu.out | tail -n +4 | awk '{print $2}' | sort -n | tail -n 1"
+    ).stdout
+
+    # Expected bandwidth with 4 NICS:
+    # OMPI 4.1.0: ~330Gbps = 41250MB/s
+    # OMPI 4.0.5: ~95Gbps = 11875MB/s
+    assert_that(float(max_bandwidth)).is_greater_than(41000)
+
+
+def run_osu_benchmarks(
+    mpi_version,
+    benchmark_name,
+    partition,
+    remote_command_executor,
+    scheduler_commands,
+    slots_per_instance,
+    test_datadir,
 ):
     logging.info("Running OSU benchmarks for {0}".format(mpi_version))
     remote_command_executor.run_remote_script(
@@ -134,21 +196,21 @@ def _test_osu_benchmarks(
     )
     if partition:
         result = scheduler_commands.submit_script(
-            str(test_datadir / "osu_submit_{0}.sh".format(mpi_version)),
+            str(test_datadir / "osu_{0}_submit_{1}.sh".format(benchmark_name, mpi_version)),
             slots=2 * slots_per_instance,
             partition=partition,
         )
     else:
         result = scheduler_commands.submit_script(
-            str(test_datadir / "osu_submit_{0}.sh".format(mpi_version)), slots=2 * slots_per_instance
+            str(test_datadir / "osu_{0}_submit_{1}.sh".format(benchmark_name, mpi_version)),
+            slots=2 * slots_per_instance,
         )
     job_id = scheduler_commands.assert_job_submitted(result.stdout)
     scheduler_commands.wait_job_completed(job_id)
     scheduler_commands.assert_job_succeeded(job_id)
 
     output = remote_command_executor.run_remote_command("cat /shared/osu.out").stdout
-    latency = re.search(r"0\s+(\d\d)\.", output).group(1)
-    assert_that(int(latency)).is_less_than_or_equal_to(24)
+    return output
 
 
 def _test_shm_transfer_is_enabled(scheduler_commands, remote_command_executor, partition=None):

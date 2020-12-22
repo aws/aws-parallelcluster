@@ -47,6 +47,7 @@ from utils import (
     delete_s3_bucket,
     generate_stack_name,
     get_architecture_supported_by_instance_type,
+    get_network_interfaces_count,
     get_vpc_snakecase_value,
     random_alphanumeric,
     set_credentials,
@@ -804,6 +805,17 @@ def architecture(request, instance, region):
         supported_architecture = get_architecture_supported_by_instance_type(instance, region)
         request.config.cache.set(f"{instance}/architecture", supported_architecture)
     return supported_architecture
+
+
+@pytest.fixture()
+def network_interfaces_count(request, instance, region):
+    """Return the number of network interfaces for the given instance type."""
+    network_interfaces_count = request.config.cache.get(f"{instance}/network_interfaces_count", None)
+    if network_interfaces_count is None:
+        logging.info(f"Getting number of network interfaces for instance type {instance}")
+        network_interfaces_count = get_network_interfaces_count(instance, region)
+        request.config.cache.set(f"{instance}/network_interfaces_count", network_interfaces_count)
+    return network_interfaces_count
 
 
 @pytest.fixture(scope="session")
