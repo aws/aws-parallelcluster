@@ -390,3 +390,8 @@ def check_headnode_security_group(region, cluster, port, expected_cidr):
     ips = response["SecurityGroups"][0]["IpPermissions"]
     target = next(filter(lambda x: x.get("FromPort", -1) == port, ips), {})
     assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)
+
+
+def get_network_interfaces_count(instance_type, region_name=None):
+    """Return the number of Network Interfaces for the provided instance type."""
+    return get_instance_info(instance_type, region_name).get("NetworkInfo").get("MaximumNetworkCards", 1)
