@@ -38,7 +38,7 @@ class BaseSchema(Schema):
 
     @pre_load
     def evaluate_dynamic_defaults(self, raw_data, **kwargs):
-        """Example of dynamic default evaluation."""
+        """Evaluate dynamic default, it's just an example to be removed."""
         # FIXME to be removed, it's a test
         for fieldname, field in self.fields.items():
             if fieldname not in raw_data and callable(field.metadata.get("dynamic_default")):
@@ -208,7 +208,6 @@ class SharedStorageSchema(BaseSchema):
     @pre_load
     def prepare_shared_storage(self, input_data, **kwargs):
         """Adapt SharedStorage items to be able to distinguish and validate different storage types."""
-
         if "MountDir" not in input_data:
             raise ValidationError("Missing MountDir")
         if "StorageType" not in input_data:

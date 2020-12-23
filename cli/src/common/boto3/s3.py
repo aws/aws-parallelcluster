@@ -15,9 +15,12 @@ from common.boto3.common import AWSExceptionHandler, Boto3Client
 
 
 class S3Client(Boto3Client):
+    """S3 Boto3 client."""
+
     def __init__(self):
         super().__init__("s3")
 
     @AWSExceptionHandler.handle_client_exception
     def download_file(self, bucket_name, object_name, file_name):
+        """Download generic file from S3."""
         self._client.download_file(bucket_name, object_name, file_name)

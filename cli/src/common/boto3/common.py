@@ -25,12 +25,12 @@ class AWSClientError(Exception):
 
 
 class AWSExceptionHandler:
-
-    # def __init__(self, fail_on_error=True):
-    #    self._fail_on_error = fail_on_error
+    """AWS Exception handler."""
 
     @staticmethod
     def handle_client_exception(func):
+        """Handle ClientError and BotoCoreError, can be used as a decorator."""
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:

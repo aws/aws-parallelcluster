@@ -15,7 +15,7 @@ import yaml
 
 
 def download_file(url):
-    """Download file from given url"""
+    """Download file from given url."""
     response = urlopen(url)
     return response.read().decode("utf-8")
 

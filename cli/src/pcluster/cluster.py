@@ -17,7 +17,6 @@ from abc import ABC, abstractmethod
 
 import yaml
 
-from common.boto3.s3 import S3Client
 from pcluster.config.cluster_config import ClusterConfig, HeadNodeConfig, SharedStorageType
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.storage import Ebs, Efs, Fsx
@@ -45,8 +44,8 @@ class Cluster(ABC):
     @staticmethod
     def _load_config_from_s3():
         """Download saved config and convert Schema to Config object."""
-        s3_bucket_name = "test"
-        config_file = S3Client().download_file(s3_bucket_name)
+        config_file = "test"
+        # FIXME config_file = S3Client().download_file(s3_bucket_name)
         config_yaml = yaml.load(config_file, Loader=yaml.SafeLoader)
         return ClusterSchema().load(config_yaml)
 
@@ -97,7 +96,7 @@ class Cluster(ABC):
 
 
 class SlurmCluster(Cluster):
-    """."""
+    """Represent a Slurm cluster."""
 
     def _init_from_config(self):
         self.head_node = HeadNode(self.config.head_node_config)
@@ -105,6 +104,7 @@ class SlurmCluster(Cluster):
         pass
 
     def update(self):
+        """Update the cluster and related resources."""
         pass
 
     def describe(self):
@@ -121,9 +121,10 @@ class SlurmCluster(Cluster):
 
 
 class BatchCluster(Cluster):
-    """."""
+    """Represent a Batch cluster."""
 
     def update(self):
+        """Update the cluster and related resources."""
         pass
 
     def describe(self):
