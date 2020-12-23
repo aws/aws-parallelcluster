@@ -60,4 +60,5 @@ class Validator(ABC):
 
     @abstractmethod
     def __call__(self, *args, **kwargs):
+        """Must be implemented with specific validation logic."""
         pass

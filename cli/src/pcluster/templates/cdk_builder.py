@@ -39,10 +39,10 @@ class HeadNodeConstruct(core.Construct):
         root_device = "root_device"
         root_volume_size = 10
         main_stack_name = "main_stack_name"
-        proxy_server = "proxy_server"
+        # proxy_server = "proxy_server"
         placement_group = "placement_group"
-        update_waiter_function_arn = "update_waiter_function_arn"
-        use_master_public_ip = True
+        # update_waiter_function_arn = "update_waiter_function_arn"
+        # use_master_public_ip = True
         master_network_interfaces_count = 5
         master_eni = "master_eni"
         master_security_groups = ["master_security_groups"]
@@ -53,9 +53,9 @@ class HeadNodeConstruct(core.Construct):
         # Conditions
         master_core_info = master_core_count.split(",")
         disable_master_hyperthreading = master_core_info[0] != -1 and master_core_info[0] != "NONE"
-        disable_compute_hyperthreading = master_core_info != -1 and master_core_info != "NONE"
+        # disable_compute_hyperthreading = master_core_info != -1 and master_core_info != "NONE"
         disable_hyperthreading_via_cpu_options = disable_master_hyperthreading and master_core_info[1] == "true"
-        disable_hyperthreading_manually = disable_master_hyperthreading and not disable_hyperthreading_via_cpu_options
+        # disable_hyperthreading_manually = disable_master_hyperthreading and not disable_hyperthreading_via_cpu_options
         is_master_instance_ebs_opt = master_instance_type not in [
             "cc2.8xlarge",
             "cr1.8xlarge",
@@ -65,10 +65,10 @@ class HeadNodeConstruct(core.Construct):
             "c3.large",
             "",
         ]
-        use_proxy = proxy_server != "NONE"
+        # use_proxy = proxy_server != "NONE"
         use_placement_group = placement_group != "NONE"
-        has_update_waiter_function = update_waiter_function_arn != "NONE"
-        has_master_public_ip = use_master_public_ip == "true"
+        # has_update_waiter_function = update_waiter_function_arn != "NONE"
+        # has_master_public_ip = use_master_public_ip == "true"
         # use_nic1 = master_network_interfaces_count ... TODO
 
         cpu_options = ec2.CfnLaunchTemplate.CpuOptionsProperty(
@@ -214,7 +214,6 @@ class CDKTemplateBuilder:
 
     def build(self, cluster: Cluster):
         """Build template for the given cluster and return as output in Yaml format."""
-
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "cluster"
             app = core.App(outdir=str(tempdir))

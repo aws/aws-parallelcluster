@@ -26,9 +26,11 @@ def _assert_validation_result(validator, failure_message, *validator_args):
 
 
 @pytest.mark.parametrize(
-    "instance_type, failure_message", [("t2.micro", None), ("c4.xlarge", None), ("c55.xlarge", "is not supported")]
+    "instance_type, failure_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
 def test_instance_type_validator(mocker, instance_type, failure_message):
+
+    mocker.patch("pcluster.validators.ec2.Ec2Client.__init__", return_value=None)
     mocker.patch(
         "pcluster.validators.ec2.Ec2Client.describe_instance_type_offerings", return_value=["t2.micro", "c4.xlarge"]
     )

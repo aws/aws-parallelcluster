@@ -15,11 +15,14 @@ from common.boto3.common import AWSExceptionHandler, Boto3Client
 
 
 class Ec2Client(Boto3Client):
+    """Implement EC2 Boto3 client."""
+
     def __init__(self):
         super().__init__("ec2")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_instance_type_offerings(self):
+        """Return a list of instance types."""
         return [
             offering.get("InstanceType")
             for offering in self._paginate_results(self._client.describe_instance_type_offerings)

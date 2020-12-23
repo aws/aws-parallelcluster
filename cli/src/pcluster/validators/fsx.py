@@ -16,6 +16,7 @@ class FsxS3OptionsValidator(Validator):
     """FSX validator for S3 related options."""
 
     def __call__(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
+        """Verify compatibility of given S3 options for FSX."""
         if imported_file_chunk_size and not import_path:
             self._add_failure(
                 "When specifying imported file chunk size, the import path option must be specified",

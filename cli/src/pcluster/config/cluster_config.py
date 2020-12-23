@@ -28,7 +28,7 @@ class _ConfigValidator:
     """Represent a generic validator for a configuration attribute or object. It's a module private class."""
 
     def __init__(self, validator_class: Validator, priority: int = 1, **kwargs):
-        """Validators with higher priorities will be executed first."""
+        """Initialize validator. Note: Validators with higher priorities will be executed first."""
         self.validator_class = validator_class
         self.priority = priority
         self.validator_args = kwargs
@@ -43,7 +43,6 @@ class Config(ABC):
 
     def validate(self):
         """Execute registered validators, ordered by priority (high prio --> executed first)."""
-
         # order validators by priority
         self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
 
@@ -74,10 +73,6 @@ class ImageConfig(Config):
         self.os = os
         self.id = id
         self._validators = []
-
-    # TODO define update policies at Image level for all the attributes
-    def check_update(self):
-        pass
 
 
 class HeadNodeNetworkingConfig(Config):
@@ -173,7 +168,7 @@ class SharedStorageType(Enum):
 
     @classmethod
     def is_valid(cls, value):
-        """Verifies if the given value is a valid SharedStorageType"""
+        """Verify if the given value is a valid SharedStorageType."""
         return value in cls._member_names_
 
 
@@ -301,7 +296,7 @@ class ClusterConfig(Config):
 
     @property
     def cores(self):
-        """Example of property to be used for derived values, not present in the configuration file."""
+        """Return the number of cores. Example derived attribute, not present in the config file."""
         if self._cores is None:
             # FIXME boto3 call to retrieve the value
             self._cores = "1"

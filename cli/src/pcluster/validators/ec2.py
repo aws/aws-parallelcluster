@@ -17,6 +17,7 @@ class InstanceTypeValidator(Validator):
     """EC2 Instance type validator."""
 
     def __call__(self, instance_type: str):
+        """Validate given instance type."""
         if instance_type not in Ec2Client().describe_instance_type_offerings():
             self._add_failure(f"The instance type '{instance_type}' is not supported.", FailureLevel.CRITICAL)
         return self._failures
