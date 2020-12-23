@@ -572,3 +572,10 @@ resource_bucket:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["slurm", "awsbatch"]
+nccl:
+  test_nccl.py::test_nccl:
+    dimensions:
+      - regions: ["us-east-1"]
+        instances: ["p4d.24xlarge"]
+        oss: ["ubuntu1804"]
+        schedulers: ["slurm"]
