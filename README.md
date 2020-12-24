@@ -1,10 +1,12 @@
 AWS ParallelCluster - HPC for the Cloud
 =======================================
 
-[![Build Status](https://img.shields.io/travis/aws/aws-parallelcluster)](https://travis-ci.org/aws/aws-parallelcluster/)
 [![PyPI Version](https://img.shields.io/pypi/v/aws-parallelcluster)](https://pypi.org/project/aws-parallelcluster/)
 [![Spack Version](https://img.shields.io/spack/v/aws-parallelcluster)](https://spack.readthedocs.io/en/latest/package_list.html#aws-parallelcluster)
 [![Conda Verseion](https://img.shields.io/conda/vn/conda-forge/aws-parallelcluster)](https://anaconda.org/conda-forge/aws-parallelcluster)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![codecov](https://codecov.io/gh/aws/aws-parallelcluster/branch/develop/graph/badge.svg)](https://codecov.io/gh/aws/aws-parallelcluster)
+[![ParallelCluster CI](https://github.com/aws/aws-parallelcluster/workflows/ParallelCluster%20CI/badge.svg)](https://github.com/aws/aws-parallelcluster/actions)
 
 AWS ParallelCluster is an AWS supported Open Source cluster management tool that makes it easy for you to deploy and
 manage High Performance Computing (HPC) clusters in the AWS cloud.
@@ -124,6 +126,9 @@ https://github.com/awsdocs/aws-parallelcluster-user-guide.
 
 Issues
 ------
+
+[![GitHub issues](https://img.shields.io/github/issues/aws/aws-parallelcluster.svg)](https://github.com/aws/aws-parallelcluster/issues)
+[![GitHub closed issues](https://img.shields.io/github/issues-closed-raw/aws/aws-parallelcluster.svg)](https://github.com/aws-parallelcluster/issues?q=is%3Aissue+is%3Aclosed)
 
 Please open a GitHub issue for any feedback or issues:
 https://github.com/aws/aws-parallelcluster/issues.  There is also an active AWS
