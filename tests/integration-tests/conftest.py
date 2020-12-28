@@ -493,6 +493,8 @@ AVAILABILITY_ZONE_OVERRIDES = {
     "sa-east-1": ["sae1-az1", "sae1-az3"],
     # m6g.xlarge instances not available in euw1-az3
     "eu-west-1": ["euw1-az1", "euw1-az2"],
+    # io2 EBS volumes not available in cac1-az4
+    "ca-central-1": ["cac1-az1", "cac1-az2"],
 }
 
 
