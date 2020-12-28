@@ -20,7 +20,7 @@ test-suites:
           schedulers: ["{{ scheduler }}"]
         {%- endfor %}
         {%- for os, scheduler in [("ubuntu1804", "sge"), ("alinux2", "slurm")] %}
-        - regions: ["us-east-1"]
+        - regions: ["eu-central-1"]
           instances: {{ common.INSTANCES_DEFAULT_ARM }}
           oss: ["{{ os }}"]
           schedulers: ["{{ scheduler }}"]

@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import logging
+from collections import OrderedDict
 
 import boto3
 from botocore.exceptions import ClientError
@@ -53,7 +54,7 @@ class CfnStacksFactory:
     """Manage creation and deletion of CloudFormation stacks."""
 
     def __init__(self, credentials):
-        self.__created_stacks = {}
+        self.__created_stacks = OrderedDict()
         self.__credentials = credentials
 
     def create_stack(self, stack):
@@ -119,7 +120,7 @@ class CfnStacksFactory:
     def delete_all_stacks(self):
         """Destroy all created stacks."""
         logging.debug("Destroying all cfn stacks")
-        for _, value in dict(self.__created_stacks).items():
+        for value in reversed(OrderedDict(self.__created_stacks).values()):
             try:
                 self.delete_stack(value.name, value.region)
             except Exception as e:
