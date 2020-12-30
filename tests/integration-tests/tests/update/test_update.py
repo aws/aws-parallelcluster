@@ -598,6 +598,9 @@ def _check_update_compute(
     cluster.config_file = str(updated_config_file)
     cluster.update()
 
+    logging.info("Sleeping for 180 seconds in case instance type properties cache is not updated yet in jobwatcher")
+    time.sleep(180)
+
     # Check cfn_scheduler_slots changed by changing compute instance type
     _check_compute_node_slots(
         cluster,
