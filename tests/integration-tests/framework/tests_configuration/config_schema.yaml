@@ -16,41 +16,41 @@ type: map
 mapping:
   test-suites:
     type: map
-    required:  yes
+    required:  true
     mapping:
       regex;(.+):
         type: map
-        required: yes
+        required: true
         mapping:
           regex;(.+\.py::.+):
             type: map
-            required: yes
+            required: true
             mapping:
               dimensions:
                 type: seq
-                required: yes
+                required: true
                 sequence:
                   - type: map
-                    required: yes
+                    required: true
                     mapping:
                       regions:
                         type: seq
-                        required: yes
+                        required: true
                         sequence:
                           - type: str
                       instances:
                         type: seq
-                        required: no
+                        required: false
                         sequence:
                           - type: str
                       oss:
                         type: seq
-                        required: no
+                        required: false
                         allowempty: False
                         sequence:
                           - type: str
                       schedulers:
                         type: seq
-                        required: no
+                        required: false
                         sequence:
                           - type: str
