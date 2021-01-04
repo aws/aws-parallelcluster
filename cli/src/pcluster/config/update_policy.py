@@ -192,6 +192,25 @@ UpdatePolicy.MIN_COUNT = UpdatePolicy(
     condition_checker=_check_min_count,
 )
 
+# Check resize of initial_queue_size
+UpdatePolicy.INITIAL_QUEUE_SIZE = UpdatePolicy(
+    level=1,
+    fail_reason="Changing initial_queue_size may cause existing nodes to be terminated hence requires "
+    "the compute fleet to be stopped first",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name),
+)
+
+# Check resize of max_queue_size
+UpdatePolicy.MAX_QUEUE_SIZE = UpdatePolicy(
+    level=1,
+    fail_reason="Decreasing max_queue_size may cause existing nodes to be terminated hence requires "
+    "the compute fleet to be stopped first",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=lambda change, patch: change.new_value >= change.old_value
+    or not utils.cluster_has_running_capacity(patch.stack_name),
+)
+
 # Checks that the value of the parameter has not been decreased
 UpdatePolicy.INCREASE_ONLY = UpdatePolicy(
     level=2,

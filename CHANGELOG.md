@@ -1,6 +1,21 @@
 CHANGELOG
 =========
 
+2.x.x
+------
+
+**ENHANCEMENTS**
+
+-
+
+**CHANGES**
+
+-
+
+**BUG FIXES**
+
+- Fix update behavior of initial_queue_size and max_queue_size parameters with new update policies
+
 2.10.1
 ------
 

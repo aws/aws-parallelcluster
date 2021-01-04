@@ -1057,14 +1057,14 @@ CLUSTER_SIT = {
             ("initial_queue_size", {
                 "type": QueueSizeCfnParam,
                 "default": 0,
-                "cfn_param_mapping": "DesiredSize",  # TODO verify the update case
-                "update_policy": UpdatePolicy.SUPPORTED
+                "cfn_param_mapping": "DesiredSize",
+                "update_policy": UpdatePolicy.INITIAL_QUEUE_SIZE
             }),
             ("max_queue_size", {
                 "type": QueueSizeCfnParam,
                 "default": 10,
                 "cfn_param_mapping": "MaxSize",
-                "update_policy": UpdatePolicy.SUPPORTED
+                "update_policy": UpdatePolicy.MAX_QUEUE_SIZE
             }),
             ("maintain_initial_size", {
                 "type": MaintainInitialSizeCfnParam,

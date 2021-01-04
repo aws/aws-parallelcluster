@@ -61,3 +61,50 @@ def test_min_count_policy(mocker, is_fleet_stopped, old_min_max, new_min_max, ex
 
     assert_that(UpdatePolicy.MIN_COUNT.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
     cluster_has_running_capacity_mock.assert_called_with("stack_name")
+
+
+@pytest.mark.parametrize(
+    "is_fleet_stopped, old_value, new_value, expected_result",
+    [
+        (False, 3, 1, False),
+        (False, 1, 3, False),
+        (True, 3, 1, True),
+        (True, 1, 3, True),
+    ],
+)
+def test_initial_queue_size_policy(mocker, is_fleet_stopped, old_value, new_value, expected_result):
+    cluster_has_running_capacity_mock = mocker.patch(
+        "pcluster.utils.cluster_has_running_capacity", return_value=not is_fleet_stopped
+    )
+    patch_mock = mocker.MagicMock()
+    patch_mock.stack_name = "stack_name"
+    change_mock = mocker.MagicMock()
+    change_mock.new_value = new_value
+    change_mock.old_value = old_value
+
+    assert_that(UpdatePolicy.INITIAL_QUEUE_SIZE.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
+    cluster_has_running_capacity_mock.assert_called_with("stack_name")
+
+
+@pytest.mark.parametrize(
+    "is_fleet_stopped, old_value, new_value, expected_result",
+    [
+        (False, 3, 1, False),
+        (False, 1, 3, True),
+        (True, 3, 1, True),
+        (True, 1, 3, True),
+    ],
+)
+def test_max_queue_size_policy(mocker, is_fleet_stopped, old_value, new_value, expected_result):
+    cluster_has_running_capacity_mock = mocker.patch(
+        "pcluster.utils.cluster_has_running_capacity", return_value=not is_fleet_stopped
+    )
+    patch_mock = mocker.MagicMock()
+    patch_mock.stack_name = "stack_name"
+    change_mock = mocker.MagicMock()
+    change_mock.new_value = new_value
+    change_mock.old_value = old_value
+
+    assert_that(UpdatePolicy.MAX_QUEUE_SIZE.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
+    if new_value < old_value:
+        cluster_has_running_capacity_mock.assert_called_with("stack_name")
