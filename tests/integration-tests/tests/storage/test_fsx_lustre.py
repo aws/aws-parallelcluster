@@ -18,9 +18,12 @@ import pytest
 import utils
 from assertpy import assert_that
 from botocore.exceptions import ClientError
+from cfn_stacks_factory import CfnStack
 from remote_command_executor import RemoteCommandExecutor
 from retrying import retry
 from time_utils import minutes, seconds
+from troposphere import Ref, Template, ec2
+from troposphere.fsx import FileSystem, LustreConfiguration
 
 from tests.common.schedulers_common import get_scheduler_commands
 
@@ -128,14 +131,19 @@ def test_fsx_lustre(
         os,
         mount_dir,
         bucket_name,
-        storage_type=None,
-        auto_import_policy=None,
-        deployment_type=None,
     )
 
 
 def _test_fsx_lustre(
-    cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy, deployment_type
+    cluster,
+    region,
+    scheduler,
+    os,
+    mount_dir,
+    bucket_name,
+    storage_type=None,
+    auto_import_policy=None,
+    deployment_type=None,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -225,6 +233,98 @@ def test_fsx_lustre_backup(region, pcluster_config_reader, clusters_factory, os,
 
     # Test deletion of manual backup
     _test_delete_manual_backup(remote_command_executor, manual_backup, region)
+
+
+@pytest.mark.dimensions("us-west-2", "c5.xlarge", "alinux2", "slurm")
+@pytest.mark.usefixtures("instance")
+def test_existing_fsx(
+    region,
+    fsx_factory,
+    vpc_stack,
+    pcluster_config_reader,
+    s3_bucket_factory,
+    clusters_factory,
+    os,
+    scheduler,
+    test_datadir,
+):
+    """
+    Test existing Fsx file system
+
+    Check fsx_fs_id provided in config file can be mounted correctly
+    """
+    # Create s3 bucket and upload test_file
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    import_path = "s3://{0}".format(bucket_name)
+    export_path = "s3://{0}/export_dir".format(bucket_name)
+    mount_dir = "/fsx_mount_dir"
+    cluster_config = pcluster_config_reader(
+        bucket_name=bucket_name,
+        mount_dir=mount_dir,
+        fsx_fs_id=fsx_factory(
+            title="existingfsx",
+            FileSystemType="LUSTRE",
+            StorageCapacity=1200,
+            LustreConfiguration=LustreConfiguration(
+                title="lustreConfiguration", ImportPath=import_path, ExportPath=export_path
+            ),
+        ),
+    )
+    cluster = clusters_factory(cluster_config)
+
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
+
+
+@pytest.fixture()
+def fsx_factory(vpc_stack, cfn_stacks_factory, request, region, key_name):
+    """
+    Define a fixture to manage the creation and destruction of fsx.
+
+    return fsx_id
+    """
+    fsx_stack_name = utils.generate_stack_name("integ-tests-fsx", request.config.getoption("stackname_suffix"))
+
+    def _fsx_factory(**kwargs):
+        # FSx stack
+        fsx_template = Template()
+        fsx_template.set_version()
+        fsx_template.set_description("Create FSx stack")
+
+        # Create security group. If using an existing file system
+        # It must be associated to a security group that allows inbound TCP traffic to port 988
+        fsx_sg = ec2.SecurityGroup(
+            "FSxSecurityGroup",
+            GroupDescription="SecurityGroup for testing existing FSx",
+            SecurityGroupIngress=[
+                ec2.SecurityGroupRule(
+                    IpProtocol="tcp",
+                    FromPort="988",
+                    ToPort="988",
+                    CidrIp="0.0.0.0/0",
+                ),
+            ],
+            VpcId=vpc_stack.cfn_outputs["VpcId"],
+        )
+
+        fsx_filesystem = FileSystem(
+            SecurityGroupIds=[Ref(fsx_sg)], SubnetIds=[vpc_stack.cfn_outputs["PublicSubnetId"]], **kwargs
+        )
+        fsx_template.add_resource(fsx_sg)
+        fsx_template.add_resource(fsx_filesystem)
+        fsx_stack = CfnStack(
+            name=fsx_stack_name,
+            region=region,
+            template=fsx_template.to_json(),
+        )
+        cfn_stacks_factory.create_stack(fsx_stack)
+
+        return fsx_stack.cfn_resources[kwargs.get("title")]
+
+    yield _fsx_factory
+    if not request.config.getoption("no_delete"):
+        cfn_stacks_factory.delete_stack(fsx_stack_name, region)
 
 
 def _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id):
