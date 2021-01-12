@@ -1561,7 +1561,8 @@ def efa_os_arch_validator(param_key, param_value, pcluster_config):
     architecture = cluster_section.get_param_value("architecture")
     base_os = cluster_section.get_param_value("base_os")
 
-    if base_os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
+    # The value can be "compute" when specified in the cluster section or True/False when specified in the queue
+    if param_value and base_os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
         errors.append("EFA currently not supported on {0} for {1} architecture".format(base_os, architecture))
 
     return errors, warnings

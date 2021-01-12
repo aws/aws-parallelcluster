@@ -1,6 +1,14 @@
 CHANGELOG
 =========
 
+2.10.2
+------
+
+**BUG FIXES**
+
+- Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+
+
 2.10.1
 ------
 

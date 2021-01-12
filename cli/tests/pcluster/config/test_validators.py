@@ -2719,11 +2719,13 @@ def test_extra_json_validator(mocker, capsys, extra_json, expected_message):
         ({"base_os": "alinux2", "enable_efa": "compute"}, "x86_64", None),
         ({"base_os": "alinux2", "enable_efa": "compute"}, "arm64", None),
         ({"base_os": "centos8", "enable_efa": "compute"}, "x86_64", None),
+        ({"base_os": "centos8"}, "x86_64", None),
         (
             {"base_os": "centos8", "enable_efa": "compute"},
             "arm64",
             "EFA currently not supported on centos8 for arm64 architecture",
         ),
+        ({"base_os": "centos8"}, "arm64", None),  # must not fail because by default EFA is disabled
         ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "x86_64", None),
         ({"base_os": "ubuntu1804", "enable_efa": "compute"}, "arm64", None),
     ],
