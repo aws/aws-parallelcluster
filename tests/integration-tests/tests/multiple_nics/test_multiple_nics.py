@@ -23,7 +23,7 @@ from tests.common.schedulers_common import get_scheduler_commands
 @pytest.mark.usefixtures("os", "instance", "scheduler")
 def test_multiple_nics(scheduler, region, pcluster_config_reader, clusters_factory):
     cluster_config = pcluster_config_reader()
-    cluster = clusters_factory(cluster_config)
+    cluster = clusters_factory(cluster_config, raise_on_error=False)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
 

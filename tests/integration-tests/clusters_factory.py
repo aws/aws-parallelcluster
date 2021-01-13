@@ -16,6 +16,7 @@ import time
 
 import boto3
 import configparser
+from pytest import skip
 from retrying import retry
 from utils import retrieve_cfn_outputs, retrieve_cfn_resources, retry_if_subprocess_error, run_command
 
@@ -272,6 +273,8 @@ class ClustersFactory:
             logging.error(error)
             if raise_on_error:
                 raise Exception(error)
+            else:
+                skip(error)
         elif "WARNING" in result.stdout:
             error = "Cluster creation for {0} generated a warning: {1}".format(name, result.stdout)
             logging.warning(error)
