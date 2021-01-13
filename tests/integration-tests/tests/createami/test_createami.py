@@ -66,6 +66,7 @@ def test_createami(region, os, instance, request, pcluster_config_reader, vpc_st
         + instance_args
         + networking_args,
         env=env,
+        timeout=7200,
     )
 
     stdout_lower = pcluster_createami_result.stdout.lower()
@@ -110,7 +111,8 @@ def test_createami_post_install(
         + custom_cookbook_args
         + instance_args
         + networking_args
-        + post_install_args
+        + post_install_args,
+        timeout=7200,
     )
 
     stdout_lower = pcluster_createami_result.stdout.lower()
@@ -181,7 +183,7 @@ def _compose_command(region, instance, os, request, vpc_stack, base_ami, cluster
 
 
 def _createami_and_assert_error(command, expected_error):
-    pcluster_createami_result = run_command(command, raise_on_error=False)
+    pcluster_createami_result = run_command(command, timeout=7200, raise_on_error=False)
 
     logging.info("Verifying errors in createami stdout and packer log")
     stdout = pcluster_createami_result.stdout
