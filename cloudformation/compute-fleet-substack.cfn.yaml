@@ -113,6 +113,10 @@ Conditions:
     - !Equals
       - !Ref 'EFA'
       - NONE
+  UseEc2Key: !Not
+    - !Equals
+      - !Ref 'KeyName'
+      - NONE
   DisableComputeHyperthreading: !Not
     - !Or
       - !Equals
@@ -280,7 +284,10 @@ Resources:
               SubnetId: !Ref 'ComputeSubnetId'
             - !Ref 'AWS::NoValue'
         InstanceType: !Ref 'ComputeInstanceType'
-        KeyName: !Ref 'KeyName'
+        KeyName: !If
+          - UseEc2Key
+          - !Ref 'KeyName'
+          - !Ref 'AWS::NoValue'
         IamInstanceProfile:
           Name: !Ref 'IamInstanceProfile'
         InstanceMarketOptions: !If

@@ -4,7 +4,8 @@
   "Parameters": {
     "KeyName": {
       "Description": "Name of an existing EC2 KeyPair to enable SSH access to the instances using the default cluster user.",
-      "Type": "AWS::EC2::KeyPair::KeyName"
+      "Type": "String",
+      "Default": "NONE"
     },
     "MasterInstanceType": {
       "Description": "Head node EC2 instance type",
