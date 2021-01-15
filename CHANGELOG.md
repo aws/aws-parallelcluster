@@ -6,12 +6,12 @@ CHANGELOG
 
 **CHANGES**
 
+- Make `key_name` parameter optional to support cluster configurations without a key pair. 
 - Remove support for Python 3.4
 
 **BUG FIXES**
 
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
-- Fix `max_queue_size` checks during pcluster update to avoid terminating running nodes.
 
 2.10.1
 ------

@@ -960,6 +960,12 @@ def cluster_validator(section_key, section_label, pcluster_config):
         if max_size < min_size:
             errors.append("max_queue_size must be greater than or equal to initial_queue_size")
 
+    if not section.get_param_value("key_name"):
+        warnings.append(
+            "If you do not specify a key pair, you can't connect to the instance unless you choose an AMI "
+            "that is configured to allow users another way to log in"
+        )
+
     return errors, warnings
 
 

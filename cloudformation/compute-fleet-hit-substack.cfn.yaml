@@ -106,6 +106,10 @@ Conditions:
   CreateIAMLambdaRole: !Equals
     - !Ref 'IAMLambdaRoleName'
     - NONE
+  UseEc2Key: !Not
+    - !Equals
+      - !Ref 'KeyName'
+      - NONE
 Resources:
 {%- for queue, queue_config in queues.items() %}
   {%- for compute_resource in queue_config.compute_resource_settings.values() %}
@@ -139,7 +143,10 @@ Resources:
           {%- endfor %}
         Placement:
           GroupName: {% if queue_config.placement_group == "DYNAMIC" %}!Ref 'PlacementGroup{{ queue | sha1 | truncate(16, True, "") | capitalize }}'{% elif queue_config.placement_group %}{{ queue_config.placement_group }}{% else %}!Ref 'AWS::NoValue'{% endif %}
-        KeyName: !Ref 'KeyName'
+        KeyName: !If
+          - UseEc2Key
+          - !Ref 'KeyName'
+          - !Ref 'AWS::NoValue'
         IamInstanceProfile:
           Name: !Ref 'IamInstanceProfile'
   {%- if queue_config.compute_type == "spot" %}

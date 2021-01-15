@@ -769,7 +769,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("key_name", {
         "cfn_param_mapping": "KeyName",
-        "required": True,
         "validators": [ec2_key_pair_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
