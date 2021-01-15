@@ -37,9 +37,9 @@ def dummy_head_node_config():
     ssh_config = SshConfig(key_name="test")
     return HeadNodeConfig(
         instance_type="fake",
-        networking_config=head_node_networking_config,
-        ssh_config=ssh_config,
-        image_config=image_config,
+        networking=head_node_networking_config,
+        ssh=ssh_config,
+        image=image_config,
     )
 
 
@@ -50,14 +50,10 @@ def dummy_cluster_config():
     compute_resources_config = [ComputeResourceConfig(instance_type="test")]
     queue_networking_config = QueueNetworkingConfig(subnet_ids=["test"])
     queues_config = [
-        QueueConfig(
-            name="test", networking_config=queue_networking_config, compute_resources_config=compute_resources_config
-        )
+        QueueConfig(name="test", networking=queue_networking_config, compute_resources=compute_resources_config)
     ]
-    scheduling_config = SchedulingConfig(scheduler="test", queues_config=queues_config)
-    return ClusterConfig(
-        image_config=image_config, head_node_config=head_node_config, scheduling_config=scheduling_config
-    )
+    scheduling_config = SchedulingConfig(scheduler="test", queues=queues_config)
+    return ClusterConfig(image=image_config, head_node=head_node_config, scheduling=scheduling_config)
 
 
 def test_cluster_builder():

@@ -89,6 +89,8 @@ EBS_VOLUME_IOPS_BOUNDS = {
     "gp3": (3000, 16000),
 }
 
+EBS_VOLUME_TYPE_TO_IOPS_RATIO = {"io1": 50, "io2": 1000, "gp3": 500}
+
 HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES = []
 HEAD_NODE_UNSUPPORTED_MESSAGE = "The instance type '{0}' is not supported as head node."
 

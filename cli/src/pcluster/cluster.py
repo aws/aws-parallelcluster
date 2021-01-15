@@ -17,7 +17,7 @@ from abc import ABC, abstractmethod
 
 import yaml
 
-from pcluster.config.cluster_config import ClusterConfig, HeadNodeConfig, SharedStorageType
+from pcluster.config.cluster_config import ClusterConfig, HeadNodeConfig
 from pcluster.schemas.cluster_schema import ClusterSchema
 from pcluster.storage import Ebs, Efs, Fsx
 
@@ -37,7 +37,7 @@ class Cluster(ABC):
         self.region = region
         self.name = name
         self.config = config or self._load_config_from_s3()
-        self.type = config.scheduling_config.scheduler
+        self.type = config.scheduling.scheduler
         self._init_common_components_from_config()
         self._init_from_config()
 
@@ -55,19 +55,19 @@ class Cluster(ABC):
 
     def _init_common_components_from_config(self):
         """Initialize components common to all the cluster types from the config."""
-        self.head_node = HeadNode(self.config.head_node_config)
+        self.head_node = HeadNode(self.config.head_node)
 
         self.ebs_volumes = []
         self.fsx = None
         self.efs = None
 
-        if self.config.shared_storage_list_config:
-            for shared_storage_config in self.config.shared_storage_list_config:
-                if shared_storage_config.type is SharedStorageType.EBS:
+        if self.config.shared_storage:
+            for shared_storage_config in self.config.shared_storage:
+                if hasattr(shared_storage_config, "ebs_settings"):
                     self.ebs_volumes.append(Ebs(shared_storage_config))
-                if shared_storage_config.type is SharedStorageType.EFS:
+                elif hasattr(shared_storage_config, "efs_settings"):
                     self.efs = Efs(shared_storage_config)
-                if shared_storage_config.type is SharedStorageType.FSX:
+                elif hasattr(shared_storage_config, "fsx_settings"):
                     self.efs = Fsx(shared_storage_config)
 
     def create(self):
@@ -99,7 +99,7 @@ class SlurmCluster(Cluster):
     """Represent a Slurm cluster."""
 
     def _init_from_config(self):
-        self.head_node = HeadNode(self.config.head_node_config)
+        self.head_node = HeadNode(self.config.head_node)
         # self.queues = ...
         pass
 
