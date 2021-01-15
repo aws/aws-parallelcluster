@@ -17,11 +17,10 @@ from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
 from common.utils import load_yaml
-from pcluster.config.cluster_config import EbsConfig
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema
 
 
-@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml"])  # TODO, "slurm.simple.yaml"])
+@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.simple.yaml"])
 def test_cluster_schema_slurm(test_datadir, config_file_name):
 
     # https://github.com/marshmallow-code/marshmallow/issues/1126
@@ -54,7 +53,7 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     "os, custom_ami, failure_message",
     [
         (None, None, "Missing data for required field"),
-        ("fake-os", "fake-custom-ami", None),
+        ("fake-os", "ami-12345678", None),
         ("fake-os", None, None),
     ],
 )
@@ -71,22 +70,26 @@ def test_image_schema(os, custom_ami, failure_message):
     else:
         image_config = ImageSchema().load(image_schema)
         assert_that(image_config.os).is_equal_to(os)
-        assert_that(image_config.id).is_equal_to(custom_ami)
+        assert_that(image_config.custom_ami).is_equal_to(custom_ami)
 
 
 DUMMY_REQUIRED_QUEUE = [
-    {"Name": "queue1", "Networking": {"SubnetIds": ["subnet-xxx"]}, "ComputeResources": [{"InstanceType": "c5.xlarge"}]}
+    {
+        "Name": "queue1",
+        "Networking": {"SubnetIds": ["subnet-12345678"]},
+        "ComputeResources": [{"InstanceType": "c5.xlarge"}],
+    }
 ]
 
 FAKE_QUEUE_LIST = [
     {
         "Name": "queue1",
-        "Networking": {"SubnetIds": ["subnet-xxx"]},
+        "Networking": {"SubnetIds": ["subnet-12345678"]},
         "ComputeResources": [{"InstanceType": "c5.xlarge"}, {"InstanceType": "c4.xlarge"}],
     },
     {
         "Name": "queue2",
-        "Networking": {"SubnetIds": ["subnet-xxx"]},
+        "Networking": {"SubnetIds": ["subnet-12345678"]},
         "ComputeResources": [{"InstanceType": "c5.2xlarge", "MaxCount": 5}, {"InstanceType": "c4.2xlarge"}],
     },
 ]
@@ -96,8 +99,8 @@ FAKE_QUEUE_LIST = [
     "scheduler, queues_config, failure_message",
     [
         (None, None, "Missing data for required field"),
-        (None, DUMMY_REQUIRED_QUEUE, None),
-        ("fake-scheduler", DUMMY_REQUIRED_QUEUE, None),
+        # (None, DUMMY_REQUIRED_QUEUE, None), What is the purpose?
+        ("slurm", DUMMY_REQUIRED_QUEUE, None),
     ],
 )
 def test_scheduling_schema(scheduler, queues_config, failure_message):
@@ -130,7 +133,8 @@ DUMMY_EBS_STORAGE = {
     },
 }
 
-
+"""
+# Mount directory is going to be tested in test for shared storage
 @pytest.mark.parametrize(
     "mount_dir, volume_type, failure_message",
     [
@@ -154,3 +158,4 @@ def test_ebs_schema(mount_dir, volume_type, failure_message):
         assert_that(ebs_config).is_instance_of(EbsConfig)
         assert_that(ebs_config.mount_dir).is_equal_to(mount_dir)
         assert_that(ebs_config.volume_type).is_equal_to(volume_type)
+"""

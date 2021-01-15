@@ -16,8 +16,6 @@ HeadNode:
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
   SimultaneousMultithreading: Boolean  # true
-  Image:
-    CustomAmi: String  # ami-xxx
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: String  # 1.2.3.4/32
@@ -26,7 +24,7 @@ HeadNode:
       Size: Integer  # 25
       Encrypted: Boolean  # true
       KmsKeyId: String
-      Type: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: Integer
       Throughput: integer
     EphemeralVolume:
@@ -54,7 +52,7 @@ Scheduling:
           Size: Integer  # 25
           Encrypted: Boolean  # true
           KmsKeyId: String
-          Type: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+          VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
           Iops: Integer
           Throughput: Integer
         EphemeralVolume:
@@ -155,13 +153,13 @@ Monitoring:
   DetailedMonitoring: Boolean  # false
   Logs:
     CloudWatch:
-      Enabled: Boolean  # true
+      Enabled: true  # true
       RetentionInDays: Integer  # 14
       LogGroupId: String
       KmsKeyId: String
   Dashboards:
     CloudWatch:
-      Enable: Boolean  # true
+      Enabled: true  # true
 AdditionalPackages:
   IntelSelectSolutions:
     InstallIntelSoftware: Boolean  # false

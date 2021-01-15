@@ -55,9 +55,9 @@ def test_config_validate():
             super().__init__()
             self.fake_attribute = "fake-value"
             self.other_attribute = "other-value"
-            self._register_validator(FakeCriticalValidator, priority=10, value=self.fake_attribute)
-            self._register_validator(FakeInfoValidator, priority=2, value=self.other_attribute)
-            self._register_validator(
+            self._add_validator(FakeCriticalValidator, priority=10, value=self.fake_attribute)
+            self._add_validator(FakeInfoValidator, priority=2, value=self.other_attribute)
+            self._add_validator(
                 FakeComplexValidator,
                 priority=5,
                 fake_attribute=self.fake_attribute,

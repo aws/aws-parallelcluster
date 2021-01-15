@@ -1,46 +1,131 @@
 Image:
   Os: String  # alinux2 | centos7 | centos8 | ubuntu1804
-  CustomAmi: String  # ami-xxx
+  CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t2.micro  # t2.micro
   Networking:
-    SubnetId: String  # subnet-xxx
+    SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
     AssignPublicIp: True  # true|false
     SecurityGroups:
-      - String  # sg-xxxx
-      - sg-2
+      - sg-12345678
+      - sg-23456789
     AdditionalSecurityGroups:
-      - String  # sg-xxxx
-      - sg-3
+      - sg-34567890
+      - sg-45678901
+    Proxy:
+      HttpProxyAddress: String  # https://proxy-address:port
   Ssh:
     KeyName: ec2-key-name
+  Storage:
+    RootVolume:
+      Size: 40
+      Encrypted: true
+      KmsKeyId: String
+      VolumeType: gp2
+      Iops: 100
+      Throughput: 150
+    EphemeralVolume:
+      Encrypted: true
+      MountDir: /test
+  Dcv:
+    Enabled: true
+    Port: 8443
+    AllowedIps: 0.0.0.0/0
 Scheduling:
   Scheduler: slurm
   Queues:
     - Name: queue1
       Networking:
         SubnetIds:
-          - subnet-xxx
+          - subnet-12345678
       ComputeResources:
         - InstanceType: c5.xlarge
         - InstanceType: c4.xlarge
     - Name: queue2
       Networking:
         SubnetIds:
-          - subnet-xxx
+          - subnet-12345678
+          - subnet-23456789
+        AssignPublicIp: true
+        SecurityGroups:
+          - sg-12345678
+        AdditionalSecurityGroups:
+          - sg-23456789
+        PlacementGroup:
+          Enabled: true
+          Id: String
+        Proxy:
+          HttpProxyAddress: String  # https://proxy-address:port
       ComputeResources:
         - InstanceType: c5.2xlarge
           MaxCount: 5
         - InstanceType: c4.2xlarge
 SharedStorage:
-  - MountDir: /my/mount/point
-    StorageType: EBS
-    Settings:
-      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+  - MountDir: /my/mount/point1
+    EBS:
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
       Size: 150
       Encrypted: True
       KmsKeyId: String
-      SnapshotId: String  # snap-xxxx
-      VolumeId: String  # ebs-xxxx
+      SnapshotId: snap-12345678
+      VolumeId: vol-12345678
+  - MountDir: /my/mount/point2
+    EFS:
+      ThroughputMode: provisioned  # bursting | provisioned
+      ProvisionedThroughput: 1024
+  - MountDir: /my/mount/point3
+    FSxLustre:
+      StorageCapacity: 3600
+      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      ImportedFileChunkSize: 1024
+      ExportPath: String  # s3://bucket/folder
+      ImportPath: String  # s3://bucket
+      # WeeklyMaintenanceStartTime: 1:00:00
+      AutomaticBackupRetentionDays: 0
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      PerUnitStorageThroughput: 200
+      BackupId: backup-fedcba98
+      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      FileSystemId: fs-12345678123456789
+      AutoImportPolicy: NEW  # NEW | NEW_CHANGED
+      DriveCacheType: READ  # READ
+      StorageType: HDD  # HDD | SSD
+IAM:
+  Roles:
+    HeadNode: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+    ComputeNode: String  # arn:aws:iam::aws:role/CustomComputeNodeRole
+    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+  S3Access:
+    - BucketName: String
+      Type: String # READ_ONLY | READ_WRITE
+  AdditionalIAMPolicies:
+    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+      Scope: String  # HEAD | COMPUTE | CLUSTER
+    - Policy: policy2
+      Scope: other
+Monitoring:
+  DetailedMonitoring: true  # false
+  Logs:
+    CloudWatch:
+      Enabled: true  # true
+      RetentionInDays: 15  # 14
+      LogGroupId: String
+      KmsKeyId: String
+  Dashboards:
+    CloudWatch:
+      Enabled: true  # true
+Tags:
+  - Key: String
+    Value: String
+  - Key: two
+    Value: two22
+CustomActions:
+  - Script: https://test.com  # s3:// | https:// | file://*
+    Args:
+      - String  # arg1
+      - stirng2
+    Event: NODE_START
+    RunAs: String
