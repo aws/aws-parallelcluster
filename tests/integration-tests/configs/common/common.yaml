@@ -289,6 +289,24 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
+  test_placement_group.py::test_existing_placement_group_in_cluster:
+    dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "sge"]
+  test_placement_group.py::test_dynamic_placement_group_in_cluster:
+    dimensions:
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "sge"]
+  test_placement_group.py::test_placement_group_in_queue:
+    dimensions:
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 scaling:
   test_scaling.py::test_hit_scaling:
     dimensions:
