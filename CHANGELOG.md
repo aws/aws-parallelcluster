@@ -25,6 +25,14 @@ CHANGELOG
 - Add timestamp suffix to CloudWatch Log Group name created for the cluster.
 - Remove `pcluster-config` CLI utility.
 
+2.10.2
+------
+
+**BUG FIXES**
+
+- Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+- Fix `max_queue_size` checks during pcluster update to avoid terminating running nodes.
+
 2.10.1
 ------
 
