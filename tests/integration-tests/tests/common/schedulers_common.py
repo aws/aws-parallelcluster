@@ -135,7 +135,7 @@ class AWSBatchCommands(SchedulerCommands):
 
     def assert_job_submitted(self, awsbsub_output):  # noqa: D102
         __tracebackhide__ = True
-        match = re.match(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
+        match = re.search(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
