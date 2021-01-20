@@ -135,7 +135,7 @@ class AWSBatchCommands(SchedulerCommands):
 
     def assert_job_submitted(self, awsbsub_output):  # noqa: D102
         __tracebackhide__ = True
-        match = re.match(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
+        match = re.search(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
@@ -151,7 +151,8 @@ class AWSBatchCommands(SchedulerCommands):
         assert_that(status).is_length(1 + children_number)
         assert_that(status).contains_only("SUCCEEDED")
 
-    def compute_nodes_count(self):  # noqa: D102
+    def compute_nodes_count(self)\
+        :  # noqa: D102
         raise NotImplementedError
 
     def get_compute_nodes(self):  # noqa: D102
