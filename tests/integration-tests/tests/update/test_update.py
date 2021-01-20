@@ -23,6 +23,7 @@ from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import (
+    get_batch_ce,
     get_batch_ce_max_size,
     get_batch_ce_min_size,
     get_max_asg_capacity,
@@ -540,6 +541,8 @@ def _verify_initialization(region, cluster, config):
     # Verify initial settings
     _test_max_vcpus(region, cluster.cfn_name, config.getint("cluster default", "max_vcpus"))
     _test_min_vcpus(region, cluster.cfn_name, config.getint("cluster default", "min_vcpus"))
+    spot_bid_percentage = config.getint("cluster default", "spot_bid_percentage")
+    assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 
 def _test_max_vcpus(region, stack_name, vcpus):
@@ -550,6 +553,17 @@ def _test_max_vcpus(region, stack_name, vcpus):
 def _test_min_vcpus(region, stack_name, vcpus):
     asg_min_size = get_batch_ce_min_size(stack_name, region)
     assert_that(asg_min_size).is_equal_to(vcpus)
+
+
+def get_batch_spot_bid_percentage(stack_name, region):
+    client = boto3.client("batch", region_name=region)
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("bidPercentage")
+    )
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
