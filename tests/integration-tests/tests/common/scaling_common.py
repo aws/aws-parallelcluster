@@ -12,6 +12,7 @@ import logging
 import time
 
 import boto3
+from assertpy import assert_that
 from retrying import RetryError, retry
 from time_utils import seconds
 from utils import get_compute_nodes_count
@@ -192,3 +193,11 @@ def get_batch_ce_desired_size(stack_name, region):
         .get("computeResources")
         .get("desiredvCpus")
     )
+
+
+def test_maintain_initial_size(stack_name, region, maintain_initial_size, initial_size):
+    min_size = get_min_asg_capacity(region, stack_name)
+    if maintain_initial_size == "true":
+        assert_that(min_size).is_equal_to(initial_size)
+    else:
+        assert_that(min_size).is_equal_to(0)

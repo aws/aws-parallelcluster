@@ -13,7 +13,9 @@ Scheduling:
         ComputeResources:
           - Name: compute-resource-0
             InstanceType: {{ instance }}
+            {% if maintain_initial_size %}
             MinCount: {{ initial_queue_size }}
+            {% endif %}
             MaxCount: {{ initial_queue_size }}
         Networking:
           SubnetIds:
