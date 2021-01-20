@@ -36,7 +36,11 @@ from tests.common.hit_common import (
     submit_initial_job,
     wait_for_num_nodes_in_scheduler,
 )
-from tests.common.scaling_common import get_compute_nodes_allocation, get_desired_asg_capacity
+from tests.common.scaling_common import (
+    get_compute_nodes_allocation,
+    get_desired_asg_capacity,
+    test_maintain_initial_size,
+)
 from tests.common.schedulers_common import get_scheduler_commands
 
 
@@ -89,8 +93,11 @@ def test_multiple_jobs_submission(scheduler, region, pcluster_config_reader, clu
 def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_reader, clusters_factory, test_datadir):
     # slurm test use more nodes because of internal request to test in multi-node settings
     initial_queue_size = 1
+    maintain_initial_size = "true"
     environ["AWS_DEFAULT_REGION"] = region
-    cluster_config = pcluster_config_reader(initial_queue_size=initial_queue_size)
+    cluster_config = pcluster_config_reader(
+        initial_queue_size=initial_queue_size, maintain_initial_size=maintain_initial_size
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -121,6 +128,7 @@ def test_nodewatcher_terminates_failing_node(scheduler, region, pcluster_config_
     )
 
     assert_no_errors_in_logs(remote_command_executor, scheduler)
+    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
 
 
 @pytest.mark.regions(["us-west-1"])
