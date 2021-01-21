@@ -174,6 +174,14 @@ UpdatePolicy.AWSBATCH_CE_MAX_RESIZE = UpdatePolicy(
     <= patch.target_config.get_section("cluster").get_param_value("max_vcpus"),
 )
 
+UpdatePolicy.MAX_QUEUE_SIZE = UpdatePolicy(
+    level=1,
+    fail_reason="Shrinking the queue size requires the compute fleet to be stopped first",
+    action_needed=UpdatePolicy.ACTIONS_NEEDED["pcluster_stop"],
+    condition_checker=lambda change, patch: not utils.cluster_has_running_capacity(patch.stack_name)
+    or change.new_value >= change.old_value,
+)
+
 # Checks resize of max_count
 UpdatePolicy.MAX_COUNT = UpdatePolicy(
     level=1,
