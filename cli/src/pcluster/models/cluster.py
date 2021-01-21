@@ -10,7 +10,7 @@
 # limitations under the License.
 
 #
-# This module contains all the classes representing the Configuration objects.
+# This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 
@@ -26,8 +26,8 @@ from pcluster.validators.ec2 import InstanceTypeValidator
 from pcluster.validators.fsx import FsxValidator
 
 
-class _ConfigValidator:
-    """Represent a generic validator for a configuration attribute or object. It's a module private class."""
+class _ResourceValidator:
+    """Represent a generic validator for a resource attribute or object. It's a module private class."""
 
     def __init__(self, validator_class: Validator, priority: int = 1, **kwargs):
         """Initialize validator. Note: Validators with higher priorities will be executed first."""
@@ -36,11 +36,11 @@ class _ConfigValidator:
         self.validator_args = kwargs
 
 
-class Config(ABC):
-    """Represent an abstract Configuration entity."""
+class Resource(ABC):
+    """Represent an abstract Resource entity."""
 
     def __init__(self):
-        self.__validators: List[_ConfigValidator] = []
+        self.__validators: List[_ResourceValidator] = []
         self._validation_failures: List[ValidationResult] = []
 
     def validate(self, raise_on_error=False):
@@ -59,10 +59,10 @@ class Config(ABC):
 
     def _add_validator(self, validator_class: Validator, priority: int = 1, **kwargs):
         """Store validator to be executed at validation execution."""
-        self.__validators.append(_ConfigValidator(validator_class, priority=priority, **kwargs))
+        self.__validators.append(_ResourceValidator(validator_class, priority=priority, **kwargs))
 
     def __repr__(self):
-        """Return a human readable representation of the Configuration object."""
+        """Return a human readable representation of the Resource object."""
         return "<{name}({attributes})>".format(
             name=self.__class__.__name__,
             attributes=",".join(f"{attr}={value}" for attr, value in self.__dict__.items()),
@@ -70,7 +70,9 @@ class Config(ABC):
 
 
 # ---------------------- Storage ---------------------- #
-class BaseEbsConfig(Config):
+
+
+class BaseEbs(Resource):
     """Represent the configuration shared by EBS and RootVolume."""
 
     def __init__(
@@ -105,21 +107,19 @@ class BaseEbsConfig(Config):
         )
         self._add_validator(
             EbsVolumeThroughputValidator,
-            priority=1,
             volume_type=self.volume_type,
             volume_iops=self.iops,
             volume_throughput=self.throughput,
         )
         self._add_validator(
             EbsVolumeIopsValidator,
-            priority=1,
             volume_type=self.volume_type,
             volume_size=self.size,
             volume_iops=self.iops,
         )
 
 
-class RaidConfig(Config):
+class Raid(Resource):
     """Represent the Raid configuration."""
 
     def __init__(self, type: str = None, number_of_volumes=None):
@@ -130,10 +130,10 @@ class RaidConfig(Config):
         self.number_of_volumes = number_of_volumes
 
 
-class EbsConfig(BaseEbsConfig):
-    """Represent the EBS configuration."""
+class Ebs(BaseEbs):
+    """Represent the EBS resource."""
 
-    def __init__(self, snapshot_id: str = None, volume_id: str = None, raid: RaidConfig = None, **kwargs):
+    def __init__(self, snapshot_id: str = None, volume_id: str = None, raid: Raid = None, **kwargs):
         super().__init__(**kwargs)
 
         self.snapshot_id = snapshot_id
@@ -141,8 +141,8 @@ class EbsConfig(BaseEbsConfig):
         self.raid = raid
 
 
-class EphemeralVolumeConfig(Config):
-    """Represent the Raid configuration."""
+class EphemeralVolume(Resource):
+    """Represent the Ephemeral Volume resource."""
 
     def __init__(self, encrypted: bool = None, mount_dir: str = None):
         super().__init__()
@@ -154,16 +154,16 @@ class EphemeralVolumeConfig(Config):
         self.mount_dir = mount_dir
 
 
-class StorageConfig(Config):
-    """Represent the configuration of node storage."""
+class Storage(Resource):
+    """Represent the node storage."""
 
-    def __init__(self, root_volume: BaseEbsConfig = None, ephemeral_volume: EphemeralVolumeConfig = None):
+    def __init__(self, root_volume: BaseEbs = None, ephemeral_volume: EphemeralVolume = None):
         self.root_volume = root_volume
         self.ephemeral_volume = ephemeral_volume
 
 
-class EfsConfig(Config):
-    """Represent the EFS configuration."""
+class Efs(Resource):
+    """Represent the EFS resource."""
 
     def __init__(
         self,
@@ -189,8 +189,8 @@ class EfsConfig(Config):
         self.id = id
 
 
-class FsxConfig(Config):
-    """Represent the FSX configuration."""
+class Fsx(Resource):
+    """Represent the FSX resource."""
 
     def __init__(
         self,
@@ -233,28 +233,25 @@ class FsxConfig(Config):
         # TODO decide whether we should split FsxValidator into smaller ones
 
 
-class SharedStorageConfig(Config):
-    """Represent the Shared Storage configuration."""
+class SharedStorage(Resource):
+    """Represent the Shared Storage resource."""
 
-    def __init__(
-        self,
-        mount_dir: str,
-        ebs_settings: EbsConfig = None,
-        efs_settings: EfsConfig = None,
-        fsx_settings: FsxConfig = None,
-    ):
+    def __init__(self, mount_dir: str, ebs: Ebs = None, efs: Efs = None, fsx: Fsx = None):
         super().__init__()
         self.mount_dir = mount_dir
-        if ebs_settings:
-            self.ebs_settings = ebs_settings
-        elif efs_settings:
-            self.efs_settings = efs_settings
-        elif fsx_settings:
-            self.fsx_settings = fsx_settings
+        # FIXME put as parent
+        if ebs:
+            self.ebs = ebs
+        elif efs:
+            self.efs = efs
+        elif fsx:
+            self.fsx = fsx
 
 
 # ---------------------- Networking ---------------------- #
-class ProxyConfig(Config):
+
+
+class Proxy(Resource):
     """Represent the proxy."""
 
     def __init__(self, http_proxy_address: str = None):
@@ -262,7 +259,7 @@ class ProxyConfig(Config):
         self.http_proxy_address = http_proxy_address
 
 
-class BaseNetworkingConfig(Config):
+class BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
     def __init__(
@@ -270,7 +267,7 @@ class BaseNetworkingConfig(Config):
         assign_public_ip: str = None,
         security_groups: List[str] = None,
         additional_security_groups: List[str] = None,
-        proxy: ProxyConfig = None,
+        proxy: Proxy = None,
     ):
         super().__init__()
         self.assign_public_ip = assign_public_ip
@@ -279,7 +276,7 @@ class BaseNetworkingConfig(Config):
         self.proxy = proxy
 
 
-class HeadNodeNetworkingConfig(BaseNetworkingConfig):
+class HeadNodeNetworking(BaseNetworking):
     """Represent the networking configuration for the head node."""
 
     def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
@@ -288,7 +285,7 @@ class HeadNodeNetworkingConfig(BaseNetworkingConfig):
         self.elastic_ip = elastic_ip
 
 
-class PlacementGroupConfig(Config):
+class PlacementGroup(Resource):
     """Represent the placement group for the Queue networking."""
 
     def __init__(self, enabled: bool = None, id: str = None):
@@ -299,16 +296,16 @@ class PlacementGroupConfig(Config):
         self.id = id
 
 
-class QueueNetworkingConfig(BaseNetworkingConfig):
+class QueueNetworking(BaseNetworking):
     """Represent the networking configuration for the Queue."""
 
-    def __init__(self, subnet_ids: List[str], placement_group: PlacementGroupConfig = None, **kwargs):
+    def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
         super().__init__(**kwargs)
         self.subnet_ids = subnet_ids
         self.placement_group = placement_group
 
 
-class SshConfig(Config):
+class Ssh(Resource):
     """Represent the SSH configuration for a node (or the entire cluster)."""
 
     def __init__(self, key_name: str, allowed_ips: str = None):
@@ -319,7 +316,7 @@ class SshConfig(Config):
         self.allowed_ips = allowed_ips
 
 
-class DcvConfig(Config):
+class Dcv(Resource):
     """Represent the DCV configuration."""
 
     def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
@@ -334,7 +331,9 @@ class DcvConfig(Config):
 
 
 # ---------------------- Nodes ---------------------- #
-class ImageConfig(Config):
+
+
+class Image(Resource):
     """Represent the configuration of an Image."""
 
     def __init__(self, os: str, custom_ami: str = None):
@@ -343,17 +342,17 @@ class ImageConfig(Config):
         self.custom_ami = custom_ami
 
 
-class HeadNodeConfig(Config):
-    """Represent the Head Node configuration."""
+class HeadNode(Resource):
+    """Represent the Head Node resource."""
 
     def __init__(
         self,
         instance_type: str,
-        networking: HeadNodeNetworkingConfig,
-        ssh: SshConfig,
-        image: ImageConfig = None,
-        storage: StorageConfig = None,
-        dcv: DcvConfig = None,
+        networking: HeadNodeNetworking,
+        ssh: Ssh,
+        image: Image = None,
+        storage: Storage = None,
+        dcv: Dcv = None,
     ):
         super().__init__()
         self.instance_type = instance_type
@@ -365,8 +364,8 @@ class HeadNodeConfig(Config):
         self._add_validator(InstanceTypeValidator, priority=1, instance_type=self.instance_type)
 
 
-class ComputeResourceConfig(Config):
-    """Represent the Compute Resource configuration."""
+class ComputeResource(Resource):
+    """Represent the Compute Resource."""
 
     def __init__(self, instance_type: str, max_count: int = None):
         super().__init__()
@@ -377,17 +376,17 @@ class ComputeResourceConfig(Config):
         # TODO add missing attributes
 
 
-class QueueConfig(Config):
-    """Represent the Queue configuration."""
+class Queue(Resource):
+    """Represent the Queue resource."""
 
-    def __init__(self, name: str, networking: QueueNetworkingConfig, compute_resources: List[ComputeResourceConfig]):
+    def __init__(self, name: str, networking: QueueNetworking, compute_resources: List[ComputeResource]):
         super().__init__()
         self.name = name
         self.networking = networking
         self.compute_resources = compute_resources
 
 
-class SchedulingSettingsConfig(Config):
+class SchedulingSettings(Resource):
     """Represent the Scheduling configuration."""
 
     def __init__(self, scaledown_idletime: int):
@@ -395,10 +394,10 @@ class SchedulingSettingsConfig(Config):
         self.scaledown_idletime = scaledown_idletime
 
 
-class SchedulingConfig(Config):
+class Scheduling(Resource):
     """Represent the Scheduling configuration."""
 
-    def __init__(self, queues: List[QueueConfig], scheduler: str = None, settings: SchedulingSettingsConfig = None):
+    def __init__(self, queues: List[Queue], scheduler: str = None, settings: SchedulingSettings = None):
         super().__init__()
         if scheduler is None:
             scheduler = MarkedStr("slurm")
@@ -407,8 +406,8 @@ class SchedulingConfig(Config):
         self.settings = settings
 
 
-class CustomActionConfig(Config):
-    """Represent the custom action configuration."""
+class CustomAction(Resource):
+    """Represent a custom action resource."""
 
     def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
         super().__init__()
@@ -419,7 +418,9 @@ class CustomActionConfig(Config):
 
 
 # ---------------------- Monitoring ---------------------- #
-class CloudWatchLogsConfig(Config):
+
+
+class CloudWatchLogs(Resource):
     """Represent the CloudWatch configuration in Logs."""
 
     def __init__(
@@ -440,8 +441,8 @@ class CloudWatchLogsConfig(Config):
         self.kms_key_id = kms_key_id
 
 
-class CloudWatchDashboardsConfig(Config):
-    """Represent the CloudWatch configuration in Dashboards."""
+class CloudWatchDashboards(Resource):
+    """Represent the CloudWatch Dashboard."""
 
     def __init__(
         self,
@@ -453,36 +454,36 @@ class CloudWatchDashboardsConfig(Config):
         self.enabled = enabled
 
 
-class LogsConfig(Config):
-    """Represent the Logs configuration."""
+class Logs(Resource):
+    """Represent the CloudWatch Logs configuration."""
 
     def __init__(
         self,
-        cloud_watch: CloudWatchLogsConfig = None,
+        cloud_watch: CloudWatchLogs = None,
     ):
         super().__init__()
         self.cloud_watch = cloud_watch
 
 
-class DashboardsConfig(Config):
+class Dashboards(Resource):
     """Represent the Dashboards configuration."""
 
     def __init__(
         self,
-        cloud_watch: CloudWatchDashboardsConfig = None,
+        cloud_watch: CloudWatchDashboards = None,
     ):
         super().__init__()
         self.cloud_watch = cloud_watch
 
 
-class MonitoringConfig(Config):
+class Monitoring(Resource):
     """Represent the Monitoring configuration."""
 
     def __init__(
         self,
         detailed_monitoring: bool = None,
-        logs: LogsConfig = None,
-        dashboards: DashboardsConfig = None,
+        logs: Logs = None,
+        dashboards: Dashboards = None,
     ):
         super().__init__()
         if detailed_monitoring is None:
@@ -493,7 +494,9 @@ class MonitoringConfig(Config):
 
 
 # ---------------------- Others ---------------------- #
-class RolesConfig(Config):
+
+
+class Roles(Resource):
     """Represent the Roles configuration."""
 
     def __init__(
@@ -514,7 +517,7 @@ class RolesConfig(Config):
         self.custom_lambda_resources = custom_lambda_resources
 
 
-class S3AccessConfig(Config):
+class S3Access(Resource):
     """Represent the S3 Access configuration."""
 
     def __init__(
@@ -529,7 +532,7 @@ class S3AccessConfig(Config):
         self.type = type
 
 
-class AdditionalIamPolicyConfig(Config):
+class AdditionalIamPolicy(Resource):
     """Represent the Additional IAM Policy configuration."""
 
     def __init__(
@@ -544,14 +547,14 @@ class AdditionalIamPolicyConfig(Config):
         self.scope = scope
 
 
-class IamConfig(Config):
+class Iam(Resource):
     """Represent the IAM configuration."""
 
     def __init__(
         self,
-        roles: RolesConfig = None,
-        s3_access: List[S3AccessConfig] = None,
-        additional_iam_policies: List[AdditionalIamPolicyConfig] = None,
+        roles: Roles = None,
+        s3_access: List[S3Access] = None,
+        additional_iam_policies: List[AdditionalIamPolicy] = None,
     ):
         super().__init__()
         self.roles = roles
@@ -559,7 +562,7 @@ class IamConfig(Config):
         self.additional_iam_policies = additional_iam_policies
 
 
-class TagConfig(Config):
+class Tag(Resource):
     """Represent the Tag configuration."""
 
     def __init__(
@@ -572,20 +575,22 @@ class TagConfig(Config):
         self.value = value
 
 
-# ---------------------- Root Schema ---------------------- #
-class ClusterConfig(Config):
+# ---------------------- Root resource ---------------------- #
+
+
+class Cluster(Resource):
     """Represent the full Cluster configuration."""
 
     def __init__(
         self,
-        image: ImageConfig,
-        head_node: HeadNodeConfig,
-        scheduling: SchedulingConfig,
-        shared_storage: List[SharedStorageConfig] = None,
-        monitoring: MonitoringConfig = None,
-        tags: List[TagConfig] = None,
-        iam: IamConfig = None,
-        custom_actions: CustomActionConfig = None,
+        image: Image,
+        head_node: HeadNode,
+        scheduling: Scheduling,
+        shared_storage: List[SharedStorage] = None,
+        monitoring: Monitoring = None,
+        tags: List[Tag] = None,
+        iam: Iam = None,
+        custom_actions: CustomAction = None,
     ):
         super().__init__()
         self.image = image
