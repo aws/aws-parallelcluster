@@ -28,41 +28,41 @@ from marshmallow import (
     validates_schema,
 )
 
-from pcluster.config.cluster_config import (
-    AdditionalIamPolicyConfig,
-    BaseEbsConfig,
-    CloudWatchDashboardsConfig,
-    CloudWatchLogsConfig,
-    ClusterConfig,
-    ComputeResourceConfig,
-    CustomActionConfig,
-    DashboardsConfig,
-    DcvConfig,
-    EbsConfig,
-    EfsConfig,
-    EphemeralVolumeConfig,
-    FsxConfig,
-    HeadNodeConfig,
-    HeadNodeNetworkingConfig,
-    IamConfig,
-    ImageConfig,
-    LogsConfig,
-    MonitoringConfig,
-    PlacementGroupConfig,
-    ProxyConfig,
-    QueueConfig,
-    QueueNetworkingConfig,
-    RaidConfig,
-    RolesConfig,
-    S3AccessConfig,
-    SchedulingConfig,
-    SchedulingSettingsConfig,
-    SharedStorageConfig,
-    SshConfig,
-    StorageConfig,
-    TagConfig,
-)
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
+from pcluster.models.cluster import (
+    AdditionalIamPolicy,
+    BaseEbs,
+    CloudWatchDashboards,
+    CloudWatchLogs,
+    Cluster,
+    ComputeResource,
+    CustomAction,
+    Dashboards,
+    Dcv,
+    Ebs,
+    Efs,
+    EphemeralVolume,
+    Fsx,
+    HeadNode,
+    HeadNodeNetworking,
+    Iam,
+    Image,
+    Logs,
+    Monitoring,
+    PlacementGroup,
+    Proxy,
+    Queue,
+    QueueNetworking,
+    Raid,
+    Roles,
+    S3Access,
+    Scheduling,
+    SchedulingSettings,
+    SharedStorage,
+    Ssh,
+    Storage,
+    Tag,
+)
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -128,6 +128,8 @@ def _is_implied(value):
 
 
 # ---------------------- Storage ---------------------- #
+
+
 class BaseEbsSchema(BaseSchema):
     """Represent the schema of shared by EBS and RootVolume section."""
 
@@ -139,9 +141,9 @@ class BaseEbsSchema(BaseSchema):
     encrypted = fields.Bool()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return BaseEbsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return BaseEbs(**data)
 
 
 class RaidSchema(BaseSchema):
@@ -151,9 +153,9 @@ class RaidSchema(BaseSchema):
     number_of_volumes = fields.Int(validate=validate.Range(min=2, max=5))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return RaidConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Raid(**data)
 
 
 class EbsSchema(BaseEbsSchema):
@@ -164,9 +166,9 @@ class EbsSchema(BaseEbsSchema):
     raid = fields.Nested(RaidSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return EbsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Ebs(**data)
 
 
 class EphemeralVolumeSchema(BaseSchema):
@@ -176,9 +178,9 @@ class EphemeralVolumeSchema(BaseSchema):
     mount_dir = fields.Str(validate=_get_field_validator("file_path"))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return EphemeralVolumeConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return EphemeralVolume(**data)
 
 
 class StorageSchema(BaseSchema):
@@ -188,9 +190,9 @@ class StorageSchema(BaseSchema):
     ephemeral_volume = fields.Nested(EphemeralVolumeSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return StorageConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Storage(**data)
 
 
 class EfsSchema(BaseSchema):
@@ -204,9 +206,9 @@ class EfsSchema(BaseSchema):
     file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return EfsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Efs(**data)
 
     @validates_schema
     def validate_existence_of_mode_throughput(self, data, **kwargs):
@@ -250,23 +252,23 @@ class FsxSchema(BaseSchema):
     storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return FsxConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Fsx(**data)
 
 
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
     mount_dir = fields.Str(required=True, validate=_get_field_validator("file_path"))
-    ebs_settings = fields.Nested(EbsSchema, data_key="EBS")
-    efs_settings = fields.Nested(EfsSchema, data_key="EFS")
-    fsx_settings = fields.Nested(FsxSchema, data_key="FSxLustre")
+    ebs = fields.Nested(EbsSchema, data_key="EBS")
+    efs = fields.Nested(EfsSchema, data_key="EFS")
+    fsx = fields.Nested(FsxSchema, data_key="FSxLustre")
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return SharedStorageConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SharedStorage(**data)
 
     @validates("mount_dir")
     def validate_not_none_dir(self, value):
@@ -278,28 +280,30 @@ class SharedStorageSchema(BaseSchema):
     def validate_existence_of_settings(self, data, **kwargs):
         """Validate that there is one and only one setting."""
         count = 0
-        if data.get("ebs_settings"):
+        if data.get("ebs"):
             count += 1
-        if data.get("efs_settings"):
+        if data.get("efs"):
             count += 1
-        if data.get("fsx_settings"):
+        if data.get("fsx"):
             count += 1
         if count != 1:
             raise ValidationError(
-                "You must provide one and only one configuration," " choosing among EBS, FSx, EFS in Shared Storage"
+                "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
             )
 
 
 # ---------------------- Networking ---------------------- #
+
+
 class ProxySchema(BaseSchema):
     """Represent the schema of proxy."""
 
     http_proxy_address = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return ProxyConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Proxy(**data)
 
 
 class BaseNetworkingSchema(BaseSchema):
@@ -318,9 +322,9 @@ class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     elastic_ip = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return HeadNodeNetworkingConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return HeadNodeNetworking(**data)
 
 
 class PlacementGroupSchema(BaseSchema):
@@ -330,9 +334,9 @@ class PlacementGroupSchema(BaseSchema):
     id = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return PlacementGroupConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return PlacementGroup(**data)
 
 
 class QueueNetworkingSchema(BaseNetworkingSchema):
@@ -342,9 +346,9 @@ class QueueNetworkingSchema(BaseNetworkingSchema):
     placement_group = fields.Nested(PlacementGroupSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return QueueNetworkingConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return QueueNetworking(**data)
 
 
 class SshSchema(BaseSchema):
@@ -354,9 +358,9 @@ class SshSchema(BaseSchema):
     allowed_ips = fields.Str(validate=_get_field_validator("cidr"))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return SshConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Ssh(**data)
 
 
 class DcvSchema(BaseSchema):
@@ -367,12 +371,14 @@ class DcvSchema(BaseSchema):
     allowed_ips = fields.Str(validate=_get_field_validator("cidr"))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return DcvConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Dcv(**data)
 
 
 # ---------------------- Nodes ---------------------- #
+
+
 class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
@@ -380,9 +386,9 @@ class ImageSchema(BaseSchema):
     custom_ami = fields.Str(validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"))
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return ImageConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Image(**data)
 
 
 class HeadNodeSchema(BaseSchema):
@@ -396,9 +402,9 @@ class HeadNodeSchema(BaseSchema):
     dcv = fields.Nested(DcvSchema)
 
     @post_load()
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return HeadNodeConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return HeadNode(**data)
 
 
 class ComputeResourceSchema(BaseSchema):
@@ -408,9 +414,9 @@ class ComputeResourceSchema(BaseSchema):
     max_count = fields.Int()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return ComputeResourceConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ComputeResource(**data)
 
 
 class QueueSchema(BaseSchema):
@@ -424,9 +430,9 @@ class QueueSchema(BaseSchema):
     image = fields.Nested(ImageSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return QueueConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Queue(**data)
 
 
 class SchedulingSettingsSchema(BaseSchema):
@@ -435,9 +441,9 @@ class SchedulingSettingsSchema(BaseSchema):
     scaledown_idletime = fields.Int(data_key="ScaleDownIdleTime")
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return SchedulingSettingsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SchedulingSettings(**data)
 
 
 class SchedulingSchema(BaseSchema):
@@ -448,9 +454,9 @@ class SchedulingSchema(BaseSchema):
     queues = fields.Nested(QueueSchema, many=True, required=True)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return SchedulingConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Scheduling(**data)
 
 
 class CustomActionSchema(BaseSchema):
@@ -462,12 +468,14 @@ class CustomActionSchema(BaseSchema):
     run_as = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return CustomActionConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CustomAction(**data)
 
 
 # ---------------------- Monitoring ---------------------- #
+
+
 class CloudWatchLogsSchema(BaseSchema):
     """Represent the schema of the SharedStorage with type = EFS."""
 
@@ -477,9 +485,9 @@ class CloudWatchLogsSchema(BaseSchema):
     kms_key_id = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return CloudWatchLogsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CloudWatchLogs(**data)
 
 
 class CloudWatchDashboardsSchema(BaseSchema):
@@ -488,9 +496,9 @@ class CloudWatchDashboardsSchema(BaseSchema):
     enabled = fields.Bool()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return CloudWatchDashboardsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return CloudWatchDashboards(**data)
 
 
 class LogsSchema(BaseSchema):
@@ -499,9 +507,9 @@ class LogsSchema(BaseSchema):
     cloud_watch = fields.Nested(CloudWatchLogsSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return LogsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Logs(**data)
 
 
 class DashboardsSchema(BaseSchema):
@@ -510,9 +518,9 @@ class DashboardsSchema(BaseSchema):
     cloud_watch = fields.Nested(CloudWatchDashboardsSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return DashboardsConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Dashboards(**data)
 
 
 class MonitoringSchema(BaseSchema):
@@ -523,12 +531,14 @@ class MonitoringSchema(BaseSchema):
     dashboards = fields.Nested(DashboardsSchema)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return MonitoringConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Monitoring(**data)
 
 
 # ---------------------- Others ---------------------- #
+
+
 class TagSchema(BaseSchema):
     """Represent the schema of tag."""
 
@@ -536,9 +546,9 @@ class TagSchema(BaseSchema):
     value = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return TagConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Tag(**data)
 
 
 class RolesSchema(BaseSchema):
@@ -549,9 +559,9 @@ class RolesSchema(BaseSchema):
     custom_lambda_resources = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return RolesConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Roles(**data)
 
 
 class S3AccessSchema(BaseSchema):
@@ -561,9 +571,9 @@ class S3AccessSchema(BaseSchema):
     type = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return S3AccessConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return S3Access(**data)
 
 
 class AdditionalIamPolicySchema(BaseSchema):
@@ -573,9 +583,9 @@ class AdditionalIamPolicySchema(BaseSchema):
     scope = fields.Str()
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return AdditionalIamPolicyConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AdditionalIamPolicy(**data)
 
 
 class IamSchema(BaseSchema):
@@ -586,12 +596,14 @@ class IamSchema(BaseSchema):
     additional_iam_policies = fields.Nested(AdditionalIamPolicySchema, data_key="AdditionalIAMPolicies", many=True)
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return IamConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Iam(**data)
 
 
 # ---------------------- Root Schema ---------------------- #
+
+
 class ClusterSchema(BaseSchema):
     """Represent the schema of the Cluster."""
 
@@ -606,9 +618,9 @@ class ClusterSchema(BaseSchema):
     iam = fields.Nested(IamSchema, data_key="IAM")
 
     @post_load
-    def make_config(self, data, **kwargs):
-        """Generate config object."""
-        return ClusterConfig(**data)
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Cluster(**data)
 
     '''
     @pre_load

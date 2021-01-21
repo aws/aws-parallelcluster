@@ -11,7 +11,7 @@
 
 from assertpy import assert_that
 
-from pcluster.config.cluster_config import Config
+from pcluster.models.cluster import Resource
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -45,11 +45,11 @@ def _assert_validation_result(result, expected_level, expected_message):
     assert_that(result.message).contains(expected_message)
 
 
-def test_config_validate():
+def test_resource_validate():
     """Verify that validators are executed in the right order according to priorities with the expected params."""
 
-    class FakeConfig(Config):
-        """Fake configuration class to test validators."""
+    class FakeResource(Resource):
+        """Fake resource class to test validators."""
 
         def __init__(self):
             super().__init__()
@@ -64,8 +64,8 @@ def test_config_validate():
                 other_attribute=self.other_attribute,
             )
 
-    fake_config = FakeConfig()
-    validation_failures = fake_config.validate()
+    fake_resource = FakeResource()
+    validation_failures = fake_resource.validate()
 
     # Verify high prio is the first of the list
     _assert_validation_result(validation_failures[0], FailureLevel.CRITICAL, "Critical error fake-value.")

@@ -10,65 +10,30 @@
 # limitations under the License.
 
 #
-# This module defines the core classes: the cluster and related resources representing the "live" objects in EC2 or CFN.
+# This module defines the classes to manage the "live" objects in EC2 or CFN.
 #
 
 from abc import ABC, abstractmethod
 
 import yaml
 
-from pcluster.config.cluster_config import ClusterConfig, HeadNodeConfig
+from pcluster.models.cluster import Cluster
 from pcluster.schemas.cluster_schema import ClusterSchema
-from pcluster.storage import Ebs, Efs, Fsx
 
 
-class HeadNode:
-    """Represent the HeadNode object."""
+class ClusterManager(ABC):
+    """Represent the Cluster Manager."""
 
-    def __init__(self, config: HeadNodeConfig):
-        self.config = config
-        self.instance_type = config.instance_type
-
-
-class Cluster(ABC):
-    """Represent the Cluster object."""
-
-    def __init__(self, region: str, name: str, config: ClusterConfig = None):
-        self.region = region
-        self.name = name
-        self.config = config or self._load_config_from_s3()
-        self.type = config.scheduling.scheduler
-        self._init_common_components_from_config()
-        self._init_from_config()
+    def __init__(self, cluster: Cluster = None):
+        self.cluster = cluster or self._load_cluster_from_s3()
 
     @staticmethod
-    def _load_config_from_s3():
+    def _load_cluster_from_s3():
         """Download saved config and convert Schema to Config object."""
         config_file = "test"
         # FIXME config_file = S3Client().download_file(s3_bucket_name)
         config_yaml = yaml.load(config_file, Loader=yaml.SafeLoader)
         return ClusterSchema().load(config_yaml)
-
-    @abstractmethod
-    def _init_from_config(self):
-        pass
-
-    def _init_common_components_from_config(self):
-        """Initialize components common to all the cluster types from the config."""
-        self.head_node = HeadNode(self.config.head_node)
-
-        self.ebs_volumes = []
-        self.fsx = None
-        self.efs = None
-
-        if self.config.shared_storage:
-            for shared_storage_config in self.config.shared_storage:
-                if hasattr(shared_storage_config, "ebs_settings"):
-                    self.ebs_volumes.append(Ebs(shared_storage_config))
-                elif hasattr(shared_storage_config, "efs_settings"):
-                    self.efs = Efs(shared_storage_config)
-                elif hasattr(shared_storage_config, "fsx_settings"):
-                    self.efs = Fsx(shared_storage_config)
 
     def create(self):
         """Generate template and instantiate stack."""
@@ -95,13 +60,8 @@ class Cluster(ABC):
         pass
 
 
-class SlurmCluster(Cluster):
-    """Represent a Slurm cluster."""
-
-    def _init_from_config(self):
-        self.head_node = HeadNode(self.config.head_node)
-        # self.queues = ...
-        pass
+class SlurmClusterManager(ClusterManager):
+    """Represent a Slurm cluster manager."""
 
     def update(self):
         """Update the cluster and related resources."""
@@ -120,8 +80,8 @@ class SlurmCluster(Cluster):
         pass
 
 
-class BatchCluster(Cluster):
-    """Represent a Batch cluster."""
+class BatchClusterManager(ClusterManager):
+    """Represent a Batch cluster manager."""
 
     def update(self):
         """Update the cluster and related resources."""

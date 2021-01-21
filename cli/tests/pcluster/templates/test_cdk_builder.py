@@ -15,57 +15,48 @@ import yaml
 from aws_cdk import core
 
 from common.utils import load_yaml
-from pcluster.cluster import HeadNode, SlurmCluster
-from pcluster.config.cluster_config import (
-    ClusterConfig,
-    ComputeResourceConfig,
-    HeadNodeConfig,
-    HeadNodeNetworkingConfig,
-    ImageConfig,
-    QueueConfig,
-    QueueNetworkingConfig,
-    SchedulingConfig,
-    SshConfig,
+from pcluster.models.cluster import (
+    Cluster,
+    ComputeResource,
+    HeadNode,
+    HeadNodeNetworking,
+    Image,
+    Queue,
+    QueueNetworking,
+    Scheduling,
+    Ssh,
 )
-from pcluster.templates.cdk_builder import CDKTemplateBuilder, HeadNodeConstruct
+from pcluster.templates.cdk_builder import CDKTemplateBuilder
+from pcluster.templates.cluster_stack import HeadNodeConstruct
 
 
-def dummy_head_node_config():
-    """Generate dummy head node configuration."""
-    image_config = ImageConfig(os="fakeos")
-    head_node_networking_config = HeadNodeNetworkingConfig(subnet_id="test")
-    ssh_config = SshConfig(key_name="test")
-    return HeadNodeConfig(
-        instance_type="fake",
-        networking=head_node_networking_config,
-        ssh=ssh_config,
-        image=image_config,
-    )
+def dummy_head_node():
+    """Generate dummy head node."""
+    image = Image(os="fakeos")
+    head_node_networking = HeadNodeNetworking(subnet_id="test")
+    ssh = Ssh(key_name="test")
+    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, image=image)
 
 
-def dummy_cluster_config():
-    """Generate dummy cluster configuration."""
-    image_config = ImageConfig(os="fakeos")
-    head_node_config = dummy_head_node_config()
-    compute_resources_config = [ComputeResourceConfig(instance_type="test")]
-    queue_networking_config = QueueNetworkingConfig(subnet_ids=["test"])
-    queues_config = [
-        QueueConfig(name="test", networking=queue_networking_config, compute_resources=compute_resources_config)
-    ]
-    scheduling_config = SchedulingConfig(scheduler="test", queues=queues_config)
-    return ClusterConfig(image=image_config, head_node=head_node_config, scheduling=scheduling_config)
+def dummy_cluster():
+    """Generate dummy cluster."""
+    image = Image(os="fakeos")
+    head_node = dummy_head_node()
+    compute_resources = [ComputeResource(instance_type="test")]
+    queue_networking = QueueNetworking(subnet_ids=["test"])
+    queues = [Queue(name="test", networking=queue_networking, compute_resources=compute_resources)]
+    scheduling = Scheduling(scheduler="test", queues=queues)
+    return Cluster(image=image, head_node=head_node, scheduling=scheduling)
 
 
 def test_cluster_builder():
-    slurm_cluster = SlurmCluster(region="eu-west-1", name="test", config=dummy_cluster_config())
-    generated_template = CDKTemplateBuilder().build(cluster=slurm_cluster)
+    generated_template = CDKTemplateBuilder().build(cluster=dummy_cluster())
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
 
 
 def test_head_node_construct(tmpdir):
-
-    head_node = HeadNode(config=dummy_head_node_config())
+    # TODO verify if it's really useful
 
     class DummyStack(core.Stack):
         """Simple Stack to test a specific construct."""
@@ -77,7 +68,7 @@ def test_head_node_construct(tmpdir):
 
     output_file = "cluster"
     app = core.App(outdir=str(tmpdir))
-    DummyStack(app, output_file, head_node=head_node)
+    DummyStack(app, output_file, head_node=dummy_head_node())
     app.synth()
     generated_template = load_yaml(os.path.join(tmpdir, f"{output_file}.template.json"))
 
