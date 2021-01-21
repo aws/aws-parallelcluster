@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from pcluster.schemas.cluster_schema import FsxSchema
+from pcluster.schemas.cluster_schema import SharedStorageSchema
 from pcluster.validators.common import ConfigValidationError
 
 
@@ -59,5 +59,5 @@ from pcluster.validators.common import ConfigValidationError
 )
 def test_fsx_storage_capacity_validator(section_dict, expected_error):
     with pytest.raises(ConfigValidationError, match=expected_error):
-        fsx_config = FsxSchema().load(section_dict)
-        fsx_config.validate(raise_on_error=True)
+        fsx = SharedStorageSchema().load({"MountDir": "/my/mount/point", "FSxLustre": section_dict})
+        fsx.validate(raise_on_error=True)

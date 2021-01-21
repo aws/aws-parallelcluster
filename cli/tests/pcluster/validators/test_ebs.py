@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from pcluster.schemas.cluster_schema import EbsSchema
+from pcluster.schemas.cluster_schema import SharedStorageSchema
 from pcluster.validators.common import ConfigValidationError
 
 
@@ -33,8 +33,8 @@ from pcluster.validators.common import ConfigValidationError
 )
 def test_ebs_volume_throughput_validator(section_dict, expected_error):
     with pytest.raises(ConfigValidationError, match=expected_error):
-        ebs_config = EbsSchema().load(section_dict)
-        ebs_config.validate(raise_on_error=True)
+        ebs = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict})
+        ebs.validate(raise_on_error=True)
 
 
 @pytest.mark.parametrize(
@@ -77,8 +77,8 @@ def test_ebs_volume_throughput_validator(section_dict, expected_error):
 )
 def test_ebs_validators(section_dict, expected_error):
     with pytest.raises(ConfigValidationError, match=expected_error):
-        ebs_config = EbsSchema().load(section_dict)
-        ebs_config.validate(raise_on_error=True)
+        ebs = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict})
+        ebs.validate(raise_on_error=True)
 
 
 @pytest.mark.parametrize(
@@ -102,8 +102,8 @@ def test_ebs_validators(section_dict, expected_error):
 )
 def test_ebs_volume_type_size_validator(section_dict, expected_error):
     with pytest.raises(ConfigValidationError, match=expected_error):
-        ebs_config = EbsSchema().load(section_dict)
-        ebs_config.validate(raise_on_error=True)
+        ebs = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict})
+        ebs.validate(raise_on_error=True)
 
 
 @pytest.mark.parametrize(
@@ -146,5 +146,5 @@ def test_ebs_volume_type_size_validator(section_dict, expected_error):
 )
 def test_ebs_volume_iops_validator(section_dict, expected_error):
     with pytest.raises(ConfigValidationError, match=expected_error):
-        ebs_config = EbsSchema().load(section_dict)
-        ebs_config.validate(raise_on_error=True)
+        ebs = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict})
+        ebs.validate(raise_on_error=True)

@@ -16,7 +16,7 @@
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import core
 
-from pcluster.models.cluster import Cluster, Fsx, HeadNode
+from pcluster.models.cluster import Cluster, HeadNode, SharedFsx
 
 
 class HeadNodeConstruct(core.Construct):
@@ -182,7 +182,7 @@ class FsxConstruct(core.Construct):
     """Create the resources related to the FSX."""
 
     # https://cdkworkshop.com/30-python/40-hit-counter/100-api.html
-    def __init__(self, scope: core.Construct, id: str, fsx: Fsx, **kwargs):
+    def __init__(self, scope: core.Construct, id: str, fsx: SharedFsx, **kwargs):
         super().__init__(scope, id)
         self.fsx = fsx
         # TODO add all the other required info other than fsx object and generate template

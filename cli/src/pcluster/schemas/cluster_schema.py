@@ -31,7 +31,6 @@ from marshmallow import (
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
-    BaseEbs,
     CloudWatchDashboards,
     CloudWatchLogs,
     Cluster,
@@ -40,9 +39,7 @@ from pcluster.models.cluster import (
     Dashboards,
     Dcv,
     Ebs,
-    Efs,
     EphemeralVolume,
-    Fsx,
     HeadNode,
     HeadNodeNetworking,
     Iam,
@@ -58,7 +55,9 @@ from pcluster.models.cluster import (
     S3Access,
     Scheduling,
     SchedulingSettings,
-    SharedStorage,
+    SharedEbs,
+    SharedEfs,
+    SharedFsx,
     Ssh,
     Storage,
     Tag,
@@ -130,8 +129,8 @@ def _is_implied(value):
 # ---------------------- Storage ---------------------- #
 
 
-class BaseEbsSchema(BaseSchema):
-    """Represent the schema of shared by EBS and RootVolume section."""
+class _BaseEbsSchema(BaseSchema):
+    """Represent the schema shared by SharedEBS and RootVolume section."""
 
     volume_type = fields.Str(validate=validate.OneOf(["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"]))
     iops = fields.Int()
@@ -140,10 +139,14 @@ class BaseEbsSchema(BaseSchema):
     throughput = fields.Int()
     encrypted = fields.Bool()
 
+
+class RootVolumeSchema(_BaseEbsSchema):
+    """Represent the RootVolume schema."""
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return BaseEbs(**data)
+        return Ebs(**data)
 
 
 class RaidSchema(BaseSchema):
@@ -158,17 +161,12 @@ class RaidSchema(BaseSchema):
         return Raid(**data)
 
 
-class EbsSchema(BaseEbsSchema):
+class EbsSchema(_BaseEbsSchema):
     """Represent the schema of EBS."""
 
     snapshot_id = fields.Str(validate=validate.Regexp(r"^snap-[0-9a-z]{8}$|^snap-[0-9a-z]{17}$"))
     volume_id = fields.Str(validate=validate.Regexp(r"^vol-[0-9a-z]{8}$|^vol-[0-9a-z]{17}$"))
     raid = fields.Nested(RaidSchema)
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Ebs(**data)
 
 
 class EphemeralVolumeSchema(BaseSchema):
@@ -184,9 +182,9 @@ class EphemeralVolumeSchema(BaseSchema):
 
 
 class StorageSchema(BaseSchema):
-    """Represent the schema of root volume."""
+    """Represent the schema of storage attached to a node."""
 
-    root_volume = fields.Nested(BaseEbsSchema)
+    root_volume = fields.Nested(RootVolumeSchema)
     ephemeral_volume = fields.Nested(EphemeralVolumeSchema)
 
     @post_load
@@ -196,7 +194,7 @@ class StorageSchema(BaseSchema):
 
 
 class EfsSchema(BaseSchema):
-    """Represent the schema of EFS."""
+    """Represent the EFS schema."""
 
     encrypted = fields.Bool()
     kms_key_id = fields.Str()
@@ -204,11 +202,6 @@ class EfsSchema(BaseSchema):
     throughput_mode = fields.Str(validate=validate.OneOf(["provisioned", "bursting"]))
     provisioned_throughput = fields.Int(validate=validate.Range(min=0, max=1024))
     file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"))
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Efs(**data)
 
     @validates_schema
     def validate_existence_of_mode_throughput(self, data, **kwargs):
@@ -230,7 +223,7 @@ class EfsSchema(BaseSchema):
 
 
 class FsxSchema(BaseSchema):
-    """Represent the schema of FSX."""
+    """Represent the FSX schema."""
 
     storage_capacity = fields.Int()
     deployment_type = fields.Str(validate=validate.OneOf(["SCRATCH_1", "SCRATCH_2", "PERSISTENT_1"]))
@@ -251,11 +244,6 @@ class FsxSchema(BaseSchema):
     drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
     storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
 
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Fsx(**data)
-
 
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
@@ -267,8 +255,19 @@ class SharedStorageSchema(BaseSchema):
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return SharedStorage(**data)
+        """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
+        if data.get("efs"):
+            return SharedEfs(data.get("mount_dir"), **data.get("efs"))
+        elif data.get("fsx"):
+            return SharedFsx(data.get("mount_dir"), **data.get("fsx"))
+        else:  # "ebs"
+            return SharedEbs(data.get("mount_dir"), **data.get("ebs"))
+
+    @pre_dump
+    def restore_child(self, data, **kwargs):
+        """Restore back the child in the schema."""
+        setattr(data, data.shared_storage_type.value, data)
+        return data
 
     @validates("mount_dir")
     def validate_not_none_dir(self, value):
