@@ -29,11 +29,11 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     # Load cluster model from Yaml file
     input_yaml = load_yaml(test_datadir / config_file_name)
     print(input_yaml)
-    cluster_config = ClusterSchema().load(input_yaml)
-    print(cluster_config)
+    cluster = ClusterSchema().load(input_yaml)
+    print(cluster)
 
     # Re-create Yaml file from model and compare content
-    output_json = ClusterSchema().dump(cluster_config)
+    output_json = ClusterSchema().dump(cluster)
     assert_that(json.dumps(input_yaml, sort_keys=True)).is_equal_to(json.dumps(output_json, sort_keys=True))
 
     # Print output yaml
@@ -68,9 +68,9 @@ def test_image_schema(os, custom_ami, failure_message):
         with pytest.raises(ValidationError, match=failure_message):
             ImageSchema().load(image_schema)
     else:
-        image_config = ImageSchema().load(image_schema)
-        assert_that(image_config.os).is_equal_to(os)
-        assert_that(image_config.custom_ami).is_equal_to(custom_ami)
+        image = ImageSchema().load(image_schema)
+        assert_that(image.os).is_equal_to(os)
+        assert_that(image.custom_ami).is_equal_to(custom_ami)
 
 
 DUMMY_REQUIRED_QUEUE = [
@@ -96,19 +96,19 @@ FAKE_QUEUE_LIST = [
 
 
 @pytest.mark.parametrize(
-    "scheduler, queues_config, failure_message",
+    "scheduler, queues, failure_message",
     [
         (None, None, "Missing data for required field"),
         # (None, DUMMY_REQUIRED_QUEUE, None), What is the purpose?
         ("slurm", DUMMY_REQUIRED_QUEUE, None),
     ],
 )
-def test_scheduling_schema(scheduler, queues_config, failure_message):
+def test_scheduling_schema(scheduler, queues, failure_message):
     scheduling_schema = {}
     if scheduler:
         scheduling_schema["Scheduler"] = scheduler
-    if queues_config:
-        scheduling_schema["Queues"] = queues_config
+    if queues:
+        scheduling_schema["Queues"] = queues
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):

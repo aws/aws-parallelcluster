@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
 #
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
@@ -16,6 +15,7 @@
 
 import operator
 from abc import ABC
+from enum import Enum
 from typing import List
 
 from pcluster.config.extended_builtin_class import MarkedBool, MarkedInt, MarkedStr
@@ -72,8 +72,8 @@ class Resource(ABC):
 # ---------------------- Storage ---------------------- #
 
 
-class BaseEbs(Resource):
-    """Represent the configuration shared by EBS and RootVolume."""
+class Ebs(Resource):
+    """Represent the configuration shared by EBS root volume and Shared EBS."""
 
     def __init__(
         self,
@@ -130,17 +130,6 @@ class Raid(Resource):
         self.number_of_volumes = number_of_volumes
 
 
-class Ebs(BaseEbs):
-    """Represent the EBS resource."""
-
-    def __init__(self, snapshot_id: str = None, volume_id: str = None, raid: Raid = None, **kwargs):
-        super().__init__(**kwargs)
-
-        self.snapshot_id = snapshot_id
-        self.volume_id = volume_id
-        self.raid = raid
-
-
 class EphemeralVolume(Resource):
     """Represent the Ephemeral Volume resource."""
 
@@ -155,18 +144,59 @@ class EphemeralVolume(Resource):
 
 
 class Storage(Resource):
-    """Represent the node storage."""
+    """Represent the entire node storage configuration."""
 
-    def __init__(self, root_volume: BaseEbs = None, ephemeral_volume: EphemeralVolume = None):
+    def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
+        super().__init__()
         self.root_volume = root_volume
         self.ephemeral_volume = ephemeral_volume
 
 
-class Efs(Resource):
-    """Represent the EFS resource."""
+class SharedStorage(Resource):
+    """Represent a generic shared Storage resource."""
+
+    class Type(Enum):
+        """Define storage types to be used as shared storage."""
+
+        EBS = "ebs"
+        EFS = "efs"
+        FSX = "fsx"
+
+    def __init__(self, mount_dir: str, shared_storage_type: Type):
+        super().__init__()
+        self.mount_dir = mount_dir
+        self.shared_storage_type = shared_storage_type
+
+
+class SharedEbs(SharedStorage, Ebs):
+    """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
 
     def __init__(
         self,
+        mount_dir: str,
+        volume_type: str = None,
+        iops: int = None,
+        size: int = None,
+        encrypted: bool = None,
+        kms_key_id: str = None,
+        throughput: int = None,
+        snapshot_id: str = None,
+        volume_id: str = None,
+        raid: Raid = None,
+    ):
+        SharedStorage.__init__(self, mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EBS)
+        Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
+        self.snapshot_id = snapshot_id
+        self.volume_id = volume_id
+        self.raid = raid
+
+
+class SharedEfs(SharedStorage):
+    """Represent the shared EFS resource."""
+
+    def __init__(
+        self,
+        mount_dir: str,
         encrypted: bool = None,
         kms_key_id: str = None,
         performance_mode: str = None,
@@ -174,7 +204,7 @@ class Efs(Resource):
         provisioned_throughput: int = None,
         id: str = None,
     ):
-        super().__init__()
+        super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EFS)
         if encrypted is None:
             encrypted = MarkedBool(False)
         if performance_mode is None:
@@ -189,11 +219,12 @@ class Efs(Resource):
         self.id = id
 
 
-class Fsx(Resource):
-    """Represent the FSX resource."""
+class SharedFsx(SharedStorage):
+    """Represent the shared FSX resource."""
 
     def __init__(
         self,
+        mount_dir: str,
         storage_capacity: str = None,
         deployment_type: str = None,
         export_path: str = None,
@@ -211,7 +242,7 @@ class Fsx(Resource):
         drive_cache_type: str = None,
         storage_type: str = None,
     ):
-        super().__init__()
+        super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.FSX)
         self.storage_capacity = storage_capacity
         self.storage_type = storage_type
         self.deployment_type = deployment_type
@@ -231,21 +262,6 @@ class Fsx(Resource):
         self.storage_type = storage_type
         self._add_validator(FsxValidator, fsx_config=self)
         # TODO decide whether we should split FsxValidator into smaller ones
-
-
-class SharedStorage(Resource):
-    """Represent the Shared Storage resource."""
-
-    def __init__(self, mount_dir: str, ebs: Ebs = None, efs: Efs = None, fsx: Fsx = None):
-        super().__init__()
-        self.mount_dir = mount_dir
-        # FIXME put as parent
-        if ebs:
-            self.ebs = ebs
-        elif efs:
-            self.efs = efs
-        elif fsx:
-            self.fsx = fsx
 
 
 # ---------------------- Networking ---------------------- #
