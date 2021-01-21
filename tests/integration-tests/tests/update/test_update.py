@@ -19,6 +19,7 @@ import pytest
 import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import (
@@ -88,8 +89,8 @@ def test_update_sit(
     _check_max_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "max_queue_size"))
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -287,8 +288,8 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     updated_config.read(updated_config_file)
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -462,27 +463,6 @@ def _check_extra_json(command_executor, scheduler_commands, host, expected_value
     _retrieve_extra_json(scheduler_commands, host)
     result = command_executor.run_remote_command("cat /shared/{0}_extra_json.txt".format(host))
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
-
-
-def _check_role_inline_policy(region, cluster, policy_name, policy_statement):
-    iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    statement = (
-        iam_client.get_role_policy(RoleName=root_role, PolicyName=policy_name)
-        .get("PolicyDocument")
-        .get("Statement")[0]
-        .get("Resource")[0]
-    )
-    assert_that(statement).is_equal_to(policy_statement)
-
-
-def _check_s3_read_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3Read", s3_arn)
-
-
-def _check_s3_read_write_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3ReadWrite", s3_arn)
 
 
 def _check_role_attached_policy(region, cluster, policy_arn):

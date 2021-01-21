@@ -14,9 +14,11 @@ import os
 from shutil import copyfile
 
 import boto3
+import configparser
 import pytest
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.assertions import assert_no_errors_in_logs
 
@@ -131,3 +133,28 @@ def _test_batch_access(remote_command_executor, region):
     ).stdout
     # An error occurred (AccessDeniedException) when calling the DescribeComputeEnvironments operation: ...
     assert_that(result).does_not_contain("AccessDeniedException")
+
+
+@pytest.mark.regions(["eu-central-1"])
+@pytest.mark.schedulers(["slurm", "awsbatch"])
+@pytest.mark.oss(["alinux2"])
+@pytest.mark.usefixtures("os", "instance")
+def test_s3_read_write_resource(
+    region, pcluster_config_reader, clusters_factory, s3_bucket_factory, test_datadir, scheduler
+):
+    # Create S3 bucket for testing s3_read_resource and s3_read_write_resource
+    bucket_name = s3_bucket_factory()
+    bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
+    logging.info("bucket is {0}".format(bucket_name))
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "read_only/s3_test_file")
+    bucket.upload_file(str(test_datadir / "s3_test_file"), "read_and_write/s3_test_file")
+
+    cluster_config = pcluster_config_reader(bucket=bucket_name)
+    cluster = clusters_factory(cluster_config)
+
+    config = configparser.ConfigParser()
+    config.read(cluster_config)
+
+    # Check S3 resources
+    check_s3_read_resource(region, cluster, config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, config.get("cluster default", "s3_read_write_resource"))
