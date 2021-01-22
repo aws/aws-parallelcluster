@@ -99,6 +99,16 @@ class BaseSchema(Schema):
         if field_obj.data_key is None:
             field_obj.data_key = _camelcase(field_name)
 
+    def only_one_field(self, data, field_list):
+        """
+        Check that the Schema contains only one of the given fields.
+
+        :param data: the
+        :param field_list: list including the name of the fields to check
+        :return: True if one and only one field is not None
+        """
+        return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
+
     @pre_load
     def evaluate_dynamic_defaults(self, raw_data, **kwargs):
         """Evaluate dynamic default, it's just an example to be removed."""
@@ -276,16 +286,9 @@ class SharedStorageSchema(BaseSchema):
             raise ValidationError(f"{value} cannot be used as a mount directory")
 
     @validates_schema
-    def validate_existence_of_settings(self, data, **kwargs):
+    def only_one_storage(self, data, **kwargs):
         """Validate that there is one and only one setting."""
-        count = 0
-        if data.get("ebs"):
-            count += 1
-        if data.get("efs"):
-            count += 1
-        if data.get("fsx"):
-            count += 1
-        if count != 1:
+        if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
             raise ValidationError(
                 "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
             )
