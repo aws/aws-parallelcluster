@@ -367,6 +367,11 @@ def test_generate_random_name_with_prefix(bucket_prefix):
     assert_that(len(bucket_name)).is_between(3, max_bucket_name_length)
 
 
+def test_generate_random_prefix():
+    prefix = utils.generate_random_prefix()
+    assert_that(len(prefix)).is_equal_to(16)
+
+
 @pytest.mark.parametrize(
     "region,create_error_message,configure_error_message",
     [

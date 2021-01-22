@@ -11,10 +11,12 @@
 
 import os
 
+import pytest
 import yaml
+from assertpy import assert_that
 from aws_cdk import core
 
-from common.utils import load_yaml
+from common.utils import load_yaml_dict
 from pcluster.models.cluster import (
     Cluster,
     ComputeResource,
@@ -26,6 +28,9 @@ from pcluster.models.cluster import (
     Scheduling,
     Ssh,
 )
+from pcluster.models.imagebuilder import Build, DevSettings
+from pcluster.models.imagebuilder import Image as ImageBuilderImage
+from pcluster.models.imagebuilder import ImageBuilder, Volume
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cluster_stack import HeadNodeConstruct
 
@@ -49,6 +54,21 @@ def dummy_cluster():
     return Cluster(image=image, head_node=head_node, scheduling=scheduling)
 
 
+def dummy_imagebuilder(is_official_ami_build):
+    """Generate dummy imagebuilder configuration."""
+    image = ImageBuilderImage(name="Pcluster", root_volume=Volume())
+    if is_official_ami_build:
+        build = Build(
+            instance_type="c5.xlarge",
+            parent_image="arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x",
+        )
+        dev_settings = DevSettings(update_os_and_reboot=True)
+    else:
+        build = Build(instance_type="g4dn.xlarge", parent_image="ami-0185634c5a8a37250")
+        dev_settings = DevSettings()
+    return ImageBuilder(image=image, build=build, dev_settings=dev_settings)
+
+
 def test_cluster_builder():
     generated_template = CDKTemplateBuilder().build(cluster=dummy_cluster())
     print(yaml.dump(generated_template))
@@ -70,7 +90,257 @@ def test_head_node_construct(tmpdir):
     app = core.App(outdir=str(tmpdir))
     DummyStack(app, output_file, head_node=dummy_head_node())
     app.synth()
-    generated_template = load_yaml(os.path.join(tmpdir, f"{output_file}.template.json"))
+    generated_template = load_yaml_dict(os.path.join(tmpdir, f"{output_file}.template.json"))
 
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
+
+
+@pytest.mark.parametrize(
+    "is_official_ami_build, response, expected_template",
+    [
+        (
+            True,
+            [
+                {
+                    "Architecture": "x86_64",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-0a20b6671bc5e3ead",
+                                "VolumeSize": 25,
+                                "VolumeType": "gp2",
+                                "Encrypted": False,
+                            },
+                        }
+                    ],
+                }
+            ],
+            {
+                "Parameters": {
+                    "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
+                    "EnableDCV": {"Type": "String", "Default": "false", "Description": "EnableDCV"},
+                    "CustomNodePackage": {"Type": "String", "Default": "", "Description": "CustomNodePackage"},
+                },
+                "Resources": {
+                    "InstanceRole": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "AssumeRolePolicyDocument": {
+                                "Statement": {
+                                    "Action": "sts:AssumeRole",
+                                    "Effect": "Allow",
+                                    "Principal": {"Service": "ec2.amazonaws.com"},
+                                },
+                                "Version": "2012-10-17",
+                            },
+                            "ManagedPolicyArns": [
+                                {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
+                                {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
+                            ],
+                            "Path": "/executionServiceEC2Role/",
+                        },
+                        "Metadata": {"Comment": "Role to be used by instance during image build."},
+                    },
+                    "InstanceProfile": {
+                        "Type": "AWS::IAM::InstanceProfile",
+                        "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/executionServiceEC2Role/"},
+                    },
+                    "PClusterImageInfrastructureConfiguration": {
+                        "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
+                        "Properties": {
+                            "InstanceProfileName": {"Ref": "InstanceProfile"},
+                            "Name": "PCluster-Image-Infrastructure-Configuration-qd6lpbzo8gd2j4dr",
+                            "InstanceTypes": ["c5.xlarge"],
+                            "TerminateInstanceOnFailure": False,
+                        },
+                    },
+                    "UpdateAndRebootComponent": {
+                        "Type": "AWS::ImageBuilder::Component",
+                        "Properties": {
+                            "Name": "UpdateAndReboot-qd6lpbzo8gd2j4dr",
+                            "Platform": "Linux",
+                            "Version": "0.0.1",
+                            "ChangeDescription": "First version",
+                            "Data": {"Fn::Sub": "content"},
+                            "Description": "Update OS and Reboot",
+                        },
+                    },
+                    "PClusterComponent": {
+                        "Type": "AWS::ImageBuilder::Component",
+                        "Properties": {
+                            "Name": "PCluster-qd6lpbzo8gd2j4dr",
+                            "Platform": "Linux",
+                            "Version": "0.0.1",
+                            "ChangeDescription": "First version",
+                            "Data": {"Fn::Sub": "content"},
+                            "Description": "Bake PCluster AMI",
+                        },
+                    },
+                    "PClusterImageRecipe": {
+                        "Type": "AWS::ImageBuilder::ImageRecipe",
+                        "Properties": {
+                            "Components": [
+                                {"ComponentArn": {"Ref": "UpdateAndRebootComponent"}},
+                                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                            ],
+                            "Name": "PCluster-2-10-1-qd6lpbzo8gd2j4dr",
+                            "ParentImage": {
+                                "Fn::Sub": "arn:${AWS::Partition}:imagebuilder:"
+                                "${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x"
+                            },
+                            "Version": "0.0.1",
+                            "BlockDeviceMappings": [
+                                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 40, "VolumeType": "gp2"}}
+                            ],
+                        },
+                    },
+                    "PClusterImage": {
+                        "Type": "AWS::ImageBuilder::Image",
+                        "Properties": {
+                            "ImageRecipeArn": {"Ref": "PClusterImageRecipe"},
+                            "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
+                        },
+                    },
+                    "PClusterParameter": {
+                        "Type": "AWS::SSM::Parameter",
+                        "Properties": {
+                            "Type": "String",
+                            "Value": {"Fn::GetAtt": ["PClusterImage", "ImageId"]},
+                            "Description": "Image Id for PCluster",
+                            "Name": "/Test/Images/PCluster-qd6lpbzo8gd2j4dr",
+                        },
+                    },
+                },
+            },
+        ),
+        (
+            False,
+            [
+                {
+                    "Architecture": "x86_64",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "DeleteOnTermination": True,
+                                "SnapshotId": "snap-0a20b6671bc5e3ead",
+                                "VolumeSize": 50,
+                                "VolumeType": "gp2",
+                                "Encrypted": False,
+                            },
+                        }
+                    ],
+                }
+            ],
+            {
+                "Parameters": {
+                    "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
+                    "EnableDCV": {"Type": "String", "Default": "false", "Description": "EnableDCV"},
+                    "CustomNodePackage": {
+                        "Type": "String",
+                        "Default": "",
+                        "Description": "CustomNodePackage",
+                    },
+                },
+                "Resources": {
+                    "InstanceRole": {
+                        "Type": "AWS::IAM::Role",
+                        "Properties": {
+                            "AssumeRolePolicyDocument": {
+                                "Statement": {
+                                    "Action": "sts:AssumeRole",
+                                    "Effect": "Allow",
+                                    "Principal": {"Service": "ec2.amazonaws.com"},
+                                },
+                                "Version": "2012-10-17",
+                            },
+                            "ManagedPolicyArns": [
+                                {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"},
+                                {"Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"},
+                            ],
+                            "Path": "/executionServiceEC2Role/",
+                        },
+                        "Metadata": {"Comment": "Role to be used by instance during image build."},
+                    },
+                    "InstanceProfile": {
+                        "Type": "AWS::IAM::InstanceProfile",
+                        "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/executionServiceEC2Role/"},
+                    },
+                    "PClusterImageInfrastructureConfiguration": {
+                        "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
+                        "Properties": {
+                            "InstanceProfileName": {"Ref": "InstanceProfile"},
+                            "Name": "PCluster-Image-Infrastructure-Configuration-gw85hm3tw3qka4fd",
+                            "InstanceTypes": ["g4dn.xlarge"],
+                            "TerminateInstanceOnFailure": True,
+                        },
+                    },
+                    "PClusterComponent": {
+                        "Type": "AWS::ImageBuilder::Component",
+                        "Properties": {
+                            "Name": "PCluster-gw85hm3tw3qka4fd",
+                            "Platform": "Linux",
+                            "Version": "0.0.1",
+                            "ChangeDescription": "First version",
+                            "Data": {"Fn::Sub": "install pcluster"},
+                            "Description": "Bake PCluster AMI",
+                        },
+                    },
+                    "PClusterImageRecipe": {
+                        "Type": "AWS::ImageBuilder::ImageRecipe",
+                        "Properties": {
+                            "Components": [{"ComponentArn": {"Ref": "PClusterComponent"}}],
+                            "Name": "PCluster-2-10-1-gw85hm3tw3qka4fd",
+                            "ParentImage": {"Fn::Sub": "ami-0185634c5a8a37250"},
+                            "Version": "0.0.1",
+                            "BlockDeviceMappings": [
+                                {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 65, "VolumeType": "gp2"}}
+                            ],
+                        },
+                    },
+                    "PClusterImage": {
+                        "Type": "AWS::ImageBuilder::Image",
+                        "Properties": {
+                            "ImageRecipeArn": {"Ref": "PClusterImageRecipe"},
+                            "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
+                        },
+                    },
+                    "PClusterParameter": {
+                        "Type": "AWS::SSM::Parameter",
+                        "Properties": {
+                            "Type": "String",
+                            "Value": {"Fn::GetAtt": ["PClusterImage", "ImageId"]},
+                            "Description": "Image Id for PCluster",
+                            "Name": "/Test/Images/PCluster-gw85hm3tw3qka4fd",
+                        },
+                    },
+                },
+            },
+        ),
+    ],
+)
+def test_imagebuilder(mocker, is_official_ami_build, response, expected_template):
+    mocker.patch("pcluster.utils.get_info_for_amis", return_value=response)
+    # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
+    mocker.patch(
+        "pcluster.utils.get_cloudformation_directory",
+        return_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "cloudformation"),
+    )
+    dummy_imagebuild = dummy_imagebuilder(is_official_ami_build)
+    generated_template = CDKTemplateBuilder().build_ami(dummy_imagebuild)
+    # TODO assert content of the template by matching expected template
+    _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
+    _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
+
+
+def _test_parameters(generated_parameters, expected_parameters):
+    for parameter in expected_parameters.keys():
+        assert_that(parameter in generated_parameters).is_equal_to(True)
+
+
+def _test_resources(generated_resouces, expected_resources):
+    for resouce in expected_resources.keys():
+        assert_that(resouce in generated_resouces).is_equal_to(True)

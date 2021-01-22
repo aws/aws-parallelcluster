@@ -125,12 +125,14 @@ class BaseSchema(Schema):
         for key, value in vars(data).copy().items():
             if _is_implied(value):
                 delattr(data, key)
+            if isinstance(value, list):
+                value[:] = [v for v in value if not _is_implied(v)]
         return data
 
     @post_dump
     def remove_none_values(self, data, **kwargs):
         """Remove None values before creating the Yaml format."""
-        return {key: value for key, value in data.items() if value is not None}
+        return {key: value for key, value in data.items() if value is not None and value != []}
 
 
 def _is_implied(value):

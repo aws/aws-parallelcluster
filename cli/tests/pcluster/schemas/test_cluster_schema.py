@@ -16,7 +16,7 @@ import yaml
 from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
-from common.utils import load_yaml
+from common.utils import load_yaml_dict
 from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema
 
 
@@ -27,7 +27,7 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
 
     # Load cluster model from Yaml file
-    input_yaml = load_yaml(test_datadir / config_file_name)
+    input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)
     cluster = ClusterSchema().load(input_yaml)
     print(cluster)

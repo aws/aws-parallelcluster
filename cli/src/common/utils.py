@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+import os
 from urllib.request import urlopen
 
 import yaml
@@ -20,10 +20,15 @@ def download_file(url):
     return response.read().decode("utf-8")
 
 
-def load_yaml(config_file):
+def load_yaml_dict(config_file):
     """Read the content of a yaml file."""
     with open(config_file) as conf_file:
         yaml_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content
+
+
+def load_yaml(source_dir, file_name):
+    """Get string data from yaml file."""
+    return yaml.dump(load_yaml_dict(os.path.join(source_dir, file_name)))

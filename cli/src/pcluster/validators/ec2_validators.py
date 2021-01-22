@@ -13,6 +13,16 @@ from common.boto3.ec2 import Ec2Client
 from pcluster.validators.common import FailureLevel, Validator
 
 
+class BaseAMIValidator(Validator):
+    """Base AMI validator."""
+
+    def __call__(self, ami_id: str):
+        """Validate given ami id."""
+        if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
+            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.CRITICAL)
+        return self._failures
+
+
 class InstanceTypeValidator(Validator):
     """EC2 Instance type validator."""
 

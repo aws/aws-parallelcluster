@@ -1,0 +1,249 @@
+name: PCluster
+description: Bake PCluster AMI
+schemaVersion: 1.0
+
+phases:
+  - name: build
+    steps:
+      - name: Exit
+        action: ExecuteBash
+        inputs:
+          commands:
+            - echo 1
+
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
+      - name: OperatingSystemRelease
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              FILE=/etc/os-release
+              if [ -e ${!FILE} ]; then
+                . ${!FILE}
+                echo "${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
+              else
+                echo "The file '${!FILE}' does not exist. Failing build."
+                exit {{ build.Exit.outputs.stdout }}
+              fi
+
+      # Get uniformed OS name
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
+
+              if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
+                OS='alinux2'
+              elif [ `echo "${!RELEASE}" | grep '^amzn'` ]; then
+                OS='alinux'
+              elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
+                OS='centos7'
+              elif [ `echo "${!RELEASE}" | grep '^centos\.8'` ]; then
+                OS='centos8'
+              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
+                OS='ubuntu1804'
+              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.16'` ]; then
+                OS='ubuntu1604'
+              else
+                echo "Operating System '${!RELEASE}' is not supported. Failing build."
+                exit {{ build.Exit.outputs.stdout }}
+              fi
+
+              echo ${!OS}
+
+      # Get platform name
+      - name: PlatformName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+               set -x
+               OS='{{ build.OperatingSystemName.outputs.stdout }}'
+
+               if [ `echo "${!OS}" | grep -E '^(alinux|centos)'` ]; then
+                 PLATFORM='RHEL'
+               elif [ `echo "${!OS}" | grep -E '^ubuntu'` ]; then
+                 PLATFORM='DEBIAN'
+               fi
+
+               echo ${!PLATFORM}
+
+      # Get input base AMI Architecture
+      - name: OperatingSystemArchitecture
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              ARCH=$(uname -m)
+              case ${!ARCH} in
+                'x86_64')
+                  echo 'x86_64'
+                  ;;
+                'aarch64')
+                  echo 'arm64'
+                  ;;
+                *)
+                  echo "The '${!ARCH}' architecture is not supported. Failing build."
+                  exit {{ build.Exit.outputs.stdout }}
+                  ;;
+              esac
+
+      - name: OperationSystemPrerequisite
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+
+              if [[ ${!OS} =~ ^centos[7-8]$ ]]; then
+                  if [[ ${!OS} == centos7 ]]; then
+                    yum -y install epel-release
+                  else
+                    dnf -y install epel-release
+                  fi
+                  /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
+                  /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="(.*)"/GRUB_CMDLINE_LINUX="\\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
+                  grub2-mkconfig -o /boot/grub2/grub.cfg
+              elif [[ ${!OS} =~ ^ubuntu1(6|8)04$ ]]; then
+                  apt-cache search build-essential
+                  apt-get clean
+                  apt-get update
+              fi
+
+      - name: InstallDevelopmentAndJq
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
+
+              if [[ ${!PLATFORM} == RHEL ]]; then
+                if [[ ${!OS} == centos8 ]]; then
+                  dnf -y groupinstall development && sudo dnf -y install curl wget jq
+                else
+                  yum -y groupinstall development && sudo yum -y install curl wget jq
+                fi
+              elif [[ ${!PLATFORM} == DEBIAN ]]; then
+                apt-get -y install build-essential curl wget jq
+              fi
+
+      - name: DownloadCookbook
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              CookbookVersion="aws-parallelcluster-cookbook-2.10.1"
+              cookbook_url=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/cookbooks/${!CookbookVersion}.tgz
+              echo "${!cookbook_url}"
+              chef_version="15.11.8"
+              berkshelf_version="7.0.10"
+              curl --retry 3 -L https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
+              /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
+
+              mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${!cookbook_url}.date
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${!cookbook_url}.md5
+
+              mkdir /tmp/cookbooks
+              cd /tmp/cookbooks
+              tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz
+
+              export HOME="/tmp"
+              for d in `ls /tmp/cookbooks`; do
+                cd /tmp/cookbooks/$d
+                LANG=en_US.UTF-8 sudo /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete || (echo 'Vendoring cookbook failed.' && exit {{ build.Exit.outputs.stdout }})
+              done;
+
+      - name: CreatingChefClientFile
+        action: CreateFile
+        inputs:
+          - path: /etc/chef/client.rb
+            content: |
+              cookbook_path ['/etc/chef/cookbooks']
+            overwrite: true
+
+      - name: CreatingJsonFile
+        action: CreateFile
+        inputs:
+          - path: /tmp/dna.json
+            content: |
+              {
+                "cfncluster" : {
+                  "cfn_region": "${AWS::Region}",
+                  "nvidia" : {
+                    "enabled" : "${EnableNvidia}"
+                  },
+                  "is_official_ami_build": "${UpdateAndReboot}",
+                  "custom_node_package" : "${CustomNodePackage}",
+                  "cfn_base_os" : "{{ build.OperatingSystemName.outputs.stdout }}"
+                }
+              }
+            overwrite: true
+
+      - name: InstallPClusterPackages
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              chef-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /tmp/dna.json --override-runlist aws-parallelcluster::default
+
+      - name: Bootstrap
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+
+              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1(6|8)04)$ ]]; then
+                bucket="s3.amazonaws.com"
+                [[ ${AWS::Region} =~ ^cn- ]] && bucket="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
+                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://${!bucket}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+                if [[ ${!OS} == centos8 ]]; then
+                  dnf install -y python3-pip
+                  pip3 install /tmp/aws-cfn-bootstrap-py3-latest.tar.gz
+                elif [[ ${!OS} == centos7 ]]; then
+                  which pip2
+                  if [ $? -eq 0 ]; then
+                    pip2 install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                  else
+                    pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                  fi
+                elif [[ ${!OS} =~ ^ubuntu1(6|8)04$ ]]; then
+                  pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
+                fi
+              fi
+
+              echo aws-parallelcluster-cookbook-2.10.1 | sudo tee /opt/parallelcluster/.bootstrapped
+
+              if [[ ${!OS} =~ ^centos[7-8]$ ]]; then
+                sed -i -e "s/\s*Defaults\s\s*requiretty//# Defaults  requiretty/" /etc/sudoers
+              fi
+
+      - name: CleanUp
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              /usr/local/sbin/ami_cleanup.sh
+
+
+
+  - name: validate
+    steps:
+      - name: PClusterValidate
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              echo "I am validate"

@@ -1,0 +1,47 @@
+Image:
+  Name: Pcluster
+  Description: Build for Pcluster 3.0
+  Tags:
+    - Key: Name
+      Value: ParallelCluster-3.0-AMI
+    - Key: Version
+      Value: verion-3.0
+  RootVolume:
+    Size: 25
+    Encrypted: True
+    KmsKeyId: arn:aws:kms:us-east-1:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab
+
+Build:
+  InstanceRole: TestRole
+  InstanceType: c5.xlarge
+  Components:
+    - Type: arn
+      Value: arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0
+    - Type: yaml
+      Value: s3://test/mysql_component.yml
+    - Type: yaml
+      Value: s3://test/keras_component.yml
+    - Type: bash
+      Value: s3://test/post_install.sh
+  ParentImage: arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x
+  Tags:
+    - Key: Name
+      Value: ParallelCluster-3.0-Build
+    - Key: Date
+      Value: 2022.1.1
+  SecurityGroupIds:
+    - sg-990022199901
+    - sg-889920129301
+  SubnetId: subnet-0d03dc52
+
+DevSettings:
+  UpdateOsAndReboot: True
+  DisablePclusterComponent: False
+  ChefCookbook:
+    Url: s3://test/aws-parallelcluster-cookbook-3.0.tgz
+    Json: |
+      { "cluster" : {"cfn_scheduler_slots": "cores"}}
+  NodeUrl: s3://test/aws-parallelcluster-node-3.0.tgz
+  AWSBatchCliUrl: s3://test/aws-parallelcluster-batch-3.0.tgz
+  DistributionConfigurationArn: arn:aws:imagebuilder:us-east-1:aws:distributionconfiguration/amazon-cloudwatch-agent-linux/1.0.0
+  TerminateInstanceOnFailure: True

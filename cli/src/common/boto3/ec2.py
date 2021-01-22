@@ -27,3 +27,14 @@ class Ec2Client(Boto3Client):
             offering.get("InstanceType")
             for offering in self._paginate_results(self._client.describe_instance_type_offerings)
         ]
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_ami_id_offering(self, ami_id):
+        """Return a boolean to determine ami id is valid or not."""
+        return self._paginate_results(
+            self._client.describe_images(
+                ImageIds=[
+                    ami_id,
+                ]
+            )
+        )
