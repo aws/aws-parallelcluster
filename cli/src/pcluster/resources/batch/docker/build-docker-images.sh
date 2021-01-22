@@ -3,12 +3,23 @@ set -eu
 
 build_docker_image() {
     local image=$1
+    local retries=5
     echo "Building image ${image}"
     if [ ! -f "${image}/Dockerfile" ]; then
         echo "Dockerfile not found for image ${image}. Exiting..."
         exit 1
     fi
-    docker build -f "${image}/Dockerfile" -t "${IMAGE_REPO_NAME}:${image}" .
+
+    n=0
+    until [ $n -gt ${retries} ]
+    do
+      # Try building the image max ${retries} times. If the command succeeds it breaks the loop
+      echo "Docker build - trial #${n}"
+      docker build -f "${image}/Dockerfile" -t "${IMAGE_REPO_NAME}:${image}" . && break
+      echo "docker build failed."
+      n=$((n+1))
+      sleep ${RANDOM:0:1}
+    done
 }
 
 if [ -z "${IMAGE}" ]; then
