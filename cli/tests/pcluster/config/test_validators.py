@@ -1147,6 +1147,7 @@ def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
             "only support using FSx file system that is in the same VPC as the stack",
         ),
         (  # not working case --> wrong ip permissions in security group
+            # FIXME this test is problematic. THe vpc is wrong, so the error should be relevant to vpc.
             "vpc-06e4ab6c6cWRONG",
             [
                 {

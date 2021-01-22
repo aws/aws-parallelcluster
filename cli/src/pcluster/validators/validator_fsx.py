@@ -47,8 +47,8 @@ class FsxValidator(Validator):
             storage_type, deployment_type, per_unit_storage_throughput, drive_cache_type
         )
 
-        self._fsx_storage_capacity_validator(fsx_config)
-        self._fsx_ignored_parameters_validator(fsx_config)
+        self._validate_fsx_storage_capacity(fsx_config)
+        self._validate_fsx_ignored_parameters(fsx_config)
 
     def _validate_s3_options(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
         """Verify compatibility of given S3 options for FSX."""
@@ -148,7 +148,7 @@ class FsxValidator(Validator):
                     FailureLevel.CRITICAL,
                 )
 
-    def _fsx_storage_capacity_validator(self, fsx_config):
+    def _validate_fsx_storage_capacity(self, fsx_config):
         storage_capacity = fsx_config.storage_capacity
         deployment_type = fsx_config.deployment_type
         storage_type = fsx_config.storage_type
@@ -186,7 +186,7 @@ class FsxValidator(Validator):
                     FailureLevel.CRITICAL,
                 )
 
-    def _fsx_ignored_parameters_validator(self, fsx_config):
+    def _validate_fsx_ignored_parameters(self, fsx_config):
         """Return errors for parameters in the FSx config section that would be ignored."""
         # If file_system_id is specified, all parameters besides shared_dir are ignored.
         relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
