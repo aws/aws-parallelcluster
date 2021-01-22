@@ -21,9 +21,14 @@ from typing import List
 from pcluster.config.extended_builtin_class import MarkedBool, MarkedInt, MarkedStr
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.validators.common import ValidationResult, Validator
-from pcluster.validators.ebs import EbsVolumeIopsValidator, EbsVolumeThroughputValidator, EbsVolumeTypeSizeValidator
-from pcluster.validators.ec2 import InstanceTypeValidator
-from pcluster.validators.fsx import FsxValidator
+from pcluster.validators.validator_cluster import FsxNetworkingValidator
+from pcluster.validators.validator_ebs import (
+    EbsVolumeIopsValidator,
+    EbsVolumeThroughputValidator,
+    EbsVolumeTypeSizeValidator,
+)
+from pcluster.validators.validator_ec2 import InstanceTypeValidator
+from pcluster.validators.validator_fsx import FsxValidator
 
 
 class _ResourceValidator:
@@ -618,6 +623,14 @@ class Cluster(Resource):
         self.iam = iam
         self.custom_actions = custom_actions
         self.cores = None
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                if isinstance(storage, SharedFsx):
+                    self._add_validator(
+                        FsxNetworkingValidator,
+                        fs_system_id=storage.file_system_id,
+                        head_node_subnet_id=self.head_node.networking.subnet_id,
+                    )
 
     @property
     def cores(self):

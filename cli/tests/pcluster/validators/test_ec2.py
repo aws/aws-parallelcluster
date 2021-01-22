@@ -10,30 +10,21 @@
 # limitations under the License.
 
 import pytest
-from assertpy import assert_that
 
-from pcluster.validators.common import ConfigValidationError
-from pcluster.validators.ec2 import InstanceTypeValidator
-
-
-def _assert_validation_result(validator, failure_message, *validator_args):
-    """Call the validator and check the result."""
-    if failure_message:
-        with pytest.raises(ConfigValidationError, match=failure_message):
-            validator(*validator_args)
-    else:
-        assert_that(validator(*validator_args)).is_empty()
+from pcluster.validators.validator_ec2 import InstanceTypeValidator
+from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "instance_type, failure_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
+    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
-def test_instance_type_validator(mocker, instance_type, failure_message):
+def test_instance_type_validator(mocker, instance_type, expected_message):
 
-    mocker.patch("pcluster.validators.ec2.Ec2Client.__init__", return_value=None)
+    mocker.patch("pcluster.validators.validator_ec2.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.ec2.Ec2Client.describe_instance_type_offerings", return_value=["t2.micro", "c4.xlarge"]
+        "pcluster.validators.validator_ec2.Ec2Client.describe_instance_type_offerings",
+        return_value=["t2.micro", "c4.xlarge"],
     )
 
-    validator = InstanceTypeValidator(raise_on_error=True)
-    _assert_validation_result(validator, failure_message, instance_type)
+    actual_failures = InstanceTypeValidator()(instance_type)
+    assert_failure_messages(actual_failures, expected_message)
