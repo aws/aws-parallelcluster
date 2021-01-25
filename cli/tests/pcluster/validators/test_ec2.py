@@ -11,7 +11,7 @@
 
 import pytest
 
-from pcluster.validators.validator_ec2 import InstanceTypeValidator
+from pcluster.validators.ec2_validators import InstanceTypeValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -20,9 +20,9 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_instance_type_validator(mocker, instance_type, expected_message):
 
-    mocker.patch("pcluster.validators.validator_ec2.Ec2Client.__init__", return_value=None)
+    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.validator_ec2.Ec2Client.describe_instance_type_offerings",
+        "pcluster.validators.ec2_validators.Ec2Client.describe_instance_type_offerings",
         return_value=["t2.micro", "c4.xlarge"],
     )
 

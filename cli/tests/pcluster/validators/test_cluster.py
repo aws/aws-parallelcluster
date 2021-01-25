@@ -10,14 +10,14 @@
 # limitations under the License.
 import pytest
 
-from pcluster.validators.validator_cluster import FsxNetworkingValidator
+from pcluster.validators.cluster_validators import FsxNetworkingValidator
 from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.fixture()
 def boto3_stubber_path():
-    return "pcluster.validators.validator_cluster.boto3"
+    return "pcluster.validators.cluster_validators.boto3"
 
 
 @pytest.mark.parametrize(
