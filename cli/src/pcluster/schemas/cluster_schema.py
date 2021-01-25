@@ -39,6 +39,7 @@ from pcluster.models.cluster import (
     Dashboards,
     Dcv,
     Ebs,
+    Efa,
     EphemeralVolume,
     HeadNode,
     HeadNodeNetworking,
@@ -288,12 +289,13 @@ class SharedStorageSchema(BaseSchema):
     @validates_schema
     def only_one_storage(self, data, **kwargs):
         """Validate that there is one and only one setting."""
-        if not kwargs.get("partial"):
+        if kwargs.get("partial"):
             # If the schema is to be loaded partially, do not check existence constrain.
-            if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
-                raise ValidationError(
-                    "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
-                )
+            return
+        if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
+            raise ValidationError(
+                "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
+            )
 
 
 # ---------------------- Networking ---------------------- #
@@ -380,6 +382,18 @@ class DcvSchema(BaseSchema):
         return Dcv(**data)
 
 
+class EfaSchema(BaseSchema):
+    """Represent the schema of EFA."""
+
+    enabled = fields.Bool()
+    gdr_support = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Efa(**data)
+
+
 # ---------------------- Nodes ---------------------- #
 
 
@@ -404,6 +418,7 @@ class HeadNodeSchema(BaseSchema):
     image = fields.Nested(ImageSchema)
     storage = fields.Nested(StorageSchema)
     dcv = fields.Nested(DcvSchema)
+    efa = fields.Nested(EfaSchema)
 
     @post_load()
     def make_resource(self, data, **kwargs):
@@ -416,6 +431,11 @@ class ComputeResourceSchema(BaseSchema):
 
     instance_type = fields.Str(required=True)
     max_count = fields.Int()
+    min_count = fields.Int()
+    spot_price = fields.Float()
+    allocation_strategy = fields.Str()
+    simultaneous_multithreading = fields.Bool()
+    efa = fields.Nested(EfaSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
