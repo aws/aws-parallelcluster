@@ -183,18 +183,6 @@ def get_batch_ce_min_size(stack_name, region):
     )
 
 
-def get_batch_ce_desired_size(stack_name, region):
-    """Get min vcpus for Batch Compute Environment."""
-    client = boto3.client("batch", region_name=region)
-
-    return (
-        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
-        .get("computeEnvironments")[0]
-        .get("computeResources")
-        .get("desiredvCpus")
-    )
-
-
 def test_maintain_initial_size(stack_name, region, maintain_initial_size, initial_size):
     min_size = get_min_asg_capacity(region, stack_name)
     if maintain_initial_size == "true":
