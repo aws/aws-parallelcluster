@@ -20,8 +20,8 @@ from typing import List
 
 from pcluster.config.extended_builtin_class import MarkedBool, MarkedInt, MarkedStr
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.cluster_validators import FsxNetworkingValidator
+from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeThroughputValidator,
@@ -351,6 +351,19 @@ class Dcv(Resource):
         self.allowed_ips = allowed_ips
 
 
+class Efa(Resource):
+    """Represent the EFA configuration."""
+
+    def __init__(self, enabled: bool = None, gdr_support: bool = None):
+        super().__init__()
+        if enabled is None:
+            enabled = MarkedBool(True)
+        if gdr_support is None:
+            gdr_support = MarkedBool(False)
+        self.enabled = enabled
+        self.gdr_support = gdr_support
+
+
 # ---------------------- Nodes ---------------------- #
 
 
@@ -374,6 +387,7 @@ class HeadNode(Resource):
         image: Image = None,
         storage: Storage = None,
         dcv: Dcv = None,
+        efa: Efa = None,
     ):
         super().__init__()
         self.instance_type = instance_type
@@ -382,19 +396,40 @@ class HeadNode(Resource):
         self.ssh = ssh
         self.storage = storage
         self.dcv = dcv
+        self.efa = efa
         self._add_validator(InstanceTypeValidator, priority=1, instance_type=self.instance_type)
 
 
 class ComputeResource(Resource):
     """Represent the Compute Resource."""
 
-    def __init__(self, instance_type: str, max_count: int = None):
+    def __init__(
+        self,
+        instance_type: str,
+        max_count: int = None,
+        min_count: int = None,
+        spot_price: float = None,
+        allocation_strategy: str = None,
+        simultaneous_multithreading: bool = None,
+        efa: Efa = None,
+    ):
         super().__init__()
         if max_count is None:
             max_count = MarkedInt(10)
+        if min_count is None:
+            min_count = MarkedInt(0)
+        if allocation_strategy is None:
+            allocation_strategy = MarkedStr("BEST_FIT")
+        if simultaneous_multithreading is None:
+            simultaneous_multithreading = MarkedBool(True)
         self.instance_type = instance_type
         self.max_count = max_count
-        # TODO add missing attributes
+        self.min_count = min_count
+        self.spot_price = spot_price
+        self.allocation_strategy = allocation_strategy
+        self.simultaneous_multithreading = simultaneous_multithreading
+        self.efa = efa
+        # TODO handle awsbatch
 
 
 class Queue(Resource):
