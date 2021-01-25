@@ -102,10 +102,7 @@ createami:
         oss: ["alinux", "alinux2", "ubuntu1604", "ubuntu1804"] # temporary disable FPGA AMI since there is not enough free space on root partition
       - regions: ["us-gov-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["ubuntu1604", "ubuntu1804"]
-      - regions: ["cn-northwest-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux2"]
+        oss: ["ubuntu1604", "ubuntu1804"] # alinux2 temporarily disabled due to incompatible device name
   test_createami.py::test_createami_post_install:
     dimensions:
       - regions: ["ap-southeast-2"]
@@ -236,6 +233,12 @@ iam:
         schedulers: ["awsbatch", "slurm", "sge"]
         oss: ["alinux2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
+  test_iam.py::test_s3_read_write_resource:
+    dimensions:
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "awsbatch"]
 intel_hpc:
   test_intel_hpc.py::test_intel_hpc:
     dimensions:
@@ -298,6 +301,24 @@ networking:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: ["alinux2"]
         schedulers: ["awsbatch"]
+  test_placement_group.py::test_existing_placement_group_in_cluster:
+    dimensions:
+      - regions: ["af-south-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "sge"]
+  test_placement_group.py::test_dynamic_placement_group_in_cluster:
+    dimensions:
+      - regions: ["eu-north-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm", "sge"]
+  test_placement_group.py::test_placement_group_in_queue:
+    dimensions:
+      - regions: ["eu-central-1"]
+        instances: {{ common.INSTANCES_DEFAULT_X86 }}
+        oss: ["alinux2"]
+        schedulers: ["slurm"]
 scaling:
   test_scaling.py::test_hit_scaling:
     dimensions:

@@ -18,6 +18,7 @@ from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
+from tests.common.scaling_common import test_maintain_initial_size
 from tests.common.schedulers_common import SgeCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
@@ -35,10 +36,17 @@ def test_sge(region, pcluster_config_reader, clusters_factory):
     scaledown_idletime = 3
     max_queue_size = 5
     max_slots = 4
-    cluster_config = pcluster_config_reader(scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size)
+    maintain_initial_size = "false"
+    cluster_config = pcluster_config_reader(
+        scaledown_idletime=scaledown_idletime,
+        max_queue_size=max_queue_size,
+        maintain_initial_size=maintain_initial_size,
+    )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
+    initial_queue_size = cluster.config.get("cluster default", "initial_queue_size")
 
+    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
     _test_sge_version(remote_command_executor)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)
     _test_job_dependencies(remote_command_executor, region, cluster.cfn_name, scaledown_idletime)

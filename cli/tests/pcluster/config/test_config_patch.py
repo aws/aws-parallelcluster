@@ -74,7 +74,7 @@ def test_config_patch(mocker):
         ("vpc", "default", "master_subnet_id", "subnet-12345678", "subnet-1234567a", UpdatePolicy.UNSUPPORTED),
         ("vpc", "default", "additional_sg", "sg-12345678", "sg-1234567a", UpdatePolicy.SUPPORTED),
         ("cluster", "default", "initial_queue_size", 0, 1, UpdatePolicy.SUPPORTED),
-        ("cluster", "default", "max_queue_size", 0, 1, UpdatePolicy.SUPPORTED),
+        ("cluster", "default", "max_queue_size", 0, 1, UpdatePolicy.MAX_QUEUE_SIZE),
         ("cluster", "default", "maintain_initial_size", 0, 1, UpdatePolicy.SUPPORTED),
         ("cluster", "default", "compute_instance_type", "t2.micro", "c4.xlarge", UpdatePolicy.COMPUTE_FLEET_STOP),
     ],

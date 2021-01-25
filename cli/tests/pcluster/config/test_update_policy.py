@@ -18,7 +18,7 @@ from pcluster.config.update_policy import UpdatePolicy
     "is_fleet_stopped, old_max, new_max, expected_result",
     [(True, 10, 11, True), (True, 10, 9, True), (False, 10, 9, False), (False, 10, 11, True)],
 )
-def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_result):
+def test_max_queue_size_policies(mocker, is_fleet_stopped, old_max, new_max, expected_result):
     cluster_has_running_capacity_mock = mocker.patch(
         "pcluster.utils.cluster_has_running_capacity", return_value=not is_fleet_stopped
     )
@@ -29,6 +29,7 @@ def test_max_count_policy(mocker, is_fleet_stopped, old_max, new_max, expected_r
     change_mock.old_value = old_max
 
     assert_that(UpdatePolicy.MAX_COUNT.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
+    assert_that(UpdatePolicy.MAX_QUEUE_SIZE.condition_checker(change_mock, patch_mock)).is_equal_to(expected_result)
     cluster_has_running_capacity_mock.assert_called_with("stack_name")
 
 

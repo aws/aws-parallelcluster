@@ -20,7 +20,7 @@ from remote_command_executor import RemoteCommandExecutionError, RemoteCommandEx
 from time_utils import minutes
 
 from tests.common.assertions import assert_no_errors_in_logs, assert_scaling_worked
-from tests.common.scaling_common import watch_compute_nodes
+from tests.common.scaling_common import test_maintain_initial_size, watch_compute_nodes
 from tests.common.schedulers_common import TorqueCommands
 from tests.schedulers.common import assert_overscaling_when_job_submitted_during_scaledown
 
@@ -39,12 +39,18 @@ def test_torque(region, pcluster_config_reader, clusters_factory):
     max_queue_size = 5
     max_slots = 4
     initial_queue_size = 3  # in order to speed-up _test_jobs_executed_concurrently test
+    maintain_initial_size = "false"
     cluster_config = pcluster_config_reader(
-        scaledown_idletime=scaledown_idletime, max_queue_size=max_queue_size, initial_queue_size=initial_queue_size
+        scaledown_idletime=scaledown_idletime,
+        max_queue_size=max_queue_size,
+        initial_queue_size=initial_queue_size,
+        maintain_initial_size=maintain_initial_size,
     )
     cluster = clusters_factory(cluster_config)
     remote_command_executor = RemoteCommandExecutor(cluster)
 
+    maintain_initial_size = cluster.config.get("cluster default", "maintain_initial_size")
+    test_maintain_initial_size(cluster.cfn_name, region, maintain_initial_size, initial_queue_size)
     _test_torque_version(remote_command_executor)
     _test_jobs_executed_concurrently(remote_command_executor, max_slots)
     _test_non_runnable_jobs(remote_command_executor, max_queue_size, max_slots, region, cluster, scaledown_idletime)

@@ -19,9 +19,11 @@ import pytest
 import utils
 from assertpy import assert_that
 from remote_command_executor import RemoteCommandExecutor
+from s3_common_utils import check_s3_read_resource, check_s3_read_write_resource
 
 from tests.common.hit_common import assert_initial_conditions
 from tests.common.scaling_common import (
+    get_batch_ce,
     get_batch_ce_max_size,
     get_batch_ce_min_size,
     get_max_asg_capacity,
@@ -88,8 +90,8 @@ def test_update_sit(
     _check_max_queue(region, cluster.cfn_name, updated_config.getint("cluster default", "max_queue_size"))
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -287,8 +289,8 @@ def test_update_hit(region, scheduler, pcluster_config_reader, clusters_factory,
     updated_config.read(updated_config_file)
 
     # Check new S3 resources
-    _check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
-    _check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
+    check_s3_read_resource(region, cluster, updated_config.get("cluster default", "s3_read_resource"))
+    check_s3_read_write_resource(region, cluster, updated_config.get("cluster default", "s3_read_write_resource"))
 
     # Check new Additional IAM policies
     _check_role_attached_policy(region, cluster, updated_config.get("cluster default", "additional_iam_policies"))
@@ -464,27 +466,6 @@ def _check_extra_json(command_executor, scheduler_commands, host, expected_value
     assert_that(result.stdout).is_equal_to('"{0}"'.format(expected_value))
 
 
-def _check_role_inline_policy(region, cluster, policy_name, policy_statement):
-    iam_client = boto3.client("iam", region_name=region)
-    root_role = cluster.cfn_resources.get("RootRole")
-
-    statement = (
-        iam_client.get_role_policy(RoleName=root_role, PolicyName=policy_name)
-        .get("PolicyDocument")
-        .get("Statement")[0]
-        .get("Resource")[0]
-    )
-    assert_that(statement).is_equal_to(policy_statement)
-
-
-def _check_s3_read_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3Read", s3_arn)
-
-
-def _check_s3_read_write_resource(region, cluster, s3_arn):
-    _check_role_inline_policy(region, cluster, "S3ReadWrite", s3_arn)
-
-
 def _check_role_attached_policy(region, cluster, policy_arn):
     iam_client = boto3.client("iam", region_name=region)
     root_role = cluster.cfn_resources.get("RootRole")
@@ -560,6 +541,8 @@ def _verify_initialization(region, cluster, config):
     # Verify initial settings
     _test_max_vcpus(region, cluster.cfn_name, config.getint("cluster default", "max_vcpus"))
     _test_min_vcpus(region, cluster.cfn_name, config.getint("cluster default", "min_vcpus"))
+    spot_bid_percentage = config.getint("cluster default", "spot_bid_percentage")
+    assert_that(get_batch_spot_bid_percentage(cluster.cfn_name, region)).is_equal_to(spot_bid_percentage)
 
 
 def _test_max_vcpus(region, stack_name, vcpus):
@@ -570,6 +553,17 @@ def _test_max_vcpus(region, stack_name, vcpus):
 def _test_min_vcpus(region, stack_name, vcpus):
     asg_min_size = get_batch_ce_min_size(stack_name, region)
     assert_that(asg_min_size).is_equal_to(vcpus)
+
+
+def get_batch_spot_bid_percentage(stack_name, region):
+    client = boto3.client("batch", region_name=region)
+
+    return (
+        client.describe_compute_environments(computeEnvironments=[get_batch_ce(stack_name, region)])
+        .get("computeEnvironments")[0]
+        .get("computeResources")
+        .get("bidPercentage")
+    )
 
 
 @pytest.mark.dimensions("us-west-1", "c5.xlarge", "centos7", "sge")
