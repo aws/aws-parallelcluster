@@ -668,24 +668,6 @@ def test_ec2_security_group_validator(mocker, boto3_stubber):
 @pytest.mark.parametrize(
     "section_dict, expected_message",
     [
-        (
-            {"throughput_mode": "bursting", "provisioned_throughput": 1024},
-            "When specifying 'provisioned_throughput', the 'throughput_mode' must be set to 'provisioned'",
-        ),
-        ({"throughput_mode": "provisioned", "provisioned_throughput": 1024}, None),
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/efs"}, None),
-    ],
-)
-def test_efs_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": {"efs_settings": "default"}, "efs default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
         ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
         (
             {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
@@ -1600,19 +1582,6 @@ def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, 
     if ebs_section_dict:
         for vol in ebs_section_dict:
             config_parser_dict["ebs {0}".format(vol)] = ebs_section_dict.get(vol)
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"shared_dir": "NONE"}, "NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONE"}, "/NONE cannot be used as a shared directory"),
-        ({"shared_dir": "/NONEshared"}, None),
-    ],
-)
-def test_shared_dir_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 

@@ -21,14 +21,14 @@ from typing import List
 from pcluster.config.extended_builtin_class import MarkedBool, MarkedInt, MarkedStr
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.validators.common import ValidationResult, Validator
-from pcluster.validators.validator_cluster import FsxNetworkingValidator
-from pcluster.validators.validator_ebs import (
+from pcluster.validators.cluster_validators import FsxNetworkingValidator
+from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
-from pcluster.validators.validator_ec2 import InstanceTypeValidator
-from pcluster.validators.validator_fsx import FsxValidator
+from pcluster.validators.ec2_validators import InstanceTypeValidator
+from pcluster.validators.fsx_validators import FsxValidator
 
 
 class _ResourceValidator:

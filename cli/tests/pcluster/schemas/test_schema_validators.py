@@ -16,7 +16,7 @@ from pcluster.schemas.cluster_schema import EfsSchema, SharedStorageSchema
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_error",
+    "section_dict, expected_message",
     [
         (
             {"ThroughputMode": "bursting", "ProvisionedThroughput": 1024},
@@ -26,20 +26,28 @@ from pcluster.schemas.cluster_schema import EfsSchema, SharedStorageSchema
             {"ThroughputMode": "provisioned"},
             "When specifying throughput mode to provisioned, the provisioned throughput option must be specified",
         ),
+        ({"ThroughputMode": "provisioned", "ProvisionedThroughput": 1024}, None),
     ],
 )
-def test_efs_validator(section_dict, expected_error):
-    with pytest.raises(ValidationError, match=expected_error):
-        EfsSchema().load(section_dict)
+def test_efs_validator(section_dict, expected_message):
+    _load_and_assert_error(EfsSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_error",
+    "section_dict, expected_message",
     [
         ({"MountDir": "NONE"}, "NONE cannot be used as a mount directory"),
         ({"MountDir": "/NONE"}, "/NONE cannot be used as a mount directory"),
+        ({"MountDir": "/NONEshared"}, None),
     ],
 )
-def test_mount_dir_validator(section_dict, expected_error):
-    with pytest.raises(ValidationError, match=expected_error):
-        SharedStorageSchema().load(section_dict)
+def test_mount_dir_validator(section_dict, expected_message):
+    _load_and_assert_error(SharedStorageSchema(), section_dict, expected_message)
+
+
+def _load_and_assert_error(schema, section_dict, expected_message):
+    if expected_message:
+        with pytest.raises(ValidationError, match=expected_message):
+            schema.load(section_dict)
+    else:
+        schema.load(section_dict, partial=True)

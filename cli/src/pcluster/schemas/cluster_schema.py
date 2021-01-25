@@ -270,7 +270,7 @@ class SharedStorageSchema(BaseSchema):
             return SharedEfs(data.get("mount_dir"), **data.get("efs"))
         elif data.get("fsx"):
             return SharedFsx(data.get("mount_dir"), **data.get("fsx"))
-        else:  # "ebs"
+        elif data.get("ebs"):
             return SharedEbs(data.get("mount_dir"), **data.get("ebs"))
 
     @pre_dump
@@ -288,10 +288,12 @@ class SharedStorageSchema(BaseSchema):
     @validates_schema
     def only_one_storage(self, data, **kwargs):
         """Validate that there is one and only one setting."""
-        if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
-            raise ValidationError(
-                "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
-            )
+        if not kwargs.get("partial"):
+            # If the schema is to be loaded partially, do not check existence constrain.
+            if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
+                raise ValidationError(
+                    "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
+                )
 
 
 # ---------------------- Networking ---------------------- #
