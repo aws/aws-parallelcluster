@@ -63,6 +63,7 @@ from pcluster.models.cluster import (
     Storage,
     Tag,
 )
+from pcluster.models.marked_value import MarkedValue
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -125,6 +126,14 @@ class BaseSchema(Schema):
         for key, value in vars(data).copy().items():
             if _is_implied(value):
                 delattr(data, key)
+        return data
+
+    @pre_dump
+    def unwrap_marked_class(self, data, **kwargs):
+        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
+        for key, value in vars(data).items():
+            if isinstance(value, MarkedValue):
+                setattr(data, key, value.value)
         return data
 
     @post_dump

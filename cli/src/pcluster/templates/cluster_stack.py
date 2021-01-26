@@ -28,7 +28,7 @@ class HeadNodeConstruct(core.Construct):
         self.head_node = head_node
 
         # TODO: use attributes from head_node instead of using these static variables.
-        master_instance_type = self.head_node.instance_type
+        master_instance_type = self.head_node.instance_type.value
         master_core_count = "-1,true"
         # compute_core_count = "-1"
         key_name = "keyname"
@@ -197,8 +197,8 @@ class ClusterStack(core.Stack):
         self._cluster = cluster
 
         HeadNodeConstruct(self, "HeadNode", cluster.head_node)
-        if cluster.shared_storage:
-            for storage in cluster.shared_storage:
+        if cluster.shared_storage.value:
+            for storage in cluster.shared_storage.value:
                 if storage.fsx:
                     FsxConstruct(self, "Fsx", storage.fsx)
                 # if storage.efs:

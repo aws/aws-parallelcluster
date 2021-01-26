@@ -67,7 +67,7 @@ def boto3_stubber_path():
         ),
     ],
 )
-def test_fsx_network_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, network_interfaces, expected_message):
+def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_interfaces, expected_message):
     describe_file_systems_response = {
         "FileSystems": [
             {
