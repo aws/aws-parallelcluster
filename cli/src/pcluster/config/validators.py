@@ -661,6 +661,7 @@ def ec2_placement_group_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+# FIXME moved
 def url_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
@@ -685,6 +686,7 @@ def url_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+# FIXME moved
 def s3_uri_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

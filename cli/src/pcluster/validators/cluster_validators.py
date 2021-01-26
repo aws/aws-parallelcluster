@@ -11,23 +11,24 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from pcluster.models.param import Param
 from pcluster.validators.common import FailureLevel, Validator
 
 
 class FsxNetworkingValidator(Validator):
     """FSx and networking validator."""
 
-    def validate(self, file_system_id, head_node_subnet_id):
+    def validate(self, file_system_id: Param, head_node_subnet_id: Param):
         """Validate FSx and networking config."""
         try:
             ec2 = boto3.client("ec2")
 
             # Check to see if there is any existing mt on the fs
             file_system = (
-                boto3.client("fsx").describe_file_systems(FileSystemIds=[file_system_id]).get("FileSystems")[0]
+                boto3.client("fsx").describe_file_systems(FileSystemIds=[file_system_id.value]).get("FileSystems")[0]
             )
 
-            vpc_id = ec2.describe_subnets(SubnetIds=[head_node_subnet_id]).get("Subnets")[0].get("VpcId")
+            vpc_id = ec2.describe_subnets(SubnetIds=[head_node_subnet_id.value]).get("Subnets")[0].get("VpcId")
 
             # Check to see if fs is in the same VPC as the stack
             if file_system.get("VpcId") != vpc_id:
@@ -42,7 +43,7 @@ class FsxNetworkingValidator(Validator):
             if not network_interface_ids:
                 self._add_failure(
                     "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
-                    "Elastic Network Interfaces attached to it.".format(file_system_id),
+                    "Elastic Network Interfaces attached to it.".format(file_system_id.value),
                     FailureLevel.CRITICAL,
                 )
             else:
@@ -62,7 +63,7 @@ class FsxNetworkingValidator(Validator):
                     self._add_failure(
                         "The current security group settings on file system '{0}' does not satisfy mounting requirement"
                         ". The file system must be associated to a security group that allows inbound and outbound "
-                        "TCP traffic through port 988.".format(file_system_id),
+                        "TCP traffic through port 988.".format(file_system_id.value),
                         FailureLevel.CRITICAL,
                     )
         except ClientError as e:

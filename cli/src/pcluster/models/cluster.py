@@ -30,6 +30,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import InstanceTypeValidator
 from pcluster.validators.fsx_validators import FsxValidator
+from pcluster.validators.s3_validators import UrlValidator
 
 
 class _ResourceValidator(ABC):
@@ -421,6 +422,7 @@ class CustomAction(Resource):
         self.args = args
         self.event = Param(event)
         self.run_as = Param(run_as)
+        self._add_validator(UrlValidator, url=self.script)
 
 
 # ---------------------- Monitoring ---------------------- #

@@ -24,3 +24,8 @@ class S3Client(Boto3Client):
     def download_file(self, bucket_name, object_name, file_name):
         """Download generic file from S3."""
         self._client.download_file(bucket_name, object_name, file_name)
+
+    @AWSExceptionHandler.handle_client_exception
+    def head_object(self, bucket_name, object_name):
+        """Retrieve metadata from an object without returning the object itself."""
+        return self._client.head_object(Bucket=bucket_name, Key=object_name)

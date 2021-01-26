@@ -18,7 +18,7 @@ import re
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.config.validators import FSX_MESSAGES
-from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
+from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
     CloudWatchDashboards,
@@ -50,23 +50,7 @@ from pcluster.models.cluster import (
 )
 from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
 from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling, SlurmSettings
-from pcluster.schemas.common_schema import BaseSchema, TagSchema
-
-ALLOWED_VALUES = {
-    "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
-    r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
-    r"(\/([0-9]|[1-2][0-9]|3[0-2]))$",
-    "file_path": r"^\/?[^\/.\\][^\/\\]*(\/[^\/.\\][^\/]*)*$",
-    "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
-    "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
-    "architectures": SUPPORTED_ARCHITECTURES,
-}
-
-
-def _get_field_validator(field_name):
-    allowed_values = ALLOWED_VALUES[field_name]
-    return validate.OneOf(allowed_values) if isinstance(allowed_values, list) else validate.Regexp(allowed_values)
-
+from pcluster.schemas.common_schema import BaseSchema, TagSchema, get_field_validator
 
 # ---------------------- Storage ---------------------- #
 
@@ -121,7 +105,7 @@ class EphemeralVolumeSchema(BaseSchema):
     """Represent the schema of ephemeral volume.It is a child of storage schema."""
 
     encrypted = fields.Bool()
-    mount_dir = fields.Str(validate=_get_field_validator("file_path"))
+    mount_dir = fields.Str(validate=get_field_validator("file_path"))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -209,7 +193,7 @@ class FsxSchema(BaseSchema):
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
 
-    mount_dir = fields.Str(required=True, validate=_get_field_validator("file_path"))
+    mount_dir = fields.Str(required=True, validate=get_field_validator("file_path"))
     ebs = fields.Nested(EbsSchema, data_key="EBS")
     efs = fields.Nested(EfsSchema, data_key="EFS")
     fsx = fields.Nested(FsxSchema, data_key="FSxLustre")
@@ -265,16 +249,16 @@ class ProxySchema(BaseSchema):
 class BaseNetworkingSchema(BaseSchema):
     """Represent the schema of common networking parameters used by head and compute nodes."""
 
-    additional_security_groups = fields.List(fields.Str(validate=_get_field_validator("security_group_id")))
+    additional_security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
     assign_public_ip = fields.Bool()
-    security_groups = fields.List(fields.Str(validate=_get_field_validator("security_group_id")))
+    security_groups = fields.List(fields.Str(validate=get_field_validator("security_group_id")))
     proxy = fields.Nested(ProxySchema)
 
 
 class HeadNodeNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of the HeadNode."""
 
-    subnet_id = fields.Str(required=True, validate=_get_field_validator("subnet_id"))
+    subnet_id = fields.Str(required=True, validate=get_field_validator("subnet_id"))
     elastic_ip = fields.Str()
 
     @post_load
@@ -298,7 +282,7 @@ class PlacementGroupSchema(BaseSchema):
 class QueueNetworkingSchema(BaseNetworkingSchema):
     """Represent the schema of the Networking, child of Queue."""
 
-    subnet_ids = fields.List(fields.Str(validate=_get_field_validator("subnet_id")), required=True)
+    subnet_ids = fields.List(fields.Str(validate=get_field_validator("subnet_id")), required=True)
     placement_group = fields.Nested(PlacementGroupSchema)
 
     @post_load
@@ -311,7 +295,7 @@ class SshSchema(BaseSchema):
     """Represent the schema of the SSH."""
 
     key_name = fields.Str(required=True)
-    allowed_ips = fields.Str(validate=_get_field_validator("cidr"))
+    allowed_ips = fields.Str(validate=get_field_validator("cidr"))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -324,7 +308,7 @@ class DcvSchema(BaseSchema):
 
     enabled = fields.Bool()
     port = fields.Int()
-    allowed_ips = fields.Str(validate=_get_field_validator("cidr"))
+    allowed_ips = fields.Str(validate=get_field_validator("cidr"))
 
     @post_load
     def make_resource(self, data, **kwargs):

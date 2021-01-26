@@ -101,7 +101,6 @@ from pcluster.config.validators import (
     scheduler_validator,
     shared_dir_validator,
     tags_validator,
-    url_validator,
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
@@ -826,8 +825,8 @@ CLUSTER_COMMON_PARAMS = [
     }),
     # Customization
     ("template_url", {
-        # TODO add regex
-        "validators": [url_validator],
+        # FIXME use UrlValidator in s3_validators
+        # "validators": [url_validator],
         # Ignored during update since we force using previous template
         "update_policy": UpdatePolicy.IGNORED
     }),
@@ -871,8 +870,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("pre_install", {
         "cfn_param_mapping": "PreInstallScript",
-        # TODO add regex
-        "validators": [url_validator],
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
     ("pre_install_args", {
@@ -882,8 +879,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("post_install", {
         "cfn_param_mapping": "PostInstallScript",
-        # TODO add regex
-        "validators": [url_validator],
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
     ("post_install_args", {
@@ -902,8 +897,8 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("additional_cfn_template", {
         "cfn_param_mapping": "AdditionalCfnTemplate",
-        # TODO add regex
-        "validators": [url_validator],
+        # FIXME use UrlValidator in s3_validators
+        # "validators": [url_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("tags", {
@@ -914,8 +909,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("custom_chef_cookbook", {
         "cfn_param_mapping": "CustomChefCookbook",
-        # TODO add regex
-        "validators": [url_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("enable_intel_hpc_platform", {
@@ -992,13 +985,13 @@ CLUSTER_COMMON_PARAMS = [
         "visibility": Visibility.PRIVATE,
     }),
     ("hit_template_url", {
-        # TODO add regex
-        "validators": [url_validator],
+        # FIXME use UrlValidator in s3_validators
+        # "validators": [url_validator],
         "update_policy": UpdatePolicy.IGNORED
     }),
     ("cw_dashboard_template_url", {
-        # TODO add regex
-        "validators": [url_validator],
+        # FIXME use UrlValidator in s3_validators
+        # "validators": [url_validator],
         "update_policy": UpdatePolicy.IGNORED
     }),
     ("network_interfaces_count", {

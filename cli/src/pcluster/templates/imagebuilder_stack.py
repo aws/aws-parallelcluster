@@ -52,12 +52,6 @@ class ImageBuilderStack(core.Stack):
             default=str.lower(str(dev_settings.update_os_and_reboot.value)),
             description="UpdateAndReboot",
         )
-        ami_info = utils.get_info_for_amis([build.parent_image.value])
-        architecture = ami_info[0].get("Architecture")
-        if build.instance_type.value:
-            instance_types = [build.instance_type.value]
-        else:
-            instance_types = ["p2.xlarge", "c5.xlarge"] if architecture == "x86_64" else ["m6g.xlarge"]
 
         # Setup ImageBuilder Resources
         resources_prefix = utils.generate_random_prefix()
@@ -98,23 +92,16 @@ class ImageBuilderStack(core.Stack):
             name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
             instance_profile_name=core.Fn.ref("InstanceProfile"),
             terminate_instance_on_failure=dev_settings.terminate_instance_on_failure.value,
-            instance_types=instance_types,
+            instance_types=[build.instance_type.value],
         )
 
         # Define ami build instance ebs
-        increase_volume_size = 15
-        if image.root_volume:
-            ebs = imagebuilder.CfnImageRecipe.EbsInstanceBlockDeviceSpecificationProperty(
-                volume_size=image.root_volume.size.value
-                or ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + increase_volume_size,
-                volume_type="gp2",
-            )
-        else:
-            ebs = imagebuilder.CfnImageRecipe.EbsInstanceBlockDeviceSpecificationProperty(
-                volume_size=ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
-                + increase_volume_size,
-                volume_type="gp2",
-            )
+        ebs = imagebuilder.CfnImageRecipe.EbsInstanceBlockDeviceSpecificationProperty(
+            volume_size=image.root_volume.size.value,
+            volume_type="gp2",
+            encrypted=image.root_volume.encrypted.value,
+            kms_key_id=image.root_volume.kms_key_id.value,
+        )
 
         imagebuilder_cloudformation_dir = os.path.join(utils.get_cloudformation_directory(), "imagebuilder")
         # Components

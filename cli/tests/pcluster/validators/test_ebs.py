@@ -13,6 +13,7 @@ import pytest
 from pcluster.models.param import Param
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EBSVolumeKmsKeyIdValidator,
     EbsVolumeSizeSnapshotValidator,
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
@@ -200,4 +201,28 @@ def test_ebs_volume_size_snapshot_validator(
     )
 
     actual_failures = EbsVolumeSizeSnapshotValidator()(Param(snapshot_id), Param(volume_size))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "kms_key_id, encrypted, expected_message",
+    [
+        (
+            "arn:aws:kms:us-east-1:012345678910:1234abcd-12ab-34cd-56ef-1234567890ab",
+            None,
+            "Kms Key Id arn:aws:kms:us-east-1:012345678910:1234abcd-12ab-34cd-56ef-1234567890ab "
+            "is specified, the encrypted state must be True.",
+        ),
+        (
+            "arn:aws:kms:us-east-1:012345678910:1234abcd-12ab-34cd-56ef-1234567890ab",
+            False,
+            "Kms Key Id arn:aws:kms:us-east-1:012345678910:1234abcd-12ab-34cd-56ef-1234567890ab "
+            "is specified, the encrypted state must be True.",
+        ),
+    ],
+)
+def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message):
+    actual_failures = EBSVolumeKmsKeyIdValidator()(
+        volume_kms_key_id=Param(kms_key_id), volume_encrypted=Param(encrypted)
+    )
     assert_failure_messages(actual_failures, expected_message)
