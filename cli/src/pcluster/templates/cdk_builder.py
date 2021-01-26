@@ -12,15 +12,16 @@
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
-
 import os
 import tempfile
 
 from aws_cdk import core
 
-from common.utils import load_yaml
+from common.utils import load_yaml_dict
 from pcluster.models.cluster import Cluster
+from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cluster_stack import ClusterStack
+from pcluster.templates.imagebuilder_stack import ImageBuilderStack
 
 
 class CDKTemplateBuilder:
@@ -33,6 +34,17 @@ class CDKTemplateBuilder:
             app = core.App(outdir=str(tempdir))
             ClusterStack(app, output_file, cluster=cluster)
             app.synth()
-            generated_template = load_yaml(os.path.join(tempdir, f"{output_file}.template.json"))
+            generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
+
+        return generated_template
+
+    def build_ami(self, imagebuild: ImageBuilder):
+        """Build template for the given imagebuilder and return as output in Yaml format."""
+        with tempfile.TemporaryDirectory() as tempdir:
+            output_file = "imagebuilder"
+            app = core.App(outdir=str(tempdir))
+            ImageBuilderStack(app, output_file, imagebuild)
+            app.synth()
+            generated_template = load_yaml_dict(os.path.join(tempdir, f"{output_file}.template.json"))
 
         return generated_template

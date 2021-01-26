@@ -141,9 +141,24 @@ def generate_random_name_with_prefix(name_prefix):
 
     Example: <name_prefix>-4htvo26lchkqeho1
     """
-    random_string = "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+    random_string = generate_random_prefix()
     output_name = "-".join([name_prefix.lower()[: 63 - len(random_string) - 1], random_string])
     return output_name
+
+
+def generate_random_prefix():
+    """
+    Generate a random prefix that is 16 characters long.
+
+    Example: 4htvo26lchkqeho1
+    """
+    return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(16))
+
+
+def get_cloudformation_directory():
+    """Get cloudforamtion directory."""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(current_dir, "..", "..", "..", "cloudformation")
 
 
 def create_s3_bucket(bucket_name, region):

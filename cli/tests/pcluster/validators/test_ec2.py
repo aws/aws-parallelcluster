@@ -11,7 +11,7 @@
 
 import pytest
 
-from pcluster.validators.ec2_validators import InstanceTypeValidator
+from pcluster.validators.ec2_validators import BaseAMIValidator, InstanceTypeValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -27,4 +27,15 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
     )
 
     actual_failures = InstanceTypeValidator()(instance_type)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "image_id, expected_message, response",
+    [("ami-0185634c5a8a37250", None, True), ("ami-000000000000", "is not supported", False)],
+)
+def test_base_ami_validator(mocker, image_id, expected_message, response):
+    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.describe_ami_id_offering", return_value=response)
+    actual_failures = BaseAMIValidator()(image_id)
     assert_failure_messages(actual_failures, expected_message)
