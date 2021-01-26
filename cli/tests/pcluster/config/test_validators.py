@@ -666,52 +666,6 @@ def test_ec2_security_group_validator(mocker, boto3_stubber):
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
-        (
-            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        (
-            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too high"),
-        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
-        ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 2900},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 16001},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 10001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
-    ],
-)
-def test_raid_validators(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": {"raid_settings": "default"}, "raid default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
     "kms_key_id, expected_message",
     [
         ("9e8a129be-0e46-459d-865b-3a5bf974a22k", None),
@@ -2409,89 +2363,12 @@ def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
         assert_that(errors).is_empty()
 
 
-@pytest.mark.parametrize(
-    "section_dict, expected_error",
-    [
-        ({"volume_type": "standard", "volume_size": 15}, None),
-        ({"volume_type": "standard", "volume_size": 0}, "The size of standard volumes must be at least 1 GiB"),
-        ({"volume_type": "standard", "volume_size": 1025}, "The size of standard volumes can not exceed 1024 GiB"),
-        ({"volume_type": "io1", "volume_size": 15}, None),
-        ({"volume_type": "io1", "volume_size": 3}, "The size of io1 volumes must be at least 4 GiB"),
-        ({"volume_type": "io1", "volume_size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
-        ({"volume_type": "io2", "volume_size": 15}, None),
-        ({"volume_type": "io2", "volume_size": 3}, "The size of io2 volumes must be at least 4 GiB"),
-        ({"volume_type": "io2", "volume_size": 65537}, "The size of io2 volumes can not exceed 65536 GiB"),
-        ({"volume_type": "gp2", "volume_size": 15}, None),
-        ({"volume_type": "gp2", "volume_size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
-        ({"volume_type": "gp2", "volume_size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
-        ({"volume_type": "gp3", "volume_size": 15}, None),
-        ({"volume_type": "gp3", "volume_size": 0}, "The size of gp3 volumes must be at least 1 GiB"),
-        ({"volume_type": "gp3", "volume_size": 16385}, "The size of gp3 volumes can not exceed 16384 GiB"),
-        ({"volume_type": "st1", "volume_size": 500}, None),
-        ({"volume_type": "st1", "volume_size": 20}, "The size of st1 volumes must be at least 500 GiB"),
-        ({"volume_type": "st1", "volume_size": 16385}, "The size of st1 volumes can not exceed 16384 GiB"),
-        ({"volume_type": "sc1", "volume_size": 500}, None),
-        ({"volume_type": "sc1", "volume_size": 20}, "The size of sc1 volumes must be at least 500 GiB"),
-        ({"volume_type": "sc1", "volume_size": 16385}, "The size of sc1 volumes can not exceed 16384 GiB"),
-    ],
-)
-def test_ebs_volume_type_size_validator(mocker, section_dict, caplog, expected_error):
-    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_error)
-
-
 def test_ebs_allowed_values_all_have_volume_size_bounds():
     """Ensure that all known EBS volume types are accounted for by the volume size validator."""
     allowed_values_all_have_volume_size_bounds = set(ALLOWED_VALUES["volume_types"]) <= set(
         EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
     )
     assert_that(allowed_values_all_have_volume_size_bounds).is_true()
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 120}, None),
-        (
-            {"volume_type": "io1", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        (
-            {"volume_type": "io1", "volume_size": 20, "volume_iops": 64001},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        ({"volume_type": "io1", "volume_size": 20, "volume_iops": 1001}, "IOPS to volume size ratio of .* is too high"),
-        ({"volume_type": "io2", "volume_size": 20, "volume_iops": 120}, None),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 90},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 256001},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"volume_type": "io2", "volume_size": 20, "volume_iops": 20001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
-        ({"volume_type": "gp3", "volume_size": 20, "volume_iops": 3000}, None),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 2900},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 16001},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"volume_type": "gp3", "volume_size": 20, "volume_iops": 10001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
-    ],
-)
-def test_ebs_volume_iops_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -2717,28 +2594,3 @@ def test_efa_os_arch_validator(mocker, cluster_dict, architecture, expected_erro
         assert_that(errors[0]).matches(expected_error)
     else:
         assert_that(errors).is_empty()
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"volume_type": "gp3", "volume_throughput": 125}, None),
-        (
-            {"volume_type": "gp3", "volume_throughput": 100},
-            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
-        ),
-        (
-            {"volume_type": "gp3", "volume_throughput": 1001},
-            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
-        ),
-        ({"volume_type": "gp3", "volume_throughput": 125, "volume_iops": 3000}, None),
-        (
-            {"volume_type": "gp3", "volume_throughput": 760, "volume_iops": 3000},
-            "Throughput to IOPS ratio of .* is too high",
-        ),
-        ({"volume_type": "gp3", "volume_throughput": 760, "volume_iops": 10000}, None),
-    ],
-)
-def test_ebs_volume_throughput_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": {"ebs_settings": "default"}, "ebs default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
