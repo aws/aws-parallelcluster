@@ -63,7 +63,7 @@ from pcluster.models.cluster import (
     Storage,
     Tag,
 )
-from pcluster.models.marked_value import MarkedValue
+from pcluster.models.param import Param
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -134,7 +134,7 @@ class BaseSchema(Schema):
     def unwrap_marked_class(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
         for key, value in vars(data).items():
-            if isinstance(value, MarkedValue):
+            if isinstance(value, Param):
                 setattr(data, key, value.value)
         return data
 
@@ -169,6 +169,12 @@ class RootVolumeSchema(_BaseEbsSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Ebs(**data)
+
+    @validates("size")
+    def validate_size(self, value):
+        """Validate the size of root volume is at least 25."""
+        if value < 25:
+            raise ValidationError(f"Root volume size {value} is invalid. It must be at least 25.")
 
 
 class RaidSchema(BaseSchema):
@@ -411,7 +417,7 @@ class EfaSchema(BaseSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
-    os = fields.Str(required=True)
+    os = fields.Str(required=True, validate=validate.OneOf(["alinux2", "ubuntu1804", "centos7", "centos8"]))
     custom_ami = fields.Str(validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"))
 
     @post_load
@@ -515,7 +521,9 @@ class CloudWatchLogsSchema(BaseSchema):
     """Represent the schema of the SharedStorage with type = EFS."""
 
     enabled = fields.Bool()
-    retention_in_days = fields.Int()
+    retention_in_days = fields.Int(
+        validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653])
+    )
     log_group_id = fields.Str()
     kms_key_id = fields.Str()
 

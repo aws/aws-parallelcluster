@@ -17,7 +17,7 @@ from typing import List
 
 from pcluster import utils
 from pcluster.models.cluster import Resource, Tag
-from pcluster.models.marked_value import MarkedValue
+from pcluster.models.param import Param
 from pcluster.validators.ec2_validators import BaseAMIValidator
 
 # ---------------------- Image ---------------------- #
@@ -28,9 +28,9 @@ class Volume(Resource):
 
     def __init__(self, size: int = None, encrypted: bool = None, kms_key_id: str = None):
         super().__init__()
-        self.size = MarkedValue(size)
-        self.encrypted = MarkedValue(encrypted, default=False)
-        self.kms_key_id = MarkedValue(kms_key_id)
+        self.size = Param(size)
+        self.encrypted = Param(encrypted, default=False)
+        self.kms_key_id = Param(kms_key_id)
         # TODO: add validator
 
 
@@ -45,8 +45,8 @@ class Image(Resource):
         root_volume: Volume = None,
     ):
         super().__init__()
-        self.name = MarkedValue(name)
-        self.description = MarkedValue(description)
+        self.name = Param(name)
+        self.description = Param(description)
         self.tags = tags
         self.root_volume = root_volume
         self._set_default()
@@ -68,8 +68,8 @@ class Component(Resource):
 
     def __init__(self, type: str = None, value: str = None):
         super().__init__()
-        self.type = MarkedValue(type)
-        self.value = MarkedValue(value)
+        self.type = Param(type)
+        self.value = Param(value)
         # TODO: add validator
 
 
@@ -87,11 +87,11 @@ class Build(Resource):
         components: List[Component] = None,
     ):
         super().__init__()
-        self.instance_type = MarkedValue(instance_type)
-        self.parent_image = MarkedValue(parent_image)
-        self.instance_role = MarkedValue(instance_role)
+        self.instance_type = Param(instance_type)
+        self.parent_image = Param(parent_image)
+        self.instance_role = Param(instance_role)
         self.tags = tags
-        self.subnet_id = MarkedValue(subnet_id)
+        self.subnet_id = Param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
         # TODO: add validator
@@ -124,13 +124,13 @@ class DevSettings(Resource):
         terminate_instance_on_failure: bool = None,
     ):
         super().__init__()
-        self.update_os_and_reboot = MarkedValue(update_os_and_reboot, default=False)
-        self.disable_pcluster_component = MarkedValue(disable_pcluster_component, default=False)
+        self.update_os_and_reboot = Param(update_os_and_reboot, default=False)
+        self.disable_pcluster_component = Param(disable_pcluster_component, default=False)
         self.chef_cookbook = chef_cookbook
-        self.node_url = MarkedValue(node_url)
-        self.aws_batch_cli_url = MarkedValue(aws_batch_cli_url)
-        self.distribution_configuration_arn = MarkedValue(distribution_configuration_arn)
-        self.terminate_instance_on_failure = MarkedValue(terminate_instance_on_failure, default=True)
+        self.node_url = Param(node_url)
+        self.aws_batch_cli_url = Param(aws_batch_cli_url)
+        self.distribution_configuration_arn = Param(distribution_configuration_arn)
+        self.terminate_instance_on_failure = Param(terminate_instance_on_failure, default=True)
         # TODO: add validator
 
 

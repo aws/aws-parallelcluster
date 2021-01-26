@@ -15,7 +15,7 @@
 #
 
 # Mark all values. This is useful for distinguishing values implied vs specified by a user.
-class MarkedValue:
+class Param:
     """Custom class to wrap a value and add more attributes."""
 
     def __init__(self, value, default=None, valid: bool = True):

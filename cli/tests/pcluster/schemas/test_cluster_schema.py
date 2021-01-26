@@ -53,8 +53,8 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     "os, custom_ami, failure_message",
     [
         (None, None, "Missing data for required field"),
-        ("fake-os", "ami-12345678", None),
-        ("fake-os", None, None),
+        ("ubuntu1804", "ami-12345678", None),
+        ("centos7", None, None),
     ],
 )
 def test_image_schema(os, custom_ami, failure_message):
