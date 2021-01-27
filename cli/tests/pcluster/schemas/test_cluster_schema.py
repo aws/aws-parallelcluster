@@ -53,8 +53,8 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     "os, custom_ami, failure_message",
     [
         (None, None, "Missing data for required field"),
-        ("fake-os", "ami-12345678", None),
-        ("fake-os", None, None),
+        ("ubuntu1804", "ami-12345678", None),
+        ("centos7", None, None),
     ],
 )
 def test_image_schema(os, custom_ami, failure_message):
@@ -69,8 +69,8 @@ def test_image_schema(os, custom_ami, failure_message):
             ImageSchema().load(image_schema)
     else:
         image = ImageSchema().load(image_schema)
-        assert_that(image.os).is_equal_to(os)
-        assert_that(image.custom_ami).is_equal_to(custom_ami)
+        assert_that(image.os.value).is_equal_to(os)
+        assert_that(image.custom_ami.value).is_equal_to(custom_ami)
 
 
 DUMMY_REQUIRED_QUEUE = [
@@ -115,7 +115,7 @@ def test_scheduling_schema(scheduler, queues, failure_message):
             SchedulingSchema().load(scheduling_schema)
     else:
         image_config = SchedulingSchema().load(scheduling_schema)
-        assert_that(image_config.scheduler).is_equal_to(scheduler if scheduler else "slurm")
+        assert_that(image_config.scheduler.value).is_equal_to(scheduler if scheduler else "slurm")
         # assert_that(image_config.queues).con
 
 

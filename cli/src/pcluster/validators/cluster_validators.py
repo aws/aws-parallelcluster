@@ -17,7 +17,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class FsxNetworkingValidator(Validator):
     """FSx and networking validator."""
 
-    def __call__(self, file_system_id, head_node_subnet_id):
+    def validate(self, file_system_id, head_node_subnet_id):
         """Validate FSx and networking config."""
         try:
             ec2 = boto3.client("ec2")

@@ -12,6 +12,8 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
+from pcluster.models.param import Param
+
 
 class FailureLevel(Enum):
     """Validation failure level."""
@@ -51,14 +53,24 @@ class Validator(ABC):
     def _fail(self, message, level):
         raise ConfigValidationError
 
-    def _add_failure(self, message, level):
+    def _add_failure(self, message, level, fields=()):
         result = ValidationResult(message, level)
+        for field in fields:
+            field.valid = False
         if self._raise_on_error:
             raise ConfigValidationError(result)
         else:
             self._failures.append(result)
 
+    def __call__(self, *arg, **kwargs):
+        """Entry point of all validators to verify all input params are valid."""
+        for _, value in kwargs.items():
+            if isinstance(value, Param):
+                if not value.valid:
+                    return self._failures
+        return self.validate(*arg, **kwargs)
+
     @abstractmethod
-    def __call__(self, *args, **kwargs):
+    def validate(self, *args, **kwargs):
         """Must be implemented with specific validation logic."""
         pass

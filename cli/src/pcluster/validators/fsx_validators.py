@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -16,20 +15,20 @@ from pcluster.validators.common import FailureLevel, Validator
 class FsxValidator(Validator):
     """FSX validator."""
 
-    def __call__(self, fsx_config):
+    def validate(self, fsx_config):
         """Validate FSX config."""
-        import_path = fsx_config.import_path
-        imported_file_chunk_size = fsx_config.imported_file_chunk_size
-        export_path = fsx_config.export_path
-        auto_import_policy = fsx_config.auto_import_policy
-        deployment_type = fsx_config.deployment_type
-        kms_key_id = fsx_config.kms_key_id
-        per_unit_storage_throughput = fsx_config.per_unit_storage_throughput
-        daily_automatic_backup_start_time = fsx_config.daily_automatic_backup_start_time
-        automatic_backup_retention_days = fsx_config.automatic_backup_retention_days
-        copy_tags_to_backups = fsx_config.copy_tags_to_backups
-        storage_type = fsx_config.storage_type
-        drive_cache_type = fsx_config.drive_cache_type
+        import_path = fsx_config.import_path.value
+        imported_file_chunk_size = fsx_config.imported_file_chunk_size.value
+        export_path = fsx_config.export_path.value
+        auto_import_policy = fsx_config.auto_import_policy.value
+        deployment_type = fsx_config.deployment_type.value
+        kms_key_id = fsx_config.kms_key_id.value
+        per_unit_storage_throughput = fsx_config.per_unit_storage_throughput.value
+        daily_automatic_backup_start_time = fsx_config.daily_automatic_backup_start_time.value
+        automatic_backup_retention_days = fsx_config.automatic_backup_retention_days.value
+        copy_tags_to_backups = fsx_config.copy_tags_to_backups.value
+        storage_type = fsx_config.storage_type.value
+        drive_cache_type = fsx_config.drive_cache_type.value
 
         self._validate_s3_options(import_path, imported_file_chunk_size, export_path, auto_import_policy)
         self._validate_persistent_options(deployment_type, kms_key_id, per_unit_storage_throughput)
@@ -49,6 +48,7 @@ class FsxValidator(Validator):
 
         self._validate_fsx_storage_capacity(fsx_config)
         self._validate_fsx_ignored_parameters(fsx_config)
+        return self._failures
 
     def _validate_s3_options(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
         """Verify compatibility of given S3 options for FSX."""
@@ -149,11 +149,11 @@ class FsxValidator(Validator):
                 )
 
     def _validate_fsx_storage_capacity(self, fsx_config):
-        storage_capacity = fsx_config.storage_capacity
-        deployment_type = fsx_config.deployment_type
-        storage_type = fsx_config.storage_type
-        per_unit_storage_throughput = fsx_config.per_unit_storage_throughput
-        if fsx_config.file_system_id or fsx_config.backup_id:
+        storage_capacity = fsx_config.storage_capacity.value
+        deployment_type = fsx_config.deployment_type.value
+        storage_type = fsx_config.storage_type.value
+        per_unit_storage_throughput = fsx_config.per_unit_storage_throughput.value
+        if fsx_config.file_system_id.value or fsx_config.backup_id.value:
             # if file_system_id is provided, don't validate storage_capacity
             # if backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
             return
@@ -185,15 +185,3 @@ class FsxValidator(Validator):
                     "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
                     FailureLevel.CRITICAL,
                 )
-
-    def _validate_fsx_ignored_parameters(self, fsx_config):
-        """Return errors for parameters in the FSx config section that would be ignored."""
-        # If file_system_id is specified, all parameters besides shared_dir are ignored.
-        relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
-        if fsx_config.file_system_id is not None:
-            for key, _ in vars(fsx_config):
-                if key is not None and key not in relevant_when_using_existing_fsx:
-                    self._add_failure(
-                        FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key),
-                        FailureLevel.CRITICAL,
-                    )

@@ -28,6 +28,7 @@ from marshmallow import (
     validates_schema,
 )
 
+from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
@@ -63,6 +64,7 @@ from pcluster.models.cluster import (
     Storage,
     Tag,
 )
+from pcluster.models.param import Param
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -129,6 +131,14 @@ class BaseSchema(Schema):
                 value[:] = [v for v in value if not _is_implied(v)]
         return data
 
+    @pre_dump
+    def unwrap_marked_class(self, data, **kwargs):
+        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
+        for key, value in vars(data).items():
+            if isinstance(value, Param):
+                setattr(data, key, value.value)
+        return data
+
     @post_dump
     def remove_none_values(self, data, **kwargs):
         """Remove None values before creating the Yaml format."""
@@ -160,6 +170,12 @@ class RootVolumeSchema(_BaseEbsSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return Ebs(**data)
+
+    @validates("size")
+    def validate_size(self, value):
+        """Validate the size of root volume is at least 25."""
+        if value < 25:
+            raise ValidationError(f"Root volume size {value} is invalid. It must be at least 25.")
 
 
 class RaidSchema(BaseSchema):
@@ -256,6 +272,19 @@ class FsxSchema(BaseSchema):
     auto_import_policy = fields.Str(validate=validate.OneOf(["NEW", "NEW_CHANGED"]))
     drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
     storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
+
+    @validates_schema
+    def validate_fsx_ignored_parameters(self, data, **kwargs):
+        """Return errors for parameters in the FSx config section that would be ignored."""
+        # If file_system_id is specified, all parameters besides shared_dir are ignored.
+        relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
+        messages = []
+        if data.get("file_system_id") is not None:
+            for key in data:
+                if key is not None and key not in relevant_when_using_existing_fsx:
+                    messages.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key))
+            if messages:
+                raise ValidationError(message=messages)
 
 
 class SharedStorageSchema(BaseSchema):
@@ -402,7 +431,7 @@ class EfaSchema(BaseSchema):
 class ImageSchema(BaseSchema):
     """Represent the schema of the Image."""
 
-    os = fields.Str(required=True)
+    os = fields.Str(required=True, validate=validate.OneOf(["alinux2", "ubuntu1804", "centos7", "centos8"]))
     custom_ami = fields.Str(validate=validate.Regexp(r"^ami-[0-9a-z]{8}$|^ami-[0-9a-z]{17}$"))
 
     @post_load
@@ -488,7 +517,7 @@ class SchedulingSchema(BaseSchema):
 class CustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
-    script = fields.Str(required=True, validate=validate.URL(schemes=["s3", "https", "file"]))
+    script = fields.Str(required=True)
     args = fields.List(fields.Str())
     event = fields.Str(validate=validate.OneOf(["NODE_START", "NODE_CONFIGURED"]))
     run_as = fields.Str()
@@ -506,7 +535,9 @@ class CloudWatchLogsSchema(BaseSchema):
     """Represent the schema of the SharedStorage with type = EFS."""
 
     enabled = fields.Bool()
-    retention_in_days = fields.Int()
+    retention_in_days = fields.Int(
+        validate=validate.OneOf([1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653])
+    )
     log_group_id = fields.Str()
     kms_key_id = fields.Str()
 

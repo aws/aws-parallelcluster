@@ -37,7 +37,7 @@ class ImageBuilderStack(core.Stack):
         # TODO: use attributes from imagebuilder config instead of using these static variables.
         core.CfnParameter(self, "EnableNvidia", type="String", default="false", description="EnableNvidia")
         core.CfnParameter(self, "EnableDCV", type="String", default="false", description="EnableDCV")
-        default_node_url = dev_settings.node_url if dev_settings and dev_settings.node_url else ""
+        default_node_url = dev_settings.node_url.value if dev_settings and dev_settings.node_url.value else ""
         core.CfnParameter(
             self,
             "CustomNodePackage",
@@ -49,13 +49,13 @@ class ImageBuilderStack(core.Stack):
             self,
             "UpdateAndReboot",
             type="String",
-            default=str.lower(str(bool(dev_settings.update_os_and_reboot))),
+            default=str.lower(str(dev_settings.update_os_and_reboot.value)),
             description="UpdateAndReboot",
         )
-        ami_info = utils.get_info_for_amis([build.parent_image])
+        ami_info = utils.get_info_for_amis([build.parent_image.value])
         architecture = ami_info[0].get("Architecture")
-        if build.instance_type:
-            instance_types = [build.instance_type]
+        if build.instance_type.value:
+            instance_types = [build.instance_type.value]
         else:
             instance_types = ["p2.xlarge", "c5.xlarge"] if architecture == "x86_64" else ["m6g.xlarge"]
 
@@ -67,8 +67,8 @@ class ImageBuilderStack(core.Stack):
             core.Fn.sub("arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore"),
             core.Fn.sub("arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"),
         ]
-        if build.instance_role:
-            managed_policy_arns.extend([build.instance_role])
+        if build.instance_role.value:
+            managed_policy_arns.extend([build.instance_role.value])
 
         instancerole = iam.CfnRole(
             self,
@@ -97,7 +97,7 @@ class ImageBuilderStack(core.Stack):
             id="PClusterImageInfrastructureConfiguration",
             name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
             instance_profile_name=core.Fn.ref("InstanceProfile"),
-            terminate_instance_on_failure=bool(dev_settings.terminate_instance_on_failure),
+            terminate_instance_on_failure=dev_settings.terminate_instance_on_failure.value,
             instance_types=instance_types,
         )
 
@@ -105,7 +105,7 @@ class ImageBuilderStack(core.Stack):
         increase_volume_size = 15
         if image.root_volume:
             ebs = imagebuilder.CfnImageRecipe.EbsInstanceBlockDeviceSpecificationProperty(
-                volume_size=image.root_volume.size
+                volume_size=image.root_volume.size.value
                 or ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + increase_volume_size,
                 volume_type="gp2",
             )
@@ -119,7 +119,7 @@ class ImageBuilderStack(core.Stack):
         imagebuilder_cloudformation_dir = os.path.join(utils.get_cloudformation_directory(), "imagebuilder")
         # Components
         components = []
-        if dev_settings and dev_settings.update_os_and_reboot:
+        if dev_settings and dev_settings.update_os_and_reboot.value:
             imagebuilder.CfnComponent(
                 self,
                 id="UpdateAndRebootComponent",
@@ -157,7 +157,7 @@ class ImageBuilderStack(core.Stack):
             id="PClusterImageRecipe",
             name="-".join(["PCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
             version="0.0.1",
-            parent_image=core.Fn.sub(build.parent_image),
+            parent_image=core.Fn.sub(build.parent_image.value),
             components=components,
             block_device_mappings=[
                 imagebuilder.CfnImageRecipe.InstanceBlockDeviceMappingProperty(

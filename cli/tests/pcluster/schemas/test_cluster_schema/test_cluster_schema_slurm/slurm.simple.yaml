@@ -1,5 +1,5 @@
 Image:
-  Os: String  # alinux2 | centos7 | centos8 | ubuntu1804
+  Os: centos8
   CustomAmi: ami-12345678
 HeadNode:
   InstanceType: t2.micro  # t2.micro
@@ -99,7 +99,7 @@ SharedStorage:
       PerUnitStorageThroughput: 200
       BackupId: backup-fedcba98
       KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      FileSystemId: fs-12345678123456789
+      # FileSystemId: fs-12345678123456789
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
@@ -121,7 +121,7 @@ Monitoring:
   Logs:
     CloudWatch:
       Enabled: true  # true
-      RetentionInDays: 15  # 14
+      RetentionInDays: 30  # 14
       LogGroupId: String
       KmsKeyId: String
   Dashboards:
@@ -133,7 +133,7 @@ Tags:
   - Key: two
     Value: two22
 CustomActions:
-  - Script: https://test.com  # s3:// | https:// | file://*
+  - Script: s3://test/template.tgz  # s3:// | https:// | file://*
     Args:
       - String  # arg1
       - stirng2

@@ -18,12 +18,13 @@ from abc import ABC
 from enum import Enum
 from typing import List
 
-from pcluster.config.extended_builtin_class import MarkedBool, MarkedInt, MarkedStr
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
+from pcluster.models.param import Param
 from pcluster.validators.cluster_validators import FsxNetworkingValidator
 from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
@@ -90,37 +91,32 @@ class Ebs(Resource):
         throughput: int = None,
     ):
         super().__init__()
-        if volume_type is None:
-            volume_type = MarkedStr("gp2")
-        if iops is None and volume_type in EBS_VOLUME_TYPE_IOPS_DEFAULT:
-            iops = EBS_VOLUME_TYPE_IOPS_DEFAULT.get(volume_type)
-        if size is None:
-            size = MarkedInt(20)
-        if encrypted is None:
-            encrypted = MarkedBool(False)
-        if throughput is None and volume_type == "gp3":
-            throughput = MarkedInt(125)
-        self.volume_type = volume_type
-        self.iops = iops
-        self.size = size
-        self.encrypted = encrypted
-        self.kms_key_id = kms_key_id
-        self.throughput = throughput
+        self.volume_type = Param(volume_type, default="gp2")
+        self.iops = Param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type.value))
+        self.size = Param(size, default=20)
+        self.encrypted = Param(encrypted, default=False)
+        self.kms_key_id = Param(kms_key_id)
+        self.throughput = Param(throughput, default=125 if self.volume_type.value == "gp3" else None)
 
         self._add_validator(
             EbsVolumeTypeSizeValidator, priority=10, volume_type=self.volume_type, volume_size=self.size
-        )
-        self._add_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
         )
         self._add_validator(
             EbsVolumeIopsValidator,
             volume_type=self.volume_type,
             volume_size=self.size,
             volume_iops=self.iops,
+        )
+        self._add_validator(
+            EbsVolumeThroughputValidator,
+            volume_type=self.volume_type,
+            volume_throughput=self.throughput,
+        )
+        self._add_validator(
+            EbsVolumeThroughputIopsValidator,
+            volume_type=self.volume_type,
+            volume_iops=self.iops,
+            volume_throughput=self.throughput,
         )
 
 
@@ -129,10 +125,8 @@ class Raid(Resource):
 
     def __init__(self, type: str = None, number_of_volumes=None):
         super().__init__()
-        if number_of_volumes is None:
-            number_of_volumes = MarkedInt(2)
-        self.type = type
-        self.number_of_volumes = number_of_volumes
+        self.type = Param(type)
+        self.number_of_volumes = Param(number_of_volumes, default=2)
 
 
 class EphemeralVolume(Resource):
@@ -140,12 +134,8 @@ class EphemeralVolume(Resource):
 
     def __init__(self, encrypted: bool = None, mount_dir: str = None):
         super().__init__()
-        if encrypted is None:
-            encrypted = MarkedBool(False)
-        if mount_dir is None:
-            mount_dir = MarkedStr("/scratch")
-        self.encrypted = encrypted
-        self.mount_dir = mount_dir
+        self.encrypted = Param(encrypted, default=False)
+        self.mount_dir = Param(mount_dir, default="/scratch")
 
 
 class Storage(Resource):
@@ -153,7 +143,7 @@ class Storage(Resource):
 
     def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
         super().__init__()
-        self.root_volume = root_volume
+        self.root_volume = Param(root_volume)
         self.ephemeral_volume = ephemeral_volume
 
 
@@ -169,7 +159,7 @@ class SharedStorage(Resource):
 
     def __init__(self, mount_dir: str, shared_storage_type: Type):
         super().__init__()
-        self.mount_dir = mount_dir
+        self.mount_dir = Param(mount_dir)
         self.shared_storage_type = shared_storage_type
 
 
@@ -191,8 +181,8 @@ class SharedEbs(SharedStorage, Ebs):
     ):
         SharedStorage.__init__(self, mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EBS)
         Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
-        self.snapshot_id = snapshot_id
-        self.volume_id = volume_id
+        self.snapshot_id = Param(snapshot_id)
+        self.volume_id = Param(volume_id)
         self.raid = raid
 
 
@@ -210,18 +200,12 @@ class SharedEfs(SharedStorage):
         id: str = None,
     ):
         super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EFS)
-        if encrypted is None:
-            encrypted = MarkedBool(False)
-        if performance_mode is None:
-            performance_mode = MarkedStr("generalPurpose")
-        if throughput_mode is None:
-            throughput_mode = MarkedStr("bursting")
-        self.encrypted = encrypted
-        self.kms_key_id = kms_key_id
-        self.performance_mode = performance_mode
-        self.throughput_mode = throughput_mode
-        self.provisioned_throughput = provisioned_throughput
-        self.id = id
+        self.encrypted = Param(encrypted, default=False)
+        self.kms_key_id = Param(kms_key_id)
+        self.performance_mode = Param(performance_mode, default="generalPurpose")
+        self.throughput_mode = Param(throughput_mode, default="bursting")
+        self.provisioned_throughput = Param(provisioned_throughput)
+        self.id = Param(id)
 
 
 class SharedFsx(SharedStorage):
@@ -248,23 +232,23 @@ class SharedFsx(SharedStorage):
         storage_type: str = None,
     ):
         super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.FSX)
-        self.storage_capacity = storage_capacity
-        self.storage_type = storage_type
-        self.deployment_type = deployment_type
-        self.export_path = export_path
-        self.import_path = import_path
-        self.imported_file_chunk_size = imported_file_chunk_size
-        self.weekly_maintenance_start_time = weekly_maintenance_start_time
-        self.automatic_backup_retention_days = automatic_backup_retention_days
-        self.copy_tags_to_backups = copy_tags_to_backups
-        self.daily_automatic_backup_start_time = daily_automatic_backup_start_time
-        self.per_unit_storage_throughput = per_unit_storage_throughput
-        self.backup_id = backup_id
-        self.kms_key_id = kms_key_id
-        self.file_system_id = file_system_id
-        self.auto_import_policy = auto_import_policy
-        self.drive_cache_type = drive_cache_type
-        self.storage_type = storage_type
+        self.storage_capacity = Param(storage_capacity)
+        self.storage_type = Param(storage_type)
+        self.deployment_type = Param(deployment_type)
+        self.export_path = Param(export_path)
+        self.import_path = Param(import_path)
+        self.imported_file_chunk_size = Param(imported_file_chunk_size)
+        self.weekly_maintenance_start_time = Param(weekly_maintenance_start_time)
+        self.automatic_backup_retention_days = Param(automatic_backup_retention_days)
+        self.copy_tags_to_backups = Param(copy_tags_to_backups)
+        self.daily_automatic_backup_start_time = Param(daily_automatic_backup_start_time)
+        self.per_unit_storage_throughput = Param(per_unit_storage_throughput)
+        self.backup_id = Param(backup_id)
+        self.kms_key_id = Param(kms_key_id)
+        self.file_system_id = Param(file_system_id)
+        self.auto_import_policy = Param(auto_import_policy)
+        self.drive_cache_type = Param(drive_cache_type)
+        self.storage_type = Param(storage_type)
         self._add_validator(FsxValidator, fsx_config=self)
         # TODO decide whether we should split FsxValidator into smaller ones
 
@@ -291,7 +275,7 @@ class BaseNetworking(Resource):
         proxy: Proxy = None,
     ):
         super().__init__()
-        self.assign_public_ip = assign_public_ip
+        self.assign_public_ip = Param(assign_public_ip)
         self.security_groups = security_groups
         self.additional_security_groups = additional_security_groups
         self.proxy = proxy
@@ -302,8 +286,8 @@ class HeadNodeNetworking(BaseNetworking):
 
     def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_id = subnet_id
-        self.elastic_ip = elastic_ip
+        self.subnet_id = Param(subnet_id)
+        self.elastic_ip = Param(elastic_ip)
 
 
 class PlacementGroup(Resource):
@@ -311,10 +295,8 @@ class PlacementGroup(Resource):
 
     def __init__(self, enabled: bool = None, id: str = None):
         super().__init__()
-        if enabled is None:
-            enabled = MarkedBool(False)
-        self.enabled = enabled
-        self.id = id
+        self.enabled = Param(enabled, default=False)
+        self.id = Param(id)
 
 
 class QueueNetworking(BaseNetworking):
@@ -331,10 +313,8 @@ class Ssh(Resource):
 
     def __init__(self, key_name: str, allowed_ips: str = None):
         super().__init__()
-        if allowed_ips is None:
-            allowed_ips = MarkedStr(CIDR_ALL_IPS)
-        self.key_name = key_name
-        self.allowed_ips = allowed_ips
+        self.key_name = Param(key_name)
+        self.allowed_ips = Param(allowed_ips, default=CIDR_ALL_IPS)
 
 
 class Dcv(Resource):
@@ -342,13 +322,9 @@ class Dcv(Resource):
 
     def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
         super().__init__()
-        if port is None:
-            port = MarkedInt(8843)
-        if allowed_ips is None:
-            allowed_ips = MarkedStr(CIDR_ALL_IPS)
-        self.enabled = enabled
-        self.port = port
-        self.allowed_ips = allowed_ips
+        self.enabled = Param(enabled)
+        self.port = Param(port, default=8843)
+        self.allowed_ips = Param(allowed_ips, default=CIDR_ALL_IPS)
 
 
 class Efa(Resource):
@@ -356,12 +332,8 @@ class Efa(Resource):
 
     def __init__(self, enabled: bool = None, gdr_support: bool = None):
         super().__init__()
-        if enabled is None:
-            enabled = MarkedBool(True)
-        if gdr_support is None:
-            gdr_support = MarkedBool(False)
-        self.enabled = enabled
-        self.gdr_support = gdr_support
+        self.enabled = Param(enabled, default=True)
+        self.gdr_support = Param(gdr_support, default=False)
 
 
 # ---------------------- Nodes ---------------------- #
@@ -372,8 +344,8 @@ class Image(Resource):
 
     def __init__(self, os: str, custom_ami: str = None):
         super().__init__()
-        self.os = os
-        self.custom_ami = custom_ami
+        self.os = Param(os)
+        self.custom_ami = Param(custom_ami)
 
 
 class HeadNode(Resource):
@@ -390,7 +362,7 @@ class HeadNode(Resource):
         efa: Efa = None,
     ):
         super().__init__()
-        self.instance_type = instance_type
+        self.instance_type = Param(instance_type)
         self.image = image
         self.networking = networking
         self.ssh = ssh
@@ -414,20 +386,12 @@ class ComputeResource(Resource):
         efa: Efa = None,
     ):
         super().__init__()
-        if max_count is None:
-            max_count = MarkedInt(10)
-        if min_count is None:
-            min_count = MarkedInt(0)
-        if allocation_strategy is None:
-            allocation_strategy = MarkedStr("BEST_FIT")
-        if simultaneous_multithreading is None:
-            simultaneous_multithreading = MarkedBool(True)
-        self.instance_type = instance_type
-        self.max_count = max_count
-        self.min_count = min_count
-        self.spot_price = spot_price
-        self.allocation_strategy = allocation_strategy
-        self.simultaneous_multithreading = simultaneous_multithreading
+        self.instance_type = Param(instance_type)
+        self.max_count = Param(max_count, default=10)
+        self.min_count = Param(min_count, default=0)
+        self.spot_price = Param(spot_price)
+        self.allocation_strategy = Param(allocation_strategy, default="BEST_FIT")
+        self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
         self.efa = efa
         # TODO handle awsbatch
 
@@ -437,7 +401,7 @@ class Queue(Resource):
 
     def __init__(self, name: str, networking: QueueNetworking, compute_resources: List[ComputeResource]):
         super().__init__()
-        self.name = name
+        self.name = Param(name)
         self.networking = networking
         self.compute_resources = compute_resources
 
@@ -447,7 +411,7 @@ class SchedulingSettings(Resource):
 
     def __init__(self, scaledown_idletime: int):
         super().__init__()
-        self.scaledown_idletime = scaledown_idletime
+        self.scaledown_idletime = Param(scaledown_idletime)
 
 
 class Scheduling(Resource):
@@ -455,9 +419,7 @@ class Scheduling(Resource):
 
     def __init__(self, queues: List[Queue], scheduler: str = None, settings: SchedulingSettings = None):
         super().__init__()
-        if scheduler is None:
-            scheduler = MarkedStr("slurm")
-        self.scheduler = scheduler
+        self.scheduler = Param(scheduler, default="slurm")
         self.queues = queues
         self.settings = settings
 
@@ -467,10 +429,10 @@ class CustomAction(Resource):
 
     def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
         super().__init__()
-        self.script = script
+        self.script = Param(script)
         self.args = args
-        self.event = event
-        self.run_as = run_as
+        self.event = Param(event)
+        self.run_as = Param(run_as)
 
 
 # ---------------------- Monitoring ---------------------- #
@@ -487,14 +449,10 @@ class CloudWatchLogs(Resource):
         kms_key_id: str = None,
     ):
         super().__init__()
-        if enabled is None:
-            enabled = MarkedBool(True)
-        if retention_in_days is None:
-            retention_in_days = MarkedInt(14)
-        self.enabled = enabled
-        self.retention_in_days = retention_in_days
-        self.log_group_id = log_group_id
-        self.kms_key_id = kms_key_id
+        self.enabled = Param(enabled, default=True)
+        self.retention_in_days = Param(retention_in_days, default=14)
+        self.log_group_id = Param(log_group_id)
+        self.kms_key_id = Param(kms_key_id)
 
 
 class CloudWatchDashboards(Resource):
@@ -505,9 +463,7 @@ class CloudWatchDashboards(Resource):
         enabled: bool = None,
     ):
         super().__init__()
-        if enabled is None:
-            enabled = MarkedBool(True)
-        self.enabled = enabled
+        self.enabled = Param(enabled, default=True)
 
 
 class Logs(Resource):
@@ -542,9 +498,7 @@ class Monitoring(Resource):
         dashboards: Dashboards = None,
     ):
         super().__init__()
-        if detailed_monitoring is None:
-            detailed_monitoring = MarkedBool(False)
-        self.detailed_monitoring = detailed_monitoring
+        self.detailed_monitoring = Param(detailed_monitoring, default=False)
         self.logs = logs
         self.dashboards = dashboards
 
@@ -562,15 +516,9 @@ class Roles(Resource):
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        if head_node is None:
-            head_node = MarkedStr("AUTO")
-        if compute_node is None:
-            compute_node = MarkedStr("AUTO")
-        if custom_lambda_resources is None:
-            custom_lambda_resources = MarkedStr("AUTO")
-        self.head_node = head_node
-        self.compute_node = compute_node
-        self.custom_lambda_resources = custom_lambda_resources
+        self.head_node = Param(head_node, default="AUTO")
+        self.compute_node = Param(compute_node, default="AUTO")
+        self.custom_lambda_resources = Param(custom_lambda_resources, default="AUTO")
 
 
 class S3Access(Resource):
@@ -582,10 +530,8 @@ class S3Access(Resource):
         type: str = None,
     ):
         super().__init__()
-        if type is None:
-            type = MarkedStr("READ_ONLY")
-        self.bucket_name = bucket_name
-        self.type = type
+        self.bucket_name = Param(bucket_name)
+        self.type = Param(type, default="READ_ONLY")
 
 
 class AdditionalIamPolicy(Resource):
@@ -597,10 +543,8 @@ class AdditionalIamPolicy(Resource):
         scope: str = None,
     ):
         super().__init__()
-        if scope is None:
-            scope = MarkedStr("CLUSTER")
-        self.policy = policy
-        self.scope = scope
+        self.policy = Param(policy)
+        self.scope = Param(scope, default="CLUSTER")
 
 
 class Iam(Resource):
@@ -627,8 +571,8 @@ class Tag(Resource):
         value: str = None,
     ):
         super().__init__()
-        self.key = key
-        self.value = value
+        self.key = Param(key)
+        self.value = Param(value)
 
 
 # ---------------------- Root resource ---------------------- #

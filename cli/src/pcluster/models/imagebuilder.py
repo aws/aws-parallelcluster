@@ -16,8 +16,8 @@
 from typing import List
 
 from pcluster import utils
-from pcluster.config.extended_builtin_class import MarkedBool
 from pcluster.models.cluster import Resource, Tag
+from pcluster.models.param import Param
 from pcluster.validators.ec2_validators import BaseAMIValidator
 
 # ---------------------- Image ---------------------- #
@@ -28,15 +28,10 @@ class Volume(Resource):
 
     def __init__(self, size: int = None, encrypted: bool = None, kms_key_id: str = None):
         super().__init__()
-        self.size = size
-        self.encrypted = encrypted
-        self.kms_key_id = kms_key_id
-        self._set_defaults()
+        self.size = Param(size)
+        self.encrypted = Param(encrypted, default=False)
+        self.kms_key_id = Param(kms_key_id)
         # TODO: add validator
-
-    def _set_defaults(self):
-        if self.encrypted is None:
-            self.encrypted = MarkedBool(False)
 
 
 class Image(Resource):
@@ -50,8 +45,8 @@ class Image(Resource):
         root_volume: Volume = None,
     ):
         super().__init__()
-        self.name = name
-        self.description = description
+        self.name = Param(name)
+        self.description = Param(description)
         self.tags = tags
         self.root_volume = root_volume
         self._set_default()
@@ -73,8 +68,8 @@ class Component(Resource):
 
     def __init__(self, type: str = None, value: str = None):
         super().__init__()
-        self.type = type
-        self.value = value
+        self.type = Param(type)
+        self.value = Param(value)
         # TODO: add validator
 
 
@@ -92,11 +87,11 @@ class Build(Resource):
         components: List[Component] = None,
     ):
         super().__init__()
-        self.instance_type = instance_type
-        self.parent_image = parent_image
-        self.instance_role = instance_role
+        self.instance_type = Param(instance_type)
+        self.parent_image = Param(parent_image)
+        self.instance_role = Param(instance_role)
         self.tags = tags
-        self.subnet_id = subnet_id
+        self.subnet_id = Param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
         # TODO: add validator
@@ -129,23 +124,14 @@ class DevSettings(Resource):
         terminate_instance_on_failure: bool = None,
     ):
         super().__init__()
-        self.update_os_and_reboot = update_os_and_reboot
-        self.disable_pcluster_component = disable_pcluster_component
+        self.update_os_and_reboot = Param(update_os_and_reboot, default=False)
+        self.disable_pcluster_component = Param(disable_pcluster_component, default=False)
         self.chef_cookbook = chef_cookbook
-        self.node_url = node_url
-        self.aws_batch_cli_url = aws_batch_cli_url
-        self.distribution_configuration_arn = distribution_configuration_arn
-        self.terminate_instance_on_failure = terminate_instance_on_failure
-        self._set_default()
+        self.node_url = Param(node_url)
+        self.aws_batch_cli_url = Param(aws_batch_cli_url)
+        self.distribution_configuration_arn = Param(distribution_configuration_arn)
+        self.terminate_instance_on_failure = Param(terminate_instance_on_failure, default=True)
         # TODO: add validator
-
-    def _set_default(self):
-        if self.update_os_and_reboot is None:
-            self.update_os_and_reboot = MarkedBool(False)
-        if self.disable_pcluster_component is None:
-            self.disable_pcluster_component = MarkedBool(False)
-        if self.terminate_instance_on_failure is None:
-            self.terminate_instance_on_failure = MarkedBool(True)
 
 
 # ---------------------- ImageBuilder ---------------------- #

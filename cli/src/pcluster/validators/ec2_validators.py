@@ -16,7 +16,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class BaseAMIValidator(Validator):
     """Base AMI validator."""
 
-    def __call__(self, ami_id: str):
+    def validate(self, ami_id: str):
         """Validate given ami id."""
         if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
             self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.CRITICAL)
@@ -26,7 +26,7 @@ class BaseAMIValidator(Validator):
 class InstanceTypeValidator(Validator):
     """EC2 Instance type validator."""
 
-    def __call__(self, instance_type: str):
+    def validate(self, instance_type: str):
         """Validate given instance type."""
         if instance_type not in Ec2Client().describe_instance_type_offerings():
             self._add_failure(f"The instance type '{instance_type}' is not supported.", FailureLevel.CRITICAL)

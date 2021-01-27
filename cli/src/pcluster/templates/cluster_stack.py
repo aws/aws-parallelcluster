@@ -28,7 +28,7 @@ class HeadNodeConstruct(core.Construct):
         self.head_node = head_node
 
         # TODO: use attributes from head_node instead of using these static variables.
-        master_instance_type = self.head_node.instance_type
+        master_instance_type = self.head_node.instance_type.value
         master_core_count = "-1,true"
         # compute_core_count = "-1"
         key_name = "keyname"
