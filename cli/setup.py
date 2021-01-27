@@ -50,10 +50,8 @@ REQUIRES = [
     "aws-cdk.aws-sqs~=" + CDK_VERSION,
 ]
 
-if sys.version_info < (3, 4):
-    REQUIRES.append("enum34>=1.1.6")
-
 if sys.version_info[0] == 2:
+    REQUIRES.append("enum34>=1.1.6")
     REQUIRES.append("configparser>=3.5.0,<=3.8.1")
 
 setup(
@@ -66,7 +64,7 @@ setup(
     license="Apache License 2.0",
     package_dir={"": "src"},
     packages=find_packages("src"),
-    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*",
+    python_requires=">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*",
     install_requires=REQUIRES,
     entry_points={
         "console_scripts": [
@@ -89,7 +87,6 @@ setup(
         "Programming Language :: Python :: 2",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",

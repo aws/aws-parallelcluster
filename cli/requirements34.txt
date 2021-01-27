@@ -1,8 +1,0 @@
-boto3>=1.16.14
-future>=0.18.2
-tabulate==0.8.5
-ipaddress>=1.0.22
-enum34>=1.1.6
-configparser>=3.5.0
-PyYAML==5.2
-jinja2==2.10.1
