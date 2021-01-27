@@ -18,7 +18,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class FakeInfoValidator(Validator):
     """Dummy validator of info level."""
 
-    def __call__(self, value: str):
+    def validate(self, value: str):
         self._add_failure(f"Wrong value {value}.", FailureLevel.INFO)
         return self._failures
 
@@ -26,7 +26,7 @@ class FakeInfoValidator(Validator):
 class FakeCriticalValidator(Validator):
     """Dummy validator of critical level."""
 
-    def __call__(self, value: str):
+    def validate(self, value: str):
         self._add_failure(f"Critical error {value}.", FailureLevel.CRITICAL)
         return self._failures
 
@@ -34,7 +34,7 @@ class FakeCriticalValidator(Validator):
 class FakeComplexValidator(Validator):
     """Dummy validator requiring multiple parameters as input."""
 
-    def __call__(self, fake_attribute: str, other_attribute: str):
+    def validate(self, fake_attribute: str, other_attribute: str):
         self._add_failure(f"Combination {fake_attribute} - {other_attribute}.", FailureLevel.WARNING)
         return self._failures
 

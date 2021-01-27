@@ -24,6 +24,7 @@ from pcluster.validators.cluster_validators import FsxNetworkingValidator
 from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
@@ -101,16 +102,21 @@ class Ebs(Resource):
             EbsVolumeTypeSizeValidator, priority=10, volume_type=self.volume_type, volume_size=self.size
         )
         self._add_validator(
-            EbsVolumeThroughputValidator,
-            volume_type=self.volume_type,
-            volume_iops=self.iops,
-            volume_throughput=self.throughput,
-        )
-        self._add_validator(
             EbsVolumeIopsValidator,
             volume_type=self.volume_type,
             volume_size=self.size,
             volume_iops=self.iops,
+        )
+        self._add_validator(
+            EbsVolumeThroughputValidator,
+            volume_type=self.volume_type,
+            volume_throughput=self.throughput,
+        )
+        self._add_validator(
+            EbsVolumeThroughputIopsValidator,
+            volume_type=self.volume_type,
+            volume_iops=self.iops,
+            volume_throughput=self.throughput,
         )
 
 

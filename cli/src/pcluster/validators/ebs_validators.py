@@ -19,7 +19,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class EbsVolumeTypeSizeValidator(Validator):
     """EBS volume type and size validator."""
 
-    def __call__(self, volume_type, volume_size):
+    def validate(self, volume_type, volume_size):
         """Validate given instance type."""
         """
         Validate that the EBS volume size matches the chosen volume type.
@@ -55,17 +55,10 @@ class EbsVolumeTypeSizeValidator(Validator):
 class EbsVolumeThroughputValidator(Validator):
     """EBS volume throughput validator."""
 
-    def __call__(self, volume_type, volume_iops, volume_throughput):
+    def validate(self, volume_type, volume_throughput):
         """Validate gp3 throughput."""
-        if not volume_type.valid:
-            # volume_type needs to be valid to continue this validation.
-            return self._failures
-
         volume_type_value = volume_type.value
-        volume_iops_value = volume_iops.value
         volume_throughput_value = volume_throughput.value
-
-        volume_throughput_to_iops_ratio = 0.25
 
         if volume_type_value == "gp3":
             min_throughput, max_throughput = 125, 1000
@@ -78,6 +71,21 @@ class EbsVolumeThroughputValidator(Validator):
                     FailureLevel.ERROR,
                     [volume_throughput],
                 )
+        return self._failures
+
+
+class EbsVolumeThroughputIopsValidator(Validator):
+    """EBS volume throughput to iops ratio validator."""
+
+    def validate(self, volume_type, volume_iops, volume_throughput):
+        """Validate gp3 throughput."""
+        volume_type_value = volume_type.value
+        volume_iops_value = volume_iops.value
+        volume_throughput_value = volume_throughput.value
+
+        volume_throughput_to_iops_ratio = 0.25
+
+        if volume_type_value == "gp3":
             if (
                 volume_throughput_value
                 and volume_throughput_value > volume_iops_value * volume_throughput_to_iops_ratio
@@ -95,7 +103,7 @@ class EbsVolumeThroughputValidator(Validator):
 class EbsVolumeIopsValidator(Validator):
     """EBS volume IOPS validator."""
 
-    def __call__(self, volume_type, volume_size, volume_iops):
+    def validate(self, volume_type, volume_size, volume_iops):
         """Validate IOPS value in respect of volume type."""
         if not (volume_type.valid and volume_size.valid):
             # volume_type and volume_size need to be valid to continue this validation.

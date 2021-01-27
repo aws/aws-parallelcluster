@@ -99,7 +99,7 @@ SharedStorage:
       PerUnitStorageThroughput: 200
       BackupId: backup-fedcba98
       KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      FileSystemId: fs-12345678123456789
+      # FileSystemId: fs-12345678123456789
       AutoImportPolicy: NEW  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
@@ -133,7 +133,7 @@ Tags:
   - Key: two
     Value: two22
 CustomActions:
-  - Script: https://test.com  # s3:// | https:// | file://*
+  - Script: s3://test/template.tgz  # s3:// | https:// | file://*
     Args:
       - String  # arg1
       - stirng2

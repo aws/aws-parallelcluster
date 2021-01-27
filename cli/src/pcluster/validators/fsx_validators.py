@@ -8,7 +8,6 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -16,7 +15,7 @@ from pcluster.validators.common import FailureLevel, Validator
 class FsxValidator(Validator):
     """FSX validator."""
 
-    def __call__(self, fsx_config):
+    def validate(self, fsx_config):
         """Validate FSX config."""
         import_path = fsx_config.import_path.value
         imported_file_chunk_size = fsx_config.imported_file_chunk_size.value
@@ -186,15 +185,3 @@ class FsxValidator(Validator):
                     "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
                     FailureLevel.CRITICAL,
                 )
-
-    def _validate_fsx_ignored_parameters(self, fsx_config):
-        """Return errors for parameters in the FSx config section that would be ignored."""
-        # If file_system_id is specified, all parameters besides shared_dir are ignored.
-        relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
-        if fsx_config.file_system_id.value is not None:
-            for key, _ in vars(fsx_config):
-                if key is not None and key not in relevant_when_using_existing_fsx:
-                    self._add_failure(
-                        FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key),
-                        FailureLevel.CRITICAL,
-                    )

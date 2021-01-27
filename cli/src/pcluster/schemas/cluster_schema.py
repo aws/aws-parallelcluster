@@ -28,6 +28,7 @@ from marshmallow import (
     validates_schema,
 )
 
+from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
@@ -272,6 +273,19 @@ class FsxSchema(BaseSchema):
     drive_cache_type = fields.Str(validate=validate.OneOf(["READ"]))
     storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
 
+    @validates_schema
+    def validate_fsx_ignored_parameters(self, data, **kwargs):
+        """Return errors for parameters in the FSx config section that would be ignored."""
+        # If file_system_id is specified, all parameters besides shared_dir are ignored.
+        relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
+        messages = []
+        if data.get("file_system_id") is not None:
+            for key in data:
+                if key is not None and key not in relevant_when_using_existing_fsx:
+                    messages.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key))
+            if messages:
+                raise ValidationError(message=messages)
+
 
 class SharedStorageSchema(BaseSchema):
     """Represent the generic SharedStorage schema."""
@@ -503,7 +517,7 @@ class SchedulingSchema(BaseSchema):
 class CustomActionSchema(BaseSchema):
     """Represent the schema of the custom action."""
 
-    script = fields.Str(required=True, validate=validate.URL(schemes=["s3", "https", "file"]))
+    script = fields.Str(required=True)
     args = fields.List(fields.Str())
     event = fields.Str(validate=validate.OneOf(["NODE_START", "NODE_CONFIGURED"]))
     run_as = fields.Str()
