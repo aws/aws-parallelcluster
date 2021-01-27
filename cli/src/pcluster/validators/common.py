@@ -63,6 +63,7 @@ class Validator(ABC):
             self._failures.append(result)
 
     def __call__(self, *arg, **kwargs):
+        """Entry point of all validators to verify all input params are valid."""
         for _, value in kwargs.items():
             if isinstance(value, Param):
                 if not value.valid:
