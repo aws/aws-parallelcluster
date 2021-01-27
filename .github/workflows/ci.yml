@@ -11,7 +11,6 @@ jobs:
         os: [ubuntu-latest]
         name:
           - Python 2.7 Tests
-          - Python 3.4 Tests
           - Python 3.5 Tests
           - Python 3.6 Tests
           - Python 3.7 Tests
@@ -25,10 +24,6 @@ jobs:
             python: 2.7
             toxdir: cli
             toxenv: py27-nocov
-          - name: Python 3.4 Tests
-            python: 3.4
-            toxdir: cli
-            toxenv: py34-nocov
           - name: Python 3.5 Tests
             python: 3.5
             toxdir: cli
