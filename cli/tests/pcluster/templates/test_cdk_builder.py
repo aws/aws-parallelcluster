@@ -17,17 +17,8 @@ from assertpy import assert_that
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster import (
-    Cluster,
-    ComputeResource,
-    HeadNode,
-    HeadNodeNetworking,
-    Image,
-    Queue,
-    QueueNetworking,
-    Scheduling,
-    Ssh,
-)
+from pcluster.models.cluster import HeadNode, HeadNodeNetworking, Image, QueueNetworking, Ssh
+from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
 from pcluster.models.imagebuilder import Build, DevSettings
 from pcluster.models.imagebuilder import Image as ImageBuilderImage
 from pcluster.models.imagebuilder import ImageBuilder, Volume
@@ -47,11 +38,11 @@ def dummy_cluster():
     """Generate dummy cluster."""
     image = Image(os="fakeos")
     head_node = dummy_head_node()
-    compute_resources = [ComputeResource(instance_type="test")]
+    compute_resources = [SlurmComputeResource(instance_type="test")]
     queue_networking = QueueNetworking(subnet_ids=["test"])
-    queues = [Queue(name="test", networking=queue_networking, compute_resources=compute_resources)]
-    scheduling = Scheduling(scheduler="test", queues=queues)
-    return Cluster(image=image, head_node=head_node, scheduling=scheduling)
+    queues = [SlurmQueue(name="test", networking=queue_networking, compute_resources=compute_resources)]
+    scheduling = SlurmScheduling(queues=queues)
+    return SlurmCluster(image=image, head_node=head_node, scheduling=scheduling)
 
 
 def dummy_imagebuilder(is_official_ami_build):

@@ -17,12 +17,10 @@ from assertpy import assert_that
 from marshmallow.validate import ValidationError
 
 from common.utils import load_yaml_dict
-from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SchedulingSchema
+from pcluster.schemas.cluster_schema import ClusterSchema, ImageSchema, SlurmSchema
 
 
-@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.simple.yaml"])
-def test_cluster_schema_slurm(test_datadir, config_file_name):
-
+def _check_cluster_schema(test_datadir, config_file_name):
     # https://github.com/marshmallow-code/marshmallow/issues/1126
     # TODO use yaml render_module: https://marshmallow.readthedocs.io/en/3.0/api_reference.html#marshmallow.Schema.Meta
 
@@ -40,13 +38,15 @@ def test_cluster_schema_slurm(test_datadir, config_file_name):
     output_yaml = yaml.dump(output_json)
     print(output_yaml)
 
-    # with open(config_file) as conf_file:
-    #   input_file_content = conf_file.read()
-    # assert_that(input_file_content).is_equal_to(cluster_config_yaml)
-    # else:
-    # _assert_files_are_equal(output_file, test_datadir / "expected_output.ini")
 
-    # assert_that(cluster_config).is_equal_to(config_file)
+@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.simple.yaml"])
+def test_cluster_schema_slurm(test_datadir, config_file_name):
+    _check_cluster_schema(test_datadir, config_file_name)
+
+
+@pytest.mark.parametrize("config_file_name", ["awsbatch.simple.yaml", "awsbatch.full.yaml"])
+def test_cluster_schema_awsbatch(test_datadir, config_file_name):
+    _check_cluster_schema(test_datadir, config_file_name)
 
 
 @pytest.mark.parametrize(
@@ -96,27 +96,22 @@ FAKE_QUEUE_LIST = [
 
 
 @pytest.mark.parametrize(
-    "scheduler, queues, failure_message",
+    "queues, failure_message",
     [
-        (None, None, "Missing data for required field"),
-        # (None, DUMMY_REQUIRED_QUEUE, None), What is the purpose?
-        ("slurm", DUMMY_REQUIRED_QUEUE, None),
+        (None, "Missing data for required field"),
+        (DUMMY_REQUIRED_QUEUE, None),
     ],
 )
-def test_scheduling_schema(scheduler, queues, failure_message):
+def test_slurm_scheduling_schema(queues, failure_message):
     scheduling_schema = {}
-    if scheduler:
-        scheduling_schema["Scheduler"] = scheduler
     if queues:
         scheduling_schema["Queues"] = queues
 
     if failure_message:
         with pytest.raises(ValidationError, match=failure_message):
-            SchedulingSchema().load(scheduling_schema)
+            SlurmSchema().load(scheduling_schema)
     else:
-        image_config = SchedulingSchema().load(scheduling_schema)
-        assert_that(image_config.scheduler.value).is_equal_to(scheduler if scheduler else "slurm")
-        # assert_that(image_config.queues).con
+        SlurmSchema().load(scheduling_schema)
 
 
 DUMMY_EBS_STORAGE = {

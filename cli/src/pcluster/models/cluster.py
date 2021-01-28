@@ -32,7 +32,7 @@ from pcluster.validators.ec2_validators import InstanceTypeValidator
 from pcluster.validators.fsx_validators import FsxValidator
 
 
-class _ResourceValidator:
+class _ResourceValidator(ABC):
     """Represent a generic validator for a resource attribute or object. It's a module private class."""
 
     def __init__(self, validator_class: Validator, priority: int = 1, **kwargs):
@@ -123,9 +123,9 @@ class Ebs(Resource):
 class Raid(Resource):
     """Represent the Raid configuration."""
 
-    def __init__(self, type: str = None, number_of_volumes=None):
+    def __init__(self, raid_type: int = None, number_of_volumes=None):
         super().__init__()
-        self.type = Param(type)
+        self.raid_type = Param(raid_type)
         self.number_of_volumes = Param(number_of_volumes, default=2)
 
 
@@ -197,7 +197,7 @@ class SharedEfs(SharedStorage):
         performance_mode: str = None,
         throughput_mode: str = None,
         provisioned_throughput: int = None,
-        id: str = None,
+        file_system_id: str = None,
     ):
         super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EFS)
         self.encrypted = Param(encrypted, default=False)
@@ -205,7 +205,7 @@ class SharedEfs(SharedStorage):
         self.performance_mode = Param(performance_mode, default="generalPurpose")
         self.throughput_mode = Param(throughput_mode, default="bursting")
         self.provisioned_throughput = Param(provisioned_throughput)
-        self.id = Param(id)
+        self.file_system_id = Param(file_system_id)
 
 
 class SharedFsx(SharedStorage):
@@ -264,7 +264,7 @@ class Proxy(Resource):
         self.http_proxy_address = http_proxy_address
 
 
-class BaseNetworking(Resource):
+class _BaseNetworking(Resource):
     """Represent the networking configuration shared by head node and compute node."""
 
     def __init__(
@@ -281,7 +281,7 @@ class BaseNetworking(Resource):
         self.proxy = proxy
 
 
-class HeadNodeNetworking(BaseNetworking):
+class HeadNodeNetworking(_BaseNetworking):
     """Represent the networking configuration for the head node."""
 
     def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
@@ -299,7 +299,7 @@ class PlacementGroup(Resource):
         self.id = Param(id)
 
 
-class QueueNetworking(BaseNetworking):
+class QueueNetworking(_BaseNetworking):
     """Represent the networking configuration for the Queue."""
 
     def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
@@ -372,56 +372,44 @@ class HeadNode(Resource):
         self._add_validator(InstanceTypeValidator, priority=1, instance_type=self.instance_type)
 
 
-class ComputeResource(Resource):
-    """Represent the Compute Resource."""
+class BaseComputeResource(Resource):
+    """Represent the base Compute Resource, with the fields in common between all the schedulers."""
 
     def __init__(
         self,
-        instance_type: str,
-        max_count: int = None,
-        min_count: int = None,
-        spot_price: float = None,
         allocation_strategy: str = None,
         simultaneous_multithreading: bool = None,
         efa: Efa = None,
     ):
         super().__init__()
-        self.instance_type = Param(instance_type)
-        self.max_count = Param(max_count, default=10)
-        self.min_count = Param(min_count, default=0)
-        self.spot_price = Param(spot_price)
         self.allocation_strategy = Param(allocation_strategy, default="BEST_FIT")
         self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
         self.efa = efa
-        # TODO handle awsbatch
 
 
-class Queue(Resource):
-    """Represent the Queue resource."""
+class BaseQueue(Resource):
+    """Represent the generic Queue resource."""
 
-    def __init__(self, name: str, networking: QueueNetworking, compute_resources: List[ComputeResource]):
+    def __init__(
+        self,
+        name: str,
+        networking: QueueNetworking,
+        storage: Storage = None,
+        compute_type: str = None,
+    ):
         super().__init__()
         self.name = Param(name)
         self.networking = networking
-        self.compute_resources = compute_resources
+        self.storage = storage
+        self.compute_type = Param(compute_type, default="ONDEMAND")
 
 
-class SchedulingSettings(Resource):
-    """Represent the Scheduling configuration."""
+class CommonSchedulingSettings(Resource):
+    """Represent the common scheduler settings."""
 
     def __init__(self, scaledown_idletime: int):
         super().__init__()
         self.scaledown_idletime = Param(scaledown_idletime)
-
-
-class Scheduling(Resource):
-    """Represent the Scheduling configuration."""
-
-    def __init__(self, queues: List[Queue], scheduler: str = None, settings: SchedulingSettings = None):
-        super().__init__()
-        self.scheduler = Param(scheduler, default="slurm")
-        self.queues = queues
-        self.settings = settings
 
 
 class CustomAction(Resource):
@@ -578,14 +566,13 @@ class Tag(Resource):
 # ---------------------- Root resource ---------------------- #
 
 
-class Cluster(Resource):
-    """Represent the full Cluster configuration."""
+class BaseCluster(Resource):
+    """Represent the common Cluster resource."""
 
     def __init__(
         self,
         image: Image,
         head_node: HeadNode,
-        scheduling: Scheduling,
         shared_storage: List[SharedStorage] = None,
         monitoring: Monitoring = None,
         tags: List[Tag] = None,
@@ -595,7 +582,6 @@ class Cluster(Resource):
         super().__init__()
         self.image = image
         self.head_node = head_node
-        self.scheduling = scheduling
         self.shared_storage = shared_storage
         self.monitoring = monitoring
         self.tags = tags

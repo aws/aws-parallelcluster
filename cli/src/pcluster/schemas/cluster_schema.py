@@ -15,18 +15,7 @@
 #
 import re
 
-from marshmallow import (
-    Schema,
-    ValidationError,
-    fields,
-    post_dump,
-    post_load,
-    pre_dump,
-    pre_load,
-    validate,
-    validates,
-    validates_schema,
-)
+from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
@@ -34,8 +23,7 @@ from pcluster.models.cluster import (
     AdditionalIamPolicy,
     CloudWatchDashboards,
     CloudWatchLogs,
-    Cluster,
-    ComputeResource,
+    CommonSchedulingSettings,
     CustomAction,
     Dashboards,
     Dcv,
@@ -50,21 +38,19 @@ from pcluster.models.cluster import (
     Monitoring,
     PlacementGroup,
     Proxy,
-    Queue,
     QueueNetworking,
     Raid,
     Roles,
     S3Access,
-    Scheduling,
-    SchedulingSettings,
     SharedEbs,
     SharedEfs,
     SharedFsx,
     Ssh,
     Storage,
-    Tag,
 )
-from pcluster.models.param import Param
+from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
+from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling, SlurmSettings
+from pcluster.schemas.common_schema import BaseSchema, TagSchema
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -80,73 +66,6 @@ ALLOWED_VALUES = {
 def _get_field_validator(field_name):
     allowed_values = ALLOWED_VALUES[field_name]
     return validate.OneOf(allowed_values) if isinstance(allowed_values, list) else validate.Regexp(allowed_values)
-
-
-def _camelcase(s):
-
-    parts = iter(s.split("_"))
-    return "".join(i.title() for i in parts)
-
-
-class BaseSchema(Schema):
-    """Represent a base schema, containing all the features required by all the Schema classes."""
-
-    def on_bind_field(self, field_name, field_obj):
-        """
-        Bind CamelCase in the config with with snake_case in Python.
-
-        For example, subnet_id in the code is automatically bind with SubnetId in the config file.
-        The bind can be overwritten by specifying data_key.
-        For example, `EBS` in the config file is not CamelCase, we have to bind it with ebs manually.
-        """
-        if field_obj.data_key is None:
-            field_obj.data_key = _camelcase(field_name)
-
-    def only_one_field(self, data, field_list):
-        """
-        Check that the Schema contains only one of the given fields.
-
-        :param data: the
-        :param field_list: list including the name of the fields to check
-        :return: True if one and only one field is not None
-        """
-        return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
-
-    @pre_load
-    def evaluate_dynamic_defaults(self, raw_data, **kwargs):
-        """Evaluate dynamic default, it's just an example to be removed."""
-        # FIXME to be removed, it's a test
-        for fieldname, field in self.fields.items():
-            if fieldname not in raw_data and callable(field.metadata.get("dynamic_default")):
-                raw_data[fieldname] = field.metadata.get("dynamic_default")(raw_data)
-        return raw_data
-
-    @pre_dump
-    def remove_implied_values(self, data, **kwargs):
-        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).copy().items():
-            if _is_implied(value):
-                delattr(data, key)
-            if isinstance(value, list):
-                value[:] = [v for v in value if not _is_implied(v)]
-        return data
-
-    @pre_dump
-    def unwrap_marked_class(self, data, **kwargs):
-        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).items():
-            if isinstance(value, Param):
-                setattr(data, key, value.value)
-        return data
-
-    @post_dump
-    def remove_none_values(self, data, **kwargs):
-        """Remove None values before creating the Yaml format."""
-        return {key: value for key, value in data.items() if value is not None and value != []}
-
-
-def _is_implied(value):
-    return hasattr(value, "implied") and value.implied
 
 
 # ---------------------- Storage ---------------------- #
@@ -181,7 +100,7 @@ class RootVolumeSchema(_BaseEbsSchema):
 class RaidSchema(BaseSchema):
     """Represent the schema of the parameters specific to Raid. It is a child of EBS schema."""
 
-    raid_type = fields.Str(data_key="Type", validate=validate.OneOf(["0", "1"]))
+    raid_type = fields.Int(data_key="Type", validate=validate.OneOf([0, 1]))
     number_of_volumes = fields.Int(validate=validate.Range(min=2, max=5))
 
     @post_load
@@ -457,61 +376,142 @@ class HeadNodeSchema(BaseSchema):
         return HeadNode(**data)
 
 
-class ComputeResourceSchema(BaseSchema):
+class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
+
+    allocation_strategy = fields.Str()
+    simultaneous_multithreading = fields.Bool()
+    efa = fields.Nested(EfaSchema)
+
+
+class SlurmComputeResourceSchema(_ComputeResourceSchema):
+    """Represent the schema of the Slurm ComputeResource."""
 
     instance_type = fields.Str(required=True)
     max_count = fields.Int()
     min_count = fields.Int()
     spot_price = fields.Float()
-    allocation_strategy = fields.Str()
-    simultaneous_multithreading = fields.Bool()
-    efa = fields.Nested(EfaSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return ComputeResource(**data)
+        return SlurmComputeResource(**data)
 
 
-class QueueSchema(BaseSchema):
-    """Represent the schema of the Queue."""
+class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
+    """Represent the schema of the Batch ComputeResource."""
+
+    instance_type = fields.Str(required=True)  # TODO it is a comma separated list
+    max_vcpus = fields.Int(data_key="MaxvCpus")
+    min_vcpus = fields.Int(data_key="MinvCpus")
+    desired_vcpus = fields.Int(data_key="DesiredvCpus")
+    spot_bid_percentage = fields.Float()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsbatchComputeResource(**data)
+
+
+class _QueueSchema(BaseSchema):
+    """Represent the schema of the attributes in common between all the schedulers queues."""
 
     name = fields.Str()
     networking = fields.Nested(QueueNetworkingSchema, required=True)
-    compute_resources = fields.Nested(ComputeResourceSchema, many=True)
     storage = fields.Nested(StorageSchema)
     compute_type = fields.Str(validate=validate.OneOf(["ONDEMAND", "SPOT"]))
-    image = fields.Nested(ImageSchema)
+
+
+class SlurmQueueSchema(_QueueSchema):
+    """Represent the schema of a Slurm Queue."""
+
+    compute_resources = fields.Nested(SlurmComputeResourceSchema, many=True)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Queue(**data)
+        return SlurmQueue(**data)
 
 
-class SchedulingSettingsSchema(BaseSchema):
-    """Represent the schema of the Scheduling Settings."""
+class AwsbatchQueueSchema(_QueueSchema):
+    """Represent the schema of a Batch Queue."""
+
+    compute_resources = fields.Nested(AwsbatchComputeResourceSchema, many=True)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsbatchQueue(**data)
+
+
+class _BaseSchedulerSettingsSchema(BaseSchema):
+    """Represent the schema of the common scheduler settings."""
 
     scaledown_idletime = fields.Int(data_key="ScaleDownIdleTime")
 
+
+class AwsbatchSettingsSchema(_BaseSchedulerSettingsSchema):
+    """Represent the schema of the Awsbatch Settings."""
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return SchedulingSettings(**data)
+        return CommonSchedulingSettings(**data)
+
+
+class SlurmSettingsSchema(_BaseSchedulerSettingsSchema):
+    """Represent the schema of the Scheduling Settings."""
+
+    # TODO add dns
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmSettings(**data)
+
+
+class SlurmSchema(BaseSchema):
+    """Represent the schema of the Slurm section."""
+
+    settings = fields.Nested(SlurmSettingsSchema)
+    queues = fields.Nested(SlurmQueueSchema, many=True, required=True)
+
+
+class AwsbatchSchema(BaseSchema):
+    """Represent the schema of the Awsbatch section."""
+
+    settings = fields.Nested(AwsbatchSettingsSchema)
+    queues = fields.Nested(AwsbatchQueueSchema, many=True, required=True)
 
 
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
-    scheduler = fields.Str(required=True, validate=validate.OneOf(["slurm", "awsbatch"]))
-    settings = fields.Nested(SchedulingSettingsSchema)
-    queues = fields.Nested(QueueSchema, many=True, required=True)
+    slurm = fields.Nested(SlurmSchema)
+    awsbatch = fields.Nested(AwsbatchSchema)
+    # custom = fields.Str(CustomSchema, data_key="Custom")
+
+    @validates_schema
+    def only_one_scheduling_type(self, data, **kwargs):
+        """Validate that there is one and only one type of scheduling."""
+        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"]):
+            raise ValidationError("You must provide scheduler configuration")
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Scheduling(**data)
+        """Generate the right type of scheduling according to the child type (Slurm vs Awsbatch vs Custom)."""
+        if data.get("slurm"):
+            return SlurmScheduling(**data.get("slurm"))
+        elif data.get("awsbatch"):
+            return AwsbatchScheduling(**data.get("awsbatch"))
+        # elif data.get("custom_scheduling"):
+        #    return CustomScheduling(data.get("scheduler"), **data.get("custom_scheduling"))
+
+    @pre_dump
+    def restore_child(self, data, **kwargs):
+        """Restore back the child in the schema."""
+        setattr(data, data.scheduler, data)
+        return data
 
 
 class CustomActionSchema(BaseSchema):
@@ -532,7 +532,7 @@ class CustomActionSchema(BaseSchema):
 
 
 class CloudWatchLogsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the CloudWatchLogs section."""
 
     enabled = fields.Bool()
     retention_in_days = fields.Int(
@@ -548,7 +548,7 @@ class CloudWatchLogsSchema(BaseSchema):
 
 
 class CloudWatchDashboardsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the CloudWatchDashboards section."""
 
     enabled = fields.Bool()
 
@@ -559,7 +559,7 @@ class CloudWatchDashboardsSchema(BaseSchema):
 
 
 class LogsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Logs section."""
 
     cloud_watch = fields.Nested(CloudWatchLogsSchema)
 
@@ -570,7 +570,7 @@ class LogsSchema(BaseSchema):
 
 
 class DashboardsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Dashboards section."""
 
     cloud_watch = fields.Nested(CloudWatchDashboardsSchema)
 
@@ -581,7 +581,7 @@ class DashboardsSchema(BaseSchema):
 
 
 class MonitoringSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Monitoring section."""
 
     detailed_monitoring = fields.Bool()
     logs = fields.Nested(LogsSchema)
@@ -594,18 +594,6 @@ class MonitoringSchema(BaseSchema):
 
 
 # ---------------------- Others ---------------------- #
-
-
-class TagSchema(BaseSchema):
-    """Represent the schema of tag."""
-
-    key = fields.Str()
-    value = fields.Str()
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Tag(**data)
 
 
 class RolesSchema(BaseSchema):
@@ -677,13 +665,7 @@ class ClusterSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Cluster(**data)
-
-    '''
-    @pre_load
-    def move_image(self, input_data, **kwargs):
-        """Move image field into the head node."""
-        # If image is not present in the Head node we can use the one from the Cluster
-        input_data["HeadNode"]["Image"] = input_data["Image"]
-        return input_data
-    '''
+        if data.get("scheduling").scheduler == "slurm":
+            return SlurmCluster(**data)
+        elif data.get("scheduling").scheduler == "awsbatch":
+            return AwsbatchCluster(**data)

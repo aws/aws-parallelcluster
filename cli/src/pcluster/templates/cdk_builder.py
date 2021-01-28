@@ -18,16 +18,16 @@ import tempfile
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster import Cluster
+from pcluster.models.cluster_slurm import SlurmCluster
 from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cluster_stack import ClusterStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderStack
 
 
 class CDKTemplateBuilder:
-    """Create the resources related to the HeadNode."""
+    """Create the template, starting from the given resources."""
 
-    def build(self, cluster: Cluster):
+    def build(self, cluster: SlurmCluster):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "cluster"
