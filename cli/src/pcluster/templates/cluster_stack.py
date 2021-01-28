@@ -16,7 +16,7 @@
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import core
 
-from pcluster.models.cluster import Cluster, HeadNode, SharedFsx
+from pcluster.models.cluster import HeadNode, SharedFsx, SlurmCluster
 
 
 class HeadNodeConstruct(core.Construct):
@@ -192,7 +192,7 @@ class FsxConstruct(core.Construct):
 class ClusterStack(core.Stack):
     """Create the Stack and delegate to specific Construct for the creation of all the resources for the Cluster."""
 
-    def __init__(self, scope: core.Construct, construct_id: str, cluster: Cluster, **kwargs) -> None:
+    def __init__(self, scope: core.Construct, construct_id: str, cluster: SlurmCluster, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self._cluster = cluster
 

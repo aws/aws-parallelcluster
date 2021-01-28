@@ -36,41 +36,41 @@ HeadNode:
     Enabled: false
     GdrSupport: false
 Scheduling:
-  Scheduler: slurm
-  Queues:
-    - Name: queue1
-      Networking:
-        SubnetIds:
-          - subnet-12345678
-      ComputeResources:
-        - InstanceType: c5.xlarge
-        - InstanceType: c4.xlarge
-    - Name: queue2
-      Networking:
-        SubnetIds:
-          - subnet-12345678
-          - subnet-23456789
-        AssignPublicIp: true
-        SecurityGroups:
-          - sg-12345678
-        AdditionalSecurityGroups:
-          - sg-23456789
-        PlacementGroup:
-          Enabled: true
-          Id: String
-        Proxy:
-          HttpProxyAddress: String  # https://proxy-address:port
-      ComputeResources:
-        - InstanceType: c4.2xlarge
-        - InstanceType: c5.2xlarge
-          MinCount: 1
-          MaxCount: 15
-          SpotPrice: 1.1
-          SimultaneousMultithreading: false
-          Efa:
+  Slurm:
+    Queues:
+      - Name: queue1
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+        ComputeResources:
+          - InstanceType: c5.xlarge
+          - InstanceType: c4.xlarge
+      - Name: queue2
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+            - subnet-23456789
+          AssignPublicIp: true
+          SecurityGroups:
+            - sg-12345678
+          AdditionalSecurityGroups:
+            - sg-23456789
+          PlacementGroup:
             Enabled: true
-            GdrSupport: false
-          AllocationStrategy: String
+            Id: String
+          Proxy:
+            HttpProxyAddress: String  # https://proxy-address:port
+        ComputeResources:
+          - InstanceType: c4.2xlarge
+          - InstanceType: c5.2xlarge
+            MinCount: 1
+            MaxCount: 15
+            SpotPrice: 1.1
+            SimultaneousMultithreading: false
+            Efa:
+              Enabled: true
+              GdrSupport: false
+            AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point1
     EBS:

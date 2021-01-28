@@ -1,0 +1,31 @@
+Image:
+  Os: alinux2
+HeadNode:
+  InstanceType: String  # t2.micro
+  Ssh:
+    KeyName: String  # ec2-key-name
+  Networking:
+    SubnetId: subnet-12345678
+  Image:
+    Os: alinux2
+Scheduling:
+  Awsbatch:
+    Queues:
+      - Name: queue1
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+            - subnet-23456789
+        ComputeResources:
+          - InstanceType: c4.xlarge,c5.large|optimal|c5,c4
+            MaxvCpus: 10
+SharedStorage:
+  - MountDir: /shared
+    EBS:
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 100
+      Size: 150
+      Encrypted: True
+      KmsKeyId: String
+      SnapshotId: snap-12345678
+      VolumeId: vol-12345678

@@ -1,0 +1,176 @@
+Image:
+  Os: alinux2  # alinux2 | centos7 | centos8 | ubuntu1804
+  CustomAmi: ami-12345678  # ami-xxx
+HeadNode:
+  InstanceType: String  # t2.micro
+  Networking:
+    SubnetId: subnet-12345678  # subnet-xxx
+    ElasticIp: String  # true|false|EIP-id
+    AssignPublicIp: true  # true|false
+    SecurityGroups:
+      - sg-12345678  # sg-xxxx
+      - sg-23456789
+    AdditionalSecurityGroups:
+      - sg-12345678  # sg-xxxx
+      - sg-23456789
+    Proxy:
+      HttpProxyAddress: String  # https://proxy-address:port
+  #SimultaneousMultithreading: Boolean  # true
+  Ssh:
+    KeyName: String  # ec2-key-name
+    AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
+  Storage:
+    RootVolume:
+      Size: 27  # 25
+      Encrypted: true  # true
+      KmsKeyId: String
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 23
+      Throughput: 21
+    EphemeralVolume:
+      Encrypted: true  # true
+      MountDir: String  # /scratch
+  Dcv:
+    Enabled: true  # true
+    Port: 8443  # 8443
+    AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
+  Efa:
+    Enabled: true  # false
+    GdrSupport: true  # false
+Scheduling:
+  Awsbatch:
+    Queues:
+      - Name: String  # queue
+        Storage:
+          RootVolume:
+            Size: 28  # 25
+            Encrypted: true  # true
+            KmsKeyId: String
+            VolumeType: sc1  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+            Iops: 1
+            Throughput: 2
+          EphemeralVolume:
+            Encrypted: true  # true
+            MountDir: String  # /scratch
+        ComputeType: ONDEMAND  # ONDEMAND | SPOT
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+            - subnet-23456789
+          AssignPublicIp: true  # true|false
+          SecurityGroups:
+            - sg-12345678  # sg-xxxx
+          AdditionalSecurityGroups:
+            - sg-12345678  # sg-xxxx
+          PlacementGroup:
+            Enabled: true  # true
+            Id: String
+          Proxy:
+            HttpProxyAddress: String  # https://proxy-address:port
+        ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
+          - InstanceType: optimal
+            MinvCpus: 0  # 0
+            DesiredvCpus: 10
+            MaxvCpus: 20
+            SpotBidPercentage: 0.5
+            SimultaneousMultithreading: true  # true
+            Efa:
+              Enabled: true  # true
+              GdrSupport: true  # false
+            #AllocationStrategy: String
+          - InstanceType: c4.xlarge,c5.large
+          - InstanceType: c5,c4
+      - Name: queue2
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+        ComputeResources:
+          - InstanceType: c5.xlarge
+          - InstanceType: c4.xlarge
+SharedStorage:
+  - MountDir: /my/mount/point
+    EBS:
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 10
+      Size: 20
+      Encrypted: true
+      KmsKeyId: String
+      SnapshotId: snap-12345678  # snap-xxxx
+      VolumeId: vol-12345678  # vol-xxxx
+      Raid:
+        Type: 0  # 0|1
+        NumberOfVolumes: 2  # [2-5]
+  - MountDir: /my/mount/point2
+    EFS:
+      Encrypted: true  # true
+      KmsKeyId: String  # id-xxx
+      PerformanceMode: maxIO  # generalPurpose | maxIO
+      ThroughputMode: provisioned  # bursting | provisioned
+      ProvisionedThroughput: 1024  # 1024
+      FileSystemId: fs-12345678  # fs-xxxx
+  - MountDir: /my/mount/point3
+    FSxLustre:
+      StorageCapacity: 3600  # 3600
+      DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      ImportedFileChunkSize: 10  # 1024
+      ExportPath: String  # s3://bucket/folder
+      ImportPath: String  # s3://bucket
+      #WeeklyMaintenanceStartTime: 1:00:00  # 1:00:00
+      AutomaticBackupRetentionDays: 1  # 0
+      CopyTagsToBackups: true  # true
+      DailyAutomaticBackupStartTime: 01:03  # 01:03
+      PerUnitStorageThroughput: 50  # 200
+      BackupId: backup-12345678  # backup-fedcba98
+      KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      #FileSystemId: fs-12345678123456789  # fsx-xxxx
+      AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
+      DriveCacheType: READ  # READ
+      StorageType: HDD  # HDD | SSD
+IAM:
+  Roles:
+    HeadNode: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+    ComputeNode: String  # arn:aws:iam::aws:role/CustomComputeNodeRole
+    CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+  S3Access:
+    - BucketName: String
+      Type: READ_WRITE # READ_ONLY | READ_WRITE
+  AdditionalIAMPolicies:
+    - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+      Scope: COMPUTE  # HEAD | COMPUTE | CLUSTER
+    - Policy: policy2
+      Scope: other
+Monitoring:
+  DetailedMonitoring: true  # false
+  Logs:
+    CloudWatch:
+      Enabled: true  # true
+      RetentionInDays: 14  # 14
+      LogGroupId: String
+      KmsKeyId: String
+  Dashboards:
+    CloudWatch:
+      Enabled: true  # true
+#AdditionalPackages:
+#  IntelSelectSolutions:
+#    InstallIntelSoftware: true  # false
+CustomActions:
+  - Script: https://test.tgz  # s3:// | https:// | file://*
+    Args:
+      - String  # arg1
+      - stirng2
+    Event: NODE_START  # NODE_START | NODE_CONFIGURED
+#ClusterS3ResourceBucket: String
+Tags:
+  - Key: String
+    Value: String
+  - Key: two
+    Value: two22
+#ClusterS3Bucket: String
+#AdditionalResources: String  # https://template.url
+#DevSettings:
+#  ClusterTemplate: String
+#  Cookbook:
+#    ChefCookbook: String
+#    ExtraChefAttributes: Object
+#  AWSBatchCLIPackage: String
+#  NodePackage: String

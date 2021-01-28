@@ -32,10 +32,13 @@ from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
+    AwsbatchCluster,
+    AwsbatchComputeResource,
+    AwsbatchQueue,
+    AwsbatchScheduling,
     CloudWatchDashboards,
     CloudWatchLogs,
-    Cluster,
-    ComputeResource,
+    CommonSchedulingSettings,
     CustomAction,
     Dashboards,
     Dcv,
@@ -50,16 +53,18 @@ from pcluster.models.cluster import (
     Monitoring,
     PlacementGroup,
     Proxy,
-    Queue,
     QueueNetworking,
     Raid,
     Roles,
     S3Access,
-    Scheduling,
-    SchedulingSettings,
     SharedEbs,
     SharedEfs,
     SharedFsx,
+    SlurmCluster,
+    SlurmComputeResource,
+    SlurmQueue,
+    SlurmScheduling,
+    SlurmSettings,
     Ssh,
     Storage,
     Tag,
@@ -181,7 +186,7 @@ class RootVolumeSchema(_BaseEbsSchema):
 class RaidSchema(BaseSchema):
     """Represent the schema of the parameters specific to Raid. It is a child of EBS schema."""
 
-    raid_type = fields.Str(data_key="Type", validate=validate.OneOf(["0", "1"]))
+    raid_type = fields.Int(data_key="Type", validate=validate.OneOf([0, 1]))
     number_of_volumes = fields.Int(validate=validate.Range(min=2, max=5))
 
     @post_load
@@ -457,61 +462,142 @@ class HeadNodeSchema(BaseSchema):
         return HeadNode(**data)
 
 
-class ComputeResourceSchema(BaseSchema):
+class _ComputeResourceSchema(BaseSchema):
     """Represent the schema of the ComputeResource."""
+
+    allocation_strategy = fields.Str()
+    simultaneous_multithreading = fields.Bool()
+    efa = fields.Nested(EfaSchema)
+
+
+class SlurmComputeResourceSchema(_ComputeResourceSchema):
+    """Represent the schema of the Slurm ComputeResource."""
 
     instance_type = fields.Str(required=True)
     max_count = fields.Int()
     min_count = fields.Int()
     spot_price = fields.Float()
-    allocation_strategy = fields.Str()
-    simultaneous_multithreading = fields.Bool()
-    efa = fields.Nested(EfaSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return ComputeResource(**data)
+        return SlurmComputeResource(**data)
 
 
-class QueueSchema(BaseSchema):
-    """Represent the schema of the Queue."""
+class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
+    """Represent the schema of the Batch ComputeResource."""
+
+    instance_type = fields.Str(required=True)  # TODO it is a comma separated list
+    max_vcpus = fields.Int(data_key="MaxvCpus")
+    min_vcpus = fields.Int(data_key="MinvCpus")
+    desired_vcpus = fields.Int(data_key="DesiredvCpus")
+    spot_bid_percentage = fields.Float()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsbatchComputeResource(**data)
+
+
+class _QueueSchema(BaseSchema):
+    """Represent the schema of the attributes in common between all the schedulers queues."""
 
     name = fields.Str()
     networking = fields.Nested(QueueNetworkingSchema, required=True)
-    compute_resources = fields.Nested(ComputeResourceSchema, many=True)
     storage = fields.Nested(StorageSchema)
     compute_type = fields.Str(validate=validate.OneOf(["ONDEMAND", "SPOT"]))
-    image = fields.Nested(ImageSchema)
+
+
+class SlurmQueueSchema(_QueueSchema):
+    """Represent the schema of a Slurm Queue."""
+
+    compute_resources = fields.Nested(SlurmComputeResourceSchema, many=True)
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Queue(**data)
+        return SlurmQueue(**data)
 
 
-class SchedulingSettingsSchema(BaseSchema):
-    """Represent the schema of the Scheduling Settings."""
+class AwsbatchQueueSchema(_QueueSchema):
+    """Represent the schema of a Batch Queue."""
+
+    compute_resources = fields.Nested(AwsbatchComputeResourceSchema, many=True)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AwsbatchQueue(**data)
+
+
+class _BaseSchedulerSettingsSchema(BaseSchema):
+    """Represent the schema of the common scheduler settings."""
 
     scaledown_idletime = fields.Int(data_key="ScaleDownIdleTime")
 
+
+class AwsbatchSettingsSchema(_BaseSchedulerSettingsSchema):
+    """Represent the schema of the Awsbatch Settings."""
+
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return SchedulingSettings(**data)
+        return CommonSchedulingSettings(**data)
+
+
+class SlurmSettingsSchema(_BaseSchedulerSettingsSchema):
+    """Represent the schema of the Scheduling Settings."""
+
+    # TODO add dns
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return SlurmSettings(**data)
+
+
+class SlurmSchema(BaseSchema):
+    """Represent the schema of the Slurm section."""
+
+    settings = fields.Nested(SlurmSettingsSchema)
+    queues = fields.Nested(SlurmQueueSchema, many=True, required=True)
+
+
+class AwsbatchSchema(BaseSchema):
+    """Represent the schema of the Awsbatch section."""
+
+    settings = fields.Nested(AwsbatchSettingsSchema)
+    queues = fields.Nested(AwsbatchQueueSchema, many=True, required=True)
 
 
 class SchedulingSchema(BaseSchema):
     """Represent the schema of the Scheduling."""
 
-    scheduler = fields.Str(required=True, validate=validate.OneOf(["slurm", "awsbatch"]))
-    settings = fields.Nested(SchedulingSettingsSchema)
-    queues = fields.Nested(QueueSchema, many=True, required=True)
+    slurm = fields.Nested(SlurmSchema)
+    awsbatch = fields.Nested(AwsbatchSchema)
+    # custom = fields.Str(CustomSchema, data_key="Custom")
+
+    @validates_schema
+    def only_one_scheduling_type(self, data, **kwargs):
+        """Validate that there is one and only one type of scheduling."""
+        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"]):
+            raise ValidationError("You must provide scheduler configuration")
 
     @post_load
     def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Scheduling(**data)
+        """Generate the right type of scheduling according to the child type (Slurm vs Awsbatch vs Custom)."""
+        if data.get("slurm"):
+            return SlurmScheduling(**data.get("slurm"))
+        elif data.get("awsbatch"):
+            return AwsbatchScheduling(**data.get("awsbatch"))
+        # elif data.get("custom_scheduling"):
+        #    return CustomScheduling(data.get("scheduler"), **data.get("custom_scheduling"))
+
+    @pre_dump
+    def restore_child(self, data, **kwargs):
+        """Restore back the child in the schema."""
+        setattr(data, data.scheduler, data)
+        return data
 
 
 class CustomActionSchema(BaseSchema):
@@ -677,13 +763,7 @@ class ClusterSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Cluster(**data)
-
-    '''
-    @pre_load
-    def move_image(self, input_data, **kwargs):
-        """Move image field into the head node."""
-        # If image is not present in the Head node we can use the one from the Cluster
-        input_data["HeadNode"]["Image"] = input_data["Image"]
-        return input_data
-    '''
+        if data.get("scheduling").scheduler == "slurm":
+            return SlurmCluster(**data)
+        elif data.get("scheduling").scheduler == "awsbatch":
+            return AwsbatchCluster(**data)
