@@ -16,7 +16,7 @@
 from marshmallow import fields, post_load
 
 from pcluster.models.imagebuilder import Build, ChefCookbook, Component, DevSettings, Image, ImageBuilder, Volume
-from pcluster.schemas.cluster_schema import BaseSchema, TagSchema
+from pcluster.schemas.common_schema import BaseSchema, TagSchema
 
 # ---------------------- Image Schema---------------------- #
 

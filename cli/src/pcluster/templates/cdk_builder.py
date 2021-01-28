@@ -18,7 +18,7 @@ import tempfile
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster import SlurmCluster
+from pcluster.models.cluster_slurm import SlurmCluster
 from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cluster_stack import ClusterStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderStack

@@ -372,7 +372,7 @@ class HeadNode(Resource):
         self._add_validator(InstanceTypeValidator, priority=1, instance_type=self.instance_type)
 
 
-class _BaseComputeResource(Resource):
+class BaseComputeResource(Resource):
     """Represent the base Compute Resource, with the fields in common between all the schedulers."""
 
     def __init__(
@@ -387,49 +387,7 @@ class _BaseComputeResource(Resource):
         self.efa = efa
 
 
-class SlurmComputeResource(_BaseComputeResource):
-    """Represent the Slurm Compute Resource."""
-
-    def __init__(
-        self,
-        instance_type: str,
-        max_count: int = None,
-        min_count: int = None,
-        spot_price: float = None,
-        allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
-        efa: Efa = None,
-    ):
-        super().__init__(allocation_strategy, simultaneous_multithreading, efa)
-        self.instance_type = Param(instance_type)
-        self.max_count = Param(max_count, default=10)
-        self.min_count = Param(min_count, default=0)
-        self.spot_price = Param(spot_price)
-
-
-class AwsbatchComputeResource(_BaseComputeResource):
-    """Represent the Awsbatch Compute Resource."""
-
-    def __init__(
-        self,
-        instance_type: str,
-        max_vcpus: int = None,
-        min_vcpus: int = None,
-        desired_vcpus: int = None,
-        spot_bid_percentage: float = None,
-        allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
-        efa: Efa = None,
-    ):
-        super().__init__(allocation_strategy, simultaneous_multithreading, efa)
-        self.instance_type = instance_type
-        self.max_vcpus = Param(max_vcpus, default=10)
-        self.min_vcpus = Param(min_vcpus, default=0)
-        self.desired_vcpus = Param(desired_vcpus, default=0)
-        self.spot_bid_percentage = spot_bid_percentage
-
-
-class _BaseQueue(Resource):
+class BaseQueue(Resource):
     """Represent the generic Queue resource."""
 
     def __init__(
@@ -446,70 +404,12 @@ class _BaseQueue(Resource):
         self.compute_type = Param(compute_type, default="ONDEMAND")
 
 
-class SlurmQueue(_BaseQueue):
-    """Represent the Slurm Queue resource."""
-
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        compute_resources: List[SlurmComputeResource],
-        storage: Storage = None,
-        compute_type: str = None,
-    ):
-        super().__init__(name, networking, storage, compute_type)
-        self.compute_resources = compute_resources
-
-
-class AwsbatchQueue(_BaseQueue):
-    """Represent the Awsbatch Queue resource."""
-
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        compute_resources: List[AwsbatchComputeResource],
-        storage: Storage = None,
-        compute_type: str = None,
-    ):
-        super().__init__(name, networking, storage, compute_type)
-        self.compute_resources = compute_resources
-
-
 class CommonSchedulingSettings(Resource):
     """Represent the common scheduler settings."""
 
     def __init__(self, scaledown_idletime: int):
         super().__init__()
         self.scaledown_idletime = Param(scaledown_idletime)
-
-
-class SlurmSettings(CommonSchedulingSettings):
-    """Represent the Slurm settings."""
-
-    def __init__(self, scaledown_idletime: int):
-        super().__init__(scaledown_idletime)
-        # self.dns = dns
-
-
-class SlurmScheduling(Resource):
-    """Represent a generic Scheduling resource."""
-
-    def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
-        super().__init__()
-        self.scheduler = "slurm"
-        self.queues = queues
-        self.settings = settings
-
-
-class AwsbatchScheduling(Resource):
-    """Represent a Awsbatch Scheduling resource."""
-
-    def __init__(self, queues: List[AwsbatchQueue], settings: CommonSchedulingSettings = None):
-        super().__init__()
-        self.scheduler = "awsbatch"
-        self.queues = queues
-        self.settings = settings
 
 
 class CustomAction(Resource):
@@ -666,7 +566,7 @@ class Tag(Resource):
 # ---------------------- Root resource ---------------------- #
 
 
-class _BaseCluster(Resource):
+class BaseCluster(Resource):
     """Represent the common Cluster resource."""
 
     def __init__(
@@ -708,39 +608,3 @@ class _BaseCluster(Resource):
     @cores.setter
     def cores(self, value):
         self._cores = value
-
-
-class SlurmCluster(_BaseCluster):
-    """Represent the full Slurm Cluster configuration."""
-
-    def __init__(
-        self,
-        image: Image,
-        head_node: HeadNode,
-        scheduling: SlurmScheduling,
-        shared_storage: List[SharedStorage] = None,
-        monitoring: Monitoring = None,
-        tags: List[Tag] = None,
-        iam: Iam = None,
-        custom_actions: CustomAction = None,
-    ):
-        super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
-        self.scheduling = scheduling
-
-
-class AwsbatchCluster(_BaseCluster):
-    """Represent the full Awsbatch Cluster configuration."""
-
-    def __init__(
-        self,
-        image: Image,
-        head_node: HeadNode,
-        scheduling: AwsbatchScheduling,
-        shared_storage: List[SharedStorage] = None,
-        monitoring: Monitoring = None,
-        tags: List[Tag] = None,
-        iam: Iam = None,
-        custom_actions: CustomAction = None,
-    ):
-        super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
-        self.scheduling = scheduling

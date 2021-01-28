@@ -15,27 +15,12 @@
 #
 import re
 
-from marshmallow import (
-    Schema,
-    ValidationError,
-    fields,
-    post_dump,
-    post_load,
-    pre_dump,
-    pre_load,
-    validate,
-    validates,
-    validates_schema,
-)
+from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
-    AwsbatchCluster,
-    AwsbatchComputeResource,
-    AwsbatchQueue,
-    AwsbatchScheduling,
     CloudWatchDashboards,
     CloudWatchLogs,
     CommonSchedulingSettings,
@@ -60,16 +45,12 @@ from pcluster.models.cluster import (
     SharedEbs,
     SharedEfs,
     SharedFsx,
-    SlurmCluster,
-    SlurmComputeResource,
-    SlurmQueue,
-    SlurmScheduling,
-    SlurmSettings,
     Ssh,
     Storage,
-    Tag,
 )
-from pcluster.models.param import Param
+from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
+from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling, SlurmSettings
+from pcluster.schemas.common_schema import BaseSchema, TagSchema
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -85,73 +66,6 @@ ALLOWED_VALUES = {
 def _get_field_validator(field_name):
     allowed_values = ALLOWED_VALUES[field_name]
     return validate.OneOf(allowed_values) if isinstance(allowed_values, list) else validate.Regexp(allowed_values)
-
-
-def _camelcase(s):
-
-    parts = iter(s.split("_"))
-    return "".join(i.title() for i in parts)
-
-
-class BaseSchema(Schema):
-    """Represent a base schema, containing all the features required by all the Schema classes."""
-
-    def on_bind_field(self, field_name, field_obj):
-        """
-        Bind CamelCase in the config with with snake_case in Python.
-
-        For example, subnet_id in the code is automatically bind with SubnetId in the config file.
-        The bind can be overwritten by specifying data_key.
-        For example, `EBS` in the config file is not CamelCase, we have to bind it with ebs manually.
-        """
-        if field_obj.data_key is None:
-            field_obj.data_key = _camelcase(field_name)
-
-    def only_one_field(self, data, field_list):
-        """
-        Check that the Schema contains only one of the given fields.
-
-        :param data: the
-        :param field_list: list including the name of the fields to check
-        :return: True if one and only one field is not None
-        """
-        return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
-
-    @pre_load
-    def evaluate_dynamic_defaults(self, raw_data, **kwargs):
-        """Evaluate dynamic default, it's just an example to be removed."""
-        # FIXME to be removed, it's a test
-        for fieldname, field in self.fields.items():
-            if fieldname not in raw_data and callable(field.metadata.get("dynamic_default")):
-                raw_data[fieldname] = field.metadata.get("dynamic_default")(raw_data)
-        return raw_data
-
-    @pre_dump
-    def remove_implied_values(self, data, **kwargs):
-        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).copy().items():
-            if _is_implied(value):
-                delattr(data, key)
-            if isinstance(value, list):
-                value[:] = [v for v in value if not _is_implied(v)]
-        return data
-
-    @pre_dump
-    def unwrap_marked_class(self, data, **kwargs):
-        """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
-        for key, value in vars(data).items():
-            if isinstance(value, Param):
-                setattr(data, key, value.value)
-        return data
-
-    @post_dump
-    def remove_none_values(self, data, **kwargs):
-        """Remove None values before creating the Yaml format."""
-        return {key: value for key, value in data.items() if value is not None and value != []}
-
-
-def _is_implied(value):
-    return hasattr(value, "implied") and value.implied
 
 
 # ---------------------- Storage ---------------------- #
@@ -680,18 +594,6 @@ class MonitoringSchema(BaseSchema):
 
 
 # ---------------------- Others ---------------------- #
-
-
-class TagSchema(BaseSchema):
-    """Represent the schema of tag."""
-
-    key = fields.Str()
-    value = fields.Str()
-
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return Tag(**data)
 
 
 class RolesSchema(BaseSchema):

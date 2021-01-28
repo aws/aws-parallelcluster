@@ -17,17 +17,8 @@ from assertpy import assert_that
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster import (
-    HeadNode,
-    HeadNodeNetworking,
-    Image,
-    QueueNetworking,
-    SlurmCluster,
-    SlurmComputeResource,
-    SlurmQueue,
-    SlurmScheduling,
-    Ssh,
-)
+from pcluster.models.cluster import HeadNode, HeadNodeNetworking, Image, QueueNetworking, Ssh
+from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
 from pcluster.models.imagebuilder import Build, DevSettings
 from pcluster.models.imagebuilder import Image as ImageBuilderImage
 from pcluster.models.imagebuilder import ImageBuilder, Volume

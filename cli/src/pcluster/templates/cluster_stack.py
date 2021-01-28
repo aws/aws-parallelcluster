@@ -16,7 +16,8 @@
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import core
 
-from pcluster.models.cluster import HeadNode, SharedFsx, SlurmCluster
+from pcluster.models.cluster import HeadNode, SharedFsx
+from pcluster.models.cluster_slurm import SlurmCluster
 
 
 class HeadNodeConstruct(core.Construct):
