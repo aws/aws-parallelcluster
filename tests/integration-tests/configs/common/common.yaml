@@ -107,7 +107,7 @@ createami:
     dimensions:
       - regions: ["ap-southeast-2"]
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["centos7", "ubuntu1804"]
+        oss: ["centos7"] # temporary disable Ubuntu18 AMI since apt update gives error due to FSx repo changes
       - regions: ["eu-west-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: ["alinux2"]
