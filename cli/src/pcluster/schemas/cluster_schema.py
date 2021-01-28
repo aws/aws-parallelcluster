@@ -532,7 +532,7 @@ class CustomActionSchema(BaseSchema):
 
 
 class CloudWatchLogsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the CloudWatchLogs section."""
 
     enabled = fields.Bool()
     retention_in_days = fields.Int(
@@ -548,7 +548,7 @@ class CloudWatchLogsSchema(BaseSchema):
 
 
 class CloudWatchDashboardsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the CloudWatchDashboards section."""
 
     enabled = fields.Bool()
 
@@ -559,7 +559,7 @@ class CloudWatchDashboardsSchema(BaseSchema):
 
 
 class LogsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Logs section."""
 
     cloud_watch = fields.Nested(CloudWatchLogsSchema)
 
@@ -570,7 +570,7 @@ class LogsSchema(BaseSchema):
 
 
 class DashboardsSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Dashboards section."""
 
     cloud_watch = fields.Nested(CloudWatchDashboardsSchema)
 
@@ -581,7 +581,7 @@ class DashboardsSchema(BaseSchema):
 
 
 class MonitoringSchema(BaseSchema):
-    """Represent the schema of the SharedStorage with type = EFS."""
+    """Represent the schema of the Monitoring section."""
 
     detailed_monitoring = fields.Bool()
     logs = fields.Nested(LogsSchema)
