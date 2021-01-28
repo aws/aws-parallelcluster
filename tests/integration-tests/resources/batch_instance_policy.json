@@ -1,0 +1,127 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "batch:SubmitJob",
+        "cloudformation:DescribeStacks",
+        "ecs:ListContainerInstances",
+        "ecs:DescribeContainerInstances",
+        "logs:FilterLogEvents",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-definition/*",
+        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-definition/*",
+        "arn:{{ partition }}:batch:{{ region }}:{{ account_id }}:job-queue/*",
+        "arn:{{ partition }}:cloudformation:{{ region }}:{{ account_id }}:stack/*",
+        "arn:{{ partition }}:s3:::{{ cluster_bucket_name }}/*",
+        "arn:{{ partition }}:iam::{{ account_id }}:role/*",
+        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:cluster/*",
+        "arn:{{ partition }}:ecs:{{ region }}:{{ account_id }}:container-instance/*",
+        "arn:{{ partition }}:logs:{{ region }}:{{ account_id }}:log-group:/aws/batch/job:log-stream:*"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "batch:RegisterJobDefinition",
+        "logs:GetLogEvents"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "s3:Get*"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::{{ cluster_bucket_name }}/*"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "s3:List*"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::{{ cluster_bucket_name }}"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "batch:DescribeJobQueues",
+        "batch:TerminateJob",
+        "batch:DescribeJobs",
+        "batch:CancelJob",
+        "batch:DescribeJobDefinitions",
+        "batch:ListJobs",
+        "batch:DescribeComputeEnvironments"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:AttachVolume",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeInstanceAttribute"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "EC2"
+    },
+    {
+      "Action": [
+        "cloudformation:DescribeStackResource",
+        "cloudformation:SignalResource"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "CloudFormation"
+    },
+    {
+      "Action": [
+        "fsx:DescribeFileSystems"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "FSx"
+    },
+    {
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "CWLogs"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::aws-parallelcluster-jenkins-*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Chronicle"
+    }
+  ]
+}

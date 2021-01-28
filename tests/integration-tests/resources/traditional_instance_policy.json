@@ -1,0 +1,183 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "ec2:DescribeVolumes",
+        "ec2:AttachVolume",
+        "ec2:DescribeInstanceAttribute",
+        "ec2:DescribeInstanceStatus",
+        "ec2:DescribeInstances",
+        "ec2:DescribeInstanceTypes",
+        "ec2:DescribeRegions",
+        "ec2:RunInstances",
+        "ec2:TerminateInstances",
+        "ec2:DescribeLaunchTemplates",
+        "ec2:CreateTags"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "EC2"
+    },
+    {
+      "Action": [
+        "dynamodb:ListTables"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "DynamoDBList"
+    },
+    {
+      "Action": [
+        "sqs:SendMessage",
+        "sqs:ReceiveMessage",
+        "sqs:ChangeMessageVisibility",
+        "sqs:DeleteMessage",
+        "sqs:GetQueueUrl"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:sqs:{{ region }}:{{ account_id }}:parallelcluster-*"
+      ],
+      "Effect": "Allow",
+      "Sid": "SQSQueue"
+    },
+    {
+      "Action": [
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:TerminateInstanceInAutoScalingGroup",
+        "autoscaling:SetDesiredCapacity",
+        "autoscaling:UpdateAutoScalingGroup",
+        "autoscaling:DescribeTags",
+        "autoscaling:SetInstanceHealth"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Autoscaling"
+    },
+    {
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackResource",
+        "cloudformation:SignalResource"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:cloudformation:{{ region }}:{{ account_id }}:stack/parallelcluster-*/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "CloudFormation"
+    },
+    {
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:Query",
+        "dynamodb:GetItem",
+        "dynamodb:BatchWriteItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:DescribeTable"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:dynamodb:{{ region }}:{{ account_id }}:table/parallelcluster-*"
+      ],
+      "Effect": "Allow",
+      "Sid": "DynamoDBTable"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::{{ region }}-aws-parallelcluster/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "S3GetObj"
+    },
+    {
+      "Action": [
+        "sqs:ListQueues"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "SQSList"
+    },
+    {
+      "Action": [
+        "iam:PassRole"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "IAMPassRole"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::dcv-license.{{ region }}/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "DcvLicense"
+    },
+    {
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::{{ cluster_bucket_name }}/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "GetClusterConfig"
+    },
+    {
+      "Action": [
+        "fsx:DescribeFileSystems"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "FSx"
+    },
+    {
+      "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": [
+        "*"
+      ],
+      "Effect": "Allow",
+      "Sid": "CWLogs"
+    },
+    {
+      "Action": [
+        "route53:ChangeResourceRecordSets"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:route53:::hostedzone/*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Route53"
+    },
+    {
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:{{ partition }}:s3:::aws-parallelcluster-jenkins-*"
+      ],
+      "Effect": "Allow",
+      "Sid": "Chronicle"
+    }
+  ]
+}

@@ -696,7 +696,7 @@ Resources:
               command: chef-client --local-mode --config /etc/chef/client.rb --log_level
                 info --logfile /var/log/chef-client.log --force-formatter --no-color
                 --chef-zero-port 8889 --json-attributes /etc/chef/dna.json --override-runlist
-                aws-parallelcluster::update_master
+                aws-parallelcluster::update_head_node
               cwd: /etc/chef
   UpdateWaiterCustomResource:
     Type: AWS::CloudFormation::CustomResource
@@ -707,17 +707,17 @@ Resources:
     Condition: HasUpdateWaiterFunction
 Outputs:
   MasterInstanceID:
-    Description: ID of the Master instance
+    Description: ID of the head node instance
     Value: !Ref 'MasterServer'
   MasterPrivateIP:
-    Description: Private IP Address of the Master host
+    Description: Private IP Address of the head node
     Value: !GetAtt 'MasterServer.PrivateIp'
   MasterPublicIP:
-    Description: Public IP Address of the Master host
+    Description: Public IP Address of the head node
     Value: !GetAtt 'MasterServer.PublicIp'
     Condition: HasMasterPublicIp
   MasterPrivateDnsName:
-    Description: Private DNS name of the Master host
+    Description: Private DNS name of the head node
     Value: !GetAtt 'MasterServer.PrivateDnsName'
 Metadata:
   DependsOnCustomResources: !Ref 'DependsOnCustomResources'

@@ -40,10 +40,11 @@ DEFAULT_EBS_DICT = {
     "ebs_snapshot_id": None,
     "volume_type": "gp2",
     "volume_size": None,
-    "volume_iops": 100,
+    "volume_iops": None,
     "encrypted": False,
     "ebs_kms_key_id": None,
     "ebs_volume_id": None,
+    "volume_throughput": 125,
 }
 
 DEFAULT_EFS_DICT = {
@@ -62,9 +63,10 @@ DEFAULT_RAID_DICT = {
     "num_of_raid_volumes": 2,
     "volume_type": "gp2",
     "volume_size": 20,
-    "volume_iops": 100,
+    "volume_iops": None,
     "encrypted": False,
     "ebs_kms_key_id": None,
+    "volume_throughput": 125,
 }
 
 DEFAULT_FSX_DICT = {
@@ -99,9 +101,9 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "shared_dir": "/shared",
     "placement_group": None,
     "placement": "compute",
-    "master_instance_type": "t2.micro",
+    "master_instance_type": None,
     "master_root_volume_size": 25,
-    "compute_instance_type": "t2.micro",
+    "compute_instance_type": None,
     "compute_root_volume_size": 25,
     "initial_queue_size": 0,
     "max_queue_size": 10,
@@ -145,6 +147,7 @@ DEFAULT_CLUSTER_SIT_DICT = {
     "architecture": "x86_64",
     "network_interfaces_count": ["1", "1"],
     "cluster_resource_bucket": None,
+    "iam_lambda_role": None,
 }
 
 DEFAULT_CLUSTER_HIT_DICT = {
@@ -155,7 +158,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "base_os": None,  # base_os does not have a default, but this is here to make testing easier
     "scheduler": None,  # The cluster does not have a default, but this is here to make testing easier
     "shared_dir": "/shared",
-    "master_instance_type": "t2.micro",
+    "master_instance_type": None,
     "master_root_volume_size": 25,
     "compute_root_volume_size": 25,
     "proxy_server": None,
@@ -194,6 +197,7 @@ DEFAULT_CLUSTER_HIT_DICT = {
     "architecture": "x86_64",
     "network_interfaces_count": ["1", "1"],
     "cluster_resource_bucket": None,  # cluster_resource_bucket no default, but this is here to make testing easier
+    "iam_lambda_role": None,
 }
 
 DEFAULT_CW_LOG_DICT = {"enable": True, "retention_days": 14}
@@ -226,8 +230,8 @@ class DefaultDict(Enum):
 # ------------------ Default CFN parameters ------------------ #
 
 # number of CFN parameters created by the PclusterConfig object.
-CFN_SIT_CONFIG_NUM_OF_PARAMS = 61
-CFN_HIT_CONFIG_NUM_OF_PARAMS = 52
+CFN_SIT_CONFIG_NUM_OF_PARAMS = 63
+CFN_HIT_CONFIG_NUM_OF_PARAMS = 53
 
 # CFN parameters created by the pcluster CLI
 CFN_CLI_RESERVED_PARAMS = ["ArtifactS3RootDirectory", "RemoveBucketOnDeletion"]
@@ -252,15 +256,16 @@ DEFAULT_EBS_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeIdThroughput": "125,125,125,125,125",
 }
 
 DEFAULT_EFS_CFN_PARAMS = {"EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
-DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
+DEFAULT_RAID_CFN_PARAMS = {"RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"}
 
 DEFAULT_FSX_CFN_PARAMS = {
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE"
@@ -325,14 +330,15 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeThroughput": "125,125,125,125,125",
     # efs
     "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # raid
-    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
@@ -343,6 +349,7 @@ DEFAULT_CLUSTER_SIT_CFN_PARAMS = {
     # architecture
     "Architecture": "x86_64",
     "NetworkInterfacesCount": "1,1",
+    "IAMLambdaRoleName": "NONE",
 }
 
 
@@ -394,14 +401,15 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     "EBSSnapshotId": "NONE,NONE,NONE,NONE,NONE",
     "VolumeType": "gp2,gp2,gp2,gp2,gp2",
     "VolumeSize": "NONE,NONE,NONE,NONE,NONE",
-    "VolumeIOPS": "100,100,100,100,100",
+    "VolumeIOPS": "NONE,NONE,NONE,NONE,NONE",
     "EBSEncryption": "false,false,false,false,false",
     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
+    "VolumeThroughput": "125,125,125,125,125",
     # efs
     "EFSOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # raid
-    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
+    "RAIDOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # fsx
     "FSXOptions": "NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE",
     # dcv
@@ -412,6 +420,7 @@ DEFAULT_CLUSTER_HIT_CFN_PARAMS = {
     # architecture
     "Architecture": "x86_64",
     "NetworkInterfacesCount": "1,1",
+    "IAMLambdaRoleName": "NONE",
 }
 
 

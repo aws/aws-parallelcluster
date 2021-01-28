@@ -56,6 +56,15 @@ def run_command(command, capture_output=True, log_error=True, env=None, timeout=
     return result
 
 
+def generate_stack_name(prefix, suffix):
+    """Generate a stack name with prefix, suffix, and a random string in the middle"""
+    return prefix + "-{0}{1}{2}".format(
+        random_alphanumeric(),
+        "-" if suffix else "",
+        suffix,
+    )
+
+
 def random_alphanumeric(size=16):
     """Generate a random alphanumeric string."""
     return "".join(random.choice(string.ascii_lowercase + string.digits) for _ in range(size))
@@ -223,6 +232,10 @@ def set_credentials(region, credential_arg):
     :param region: region of the bucket
     :param credential_arg: credential list
     """
+    if os.environ.get("AWS_CREDENTIALS_FOR_REGION", "no_region") == region:
+        logging.info(f"AWS credentials are already set for region: {region}")
+        return
+
     if credential_arg:
         # credentials = dict { region1: (endpoint1, arn1, external_id1),
         #                      region2: (endpoint2, arn2, external_id2),
@@ -243,6 +256,8 @@ def set_credentials(region, credential_arg):
                 credential_endpoint, credential_arn, credential_external_id, region
             )
 
+            logging.info(f"Setting AWS credentials for region: {region}")
+
             # Set credential for all boto3 client
             boto3.setup_default_session(
                 aws_access_key_id=aws_credentials["AccessKeyId"],
@@ -254,6 +269,7 @@ def set_credentials(region, credential_arg):
             os.environ["AWS_ACCESS_KEY_ID"] = aws_credentials["AccessKeyId"]
             os.environ["AWS_SECRET_ACCESS_KEY"] = aws_credentials["SecretAccessKey"]
             os.environ["AWS_SESSION_TOKEN"] = aws_credentials["SessionToken"]
+            os.environ["AWS_CREDENTIALS_FOR_REGION"] = region
 
 
 def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_external_id, region):
@@ -274,6 +290,7 @@ def _retrieve_sts_credential(credential_endpoint, credential_arn, credential_ext
 def unset_credentials():
     """Unset credentials"""
     # Unset credential for all boto3 client
+    logging.info("Unsetting AWS credentials")
     boto3.setup_default_session()
     # Unset credential for cli command e.g. pcluster create
     if "AWS_ACCESS_KEY_ID" in os.environ:
@@ -282,6 +299,8 @@ def unset_credentials():
         del os.environ["AWS_SECRET_ACCESS_KEY"]
     if "AWS_SESSION_TOKEN" in os.environ:
         del os.environ["AWS_SESSION_TOKEN"]
+    if "AWS_CREDENTIALS_FOR_REGION" in os.environ:
+        del os.environ["AWS_CREDENTIALS_FOR_REGION"]
 
 
 def set_logger_formatter(formatter):
@@ -304,11 +323,10 @@ def paginate_boto3(method, **kwargs):
             yield result
 
 
-def get_vpc_snakecase_value(region, vpc_stacks):
+def get_vpc_snakecase_value(vpc_stack):
     """Return dict containing snakecase vpc variables."""
     vpc_output_dict = {}
-    vpc = vpc_stacks[region]
-    for key, value in vpc.cfn_outputs.items():
+    for key, value in vpc_stack.cfn_outputs.items():
         vpc_output_dict[to_snake_case(key)] = value
     return vpc_output_dict
 
@@ -362,3 +380,13 @@ def get_architecture_supported_by_instance_type(instance_type, region_name=None)
     assert_that(len(instance_architectures)).is_equal_to(1)
 
     return instance_architectures[0]
+
+
+def check_headnode_security_group(region, cluster, port, expected_cidr):
+    """Check CIDR restriction for a port is in the security group of the head node of the cluster"""
+    security_group_id = cluster.cfn_resources.get("MasterSecurityGroup")
+    response = boto3.client("ec2", region_name=region).describe_security_groups(GroupIds=[security_group_id])
+
+    ips = response["SecurityGroups"][0]["IpPermissions"]
+    target = next(filter(lambda x: x.get("FromPort", -1) == port, ips), {})
+    assert_that(target["IpRanges"][0]["CidrIp"]).is_equal_to(expected_cidr)

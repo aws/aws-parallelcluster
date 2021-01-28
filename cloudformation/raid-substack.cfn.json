@@ -151,6 +151,49 @@
       ]
     },
     "Vol1_UseEBSPIOPS": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
+      ]
+    },
+    "Vol1_UseEBSThroughput": {
       "Fn::Equals": [
         {
           "Fn::Select": [
@@ -160,7 +203,7 @@
             }
           ]
         },
-        "io1"
+        "gp3"
       ]
     },
     "Vol1_UseVolumeSize": {
@@ -235,6 +278,49 @@
       ]
     },
     "Vol2_UseEBSPIOPS": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
+      ]
+    },
+    "Vol2_UseEBSThroughput": {
       "Fn::Equals": [
         {
           "Fn::Select": [
@@ -244,7 +330,7 @@
             }
           ]
         },
-        "io1"
+        "gp3"
       ]
     },
     "Vol2_UseVolumeSize": {
@@ -319,6 +405,49 @@
       ]
     },
     "Vol3_UseEBSPIOPS": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
+      ]
+    },
+    "Vol3_UseEBSThroughput": {
       "Fn::Equals": [
         {
           "Fn::Select": [
@@ -328,7 +457,7 @@
             }
           ]
         },
-        "io1"
+        "gp3"
       ]
     },
     "Vol3_UseVolumeSize": {
@@ -403,6 +532,49 @@
       ]
     },
     "Vol4_UseEBSPIOPS": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
+      ]
+    },
+    "Vol4_UseEBSThroughput": {
       "Fn::Equals": [
         {
           "Fn::Select": [
@@ -412,7 +584,7 @@
             }
           ]
         },
-        "io1"
+        "gp3"
       ]
     },
     "Vol4_UseVolumeSize": {
@@ -487,6 +659,49 @@
       ]
     },
     "Vol5_UseEBSPIOPS": {
+      "Fn::Or": [
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "gp3"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io1"
+          ]
+        },
+        {
+          "Fn::Equals": [
+            {
+              "Fn::Select": [
+                "3",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            "io2"
+          ]
+        }
+      ]
+    },
+    "Vol5_UseEBSThroughput": {
       "Fn::Equals": [
         {
           "Fn::Select": [
@@ -496,7 +711,7 @@
             }
           ]
         },
-        "io1"
+        "gp3"
       ]
     },
     "Vol5_UseVolumeSize": {
@@ -644,7 +859,7 @@
       "Type": "AWS::EC2::AvailabilityZone::Name"
     },
     "RAIDOptions": {
-      "Description": "Comma separated list of RAID related options, 8 parameters in total, [0 shared_dir,1 raid_type,2 num_of_vols,3 vol_type,4 vol_size,5 vol_IOPS,6 encrypted, 7 ebs_kms_key]",
+      "Description": "Comma separated list of RAID related options, 9 parameters in total, [0 shared_dir,1 raid_type,2 num_of_vols,3 vol_type,4 vol_size,5 vol_IOPS,6 encrypted, 7 ebs_kms_key, 8 volume_throughput]",
       "Type": "CommaDelimitedList"
     }
   },
@@ -677,6 +892,22 @@
             {
               "Fn::Select": [
                 "5",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol1_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "8",
                 {
                   "Ref": "RAIDOptions"
                 }
@@ -772,6 +1003,22 @@
             }
           ]
         },
+        "Throughput": {
+          "Fn::If": [
+            "Vol2_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "8",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "KmsKeyId": {
           "Fn::If": [
             "Vol2_UseEBSKMSKey",
@@ -847,6 +1094,22 @@
             {
               "Fn::Select": [
                 "5",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol3_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "8",
                 {
                   "Ref": "RAIDOptions"
                 }
@@ -942,6 +1205,22 @@
             }
           ]
         },
+        "Throughput": {
+          "Fn::If": [
+            "Vol4_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "8",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
         "KmsKeyId": {
           "Fn::If": [
             "Vol4_UseEBSKMSKey",
@@ -1017,6 +1296,22 @@
             {
               "Fn::Select": [
                 "5",
+                {
+                  "Ref": "RAIDOptions"
+                }
+              ]
+            },
+            {
+              "Ref": "AWS::NoValue"
+            }
+          ]
+        },
+        "Throughput": {
+          "Fn::If": [
+            "Vol5_UseEBSThroughput",
+            {
+              "Fn::Select": [
+                "8",
                 {
                   "Ref": "RAIDOptions"
                 }

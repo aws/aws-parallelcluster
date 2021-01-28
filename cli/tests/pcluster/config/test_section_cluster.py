@@ -38,6 +38,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "base_os": "alinux2",
                     "scheduler": "slurm",
                     "cluster_config_metadata": {"sections": {"cluster": ["custom_cluster_label"]}},
+                    "master_instance_type": "t2.micro",
+                    "compute_instance_type": "t2.micro",
                 },
             ),
             "custom_cluster_label",
@@ -50,6 +52,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                     "additional_iam_policies": ["arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"],
                     "base_os": "alinux2",
                     "scheduler": "slurm",
+                    "master_instance_type": "t2.micro",
+                    "compute_instance_type": "t2.micro",
                 },
             ),
             "default",
@@ -86,6 +90,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
                         "arn:aws:iam::aws:policy/AWSBatchFullAccess",
                         "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
                     ],
+                    "master_instance_type": "t2.micro",
+                    "compute_instance_type": "t2.micro",
                 },
             ),
             "default",
@@ -265,9 +271,8 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("placement", "wrong_value", None, "has an invalid value"),
         ("placement", "NONE", None, "has an invalid value"),
         ("placement", "cluster", "cluster", None),
-        # Master
+        # Head node
         # TODO add regex for master_instance_type
-        ("master_instance_type", None, "t2.micro", None),
         ("master_instance_type", "", "", None),
         ("master_instance_type", "test", "test", None),
         ("master_instance_type", "NONE", "NONE", None),
@@ -281,7 +286,6 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("master_root_volume_size", "31", 31, None),
         # Compute fleet
         # TODO add regex for compute_instance_type
-        ("compute_instance_type", None, "t2.micro", None),
         ("compute_instance_type", "", "", None),
         ("compute_instance_type", "test", "test", None),
         ("compute_instance_type", "NONE", "NONE", None),
@@ -541,9 +545,8 @@ def test_sit_cluster_param_from_file(
         ("shared_dir", "/test//test2", None, "has an invalid value"),
         ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
-        # Master
+        # Head node
         # TODO add regex for master_instance_type
-        ("master_instance_type", None, "t2.micro", None),
         ("master_instance_type", "", "", None),
         ("master_instance_type", "test", "test", None),
         ("master_instance_type", "NONE", "NONE", None),
@@ -801,11 +804,18 @@ def test_sit_cluster_section_to_file(mocker, section_dict, expected_config_parse
 def test_cluster_section_to_cfn(
     mocker, cluster_section_definition, section_dict, expected_cfn_params, default_threads_per_core
 ):
+    section_dict["master_instance_type"] = "t2.micro"
+    if cluster_section_definition == CLUSTER_SIT:
+        section_dict["compute_instance_type"] = "t2.micro"
     utils.set_default_values_for_required_cluster_section_params(section_dict)
     utils.mock_pcluster_config(mocker)
     mocker.patch("pcluster.config.cfn_param_types.get_efs_mount_target_id", return_value="valid_mount_target_id")
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=4)
-    mocker.patch("pcluster.config.cfn_param_types.get_default_threads_per_core", side_effect=default_threads_per_core)
+    instance_type_info_mock = mocker.MagicMock()
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
+    )
+    instance_type_info_mock.vcpus_count.return_value = 4
+    instance_type_info_mock.default_threads_per_core.side_effect = default_threads_per_core
     utils.assert_section_to_cfn(mocker, cluster_section_definition, section_dict, expected_cfn_params)
 
 
@@ -1007,7 +1017,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1027,7 +1037,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,ebs2,NONE,NONE,NONE",
                     "VolumeType": "io1,standard,gp2,gp2,gp2",
                     "VolumeSize": "40,30,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,300,100,100,100",
+                    "VolumeIOPS": "200,300,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1047,7 +1057,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "/shared",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
                     "VolumeSize": "30,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "300,100,100,100,100",
+                    "VolumeIOPS": "300,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
@@ -1067,7 +1077,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "/work",
                     "VolumeType": "standard,gp2,gp2,gp2,gp2",
                     "VolumeSize": "30,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "300,100,100,100,100",
+                    "VolumeIOPS": "300,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "false,false,false,false,false",
                     "EBSKMSKeyId": "NONE,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "NONE,NONE,NONE,NONE,NONE",
@@ -1087,7 +1097,7 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
@@ -1115,14 +1125,14 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
                     "NONE,NONE",
@@ -1181,14 +1191,14 @@ def test_cluster_section_to_cfn(
                     "SharedDir": "ebs1,NONE,NONE,NONE,NONE",
                     "VolumeType": "io1,gp2,gp2,gp2,gp2",
                     "VolumeSize": "40,NONE,NONE,NONE,NONE",
-                    "VolumeIOPS": "200,100,100,100,100",
+                    "VolumeIOPS": "200,NONE,NONE,NONE,NONE",
                     "EBSEncryption": "true,false,false,false,false",
                     "EBSKMSKeyId": "kms_key,NONE,NONE,NONE,NONE",
                     "EBSVolumeId": "vol-12345678,NONE,NONE,NONE,NONE",
                     # efs
                     "EFSOptions": "efs,NONE,generalPurpose,NONE,NONE,false,bursting,Valid,NONE",
                     # raid
-                    "RAIDOptions": "raid,NONE,2,gp2,20,100,false,NONE",
+                    "RAIDOptions": "raid,NONE,2,gp2,20,NONE,false,NONE,125",
                     # fsx
                     "FSXOptions": "fsx,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,NONE,"
                     "NONE,NONE",
@@ -1210,7 +1220,7 @@ def test_sit_cluster_from_file_to_cfn(mocker, pcluster_config_reader, settings_l
         side_effect=lambda subnet: "mocked_avail_zone" if subnet == "subnet-12345678" else "some_other_az",
     )
 
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_vcpus", return_value=2)
+    mocker.patch("pcluster.config.cfn_param_types.InstanceTypeInfo.vcpus_count", return_value=2)
     utils.assert_section_params(mocker, pcluster_config_reader, settings_label, expected_cfn_params)
 
 

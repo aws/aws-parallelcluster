@@ -35,7 +35,7 @@ def test_intel_hpc(region, scheduler, instance, os, pcluster_config_reader, clus
 
 
 def _test_intel_clck(remote_command_executor, scheduler_commands, test_datadir, os):
-    # Install Intel Cluster Checker CLCK Master
+    # Install Intel Cluster Checker CLCK on head node
     logging.info("Installing Intel Cluster Checker")
     remote_command_executor.run_remote_script(str(test_datadir / "install_clck.sh"), hide=False)
 

@@ -135,7 +135,7 @@ class AWSBatchCommands(SchedulerCommands):
 
     def assert_job_submitted(self, awsbsub_output):  # noqa: D102
         __tracebackhide__ = True
-        match = re.match(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
+        match = re.search(r"Job ([a-z0-9\-]{36}) \(.+\) has been submitted.", awsbsub_output)
         assert_that(match).is_not_none()
         return match.group(1)
 
@@ -443,7 +443,7 @@ class SlurmCommands(SchedulerCommands):
         return self._remote_command_executor.run_remote_command("scancel {}".format(job_id))
 
     def set_nodes_state(self, compute_nodes, state):
-        """Put nodes into down state."""
+        """Put nodes into a state."""
         self._remote_command_executor.run_remote_command(
             "sudo /opt/slurm/bin/scontrol update NodeName={} state={} reason=testing".format(
                 ",".join(compute_nodes), state
@@ -541,7 +541,7 @@ class TorqueCommands(SchedulerCommands):
 
     @retry(retry_on_result=lambda result: "offline" not in result, wait_fixed=seconds(5), stop_max_delay=minutes(5))
     def wait_for_locked_node(self):  # noqa: D102
-        # discard the first node since that is the master server
+        # discard the first node since that is the head node
         return self._remote_command_executor.run_remote_command(r'pbsnodes | grep -e "\sstate = " | tail -n +2').stdout
 
     def get_node_cores(self):

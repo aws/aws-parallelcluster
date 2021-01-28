@@ -53,6 +53,7 @@ TEST_DEFAULTS = {
     "custom_node_url": None,
     "custom_cookbook_url": None,
     "createami_custom_cookbook_url": None,
+    "createami_custom_node_url": None,
     "custom_template_url": None,
     "custom_awsbatchcli_url": None,
     "custom_hit_template_url": None,
@@ -210,6 +211,12 @@ def _init_argparser():
         "--createami-custom-cookbook-url",
         help="URL to a custom cookbook package for the createami command.",
         default=TEST_DEFAULTS.get("createami_custom_cookbook_url"),
+        type=_is_url,
+    )
+    custom_group.add_argument(
+        "--createami-custom-node-url",
+        help="URL to a custom node package for the createami command.",
+        default=TEST_DEFAULTS.get("createami_custom_node_url"),
         type=_is_url,
     )
     custom_group.add_argument(
@@ -425,6 +432,9 @@ def _set_custom_packages_args(args, pytest_args):  # noqa: C901
 
     if args.createami_custom_cookbook_url:
         pytest_args.extend(["--createami-custom-chef-cookbook", args.createami_custom_cookbook_url])
+
+    if args.createami_custom_node_url:
+        pytest_args.extend(["--createami-custom-node-package", args.createami_custom_node_url])
 
     if args.custom_template_url:
         pytest_args.extend(["--template-url", args.custom_template_url])

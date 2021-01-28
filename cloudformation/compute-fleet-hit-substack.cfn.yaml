@@ -85,6 +85,8 @@ Parameters:
     Type: AWS::EC2::VPC::Id
   RootRole:
     Type: String
+  IAMLambdaRoleName:
+    Type: String
   ResourcesS3Bucket:
     Type: String
   ArtifactS3RootDirectory:
@@ -101,6 +103,9 @@ Conditions:
   UseAssociatePublicIpAddress: !Equals
     - !Ref 'AssociatePublicIpAddress'
     - true
+  CreateIAMLambdaRole: !Equals
+    - !Ref 'IAMLambdaRoleName'
+    - NONE
 Resources:
 {%- for queue, queue_config in queues.items() %}
   {%- for compute_resource in queue_config.compute_resource_settings.values() %}
@@ -528,7 +533,10 @@ Resources:
         S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
       Handler: cleanup_resources.handler
       MemorySize: 128
-      Role: !GetAtt 'CleanupRoute53FunctionExecutionRole.Arn'
+      Role: !If
+        - CreateIAMLambdaRole
+        - !GetAtt 'CleanupRoute53FunctionExecutionRole.Arn'
+        - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${IAMLambdaRoleName}'
       Runtime: python3.8
       Timeout: 900
   CleanupRoute53CustomResource:
@@ -570,6 +578,7 @@ Resources:
                     - ClusterHostedZone: !Ref 'ClusterHostedZone'
             Version: '2012-10-17'
           PolicyName: LambdaPolicy
+    Condition: CreateIAMLambdaRole
   {%- endif %}
   UpdateWaiterFunction:
     Type: AWS::Lambda::Function
@@ -580,7 +589,10 @@ Resources:
         S3Key: !Sub '${ArtifactS3RootDirectory}/custom_resources_code/artifacts.zip'
       Handler: wait_for_update.handler
       MemorySize: 128
-      Role: !GetAtt 'UpdateWaiterFunctionExecutionRole.Arn'
+      Role: !If
+        - CreateIAMLambdaRole
+        - !GetAtt 'UpdateWaiterFunctionExecutionRole.Arn'
+        - !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${IAMLambdaRoleName}'
       Runtime: python3.8
       Timeout: 900
   UpdateWaiterFunctionExecutionRole:
@@ -613,6 +625,7 @@ Resources:
                 Resource: !Sub 'arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTable}'
             Version: '2012-10-17'
           PolicyName: LambdaPolicy
+    Condition: CreateIAMLambdaRole
 Metadata:
   RootRole: !Ref 'RootRole'
   VPCId: !Ref 'VPCId'

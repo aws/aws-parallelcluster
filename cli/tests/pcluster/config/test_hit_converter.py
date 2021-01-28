@@ -14,8 +14,7 @@ from assertpy import assert_that
 
 from pcluster.cluster_model import ClusterModel
 from pcluster.config.hit_converter import HitConverter
-from pcluster.utils import is_hit_enabled_scheduler
-from tests.common import MockedBoto3Request
+from pcluster.utils import InstanceTypeInfo
 from tests.pcluster.config.utils import init_pcluster_config_from_configparser
 
 
@@ -170,25 +169,16 @@ def test_hit_converter(mocker, boto3_stubber, src_config_dict, dst_config_dict):
     scheduler = src_config_dict["cluster default"]["scheduler"]
     instance_type = src_config_dict["cluster default"]["compute_instance_type"]
 
-    mocker.patch("pcluster.config.cfn_param_types.get_instance_network_interfaces", return_value=1)
-
-    if is_hit_enabled_scheduler(scheduler):
-        mocked_requests = [
-            MockedBoto3Request(
-                method="describe_instance_types",
-                response={
-                    "InstanceTypes": [
-                        {
-                            "InstanceType": instance_type,
-                            "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
-                            "NetworkInfo": {"EfaSupported": True},
-                        }
-                    ]
-                },
-                expected_params={"InstanceTypes": [instance_type]},
-            )
-        ]
-        boto3_stubber("ec2", mocked_requests)
+    mocker.patch(
+        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 96, "DefaultCores": 48, "DefaultThreadsPerCore": 2},
+                "NetworkInfo": {"EfaSupported": True, "MaximumNetworkCards": 1},
+            }
+        ),
+    )
 
     config_parser = configparser.ConfigParser()
 
