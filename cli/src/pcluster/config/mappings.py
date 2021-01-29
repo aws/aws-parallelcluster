@@ -68,7 +68,6 @@ from pcluster.config.validators import (
     ebs_volume_iops_validator,
     ebs_volume_size_snapshot_validator,
     ebs_volume_throughput_validator,
-    ebs_volume_type_size_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
     ec2_instance_type_validator,
@@ -314,7 +313,7 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_size_snapshot_validator,
+    "validators": [ebs_volume_iops_validator, ebs_volume_size_snapshot_validator,
                    ebs_volume_throughput_validator],
     "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
         # the test of hit converter
@@ -428,7 +427,7 @@ RAID = {
     "type": CfnSection,
     "key": "raid",
     "default_label": "default",
-    "validators": [ebs_volume_type_size_validator, ebs_volume_iops_validator, ebs_volume_throughput_validator],
+    "validators": [ebs_volume_iops_validator, ebs_volume_throughput_validator],
     "cfn_param_mapping": "RAIDOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
