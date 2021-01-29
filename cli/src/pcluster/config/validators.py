@@ -1513,32 +1513,3 @@ def efa_os_arch_validator(param_key, param_value, pcluster_config):
         errors.append("EFA currently not supported on {0} for {1} architecture".format(base_os, architecture))
 
     return errors, warnings
-
-
-def ebs_volume_throughput_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    section = pcluster_config.get_section(section_key, section_label)
-    volume_type = section.get_param_value("volume_type")
-    volume_iops = section.get_param_value("volume_iops")
-    volume_throughput = section.get_param_value("volume_throughput")
-    volume_throughput_to_iops_ratio = 0.25
-
-    if volume_type == "gp3":
-        min_throughput, max_throughput = 125, 1000
-        if volume_throughput < min_throughput or volume_throughput > max_throughput:
-            errors.append(
-                "Throughput must be between {min_throughput} MB/s and {max_throughput} MB/s when provisioning "
-                "{volume_type} volumes.".format(
-                    min_throughput=min_throughput, max_throughput=max_throughput, volume_type=volume_type
-                )
-            )
-        if volume_throughput and volume_throughput > volume_iops * volume_throughput_to_iops_ratio:
-            errors.append(
-                "Throughput to IOPS ratio of {0} is too high; maximum is 0.25.".format(
-                    float(volume_throughput) / float(volume_iops)
-                )
-            )
-
-    return errors, warnings

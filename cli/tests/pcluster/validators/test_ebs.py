@@ -11,43 +11,44 @@
 import pytest
 
 from pcluster.models.param import Param
-from pcluster.schemas.cluster_schema import SharedStorageSchema
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EbsVolumeThroughputIopsValidator,
+    EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "volume_type, volume_throughput, expected_message",
     [
-        ({"VolumeType": "gp3", "Throughput": 125}, None),
-        (
-            {"VolumeType": "gp3", "Throughput": 100},
-            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
-        ),
-        (
-            {"VolumeType": "gp3", "Throughput": 1001},
-            "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
-        ),
-        ({"VolumeType": "gp3", "Throughput": 125, "Iops": 3000}, None),
-        (
-            {"VolumeType": "gp3", "Throughput": 760, "Iops": 3000},
-            "Throughput to IOPS ratio of .* is too high",
-        ),
-        ({"VolumeType": "gp3", "Throughput": 760, "Iops": 10000}, None),
-        (
-            {"VolumeType": "gp3", "Throughput": 1001, "Iops": 2900},
-            [
-                "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-                "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes.",
-            ],
-        ),
+        ("standard", 100, None),
+        ("gp3", 100, "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes."),
+        ("gp3", 1001, "Throughput must be between 125 MB/s and 1000 MB/s when provisioning gp3 volumes."),
+        ("gp3", 125, None),
+        ("gp3", 760, None),
     ],
 )
-def test_ebs_volume_throughput_validator(section_dict, expected_message):
-    actual_failures = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict}).validate()
+def test_ebs_volume_throughput_validator(volume_type, volume_throughput, expected_message):
+    actual_failures = EbsVolumeThroughputValidator()(Param(volume_type), Param(volume_throughput))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "volume_type, volume_iops, volume_throughput, expected_message",
+    [
+        ("standard", 100, 100, None),
+        ("gp3", 100, 100, "Throughput to IOPS ratio of .* is too high; maximum is 0.25."),
+        ("gp3", 250, 1000, "Throughput to IOPS ratio of .* is too high; maximum is 0.25."),
+        ("gp3", 16000, 1000, None),
+        ("gp3", 256000, 1000, None),
+    ],
+)
+def test_ebs_volume_throughput_iops_validator(volume_type, volume_iops, volume_throughput, expected_message):
+    actual_failures = EbsVolumeThroughputIopsValidator()(
+        Param(volume_type), Param(volume_iops), Param(volume_throughput)
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
