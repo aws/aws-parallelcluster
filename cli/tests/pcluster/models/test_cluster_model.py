@@ -12,30 +12,31 @@
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
+from pcluster.models.param import Param
 from pcluster.validators.common import FailureLevel, Validator
 
 
 class FakeInfoValidator(Validator):
     """Dummy validator of info level."""
 
-    def validate(self, value: str):
-        self._add_failure(f"Wrong value {value}.", FailureLevel.INFO)
+    def validate(self, param: Param):
+        self._add_failure(f"Wrong value {param.value}.", FailureLevel.INFO)
         return self._failures
 
 
 class FakeCriticalValidator(Validator):
     """Dummy validator of critical level."""
 
-    def validate(self, value: str):
-        self._add_failure(f"Critical error {value}.", FailureLevel.CRITICAL)
+    def validate(self, param: Param):
+        self._add_failure(f"Critical error {param.value}.", FailureLevel.CRITICAL)
         return self._failures
 
 
 class FakeComplexValidator(Validator):
     """Dummy validator requiring multiple parameters as input."""
 
-    def validate(self, fake_attribute: str, other_attribute: str):
-        self._add_failure(f"Combination {fake_attribute} - {other_attribute}.", FailureLevel.WARNING)
+    def validate(self, fake_attribute: Param, other_attribute: Param):
+        self._add_failure(f"Combination {fake_attribute.value} - {other_attribute.value}.", FailureLevel.WARNING)
         return self._failures
 
 
@@ -53,10 +54,10 @@ def test_resource_validate():
 
         def __init__(self):
             super().__init__()
-            self.fake_attribute = "fake-value"
-            self.other_attribute = "other-value"
-            self._add_validator(FakeCriticalValidator, priority=10, value=self.fake_attribute)
-            self._add_validator(FakeInfoValidator, priority=2, value=self.other_attribute)
+            self.fake_attribute = Param("fake-value")
+            self.other_attribute = Param("other-value")
+            self._add_validator(FakeCriticalValidator, priority=10, param=self.fake_attribute)
+            self._add_validator(FakeInfoValidator, priority=2, param=self.other_attribute)
             self._add_validator(
                 FakeComplexValidator,
                 priority=5,
