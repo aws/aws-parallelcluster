@@ -1329,34 +1329,6 @@ def _describe_ec2_key_pair(key_pair_name):
     return boto3.client("ec2").describe_key_pairs(KeyNames=[key_pair_name])
 
 
-def ebs_volume_iops_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    section = pcluster_config.get_section(section_key, section_label)
-    volume_size = section.get_param_value("volume_size")
-    volume_type = section.get_param_value("volume_type")
-    volume_type_to_iops_ratio = {"io1": 50, "io2": 1000, "gp3": 500}
-    volume_iops = section.get_param_value("volume_iops")
-
-    if volume_type in EBS_VOLUME_IOPS_BOUNDS:
-        min_iops, max_iops = EBS_VOLUME_IOPS_BOUNDS.get(volume_type)
-        if volume_iops and (volume_iops < min_iops or volume_iops > max_iops):
-            errors.append(
-                "IOPS rate must be between {min_iops} and {max_iops} when provisioning {volume_type} volumes.".format(
-                    min_iops=min_iops, max_iops=max_iops, volume_type=volume_type
-                )
-            )
-        if volume_iops and volume_iops > volume_size * volume_type_to_iops_ratio[volume_type]:
-            errors.append(
-                "IOPS to volume size ratio of {0} is too high; maximum is {1}.".format(
-                    float(volume_iops) / float(volume_size), volume_type_to_iops_ratio[volume_type]
-                )
-            )
-
-    return errors, warnings
-
-
 def get_bucket_name_from_s3_url(import_path):
     return import_path.split("/")[2]
 

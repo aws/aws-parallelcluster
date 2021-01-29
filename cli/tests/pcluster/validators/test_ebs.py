@@ -12,7 +12,10 @@ import pytest
 
 from pcluster.models.param import Param
 from pcluster.schemas.cluster_schema import SharedStorageSchema
-from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
+from pcluster.validators.ebs_validators import (
+    EbsVolumeIopsValidator,
+    EbsVolumeTypeSizeValidator,
+)
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -49,50 +52,24 @@ def test_ebs_volume_throughput_validator(section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "volume_type, volume_size, volume_iops, expected_message",
     [
-        # If size is not valid, validators for iops should not be executed
-        ({"VolumeType": "gp2", "Size": 0, "Iops": 120}, "The size of gp2 volumes must be at least 1 GiB"),
-        ({"VolumeType": "io1", "Size": 20, "Iops": 120}, None),
-        (
-            {"VolumeType": "io1", "Size": 20, "Iops": 90},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        (
-            {"VolumeType": "io1", "Size": 20, "Iops": 64001},
-            "IOPS rate must be between 100 and 64000 when provisioning io1 volumes.",
-        ),
-        ({"VolumeType": "io1", "Size": 20, "Iops": 1001}, "IOPS to volume size ratio of .* is too high"),
-        ({"VolumeType": "io2", "Size": 20, "Iops": 120}, None),
-        (
-            {"VolumeType": "io2", "Size": 20, "Iops": 90},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"VolumeType": "io2", "Size": 20, "Iops": 256001},
-            "IOPS rate must be between 100 and 256000 when provisioning io2 volumes.",
-        ),
-        (
-            {"VolumeType": "io2", "Size": 20, "Iops": 20001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
-        ({"VolumeType": "gp3", "Size": 20, "Iops": 3000}, None),
-        (
-            {"VolumeType": "gp3", "Size": 20, "Iops": 2900},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"VolumeType": "gp3", "Size": 20, "Iops": 16001},
-            "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes.",
-        ),
-        (
-            {"VolumeType": "gp3", "Size": 20, "Iops": 10001},
-            "IOPS to volume size ratio of .* is too high",
-        ),
+        ("io1", 20, 120, None),
+        ("io1", 20, 90, "IOPS rate must be between 100 and 64000 when provisioning io1 volumes."),
+        ("io1", 20, 64001, "IOPS rate must be between 100 and 64000 when provisioning io1 volumes."),
+        ("io1", 20, 1001, "IOPS to volume size ratio of .* is too high"),
+        ("io2", 20, 120, None),
+        ("io2", 20, 90, "IOPS rate must be between 100 and 256000 when provisioning io2 volumes."),
+        ("io2", 20, 256001, "IOPS rate must be between 100 and 256000 when provisioning io2 volumes."),
+        ("io2", 20, 20001, "IOPS to volume size ratio of .* is too high"),
+        ("gp3", 20, 3000, None),
+        ("gp3", 20, 2900, "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes."),
+        ("gp3", 20, 16001, "IOPS rate must be between 3000 and 16000 when provisioning gp3 volumes."),
+        ("gp3", 20, 10001, "IOPS to volume size ratio of .* is too high"),
     ],
 )
-def test_ebs_size_iops_validators(section_dict, expected_message):
-    actual_failures = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict}).validate()
+def test_ebs_volume_iops_validators(volume_type, volume_size, volume_iops, expected_message):
+    actual_failures = EbsVolumeIopsValidator()(Param(volume_type), Param(volume_size), Param(volume_iops))
     assert_failure_messages(actual_failures, expected_message)
 
 
