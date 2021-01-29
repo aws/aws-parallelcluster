@@ -20,7 +20,6 @@ class EbsVolumeTypeSizeValidator(Validator):
     """EBS volume type and size validator."""
 
     def validate(self, volume_type, volume_size):
-        """Validate given instance type."""
         """
         Validate that the EBS volume size matches the chosen volume type.
 
@@ -105,9 +104,6 @@ class EbsVolumeIopsValidator(Validator):
 
     def validate(self, volume_type, volume_size, volume_iops):
         """Validate IOPS value in respect of volume type."""
-        if not (volume_type.valid and volume_size.valid):
-            # volume_type and volume_size need to be valid to continue this validation.
-            return self._failures
 
         volume_type_value = volume_type.value
         volume_size_value = volume_size.value

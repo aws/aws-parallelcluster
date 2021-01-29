@@ -44,7 +44,7 @@ class ConfigValidationError(Exception):
 
 
 class Validator(ABC):
-    """Abstract validator. The child must implement the __call__ method."""
+    """Abstract validator. The children must implement the validate method."""
 
     def __init__(self, raise_on_error=False):
         self._failures = []
