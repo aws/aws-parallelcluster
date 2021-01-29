@@ -29,7 +29,6 @@ class EbsVolumeTypeSizeValidator(Validator):
         The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
         The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
         """
-
         volume_type_value = volume_type.value
         volume_size_value = volume_size.value
 

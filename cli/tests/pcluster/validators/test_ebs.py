@@ -10,7 +10,9 @@
 # limitations under the License.
 import pytest
 
+from pcluster.models.param import Param
 from pcluster.schemas.cluster_schema import SharedStorageSchema
+from pcluster.validators.ebs_validators import EbsVolumeTypeSizeValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -95,31 +97,31 @@ def test_ebs_size_iops_validators(section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "volume_type, volume_size, expected_message",
     [
-        ({"VolumeType": "standard", "Size": 15}, None),
-        ({"VolumeType": "standard", "Size": 0}, "The size of standard volumes must be at least 1 GiB"),
-        ({"VolumeType": "standard", "Size": 1025}, "The size of standard volumes can not exceed 1024 GiB"),
-        ({"VolumeType": "io1", "Size": 15}, None),
-        ({"VolumeType": "io1", "Size": 3}, "The size of io1 volumes must be at least 4 GiB"),
-        ({"VolumeType": "io1", "Size": 16385}, "The size of io1 volumes can not exceed 16384 GiB"),
-        ({"VolumeType": "io2", "Size": 15}, None),
-        ({"VolumeType": "io2", "Size": 3}, "The size of io2 volumes must be at least 4 GiB"),
-        ({"VolumeType": "io2", "Size": 65537}, "The size of io2 volumes can not exceed 65536 GiB"),
-        ({"VolumeType": "gp2", "Size": 15}, None),
-        ({"VolumeType": "gp2", "Size": 0}, "The size of gp2 volumes must be at least 1 GiB"),
-        ({"VolumeType": "gp2", "Size": 16385}, "The size of gp2 volumes can not exceed 16384 GiB"),
-        ({"VolumeType": "gp3", "Size": 15}, None),
-        ({"VolumeType": "gp3", "Size": 0}, "The size of gp3 volumes must be at least 1 GiB"),
-        ({"VolumeType": "gp3", "Size": 16385}, "The size of gp3 volumes can not exceed 16384 GiB"),
-        ({"VolumeType": "st1", "Size": 500}, None),
-        ({"VolumeType": "st1", "Size": 20}, "The size of st1 volumes must be at least 500 GiB"),
-        ({"VolumeType": "st1", "Size": 16385}, "The size of st1 volumes can not exceed 16384 GiB"),
-        ({"VolumeType": "sc1", "Size": 500}, None),
-        ({"VolumeType": "sc1", "Size": 20}, "The size of sc1 volumes must be at least 500 GiB"),
-        ({"VolumeType": "sc1", "Size": 16385}, "The size of sc1 volumes can not exceed 16384 GiB"),
+        ("standard", 15, None),
+        ("standard", 0, "The size of standard volumes must be at least 1 GiB"),
+        ("standard", 1025, "The size of standard volumes can not exceed 1024 GiB"),
+        ("io1", 15, None),
+        ("io1", 3, "The size of io1 volumes must be at least 4 GiB"),
+        ("io1", 16385, "The size of io1 volumes can not exceed 16384 GiB"),
+        ("io2", 15, None),
+        ("io2", 3, "The size of io2 volumes must be at least 4 GiB"),
+        ("io2", 65537, "The size of io2 volumes can not exceed 65536 GiB"),
+        ("gp2", 15, None),
+        ("gp2", 0, "The size of gp2 volumes must be at least 1 GiB"),
+        ("gp2", 16385, "The size of gp2 volumes can not exceed 16384 GiB"),
+        ("gp3", 15, None),
+        ("gp3", 0, "The size of gp3 volumes must be at least 1 GiB"),
+        ("gp3", 16385, "The size of gp3 volumes can not exceed 16384 GiB"),
+        ("st1", 500, None),
+        ("st1", 20, "The size of st1 volumes must be at least 500 GiB"),
+        ("st1", 16385, "The size of st1 volumes can not exceed 16384 GiB"),
+        ("sc1", 500, None),
+        ("sc1", 20, "The size of sc1 volumes must be at least 500 GiB"),
+        ("sc1", 16385, "The size of sc1 volumes can not exceed 16384 GiB"),
     ],
 )
-def test_ebs_volume_type_size_validator(section_dict, expected_message):
-    actual_failures = SharedStorageSchema().load({"MountDir": "/my/mount/point", "EBS": section_dict}).validate()
+def test_ebs_volume_type_size_validator(volume_type, volume_size, expected_message):
+    actual_failures = EbsVolumeTypeSizeValidator()(Param(volume_type), Param(volume_size))
     assert_failure_messages(actual_failures, expected_message)
