@@ -1,3 +1,3 @@
 #!/bin/sh
-apt-get update
+apt update -y
 apt-get install -y nodejs
