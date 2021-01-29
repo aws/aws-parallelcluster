@@ -129,6 +129,18 @@
         },
         "NONE"
       ]
+    },
+    "UseEC2Key": {
+      "Fn::Not": [
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "KeyName"
+            },
+            "NONE"
+          ]
+        }
+      ]
     }
   },
   "Resources": {
@@ -430,7 +442,15 @@
             }
           ],
           "Ec2KeyPair": {
-            "Ref": "KeyName"
+            "Fn::If": [
+              "UseEC2Key",
+              {
+                "Ref": "KeyName"
+              },
+              {
+                "Ref": "AWS::NoValue"
+              }
+            ]
           },
           "SecurityGroupIds": {
             "Ref": "SecurityGroups"

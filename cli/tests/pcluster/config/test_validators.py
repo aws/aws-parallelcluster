@@ -47,37 +47,46 @@ def boto3_stubber_path():
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
+    "section_dict, expected_message, expected_warning",
     [
         # traditional scheduler
-        ({"scheduler": "sge", "initial_queue_size": 1, "max_queue_size": 2, "maintain_initial_size": True}, None),
+        ({"scheduler": "sge", "initial_queue_size": 1, "max_queue_size": 2, "maintain_initial_size": True}, None, None),
         (
             {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": True},
             "initial_queue_size must be fewer than or equal to max_queue_size",
+            None,
         ),
         (
             {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": False},
             "initial_queue_size must be fewer than or equal to max_queue_size",
+            None,
         ),
         # awsbatch
-        ({"scheduler": "awsbatch", "min_vcpus": 1, "desired_vcpus": 2, "max_vcpus": 3}, None),
+        ({"scheduler": "awsbatch", "min_vcpus": 1, "desired_vcpus": 2, "max_vcpus": 3}, None, None),
         (
             {"scheduler": "awsbatch", "min_vcpus": 3, "desired_vcpus": 2, "max_vcpus": 3},
             "desired_vcpus must be greater than or equal to min_vcpus",
+            None,
         ),
         (
             {"scheduler": "awsbatch", "min_vcpus": 1, "desired_vcpus": 4, "max_vcpus": 3},
             "desired_vcpus must be fewer than or equal to max_vcpus",
+            None,
         ),
         (
             {"scheduler": "awsbatch", "min_vcpus": 4, "desired_vcpus": 4, "max_vcpus": 3},
             "max_vcpus must be greater than or equal to min_vcpus",
+            None,
         ),
+        # key pair not provided
+        ({"scheduler": "awsbatch"}, None, "If you do not specify a key pair"),
     ],
 )
-def test_cluster_validator(mocker, section_dict, expected_message):
+def test_cluster_validator(mocker, capsys, section_dict, expected_message, expected_warning):
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
+    utils.assert_param_validator(
+        mocker, config_parser_dict, expected_message, capsys, expected_warning=expected_warning
+    )
 
 
 @pytest.mark.parametrize(
