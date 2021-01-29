@@ -8,11 +8,14 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from botocore.exceptions import ClientError
+
 from pcluster.config.validators import (
     EBS_VOLUME_IOPS_BOUNDS,
     EBS_VOLUME_TYPE_TO_IOPS_RATIO,
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
 )
+from pcluster.utils import get_ebs_snapshot_info, get_partition
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -128,5 +131,82 @@ class EbsVolumeIopsValidator(Validator):
                     FailureLevel.ERROR,
                     [volume_iops],
                 )
+
+        return self._failures
+
+
+class EbsVolumeSizeSnapshotValidator(Validator):
+    """EBS volume size snapshot validator."""
+
+    def validate(self, snapshot_id, volume_size):
+        """
+        Validate the following cases.
+
+        The EBS snapshot is in "completed" state if it is specified
+        If users specify the volume size, the volume must be not smaller than the volume size of the EBS snapshot
+        """
+        snapshot_id_value = snapshot_id.value
+        volume_size_value = volume_size.value
+
+        if snapshot_id_value:
+            try:
+                snapshot_response_dict = get_ebs_snapshot_info(snapshot_id_value, raise_exceptions=True)
+
+                # validate that the input volume size is larger than the volume size of the EBS snapshot
+                snapshot_volume_size = snapshot_response_dict.get("VolumeSize")
+                if snapshot_volume_size is None:
+                    self._add_failure(
+                        f"Unable to get volume size for snapshot {snapshot_id_value}", FailureLevel.ERROR, [snapshot_id]
+                    )
+                elif volume_size_value < snapshot_volume_size:
+                    self._add_failure(
+                        f"The EBS volume size must not be smaller than {snapshot_volume_size}, "
+                        "because it is the size of the provided snapshot {snapshot_id}",
+                        FailureLevel.ERROR,
+                        [volume_size],
+                    )
+                elif volume_size_value > snapshot_volume_size:
+                    self._add_failure(
+                        "The specified volume size is larger than snapshot size. In order to use the full capacity "
+                        "of the volume, you'll need to manually resize the partition according to this doc: "
+                        "https://{partition_url}/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html".format(
+                            partition_url="docs.amazonaws.cn" if get_partition() == "aws-cn" else "docs.aws.amazon.com"
+                        ),
+                        FailureLevel.WARNING,
+                        [volume_size],
+                    )
+
+                # validate that the state of ebs snapshot
+                if snapshot_response_dict.get("State") != "completed":
+                    self._add_failure(
+                        "Snapshot {0} is in state '{1}' not 'completed'".format(
+                            snapshot_id_value, snapshot_response_dict.get("State")
+                        ),
+                        FailureLevel.WARNING,
+                        [snapshot_id],
+                    )
+            except Exception as exception:
+                if isinstance(exception, ClientError) and exception.response.get("Error").get("Code") in [
+                    "InvalidSnapshot.NotFound",
+                    "InvalidSnapshot.Malformed",
+                ]:
+                    self._add_failure(
+                        "The snapshot {0} does not appear to exist: {1}".format(
+                            snapshot_id_value, exception.response.get("Error").get("Message")
+                        ),
+                        FailureLevel.ERROR,
+                        [snapshot_id],
+                    )
+                else:
+                    self._add_failure(
+                        "Issue getting info for snapshot {0}: {1}".format(
+                            snapshot_id_value,
+                            exception.response.get("Error").get("Message")
+                            if isinstance(exception, ClientError)
+                            else exception,
+                        ),
+                        FailureLevel.ERROR,
+                        [snapshot_id],
+                    )
 
         return self._failures

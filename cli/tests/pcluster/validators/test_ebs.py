@@ -13,6 +13,7 @@ import pytest
 from pcluster.models.param import Param
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
+    EbsVolumeSizeSnapshotValidator,
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
@@ -102,4 +103,101 @@ def test_ebs_volume_iops_validators(volume_type, volume_size, volume_iops, expec
 )
 def test_ebs_volume_type_size_validator(volume_type, volume_size, expected_message):
     actual_failures = EbsVolumeTypeSizeValidator()(Param(volume_type), Param(volume_size))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "volume_size, snapshot_size, state, partition, expected_message, raise_error_when_getting_snapshot_info",
+    [
+        (
+            100,
+            50,
+            "completed",
+            "aws-cn",
+            "The specified volume size is larger than snapshot size.*"
+            "https://docs.amazonaws.cn/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
+            False,
+        ),
+        (
+            100,
+            50,
+            "completed",
+            "aws-us-gov",
+            "The specified volume size is larger than snapshot size.*"
+            "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html",
+            False,
+        ),
+        (
+            100,
+            50,
+            "incompleted",
+            "aws-us-gov",
+            "Snapshot .* is in state 'incompleted' not 'completed'",
+            False,
+        ),
+        (50, 50, "completed", "partition", None, False),
+        (
+            100,
+            120,
+            "completed",
+            "aws-us-gov",
+            "The EBS volume size must not be smaller than 120, because it is the size of the provided snapshot .*",
+            False,
+        ),
+        (
+            100,
+            None,
+            "completed",
+            "aws-cn",
+            "Unable to get volume size for snapshot .*",
+            False,
+        ),
+        (
+            35,
+            20,
+            "completed",
+            "aws",
+            "some message",
+            True,
+        ),
+    ],
+)
+def test_ebs_volume_size_snapshot_validator(
+    volume_size,
+    snapshot_size,
+    state,
+    partition,
+    mocker,
+    expected_message,
+    raise_error_when_getting_snapshot_info,
+):
+    snapshot_id = "snap-1234567890abcdef0"
+    describe_snapshots_response = {
+        "Description": "This is my snapshot",
+        "Encrypted": False,
+        "VolumeId": "vol-049df61146c4d7901",
+        "State": state,
+        "VolumeSize": snapshot_size,
+        "StartTime": "2014-02-28T21:28:32.000Z",
+        "Progress": "100%",
+        "OwnerId": "012345678910",
+        "SnapshotId": snapshot_id,
+    }
+
+    if raise_error_when_getting_snapshot_info:
+        mocker.patch(
+            "pcluster.validators.ebs_validators.get_ebs_snapshot_info",
+            side_effect=Exception(expected_message),
+        )
+    else:
+        mocker.patch(
+            "pcluster.validators.ebs_validators.get_ebs_snapshot_info",
+            return_value=describe_snapshots_response,
+        )
+    mocker.patch(
+        "pcluster.validators.ebs_validators.get_partition",
+        return_value="aws-cn" if partition == "aws-cn" else "aws-us-gov",
+    )
+
+    actual_failures = EbsVolumeSizeSnapshotValidator()(Param(snapshot_id), Param(volume_size))
     assert_failure_messages(actual_failures, expected_message)
