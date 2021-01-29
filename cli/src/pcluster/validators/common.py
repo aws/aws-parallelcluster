@@ -53,7 +53,7 @@ class Validator(ABC):
     def _fail(self, message, level):
         raise ConfigValidationError
 
-    def _add_failure(self, message, level, fields=()):
+    def _add_failure(self, message: str, level: FailureLevel, fields=()):
         result = ValidationResult(message, level)
         for field in fields:
             field.valid = False

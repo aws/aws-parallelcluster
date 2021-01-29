@@ -23,10 +23,8 @@ from pcluster.utils import (
     InstanceTypeInfo,
     ellipsize,
     get_base_additional_iam_policies,
-    get_ebs_snapshot_info,
     get_efs_mount_target_id,
     get_file_section_name,
-    get_partition,
     get_region,
     get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
@@ -1381,76 +1379,6 @@ def validate_backup_options(
         fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path or fsx_auto_import_policy
     ) and fsx_automatic_backup_retention_days:
         errors.append("Backups cannot be created on S3-linked file systems")
-
-
-def ebs_volume_size_snapshot_validator(section_key, section_label, pcluster_config):
-    """
-    Validate the following cases.
-
-    The EBS snapshot is in "completed" state if it is specified
-    If users specify the volume size, the volume must be not smaller than the volume size of the EBS snapshot
-    """
-    errors = []
-    warnings = []
-
-    section = pcluster_config.get_section(section_key, section_label)
-    if section.get_param_value("ebs_snapshot_id"):
-        try:
-            ebs_snapshot_id = section.get_param_value("ebs_snapshot_id")
-            snapshot_response_dict = get_ebs_snapshot_info(ebs_snapshot_id, raise_exceptions=True)
-            # validate that the input volume size is larger than the volume size of the EBS snapshot
-            snapshot_volume_size = snapshot_response_dict.get("VolumeSize")
-            volume_size = section.get_param_value("volume_size")
-            if snapshot_volume_size is None:
-                errors.append(
-                    "Unable to get volume size for snapshot {snapshot_id}".format(snapshot_id=ebs_snapshot_id)
-                )
-            elif volume_size < snapshot_volume_size:
-                errors.append(
-                    "The EBS volume size of the section '{section_label}' must not be smaller than "
-                    "{snapshot_volume_size}, because it is the size of the provided snapshot {ebs_snapshot_id}".format(
-                        section_label=section_label,
-                        snapshot_volume_size=snapshot_volume_size,
-                        ebs_snapshot_id=ebs_snapshot_id,
-                    )
-                )
-            elif volume_size > snapshot_volume_size:
-                warnings.append(
-                    "The specified volume size is larger than snapshot size. In order to use the full capacity of the "
-                    "volume, you'll need to manually resize the partition "
-                    "according to this doc: "
-                    "https://{partition_url}/AWSEC2/latest/UserGuide/recognize-expanded-volume-linux.html".format(
-                        partition_url="docs.amazonaws.cn" if get_partition() == "aws-cn" else "docs.aws.amazon.com"
-                    )
-                )
-
-                # validate that the state of ebs snapshot
-            if snapshot_response_dict.get("State") != "completed":
-                warnings.append(
-                    "Snapshot {0} is in state '{1}' not 'completed'".format(
-                        ebs_snapshot_id, snapshot_response_dict.get("State")
-                    )
-                )
-        except Exception as exception:
-            if isinstance(exception, ClientError) and exception.response.get("Error").get("Code") in [
-                "InvalidSnapshot.NotFound",
-                "InvalidSnapshot.Malformed",
-            ]:
-                errors.append(
-                    "The snapshot {0} does not appear to exist: {1}".format(
-                        ebs_snapshot_id, exception.response.get("Error").get("Message")
-                    )
-                )
-            else:
-                errors.append(
-                    "Issue getting info for snapshot {0}: {1}".format(
-                        ebs_snapshot_id,
-                        exception.response.get("Error").get("Message")
-                        if isinstance(exception, ClientError)
-                        else exception,
-                    )
-                )
-    return errors, warnings
 
 
 def validate_storage_type_options(

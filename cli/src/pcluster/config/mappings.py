@@ -65,7 +65,6 @@ from pcluster.config.validators import (
     disable_hyperthreading_validator,
     duplicate_shared_dir_validator,
     ebs_settings_validator,
-    ebs_volume_size_snapshot_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
     ec2_instance_type_validator,
@@ -311,7 +310,6 @@ EBS = {
     "key": "ebs",
     "default_label": "default",
     "max_resources": 5,
-    "validators": [ebs_volume_size_snapshot_validator],
     "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
         # the test of hit converter
         ("shared_dir", {
