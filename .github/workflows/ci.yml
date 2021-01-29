@@ -19,6 +19,7 @@ jobs:
           - Python 3.8 Tests Coverage
           - Code Checks
           - CloudFormation Templates Checks
+          - Integration Tests Config Checks
         include:
           - name: Python 2.7 Tests
             python: 2.7
@@ -56,6 +57,10 @@ jobs:
             python: 3.6
             toxdir: cli
             toxenv: cfn-format-check,cfn-lint,cfn-tests
+          - name: Integration Tests Config Checks
+            python: 3.6
+            toxdir: tests/integration-tests
+            toxenv: validate-test-configs
 
     steps:
       - uses: actions/checkout@v2
