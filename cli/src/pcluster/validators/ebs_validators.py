@@ -103,7 +103,6 @@ class EbsVolumeIopsValidator(Validator):
 
     def validate(self, volume_type, volume_size, volume_iops):
         """Validate IOPS value in respect of volume type."""
-
         volume_type_value = volume_type.value
         volume_size_value = volume_size.value
         volume_iops_value = volume_iops.value
