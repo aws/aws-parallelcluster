@@ -7,11 +7,15 @@ CHANGELOG
 **CHANGES**
 
 - Make `key_name` parameter optional to support cluster configurations without a key pair. 
-- Remove support for Python 3.4
+- Remove support for Python 3.4 
 
 **BUG FIXES**
 
 - Fix `enable_efa` parameter validation when using Centos8 and Slurm or ARM instances.
+
+**ENHANCEMENTS**
+
+- Check bucket owner when accessing public ParallelCluster artifacts to prevent S3 buckets sniping
 
 2.10.1
 ------

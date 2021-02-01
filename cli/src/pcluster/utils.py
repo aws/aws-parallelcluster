@@ -120,6 +120,16 @@ def get_partition():
     return next(("aws-" + partition for partition in ["us-gov", "cn"] if region.startswith(partition)), "aws")
 
 
+def get_partition_account_id():
+    """Get the official account id for the specified partition."""
+    accounts = {
+        "aws-us-gov": "124026578433",
+        "aws-cn": "036028979999",
+        "aws": "247102896272",
+    }
+    return accounts.get(get_partition(), None)
+
+
 def paginate_boto3(method, **kwargs):
     """
     Return a generator for a boto3 call, this allows pagination over an arbitrary number of responses.
@@ -1095,13 +1105,24 @@ def is_hit_enabled_cluster(cfn_stack):
 
 def read_remote_file(url):
     """Read a remote file from an HTTP or S3 url."""
+    # If the url points to a ParallelCluster bucket, check owner to prevent sniping
+    bucket_name = re.match(r".*?://(.*?)[/\.].*", url).group(1)
+    if bucket_name == "{region}-aws-parallelcluster".format(region=get_region()):
+        expected_bucket_owner = get_partition_account_id()
     try:
         if urlparse(url).scheme == "s3":
             match = re.match(r"s3://(.*?)/(.*)", url)
             bucket, key = match.group(1), match.group(2)
-            file_contents = boto3.resource("s3").Object(bucket, key).get()["Body"].read().decode("utf-8")
+            file_contents = (
+                boto3.resource("s3")
+                .Object(bucket, key)
+                .get()["Body"]
+                .read(ExpectedBucketOwner=expected_bucket_owner)
+                .decode("utf-8")
+            )
         else:
-            with urllib.request.urlopen(url) as f:
+            req = urllib.request.Request(url, headers={"x-amz-expected-bucket-owner": expected_bucket_owner})
+            with urllib.request.urlopen(req) as f:
                 file_contents = f.read().decode("utf-8")
         return file_contents
     except Exception as e:
