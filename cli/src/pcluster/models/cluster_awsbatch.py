@@ -12,7 +12,6 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-
 from typing import List
 
 from pcluster.models.cluster import (
