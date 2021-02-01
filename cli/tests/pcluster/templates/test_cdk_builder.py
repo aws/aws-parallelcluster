@@ -21,7 +21,7 @@ from pcluster.models.cluster import HeadNode, HeadNodeNetworking, Image, QueueNe
 from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
 from pcluster.models.imagebuilder import Build, DevSettings
 from pcluster.models.imagebuilder import Image as ImageBuilderImage
-from pcluster.models.imagebuilder import ImageBuilder, Volume
+from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cluster_stack import HeadNodeConstruct
 
@@ -47,11 +47,11 @@ def dummy_cluster():
 
 def dummy_imagebuilder(is_official_ami_build):
     """Generate dummy imagebuilder configuration."""
-    image = ImageBuilderImage(name="Pcluster", root_volume=Volume())
+    image = ImageBuilderImage(name="Pcluster")
     if is_official_ami_build:
         build = Build(
             instance_type="c5.xlarge",
-            parent_image="arn:${AWS::Partition}:imagebuilder:${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x",
+            parent_image="arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
         )
         dev_settings = DevSettings(update_os_and_reboot=True)
     else:
@@ -179,8 +179,7 @@ def test_head_node_construct(tmpdir):
                             ],
                             "Name": "PCluster-2-10-1-qd6lpbzo8gd2j4dr",
                             "ParentImage": {
-                                "Fn::Sub": "arn:${AWS::Partition}:imagebuilder:"
-                                "${AWS::Region}:aws:image/amazon-linux-2-x86/x.x.x"
+                                "Fn::Sub": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x"
                             },
                             "Version": "0.0.1",
                             "BlockDeviceMappings": [
@@ -314,6 +313,7 @@ def test_head_node_construct(tmpdir):
     ],
 )
 def test_imagebuilder(mocker, is_official_ami_build, response, expected_template):
+    mocker.patch("pcluster.utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch("pcluster.utils.get_info_for_amis", return_value=response)
     # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
     mocker.patch(

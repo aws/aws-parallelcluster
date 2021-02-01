@@ -14,10 +14,26 @@
 # These classes are created by following marshmallow syntax.
 #
 
-from marshmallow import Schema, fields, post_dump, post_load, pre_dump, pre_load
+from marshmallow import Schema, fields, post_dump, post_load, pre_dump, pre_load, validate
 
+from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import Tag
 from pcluster.models.param import Param
+
+ALLOWED_VALUES = {
+    "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
+    r"([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])"
+    r"(\/([0-9]|[1-2][0-9]|3[0-2]))$",
+    "file_path": r"^\/?[^\/.\\][^\/\\]*(\/[^\/.\\][^\/]*)*$",
+    "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
+    "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
+    "architectures": SUPPORTED_ARCHITECTURES,
+}
+
+
+def get_field_validator(field_name):
+    allowed_values = ALLOWED_VALUES[field_name]
+    return validate.OneOf(allowed_values) if isinstance(allowed_values, list) else validate.Regexp(allowed_values)
 
 
 class BaseSchema(Schema):

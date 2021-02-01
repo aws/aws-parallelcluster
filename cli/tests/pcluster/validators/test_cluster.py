@@ -10,6 +10,7 @@
 # limitations under the License.
 import pytest
 
+from pcluster.models.param import Param
 from pcluster.validators.cluster_validators import FsxNetworkingValidator
 from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -208,5 +209,5 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator()("fs-0ff8da96d57f3b4e3", "subnet-12345678")
+    actual_failures = FsxNetworkingValidator()(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
     assert_failure_messages(actual_failures, expected_message)

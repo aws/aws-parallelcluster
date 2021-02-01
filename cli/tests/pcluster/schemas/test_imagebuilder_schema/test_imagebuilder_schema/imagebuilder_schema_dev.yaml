@@ -5,7 +5,7 @@ Image:
     - Key: Name
       Value: ParallelCluster-3.0-AMI
     - Key: Version
-      Value: verion-3.0
+      Value: 3.0.0
   RootVolume:
     Size: 25
     Encrypted: True
@@ -18,11 +18,11 @@ Build:
     - Type: arn
       Value: arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0
     - Type: yaml
-      Value: s3://test/mysql_component.yml
+      Value: https://test/mysql_component.yaml
     - Type: yaml
-      Value: s3://test/keras_component.yml
+      Value: s3://test/keras_component.yaml
     - Type: bash
-      Value: s3://test/post_install.sh
+      Value: file:///test/post_install.sh
   ParentImage: arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x
   Tags:
     - Key: Name
@@ -30,17 +30,17 @@ Build:
     - Key: Date
       Value: 2022.1.1
   SecurityGroupIds:
-    - sg-990022199901
-    - sg-889920129301
+    - sg-0058826a55bae6679
+    - sg-01971157d4012122a
   SubnetId: subnet-0d03dc52
 
 DevSettings:
   UpdateOsAndReboot: True
   DisablePclusterComponent: False
   ChefCookbook:
-    Url: s3://test/aws-parallelcluster-cookbook-3.0.tgz
+    Url: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
     Json: |
-      { "cluster" : {"cfn_scheduler_slots": "cores"}}
+      {"cluster": {"cfn_scheduler_slots": "cores"}}
   NodeUrl: s3://test/aws-parallelcluster-node-3.0.tgz
   AWSBatchCliUrl: s3://test/aws-parallelcluster-batch-3.0.tgz
   DistributionConfigurationArn: arn:aws:imagebuilder:us-east-1:aws:distributionconfiguration/amazon-cloudwatch-agent-linux/1.0.0

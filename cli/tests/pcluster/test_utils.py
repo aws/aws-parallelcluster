@@ -505,6 +505,43 @@ def test_get_info_for_amis(boto3_stubber, image_ids, response, error_message):
 
 
 @pytest.mark.parametrize(
+    "parent_image, response, ami_id",
+    [
+        (
+            "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+            {"image": {"outputResources": {"amis": [{"image": "ami-0be2609ba883822ec"}]}}},
+            "ami-0be2609ba883822ec",
+        ),
+        ("ami-00e87074e52e6c9f9", "{}", "ami-00e87074e52e6c9f9"),
+    ],
+)
+def test_get_ami_id(mocker, parent_image, response, ami_id):
+    mocker.patch("pcluster.utils.ImageBuilderClient.__init__", return_value=None)
+    mocker.patch("pcluster.utils.ImageBuilderClient.get_image_resources", return_value=response)
+    assert_that(utils.get_ami_id(parent_image)).is_equal_to(ami_id)
+
+
+@pytest.mark.parametrize(
+    "image_arn, response",
+    [
+        (
+            "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/2020.12.21",
+            {"requestId": "abcd", "image": {"outputResources": {"amis": [{"image": "ami-0be2609ba883822ec"}]}}},
+        ),
+        (
+            "arn:aws-fake:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86",
+            "Some error message",
+        ),
+    ],
+)
+def test_get_info_for_ami_from_arn(mocker, image_arn, response):
+    """Verify get_info_for_ami_from_arn returns the expected response, and that errors cause nonzero exit."""
+    mocker.patch("pcluster.utils.ImageBuilderClient.__init__", return_value=None)
+    mocker.patch("pcluster.utils.ImageBuilderClient.get_image_resources", return_value=response)
+    assert_that(utils.get_info_for_ami_from_arn(image_arn)).is_equal_to(response)
+
+
+@pytest.mark.parametrize(
     "instance_type, supported_architectures, error_message",
     [
         ("optimal", ["x86_64"], None),

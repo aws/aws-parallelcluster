@@ -13,7 +13,11 @@ from __future__ import absolute_import, print_function  # isort:skip
 
 import functools
 
+from common.boto3.imagebuilder import ImageBuilderClient
+
 from future import standard_library  # isort:skip
+
+
 standard_library.install_aliases()
 # fmt: on
 
@@ -924,6 +928,20 @@ def get_info_for_amis(ami_ids):
         return boto3.client("ec2").describe_images(ImageIds=ami_ids).get("Images")
     except ClientError as e:
         error(e.response.get("Error").get("Message"))
+
+
+def get_ami_id(parent_image):
+    """Get ami id from parent image, parent image could be image id or image arn."""
+    if parent_image.startswith("arn"):
+        ami_id = ImageBuilderClient().get_image_id(parent_image)
+    else:
+        ami_id = parent_image
+    return ami_id
+
+
+def get_info_for_ami_from_arn(image_arn):
+    """Get image resources returned by imagebuilder's get_image API for the given arn of AMI."""
+    return ImageBuilderClient().get_image_resources(image_arn)
 
 
 def validate_pcluster_version_based_on_ami_name(ami_name):

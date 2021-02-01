@@ -18,7 +18,13 @@ from typing import List
 from pcluster import utils
 from pcluster.models.cluster import Resource, Tag
 from pcluster.models.param import Param
-from pcluster.validators.ec2_validators import BaseAMIValidator
+from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
+from pcluster.validators.ec2_validators import (
+    BaseAMIValidator,
+    InstanceTypeBaseAMICompatibleValidator,
+    InstanceTypeValidator,
+)
+from pcluster.validators.s3_validators import UrlValidator
 
 # ---------------------- Image ---------------------- #
 
@@ -32,6 +38,9 @@ class Volume(Resource):
         self.encrypted = Param(encrypted, default=False)
         self.kms_key_id = Param(kms_key_id)
         # TODO: add validator
+        self._add_validator(
+            EBSVolumeKmsKeyIdValidator, volume_kms_key_id=self.kms_key_id, volume_encrypted=self.encrypted
+        )
 
 
 class Image(Resource):
@@ -95,6 +104,14 @@ class Build(Resource):
         self.security_group_ids = security_group_ids
         self.components = components
         # TODO: add validator
+        self._add_validator(BaseAMIValidator, priority=15, parent_image=self.parent_image)
+        self._add_validator(InstanceTypeValidator, priority=15, instance_type=self.instance_type)
+        self._add_validator(
+            InstanceTypeBaseAMICompatibleValidator,
+            priority=14,
+            instance_type=self.instance_type,
+            parent_image=self.parent_image,
+        )
 
 
 # ---------------------- Dev Settings ---------------------- #
@@ -105,9 +122,10 @@ class ChefCookbook(Resource):
 
     def __init__(self, url: str, json: str):
         super().__init__()
-        self.url = url
-        self.json = json
+        self.url = Param(url)
+        self.json = Param(json)
         # TODO: add validator
+        self._add_validator(UrlValidator, url=self.url)
 
 
 class DevSettings(Resource):
@@ -132,6 +150,8 @@ class DevSettings(Resource):
         self.distribution_configuration_arn = Param(distribution_configuration_arn)
         self.terminate_instance_on_failure = Param(terminate_instance_on_failure, default=True)
         # TODO: add validator
+        self._add_validator(UrlValidator, url=self.node_url)
+        self._add_validator(UrlValidator, url=self.aws_batch_cli_url)
 
 
 # ---------------------- ImageBuilder ---------------------- #
@@ -150,4 +170,23 @@ class ImageBuilder(Resource):
         self.image = image
         self.build = build
         self.dev_settings = dev_settings
-        self._add_validator(BaseAMIValidator, ami_id=self.build.parent_image)
+        self._set_default()
+        self._add_validator(
+            EbsVolumeTypeSizeValidator, priority=10, volume_type=Param("gp2"), volume_size=self.image.root_volume.size
+        )
+
+    def _set_default(self):
+        # set default root volume
+        if self.image.root_volume is None or self.image.root_volume.size.value is None:
+            increase_volume_size = 15
+            ami_id = utils.get_ami_id(self.build.parent_image.value)
+            ami_info = utils.get_info_for_amis([ami_id])
+            default_root_volume_size = (
+                ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + increase_volume_size
+            )
+            if self.image.root_volume is None:
+                default_root_volume = Volume(size=default_root_volume_size)
+                default_root_volume.implied = True
+                self.image.root_volume = default_root_volume
+            else:
+                self.image.root_volume.size = Param(value=None, default=default_root_volume_size)
