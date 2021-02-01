@@ -17,8 +17,7 @@ import pytest
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from pcluster.config.cfn_param_types import CfnParam, CfnSection
-from pcluster.config.mappings import ALLOWED_VALUES, FSX
+from pcluster.config.mappings import ALLOWED_VALUES
 from pcluster.config.validators import (
     DCV_MESSAGES,
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
@@ -30,13 +29,11 @@ from pcluster.config.validators import (
     disable_hyperthreading_architecture_validator,
     efa_gdr_validator,
     efa_os_arch_validator,
-    fsx_ignored_parameters_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
     queue_validator,
     settings_validator,
 )
-from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
 
@@ -658,73 +655,6 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
     "section_dict, bucket, expected_error, num_calls",
     [
         (
-            {"imported_file_chunk_size": 1024, "import_path": "s3://test", "storage_capacity": 1200},
-            {"Bucket": "test"},
-            None,
-            1,
-        ),
-        (
-            {"imported_file_chunk_size": 1024, "storage_capacity": 1200},
-            None,
-            "When specifying 'imported_file_chunk_size', the 'import_path' option must be specified",
-            0,
-        ),
-        (
-            {"export_path": "s3://test", "import_path": "s3://test", "storage_capacity": 1200},
-            {"Bucket": "test"},
-            None,
-            2,
-        ),
-        (
-            {"export_path": "s3://test", "storage_capacity": 1200},
-            {"Bucket": "test"},
-            "When specifying 'export_path', the 'import_path' option must be specified",
-            0,
-        ),
-        ({"shared_dir": "NONE", "storage_capacity": 1200}, None, "NONE cannot be used as a shared directory", 0),
-        ({"shared_dir": "/NONE", "storage_capacity": 1200}, None, "/NONE cannot be used as a shared directory", 0),
-        ({"shared_dir": "/fsx"}, None, "the 'storage_capacity' option must be specified", 0),
-        ({"shared_dir": "/fsx", "storage_capacity": 1200}, None, None, 0),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
-                "storage_capacity": 1200,
-                "per_unit_storage_throughput": 50,
-            },
-            None,
-            None,
-            0,
-        ),
-        (
-            {"deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 200, "storage_capacity": 1200},
-            None,
-            None,
-            0,
-        ),
-        (
-            {
-                "deployment_type": "SCRATCH_2",
-                "fsx_kms_key_id": "9e8a129be-0e46-459d-865b-3a5bf974a22k",
-                "storage_capacity": 1200,
-            },
-            None,
-            "'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'",
-            1,
-        ),
-        (
-            {"deployment_type": "SCRATCH_1", "per_unit_storage_throughput": 200, "storage_capacity": 1200},
-            None,
-            "'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'",
-            0,
-        ),
-        (
-            {"deployment_type": "PERSISTENT_1", "storage_capacity": 1200},
-            None,
-            "'per_unit_storage_throughput' must be specified when 'deployment_type = PERSISTENT_1'",
-            0,
-        ),
-        (
             {
                 "storage_capacity": 1200,
                 "per_unit_storage_throughput": "50",
@@ -749,102 +679,6 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             0,
         ),
         (
-            {"automatic_backup_retention_days": 2, "deployment_type": "SCRATCH_1"},
-            None,
-            "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems",
-            0,
-        ),
-        (
-            {"daily_automatic_backup_start_time": "03:00"},
-            None,
-            "When specifying 'daily_automatic_backup_start_time', "
-            "the 'automatic_backup_retention_days' option must be specified",
-            0,
-        ),
-        (
-            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": True},
-            None,
-            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
-            0,
-        ),
-        (
-            {"storage_capacity": 1200, "deployment_type": "PERSISTENT_1", "copy_tags_to_backups": False},
-            None,
-            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified",
-            0,
-        ),
-        (
-            {"daily_automatic_backup_start_time": "03:00", "copy_tags_to_backups": True},
-            None,
-            "When specifying 'daily_automatic_backup_start_time', "
-            "the 'automatic_backup_retention_days' option must be specified",
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "automatic_backup_retention_days": 2,
-                "imported_file_chunk_size": 1024,
-                "export_path": "s3://test",
-                "import_path": "s3://test",
-                "storage_capacity": 1200,
-            },
-            {"Bucket": "test"},
-            "Backups cannot be created on S3-linked file systems",
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "automatic_backup_retention_days": 2,
-                "export_path": "s3://test",
-                "import_path": "s3://test",
-                "storage_capacity": 1200,
-            },
-            {"Bucket": "test"},
-            "Backups cannot be created on S3-linked file systems",
-            0,
-        ),
-        (
-            {
-                "deployment_type": "SCRATCH_1",
-                "storage_type": "HDD",
-                "per_unit_storage_throughput": 12,
-                "storage_capacity": 1200,
-                "drive_cache_type": "READ",
-            },
-            None,
-            "For HDD filesystems, 'deployment_type' must be 'PERSISTENT_1'",
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "storage_type": "HDD",
-                "per_unit_storage_throughput": 50,
-                "storage_capacity": 1200,
-                "drive_cache_type": "READ",
-            },
-            None,
-            "For HDD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
-                FSX_HDD_THROUGHPUT
-            ),
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "storage_type": "SSD",
-                "per_unit_storage_throughput": 12,
-                "storage_capacity": 1200,
-            },
-            None,
-            "For SSD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
-                FSX_SSD_THROUGHPUT
-            ),
-            0,
-        ),
-        (
             {
                 "deployment_type": "PERSISTENT_1",
                 "storage_type": "SSD",
@@ -854,28 +688,6 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             },
             None,
             "The configuration parameter 'drive_cache_type' has an invalid value 'NONE'",
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "storage_type": "SSD",
-                "per_unit_storage_throughput": 50,
-                "storage_capacity": 1200,
-            },
-            None,
-            None,
-            0,
-        ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "per_unit_storage_throughput": 50,
-                "storage_capacity": 1200,
-                "drive_cache_type": "READ",
-            },
-            None,
-            "'drive_cache_type' features can be used only with HDD filesystems",
             0,
         ),
     ],
@@ -894,75 +706,7 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
 @pytest.mark.parametrize(
     "section_dict, expected_error, expected_warning",
     [
-        (
-            {"storage_capacity": 1, "deployment_type": "SCRATCH_1"},
-            "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
-            None,
-        ),
-        ({"storage_capacity": 1200, "deployment_type": "SCRATCH_1"}, None, None),
-        ({"storage_capacity": 2400, "deployment_type": "SCRATCH_1"}, None, None),
-        ({"storage_capacity": 3600, "deployment_type": "SCRATCH_1"}, None, None),
-        (
-            {"storage_capacity": 3600, "deployment_type": "SCRATCH_2"},
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
-            None,
-        ),
-        (
-            {"storage_capacity": 3600, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
-            None,
-        ),
-        (
-            {"storage_capacity": 3601, "deployment_type": "PERSISTENT_1", "per_unit_storage_throughput": 50},
-            "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
-            None,
-        ),
         ({"storage_capacity": 7200}, None, None),
-        (
-            {"deployment_type": "SCRATCH_1"},
-            "When specifying 'fsx' section, the 'storage_capacity' option must be specified",
-            None,
-        ),
-        (
-            {
-                "storage_type": "HDD",
-                "deployment_type": "PERSISTENT_1",
-                "storage_capacity": 1801,
-                "per_unit_storage_throughput": 40,
-            },
-            "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
-            None,
-        ),
-        (
-            {
-                "storage_type": "HDD",
-                "deployment_type": "PERSISTENT_1",
-                "storage_capacity": 6001,
-                "per_unit_storage_throughput": 12,
-            },
-            "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
-            None,
-        ),
-        (
-            {
-                "storage_type": "HDD",
-                "deployment_type": "PERSISTENT_1",
-                "storage_capacity": 1800,
-                "per_unit_storage_throughput": 40,
-            },
-            None,
-            None,
-        ),
-        (
-            {
-                "storage_type": "HDD",
-                "deployment_type": "PERSISTENT_1",
-                "storage_capacity": 6000,
-                "per_unit_storage_throughput": 12,
-            },
-            None,
-            None,
-        ),
     ],
 )
 def test_fsx_storage_capacity_validator(mocker, boto3_stubber, capsys, section_dict, expected_error, expected_warning):
@@ -989,200 +733,6 @@ def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
     ] * num_calls
     boto3_stubber("s3", mocked_requests)
     mocker.patch("pcluster.config.validators.urllib.request.urlopen")
-
-
-@pytest.mark.parametrize(
-    "fsx_vpc, ip_permissions, network_interfaces, expected_message",
-    [
-        (  # working case, right vpc and sg, multiple network interfaces
-            "vpc-06e4ab6c6cEXAMPLE",
-            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            ["eni-09b9460295ddd4e5f", "eni-001b3cef7c78b45c4"],
-            None,
-        ),
-        (  # working case, right vpc and sg, single network interface
-            "vpc-06e4ab6c6cEXAMPLE",
-            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            ["eni-09b9460295ddd4e5f"],
-            None,
-        ),
-        (  # not working case --> no network interfaces
-            "vpc-06e4ab6c6cEXAMPLE",
-            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            [],
-            "doesn't have Elastic Network Interfaces attached",
-        ),
-        (  # not working case --> wrong vpc
-            "vpc-06e4ab6c6ccWRONG",
-            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
-            ["eni-09b9460295ddd4e5f"],
-            "only support using FSx file system that is in the same VPC as the stack",
-        ),
-        (  # not working case --> wrong ip permissions in security group
-            # FIXME this test is problematic. THe vpc is wrong, so the error should be relevant to vpc.
-            "vpc-06e4ab6c6cWRONG",
-            [
-                {
-                    "PrefixListIds": [],
-                    "FromPort": 22,
-                    "IpRanges": [{"CidrIp": "203.0.113.0/24"}],
-                    "ToPort": 22,
-                    "IpProtocol": "tcp",
-                    "UserIdGroupPairs": [],
-                }
-            ],
-            ["eni-09b9460295ddd4e5f"],
-            "does not satisfy mounting requirement",
-        ),
-    ],
-)
-def test_fsx_id_validator(mocker, boto3_stubber, fsx_vpc, ip_permissions, network_interfaces, expected_message):
-    describe_file_systems_response = {
-        "FileSystems": [
-            {
-                "VpcId": fsx_vpc,
-                "NetworkInterfaceIds": network_interfaces,
-                "SubnetIds": ["subnet-12345678"],
-                "FileSystemType": "LUSTRE",
-                "CreationTime": 1567636453.038,
-                "ResourceARN": "arn:aws:fsx:us-west-2:111122223333:file-system/fs-0ff8da96d57f3b4e3",
-                "StorageCapacity": 3600,
-                "LustreConfiguration": {"WeeklyMaintenanceStartTime": "4:07:00"},
-                "FileSystemId": "fs-0ff8da96d57f3b4e3",
-                "DNSName": "fs-0ff8da96d57f3b4e3.fsx.us-west-2.amazonaws.com",
-                "OwnerId": "059623208481",
-                "Lifecycle": "AVAILABLE",
-            }
-        ]
-    }
-    fsx_mocked_requests = [
-        MockedBoto3Request(
-            method="describe_file_systems",
-            response=describe_file_systems_response,
-            expected_params={"FileSystemIds": ["fs-0ff8da96d57f3b4e3"]},
-        )
-    ]
-    boto3_stubber("fsx", fsx_mocked_requests)
-
-    describe_subnets_response = {
-        "Subnets": [
-            {
-                "AvailabilityZone": "us-east-2c",
-                "AvailabilityZoneId": "use2-az3",
-                "AvailableIpAddressCount": 248,
-                "CidrBlock": "10.0.1.0/24",
-                "DefaultForAz": False,
-                "MapPublicIpOnLaunch": False,
-                "State": "available",
-                "SubnetId": "subnet-12345678",
-                "VpcId": "vpc-06e4ab6c6cEXAMPLE",
-                "OwnerId": "111122223333",
-                "AssignIpv6AddressOnCreation": False,
-                "Ipv6CidrBlockAssociationSet": [],
-                "Tags": [{"Key": "Name", "Value": "MySubnet"}],
-                "SubnetArn": "arn:aws:ec2:us-east-2:111122223333:subnet/subnet-12345678",
-            }
-        ]
-    }
-    ec2_mocked_requests = [
-        MockedBoto3Request(
-            method="describe_subnets",
-            response=describe_subnets_response,
-            expected_params={"SubnetIds": ["subnet-12345678"]},
-        )
-    ] * 2
-
-    if network_interfaces:
-        network_interfaces_in_response = []
-        for network_interface in network_interfaces:
-            network_interfaces_in_response.append(
-                {
-                    "Association": {
-                        "AllocationId": "eipalloc-01564b674a1a88a47",
-                        "AssociationId": "eipassoc-02726ee370e175cea",
-                        "IpOwnerId": "111122223333",
-                        "PublicDnsName": "ec2-34-248-114-123.eu-west-1.compute.amazonaws.com",
-                        "PublicIp": "34.248.114.123",
-                    },
-                    "Attachment": {
-                        "AttachmentId": "ela-attach-0cf98331",
-                        "DeleteOnTermination": False,
-                        "DeviceIndex": 1,
-                        "InstanceOwnerId": "amazon-aws",
-                        "Status": "attached",
-                    },
-                    "AvailabilityZone": "eu-west-1a",
-                    "Description": "Interface for NAT Gateway nat-0a8b0e0d28266841f",
-                    "Groups": [{"GroupName": "default", "GroupId": "sg-12345678"}],
-                    "InterfaceType": "nat_gateway",
-                    "Ipv6Addresses": [],
-                    "MacAddress": "0a:e5:8a:82:fd:24",
-                    "NetworkInterfaceId": network_interface,
-                    "OwnerId": "111122223333",
-                    "PrivateDnsName": "ip-10-0-124-85.eu-west-1.compute.internal",
-                    "PrivateIpAddress": "10.0.124.85",
-                    "PrivateIpAddresses": [
-                        {
-                            "Association": {
-                                "AllocationId": "eipalloc-01564b674a1a88a47",
-                                "AssociationId": "eipassoc-02726ee370e175cea",
-                                "IpOwnerId": "111122223333",
-                                "PublicDnsName": "ec2-34-248-114-123.eu-west-1.compute.amazonaws.com",
-                                "PublicIp": "34.248.114.123",
-                            },
-                            "Primary": True,
-                            "PrivateDnsName": "ip-10-0-124-85.eu-west-1.compute.internal",
-                            "PrivateIpAddress": "10.0.124.85",
-                        }
-                    ],
-                    "RequesterId": "036872051663",
-                    "RequesterManaged": True,
-                    "SourceDestCheck": False,
-                    "Status": "in-use",
-                    "SubnetId": "subnet-12345678",
-                    "TagSet": [],
-                    "VpcId": fsx_vpc,
-                }
-            )
-        describe_network_interfaces_response = {"NetworkInterfaces": network_interfaces_in_response}
-        ec2_mocked_requests.append(
-            MockedBoto3Request(
-                method="describe_network_interfaces",
-                response=describe_network_interfaces_response,
-                expected_params={"NetworkInterfaceIds": network_interfaces},
-            )
-        )
-
-        if fsx_vpc == "vpc-06e4ab6c6cEXAMPLE":
-            # the describe security group is performed only if the VPC of the network interface is the same of the FSX
-            describe_security_groups_response = {
-                "SecurityGroups": [
-                    {
-                        "IpPermissionsEgress": ip_permissions,
-                        "Description": "My security group",
-                        "IpPermissions": ip_permissions,
-                        "GroupName": "MySecurityGroup",
-                        "OwnerId": "123456789012",
-                        "GroupId": "sg-12345678",
-                    }
-                ]
-            }
-            ec2_mocked_requests.append(
-                MockedBoto3Request(
-                    method="describe_security_groups",
-                    response=describe_security_groups_response,
-                    expected_params={"GroupIds": ["sg-12345678"]},
-                )
-            )
-
-    boto3_stubber("ec2", ec2_mocked_requests)
-
-    config_parser_dict = {
-        "cluster default": {"fsx_settings": "default", "vpc_settings": "default"},
-        "vpc default": {"master_subnet_id": "subnet-12345678"},
-        "fsx default": {"fsx_fs_id": "fs-0ff8da96d57f3b4e3"},
-    }
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 @pytest.mark.parametrize(
@@ -1227,43 +777,6 @@ def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
 )
 def test_disable_hyperthreading_validator(mocker, section_dict, expected_message):
     config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "section_dict, bucket, expected_message",
-    [
-        (
-            {"imported_file_chunk_size": 0, "import_path": "s3://test-import", "storage_capacity": 1200},
-            None,
-            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
-        ),
-        (
-            {"imported_file_chunk_size": 1, "import_path": "s3://test-import", "storage_capacity": 1200},
-            {"Bucket": "test-import"},
-            None,
-        ),
-        (
-            {"imported_file_chunk_size": 10, "import_path": "s3://test-import", "storage_capacity": 1200},
-            {"Bucket": "test-import"},
-            None,
-        ),
-        (
-            {"imported_file_chunk_size": 512000, "import_path": "s3://test-import", "storage_capacity": 1200},
-            {"Bucket": "test-import"},
-            None,
-        ),
-        (
-            {"imported_file_chunk_size": 512001, "import_path": "s3://test-import", "storage_capacity": 1200},
-            None,
-            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
-        ),
-    ],
-)
-def test_fsx_imported_file_chunk_size_validator(mocker, boto3_stubber, section_dict, bucket, expected_message):
-    if bucket:
-        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls=1)
-    config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
@@ -2271,32 +1784,6 @@ def test_fsx_lustre_backup_validator(mocker, boto3_stubber, section_dict, bucket
 # and calls the validator directly.
 #
 #########
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_error",
-    [
-        ({"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx"}, None),
-        (
-            {"fsx_fs_id": "fs-0123456789abcdef0", "shared_dir": "/fsx", "storage_capacity": 3600},
-            "storage_capacity is ignored when specifying an existing Lustre file system",
-        ),
-    ],
-)
-def test_fsx_ignored_parameters_validator(mocker, section_dict, expected_error):
-    mocked_pcluster_config = utils.get_mocked_pcluster_config(mocker)
-    fsx_section = CfnSection(FSX, mocked_pcluster_config, "default")
-    for param_key, param_value in section_dict.items():
-        param = FSX.get("params").get(param_key).get("type", CfnParam)
-        param.value = param_value
-        fsx_section.set_param(param_key, param)
-    mocked_pcluster_config.add_section(fsx_section)
-    errors, warnings = fsx_ignored_parameters_validator("fsx", "default", mocked_pcluster_config)
-    assert_that(warnings).is_empty()
-    if expected_error:
-        assert_that(errors[0]).matches(expected_error)
-    else:
-        assert_that(errors).is_empty()
 
 
 def test_ebs_allowed_values_all_have_volume_size_bounds():

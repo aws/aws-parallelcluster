@@ -81,13 +81,8 @@ from pcluster.config.validators import (
     efs_validator,
     extra_json_validator,
     fsx_architecture_os_validator,
-    fsx_id_validator,
-    fsx_ignored_parameters_validator,
-    fsx_imported_file_chunk_size_validator,
     fsx_lustre_auto_import_validator,
     fsx_lustre_backup_validator,
-    fsx_storage_capacity_validator,
-    fsx_validator,
     head_node_instance_type_validator,
     instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
@@ -479,7 +474,6 @@ FSX = {
     "type": CfnSection,
     "key": "fsx",
     "default_label": "default",
-    "validators": [fsx_validator, fsx_storage_capacity_validator, fsx_ignored_parameters_validator],
     "cfn_param_mapping": "FSXOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
@@ -490,7 +484,6 @@ FSX = {
             }),
             ("fsx_fs_id", {
                 "allowed_values": ALLOWED_VALUES["fsx_fs_id"],
-                "validators": [fsx_id_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("storage_capacity", {
@@ -503,7 +496,6 @@ FSX = {
             }),
             ("imported_file_chunk_size", {
                 "type": IntCfnParam,
-                "validators": [fsx_imported_file_chunk_size_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("export_path", {
