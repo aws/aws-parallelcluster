@@ -12,79 +12,10 @@
 import os
 
 import pytest
-import yaml
 from assertpy import assert_that
-from aws_cdk import core
 
-from common.utils import load_yaml_dict
-from pcluster.models.cluster import HeadNode, HeadNodeNetworking, Image, QueueNetworking, Ssh
-from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
-from pcluster.models.imagebuilder import Build, DevSettings
-from pcluster.models.imagebuilder import Image as ImageBuilderImage
-from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from pcluster.templates.cluster_stack import HeadNodeConstruct
-
-
-def dummy_head_node():
-    """Generate dummy head node."""
-    image = Image(os="fakeos")
-    head_node_networking = HeadNodeNetworking(subnet_id="test")
-    ssh = Ssh(key_name="test")
-    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, image=image)
-
-
-def dummy_cluster():
-    """Generate dummy cluster."""
-    image = Image(os="fakeos")
-    head_node = dummy_head_node()
-    compute_resources = [SlurmComputeResource(instance_type="test")]
-    queue_networking = QueueNetworking(subnet_ids=["test"])
-    queues = [SlurmQueue(name="test", networking=queue_networking, compute_resources=compute_resources)]
-    scheduling = SlurmScheduling(queues=queues)
-    return SlurmCluster(image=image, head_node=head_node, scheduling=scheduling)
-
-
-def dummy_imagebuilder(is_official_ami_build):
-    """Generate dummy imagebuilder configuration."""
-    image = ImageBuilderImage(name="Pcluster")
-    if is_official_ami_build:
-        build = Build(
-            instance_type="c5.xlarge",
-            parent_image="arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
-        )
-        dev_settings = DevSettings(update_os_and_reboot=True)
-    else:
-        build = Build(instance_type="g4dn.xlarge", parent_image="ami-0185634c5a8a37250")
-        dev_settings = DevSettings()
-    return ImageBuilder(image=image, build=build, dev_settings=dev_settings)
-
-
-def test_cluster_builder():
-    generated_template = CDKTemplateBuilder().build(cluster=dummy_cluster())
-    print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
-
-
-def test_head_node_construct(tmpdir):
-    # TODO verify if it's really useful
-
-    class DummyStack(core.Stack):
-        """Simple Stack to test a specific construct."""
-
-        def __init__(self, scope: core.Construct, construct_id: str, head_node: HeadNode, **kwargs) -> None:
-            super().__init__(scope, construct_id, **kwargs)
-
-            HeadNodeConstruct(self, "HeadNode", head_node)
-
-    output_file = "cluster"
-    app = core.App(outdir=str(tmpdir))
-    DummyStack(app, output_file, head_node=dummy_head_node())
-    app.synth()
-    generated_template = load_yaml_dict(os.path.join(tmpdir, f"{output_file}.template.json"))
-
-    print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
+from tests.pcluster.models.imagebuilder_dummy_model import dummy_imagebuilder
 
 
 @pytest.mark.parametrize(
