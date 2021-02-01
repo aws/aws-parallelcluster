@@ -121,7 +121,7 @@ class EbsVolumeIopsValidator(Validator):
                     FailureLevel.ERROR,
                     [volume_iops],
                 )
-            if (
+            elif (
                 volume_iops_value
                 and volume_iops_value > volume_size_value * EBS_VOLUME_TYPE_TO_IOPS_RATIO[volume_type_value]
             ):

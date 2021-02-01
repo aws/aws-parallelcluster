@@ -68,7 +68,8 @@ class Validator(ABC):
             if isinstance(param, Param):
                 if not param.valid:
                     return self._failures
-        return self.validate(*arg, **kwargs)
+        self.validate(*arg, **kwargs)
+        return self._failures
 
     @abstractmethod
     def validate(self, *args, **kwargs):

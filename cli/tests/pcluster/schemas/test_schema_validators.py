@@ -12,7 +12,7 @@
 import pytest
 from marshmallow import ValidationError
 
-from pcluster.schemas.cluster_schema import EfsSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import EfsSchema, FsxSchema, SharedStorageSchema
 
 
 @pytest.mark.parametrize(
@@ -43,6 +43,49 @@ def test_efs_validator(section_dict, expected_message):
 )
 def test_mount_dir_validator(section_dict, expected_message):
     _load_and_assert_error(SharedStorageSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"FileSystemId": "fs-0123456789abcdef0"}, None),
+        (
+            {"FileSystemId": "fs-0123456789abcdef0", "StorageCapacity": 3600},
+            "storage_capacity is ignored when specifying an existing Lustre file system",
+        ),
+    ],
+)
+def test_fsx_ignored_parameters_validator(section_dict, expected_message):
+    _load_and_assert_error(FsxSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        (
+            {"ImportedFileChunkSize": 0},
+            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
+        ),
+        (
+            {"ImportedFileChunkSize": 1},
+            None,
+        ),
+        (
+            {"ImportedFileChunkSize": 10},
+            None,
+        ),
+        (
+            {"ImportedFileChunkSize": 512000},
+            None,
+        ),
+        (
+            {"ImportedFileChunkSize": 512001},
+            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
+        ),
+    ],
+)
+def test_fsx_imported_file_chunk_size_validator(section_dict, expected_message):
+    _load_and_assert_error(FsxSchema(), section_dict, expected_message)
 
 
 def _load_and_assert_error(schema, section_dict, expected_message):

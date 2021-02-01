@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
+from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     InstanceTypeInfo,
@@ -189,44 +189,6 @@ def _check_in_out_access(security_groups_ids, port):
     return in_out_access
 
 
-def fsx_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    fsx_section = pcluster_config.get_section(section_key, section_label)
-    fsx_import_path = fsx_section.get_param_value("import_path")
-    fsx_imported_file_chunk_size = fsx_section.get_param_value("imported_file_chunk_size")
-    fsx_export_path = fsx_section.get_param_value("export_path")
-    fsx_auto_import_policy = fsx_section.get_param_value("auto_import_policy")
-    fsx_deployment_type = fsx_section.get_param_value("deployment_type")
-    fsx_kms_key_id = fsx_section.get_param_value("fsx_kms_key_id")
-    fsx_per_unit_storage_throughput = fsx_section.get_param_value("per_unit_storage_throughput")
-    fsx_daily_automatic_backup_start_time = fsx_section.get_param_value("daily_automatic_backup_start_time")
-    fsx_automatic_backup_retention_days = fsx_section.get_param_value("automatic_backup_retention_days")
-    fsx_copy_tags_to_backups = fsx_section.get_param_value("copy_tags_to_backups")
-    fsx_storage_type = fsx_section.get_param_value("storage_type")
-    fsx_drive_cache_type = fsx_section.get_param_value("drive_cache_type")
-
-    validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy)
-    validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput)
-    validate_backup_options(
-        errors,
-        fsx_automatic_backup_retention_days,
-        fsx_daily_automatic_backup_start_time,
-        fsx_copy_tags_to_backups,
-        fsx_deployment_type,
-        fsx_imported_file_chunk_size,
-        fsx_import_path,
-        fsx_export_path,
-        fsx_auto_import_policy,
-    ),
-    validate_storage_type_options(
-        errors, fsx_storage_type, fsx_deployment_type, fsx_per_unit_storage_throughput, fsx_drive_cache_type
-    )
-
-    return errors, warnings
-
-
 def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
@@ -247,91 +209,6 @@ def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
                 architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
             )
         )
-
-    return errors, warnings
-
-
-def fsx_id_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    try:
-        ec2 = boto3.client("ec2")
-
-        # Check to see if there is any existing mt on the fs
-        file_system = boto3.client("fsx").describe_file_systems(FileSystemIds=[param_value]).get("FileSystems")[0]
-
-        subnet_id = pcluster_config.get_section("vpc").get_param_value("master_subnet_id")
-        vpc_id = ec2.describe_subnets(SubnetIds=[subnet_id]).get("Subnets")[0].get("VpcId")
-
-        # Check to see if fs is in the same VPC as the stack
-        if file_system.get("VpcId") != vpc_id:
-            errors.append(
-                "Currently only support using FSx file system that is in the same VPC as the stack. "
-                "The file system provided is in {0}".format(file_system.get("VpcId"))
-            )
-
-        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-        network_interface_ids = file_system.get("NetworkInterfaceIds")
-        if not network_interface_ids:
-            errors.append(
-                "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
-                "Elastic Network Interfaces attached to it.".format(param_value)
-            )
-        else:
-            network_interface_responses = ec2.describe_network_interfaces(
-                NetworkInterfaceIds=network_interface_ids
-            ).get("NetworkInterfaces")
-
-            fs_access = False
-            network_interfaces = [ni for ni in network_interface_responses if ni.get("VpcId") == vpc_id]
-            for network_interface in network_interfaces:
-                # Get list of security group IDs
-                sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                if _check_in_out_access(sg_ids, port=988):
-                    fs_access = True
-                    break
-            if not fs_access:
-                errors.append(
-                    "The current security group settings on file system '{0}' does not satisfy mounting requirement. "
-                    "The file system must be associated to a security group that allows inbound and outbound "
-                    "TCP traffic through port 988.".format(param_value)
-                )
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
-def fsx_storage_capacity_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    fsx_section = pcluster_config.get_section(section_key, section_label)
-    storage_capacity = fsx_section.get_param_value("storage_capacity")
-    deployment_type = fsx_section.get_param_value("deployment_type")
-    storage_type = fsx_section.get_param_value("storage_type")
-    per_unit_storage_throughput = fsx_section.get_param_value("per_unit_storage_throughput")
-    if fsx_section.get_param_value("fsx_fs_id") or fsx_section.get_param_value("fsx_backup_id"):
-        # if fsx_fs_id is provided, don't validate storage_capacity
-        # if fsx_backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
-        return errors, warnings
-    elif not storage_capacity:
-        # if fsx_fs_id is not provided, storage_capacity must be provided
-        errors.append("When specifying 'fsx' section, the 'storage_capacity' option must be specified")
-    elif deployment_type == "SCRATCH_1":
-        if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
-            errors.append("Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB")
-    elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
-        if per_unit_storage_throughput == 12 and not (storage_capacity % 6000 == 0):
-            errors.append("Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB")
-        elif per_unit_storage_throughput == 40 and not (storage_capacity % 1800 == 0):
-            errors.append("Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB")
-    elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
-        if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
-            errors.append(
-                "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB"
-            )
 
     return errors, warnings
 
@@ -409,16 +286,6 @@ def dcv_enabled_validator(param_key, param_value, pcluster_config):
                     port=pcluster_config.get_section("dcv").get_param_value("port")
                 )
             )
-
-    return errors, warnings
-
-
-def fsx_imported_file_chunk_size_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if not 1 <= int(param_value) <= 512000:
-        errors.append("'{0}' has a minimum size of 1 MiB, and max size of 512,000 MiB".format(param_key))
 
     return errors, warnings
 
@@ -1331,79 +1198,6 @@ def _describe_ec2_key_pair(key_pair_name):
 
 def get_bucket_name_from_s3_url(import_path):
     return import_path.split("/")[2]
-
-
-def validate_s3_options(errors, fsx_import_path, fsx_imported_file_chunk_size, fsx_export_path, fsx_auto_import_policy):
-    if fsx_imported_file_chunk_size and not fsx_import_path:
-        errors.append("When specifying 'imported_file_chunk_size', the 'import_path' option must be specified")
-
-    if fsx_export_path and not fsx_import_path:
-        errors.append("When specifying 'export_path', the 'import_path' option must be specified")
-
-    if fsx_auto_import_policy and not fsx_import_path:
-        errors.append("When specifying 'auto_import_policy', the 'import_path' option must be specified")
-
-
-def validate_persistent_options(errors, fsx_deployment_type, fsx_kms_key_id, fsx_per_unit_storage_throughput):
-    if fsx_deployment_type == "PERSISTENT_1":
-        if not fsx_per_unit_storage_throughput:
-            errors.append("'per_unit_storage_throughput' must be specified when 'deployment_type = PERSISTENT_1'")
-    else:
-        if fsx_kms_key_id:
-            errors.append("'fsx_kms_key_id' can only be used when 'deployment_type = PERSISTENT_1'")
-        if fsx_per_unit_storage_throughput:
-            errors.append("'per_unit_storage_throughput' can only be used when 'deployment_type = PERSISTENT_1'")
-
-
-def validate_backup_options(
-    errors,
-    fsx_automatic_backup_retention_days,
-    fsx_daily_automatic_backup_start_time,
-    fsx_copy_tags_to_backups,
-    fsx_deployment_type,
-    fsx_imported_file_chunk_size,
-    fsx_import_path,
-    fsx_export_path,
-    fsx_auto_import_policy,
-):
-    if not fsx_automatic_backup_retention_days and fsx_daily_automatic_backup_start_time:
-        errors.append(
-            "When specifying 'daily_automatic_backup_start_time', "
-            "the 'automatic_backup_retention_days' option must be specified"
-        )
-    if not fsx_automatic_backup_retention_days and fsx_copy_tags_to_backups is not None:
-        errors.append(
-            "When specifying 'copy_tags_to_backups', the 'automatic_backup_retention_days' option must be specified"
-        )
-    if fsx_deployment_type != "PERSISTENT_1" and fsx_automatic_backup_retention_days:
-        errors.append("FSx automatic backup features can be used only with 'PERSISTENT_1' file systems")
-    if (
-        fsx_imported_file_chunk_size or fsx_import_path or fsx_export_path or fsx_auto_import_policy
-    ) and fsx_automatic_backup_retention_days:
-        errors.append("Backups cannot be created on S3-linked file systems")
-
-
-def validate_storage_type_options(
-    errors, fsx_storage_type, fsx_deployment_type, fsx_per_unit_storage_throughput, fsx_drive_cache_type
-):
-    if fsx_storage_type == "HDD":
-        if fsx_deployment_type != "PERSISTENT_1":
-            errors.append("For HDD filesystems, 'deployment_type' must be 'PERSISTENT_1'")
-        if fsx_per_unit_storage_throughput not in FSX_HDD_THROUGHPUT:
-            errors.append(
-                "For HDD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
-                    FSX_HDD_THROUGHPUT
-                )
-            )
-    else:  # SSD or None
-        if fsx_drive_cache_type != "NONE":
-            errors.append("'drive_cache_type' features can be used only with HDD filesystems")
-        if fsx_per_unit_storage_throughput and fsx_per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
-            errors.append(
-                "For SSD filesystems, 'per_unit_storage_throughput' can only have the following values: {0}".format(
-                    FSX_SSD_THROUGHPUT
-                )
-            )
 
 
 def duplicate_shared_dir_validator(section_key, section_label, pcluster_config):

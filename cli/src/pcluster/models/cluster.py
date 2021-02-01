@@ -29,7 +29,13 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeTypeSizeValidator,
 )
 from pcluster.validators.ec2_validators import InstanceTypeValidator
-from pcluster.validators.fsx_validators import FsxValidator
+from pcluster.validators.fsx_validators import (
+    FsxBackupOptionsValidator,
+    FsxPersistentOptionsValidator,
+    FsxS3Validator,
+    FsxStorageCapacityValidator,
+    FsxStorageTypeOptionsValidator,
+)
 from pcluster.validators.s3_validators import UrlValidator
 
 
@@ -250,7 +256,46 @@ class SharedFsx(SharedStorage):
         self.auto_import_policy = Param(auto_import_policy)
         self.drive_cache_type = Param(drive_cache_type)
         self.storage_type = Param(storage_type)
-        self._add_validator(FsxValidator, fsx_config=self)
+        self._add_validator(
+            FsxS3Validator,
+            import_path=self.import_path,
+            imported_file_chunk_size=self.imported_file_chunk_size,
+            export_path=self.export_path,
+            auto_import_policy=self.auto_import_policy,
+        )
+        self._add_validator(
+            FsxPersistentOptionsValidator,
+            deployment_type=self.deployment_type,
+            kms_key_id=self.kms_key_id,
+            per_unit_storage_throughput=self.per_unit_storage_throughput,
+        )
+        self._add_validator(
+            FsxBackupOptionsValidator,
+            automatic_backup_retention_days=self.automatic_backup_retention_days,
+            daily_automatic_backup_start_time=self.daily_automatic_backup_start_time,
+            copy_tags_to_backups=self.copy_tags_to_backups,
+            deployment_type=self.deployment_type,
+            imported_file_chunk_size=self.imported_file_chunk_size,
+            import_path=self.import_path,
+            export_path=self.export_path,
+            auto_import_policy=self.auto_import_policy,
+        )
+        self._add_validator(
+            FsxStorageTypeOptionsValidator,
+            storage_type=self.storage_type,
+            deployment_type=self.deployment_type,
+            per_unit_storage_throughput=self.per_unit_storage_throughput,
+            drive_cache_type=self.drive_cache_type,
+        )
+        self._add_validator(
+            FsxStorageCapacityValidator,
+            storage_capacity=self.storage_capacity,
+            deployment_type=self.deployment_type,
+            storage_type=self.storage_type,
+            per_unit_storage_throughput=self.per_unit_storage_throughput,
+            file_system_id=self.file_system_id,
+            backup_id=self.backup_id,
+        )
         # TODO decide whether we should split FsxValidator into smaller ones
 
 

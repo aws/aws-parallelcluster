@@ -179,12 +179,11 @@ class FsxSchema(BaseSchema):
     @validates_schema
     def validate_fsx_ignored_parameters(self, data, **kwargs):
         """Return errors for parameters in the FSx config section that would be ignored."""
-        # If file_system_id is specified, all parameters besides shared_dir are ignored.
-        relevant_when_using_existing_fsx = ["file_system_id", "shared_dir"]
+        # If file_system_id is specified, all parameters are ignored.
         messages = []
         if data.get("file_system_id") is not None:
             for key in data:
-                if key is not None and key not in relevant_when_using_existing_fsx:
+                if key is not None and key != "file_system_id":
                     messages.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key))
             if messages:
                 raise ValidationError(message=messages)
