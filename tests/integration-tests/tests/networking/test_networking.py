@@ -48,7 +48,7 @@ def networking_stack_factory(request):
 def test_public_network_topology(region, vpc_stack, networking_stack_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "192.168.3.0/24"
+    public_subnet_cidr = "192.168.96.0/24"
     availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
@@ -71,8 +71,8 @@ def test_public_network_topology(region, vpc_stack, networking_stack_factory, ra
 def test_public_private_network_topology(region, vpc_stack, networking_stack_factory, random_az_selector):
     ec2_client = boto3.client("ec2", region_name=region)
     vpc_id = vpc_stack.cfn_outputs["VpcId"]
-    public_subnet_cidr = "192.168.5.0/24"
-    private_subnet_cidr = "192.168.4.0/24"
+    public_subnet_cidr = "192.168.98.0/24"
+    private_subnet_cidr = "192.168.97.0/24"
     availability_zone = random_az_selector(region, default_value="")
     internet_gateway_id = vpc_stack.cfn_resources["InternetGateway"]
 
