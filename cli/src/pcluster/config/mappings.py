@@ -62,7 +62,6 @@ from pcluster.config.validators import (
     compute_resource_validator,
     dcv_enabled_validator,
     disable_hyperthreading_architecture_validator,
-    disable_hyperthreading_validator,
     duplicate_shared_dir_validator,
     ebs_settings_validator,
     ec2_ami_validator,
@@ -79,7 +78,6 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
-    extra_json_validator,
     fsx_architecture_os_validator,
     fsx_lustre_auto_import_validator,
     fsx_lustre_backup_validator,
@@ -881,7 +879,6 @@ CLUSTER_COMMON_PARAMS = [
     ("extra_json", {
         "type": ExtraJsonCfnParam,
         "cfn_param_mapping": "ExtraJson",
-        "validators": [extra_json_validator],
         "update_policy": UpdatePolicy(
             UpdatePolicy.UNSUPPORTED,
             fail_reason=UpdatePolicy.FAIL_REASONS["extra_json_update"],
@@ -1093,7 +1090,7 @@ CLUSTER_SIT = {
                 "type": DisableHyperThreadingCfnParam,
                 "default": False,
                 "cfn_param_mapping": "Cores",
-                "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
+                "validators": [disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
         ]
@@ -1124,7 +1121,7 @@ CLUSTER_HIT = {
             ("disable_hyperthreading", {
                 "type": DisableHyperThreadingCfnParam,
                 "cfn_param_mapping": "Cores",
-                "validators": [disable_hyperthreading_validator, disable_hyperthreading_architecture_validator],
+                "validators": [disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("disable_cluster_dns", {

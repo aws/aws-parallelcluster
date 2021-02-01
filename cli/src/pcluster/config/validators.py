@@ -213,20 +213,6 @@ def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
-def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if param_value:
-        # Check to see if cfn_scheduler_slots is set
-        cluster_section = pcluster_config.get_section("cluster")
-        extra_json = cluster_section.get_param_value("extra_json")
-        if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
-            errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
-
-    return errors, warnings
-
-
 def disable_hyperthreading_architecture_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
@@ -239,19 +225,6 @@ def disable_hyperthreading_architecture_validator(param_key, param_value, pclust
             "disable_hyperthreading is only supported on instance types that support these architectures: {0}".format(
                 ", ".join(supported_architectures)
             )
-        )
-
-    return errors, warnings
-
-
-def extra_json_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if param_value and param_value.get("cluster") and param_value.get("cluster").get("cfn_scheduler_slots"):
-        warnings.append(
-            "It is highly recommended to use the disable_hyperthreading parameter in order to control the "
-            "hyper-threading configuration in the cluster rather than using cfn_scheduler_slots in extra_json"
         )
 
     return errors, warnings

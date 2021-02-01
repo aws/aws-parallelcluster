@@ -754,33 +754,6 @@ def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        (
-            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": "vcpus"}}'},
-            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
-        ),
-        (
-            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": "cores"}}'},
-            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
-        ),
-        (
-            {"disable_hyperthreading": True, "extra_json": '{"cluster": {"cfn_scheduler_slots": 3}}'},
-            "cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true",
-        ),
-        ({"disable_hyperthreading": True, "extra_json": '{"cluster": {"other_param": "fake_value"}}'}, None),
-        ({"disable_hyperthreading": True}, None),
-        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": "vcpus"}}'}, None),
-        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": "cores"}}'}, None),
-        ({"disable_hyperthreading": False, "extra_json": '{"cluster": {"cfn_scheduler_slots": 3}}'}, None),
-    ],
-)
-def test_disable_hyperthreading_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
     "section_dict, expected_error, expected_warning",
     [
         ({"enable_efa": "NONE"}, "invalid value", None),
@@ -1851,31 +1824,6 @@ def test_duplicate_shared_dir_validator(
     }
 
     utils.assert_param_validator(mocker, config_parser_dict, expected_error=expected_message)
-
-
-@pytest.mark.parametrize(
-    "extra_json, expected_message",
-    [
-        (
-            {"extra_json": {"cluster": {"cfn_scheduler_slots": "1"}}},
-            "It is highly recommended to use the disable_hyperthreading parameter in order to control the "
-            "hyper-threading configuration in the cluster rather than using cfn_scheduler_slots in extra_json",
-        ),
-        (
-            {"extra_json": {"cluster": {"cfn_scheduler_slots": "vcpus"}}},
-            "It is highly recommended to use the disable_hyperthreading parameter in order to control the "
-            "hyper-threading configuration in the cluster rather than using cfn_scheduler_slots in extra_json",
-        ),
-        (
-            {"extra_json": {"cluster": {"cfn_scheduler_slots": "cores"}}},
-            "It is highly recommended to use the disable_hyperthreading parameter in order to control the "
-            "hyper-threading configuration in the cluster rather than using cfn_scheduler_slots in extra_json",
-        ),
-    ],
-)
-def test_extra_json_validator(mocker, capsys, extra_json, expected_message):
-    config_parser_dict = {"cluster default": extra_json}
-    utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_message)
 
 
 @pytest.mark.parametrize(
