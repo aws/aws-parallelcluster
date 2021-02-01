@@ -11,8 +11,18 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.models.param import Param
+from pcluster.models.param import DynamicParam, Param
+from pcluster.utils import (
+    get_supported_architectures_for_instance_type,
+    get_supported_os_for_architecture,
+    is_instance_type_format,
+)
 from pcluster.validators.common import FailureLevel, Validator
+
+EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": [],
+    "arm64": ["centos8"],
+}
 
 
 class FsxNetworkingValidator(Validator):
@@ -127,3 +137,103 @@ class FsxNetworkingValidator(Validator):
             return True
 
         return False
+
+
+class SimultaneousMultithreadingArchitectureValidator(Validator):
+    """Simultaneous Multithreading architecture validator."""
+
+    def validate(self, simultaneous_multithreading: Param, architecture: DynamicParam):
+        """Validate Simultaneous Multithreading and architecture combination."""
+        supported_architectures = ["x86_64"]
+        if simultaneous_multithreading.value and architecture.value not in supported_architectures:
+            self._add_failure(
+                "Simultaneous Multithreading is only supported on instance types that support "
+                "these architectures: {0}".format(", ".join(supported_architectures)),
+                FailureLevel.ERROR,
+            )
+
+        return self._failures
+
+
+class EfaOsArchitectureValidator(Validator):
+    """OS and architecture combination validator if EFA is enabled."""
+
+    def validate(self, efa_enabled: Param, os: Param, architecture: DynamicParam):
+        """Check os and architecture combination whan efa is enabled."""
+        if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture.value):
+            self._add_failure(
+                "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture.value),
+                FailureLevel.ERROR,
+            )
+
+        return self._failures
+
+
+class ArchitectureOsValidator(Validator):
+    """Validate OS and architecture combination."""
+
+    def validate(self, os: Param, architecture: DynamicParam):
+        """ARM AMIs are only available for  a subset of the supported OSes."""
+        allowed_oses = get_supported_os_for_architecture(architecture.value)
+        if os.value not in allowed_oses:
+            self._add_failure(
+                "The architecture {0} is only supported for the following operating systems: {1}".format(
+                    architecture.value, allowed_oses
+                ),
+                FailureLevel.ERROR,
+            )
+
+        return self._failures
+
+
+class InstanceArchitectureCompatibilityValidator(Validator):
+    """Validate instance type and architecture combination."""
+
+    def validate(self, instance_type: Param, architecture: DynamicParam):
+        """Verify that head node and compute instance types imply compatible architectures."""
+        head_node_architecture = architecture.value
+        compute_architectures = get_supported_architectures_for_instance_type(instance_type.value)
+        if head_node_architecture not in compute_architectures:
+            self._add_failure(
+                "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
+                "compatible with the architecture supported by the head node instance type ({2}).".format(
+                    instance_type.value, compute_architectures, head_node_architecture
+                ),
+                FailureLevel.ERROR,
+            )
+
+        return self._failures
+
+
+class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
+    """Validate instance type and architecture combination."""
+
+    def validate(self, instance_types: Param, architecture: DynamicParam):
+        """
+        Verify that head node and compute instance types imply compatible architectures.
+
+        When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
+        """
+        head_node_architecture = architecture.value
+        for instance_type in instance_types.value.split(","):
+            # When awsbatch is used as the scheduler instance families can be used.
+            # Don't attempt to validate architectures for instance families, as it would require
+            # guessing a valid instance type from within the family.
+            if not is_instance_type_format(instance_type) and instance_type != "optimal":
+                self._add_failure(
+                    "Not validating architecture compatibility for compute instance type {0} because it does not have "
+                    "the expected format".format(instance_type),
+                    FailureLevel.INFO,
+                )
+                continue
+            compute_architectures = get_supported_architectures_for_instance_type(instance_type)
+            if head_node_architecture not in compute_architectures:
+                self._add_failure(
+                    "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
+                    "compatible with the architecture supported by the head node instance type ({2}).".format(
+                        instance_type, compute_architectures, head_node_architecture
+                    ),
+                    FailureLevel.ERROR,
+                )
+
+        return self._failures

@@ -32,6 +32,10 @@ from pcluster.models.cluster import (
     Tag,
 )
 from pcluster.models.param import Param
+from pcluster.validators.cluster_validators import (
+    AwsbatchInstancesArchitectureCompatibilityValidator,
+    EfaOsArchitectureValidator,
+)
 
 
 class AwsbatchComputeResource(BaseComputeResource):
@@ -97,3 +101,18 @@ class AwsbatchCluster(BaseCluster):
     ):
         super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
         self.scheduling = scheduling
+
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                self._add_validator(
+                    AwsbatchInstancesArchitectureCompatibilityValidator,
+                    instance_types=compute_resource.instance_type,
+                    architecture=self.architecture,
+                )
+                if compute_resource.efa:
+                    self._add_validator(
+                        EfaOsArchitectureValidator,
+                        efa_enabled=compute_resource.efa.enabled,
+                        os=self.image.os,
+                        architecture=self.architecture,
+                    )

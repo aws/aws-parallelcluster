@@ -55,13 +55,11 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
-    architecture_os_validator,
     base_os_validator,
     cluster_validator,
     compute_instance_type_validator,
     compute_resource_validator,
     dcv_enabled_validator,
-    disable_hyperthreading_architecture_validator,
     duplicate_shared_dir_validator,
     ebs_settings_validator,
     ec2_ami_validator,
@@ -74,7 +72,6 @@ from pcluster.config.validators import (
     ec2_volume_validator,
     ec2_vpc_id_validator,
     efa_gdr_validator,
-    efa_os_arch_validator,
     efa_validator,
     efs_id_validator,
     efs_validator,
@@ -82,7 +79,6 @@ from pcluster.config.validators import (
     fsx_lustre_auto_import_validator,
     fsx_lustre_backup_validator,
     head_node_instance_type_validator,
-    instances_architecture_compatibility_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
     kms_key_validator,
@@ -624,7 +620,7 @@ COMPUTE_RESOURCE = {
     "params": OrderedDict([
         ("instance_type", {
             "type": JsonParam,
-            "validators": [ec2_instance_type_validator, instances_architecture_compatibility_validator],
+            "validators": [ec2_instance_type_validator],
             "required": True,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
@@ -715,7 +711,6 @@ QUEUE = {
         }),
         ("enable_efa", {
             "type": BooleanJsonParam,
-            "validators": [efa_os_arch_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
         }),
         ("enable_efa_gdr", {
@@ -784,7 +779,7 @@ CLUSTER_COMMON_PARAMS = [
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
         "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
-        "validators": [base_os_validator, architecture_os_validator],
+        "validators": [base_os_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
@@ -831,7 +826,7 @@ CLUSTER_COMMON_PARAMS = [
     ("enable_efa", {
         "allowed_values": ["compute"],
         "cfn_param_mapping": "EFA",
-        "validators": [efa_validator, efa_os_arch_validator],
+        "validators": [efa_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa_gdr", {
@@ -1026,7 +1021,7 @@ CLUSTER_SIT = {
             ("compute_instance_type", {
                 "type": ComputeInstanceTypeCfnParam,
                 "cfn_param_mapping": "ComputeInstanceType",
-                "validators": [compute_instance_type_validator, instances_architecture_compatibility_validator],
+                "validators": [compute_instance_type_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("initial_queue_size", {
@@ -1090,7 +1085,6 @@ CLUSTER_SIT = {
                 "type": DisableHyperThreadingCfnParam,
                 "default": False,
                 "cfn_param_mapping": "Cores",
-                "validators": [disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
         ]
@@ -1121,7 +1115,6 @@ CLUSTER_HIT = {
             ("disable_hyperthreading", {
                 "type": DisableHyperThreadingCfnParam,
                 "cfn_param_mapping": "Cores",
-                "validators": [disable_hyperthreading_architecture_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("disable_cluster_dns", {

@@ -346,6 +346,7 @@ class HeadNodeSchema(BaseSchema):
     """Represent the schema of the HeadNode."""
 
     instance_type = fields.Str(required=True)
+    simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
     ssh = fields.Nested(SshSchema, required=True)
     image = fields.Nested(ImageSchema)

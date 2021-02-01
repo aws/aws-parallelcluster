@@ -15,7 +15,7 @@ HeadNode:
       - sg-23456789
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
-  #SimultaneousMultithreading: Boolean  # true
+  SimultaneousMultithreading: false
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32

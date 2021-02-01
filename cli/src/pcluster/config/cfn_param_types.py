@@ -797,6 +797,7 @@ class BaseOSCfnParam(CfnParam):
     We need this class in order to initialize the private architecture param.
     """
 
+    # FIXME moved
     @staticmethod
     def get_instance_type_architecture(instance_type):
         """Compute cluster's 'Architecture' CFN parameter based on its head node instance type."""
@@ -813,6 +814,7 @@ class BaseOSCfnParam(CfnParam):
         #       compute instance types.
         return head_node_supported_architectures[0]
 
+    # FIXME moved
     def refresh(self):
         """Initialize the private architecture param."""
         if self.value:

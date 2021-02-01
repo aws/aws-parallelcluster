@@ -15,12 +15,15 @@
 #
 
 
-# Mark all values. This is useful for distinguishing values implied vs specified by a user.
 class Param:
     """Custom class to wrap a value and add more attributes."""
 
     def __init__(self, value, default=None, valid: bool = True):
-        """Create MarkedValue object and add attributes."""
+        """
+        Initialize param by adding internal attributes.
+
+        Implied attribute is useful for distinguishing values implied vs specified by a user.
+        """
         if value is None and default is not None:
             self.value = default
             self.implied = True
@@ -28,3 +31,16 @@ class Param:
             self.value = value
             self.implied = False
         self.valid = valid
+
+
+class DynamicParam:
+    """Class to manage dynamic params that must be calculated at usage time."""
+
+    def __init__(self, value_calculator):
+        """Initialize dynamic param by saving the function to be used to retrieve the value."""
+        self.__value_calculator = value_calculator
+
+    @property
+    def value(self):
+        """Calculate and return the value."""
+        return self.__value_calculator()
