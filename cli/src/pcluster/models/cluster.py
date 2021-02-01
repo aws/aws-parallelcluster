@@ -59,6 +59,7 @@ class Resource(ABC):
     def validate(self, raise_on_error=False):
         """Execute registered validators, ordered by priority (high prio --> executed first)."""
         # order validators by priority
+        self._validation_failures.clear()
         self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
 
         # execute validators and add results in validation_failures array
@@ -415,7 +416,7 @@ class HeadNode(Resource):
         self.storage = storage
         self.dcv = dcv
         self.efa = efa
-        self._add_validator(InstanceTypeValidator, priority=1, instance_type=self.instance_type)
+        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
 
 class BaseComputeResource(Resource):
