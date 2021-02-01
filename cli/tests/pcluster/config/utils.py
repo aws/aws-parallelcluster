@@ -109,7 +109,7 @@ def get_mock_pcluster_config_patches(scheduler, extra_patches=None):
     patches = {
         "pcluster.config.validators.get_supported_instance_types": head_node_instances,
         "pcluster.config.validators.get_supported_compute_instance_types": compute_instances,
-        "pcluster.config.validators.get_supported_architectures_for_instance_type": architectures,
+        "pcluster.utils.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_availability_zone_of_subnet": "mocked_avail_zone",
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type": InstanceTypeInfo(

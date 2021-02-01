@@ -32,6 +32,10 @@ from pcluster.models.cluster import (
     Tag,
 )
 from pcluster.models.param import Param
+from pcluster.validators.cluster_validators import (
+    EfaOsArchitectureValidator,
+    InstanceArchitectureCompatibilityValidator,
+)
 
 
 class SlurmComputeResource(BaseComputeResource):
@@ -78,7 +82,7 @@ class SlurmSettings(CommonSchedulingSettings):
 
 
 class SlurmScheduling(Resource):
-    """Represent a generic Scheduling resource."""
+    """Represent a slurm Scheduling resource."""
 
     def __init__(self, queues: List[SlurmQueue], settings: SlurmSettings = None):
         super().__init__()
@@ -103,3 +107,19 @@ class SlurmCluster(BaseCluster):
     ):
         super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
         self.scheduling = scheduling
+
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                self._add_validator(
+                    InstanceArchitectureCompatibilityValidator,
+                    instance_type=compute_resource.instance_type,
+                    architecture=self.architecture,
+                )
+                if compute_resource.efa:
+                    self._add_validator(
+                        EfaOsArchitectureValidator,
+                        priority=9,
+                        efa_enabled=compute_resource.efa.enabled,
+                        os=self.image.os,
+                        architecture=self.architecture,
+                    )

@@ -298,7 +298,7 @@ def _mock_parallel_cluster_config(mocker):
     # NOTE: the following shouldn't be needed given that easyconfig doesn't validate the config file,
     #       but it's being included in case that changes in the future.
     mocker.patch(
-        "pcluster.config.validators.get_supported_architectures_for_instance_type",
+        "pcluster.utils.get_supported_architectures_for_instance_type",
         side_effect=lambda instance: ["arm64"] if instance == "m6g.xlarge" else ["x86_64"],
     )
 

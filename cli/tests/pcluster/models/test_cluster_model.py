@@ -12,7 +12,7 @@
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
-from pcluster.models.param import Param
+from pcluster.models.param import DynamicParam, Param
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -72,3 +72,37 @@ def test_resource_validate():
     _assert_validation_result(validation_failures[0], FailureLevel.CRITICAL, "Critical error fake-value.")
     _assert_validation_result(validation_failures[1], FailureLevel.WARNING, "Combination fake-value - other-value.")
     _assert_validation_result(validation_failures[2], FailureLevel.INFO, "Wrong value other-value.")
+
+
+def test_dynamic_property_validate():
+    """Verify that validators of dynamic parameters are working as expected."""
+
+    class FakeResource(Resource):
+        """Fake resource class to test validators."""
+
+        def __init__(self):
+            super().__init__()
+            self.dynamic_attribute = DynamicParam(value_calculator=self._fetch_dynamic_param)
+            self.deps_value = ""
+            self._add_validator(FakeInfoValidator, param=self.dynamic_attribute)
+
+        def _fetch_dynamic_param(self):
+            return f"dynamic-value: {self.deps_value}"
+
+    fake_resource = FakeResource()
+    validation_failures = fake_resource.validate()
+    _assert_validation_result(
+        validation_failures[0], FailureLevel.INFO, f"Wrong value dynamic-value: {fake_resource.deps_value}."
+    )
+
+    fake_resource.deps_value = "test1"
+    validation_failures = fake_resource.validate()
+    _assert_validation_result(
+        validation_failures[0], FailureLevel.INFO, f"Wrong value dynamic-value: {fake_resource.deps_value}."
+    )
+
+    fake_resource.deps_value = "test2"
+    validation_failures = fake_resource.validate()
+    _assert_validation_result(
+        validation_failures[0], FailureLevel.INFO, f"Wrong value dynamic-value: {fake_resource.deps_value}."
+    )

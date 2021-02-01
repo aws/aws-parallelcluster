@@ -26,12 +26,9 @@ from pcluster.utils import (
     get_efs_mount_target_id,
     get_file_section_name,
     get_region,
-    get_supported_architectures_for_instance_type,
     get_supported_compute_instance_types,
     get_supported_instance_types,
-    get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
-    is_instance_type_format,
     paginate_boto3,
     validate_pcluster_version_based_on_ami_name,
 )
@@ -65,11 +62,6 @@ FSX_SUPPORTED_ARCHITECTURES_OSES = {
 }
 
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
-
-EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": [],
-    "arm64": ["centos8"],
-}
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
     "standard": (1, 1024),
@@ -209,6 +201,20 @@ def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
                 architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
             )
         )
+
+    return errors, warnings
+
+
+def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
+    errors = []
+    warnings = []
+
+    if param_value:
+        # Check to see if cfn_scheduler_slots is set
+        cluster_section = pcluster_config.get_section("cluster")
+        extra_json = cluster_section.get_param_value("extra_json")
+        if extra_json and extra_json.get("cluster") and extra_json.get("cluster").get("cfn_scheduler_slots"):
+            errors.append("cfn_scheduler_slots cannot be set in addition to disable_hyperthreading = true")
 
     return errors, warnings
 
@@ -806,36 +812,6 @@ def cluster_validator(section_key, section_label, pcluster_config):
     return errors, warnings
 
 
-def instances_architecture_compatibility_validator(param_key, param_value, pcluster_config):
-    """Verify that head node and compute instance types imply compatible architectures."""
-    errors = []
-    warnings = []
-
-    head_node_architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    # When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
-    compute_instance_types = param_value.split(",")
-    for compute_instance_type in compute_instance_types:
-        # When awsbatch is used as the scheduler instance families can be used.
-        # Don't attempt to validate architectures for instance families, as it would require
-        # guessing a valid instance type from within the family.
-        if not is_instance_type_format(compute_instance_type) and compute_instance_type != "optimal":
-            LOGFILE_LOGGER.debug(
-                "Not validating architecture compatibility for compute_instance_type {0} because it does not have the "
-                "expected format".format(compute_instance_type)
-            )
-            continue
-        compute_architectures = get_supported_architectures_for_instance_type(compute_instance_type)
-        if head_node_architecture not in compute_architectures:
-            errors.append(
-                "The specified compute_instance_type ({0}) supports the architectures {1}, none of which are "
-                "compatible with the architecture supported by the master_instance_type ({2}).".format(
-                    compute_instance_type, compute_architectures, head_node_architecture
-                )
-            )
-
-    return errors, warnings
-
-
 def compute_instance_type_validator(param_key, param_value, pcluster_config):
     """Validate compute instance type, calling ec2_instance_type_validator if the scheduler is not awsbatch."""
     errors = []
@@ -921,23 +897,6 @@ def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
         errors.append(
             "When using enable_intel_hpc_platform = {0} it is required to use head node and compute instance "
             "types and an AMI that support these architectures: {1}".format(param_value, allowed_architectures)
-        )
-
-    return errors, warnings
-
-
-def architecture_os_validator(param_key, param_value, pcluster_config):
-    """ARM AMIs are only available for  a subset of the supported OSes."""
-    errors = []
-    warnings = []
-
-    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    allowed_oses = get_supported_os_for_architecture(architecture)
-    if param_value not in allowed_oses:
-        errors.append(
-            "The architecture {0} is only supported for the following operating systems: {1}".format(
-                architecture, allowed_oses
-            )
         )
 
     return errors, warnings
@@ -1194,19 +1153,5 @@ def duplicate_shared_dir_validator(section_key, section_label, pcluster_config):
             # if there are multiple EBS sections configured, provide an error message
             elif len(list_of_ebs_sections) > 1:
                 errors.append("'shared_dir' can not be specified in cluster section when using multiple EBS volumes")
-
-    return errors, warnings
-
-
-def efa_os_arch_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    cluster_section = pcluster_config.get_section("cluster")
-    architecture = cluster_section.get_param_value("architecture")
-    base_os = cluster_section.get_param_value("base_os")
-
-    if base_os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
-        errors.append("EFA currently not supported on {0} for {1} architecture".format(base_os, architecture))
 
     return errors, warnings

@@ -9,9 +9,17 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from assertpy import assert_that
 
-from pcluster.models.param import Param
-from pcluster.validators.cluster_validators import FsxNetworkingValidator
+from pcluster.models.param import DynamicParam, Param
+from pcluster.validators.cluster_validators import (
+    ArchitectureOsValidator,
+    AwsbatchInstancesArchitectureCompatibilityValidator,
+    EfaOsArchitectureValidator,
+    FsxNetworkingValidator,
+    InstanceArchitectureCompatibilityValidator,
+    SimultaneousMultithreadingArchitectureValidator,
+)
 from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -211,3 +219,152 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     actual_failures = FsxNetworkingValidator()(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "simultaneous_multithreading, architecture, expected_message",
+    [
+        (True, "x86_64", None),
+        (False, "x86_64", None),
+        (
+            True,
+            "arm64",
+            "Simultaneous Multithreading is only supported on instance types that support these architectures",
+        ),
+        (False, "arm64", None),
+    ],
+)
+def test_simultaneous_multithreading_architecture_validator(
+    simultaneous_multithreading, architecture, expected_message
+):
+    actual_failures = SimultaneousMultithreadingArchitectureValidator()(
+        Param(simultaneous_multithreading), DynamicParam(lambda: architecture)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "efa_enabled, os, architecture, expected_message",
+    [
+        (True, "alinux2", "x86_64", None),
+        (True, "alinux2", "arm64", None),
+        (True, "centos8", "x86_64", None),
+        (
+            True,
+            "centos8",
+            "arm64",
+            "EFA currently not supported on centos8 for arm64 architecture",
+        ),
+        (False, "centos8", "arm64", None),
+        (True, "ubuntu1804", "x86_64", None),
+        (True, "ubuntu1804", "arm64", None),
+    ],
+)
+def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
+    actual_failures = EfaOsArchitectureValidator()(Param(efa_enabled), Param(os), DynamicParam(lambda: architecture))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "os, architecture, expected_message",
+    [
+        # All OSes supported for x86_64
+        ("alinux", "x86_64", None),
+        ("alinux2", "x86_64", None),
+        ("centos7", "x86_64", None),
+        ("centos8", "x86_64", None),
+        ("ubuntu1604", "x86_64", None),
+        ("ubuntu1804", "x86_64", None),
+        # Only a subset of OSes supported for arm64
+        ("alinux", "arm64", "arm64 is only supported for the following operating systems"),
+        ("alinux2", "arm64", None),
+        ("centos7", "arm64", "arm64 is only supported for the following operating systems"),
+        ("centos8", "arm64", None),
+        ("ubuntu1604", "arm64", "arm64 is only supported for the following operating systems"),
+        ("ubuntu1804", "arm64", None),
+    ],
+)
+def test_architecture_os_validator(os, architecture, expected_message):
+    """Verify that the correct set of OSes is supported for each supported architecture."""
+    actual_failures = ArchitectureOsValidator()(Param(os), DynamicParam(lambda: architecture))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "head_node_architecture, compute_architecture, compute_instance_type, expected_message",
+    [
+        ("x86_64", "x86_64", "c5.xlarge", None),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge",
+            "none of which are compatible with the architecture supported by the head node instance type",
+        ),
+        (
+            "arm64",
+            "x86_64",
+            "c5.xlarge",
+            "none of which are compatible with the architecture supported by the head node instance type",
+        ),
+        ("arm64", "arm64", "m6g.xlarge", None),
+    ],
+)
+def test_instance_architecture_compatibility_validator(
+    mocker, head_node_architecture, compute_architecture, compute_instance_type, expected_message
+):
+    mocker.patch(
+        "pcluster.validators.cluster_validators.get_supported_architectures_for_instance_type",
+        return_value=[compute_architecture],
+    )
+    actual_failures = InstanceArchitectureCompatibilityValidator()(
+        Param(compute_instance_type), DynamicParam(lambda: head_node_architecture)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "head_node_architecture, compute_architecture, compute_instance_types, expected_message",
+    [
+        ("x86_64", "x86_64", "optimal", None),
+        # Function to get supported architectures shouldn't be called because compute instance types arg
+        # are instance families.
+        ("x86_64", None, "m6g", "Not validating architecture"),
+        ("x86_64", None, "c5", "Not validating architecture"),
+        # The validator must handle the case where compute instance type is a CSV list
+        ("arm64", "arm64", "m6g.xlarge,r6g.xlarge", None),
+        (
+            "x86_64",
+            "arm64",
+            "m6g.xlarge,r6g.xlarge",
+            "none of which are compatible with the architecture supported by the head node instance type",
+        ),
+    ],
+)
+def test_awsbatch_instances_architecture_compatibility_validator(
+    mocker, head_node_architecture, compute_architecture, compute_instance_types, expected_message
+):
+    def _internal_is_instance_type(itype):
+        return "." in itype or itype == "optimal"
+
+    supported_architectures_patch = mocker.patch(
+        "pcluster.validators.cluster_validators.get_supported_architectures_for_instance_type",
+        return_value=[compute_architecture],
+    )
+    is_instance_type_patch = mocker.patch(
+        "pcluster.validators.cluster_validators.is_instance_type_format", side_effect=_internal_is_instance_type
+    )
+
+    instance_types = compute_instance_types.split(",")
+
+    actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator()(
+        Param(compute_instance_types), DynamicParam(lambda: head_node_architecture)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+    if expected_message:
+        assert_that(len(actual_failures)).is_equal_to(len(instance_types))
+
+    non_instance_families = [
+        instance_type for instance_type in instance_types if _internal_is_instance_type(instance_type)
+    ]
+    assert_that(supported_architectures_patch.call_count).is_equal_to(len(non_instance_families))
+    assert_that(is_instance_type_patch.call_count).is_equal_to(len(instance_types))
