@@ -1077,22 +1077,6 @@ def test_maintain_initial_size_validator(mocker, section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
-    "base_os, expected_warning",
-    [
-        ("alinux2", None),
-        ("centos7", None),
-        ("centos8", None),
-        ("ubuntu1604", None),
-        ("ubuntu1804", None),
-        ("alinux", "alinux.*will reach end-of-life in late 2020"),
-    ],
-)
-def test_base_os_validator(mocker, capsys, base_os, expected_warning):
-    config_parser_dict = {"cluster default": {"base_os": base_os}}
-    utils.assert_param_validator(mocker, config_parser_dict, capsys=capsys, expected_warning=expected_warning)
-
-
-@pytest.mark.parametrize(
     "cluster_section_dict, expected_message",
     [
         # SIT cluster, perfectly fine
