@@ -16,28 +16,26 @@ from pcluster.models.common import FailureLevel, Param, Validator
 class BaseAMIValidator(Validator):
     """Base AMI validator."""
 
-    def validate(self, image: Param):
+    def _validate(self, image: Param):
         """Validate given ami id or image arn."""
         ami_id = utils.get_ami_id(image.value)
         if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
             self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.CRITICAL)
-        return self._failures
 
 
 class InstanceTypeValidator(Validator):
     """EC2 Instance type validator."""
 
-    def validate(self, instance_type: Param):
+    def _validate(self, instance_type: Param):
         """Validate given instance type."""
         if instance_type.value not in Ec2Client().describe_instance_type_offerings():
             self._add_failure(f"The instance type '{instance_type.value}' is not supported.", FailureLevel.CRITICAL)
-        return self._failures
 
 
 class InstanceTypeBaseAMICompatibleValidator(Validator):
     """EC2 Instance type and base ami compatible validator."""
 
-    def validate(self, instance_type: Param, parent_image: Param):
+    def _validate(self, instance_type: Param, parent_image: Param):
         """Validate given instance type and ami id are compatible."""
         ami_id = utils.get_ami_id(parent_image.value)
         ami_architecture = utils.get_info_for_amis([ami_id])[0].get("Architecture")
@@ -50,4 +48,3 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                 ),
                 FailureLevel.CRITICAL,
             )
-        return self._failures

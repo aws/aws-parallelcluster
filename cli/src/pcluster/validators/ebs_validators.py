@@ -22,7 +22,7 @@ from pcluster.utils import get_ebs_snapshot_info, get_partition
 class EbsVolumeTypeSizeValidator(Validator):
     """EBS volume type and size validator."""
 
-    def validate(self, volume_type: Param, volume_size: Param):
+    def _validate(self, volume_type: Param, volume_size: Param):
         """Validate given instance type."""
         """
         Validate that the EBS volume size matches the chosen volume type.
@@ -51,13 +51,11 @@ class EbsVolumeTypeSizeValidator(Validator):
                     [volume_size],
                 )
 
-        return self._failures
-
 
 class EbsVolumeThroughputValidator(Validator):
     """EBS volume throughput validator."""
 
-    def validate(self, volume_type: Param, volume_throughput: Param):
+    def _validate(self, volume_type: Param, volume_throughput: Param):
         """Validate gp3 throughput."""
         volume_type_value = volume_type.value
         volume_throughput_value = volume_throughput.value
@@ -73,13 +71,12 @@ class EbsVolumeThroughputValidator(Validator):
                     FailureLevel.ERROR,
                     [volume_throughput],
                 )
-        return self._failures
 
 
 class EbsVolumeThroughputIopsValidator(Validator):
     """EBS volume throughput to iops ratio validator."""
 
-    def validate(self, volume_type: Param, volume_iops: Param, volume_throughput: Param):
+    def _validate(self, volume_type: Param, volume_iops: Param, volume_throughput: Param):
         """Validate gp3 throughput."""
         volume_type_value = volume_type.value
         volume_iops_value = volume_iops.value
@@ -99,13 +96,12 @@ class EbsVolumeThroughputIopsValidator(Validator):
                     FailureLevel.ERROR,
                     [volume_throughput],
                 )
-        return self._failures
 
 
 class EbsVolumeIopsValidator(Validator):
     """EBS volume IOPS validator."""
 
-    def validate(self, volume_type: Param, volume_size: Param, volume_iops: Param):
+    def _validate(self, volume_type: Param, volume_size: Param, volume_iops: Param):
         """Validate IOPS value in respect of volume type."""
         volume_type_value = volume_type.value
         volume_size_value = volume_size.value
@@ -133,13 +129,11 @@ class EbsVolumeIopsValidator(Validator):
                     [volume_iops],
                 )
 
-        return self._failures
-
 
 class EbsVolumeSizeSnapshotValidator(Validator):
     """EBS volume size snapshot validator."""
 
-    def validate(self, snapshot_id: Param, volume_size: Param):
+    def _validate(self, snapshot_id: Param, volume_size: Param):
         """
         Validate the following cases.
 
@@ -209,17 +203,15 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                         FailureLevel.ERROR,
                         [snapshot_id],
                     )
-        return self._failures
 
 
 class EBSVolumeKmsKeyIdValidator(Validator):
     """EBS volume KmsKeyId validator."""
 
-    def validate(self, volume_kms_key_id: Param, volume_encrypted: Param):
+    def _validate(self, volume_kms_key_id: Param, volume_encrypted: Param):
         """Validate KmsKeyId value based on  encrypted value."""
         if volume_kms_key_id.value and not volume_encrypted.value:
             self._add_failure(
                 "Kms Key Id {0} is specified, the encrypted state must be True.".format(volume_kms_key_id.value),
                 FailureLevel.ERROR,
             )
-        return self._failures

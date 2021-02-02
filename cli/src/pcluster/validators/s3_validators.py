@@ -12,7 +12,7 @@ from pcluster.models.common import FailureLevel, Param, Validator
 class UrlValidator(Validator):
     """Url Validator."""
 
-    def validate(self, url: Param):
+    def _validate(self, url: Param):
         """Validate given url with s3, https or file prefix."""
         scheme = urlparse(url.value).scheme
         if scheme in ["https", "s3", "file"]:
@@ -35,24 +35,20 @@ class UrlValidator(Validator):
                     )
                 except ValueError:
                     self._add_failure(
-                        ("The value '{0}' is not a valid URL").format(url.value),
+                        "The value '{0}' is not a valid URL".format(url.value),
                         FailureLevel.ERROR,
                     )
         else:
             self._add_failure(
-                ("The value '{0}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.").format(
-                    url.value
-                ),
+                f"The value '{url.value}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.",
                 FailureLevel.ERROR,
             )
-
-        return self._failures
 
     def _validate_s3_uri(self, s3_url):
         try:
             match = re.match(r"s3://(.*?)/(.*)", s3_url)
             if not match or len(match.groups()) < 2:
-                self._add_failure("s3 url '{0}' is invalid.".format(s3_url), FailureLevel.ERROR)
+                self._add_failure(f"s3 url '{s3_url}' is invalid.", FailureLevel.ERROR)
             bucket_name, object_name = match.group(1), match.group(2)
             S3Client().head_object(bucket_name=bucket_name, object_name=object_name)
 

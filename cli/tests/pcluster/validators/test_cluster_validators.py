@@ -217,7 +217,7 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator()(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
+    actual_failures = FsxNetworkingValidator().execute(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -237,7 +237,7 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 def test_simultaneous_multithreading_architecture_validator(
     simultaneous_multithreading, architecture, expected_message
 ):
-    actual_failures = SimultaneousMultithreadingArchitectureValidator()(
+    actual_failures = SimultaneousMultithreadingArchitectureValidator().execute(
         Param(simultaneous_multithreading), DynamicParam(lambda: architecture)
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -261,7 +261,9 @@ def test_simultaneous_multithreading_architecture_validator(
     ],
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
-    actual_failures = EfaOsArchitectureValidator()(Param(efa_enabled), Param(os), DynamicParam(lambda: architecture))
+    actual_failures = EfaOsArchitectureValidator().execute(
+        Param(efa_enabled), Param(os), DynamicParam(lambda: architecture)
+    )
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -286,7 +288,7 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
 )
 def test_architecture_os_validator(os, architecture, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator()(Param(os), DynamicParam(lambda: architecture))
+    actual_failures = ArchitectureOsValidator().execute(Param(os), DynamicParam(lambda: architecture))
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -316,7 +318,7 @@ def test_instance_architecture_compatibility_validator(
         "pcluster.validators.cluster_validators.get_supported_architectures_for_instance_type",
         return_value=[compute_architecture],
     )
-    actual_failures = InstanceArchitectureCompatibilityValidator()(
+    actual_failures = InstanceArchitectureCompatibilityValidator().execute(
         Param(compute_instance_type), DynamicParam(lambda: head_node_architecture)
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -356,7 +358,7 @@ def test_awsbatch_instances_architecture_compatibility_validator(
 
     instance_types = compute_instance_types.split(",")
 
-    actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator()(
+    actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator().execute(
         Param(compute_instance_types), DynamicParam(lambda: head_node_architecture)
     )
     assert_failure_messages(actual_failures, expected_message)

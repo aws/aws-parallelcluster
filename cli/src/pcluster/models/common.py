@@ -64,9 +64,6 @@ class FailureLevel(Enum):
     INFO = 20
 
 
-# TODO disable specific validator, according with the name
-
-
 class ValidationResult:
     """Represent the result of the validation."""
 
@@ -102,17 +99,17 @@ class Validator(ABC):
         else:
             self._failures.append(result)
 
-    def __call__(self, *arg, **kwargs):
+    def execute(self, *arg, **kwargs):
         """Entry point of all validators to verify all input params are valid."""
         for _, param in kwargs.items():
             if isinstance(param, Param):
                 if not param.valid:
                     return self._failures
-        self.validate(*arg, **kwargs)
+        self._validate(*arg, **kwargs)
         return self._failures
 
     @abstractmethod
-    def validate(self, *args, **kwargs):
+    def _validate(self, *args, **kwargs):
         """Must be implemented with specific validation logic."""
         pass
 
@@ -147,7 +144,7 @@ class Resource(ABC):
         for attr_validator in self.__validators:
             # execute it by passing all the arguments
             self._validation_failures.extend(
-                attr_validator.validator_class(raise_on_error=raise_on_error)(**attr_validator.validator_args)
+                attr_validator.validator_class(raise_on_error=raise_on_error).execute(**attr_validator.validator_args)
             )
 
         return self._validation_failures

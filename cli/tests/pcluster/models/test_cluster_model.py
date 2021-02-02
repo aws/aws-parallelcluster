@@ -18,25 +18,22 @@ from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
 class FakeInfoValidator(Validator):
     """Dummy validator of info level."""
 
-    def validate(self, param: Param):
+    def _validate(self, param: Param):
         self._add_failure(f"Wrong value {param.value}.", FailureLevel.INFO)
-        return self._failures
 
 
 class FakeCriticalValidator(Validator):
     """Dummy validator of critical level."""
 
-    def validate(self, param: Param):
+    def _validate(self, param: Param):
         self._add_failure(f"Critical error {param.value}.", FailureLevel.CRITICAL)
-        return self._failures
 
 
 class FakeComplexValidator(Validator):
     """Dummy validator requiring multiple parameters as input."""
 
-    def validate(self, fake_attribute: Param, other_attribute: Param):
+    def _validate(self, fake_attribute: Param, other_attribute: Param):
         self._add_failure(f"Combination {fake_attribute.value} - {other_attribute.value}.", FailureLevel.WARNING)
-        return self._failures
 
 
 def _assert_validation_result(result, expected_level, expected_message):
