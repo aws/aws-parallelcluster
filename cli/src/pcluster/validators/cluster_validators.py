@@ -27,7 +27,7 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 class FsxNetworkingValidator(Validator):
     """FSx and networking validator."""
 
-    def validate(self, file_system_id: Param, head_node_subnet_id: Param):
+    def _validate(self, file_system_id: Param, head_node_subnet_id: Param):
         """Validate FSx and networking config."""
         try:
             ec2 = boto3.client("ec2")
@@ -77,8 +77,6 @@ class FsxNetworkingValidator(Validator):
                     )
         except ClientError as e:
             self._add_failure(e.response.get("Error").get("Message"), FailureLevel.CRITICAL)
-
-        return self._failures
 
     def _check_in_out_access(self, security_groups_ids, port):
         """
@@ -141,7 +139,7 @@ class FsxNetworkingValidator(Validator):
 class SimultaneousMultithreadingArchitectureValidator(Validator):
     """Simultaneous Multithreading architecture validator."""
 
-    def validate(self, simultaneous_multithreading: Param, architecture: DynamicParam):
+    def _validate(self, simultaneous_multithreading: Param, architecture: DynamicParam):
         """Validate Simultaneous Multithreading and architecture combination."""
         supported_architectures = ["x86_64"]
         if simultaneous_multithreading.value and architecture.value not in supported_architectures:
@@ -151,13 +149,11 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-        return self._failures
-
 
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def validate(self, efa_enabled: Param, os: Param, architecture: DynamicParam):
+    def _validate(self, efa_enabled: Param, os: Param, architecture: DynamicParam):
         """Check os and architecture combination whan efa is enabled."""
         if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture.value):
             self._add_failure(
@@ -165,13 +161,11 @@ class EfaOsArchitectureValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-        return self._failures
-
 
 class ArchitectureOsValidator(Validator):
     """Validate OS and architecture combination."""
 
-    def validate(self, os: Param, architecture: DynamicParam):
+    def _validate(self, os: Param, architecture: DynamicParam):
         """ARM AMIs are only available for  a subset of the supported OSes."""
         allowed_oses = get_supported_os_for_architecture(architecture.value)
         if os.value not in allowed_oses:
@@ -182,13 +176,11 @@ class ArchitectureOsValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-        return self._failures
-
 
 class InstanceArchitectureCompatibilityValidator(Validator):
     """Validate instance type and architecture combination."""
 
-    def validate(self, instance_type: Param, architecture: DynamicParam):
+    def _validate(self, instance_type: Param, architecture: DynamicParam):
         """Verify that head node and compute instance types imply compatible architectures."""
         head_node_architecture = architecture.value
         compute_architectures = get_supported_architectures_for_instance_type(instance_type.value)
@@ -201,13 +193,11 @@ class InstanceArchitectureCompatibilityValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-        return self._failures
-
 
 class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
     """Validate instance type and architecture combination."""
 
-    def validate(self, instance_types: Param, architecture: DynamicParam):
+    def _validate(self, instance_types: Param, architecture: DynamicParam):
         """
         Verify that head node and compute instance types imply compatible architectures.
 
@@ -234,5 +224,3 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                     ),
                     FailureLevel.ERROR,
                 )
-
-        return self._failures

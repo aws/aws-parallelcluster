@@ -15,7 +15,7 @@ from pcluster.models.common import FailureLevel, Validator
 class FsxS3Validator(Validator):
     """FSX S3 validator."""
 
-    def validate(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
+    def _validate(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
         """Verify compatibility of given S3 options for FSX."""
         if imported_file_chunk_size.value and not import_path.value:
             self._add_failure(
@@ -42,7 +42,7 @@ class FsxS3Validator(Validator):
 class FsxPersistentOptionsValidator(Validator):
     """FSX persistent options validator."""
 
-    def validate(self, deployment_type, kms_key_id, per_unit_storage_throughput):
+    def _validate(self, deployment_type, kms_key_id, per_unit_storage_throughput):
         """Verify compatibility of given persistent options for FSX."""
         if deployment_type.value == "PERSISTENT_1":
             if not per_unit_storage_throughput.value:
@@ -69,7 +69,7 @@ class FsxPersistentOptionsValidator(Validator):
 class FsxBackupOptionsValidator(Validator):
     """FSX backup options validator."""
 
-    def validate(
+    def _validate(
         self,
         automatic_backup_retention_days,
         daily_automatic_backup_start_time,
@@ -113,7 +113,7 @@ class FsxBackupOptionsValidator(Validator):
 class FsxStorageTypeOptionsValidator(Validator):
     """FSX storage type options validator."""
 
-    def validate(self, storage_type, deployment_type, per_unit_storage_throughput, drive_cache_type):
+    def _validate(self, storage_type, deployment_type, per_unit_storage_throughput, drive_cache_type):
         """Verify compatibility of given storage type options for FSX."""
         if storage_type.value == "HDD":
             if deployment_type.value != "PERSISTENT_1":
@@ -150,7 +150,7 @@ class FsxStorageTypeOptionsValidator(Validator):
 class FsxStorageCapacityValidator(Validator):
     """FSX storage capacity validator."""
 
-    def validate(
+    def _validate(
         self, storage_capacity, deployment_type, storage_type, per_unit_storage_throughput, file_system_id, backup_id
     ):
         """Verify compatibility of given storage capacity options for FSX."""

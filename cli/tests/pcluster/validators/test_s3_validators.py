@@ -27,5 +27,5 @@ def test_url_validator(mocker, url, response, expected_message):
     )
     mocker.patch("pcluster.validators.s3_validators.urlopen", return_value=None)
 
-    actual_failures = UrlValidator()(url=Param(url))
+    actual_failures = UrlValidator().execute(url=Param(url))
     assert_failure_messages(actual_failures, expected_message)

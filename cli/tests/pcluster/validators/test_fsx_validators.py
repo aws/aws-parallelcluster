@@ -55,7 +55,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
     ],
 )
 def test_fsx_s3_validator(import_path, imported_file_chunk_size, export_path, auto_import_policy, expected_message):
-    actual_failures = FsxS3Validator()(
+    actual_failures = FsxS3Validator().execute(
         Param(import_path), Param(imported_file_chunk_size), Param(export_path), Param(auto_import_policy)
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -97,7 +97,7 @@ def test_fsx_s3_validator(import_path, imported_file_chunk_size, export_path, au
     ],
 )
 def test_fsx_persistent_options_validator(deployment_type, kms_key_id, per_unit_storage_throughput, expected_message):
-    actual_failures = FsxPersistentOptionsValidator()(
+    actual_failures = FsxPersistentOptionsValidator().execute(
         Param(deployment_type), Param(kms_key_id), Param(per_unit_storage_throughput)
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -199,7 +199,7 @@ def test_fsx_backup_options_validator(
     auto_import_policy,
     expected_message,
 ):
-    actual_failures = FsxBackupOptionsValidator()(
+    actual_failures = FsxBackupOptionsValidator().execute(
         Param(automatic_backup_retention_days),
         Param(daily_automatic_backup_start_time),
         Param(copy_tags_to_backups),
@@ -255,7 +255,7 @@ def test_fsx_backup_options_validator(
 def test_fsx_storage_type_options_validator(
     storage_type, deployment_type, per_unit_storage_throughput, drive_cache_type, expected_message
 ):
-    actual_failures = FsxStorageTypeOptionsValidator()(
+    actual_failures = FsxStorageTypeOptionsValidator().execute(
         Param(storage_type), Param(deployment_type), Param(per_unit_storage_throughput), Param(drive_cache_type)
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -360,7 +360,7 @@ def test_fsx_storage_capacity_validator(
     backup_id,
     expected_message,
 ):
-    actual_failures = FsxStorageCapacityValidator()(
+    actual_failures = FsxStorageCapacityValidator().execute(
         Param(storage_capacity),
         Param(deployment_type),
         Param(storage_type),
