@@ -196,4 +196,5 @@ class EBSVolumeKmsKeyIdValidator(Validator):
             self._add_failure(
                 "Kms Key Id {0} is specified, the encrypted state must be True.".format(volume_kms_key_id.value),
                 FailureLevel.ERROR,
+                [volume_encrypted],
             )
