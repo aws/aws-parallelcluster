@@ -13,6 +13,7 @@ import pytest
 from pcluster.models.common import DynamicParam, Param
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    ComputeResourceValidator,
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
@@ -25,6 +26,19 @@ from tests.pcluster.validators.utils import assert_failure_messages
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.validators.cluster_validators.boto3"
+
+
+@pytest.mark.parametrize(
+    "min_count, max_count, expected_message",
+    [
+        (1, 2, None),
+        (1, 1, None),
+        (2, 1, "Max count must be greater than or equal to min count"),
+    ],
+)
+def test_compute_resource_validator(min_count, max_count, expected_message):
+    actual_failures = ComputeResourceValidator().execute(Param(min_count), Param(max_count))
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

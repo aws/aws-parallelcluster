@@ -12,9 +12,43 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import DynamicParam, Param
-from pcluster.validators.awsbatch_validators import AwsbatchInstancesArchitectureCompatibilityValidator
+from pcluster.validators.awsbatch_validators import (
+    AwsbatchComputeResourceValidator,
+    AwsbatchInstancesArchitectureCompatibilityValidator,
+)
 
 from .utils import assert_failure_messages
+
+
+@pytest.mark.parametrize(
+    "min_vcpus, desired_vcpus, max_vcpus, expected_message",
+    [
+        (1, 2, 3, None),
+        (
+            3,
+            2,
+            3,
+            "desired vcpus must be greater than or equal to min vcpus",
+        ),
+        (
+            1,
+            4,
+            3,
+            "desired vcpus must be fewer than or equal to max vcpus",
+        ),
+        (
+            4,
+            4,
+            3,
+            "Max vcpus must be greater than or equal to min vcpus",
+        ),
+    ],
+)
+def test_cluster_validator(min_vcpus, desired_vcpus, max_vcpus, expected_message):
+    actual_failures = AwsbatchComputeResourceValidator().execute(
+        Param(min_vcpus), Param(desired_vcpus), Param(max_vcpus)
+    )
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

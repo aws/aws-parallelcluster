@@ -20,6 +20,17 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 }
 
 
+class ComputeResourceValidator(Validator):
+    """Slurm compute resource validator."""
+
+    def _validate(self, min_count: Param, max_count: Param):
+        """Validate min count and max count combinations."""
+        if max_count.value < min_count.value:
+            self._add_failure(
+                "Max count must be greater than or equal to min count", FailureLevel.ERROR, [min_count, max_count]
+            )
+
+
 class FsxNetworkingValidator(Validator):
     """FSx and networking validator."""
 

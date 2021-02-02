@@ -13,6 +13,31 @@ from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
 from pcluster.utils import get_supported_architectures_for_instance_type, is_instance_type_format
 
 
+class AwsbatchComputeResourceValidator(Validator):
+    """Awsbatch compute resource validator."""
+
+    def _validate(self, min_vcpus: Param, desired_vcpus: Param, max_vcpus: Param):
+        """Validate min, desired and max vcpus combination."""
+        if desired_vcpus.value < min_vcpus.value:
+            self._add_failure(
+                "The number of desired vcpus must be greater than or equal to min vcpus",
+                FailureLevel.ERROR,
+                [min_vcpus, desired_vcpus],
+            )
+
+        if desired_vcpus.value > max_vcpus.value:
+            self._add_failure(
+                "The number of desired vcpus must be fewer than or equal to max vcpus",
+                FailureLevel.ERROR,
+                [max_vcpus, desired_vcpus],
+            )
+
+        if max_vcpus.value < min_vcpus.value:
+            self._add_failure(
+                "Max vcpus must be greater than or equal to min vcpus", FailureLevel.ERROR, [max_vcpus, min_vcpus]
+            )
+
+
 class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
     """Validate instance type and architecture combination."""
 

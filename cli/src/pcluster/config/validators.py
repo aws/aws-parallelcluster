@@ -778,40 +778,6 @@ def scheduler_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def cluster_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    section = pcluster_config.get_section(section_key, section_label)
-    if section.get_param_value("scheduler") == "awsbatch":
-        min_size = section.get_param_value("min_vcpus")
-        desired_size = section.get_param_value("desired_vcpus")
-        max_size = section.get_param_value("max_vcpus")
-
-        if desired_size < min_size:
-            errors.append("desired_vcpus must be greater than or equal to min_vcpus")
-
-        if desired_size > max_size:
-            errors.append("desired_vcpus must be fewer than or equal to max_vcpus")
-
-        if max_size < min_size:
-            errors.append("max_vcpus must be greater than or equal to min_vcpus")
-    else:
-        min_size = (
-            section.get_param_value("initial_queue_size") if section.get_param_value("maintain_initial_size") else 0
-        )
-        desired_size = section.get_param_value("initial_queue_size")
-        max_size = section.get_param_value("max_queue_size")
-
-        if desired_size > max_size:
-            errors.append("initial_queue_size must be fewer than or equal to max_queue_size")
-
-        if max_size < min_size:
-            errors.append("max_queue_size must be greater than or equal to initial_queue_size")
-
-    return errors, warnings
-
-
 def compute_instance_type_validator(param_key, param_value, pcluster_config):
     """Validate compute instance type, calling ec2_instance_type_validator if the scheduler is not awsbatch."""
     errors = []

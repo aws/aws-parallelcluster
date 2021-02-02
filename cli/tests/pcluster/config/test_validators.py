@@ -38,40 +38,6 @@ def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
 
 
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        # traditional scheduler
-        ({"scheduler": "sge", "initial_queue_size": 1, "max_queue_size": 2, "maintain_initial_size": True}, None),
-        (
-            {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": True},
-            "initial_queue_size must be fewer than or equal to max_queue_size",
-        ),
-        (
-            {"scheduler": "sge", "initial_queue_size": 3, "max_queue_size": 2, "maintain_initial_size": False},
-            "initial_queue_size must be fewer than or equal to max_queue_size",
-        ),
-        # awsbatch
-        ({"scheduler": "awsbatch", "min_vcpus": 1, "desired_vcpus": 2, "max_vcpus": 3}, None),
-        (
-            {"scheduler": "awsbatch", "min_vcpus": 3, "desired_vcpus": 2, "max_vcpus": 3},
-            "desired_vcpus must be greater than or equal to min_vcpus",
-        ),
-        (
-            {"scheduler": "awsbatch", "min_vcpus": 1, "desired_vcpus": 4, "max_vcpus": 3},
-            "desired_vcpus must be fewer than or equal to max_vcpus",
-        ),
-        (
-            {"scheduler": "awsbatch", "min_vcpus": 4, "desired_vcpus": 4, "max_vcpus": 3},
-            "max_vcpus must be greater than or equal to min_vcpus",
-        ),
-    ],
-)
-def test_cluster_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
 # FIXME Moved
 @pytest.mark.parametrize(
     "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
