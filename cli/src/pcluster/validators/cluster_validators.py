@@ -51,7 +51,7 @@ class FsxNetworkingValidator(Validator):
                 self._add_failure(
                     "Currently only support using FSx file system that is in the same VPC as the stack. "
                     "The file system provided is in {0}".format(file_system.get("VpcId")),
-                    FailureLevel.CRITICAL,
+                    FailureLevel.ERROR,
                     [file_system_id],
                 )
 
@@ -61,7 +61,7 @@ class FsxNetworkingValidator(Validator):
                 self._add_failure(
                     "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
                     "Elastic Network Interfaces attached to it.".format(file_system_id.value),
-                    FailureLevel.CRITICAL,
+                    FailureLevel.ERROR,
                     [file_system_id],
                 )
             else:
@@ -82,11 +82,11 @@ class FsxNetworkingValidator(Validator):
                         "The current security group settings on file system '{0}' does not satisfy mounting requirement"
                         ". The file system must be associated to a security group that allows inbound and outbound "
                         "TCP traffic through port 988.".format(file_system_id.value),
-                        FailureLevel.CRITICAL,
+                        FailureLevel.ERROR,
                         [file_system_id],
                     )
         except ClientError as e:
-            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.CRITICAL)
+            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
 
     def _check_in_out_access(self, security_groups_ids, port):
         """
@@ -157,7 +157,7 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
                 "Simultaneous Multithreading is only supported on instance types that support "
                 "these architectures: {0}".format(", ".join(supported_architectures)),
                 FailureLevel.ERROR,
-                [simultaneous_multithreading]
+                [simultaneous_multithreading],
             )
 
 
@@ -170,7 +170,7 @@ class EfaOsArchitectureValidator(Validator):
             self._add_failure(
                 "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture.value),
                 FailureLevel.ERROR,
-                [efa_enabled]
+                [efa_enabled],
             )
 
 

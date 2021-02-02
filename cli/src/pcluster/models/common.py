@@ -58,7 +58,6 @@ class DynamicParam:
 class FailureLevel(Enum):
     """Validation failure level."""
 
-    CRITICAL = 50
     ERROR = 40
     WARNING = 30
     INFO = 20

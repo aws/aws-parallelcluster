@@ -22,11 +22,11 @@ class FakeInfoValidator(Validator):
         self._add_failure(f"Wrong value {param.value}.", FailureLevel.INFO)
 
 
-class FakeCriticalValidator(Validator):
-    """Dummy validator of critical level."""
+class FakeErrorValidator(Validator):
+    """Dummy validator of error level."""
 
     def _validate(self, param: Param):
-        self._add_failure(f"Critical error {param.value}.", FailureLevel.CRITICAL)
+        self._add_failure(f"Error {param.value}.", FailureLevel.ERROR)
 
 
 class FakeComplexValidator(Validator):
@@ -52,7 +52,7 @@ def test_resource_validate():
             super().__init__()
             self.fake_attribute = Param("fake-value")
             self.other_attribute = Param("other-value")
-            self._add_validator(FakeCriticalValidator, priority=10, param=self.fake_attribute)
+            self._add_validator(FakeErrorValidator, priority=10, param=self.fake_attribute)
             self._add_validator(FakeInfoValidator, priority=2, param=self.other_attribute)
             self._add_validator(
                 FakeComplexValidator,
@@ -65,7 +65,7 @@ def test_resource_validate():
     validation_failures = fake_resource.validate()
 
     # Verify high prio is the first of the list
-    _assert_validation_result(validation_failures[0], FailureLevel.CRITICAL, "Critical error fake-value.")
+    _assert_validation_result(validation_failures[0], FailureLevel.ERROR, "Error fake-value.")
     _assert_validation_result(validation_failures[1], FailureLevel.WARNING, "Combination fake-value - other-value.")
     _assert_validation_result(validation_failures[2], FailureLevel.INFO, "Wrong value other-value.")
 
