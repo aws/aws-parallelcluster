@@ -16,8 +16,7 @@
 from typing import List
 
 from pcluster import utils
-from pcluster.models.cluster import Resource, Tag
-from pcluster.models.param import Param
+from pcluster.models.common import Param, Resource, Tag
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import (
     BaseAMIValidator,

@@ -11,13 +11,12 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.models.param import DynamicParam, Param
+from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
 from pcluster.utils import (
     get_supported_architectures_for_instance_type,
     get_supported_os_for_architecture,
     is_instance_type_format,
 )
-from pcluster.validators.common import FailureLevel, Validator
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],

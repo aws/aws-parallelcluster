@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from pcluster.models.param import Param
+from pcluster.models.common import Param
 from pcluster.validators.fsx_validators import (
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,

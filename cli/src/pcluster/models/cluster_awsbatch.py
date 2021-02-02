@@ -31,7 +31,7 @@ from pcluster.models.cluster import (
     Storage,
     Tag,
 )
-from pcluster.models.param import Param
+from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
     AwsbatchInstancesArchitectureCompatibilityValidator,
     EfaOsArchitectureValidator,

@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.models.common import FailureLevel, Validator
 
 
 class FsxS3Validator(Validator):
