@@ -15,7 +15,8 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
-from tests.pcluster.models.imagebuilder_dummy_model import dummy_imagebuilder
+
+from ..models.imagebuilder_dummy_model import dummy_imagebuilder
 
 
 @pytest.mark.parametrize(

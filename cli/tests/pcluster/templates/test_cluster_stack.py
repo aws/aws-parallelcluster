@@ -18,7 +18,8 @@ from common.utils import load_yaml_dict
 from pcluster.models.cluster import HeadNode
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cluster_stack import HeadNodeConstruct
-from tests.pcluster.models.cluster_dummy_model import dummy_cluster, dummy_head_node
+
+from ..models.cluster_dummy_model import dummy_cluster, dummy_head_node
 
 
 def test_cluster_builder():
