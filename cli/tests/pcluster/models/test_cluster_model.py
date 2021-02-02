@@ -12,8 +12,7 @@
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
-from pcluster.models.param import DynamicParam, Param
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
 
 
 class FakeInfoValidator(Validator):

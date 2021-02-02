@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.models.param import DynamicParam, Param
+from pcluster.models.common import DynamicParam, Param
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,

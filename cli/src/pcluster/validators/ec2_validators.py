@@ -10,8 +10,7 @@
 # limitations under the License.
 from common.boto3.ec2 import Ec2Client
 from pcluster import utils
-from pcluster.models.param import Param
-from pcluster.validators.common import FailureLevel, Validator
+from pcluster.models.common import FailureLevel, Param, Validator
 
 
 class BaseAMIValidator(Validator):

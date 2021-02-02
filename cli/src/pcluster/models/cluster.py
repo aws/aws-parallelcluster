@@ -13,13 +13,11 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 
-import operator
-from abc import ABC
 from enum import Enum
 from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.param import DynamicParam, Param
+from pcluster.models.common import DynamicParam, Param, Resource, Tag
 from pcluster.utils import error, get_supported_architectures_for_instance_type
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -27,7 +25,6 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     SimultaneousMultithreadingArchitectureValidator,
 )
-from pcluster.validators.common import ValidationResult, Validator
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EbsVolumeThroughputIopsValidator,
@@ -43,51 +40,6 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.s3_validators import UrlValidator
-
-
-class _ResourceValidator(ABC):
-    """Represent a generic validator for a resource attribute or object. It's a module private class."""
-
-    def __init__(self, validator_class: Validator, priority: int = 1, **kwargs):
-        """Initialize validator. Note: Validators with higher priorities will be executed first."""
-        self.validator_class = validator_class
-        self.priority = priority
-        self.validator_args = kwargs
-
-
-class Resource(ABC):
-    """Represent an abstract Resource entity."""
-
-    def __init__(self):
-        self.__validators: List[_ResourceValidator] = []
-        self._validation_failures: List[ValidationResult] = []
-
-    def validate(self, raise_on_error=False):
-        """Execute registered validators, ordered by priority (high prio --> executed first)."""
-        # order validators by priority
-        self._validation_failures.clear()
-        self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
-
-        # execute validators and add results in validation_failures array
-        for attr_validator in self.__validators:
-            # execute it by passing all the arguments
-            self._validation_failures.extend(
-                attr_validator.validator_class(raise_on_error=raise_on_error)(**attr_validator.validator_args)
-            )
-
-        return self._validation_failures
-
-    def _add_validator(self, validator_class: Validator, priority: int = 1, **kwargs):
-        """Store validator to be executed at validation execution."""
-        self.__validators.append(_ResourceValidator(validator_class, priority=priority, **kwargs))
-
-    def __repr__(self):
-        """Return a human readable representation of the Resource object."""
-        return "<{name}({attributes})>".format(
-            name=self.__class__.__name__,
-            attributes=",".join(f"{attr}={value}" for attr, value in self.__dict__.items()),
-        )
-
 
 # ---------------------- Storage ---------------------- #
 
@@ -604,19 +556,6 @@ class Iam(Resource):
         self.roles = roles
         self.s3_access = s3_access
         self.additional_iam_policies = additional_iam_policies
-
-
-class Tag(Resource):
-    """Represent the Tag configuration."""
-
-    def __init__(
-        self,
-        key: str = None,
-        value: str = None,
-    ):
-        super().__init__()
-        self.key = Param(key)
-        self.value = Param(value)
 
 
 # ---------------------- Root resource ---------------------- #

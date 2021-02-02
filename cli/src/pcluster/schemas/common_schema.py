@@ -18,7 +18,7 @@ from marshmallow import Schema, fields, post_dump, post_load, pre_dump, pre_load
 
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import Tag
-from pcluster.models.param import Param
+from pcluster.models.common import Param
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
