@@ -43,14 +43,15 @@ MAX_MINUTES_TO_WAIT_FOR_BACKUP_COMPLETION = 7
         "storage_type",
         "drive_cache_type",
         "storage_capacity",
+        "imported_file_chunk_size",
     ),
     [
-        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200),
-        ("SCRATCH_1", None, "NEW", None, None, 1200),
-        ("SCRATCH_2", None, None, None, None, 1200),
-        ("PERSISTENT_1", 200, None, "SSD", None, 1200),
-        ("PERSISTENT_1", 40, None, "HDD", None, 1800),
-        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000),
+        ("PERSISTENT_1", 200, "NEW_CHANGED", None, None, 1200, 1024),
+        ("SCRATCH_1", None, "NEW", None, None, 1200, 1024),
+        ("SCRATCH_2", None, None, None, None, 1200, 1024),
+        ("PERSISTENT_1", 200, None, "SSD", None, 1200, 2048),
+        ("PERSISTENT_1", 40, None, "HDD", None, 1800, 512),
+        ("PERSISTENT_1", 12, None, "HDD", "READ", 6000, 1024),
     ],
 )
 @pytest.mark.regions(["eu-west-1"])
@@ -71,11 +72,13 @@ def test_fsx_lustre_configuration_options(
     storage_type,
     drive_cache_type,
     storage_capacity,
+    imported_file_chunk_size,
 ):
     mount_dir = "/fsx_mount_dir"
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
+    weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%w:%H:%M")
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         mount_dir=mount_dir,
@@ -85,11 +88,51 @@ def test_fsx_lustre_configuration_options(
         storage_type=storage_type,
         drive_cache_type=drive_cache_type,
         storage_capacity=storage_capacity,
+        imported_file_chunk_size=imported_file_chunk_size,
+        weekly_maintenance_start_time=weekly_maintenance_start_time,
     )
     cluster = clusters_factory(cluster_config)
-    _test_fsx_lustre(
-        cluster, region, scheduler, os, mount_dir, bucket_name, storage_type, auto_import_policy, deployment_type
+    _test_fsx_lustre_configuration_options(
+        cluster,
+        region,
+        scheduler,
+        os,
+        mount_dir,
+        bucket_name,
+        storage_type,
+        auto_import_policy,
+        deployment_type,
+        weekly_maintenance_start_time,
+        imported_file_chunk_size,
+        storage_capacity,
     )
+
+
+def _test_fsx_lustre_configuration_options(
+    cluster,
+    region,
+    scheduler,
+    os,
+    mount_dir,
+    bucket_name,
+    storage_type,
+    auto_import_policy,
+    deployment_type,
+    weekly_maintenance_start_time,
+    imported_file_chunk_size,
+    storage_capacity,
+):
+    _test_fsx_lustre(cluster, region, scheduler, os, mount_dir, bucket_name)
+    remote_command_executor = RemoteCommandExecutor(cluster)
+    fsx_fs_id = get_fsx_fs_id(cluster, region)
+    fsx = boto3.client("fsx", region_name=region).describe_file_systems(FileSystemIds=[fsx_fs_id])
+
+    _test_storage_type(storage_type, fsx)
+    _test_deployment_type(deployment_type, fsx)
+    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
+    _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity)
+    _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx)
+    _test_imported_file_chunch_size(imported_file_chunk_size, fsx)
 
 
 @pytest.mark.regions(["eu-west-1"])
@@ -141,9 +184,6 @@ def _test_fsx_lustre(
     os,
     mount_dir,
     bucket_name,
-    storage_type=None,
-    auto_import_policy=None,
-    deployment_type=None,
 ):
     remote_command_executor = RemoteCommandExecutor(cluster)
     scheduler_commands = get_scheduler_commands(scheduler, remote_command_executor)
@@ -152,10 +192,7 @@ def _test_fsx_lustre(
     _test_fsx_lustre_correctly_mounted(remote_command_executor, mount_dir, os, region, fsx_fs_id)
     _test_import_path(remote_command_executor, mount_dir)
     _test_fsx_lustre_correctly_shared(scheduler_commands, remote_command_executor, mount_dir)
-    _test_storage_type(storage_type, fsx_fs_id, region)
-    _test_deployment_type(deployment_type, fsx_fs_id, region)
     _test_export_path(remote_command_executor, mount_dir, bucket_name, region)
-    _test_auto_import(auto_import_policy, remote_command_executor, mount_dir, bucket_name, region)
     _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, fsx_fs_id, region)
 
 
@@ -366,34 +403,27 @@ def get_fsx_fs_id(cluster, region):
     return utils.retrieve_cfn_outputs(fsx_stack, region).get("FileSystemId")
 
 
-def get_storage_type(fsx_fs_id, region):
+def _get_storage_type(fsx):
     logging.info("Getting StorageType from DescribeFilesystem API.")
-    fsx = boto3.client("fsx", region_name=region)
-    return fsx.describe_file_systems(FileSystemIds=[fsx_fs_id]).get("FileSystems")[0].get("StorageType")
+    return fsx.get("FileSystems")[0].get("StorageType")
 
 
-def _test_storage_type(storage_type, fsx_fs_id, region):
+def _test_storage_type(storage_type, fsx):
     if storage_type == "HDD":
-        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("HDD")
+        assert_that(_get_storage_type(fsx)).is_equal_to("HDD")
     else:
-        assert_that(get_storage_type(fsx_fs_id, region)).is_equal_to("SSD")
+        assert_that(_get_storage_type(fsx)).is_equal_to("SSD")
 
 
-def _get_deployment_type(fsx_fs_id, region):
-    deployment_type = (
-        boto3.client("fsx", region_name=region)
-        .describe_file_systems(FileSystemIds=[fsx_fs_id])
-        .get("FileSystems")[0]
-        .get("LustreConfiguration")
-        .get("DeploymentType")
-    )
+def _get_deployment_type(fsx):
+    deployment_type = fsx.get("FileSystems")[0].get("LustreConfiguration").get("DeploymentType")
     logging.info(f"Getting DeploymentType {deployment_type} from DescribeFilesystem API.")
     return deployment_type
 
 
-def _test_deployment_type(deployment_type, fsx_fs_id, region):
-    if deployment_type:
-        assert_that(_get_deployment_type(fsx_fs_id, region)).is_equal_to(deployment_type)
+def _test_deployment_type(deployment_type, fsx):
+    logging.info("Test fsx deployment type")
+    assert_that(_get_deployment_type(fsx)).is_equal_to(deployment_type)
 
 
 def _test_import_path(remote_command_executor, mount_dir):
@@ -518,6 +548,41 @@ def _test_data_repository_task(remote_command_executor, mount_dir, bucket_name, 
     assert_that(file_owner).is_equal_to("6666")
     assert_that(file_group).is_equal_to("6666")
     assert_that(file_permissions).is_equal_to("0100777")
+
+
+def _test_storage_capacity(remote_command_executor, mount_dir, storage_capacity):
+    logging.info("Test FSx storage capacity")
+    # Get the storage size of mount_dir with GB, the storage size is slightly less than storage capacity defined,
+    # here we set 0.1 as the difference ratio threshold
+    result = remote_command_executor.run_remote_command(
+        f"df -BG | grep {mount_dir}" + "| awk '{print$2}' | tr -d -c 0-9"
+    )
+    assert_that((storage_capacity - int(result.stdout)) / storage_capacity).is_less_than(0.1)
+
+
+def _test_imported_file_chunch_size(imported_file_chunk_size, fsx):
+    logging.info("Test FSx ImportedFileChunkSize setting")
+    assert_that(get_imported_chunch_size(fsx)).is_equal_to(imported_file_chunk_size)
+
+
+def _test_weekly_maintenance_start_time(weekly_maintenance_start_time, fsx):
+    logging.info("Test FSx weekly maintenance start time setting")
+    assert_that(get_weekly_maintenance_start_time(fsx)).is_equal_to(weekly_maintenance_start_time)
+
+
+def get_imported_chunch_size(fsx):
+    logging.info("Getting ImportedFileChunkSize from DescribeFilesystem API.")
+    return (
+        fsx.get("FileSystems")[0]
+        .get("LustreConfiguration")
+        .get("DataRepositoryConfiguration")
+        .get("ImportedFileChunkSize")
+    )
+
+
+def get_weekly_maintenance_start_time(fsx):
+    logging.info("Getting WeeklyMaintenanceStartTime from DescribeFilesystem API.")
+    return fsx.get("FileSystems")[0].get("LustreConfiguration").get("WeeklyMaintenanceStartTime")
 
 
 def create_backup_test_file(scheduler_commands, remote_command_executor, mount_dir):
