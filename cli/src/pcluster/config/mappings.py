@@ -55,7 +55,6 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
-    cluster_validator,
     compute_instance_type_validator,
     compute_resource_validator,
     dcv_enabled_validator,
@@ -1001,7 +1000,7 @@ CLUSTER_SIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "SIT",
-    "validators": [cluster_validator] + CLUSTER_COMMON_VALIDATORS,
+    "validators": CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
