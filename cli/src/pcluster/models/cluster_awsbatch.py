@@ -32,10 +32,8 @@ from pcluster.models.cluster import (
     Tag,
 )
 from pcluster.models.common import Param
-from pcluster.validators.cluster_validators import (
-    AwsbatchInstancesArchitectureCompatibilityValidator,
-    EfaOsArchitectureValidator,
-)
+from pcluster.validators.awsbatch_validators import AwsbatchInstancesArchitectureCompatibilityValidator
+from pcluster.validators.cluster_validators import EfaOsArchitectureValidator
 
 
 class AwsbatchComputeResource(BaseComputeResource):
