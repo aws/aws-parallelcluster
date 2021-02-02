@@ -8,14 +8,17 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
-from pcluster.models.common import FailureLevel, Validator
+from pcluster.models.common import FailureLevel, Param, Validator
 
 
 class FsxS3Validator(Validator):
     """FSX S3 validator."""
 
-    def _validate(self, import_path, imported_file_chunk_size, export_path, auto_import_policy):
+    def _validate(
+        self, import_path: Param, imported_file_chunk_size: Param, export_path: Param, auto_import_policy: Param
+    ):
         """Verify compatibility of given S3 options for FSX."""
         if imported_file_chunk_size.value and not import_path.value:
             self._add_failure(
@@ -42,7 +45,7 @@ class FsxS3Validator(Validator):
 class FsxPersistentOptionsValidator(Validator):
     """FSX persistent options validator."""
 
-    def _validate(self, deployment_type, kms_key_id, per_unit_storage_throughput):
+    def _validate(self, deployment_type: Param, kms_key_id: Param, per_unit_storage_throughput: Param):
         """Verify compatibility of given persistent options for FSX."""
         if deployment_type.value == "PERSISTENT_1":
             if not per_unit_storage_throughput.value:
@@ -71,14 +74,14 @@ class FsxBackupOptionsValidator(Validator):
 
     def _validate(
         self,
-        automatic_backup_retention_days,
-        daily_automatic_backup_start_time,
-        copy_tags_to_backups,
-        deployment_type,
-        imported_file_chunk_size,
-        import_path,
-        export_path,
-        auto_import_policy,
+        automatic_backup_retention_days: Param,
+        daily_automatic_backup_start_time: Param,
+        copy_tags_to_backups: Param,
+        deployment_type: Param,
+        imported_file_chunk_size: Param,
+        import_path: Param,
+        export_path: Param,
+        auto_import_policy: Param,
     ):
         """Verify compatibility of given backup options for FSX."""
         if not automatic_backup_retention_days.value and daily_automatic_backup_start_time.value:
@@ -113,7 +116,9 @@ class FsxBackupOptionsValidator(Validator):
 class FsxStorageTypeOptionsValidator(Validator):
     """FSX storage type options validator."""
 
-    def _validate(self, storage_type, deployment_type, per_unit_storage_throughput, drive_cache_type):
+    def _validate(
+        self, storage_type: Param, deployment_type: Param, per_unit_storage_throughput: Param, drive_cache_type: Param
+    ):
         """Verify compatibility of given storage type options for FSX."""
         if storage_type.value == "HDD":
             if deployment_type.value != "PERSISTENT_1":
@@ -151,7 +156,13 @@ class FsxStorageCapacityValidator(Validator):
     """FSX storage capacity validator."""
 
     def _validate(
-        self, storage_capacity, deployment_type, storage_type, per_unit_storage_throughput, file_system_id, backup_id
+        self,
+        storage_capacity: Param,
+        deployment_type: Param,
+        storage_type: Param,
+        per_unit_storage_throughput: Param,
+        file_system_id: Param,
+        backup_id: Param,
     ):
         """Verify compatibility of given storage capacity options for FSX."""
         if file_system_id.value or backup_id.value:
