@@ -33,20 +33,17 @@ class EbsVolumeTypeSizeValidator(Validator):
         The volume size of io1 and io2 ranges from 4 GiB - 16 TiB(16384 GiB)
         The volume sizes of st1 and sc1 range from 500 GiB - 16 TiB(16384 GiB)
         """
-        volume_type_value = volume_type.value
-        volume_size_value = volume_size.value
-
-        if volume_type_value in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
-            min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type_value)
-            if volume_size_value > max_size:
+        if volume_type.value in EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS:
+            min_size, max_size = EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.get(volume_type.value)
+            if volume_size.value > max_size:
                 self._add_failure(
-                    "The size of {0} volumes can not exceed {1} GiB".format(volume_type_value, max_size),
+                    "The size of {0} volumes can not exceed {1} GiB".format(volume_type.value, max_size),
                     FailureLevel.ERROR,
                     [volume_size],
                 )
-            elif volume_size_value < min_size:
+            elif volume_size.value < min_size:
                 self._add_failure(
-                    "The size of {0} volumes must be at least {1} GiB".format(volume_type_value, min_size),
+                    "The size of {0} volumes must be at least {1} GiB".format(volume_type.value, min_size),
                     FailureLevel.ERROR,
                     [volume_size],
                 )
@@ -57,16 +54,13 @@ class EbsVolumeThroughputValidator(Validator):
 
     def _validate(self, volume_type: Param, volume_throughput: Param):
         """Validate gp3 throughput."""
-        volume_type_value = volume_type.value
-        volume_throughput_value = volume_throughput.value
-
-        if volume_type_value == "gp3":
+        if volume_type.value == "gp3":
             min_throughput, max_throughput = 125, 1000
-            if volume_throughput_value < min_throughput or volume_throughput_value > max_throughput:
+            if volume_throughput.value < min_throughput or volume_throughput.value > max_throughput:
                 self._add_failure(
                     "Throughput must be between {min_throughput} MB/s and {max_throughput} MB/s when provisioning "
                     "{volume_type} volumes.".format(
-                        min_throughput=min_throughput, max_throughput=max_throughput, volume_type=volume_type_value
+                        min_throughput=min_throughput, max_throughput=max_throughput, volume_type=volume_type.value
                     ),
                     FailureLevel.ERROR,
                     [volume_throughput],
@@ -78,20 +72,15 @@ class EbsVolumeThroughputIopsValidator(Validator):
 
     def _validate(self, volume_type: Param, volume_iops: Param, volume_throughput: Param):
         """Validate gp3 throughput."""
-        volume_type_value = volume_type.value
-        volume_iops_value = volume_iops.value
-        volume_throughput_value = volume_throughput.value
-
         volume_throughput_to_iops_ratio = 0.25
-
-        if volume_type_value == "gp3":
+        if volume_type.value == "gp3":
             if (
-                volume_throughput_value
-                and volume_throughput_value > volume_iops_value * volume_throughput_to_iops_ratio
+                volume_throughput.value
+                and volume_throughput.value > volume_iops.value * volume_throughput_to_iops_ratio
             ):
                 self._add_failure(
                     "Throughput to IOPS ratio of {0} is too high; maximum is 0.25.".format(
-                        float(volume_throughput_value) / float(volume_iops_value)
+                        float(volume_throughput.value) / float(volume_iops.value)
                     ),
                     FailureLevel.ERROR,
                     [volume_throughput],
@@ -103,27 +92,23 @@ class EbsVolumeIopsValidator(Validator):
 
     def _validate(self, volume_type: Param, volume_size: Param, volume_iops: Param):
         """Validate IOPS value in respect of volume type."""
-        volume_type_value = volume_type.value
-        volume_size_value = volume_size.value
-        volume_iops_value = volume_iops.value
-
-        if volume_type_value in EBS_VOLUME_IOPS_BOUNDS:
-            min_iops, max_iops = EBS_VOLUME_IOPS_BOUNDS.get(volume_type_value)
-            if volume_iops_value and (volume_iops_value < min_iops or volume_iops_value > max_iops):
+        if volume_type.value in EBS_VOLUME_IOPS_BOUNDS:
+            min_iops, max_iops = EBS_VOLUME_IOPS_BOUNDS.get(volume_type.value)
+            if volume_iops.value and (volume_iops.value < min_iops or volume_iops.value > max_iops):
                 self._add_failure(
                     f"IOPS rate must be between {min_iops} and {max_iops}"
-                    f" when provisioning {volume_type_value} volumes.",
+                    f" when provisioning {volume_type.value} volumes.",
                     FailureLevel.ERROR,
                     [volume_iops],
                 )
             elif (
-                volume_iops_value
-                and volume_iops_value > volume_size_value * EBS_VOLUME_TYPE_TO_IOPS_RATIO[volume_type_value]
+                volume_iops.value
+                and volume_iops.value > volume_size.value * EBS_VOLUME_TYPE_TO_IOPS_RATIO[volume_type.value]
             ):
                 self._add_failure(
                     "IOPS to volume size ratio of {0} is too high; maximum is {1}.".format(
-                        float(volume_iops_value) / float(volume_size_value),
-                        EBS_VOLUME_TYPE_TO_IOPS_RATIO[volume_type_value],
+                        float(volume_iops.value) / float(volume_size.value),
+                        EBS_VOLUME_TYPE_TO_IOPS_RATIO[volume_type.value],
                     ),
                     FailureLevel.ERROR,
                     [volume_iops],
@@ -140,27 +125,24 @@ class EbsVolumeSizeSnapshotValidator(Validator):
         The EBS snapshot is in "completed" state if it is specified
         If users specify the volume size, the volume must be not smaller than the volume size of the EBS snapshot
         """
-        snapshot_id_value = snapshot_id.value
-        volume_size_value = volume_size.value
-
-        if snapshot_id_value:
+        if snapshot_id.value:
             try:
-                snapshot_response_dict = get_ebs_snapshot_info(snapshot_id_value, raise_exceptions=True)
+                snapshot_response_dict = get_ebs_snapshot_info(snapshot_id.value, raise_exceptions=True)
 
                 # validate that the input volume size is larger than the volume size of the EBS snapshot
                 snapshot_volume_size = snapshot_response_dict.get("VolumeSize")
                 if snapshot_volume_size is None:
                     self._add_failure(
-                        f"Unable to get volume size for snapshot {snapshot_id_value}", FailureLevel.ERROR, [snapshot_id]
+                        f"Unable to get volume size for snapshot {snapshot_id.value}", FailureLevel.ERROR, [snapshot_id]
                     )
-                elif volume_size_value < snapshot_volume_size:
+                elif volume_size.value < snapshot_volume_size:
                     self._add_failure(
                         f"The EBS volume size must not be smaller than {snapshot_volume_size}, "
                         "because it is the size of the provided snapshot {snapshot_id}",
                         FailureLevel.ERROR,
                         [volume_size],
                     )
-                elif volume_size_value > snapshot_volume_size:
+                elif volume_size.value > snapshot_volume_size:
                     self._add_failure(
                         "The specified volume size is larger than snapshot size. In order to use the full capacity "
                         "of the volume, you'll need to manually resize the partition according to this doc: "
@@ -175,7 +157,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                 if snapshot_response_dict.get("State") != "completed":
                     self._add_failure(
                         "Snapshot {0} is in state '{1}' not 'completed'".format(
-                            snapshot_id_value, snapshot_response_dict.get("State")
+                            snapshot_id.value, snapshot_response_dict.get("State")
                         ),
                         FailureLevel.WARNING,
                         [snapshot_id],
@@ -187,7 +169,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                 ]:
                     self._add_failure(
                         "The snapshot {0} does not appear to exist: {1}".format(
-                            snapshot_id_value, exception.response.get("Error").get("Message")
+                            snapshot_id.value, exception.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
                         [snapshot_id],
@@ -195,7 +177,7 @@ class EbsVolumeSizeSnapshotValidator(Validator):
                 else:
                     self._add_failure(
                         "Issue getting info for snapshot {0}: {1}".format(
-                            snapshot_id_value,
+                            snapshot_id.value,
                             exception.response.get("Error").get("Message")
                             if isinstance(exception, ClientError)
                             else exception,
