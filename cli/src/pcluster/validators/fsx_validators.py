@@ -186,13 +186,13 @@ class FsxStorageCapacityValidator(Validator):
                     [storage_capacity, deployment_type],
                 )
         elif deployment_type.value == "PERSISTENT_1" and storage_type.value == "HDD":
-            if per_unit_storage_throughput.value == 12 and not (storage_capacity.value % 6000 == 0):
+            if per_unit_storage_throughput.value == 12 and not storage_capacity.value % 6000 == 0:
                 self._add_failure(
                     "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
                     FailureLevel.ERROR,
                     [storage_capacity, deployment_type, storage_type, per_unit_storage_throughput],
                 )
-            elif per_unit_storage_throughput.value == 40 and not (storage_capacity.value % 1800 == 0):
+            elif per_unit_storage_throughput.value == 40 and not storage_capacity.value % 1800 == 0:
                 self._add_failure(
                     "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
                     FailureLevel.ERROR,

@@ -17,14 +17,14 @@ from abc import ABC, abstractmethod
 
 import yaml
 
-from pcluster.models.cluster import Cluster
+from pcluster.models.cluster import BaseCluster
 from pcluster.schemas.cluster_schema import ClusterSchema
 
 
 class ClusterManager(ABC):
     """Represent the Cluster Manager."""
 
-    def __init__(self, cluster: Cluster = None):
+    def __init__(self, cluster: BaseCluster = None):
         self.cluster = cluster or self._load_cluster_from_s3()
 
     @staticmethod

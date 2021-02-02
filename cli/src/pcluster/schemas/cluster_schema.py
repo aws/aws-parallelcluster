@@ -202,10 +202,11 @@ class SharedStorageSchema(BaseSchema):
         """Generate the right type of shared storage according to the child type (EBS vs EFS vs FSx)."""
         if data.get("efs"):
             return SharedEfs(data.get("mount_dir"), **data.get("efs"))
-        elif data.get("fsx"):
+        if data.get("fsx"):
             return SharedFsx(data.get("mount_dir"), **data.get("fsx"))
-        elif data.get("ebs"):
+        if data.get("ebs"):
             return SharedEbs(data.get("mount_dir"), **data.get("ebs"))
+        return None
 
     @pre_dump
     def restore_child(self, data, **kwargs):
@@ -486,10 +487,11 @@ class SchedulingSchema(BaseSchema):
         """Generate the right type of scheduling according to the child type (Slurm vs Awsbatch vs Custom)."""
         if data.get("slurm"):
             return SlurmScheduling(**data.get("slurm"))
-        elif data.get("awsbatch"):
+        if data.get("awsbatch"):
             return AwsbatchScheduling(**data.get("awsbatch"))
-        # elif data.get("custom_scheduling"):
+        # if data.get("custom_scheduling"):
         #    return CustomScheduling(data.get("scheduler"), **data.get("custom_scheduling"))
+        return None
 
     @pre_dump
     def restore_child(self, data, **kwargs):
@@ -651,5 +653,6 @@ class ClusterSchema(BaseSchema):
         """Generate resource."""
         if data.get("scheduling").scheduler == "slurm":
             return SlurmCluster(**data)
-        elif data.get("scheduling").scheduler == "awsbatch":
+        if data.get("scheduling").scheduler == "awsbatch":
             return AwsbatchCluster(**data)
+        return None

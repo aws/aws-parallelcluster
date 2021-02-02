@@ -95,8 +95,7 @@ class Validator(ABC):
             param.valid = False
         if self._raise_on_error:
             raise ConfigValidationError(result)
-        else:
-            self._failures.append(result)
+        self._failures.append(result)
 
     def execute(self, *arg, **kwargs):
         """Entry point of all validators to verify all input params are valid."""

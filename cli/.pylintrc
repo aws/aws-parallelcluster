@@ -146,6 +146,19 @@ disable=print-statement,
         bad-continuation, # handled by black formatter
         useless-object-inheritance, # needed for Python2 support
         wrong-import-position, # handled by isort
+        design,
+        raise-missing-from,
+        useless-super-delegation,
+        redefined-builtin,
+        attribute-defined-outside-init,
+        arguments-differ,
+        pointless-string-statement,
+        broad-except,
+        unnecessary-pass,
+        import-error,
+        no-self-use,
+        no-member,
+
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
@@ -221,9 +234,7 @@ spelling-store-unknown-words=no
 [MISCELLANEOUS]
 
 # List of note tags to take in consideration, separated by a comma.
-notes=FIXME,
-      XXX,
-      TODO
+notes=
 
 
 [TYPECHECK]
@@ -298,7 +309,7 @@ dummy-variables-rgx=_+$|(_[a-zA-Z0-9_]*[a-zA-Z0-9]+?$)|dummy|^ignored_|^unused_
 
 # Argument names that match this expression will be ignored. Default to name
 # with leading underscore.
-ignored-argument-names=_.*|^ignored_|^unused_
+ignored-argument-names=_.*|^ignored_|^unused_|args|kwargs
 
 # Tells whether we should check for unused import in __init__ files.
 init-import=no
@@ -424,7 +435,9 @@ good-names=i,
            Run,
            e,
            f,
-           _
+           _,
+           id,
+           os,
 
 # Include a hint for the correct naming format with invalid-name.
 include-naming-hint=no
