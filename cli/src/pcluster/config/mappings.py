@@ -56,7 +56,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     compute_instance_type_validator,
-    compute_resource_validator,
     dcv_enabled_validator,
     duplicate_shared_dir_validator,
     ebs_settings_validator,
@@ -613,7 +612,6 @@ COMPUTE_RESOURCE = {
     "type": JsonSection,
     "key": "compute_resource",
     "default_label": "default",
-    "validators": [compute_resource_validator],
     "max_resources": 3,
     "params": OrderedDict([
         ("instance_type", {

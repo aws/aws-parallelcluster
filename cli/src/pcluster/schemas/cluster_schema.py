@@ -373,9 +373,9 @@ class SlurmComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Slurm ComputeResource."""
 
     instance_type = fields.Str(required=True)
-    max_count = fields.Int()
-    min_count = fields.Int()
-    spot_price = fields.Float()
+    max_count = fields.Int(validate=validate.Range(min=1))
+    min_count = fields.Int(validate=validate.Range(min=0))
+    spot_price = fields.Float(validate=validate.Range(min=0))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -387,9 +387,9 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     """Represent the schema of the Batch ComputeResource."""
 
     instance_type = fields.Str(required=True)  # TODO it is a comma separated list
-    max_vcpus = fields.Int(data_key="MaxvCpus")
-    min_vcpus = fields.Int(data_key="MinvCpus")
-    desired_vcpus = fields.Int(data_key="DesiredvCpus")
+    max_vcpus = fields.Int(data_key="MaxvCpus", validate=validate.Range(min=1))
+    min_vcpus = fields.Int(data_key="MinvCpus", validate=validate.Range(min=0))
+    desired_vcpus = fields.Int(data_key="DesiredvCpus", validate=validate.Range(min=0))
     spot_bid_percentage = fields.Float()
 
     @post_load

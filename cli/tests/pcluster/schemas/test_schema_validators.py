@@ -12,7 +12,43 @@
 import pytest
 from marshmallow import ValidationError
 
-from pcluster.schemas.cluster_schema import EfsSchema, FsxSchema, SharedStorageSchema
+from pcluster.schemas.cluster_schema import (
+    AwsbatchComputeResourceSchema, EfsSchema, FsxSchema, SharedStorageSchema, SlurmComputeResourceSchema,
+)
+
+DUMMY_COMPUTE_RESOURCE = {"InstanceType": "test"}
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"MinCount": -1}, "Must be greater than or equal"),
+        ({"MinCount": 0}, None),
+        ({"SpotPrice": -1.1}, "Must be greater than or equal"),
+        ({"SpotPrice": 0}, None),
+        ({"MaxCount": 0}, "Must be greater than or equal"),
+        ({"MaxCount": 1}, None),
+    ],
+)
+def test_slurm_compute_resource_validator(section_dict, expected_message):
+    section_dict.update(DUMMY_COMPUTE_RESOURCE)
+    _load_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"MinvCpus": -1}, "Must be greater than or equal"),
+        ({"MinvCpus": 0}, None),
+        ({"DesiredvCpus": -1}, "Must be greater than or equal"),
+        ({"DesiredvCpus": 0}, None),
+        ({"MaxvCpus": 0}, "Must be greater than or equal"),
+        ({"MaxvCpus": 1}, None),
+    ],
+)
+def test_awsbatch_compute_resource_validator(section_dict, expected_message):
+    section_dict.update(DUMMY_COMPUTE_RESOURCE)
+    _load_and_assert_error(AwsbatchComputeResourceSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
