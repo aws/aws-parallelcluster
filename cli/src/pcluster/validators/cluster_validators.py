@@ -52,6 +52,7 @@ class FsxNetworkingValidator(Validator):
                     "Currently only support using FSx file system that is in the same VPC as the stack. "
                     "The file system provided is in {0}".format(file_system.get("VpcId")),
                     FailureLevel.CRITICAL,
+                    [file_system_id],
                 )
 
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
@@ -61,6 +62,7 @@ class FsxNetworkingValidator(Validator):
                     "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
                     "Elastic Network Interfaces attached to it.".format(file_system_id.value),
                     FailureLevel.CRITICAL,
+                    [file_system_id],
                 )
             else:
                 network_interface_responses = ec2.describe_network_interfaces(
@@ -81,6 +83,7 @@ class FsxNetworkingValidator(Validator):
                         ". The file system must be associated to a security group that allows inbound and outbound "
                         "TCP traffic through port 988.".format(file_system_id.value),
                         FailureLevel.CRITICAL,
+                        [file_system_id],
                     )
         except ClientError as e:
             self._add_failure(e.response.get("Error").get("Message"), FailureLevel.CRITICAL)
@@ -154,6 +157,7 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
                 "Simultaneous Multithreading is only supported on instance types that support "
                 "these architectures: {0}".format(", ".join(supported_architectures)),
                 FailureLevel.ERROR,
+                [simultaneous_multithreading]
             )
 
 
@@ -166,6 +170,7 @@ class EfaOsArchitectureValidator(Validator):
             self._add_failure(
                 "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture.value),
                 FailureLevel.ERROR,
+                [efa_enabled]
             )
 
 
@@ -181,6 +186,7 @@ class ArchitectureOsValidator(Validator):
                     architecture.value, allowed_oses
                 ),
                 FailureLevel.ERROR,
+                [os],
             )
 
 
@@ -198,4 +204,5 @@ class InstanceArchitectureCompatibilityValidator(Validator):
                     instance_type.value, compute_architectures, head_node_architecture
                 ),
                 FailureLevel.ERROR,
+                [instance_type],
             )

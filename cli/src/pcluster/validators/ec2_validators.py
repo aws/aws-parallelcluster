@@ -20,7 +20,7 @@ class BaseAMIValidator(Validator):
         """Validate given ami id or image arn."""
         ami_id = utils.get_ami_id(image.value)
         if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
-            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.CRITICAL)
+            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.CRITICAL, [image])
 
 
 class InstanceTypeValidator(Validator):
@@ -29,7 +29,11 @@ class InstanceTypeValidator(Validator):
     def _validate(self, instance_type: Param):
         """Validate given instance type."""
         if instance_type.value not in Ec2Client().describe_instance_type_offerings():
-            self._add_failure(f"The instance type '{instance_type.value}' is not supported.", FailureLevel.CRITICAL)
+            self._add_failure(
+                f"The instance type '{instance_type.value}' is not supported.",
+                FailureLevel.CRITICAL,
+                [instance_type],
+            )
 
 
 class InstanceTypeBaseAMICompatibleValidator(Validator):
@@ -47,4 +51,5 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                     ami_id, ami_architecture, instance_type.value, instance_architecture
                 ),
                 FailureLevel.CRITICAL,
+                [instance_type, parent_image],
             )

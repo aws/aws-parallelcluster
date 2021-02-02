@@ -37,11 +37,13 @@ class UrlValidator(Validator):
                     self._add_failure(
                         "The value '{0}' is not a valid URL".format(url.value),
                         FailureLevel.ERROR,
+                        [url],
                     )
         else:
             self._add_failure(
                 f"The value '{url.value}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.",
                 FailureLevel.ERROR,
+                [url],
             )
 
     def _validate_s3_uri(self, s3_url):

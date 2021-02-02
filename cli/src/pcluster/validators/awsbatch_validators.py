@@ -67,4 +67,5 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                         instance_type, compute_architectures, head_node_architecture
                     ),
                     FailureLevel.ERROR,
+                    [instance_types],
                 )
