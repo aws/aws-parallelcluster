@@ -612,7 +612,7 @@ def vpc_stacks(cfn_stacks_factory, request):
             availability_zone=availability_zones[0],
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        # cidr="192.168.96.0/19" used by test_networking
+        # cidr="192.168.96.0/19" used by test_networking and test_pcluster_configure
         private_subnet_different_cidr = SubnetConfig(
             name="PrivateAdditionalCidr",
             cidr="192.168.128.0/17",  # 32766 IPs
