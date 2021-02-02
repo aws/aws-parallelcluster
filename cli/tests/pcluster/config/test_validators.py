@@ -23,7 +23,6 @@ from pcluster.config.validators import (
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
-    compute_resource_validator,
     efa_gdr_validator,
     intel_hpc_architecture_validator,
     queue_validator,
@@ -1277,60 +1276,6 @@ def test_settings_validator(param_value, expected_message):
     if expected_message:
         assert_that(errors and len(errors) == 1).is_true()
         assert_that(errors[0]).is_equal_to(expected_message)
-    else:
-        assert_that(errors).is_empty()
-
-
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"min_count": -1, "initial_count": -1}, "Parameter 'min_count' must be 0 or greater than 0"),
-        (
-            {"min_count": 0, "initial_count": 1, "spot_price": -1.1},
-            "Parameter 'spot_price' must be 0 or greater than 0",
-        ),
-        (
-            {"min_count": 1, "max_count": 0, "initial_count": 1},
-            "Parameter 'max_count' must be greater than or equal to 'min_count'",
-        ),
-        ({"min_count": 0, "max_count": 0, "initial_count": 0}, "Parameter 'max_count' must be 1 or greater than 1"),
-        ({"min_count": 1, "max_count": 2, "spot_price": 1.5, "initial_count": 1}, None),
-        (
-            {"min_count": 2, "max_count": 4, "initial_count": 1},
-            "Parameter 'initial_count' must be greater than or equal to 'min_count'",
-        ),
-        (
-            {"min_count": 2, "max_count": 4, "initial_count": 5},
-            "Parameter 'initial_count' must be lower than or equal to 'max_count'",
-        ),
-    ],
-)
-def test_compute_resource_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {
-        "cluster default": {"queue_settings": "default"},
-        "queue default": {"compute_resource_settings": "default"},
-        "compute_resource default": section_dict,
-    }
-
-    config_parser = configparser.ConfigParser()
-    config_parser.read_dict(config_parser_dict)
-
-    mocker.patch(
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type", return_value=["x86_64"]
-    )
-    instance_type_info_mock = mocker.MagicMock()
-    mocker.patch(
-        "pcluster.config.cfn_param_types.InstanceTypeInfo.init_from_instance_type", return_value=instance_type_info_mock
-    )
-    instance_type_info_mock.max_network_interface_count.return_value = 1
-    mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=["x86_64"])
-
-    pcluster_config = utils.init_pcluster_config_from_configparser(config_parser, False)
-
-    errors, warnings = compute_resource_validator("compute_resource", "default", pcluster_config)
-
-    if expected_message:
-        assert_that(expected_message in errors)
     else:
         assert_that(errors).is_empty()
 
