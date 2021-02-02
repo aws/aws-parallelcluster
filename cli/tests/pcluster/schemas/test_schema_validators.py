@@ -104,40 +104,50 @@ def test_compute_type_validator(compute_type, expected_message):
 
 
 @pytest.mark.parametrize(
-    "spot_price, expected_message",
+    "section_dict, expected_message",
     [
-        ("", "Not a valid number"),
-        ("NONE", "Not a valid number"),
-        ("wrong_value", "Not a valid number"),
-        (0.09, None),
-        (0, None),
-        (0.1, None),
-        (1, None),
-        (100, None),
-        (100.0, None),
-        (100.1, None),
-        (101, None),
+        ({"MinCount": -1}, "Must be greater than or equal"),
+        ({"MinCount": 0}, None),
+        ({"MaxCount": 0}, "Must be greater than or equal"),
+        ({"MaxCount": 1}, None),
+        ({"SpotPrice": ""}, "Not a valid number"),
+        ({"SpotPrice": "NONE"}, "Not a valid number"),
+        ({"SpotPrice": "wrong_value"}, "Not a valid number"),
+        ({"SpotPrice": -1.1}, "Must be greater than or equal"),
+        ({"SpotPrice": 0}, None),
+        ({"SpotPrice": 0.09}, None),
+        ({"SpotPrice": 0}, None),
+        ({"SpotPrice": 0.1}, None),
+        ({"SpotPrice": 1}, None),
+        ({"SpotPrice": 100}, None),
+        ({"SpotPrice": 100.0}, None),
+        ({"SpotPrice": 100.1}, None),
+        ({"SpotPrice": 101}, None),
     ],
 )
-def test_spot_price_validator(spot_price, expected_message):
-    _validate_and_assert_error(SlurmComputeResourceSchema(), {"SpotPrice": spot_price}, expected_message)
+def test_slurm_compute_resource_validator(section_dict, expected_message):
+    _validate_and_assert_error(SlurmComputeResourceSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
-    "spot_bid_percentage, expected_message",
+    "section_dict, expected_message",
     [
-        ("", "Not a valid number"),
-        ("NONE", "Not a valid number"),
-        ("wrong_value", "Not a valid number"),
-        (0.01, None),
-        (0.22, None),
-        (1.01, "Must be.*less than or equal to 1"),
+        ({"MinvCpus": -1}, "Must be greater than or equal"),
+        ({"MinvCpus": 0}, None),
+        ({"DesiredvCpus": -1}, "Must be greater than or equal"),
+        ({"DesiredvCpus": 0}, None),
+        ({"MaxvCpus": 0}, "Must be greater than or equal"),
+        ({"MaxvCpus": 1}, None),
+        ({"SpotBidPercentage": ""}, "Not a valid number"),
+        ({"SpotBidPercentage": "NONE"}, "Not a valid number"),
+        ({"SpotBidPercentage": "wrong_value"}, "Not a valid number"),
+        ({"SpotBidPercentage": 0.01}, None),
+        ({"SpotBidPercentage": 0.22}, None),
+        ({"SpotBidPercentage": 1.01}, "Must be.*less than or equal to 1"),
     ],
 )
-def test_spot_bid_percentage_validator(spot_bid_percentage, expected_message):
-    _validate_and_assert_error(
-        AwsbatchComputeResourceSchema(), {"SpotBidPercentage": spot_bid_percentage}, expected_message
-    )
+def test_awsbatch_compute_resource_validator(section_dict, expected_message):
+    _validate_and_assert_error(AwsbatchComputeResourceSchema(), section_dict, expected_message)
 
 
 @pytest.mark.parametrize(
