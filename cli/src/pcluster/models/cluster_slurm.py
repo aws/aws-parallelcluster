@@ -36,6 +36,7 @@ from pcluster.validators.cluster_validators import (
     EfaOsArchitectureValidator,
     InstanceArchitectureCompatibilityValidator,
 )
+from pcluster.validators.ec2_validators import InstanceTypeValidator
 
 
 class SlurmComputeResource(BaseComputeResource):
@@ -56,6 +57,7 @@ class SlurmComputeResource(BaseComputeResource):
         self.max_count = Param(max_count, default=10)
         self.min_count = Param(min_count, default=0)
         self.spot_price = Param(spot_price)
+        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
 
 class SlurmQueue(BaseQueue):
