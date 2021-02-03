@@ -14,12 +14,15 @@ from pcluster.models.common import FailureLevel, Param, Validator
 
 
 class FsxS3Validator(Validator):
-    """FSX S3 validator."""
+    """
+    FSX S3 validator.
+
+    Verify compatibility of given S3 options for FSX.
+    """
 
     def _validate(
         self, import_path: Param, imported_file_chunk_size: Param, export_path: Param, auto_import_policy: Param
     ):
-        """Verify compatibility of given S3 options for FSX."""
         if imported_file_chunk_size.value and not import_path.value:
             self._add_failure(
                 "When specifying imported file chunk size, the import path option must be specified",
@@ -43,10 +46,13 @@ class FsxS3Validator(Validator):
 
 
 class FsxPersistentOptionsValidator(Validator):
-    """FSX persistent options validator."""
+    """
+    FSX persistent options validator.
+
+    Verify compatibility of given persistent options for FSX.
+    """
 
     def _validate(self, deployment_type: Param, kms_key_id: Param, per_unit_storage_throughput: Param):
-        """Verify compatibility of given persistent options for FSX."""
         if deployment_type.value == "PERSISTENT_1":
             if not per_unit_storage_throughput.value:
                 self._add_failure(
@@ -83,7 +89,6 @@ class FsxBackupOptionsValidator(Validator):
         export_path: Param,
         auto_import_policy: Param,
     ):
-        """Verify compatibility of given backup options for FSX."""
         if not automatic_backup_retention_days.value and daily_automatic_backup_start_time.value:
             self._add_failure(
                 "When specifying daily automatic backup start time,"
@@ -119,7 +124,6 @@ class FsxStorageTypeOptionsValidator(Validator):
     def _validate(
         self, storage_type: Param, deployment_type: Param, per_unit_storage_throughput: Param, drive_cache_type: Param
     ):
-        """Verify compatibility of given storage type options for FSX."""
         if storage_type.value == "HDD":
             if deployment_type.value != "PERSISTENT_1":
                 self._add_failure(
@@ -164,7 +168,6 @@ class FsxStorageCapacityValidator(Validator):
         file_system_id: Param,
         backup_id: Param,
     ):
-        """Verify compatibility of given storage capacity options for FSX."""
         if file_system_id.value or backup_id.value:
             # if file_system_id is provided, don't validate storage_capacity
             # if backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.

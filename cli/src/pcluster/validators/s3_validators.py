@@ -10,10 +10,13 @@ from pcluster.models.common import FailureLevel, Param, Validator
 
 
 class UrlValidator(Validator):
-    """Url Validator."""
+    """
+    Url Validator.
+
+    Validate given url with s3, https or file prefix.
+    """
 
     def _validate(self, url: Param):
-        """Validate given url with s3, https or file prefix."""
         scheme = urlparse(url.value).scheme
         if scheme in ["https", "s3", "file"]:
             if scheme == "s3":

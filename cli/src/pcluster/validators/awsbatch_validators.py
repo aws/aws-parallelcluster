@@ -20,10 +20,13 @@ from pcluster.utils import (
 
 
 class AwsbatchComputeResourceSizeValidator(Validator):
-    """Awsbatch compute resource size validator."""
+    """
+    Awsbatch compute resource size validator.
+
+    Validate min, desired and max vcpus combination.
+    """
 
     def _validate(self, min_vcpus: Param, desired_vcpus: Param, max_vcpus: Param):
-        """Validate min, desired and max vcpus combination."""
         if desired_vcpus.value < min_vcpus.value:
             self._add_failure(
                 "The number of desired vcpus must be greater than or equal to min vcpus",
@@ -92,14 +95,14 @@ class AwsbatchComputeInstanceTypeValidator(Validator):
 
 
 class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
-    """Validate instance type and architecture combination."""
+    """
+    Validate instance type and architecture combination.
+
+    Verify that head node and compute instance types imply compatible architectures.
+    With AWS Batch, compute instance type can contain a CSV list.
+    """
 
     def _validate(self, instance_types: Param, architecture: DynamicParam):
-        """
-        Verify that head node and compute instance types imply compatible architectures.
-
-        When awsbatch is used as the scheduler, compute_instance_type can contain a CSV list.
-        """
         head_node_architecture = architecture.value
         for instance_type in instance_types.value.split(","):
             # When awsbatch is used as the scheduler instance families can be used.
