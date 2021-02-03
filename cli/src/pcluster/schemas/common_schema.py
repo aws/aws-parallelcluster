@@ -50,7 +50,7 @@ class BaseSchema(Schema):
         if field_obj.data_key is None:
             field_obj.data_key = _camelcase(field_name)
 
-    def only_one_field(self, data, field_list):
+    def only_one_field(self, data, field_list, **kwargs):
         """
         Check that the Schema contains only one of the given fields.
 
@@ -58,6 +58,9 @@ class BaseSchema(Schema):
         :param field_list: list including the name of the fields to check
         :return: True if one and only one field is not None
         """
+        if kwargs.get("partial"):
+            # If the schema is to be loaded partially, do not check existence constrain.
+            return True
         return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
 
     @pre_load
