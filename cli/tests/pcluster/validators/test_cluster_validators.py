@@ -15,6 +15,7 @@ from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
+    DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
@@ -337,6 +338,37 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
     boto3_stubber("ec2", ec2_mocked_requests)
 
     actual_failures = FsxNetworkingValidator().execute(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "mount_dir_list, expected_message",
+    [
+        (
+            ["dir1"],
+            None,
+        ),
+        (
+            ["dir1", "dir2"],
+            None,
+        ),
+        (
+            ["dir1", "dir2", "dir3"],
+            None,
+        ),
+        (
+            ["dir1", "dir1", "dir2"],
+            "Mount directory dir1 cannot be specified for multiple volumes",
+        ),
+        (
+            ["dir1", "dir2", "dir3", "dir2", "dir1"],
+            "Mount directories dir2, dir1 cannot be specified for multiple volumes",
+        ),
+    ],
+)
+def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
+    mount_dir_param_list = [Param(mount_dir) for mount_dir in mount_dir_list]
+    actual_failures = DuplicateMountDirValidator().execute(mount_dir_param_list)
     assert_failure_messages(actual_failures, expected_message)
 
 

@@ -952,28 +952,3 @@ def _describe_ec2_key_pair(key_pair_name):
 
 def get_bucket_name_from_s3_url(import_path):
     return import_path.split("/")[2]
-
-
-def duplicate_shared_dir_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-    config_parser = pcluster_config.config_parser
-    section = pcluster_config.get_section(section_key, section_label)
-    if config_parser:
-        shared_dir_in_cluster = config_parser.has_option(get_file_section_name("cluster", section_label), "shared_dir")
-        ebs_settings_in_cluster = config_parser.has_option(
-            get_file_section_name("cluster", section_label), "ebs_settings"
-        )
-        if shared_dir_in_cluster and ebs_settings_in_cluster:
-            list_of_ebs_sections = []
-            for ebs_section_label in section.get_param_value("ebs_settings").split(","):
-                ebs_section = pcluster_config.get_section("ebs", ebs_section_label.strip())
-                list_of_ebs_sections.append(ebs_section)
-            # if there is only one EBS section configured, check whether "shared_dir" is in the EBS section
-            if len(list_of_ebs_sections) == 1 and list_of_ebs_sections[0].get_param_value("shared_dir"):
-                errors.append("'shared_dir' can not be specified both in cluster section and EBS section")
-            # if there are multiple EBS sections configured, provide an error message
-            elif len(list_of_ebs_sections) > 1:
-                errors.append("'shared_dir' can not be specified in cluster section when using multiple EBS volumes")
-
-    return errors, warnings

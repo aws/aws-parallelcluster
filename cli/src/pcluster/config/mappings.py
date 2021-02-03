@@ -55,7 +55,6 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
-    duplicate_shared_dir_validator,
     ebs_settings_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
@@ -87,7 +86,6 @@ from pcluster.config.validators import (
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
-CLUSTER_COMMON_VALIDATORS = [duplicate_shared_dir_validator]
 # This file contains a definition of all the sections and the parameters configurable by the user
 # in the configuration file.
 
@@ -953,7 +951,6 @@ CLUSTER_SIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "SIT",
-    "validators": CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
@@ -1044,7 +1041,6 @@ CLUSTER_HIT = {
     "key": "cluster",
     "default_label": "default",
     "cluster_model": "HIT",
-    "validators": CLUSTER_COMMON_VALIDATORS,
     "params": OrderedDict(
         CLUSTER_COMMON_PARAMS + [
             ("default_queue", {
