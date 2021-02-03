@@ -13,7 +13,7 @@ from assertpy import assert_that
 
 from pcluster.models.common import DynamicParam, Param
 from pcluster.validators.awsbatch_validators import (
-    AwsbatchComputeResourceValidator,
+    AwsbatchComputeResourceSizeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
 )
 
@@ -44,8 +44,8 @@ from .utils import assert_failure_messages
         ),
     ],
 )
-def test_cluster_validator(min_vcpus, desired_vcpus, max_vcpus, expected_message):
-    actual_failures = AwsbatchComputeResourceValidator().execute(
+def test_awsbatch_compute_resource_size_validator(min_vcpus, desired_vcpus, max_vcpus, expected_message):
+    actual_failures = AwsbatchComputeResourceSizeValidator().execute(
         Param(min_vcpus), Param(desired_vcpus), Param(max_vcpus)
     )
     assert_failure_messages(actual_failures, expected_message)
