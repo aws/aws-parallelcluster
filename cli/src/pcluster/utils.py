@@ -482,16 +482,6 @@ def get_supported_batch_instance_types():
     return supported_batch_types
 
 
-def get_supported_compute_instance_types(scheduler):
-    """
-    Get supported instance types (and families in awsbatch case).
-
-    :param scheduler: the scheduler for which we want to know the supported compute instance types or families
-    :return: the list of supported instance types and families
-    """
-    return get_supported_batch_instance_types() if scheduler == "awsbatch" else get_supported_instance_types()
-
-
 def get_supported_az_for_one_instance_type(instance_type):
     """
     Return a tuple of availability zones that have the instance_types.
