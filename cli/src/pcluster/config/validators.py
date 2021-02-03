@@ -17,8 +17,6 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.constants import CIDR_ALL_IPS
-from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
     ellipsize,
     get_base_additional_iam_policies,
@@ -31,13 +29,6 @@ from pcluster.utils import (
 )
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
-
-DCV_MESSAGES = {
-    "warnings": {
-        "access_from_world": "With this configuration you are opening dcv port ({port}) to the world (0.0.0.0/0). "
-        "It is recommended to use dcv access_from config option to restrict access."
-    }
-}
 
 FSX_MESSAGES = {
     "errors": {
@@ -229,39 +220,6 @@ def disable_hyperthreading_architecture_validator(param_key, param_value, pclust
                 ", ".join(supported_architectures)
             )
         )
-
-    return errors, warnings
-
-
-def dcv_enabled_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    cluster_section = pcluster_config.get_section("cluster")
-    if param_value == "master":
-
-        architecture = cluster_section.get_param_value("architecture")
-        allowed_oses = get_supported_dcv_os(architecture)
-        if cluster_section.get_param_value("base_os") not in allowed_oses:
-            errors.append(
-                "NICE DCV can be used with one of the following operating systems: {0}. "
-                "Please double check the 'base_os' configuration parameter".format(allowed_oses)
-            )
-
-        head_node_instance_type = cluster_section.get_param_value("master_instance_type")
-        if re.search(r"(micro)|(nano)", head_node_instance_type):
-            warnings.append(
-                "The packages required for desktop virtualization in the selected instance type '{0}' "
-                "may cause instability of the head node instance. If you want to use NICE DCV it is recommended "
-                "to use an instance type with at least 1.7 GB of memory.".format(head_node_instance_type)
-            )
-
-        if pcluster_config.get_section("dcv").get_param_value("access_from") == CIDR_ALL_IPS:
-            LOGFILE_LOGGER.warning(
-                DCV_MESSAGES["warnings"]["access_from_world"].format(
-                    port=pcluster_config.get_section("dcv").get_param_value("port")
-                )
-            )
 
     return errors, warnings
 

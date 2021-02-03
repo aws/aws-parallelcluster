@@ -8,9 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 import boto3
 from botocore.exceptions import ClientError
 
+from pcluster.constants import CIDR_ALL_IPS
+from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
 from pcluster.utils import get_supported_architectures_for_instance_type, get_supported_os_for_architecture
 
@@ -221,3 +225,48 @@ class InstanceArchitectureCompatibilityValidator(Validator):
                 FailureLevel.ERROR,
                 [instance_type],
             )
+
+
+# --------------- Third party software validators --------------- #
+
+
+class DcvValidator(Validator):
+    """
+    DCV parameters validators.
+
+    Validate instance type, architecture and os when DCV is enabled.
+    """
+
+    def _validate(
+        self,
+        instance_type: Param,
+        dcv_enabled: Param,
+        allowed_ips: Param,
+        port: Param,
+        os: Param,
+        architecture: DynamicParam,
+    ):
+        if dcv_enabled.value:
+            allowed_oses = get_supported_dcv_os(architecture.value)
+            if os.value not in allowed_oses:
+                self._add_failure(
+                    "NICE DCV can be used with one of the following operating systems: {0}. "
+                    "Please double check the Os configuration parameter".format(allowed_oses),
+                    FailureLevel.ERROR,
+                    [dcv_enabled],
+                )
+
+            if re.search(r"(micro)|(nano)", instance_type.value):
+                self._add_failure(
+                    "The packages required for desktop virtualization in the selected instance type '{0}' "
+                    "may cause instability of the instance. If you want to use NICE DCV it is recommended "
+                    "to use an instance type with at least 1.7 GB of memory.".format(instance_type.value),
+                    FailureLevel.WARNING,
+                )
+
+            if allowed_ips.value == CIDR_ALL_IPS:
+                self._add_failure(
+                    f"With this configuration you are opening DCV port {port.value} to the world (0.0.0.0/0). "
+                    "It is recommended to restrict access.",
+                    FailureLevel.WARNING,
+                )

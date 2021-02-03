@@ -21,6 +21,7 @@ from pcluster.models.common import DynamicParam, Param, Resource, Tag
 from pcluster.utils import error, get_supported_architectures_for_instance_type
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
+    DcvValidator,
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
     SimultaneousMultithreadingArchitectureValidator,
@@ -627,3 +628,14 @@ class BaseCluster(Resource):
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
                     )
+
+        if self.head_node.dcv:
+            self._add_validator(
+                DcvValidator,
+                instance_type=self.head_node.instance_type,
+                dcv_enabled=self.head_node.dcv.enabled,
+                allowed_ips=self.head_node.dcv.allowed_ips,
+                port=self.head_node.dcv.port,
+                os=self.image.os,
+                architecture=self.head_node.architecture,
+            )

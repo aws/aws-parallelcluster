@@ -19,7 +19,6 @@ from assertpy import assert_that
 import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import ALLOWED_VALUES
 from pcluster.config.validators import (
-    DCV_MESSAGES,
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
@@ -871,50 +870,6 @@ def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, 
         for vol in ebs_section_dict:
             config_parser_dict["ebs {0}".format(vol)] = ebs_section_dict.get(vol)
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "base_os, instance_type, access_from, expected_error, expected_warning",
-    [
-        ("alinux", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
-        ("ubuntu1604", "t2.medium", None, "Please double check the 'base_os' configuration parameter", None),
-        ("centos7", "t2.medium", None, None, None),
-        ("centos8", "t2.medium", None, None, None),
-        ("ubuntu1804", "t2.medium", None, None, None),
-        ("ubuntu1804", "t2.medium", "1.2.3.4/32", None, None),
-        ("centos7", "t2.medium", "0.0.0.0/0", None, None),
-        ("centos8", "t2.medium", "0.0.0.0/0", None, None),
-        ("alinux2", "t2.medium", None, None, None),
-        ("alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
-        ("alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
-        ("ubuntu1804", "m6g.xlarge", None, None, None),
-        ("alinux2", "m6g.xlarge", None, None, None),
-        ("centos7", "m6g.xlarge", None, "Please double check the 'base_os' configuration parameter", None),
-        ("centos8", "m6g.xlarge", None, None, None),
-    ],
-)
-def test_dcv_enabled_validator(
-    mocker, base_os, instance_type, expected_error, expected_warning, access_from, caplog, capsys
-):
-    config_parser_dict = {
-        "cluster default": {"base_os": base_os, "dcv_settings": "dcv"},
-        "dcv dcv": {"enable": "master"},
-    }
-    if access_from:
-        config_parser_dict["dcv dcv"]["access_from"] = access_from
-
-    architectures = ["x86_64"] if instance_type.startswith("t2") else ["arm64"]
-    extra_patches = {
-        "pcluster.utils.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
-        "pcluster.utils.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
-        "pcluster.utils.get_supported_os_for_architecture": [base_os],
-    }
-    utils.assert_param_validator(
-        mocker, config_parser_dict, expected_error, capsys, expected_warning, extra_patches=extra_patches
-    )
-    access_from_error_msg = DCV_MESSAGES["warnings"]["access_from_world"].format(port=8443)
-    assert_that(access_from_error_msg in caplog.text).is_equal_to(not access_from or access_from == "0.0.0.0/0")
 
 
 @pytest.mark.parametrize(

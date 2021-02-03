@@ -14,6 +14,7 @@ from pcluster.models.common import DynamicParam, Param
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
+    DcvValidator,
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
@@ -332,5 +333,41 @@ def test_instance_architecture_compatibility_validator(
     )
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
         Param(compute_instance_type), DynamicParam(lambda: head_node_architecture)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+# -------------- Third party software validators -------------- #
+
+
+@pytest.mark.parametrize(
+    "dcv_enabled, os, instance_type, allowed_ips, port, expected_message",
+    [
+        (True, "alinux", "t2.medium", None, None, "Please double check the Os configuration parameter"),
+        (False, "alinux", "t2.medium", None, None, None),  # doesn't fail because DCV is disabled
+        (True, "centos7", "t2.medium", None, None, None),
+        (True, "centos8", "t2.medium", None, None, None),
+        (True, "ubuntu1804", "t2.medium", None, None, None),
+        (True, "ubuntu1804", "t2.medium", None, "1.2.3.4/32", None),
+        (True, "centos7", "t2.medium", "0.0.0.0/0", 8443, "port 8443 to the world"),
+        (True, "centos8", "t2.medium", "0.0.0.0/0", 9090, "port 9090 to the world"),
+        (True, "alinux2", "t2.medium", None, None, None),
+        (True, "alinux2", "t2.nano", None, None, "is recommended to use an instance type with at least"),
+        (True, "alinux2", "t2.micro", None, None, "is recommended to use an instance type with at least"),
+        (False, "alinux2", "t2.micro", None, None, None),  # doesn't fail because DCV is disabled
+        (True, "ubuntu1804", "m6g.xlarge", None, None, None),
+        (True, "alinux2", "m6g.xlarge", None, None, None),
+        (True, "centos7", "m6g.xlarge", None, None, "Please double check the Os configuration parameter"),
+        (True, "centos8", "m6g.xlarge", None, None, None),
+    ],
+)
+def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
+    actual_failures = DcvValidator().execute(
+        Param(instance_type),
+        Param(dcv_enabled),
+        Param(allowed_ips),
+        Param(port),
+        Param(os),
+        DynamicParam(lambda: "x86_64" if instance_type.startswith("t2") else "arm64"),
     )
     assert_failure_messages(actual_failures, expected_message)
