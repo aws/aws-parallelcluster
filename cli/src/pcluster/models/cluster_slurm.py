@@ -115,7 +115,7 @@ class SlurmCluster(BaseCluster):
                 self._add_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type=compute_resource.instance_type,
-                    architecture=self.architecture,
+                    architecture=self.head_node.architecture,
                 )
                 if compute_resource.efa:
                     self._add_validator(
@@ -123,5 +123,5 @@ class SlurmCluster(BaseCluster):
                         priority=9,
                         efa_enabled=compute_resource.efa.enabled,
                         os=self.image.os,
-                        architecture=self.architecture,
+                        architecture=self.head_node.architecture,
                     )
