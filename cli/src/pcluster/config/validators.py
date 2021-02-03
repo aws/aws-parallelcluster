@@ -20,7 +20,6 @@ from botocore.exceptions import ClientError, ParamValidationError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.utils import (
-    InstanceTypeInfo,
     ellipsize,
     get_base_additional_iam_policies,
     get_efs_mount_target_id,

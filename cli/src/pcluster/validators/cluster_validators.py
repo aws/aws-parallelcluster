@@ -21,10 +21,13 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 
 
 class ComputeResourceSizeValidator(Validator):
-    """Slurm compute resource size validator."""
+    """
+    Slurm compute resource size validator.
+
+    Validate min count and max count combinations.
+    """
 
     def _validate(self, min_count: Param, max_count: Param):
-        """Validate min count and max count combinations."""
         if max_count.value < min_count.value:
             self._add_failure(
                 "Max count must be greater than or equal to min count", FailureLevel.ERROR, [min_count, max_count]
@@ -32,10 +35,13 @@ class ComputeResourceSizeValidator(Validator):
 
 
 class FsxNetworkingValidator(Validator):
-    """FSx and networking validator."""
+    """
+    FSx networking validator.
+
+    Validate file system mount point according to the head node subnet.
+    """
 
     def _validate(self, file_system_id: Param, head_node_subnet_id: Param):
-        """Validate FSx and networking config."""
         try:
             ec2 = boto3.client("ec2")
 
@@ -123,7 +129,8 @@ class FsxNetworkingValidator(Validator):
 
         return in_out_access
 
-    def _check_sg_rules_for_port(self, rule, port_to_check):
+    @staticmethod
+    def _check_sg_rules_for_port(rule, port_to_check):
         """
         Verify if the security group rule accepts connections on the given port.
 
@@ -147,10 +154,13 @@ class FsxNetworkingValidator(Validator):
 
 
 class SimultaneousMultithreadingArchitectureValidator(Validator):
-    """Simultaneous Multithreading architecture validator."""
+    """
+    Simultaneous Multithreading architecture validator.
+
+    Validate Simultaneous Multithreading and architecture combination.
+    """
 
     def _validate(self, simultaneous_multithreading: Param, architecture: DynamicParam):
-        """Validate Simultaneous Multithreading and architecture combination."""
         supported_architectures = ["x86_64"]
         if simultaneous_multithreading.value and architecture.value not in supported_architectures:
             self._add_failure(
@@ -165,7 +175,6 @@ class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
     def _validate(self, efa_enabled: Param, os: Param, architecture: DynamicParam):
-        """Check os and architecture combination whan efa is enabled."""
         if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture.value):
             self._add_failure(
                 "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture.value),
@@ -175,10 +184,13 @@ class EfaOsArchitectureValidator(Validator):
 
 
 class ArchitectureOsValidator(Validator):
-    """Validate OS and architecture combination."""
+    """
+    Validate OS and architecture combination.
+
+    ARM AMIs are only available for a subset of the supported OSes.
+    """
 
     def _validate(self, os: Param, architecture: DynamicParam):
-        """ARM AMIs are only available for  a subset of the supported OSes."""
         allowed_oses = get_supported_os_for_architecture(architecture.value)
         if os.value not in allowed_oses:
             self._add_failure(
@@ -191,10 +203,13 @@ class ArchitectureOsValidator(Validator):
 
 
 class InstanceArchitectureCompatibilityValidator(Validator):
-    """Validate instance type and architecture combination."""
+    """
+    Validate instance type and architecture combination.
+
+    Verify that head node and compute instance types imply compatible architectures.
+    """
 
     def _validate(self, instance_type: Param, architecture: DynamicParam):
-        """Verify that head node and compute instance types imply compatible architectures."""
         head_node_architecture = architecture.value
         compute_architectures = get_supported_architectures_for_instance_type(instance_type.value)
         if head_node_architecture not in compute_architectures:
