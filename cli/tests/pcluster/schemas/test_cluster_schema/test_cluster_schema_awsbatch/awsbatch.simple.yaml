@@ -6,8 +6,6 @@ HeadNode:
     KeyName: String  # ec2-key-name
   Networking:
     SubnetId: subnet-12345678
-  Image:
-    Os: alinux2
 Scheduling:
   Awsbatch:
     Queues:

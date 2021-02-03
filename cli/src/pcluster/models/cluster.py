@@ -362,7 +362,6 @@ class HeadNode(Resource):
         networking: HeadNodeNetworking,
         ssh: Ssh,
         simultaneous_multithreading: bool = None,
-        image: Image = None,
         storage: Storage = None,
         dcv: Dcv = None,
         efa: Efa = None,
@@ -370,7 +369,6 @@ class HeadNode(Resource):
         super().__init__()
         self.instance_type = Param(instance_type)
         self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
-        self.image = image
         self.networking = networking
         self.ssh = ssh
         self.storage = storage

@@ -16,10 +16,9 @@ from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, Sl
 
 def dummy_head_node():
     """Generate dummy head node."""
-    image = Image(os="fakeos")
     head_node_networking = HeadNodeNetworking(subnet_id="test")
     ssh = Ssh(key_name="test")
-    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, image=image)
+    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh)
 
 
 def dummy_cluster():

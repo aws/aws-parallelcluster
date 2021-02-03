@@ -343,7 +343,6 @@ class HeadNodeSchema(BaseSchema):
     simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
     ssh = fields.Nested(SshSchema, required=True)
-    image = fields.Nested(ImageSchema)
     storage = fields.Nested(StorageSchema)
     dcv = fields.Nested(DcvSchema)
     efa = fields.Nested(EfaSchema)
