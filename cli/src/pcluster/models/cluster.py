@@ -629,16 +629,3 @@ class BaseCluster(Resource):
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
                     )
-
-
-    @property
-    def cores(self):
-        """Return the number of cores. Example derived attribute, not present in the config file."""
-        if self._cores is None:
-            # FIXME boto3 call to retrieve the value
-            self._cores = "1"
-        return self._cores
-
-    @cores.setter
-    def cores(self, value):
-        self._cores = value

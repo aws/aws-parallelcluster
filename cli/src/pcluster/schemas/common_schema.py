@@ -60,15 +60,6 @@ class BaseSchema(Schema):
         """
         return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
 
-    @pre_load
-    def evaluate_dynamic_defaults(self, raw_data, **kwargs):
-        """Evaluate dynamic default, it's just an example to be removed."""
-        # FIXME to be removed, it's a test
-        for fieldname, field in self.fields.items():
-            if fieldname not in raw_data and callable(field.metadata.get("dynamic_default")):
-                raw_data[fieldname] = field.metadata.get("dynamic_default")(raw_data)
-        return raw_data
-
     @pre_dump
     def remove_implied_values(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
