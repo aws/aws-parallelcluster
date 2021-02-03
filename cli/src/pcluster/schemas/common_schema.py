@@ -14,7 +14,7 @@
 # These classes are created by following marshmallow syntax.
 #
 
-from marshmallow import Schema, fields, post_dump, post_load, pre_dump, pre_load, validate
+from marshmallow import Schema, fields, post_dump, post_load, pre_dump, validate
 
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import Tag
@@ -62,15 +62,6 @@ class BaseSchema(Schema):
             # If the schema is to be loaded partially, do not check existence constrain.
             return True
         return len([data.get(field_name) for field_name in field_list if data.get(field_name)]) == 1
-
-    @pre_load
-    def evaluate_dynamic_defaults(self, raw_data, **kwargs):
-        """Evaluate dynamic default, it's just an example to be removed."""
-        # FIXME to be removed, it's a test
-        for fieldname, field in self.fields.items():
-            if fieldname not in raw_data and callable(field.metadata.get("dynamic_default")):
-                raw_data[fieldname] = field.metadata.get("dynamic_default")(raw_data)
-        return raw_data
 
     @pre_dump
     def remove_implied_values(self, data, **kwargs):

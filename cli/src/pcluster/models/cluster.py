@@ -376,7 +376,24 @@ class HeadNode(Resource):
         self.storage = storage
         self.dcv = dcv
         self.efa = efa
+        # Dynamic params, not present in config
+        self.architecture = DynamicParam(value_calculator=self._fetch_architecture)
+        # Validators
         self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
+
+    def _fetch_architecture(self):
+        """Compute cluster's architecture based on its head node instance type."""
+        head_node_instance_type = self.instance_type.value
+        # TODO verify if it's referred to an old instance type
+        head_node_supported_architectures = get_supported_architectures_for_instance_type(head_node_instance_type)
+        if not head_node_supported_architectures:
+            error(f"Unable to get architectures supported by instance type {head_node_instance_type}")
+        # If the instance type supports multiple architectures, choose the first one.
+        # TODO: this is currently not an issue because none of the instance types we support more than one of the
+        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
+        #       probably need to choose based on the subset of the architectures supported by both the head node and
+        #       compute instance types.
+        return head_node_supported_architectures[0]
 
 
 class BaseComputeResource(Resource):
@@ -583,14 +600,12 @@ class BaseCluster(Resource):
         self.iam = iam
         self.custom_actions = custom_actions
         self.cores = None
-        # Dynamic params, not present in config
-        self.architecture = DynamicParam(value_calculator=self._fetch_architecture)
         # Validators
         self._add_validator(
             ArchitectureOsValidator,
             priority=10,
             os=self.image.os,
-            architecture=self.architecture,
+            architecture=self.head_node.architecture,
         )
         if self.head_node.efa:
             self._add_validator(
@@ -598,13 +613,13 @@ class BaseCluster(Resource):
                 priority=9,
                 efa_enabled=self.head_node.efa.enabled,
                 os=self.image.os,
-                architecture=self.architecture,
+                architecture=self.head_node.architecture,
             )
         self._add_validator(
             SimultaneousMultithreadingArchitectureValidator,
             priority=8,
             simultaneous_multithreading=self.head_node.simultaneous_multithreading,
-            architecture=self.architecture,
+            architecture=self.head_node.architecture,
         )
         if self.shared_storage:
             for storage in self.shared_storage:
@@ -614,29 +629,3 @@ class BaseCluster(Resource):
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
                     )
-
-    def _fetch_architecture(self):
-        """Compute cluster's architecture based on its head node instance type."""
-        head_node_instance_type = self.head_node.instance_type.value
-        # TODO verify if it's referred to an old instance type
-        head_node_supported_architectures = get_supported_architectures_for_instance_type(head_node_instance_type)
-        if not head_node_supported_architectures:
-            error(f"Unable to get architectures supported by instance type {head_node_instance_type}")
-        # If the instance type supports multiple architectures, choose the first one.
-        # TODO: this is currently not an issue because none of the instance types we support more than one of the
-        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
-        #       probably need to choose based on the subset of the architectures supported by both the head node and
-        #       compute instance types.
-        return head_node_supported_architectures[0]
-
-    @property
-    def cores(self):
-        """Return the number of cores. Example derived attribute, not present in the config file."""
-        if self._cores is None:
-            # FIXME boto3 call to retrieve the value
-            self._cores = "1"
-        return self._cores
-
-    @cores.setter
-    def cores(self, value):
-        self._cores = value
