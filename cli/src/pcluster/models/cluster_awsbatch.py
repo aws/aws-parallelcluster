@@ -32,7 +32,10 @@ from pcluster.models.cluster import (
     Tag,
 )
 from pcluster.models.common import Param
-from pcluster.validators.awsbatch_validators import AwsbatchInstancesArchitectureCompatibilityValidator
+from pcluster.validators.awsbatch_validators import (
+    AwsbatchComputeInstanceTypeValidator,
+    AwsbatchInstancesArchitectureCompatibilityValidator,
+)
 from pcluster.validators.cluster_validators import EfaOsArchitectureValidator
 
 
@@ -56,6 +59,9 @@ class AwsbatchComputeResource(BaseComputeResource):
         self.min_vcpus = Param(min_vcpus, default=0)
         self.desired_vcpus = Param(desired_vcpus, default=0)
         self.spot_bid_percentage = spot_bid_percentage
+        self._add_validator(
+            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=max_vcpus
+        )
 
 
 class AwsbatchQueue(BaseQueue):

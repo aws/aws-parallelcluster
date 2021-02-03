@@ -38,7 +38,6 @@ from pcluster.utils import (
     get_region,
     get_supported_az_for_multi_instance_types,
     get_supported_az_for_one_instance_type,
-    get_supported_compute_instance_types,
     get_supported_instance_types,
     get_supported_os_for_scheduler,
     get_supported_schedulers,
@@ -382,7 +381,7 @@ class ClusterConfigureHelper:
                 default_compute_instance_type = get_default_instance_type()
             self.compute_instance_type = prompt(
                 "Compute instance type",
-                lambda x: x in get_supported_compute_instance_types(self.scheduler),
+                lambda x: x in get_supported_instance_types(),
                 default_value=default_compute_instance_type,
             )
         # Cache availability zones offering the selected instance type(s) for later use

@@ -13,11 +13,30 @@ from assertpy import assert_that
 
 from pcluster.models.common import DynamicParam, Param
 from pcluster.validators.awsbatch_validators import (
+    AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
 )
 
-from .utils import assert_failure_messages
+from .utils import assert_failure_messages, mock_instance_type_info
+
+
+@pytest.mark.parametrize(
+    "instance_type, max_vcpus, expected_message",
+    [
+        ("t2.micro", 2, "max vcpus must be greater than or equal to 4"),
+        ("t2.micro", 4, None),
+        ("p4d.24xlarge", 4, None),
+        ("c4.xlarge", 4, "is not supported"),
+        ("t2", 2, None),  # t2 family
+        ("optimal", 4, None),
+    ],
+)
+def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expected_message):
+    mocker.patch("pcluster.utils.get_supported_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
+    mock_instance_type_info(mocker, instance_type)
+    actual_failures = AwsbatchComputeInstanceTypeValidator().execute(Param(instance_type), Param(max_vcpus))
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

@@ -55,13 +55,11 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
-    compute_instance_type_validator,
     dcv_enabled_validator,
     duplicate_shared_dir_validator,
     ebs_settings_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
-    ec2_instance_type_validator,
     ec2_key_pair_validator,
     ec2_placement_group_validator,
     ec2_security_group_validator,
@@ -584,7 +582,6 @@ COMPUTE_RESOURCE = {
     "params": OrderedDict([
         ("instance_type", {
             "type": JsonParam,
-            "validators": [ec2_instance_type_validator],
             "required": True,
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
@@ -723,7 +720,7 @@ CLUSTER_COMMON_PARAMS = [
     ("master_instance_type", {
         "type": HeadNodeInstanceTypeCfnParam,
         "cfn_param_mapping": "MasterInstanceType",
-        "validators": [head_node_instance_type_validator, ec2_instance_type_validator],
+        "validators": [head_node_instance_type_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("master_root_volume_size", {
@@ -976,7 +973,6 @@ CLUSTER_SIT = {
             ("compute_instance_type", {
                 "type": ComputeInstanceTypeCfnParam,
                 "cfn_param_mapping": "ComputeInstanceType",
-                "validators": [compute_instance_type_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
             ("initial_queue_size", {
