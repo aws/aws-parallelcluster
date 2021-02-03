@@ -9,6 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
+from typing import List
 
 import boto3
 from botocore.exceptions import ClientError
@@ -185,7 +186,7 @@ class FsxNetworkingValidator(Validator):
         out_access = False
 
         for sec_group in (
-                boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups")
+            boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups")
         ):
 
             # Check all inbound rules
@@ -228,6 +229,34 @@ class FsxNetworkingValidator(Validator):
             return True
 
         return False
+
+
+class DuplicateMountDirValidator(Validator):
+    """
+    Mount dir validator.
+
+    Verify if there are duplicated mount dirs between shared storage and ephemeral volumes.
+    """
+
+    def _validate(self, mount_dir_list: List[Param]):
+        mount_dirs_set = set()
+        duplicated_mount_dirs = []
+
+        for param in mount_dir_list:
+            if param.value in mount_dirs_set:
+                duplicated_mount_dirs.append(param)
+            else:
+                mount_dirs_set.add(param.value)
+
+        if len(mount_dir_list) != len(mount_dirs_set):
+            self._add_failure(
+                "Mount {0} {1} cannot be specified for multiple volumes".format(
+                    "directories" if len(duplicated_mount_dirs) > 1 else "directory",
+                    ", ".join(mount_dir.value for mount_dir in duplicated_mount_dirs)
+                ),
+                FailureLevel.ERROR,
+                duplicated_mount_dirs,
+            )
 
 
 # --------------- Third party software validators --------------- #
