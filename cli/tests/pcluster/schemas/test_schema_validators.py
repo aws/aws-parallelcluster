@@ -13,7 +13,11 @@ import pytest
 from marshmallow import ValidationError
 
 from pcluster.schemas.cluster_schema import (
-    AwsbatchComputeResourceSchema, EfsSchema, FsxSchema, SharedStorageSchema, SlurmComputeResourceSchema,
+    AwsbatchComputeResourceSchema,
+    EfsSchema,
+    FsxSchema,
+    SharedStorageSchema,
+    SlurmComputeResourceSchema,
 )
 
 DUMMY_COMPUTE_RESOURCE = {"InstanceType": "test"}

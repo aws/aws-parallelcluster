@@ -702,20 +702,6 @@ def test_validate_pcluster_version_based_on_ami_name(mocker, ami_name, error_exp
         utils.validate_pcluster_version_based_on_ami_name(ami_name)
 
 
-@pytest.mark.parametrize("scheduler", ["slurm", "sge", "torque", "awsbatch"])
-def test_get_supported_compute_instance_types(mocker, scheduler):
-    """Verify that the correct function to get supported instance types is called based on the scheduler used."""
-    batch_function_patch = mocker.patch("pcluster.utils.get_supported_batch_instance_types")
-    traditional_scheduler_function_patch = mocker.patch("pcluster.utils.get_supported_instance_types")
-    utils.get_supported_compute_instance_types(scheduler)
-    if scheduler == "awsbatch":
-        assert_that(batch_function_patch.call_count).is_equal_to(1)
-        traditional_scheduler_function_patch.assert_not_called()
-    else:
-        assert_that(traditional_scheduler_function_patch.call_count).is_equal_to(1)
-        batch_function_patch.assert_not_called()
-
-
 @pytest.mark.parametrize(
     "raise_error_api_function, raise_error_parsing_function, types_parsed_from_emsg_are_known",
     product([True, False], repeat=3),

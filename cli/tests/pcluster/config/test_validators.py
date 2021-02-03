@@ -37,46 +37,10 @@ def boto3_stubber_path():
     return "pcluster.config.validators.boto3"
 
 
-# FIXME Moved
-@pytest.mark.parametrize(
-    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
-)
-def test_ec2_instance_type_validator(mocker, instance_type, expected_message):
-    config_parser_dict = {"cluster default": {"compute_instance_type": instance_type}}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
 @pytest.mark.parametrize("instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None)])
 def test_head_node_instance_type_validator(mocker, instance_type, expected_message):
     config_parser_dict = {"cluster default": {"master_instance_type": instance_type}}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "scheduler, instance_type, expected_message, expected_warnings",
-    [
-        ("sge", "t2.micro", None, None),
-        ("sge", "c4.xlarge", None, None),
-        ("sge", "c5.xlarge", "is not supported", None),
-        # NOTE: compute_instance_type_validator calls ec2_instance_type_validator only if the scheduler is not awsbatch
-        ("awsbatch", "t2.micro", None, None),
-        ("awsbatch", "c4.xlarge", "is not supported", None),
-        ("awsbatch", "t2", None, None),  # t2 family
-        ("awsbatch", "optimal", None, None),
-        ("sge", "p4d.24xlarge", None, "has 4 Network Interfaces."),
-        ("slurm", "p4d.24xlarge", None, None),
-    ],
-)
-def test_compute_instance_type_validator(mocker, scheduler, instance_type, expected_message, expected_warnings):
-    config_parser_dict = {"cluster default": {"scheduler": scheduler, "compute_instance_type": instance_type}}
-    extra_patches = {
-        "pcluster.config.validators.InstanceTypeInfo.max_network_interface_count": 4
-        if instance_type == "p4d.24xlarge"
-        else 1,
-    }
-    utils.assert_param_validator(
-        mocker, config_parser_dict, expected_message, expected_warnings, extra_patches=extra_patches
-    )
 
 
 def test_ec2_key_pair_validator(mocker, boto3_stubber):
@@ -953,7 +917,7 @@ def test_dcv_enabled_validator(
 
     architectures = ["x86_64"] if instance_type.startswith("t2") else ["arm64"]
     extra_patches = {
-        "pcluster.config.validators.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
+        "pcluster.utils.get_supported_instance_types": ["t2.nano", "t2.micro", "t2.medium", "m6g.xlarge"],
         "pcluster.utils.get_supported_architectures_for_instance_type": architectures,
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type": architectures,
         "pcluster.utils.get_supported_os_for_architecture": [base_os],
