@@ -20,8 +20,8 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
 }
 
 
-class ComputeResourceValidator(Validator):
-    """Slurm compute resource validator."""
+class ComputeResourceSizeValidator(Validator):
+    """Slurm compute resource size validator."""
 
     def _validate(self, min_count: Param, max_count: Param):
         """Validate min count and max count combinations."""
