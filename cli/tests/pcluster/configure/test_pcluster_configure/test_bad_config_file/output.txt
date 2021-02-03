@@ -1,6 +1,4 @@
 ERROR: The configuration parameter 'invalid_key' is not allowed in the [aws] section
-ERROR: The configuration parameter 'scheduler' has an invalid value 'invalid_value'
-Allowed values are: ['awsbatch', 'sge', 'slurm', 'torque']
 ERROR: Configuration parameter 'max_queue_size' must be an Integer
 ERROR: Configuration parameter 'maintain_initial_size' must be a Boolean
 WARNING: Configuration file {{ CONFIG_FILE }} will be overwritten.

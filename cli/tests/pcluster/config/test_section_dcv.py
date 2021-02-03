@@ -38,14 +38,6 @@ def test_dcv_section_from_cfn(mocker, cfn_params_dict, expected_section_dict):
     [
         # default
         ({"dcv default": {}}, {}, None),
-        # right value
-        ({"dcv default": {"enable": "master"}}, {"enable": "master"}, None),
-        # invalid value
-        ({"dcv default": {"enable": "wrong_value"}}, None, "has an invalid value"),
-        ({"dcv default": {"port": "wrong_value"}}, None, "must be an Integer"),
-        ({"dcv default": {"access_from": "wrong_value"}}, None, "has an invalid value"),
-        # invalid key
-        ({"dcv default": {"invalid_key": "fake_value"}}, None, "'invalid_key' is not allowed in the .* section"),
     ],
 )
 def test_dcv_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
@@ -77,32 +69,9 @@ def test_dcv_section_to_cfn(mocker, section_dict, expected_cfn_params):
     "param_key, param_value, expected_value, expected_message",
     [
         ("enable", None, None, None),
-        ("enable", "", None, "has an invalid value"),
-        ("enable", "wrong_value", None, "has an invalid value"),
-        ("enable", "NONE", None, "has an invalid value"),
         ("enable", "master", "master", None),
         ("port", None, 8443, None),
-        ("port", "", None, "must be an Integer"),
-        ("port", "NONE", None, "must be an Integer"),
-        ("port", "wrong_value", None, "must be an Integer"),
-        ("port", "1", 1, None),
-        ("port", "20", 20, None),
         ("access_from", None, "0.0.0.0/0", None),
-        ("access_from", "", None, "Allowed values are"),
-        ("access_from", "wrong_value", None, "Allowed values are"),
-        ("access_from", "111.111.111.111", None, "Allowed values are"),
-        ("access_from", "111.111.111.111/222", None, "Allowed values are"),
-        ("access_from", "NONE", None, "Allowed values are"),
-        ("access_from", "0.0.0.0/0", "0.0.0.0/0", None),
-        ("access_from", "1.1.1.1/0", "1.1.1.1/0", None),
-        ("access_from", "1.1.1.1/8", "1.1.1.1/8", None),
-        ("access_from", "1.1.1.1/15", "1.1.1.1/15", None),
-        ("access_from", "1.1.1.1/32", "1.1.1.1/32", None),
-        ("access_from", "1.1.1.1/33", None, "Allowed values are"),
-        ("access_from", "11.11.11.11/32", "11.11.11.11/32", None),
-        ("access_from", "111.111.111.111/22", "111.111.111.111/22", None),
-        ("access_from", "255.255.255.255/32", "255.255.255.255/32", None),
-        ("access_from", "255.255.255.256/32", None, "Allowed values are"),
     ],
 )
 def test_dcv_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -118,7 +87,6 @@ def test_dcv_param_from_file(mocker, param_key, param_value, expected_value, exp
         ("test1,test2", SystemExit()),
         ("test4", SystemExit()),
         ("test5", SystemExit()),
-        ("test6", SystemExit()),
     ],
 )
 def test_dcv_from_file_to_cfn(mocker, pcluster_config_reader, settings_label, expected_cfn_params):

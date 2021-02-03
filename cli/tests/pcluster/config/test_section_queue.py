@@ -17,9 +17,6 @@ from pcluster.config.mappings import QUEUE
 @pytest.mark.parametrize(
     "param_key, param_value, expected_value, expected_message",
     [
-        ("compute_type", "ondemand", "ondemand", None),
-        ("compute_type", "spot", "spot", None),
-        ("compute_type", "invalid", None, "has an invalid value"),
         ("enable_efa", "invalid", None, "must be of 'bool' type"),
         ("enable_efa", "True", True, None),
         ("enable_efa", "False", False, None),

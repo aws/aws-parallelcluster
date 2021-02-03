@@ -13,7 +13,6 @@
 # This module contains all the classes representing the Schema of the configuration file.
 # These classes are created by following marshmallow syntax.
 #
-import re
 
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
@@ -132,12 +131,15 @@ class EfsSchema(BaseSchema):
     kms_key_id = fields.Str()
     performance_mode = fields.Str(validate=validate.OneOf(["generalPurpose", "maxIO"]))
     throughput_mode = fields.Str(validate=validate.OneOf(["provisioned", "bursting"]))
-    provisioned_throughput = fields.Int(validate=validate.Range(min=0, max=1024))
+    provisioned_throughput = fields.Int(validate=validate.Range(min=1, max=1024))
     file_system_id = fields.Str(validate=validate.Regexp(r"^fs-[0-9a-z]{8}$|^fs-[0-9a-z]{17}$"))
 
     @validates_schema
     def validate_existence_of_mode_throughput(self, data, **kwargs):
         """Validate the conditional existence requirement between throughput_mode and provisioned_throughput."""
+        if kwargs.get("partial"):
+            # If the schema is to be loaded partially, do not check existence constrain.
+            return
         throughput_mode = data.get("throughput_mode")
         provisioned_throughput = data.get("provisioned_throughput")
         if throughput_mode != "provisioned" and provisioned_throughput:
@@ -214,19 +216,10 @@ class SharedStorageSchema(BaseSchema):
         setattr(data, data.shared_storage_type.value, data)
         return data
 
-    @validates("mount_dir")
-    def validate_not_none_dir(self, value):
-        """Validate that user is not specifying /NONE or NONE as MountDir for any filesystem."""
-        if re.match("^/?NONE$", value):
-            raise ValidationError(f"{value} cannot be used as a mount directory")
-
     @validates_schema
     def only_one_storage(self, data, **kwargs):
         """Validate that there is one and only one setting."""
-        if kwargs.get("partial"):
-            # If the schema is to be loaded partially, do not check existence constrain.
-            return
-        if not self.only_one_field(data, ["ebs", "efs", "fsx"]):
+        if not self.only_one_field(data, ["ebs", "efs", "fsx"], **kwargs):
             raise ValidationError(
                 "You must provide one and only one configuration, choosing among EBS, FSx, EFS in Shared Storage"
             )
@@ -390,7 +383,7 @@ class AwsbatchComputeResourceSchema(_ComputeResourceSchema):
     max_vcpus = fields.Int(data_key="MaxvCpus")
     min_vcpus = fields.Int(data_key="MinvCpus")
     desired_vcpus = fields.Int(data_key="DesiredvCpus")
-    spot_bid_percentage = fields.Float()
+    spot_bid_percentage = fields.Float(validate=validate.Range(min=0, max=1, min_inclusive=False))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -479,7 +472,7 @@ class SchedulingSchema(BaseSchema):
     @validates_schema
     def only_one_scheduling_type(self, data, **kwargs):
         """Validate that there is one and only one type of scheduling."""
-        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"]):
+        if not self.only_one_field(data, ["slurm", "awsbatch", "custom"], **kwargs):
             raise ValidationError("You must provide scheduler configuration")
 
     @post_load

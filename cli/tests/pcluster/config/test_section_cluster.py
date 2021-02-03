@@ -103,6 +103,7 @@ def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_
     utils.assert_section_from_cfn(mocker, CLUSTER_SIT, cfn_params_dict, expected_section_dict, expected_section_label)
 
 
+"""
 @pytest.mark.parametrize(
     "config_parser_dict, expected_dict_params, expected_message",
     [
@@ -152,6 +153,7 @@ def test_sit_cluster_section_from_cfn(mocker, cfn_params_dict, expected_section_
     ],
 )
 def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
+    # FIXME: doesn't apply to pcluster3
     utils.set_default_values_for_required_cluster_section_params(
         config_parser_dict.get("cluster default"), only_if_not_present=True
     )
@@ -213,6 +215,7 @@ def test_sit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
     ],
 )
 def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict_params, expected_message):
+    # FIXME: doesn't apply to pcluster3
     config_parser_dict["cluster default"]["queue_settings"] = "queue1"
     config_parser_dict["queue queue1"] = {}
     utils.set_default_values_for_required_cluster_section_params(
@@ -220,6 +223,7 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
     )
     expected_dict_params["queue_settings"] = "queue1"
     utils.assert_section_from_file(mocker, CLUSTER_HIT, config_parser_dict, expected_dict_params, expected_message)
+"""
 
 
 @pytest.mark.parametrize(
@@ -237,28 +241,6 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("template_url", "test", "test", None),
         ("template_url", "NONE", "NONE", None),
         ("template_url", "fake_value", "fake_value", None),
-        ("base_os", "", None, "has an invalid value"),
-        ("base_os", "wrong_value", None, "has an invalid value"),
-        ("base_os", "NONE", None, "has an invalid value"),
-        ("base_os", "ubuntu1804", "ubuntu1804", None),
-        ("scheduler", "wrong_value", None, "has an invalid value"),
-        ("scheduler", "NONE", None, "has an invalid value"),
-        ("scheduler", "awsbatch", "awsbatch", None),
-        ("shared_dir", None, "/shared", None),
-        ("shared_dir", "", None, "has an invalid value"),
-        ("shared_dir", "fake_value", "fake_value", None),
-        ("shared_dir", "/test", "/test", None),
-        ("shared_dir", "/test/test2", "/test/test2", None),
-        ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
-        ("shared_dir", "//test", None, "has an invalid value"),
-        ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", "\\test", None, "has an invalid value"),
-        ("shared_dir", ".test", None, "has an invalid value"),
-        ("shared_dir", "/test/.test2", None, "has an invalid value"),
-        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
-        ("shared_dir", "/test//test2", None, "has an invalid value"),
-        ("shared_dir", "/test\\test2", None, "has an invalid value"),
-        ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         # Cluster configuration
         ("placement_group", None, None, None),
         ("placement_group", "", "", None),
@@ -277,26 +259,12 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("master_instance_type", "test", "test", None),
         ("master_instance_type", "NONE", "NONE", None),
         ("master_instance_type", "fake_value", "fake_value", None),
-        ("master_root_volume_size", None, 25, None),
-        ("master_root_volume_size", "", None, "must be an Integer"),
-        ("master_root_volume_size", "NONE", None, "must be an Integer"),
-        ("master_root_volume_size", "wrong_value", None, "must be an Integer"),
-        ("master_root_volume_size", "19", 19, "Allowed values are"),
-        ("master_root_volume_size", "22", 22, "Allowed values are"),
-        ("master_root_volume_size", "31", 31, None),
         # Compute fleet
         # TODO add regex for compute_instance_type
         ("compute_instance_type", "", "", None),
         ("compute_instance_type", "test", "test", None),
         ("compute_instance_type", "NONE", "NONE", None),
         ("compute_instance_type", "fake_value", "fake_value", None),
-        ("compute_root_volume_size", None, 25, None),
-        ("compute_root_volume_size", "", None, "must be an Integer"),
-        ("compute_root_volume_size", "NONE", None, "must be an Integer"),
-        ("compute_root_volume_size", "wrong_value", None, "must be an Integer"),
-        ("compute_root_volume_size", "19", 19, "Allowed values are"),
-        ("compute_root_volume_size", "22", 22, "Allowed values are"),
-        ("compute_root_volume_size", "31", 31, None),
         ("initial_queue_size", None, 0, None),
         ("initial_queue_size", "", None, "must be an Integer"),
         ("initial_queue_size", "NONE", None, "must be an Integer"),
@@ -332,31 +300,9 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("max_vcpus", "wrong_value", None, "must be an Integer"),
         ("max_vcpus", "1", 1, None),
         ("max_vcpus", "20", 20, None),
-        ("cluster_type", None, "ondemand", None),
-        ("cluster_type", "", None, "has an invalid value"),
-        ("cluster_type", "wrong_value", None, "has an invalid value"),
-        ("cluster_type", "NONE", None, "has an invalid value"),
-        ("cluster_type", "spot", "spot", None),
         ("spot_price", None, 0.0, None),
-        ("spot_price", "", None, "must be a Float"),
-        ("spot_price", "NONE", None, "must be a Float"),
-        ("spot_price", "wrong_value", None, "must be a Float"),
-        ("spot_price", "0.09", 0.09, None),
-        ("spot_price", "0", 0.0, None),
-        ("spot_price", "0.1", 0.1, None),
-        ("spot_price", "1", 1, None),
-        ("spot_price", "100", 100, None),
-        ("spot_price", "100.0", 100.0, None),
-        ("spot_price", "100.1", 100.1, None),
-        ("spot_price", "101", 101, None),
         ("spot_bid_percentage", None, 0, None),
-        ("spot_bid_percentage", "", None, "must be an Integer"),
-        ("spot_bid_percentage", "NONE", None, "must be an Integer"),
-        ("spot_bid_percentage", "wrong_value", None, "must be an Integer"),
-        ("spot_bid_percentage", "1", 1, None),
-        ("spot_bid_percentage", "20", 20, None),
         ("spot_bid_percentage", "100.1", None, "must be an Integer"),
-        ("spot_bid_percentage", "101", None, "has an invalid value"),
         # Access and networking
         ("proxy_server", None, None, None),
         ("proxy_server", "", "", None),
@@ -396,33 +342,12 @@ def test_hit_cluster_section_from_file(mocker, config_parser_dict, expected_dict
         ("enable_efa", "NONE", None, "has an invalid value"),
         ("enable_efa", "compute", "compute", None),
         ("ephemeral_dir", None, "/scratch", None),
-        ("ephemeral_dir", "", None, "has an invalid value"),
-        ("ephemeral_dir", "fake_value", "fake_value", None),
-        ("ephemeral_dir", "/test", "/test", None),
-        ("ephemeral_dir", "/test/test2", "/test/test2", None),
-        ("ephemeral_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
-        ("ephemeral_dir", "//test", None, "has an invalid value"),
-        ("ephemeral_dir", "./test", None, "has an invalid value"),
-        ("ephemeral_dir", "\\test", None, "has an invalid value"),
-        ("ephemeral_dir", ".test", None, "has an invalid value"),
-        ("ephemeral_dir", "/test/.test2", None, "has an invalid value"),
-        ("ephemeral_dir", "/test/.test2/test3", None, "has an invalid value"),
-        ("ephemeral_dir", "/test//test2", None, "has an invalid value"),
-        ("ephemeral_dir", "/test\\test2", None, "has an invalid value"),
-        ("ephemeral_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         ("encrypted_ephemeral", None, False, None),
         ("encrypted_ephemeral", "", None, "must be a Boolean"),
         ("encrypted_ephemeral", "NONE", None, "must be a Boolean"),
         ("encrypted_ephemeral", "true", True, None),
         ("encrypted_ephemeral", "false", False, None),
         ("custom_ami", None, None, None),
-        ("custom_ami", "", None, "has an invalid value"),
-        ("custom_ami", "wrong_value", None, "has an invalid value"),
-        ("custom_ami", "ami-12345", None, "has an invalid value"),
-        ("custom_ami", "ami-123456789", None, "has an invalid value"),
-        ("custom_ami", "NONE", None, "has an invalid value"),
-        ("custom_ami", "ami-12345678", "ami-12345678", None),
-        ("custom_ami", "ami-12345678901234567", "ami-12345678901234567", None),
         # TODO add regex for pre_install
         ("pre_install", None, None, None),
         ("pre_install", "", "", None),
@@ -523,27 +448,7 @@ def test_sit_cluster_param_from_file(
         ("template_url", "test", "test", None),
         ("template_url", "NONE", "NONE", None),
         ("template_url", "fake_value", "fake_value", None),
-        ("base_os", "", None, "has an invalid value"),
-        ("base_os", "wrong_value", None, "has an invalid value"),
-        ("base_os", "NONE", None, "has an invalid value"),
-        ("base_os", "ubuntu1804", "ubuntu1804", None),
-        ("scheduler", "wrong_value", None, "has an invalid value"),
-        ("scheduler", "NONE", None, "has an invalid value"),
-        ("scheduler", "awsbatch", "awsbatch", None),
         ("shared_dir", None, "/shared", None),
-        ("shared_dir", "", None, "has an invalid value"),
-        ("shared_dir", "fake_value", "fake_value", None),
-        ("shared_dir", "/test", "/test", None),
-        ("shared_dir", "/test/test2", "/test/test2", None),
-        ("shared_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
-        ("shared_dir", "//test", None, "has an invalid value"),
-        ("shared_dir", "./test", None, "has an invalid value"),
-        ("shared_dir", "\\test", None, "has an invalid value"),
-        ("shared_dir", ".test", None, "has an invalid value"),
-        ("shared_dir", "/test/.test2", None, "has an invalid value"),
-        ("shared_dir", "/test/.test2/test3", None, "has an invalid value"),
-        ("shared_dir", "/test//test2", None, "has an invalid value"),
-        ("shared_dir", "/test\\test2", None, "has an invalid value"),
         ("shared_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         # Head node
         # TODO add regex for master_instance_type
@@ -552,20 +457,8 @@ def test_sit_cluster_param_from_file(
         ("master_instance_type", "NONE", "NONE", None),
         ("master_instance_type", "fake_value", "fake_value", None),
         ("master_root_volume_size", None, 25, None),
-        ("master_root_volume_size", "", None, "must be an Integer"),
-        ("master_root_volume_size", "NONE", None, "must be an Integer"),
-        ("master_root_volume_size", "wrong_value", None, "must be an Integer"),
-        ("master_root_volume_size", "19", 19, "Allowed values are"),
-        ("master_root_volume_size", "22", 22, "Allowed values are"),
-        ("master_root_volume_size", "31", 31, None),
         # Compute fleet
         ("compute_root_volume_size", None, 25, None),
-        ("compute_root_volume_size", "", None, "must be an Integer"),
-        ("compute_root_volume_size", "NONE", None, "must be an Integer"),
-        ("compute_root_volume_size", "wrong_value", None, "must be an Integer"),
-        ("compute_root_volume_size", "19", 19, "Allowed values are"),
-        ("compute_root_volume_size", "22", 22, "Allowed values are"),
-        ("compute_root_volume_size", "31", 31, None),
         # Access and networking
         ("proxy_server", None, None, None),
         ("proxy_server", "", "", None),
@@ -605,33 +498,11 @@ def test_sit_cluster_param_from_file(
         ("enable_efa", "NONE", None, "has an invalid value"),
         ("enable_efa", "compute", "compute", None),
         ("ephemeral_dir", None, "/scratch", None),
-        ("ephemeral_dir", "", None, "has an invalid value"),
-        ("ephemeral_dir", "fake_value", "fake_value", None),
-        ("ephemeral_dir", "/test", "/test", None),
-        ("ephemeral_dir", "/test/test2", "/test/test2", None),
-        ("ephemeral_dir", "/t_ 1-2( ):&;<>t?*+|", "/t_ 1-2( ):&;<>t?*+|", None),
-        ("ephemeral_dir", "//test", None, "has an invalid value"),
-        ("ephemeral_dir", "./test", None, "has an invalid value"),
-        ("ephemeral_dir", "\\test", None, "has an invalid value"),
-        ("ephemeral_dir", ".test", None, "has an invalid value"),
-        ("ephemeral_dir", "/test/.test2", None, "has an invalid value"),
-        ("ephemeral_dir", "/test/.test2/test3", None, "has an invalid value"),
-        ("ephemeral_dir", "/test//test2", None, "has an invalid value"),
-        ("ephemeral_dir", "/test\\test2", None, "has an invalid value"),
-        ("ephemeral_dir", "NONE", "NONE", None),  # NONE is evaluated as a valid path
         ("encrypted_ephemeral", None, False, None),
         ("encrypted_ephemeral", "", None, "must be a Boolean"),
         ("encrypted_ephemeral", "NONE", None, "must be a Boolean"),
         ("encrypted_ephemeral", "true", True, None),
         ("encrypted_ephemeral", "false", False, None),
-        ("custom_ami", None, None, None),
-        ("custom_ami", "", None, "has an invalid value"),
-        ("custom_ami", "wrong_value", None, "has an invalid value"),
-        ("custom_ami", "ami-12345", None, "has an invalid value"),
-        ("custom_ami", "ami-123456789", None, "has an invalid value"),
-        ("custom_ami", "NONE", None, "has an invalid value"),
-        ("custom_ami", "ami-12345678", "ami-12345678", None),
-        ("custom_ami", "ami-12345678901234567", "ami-12345678901234567", None),
         # TODO add regex for pre_install
         ("pre_install", None, None, None),
         ("pre_install", "", "", None),

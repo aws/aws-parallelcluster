@@ -639,18 +639,6 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
             None,
             0,
         ),
-        (
-            {
-                "deployment_type": "PERSISTENT_1",
-                "storage_type": "SSD",
-                "per_unit_storage_throughput": 50,
-                "storage_capacity": 1200,
-                "drive_cache_type": "NONE",
-            },
-            None,
-            "The configuration parameter 'drive_cache_type' has an invalid value 'NONE'",
-            0,
-        ),
     ],
 )
 def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):

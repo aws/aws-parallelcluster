@@ -23,13 +23,8 @@ from tests.pcluster.config.defaults import DefaultCfnParams, DefaultDict
         # right value
         ({"cw_log default": {"enable": "True"}}, {}, None),
         ({"cw_log default": {"enable": "False"}}, {"enable": False}, None),
-        ({"cw_log default": {"retention_days": "1"}}, {"retention_days": 1}, None),
-        ({"cw_log default": {"retention_days": "14"}}, {"retention_days": 14}, None),
-        ({"cw_log default": {"retention_days": "3653"}}, {"retention_days": 3653}, None),
         # invalid value
         ({"cw_log default": {"enable": "not_a_bool"}}, None, "must be a Boolean"),
-        ({"cw_log default": {"retention_days": "3652"}}, None, "has an invalid value"),
-        ({"cw_log default": {"retention_days": "not_an_int"}}, None, "must be an Integer"),
         # invalid key
         ({"cw_log default": {"invalid_key": "fake_value"}}, None, "'invalid_key' is not allowed in the .* section"),
         (
@@ -75,12 +70,6 @@ def test_cw_log_settings_section_to_file(mocker, section_dict, expected_config_p
         ("enable", "false", False, None),
         ("enable", "not_a_bool", None, "'enable' must be a Boolean"),
         ("enable", "", None, "'enable' must be a Boolean"),
-        # retention_days parameter
-        ("retention_days", "1", 1, None),
-        ("retention_days", "14", 14, None),
-        ("retention_days", "3653", 3653, None),
-        ("retention_days", "2", None, "'retention_days' has an invalid value"),
-        ("retention_days", "", None, "must be an Integer"),
     ],
 )
 def test_cw_log_settings_param_from_file(mocker, param_key, param_value, expected_value, expected_message):
@@ -117,7 +106,6 @@ def test_cw_log_settings_section_from_cfn(mocker, cfn_params_dict, expected_sect
             ),
         ),
         ("one_day_retention", utils.merge_dicts(DefaultCfnParams["cluster_sit"].value, {"CWLogOptions": "true,1"})),
-        ("bad_retention_val", SystemExit()),
         ("bad_enable_val", SystemExit()),
         ("empty_enable_val", SystemExit()),
         ("empty_retention_days", SystemExit()),

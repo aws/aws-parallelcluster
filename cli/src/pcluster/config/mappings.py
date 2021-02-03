@@ -229,32 +229,28 @@ VPC = {
         ("vpc_id", {
             "cfn_param_mapping": "VPCId",
             "required": True,
-            "allowed_values": ALLOWED_VALUES["vpc_id"],
+            "allowed_values": ALLOWED_VALUES["vpc_id"],  # does not apply to pcluster 3.0
             "validators": [ec2_vpc_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("master_subnet_id", {
             "cfn_param_mapping": "MasterSubnetId",
             "required": True,
-            "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("ssh_from", {
             "default": CIDR_ALL_IPS,
-            "allowed_values": ALLOWED_VALUES["cidr"],
             "cfn_param_mapping": "AccessFrom",
             "update_policy": UpdatePolicy.SUPPORTED
         }),
         ("additional_sg", {
             "cfn_param_mapping": "AdditionalSG",
-            "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
         }),
         ("compute_subnet_id", {
             "cfn_param_mapping": "ComputeSubnetId",
-            "allowed_values": ALLOWED_VALUES["subnet_id"],
             "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
@@ -271,7 +267,6 @@ VPC = {
         }),
         ("vpc_security_group_id", {
             "cfn_param_mapping": "VPCSecurityGroupId",
-            "allowed_values": ALLOWED_VALUES["security_group_id"],
             "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
         }),
@@ -299,19 +294,16 @@ EBS = {
     "params": OrderedDict([  # Use OrderedDict because the in python 3.5 a dict is not ordered by default, need it in
         # the test of hit converter
         ("shared_dir", {
-            "allowed_values": ALLOWED_VALUES["file_path"],
             "cfn_param_mapping": "SharedDir",
             "validators": [shared_dir_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("ebs_snapshot_id", {
-            "allowed_values": ALLOWED_VALUES["snapshot_id"],
             "cfn_param_mapping": "EBSSnapshotId",
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("volume_type", {
             "default": "gp2",
-            "allowed_values": ALLOWED_VALUES["volume_types"],
             "cfn_param_mapping": "VolumeType",
             "update_policy": UpdatePolicy(
                 UpdatePolicy.UNSUPPORTED,
@@ -345,7 +337,6 @@ EBS = {
         }),
         ("ebs_volume_id", {
             "cfn_param_mapping": "EBSVolumeId",
-            "allowed_values": ALLOWED_VALUES["volume_id"],
             "validators": [ec2_volume_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
@@ -367,18 +358,15 @@ EFS = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "allowed_values": ALLOWED_VALUES["file_path"],
                 "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("efs_fs_id", {
-                "allowed_values": ALLOWED_VALUES["efs_fs_id"],
                 "validators": [efs_id_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("performance_mode", {
                 "default": "generalPurpose",
-                "allowed_values": ["generalPurpose", "maxIO"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("efs_kms_key_id", {
@@ -386,7 +374,6 @@ EFS = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("provisioned_throughput", {
-                "allowed_values": r"^([0-9]{1,3}|10[0-1][0-9]|102[0-4])(\.[0-9])?$",  # 0.0 to 1024.0
                 "type": FloatCfnParam,
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
@@ -397,7 +384,6 @@ EFS = {
             }),
             ("throughput_mode", {
                 "default": "bursting",
-                "allowed_values": ["provisioned", "bursting"],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
@@ -412,25 +398,21 @@ RAID = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "allowed_values": ALLOWED_VALUES["file_path"],
                 "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("raid_type", {
                 "type": IntCfnParam,
-                "allowed_values": [0, 1],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("num_of_raid_volumes", {
                 "type": IntCfnParam,
                 "default": 2,
-                "allowed_values": "^[2-5]$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
 
             }),
             ("volume_type", {
                 "default": "gp2",
-                "allowed_values": ALLOWED_VALUES["volume_types"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("volume_size", {
@@ -470,12 +452,10 @@ FSX = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "allowed_values": ALLOWED_VALUES["file_path"],
                 "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("fsx_fs_id", {
-                "allowed_values": ALLOWED_VALUES["fsx_fs_id"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("storage_capacity", {
@@ -499,25 +479,21 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
-                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):([0-5]\d)$",
+                "allowed_values": r"NONE|^[1-7]:([01]\d|2[0-3]):([0-5]\d)$",  # To be migrated
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("deployment_type", {
-                "allowed_values": ALLOWED_VALUES["fsx_deployment_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("per_unit_storage_throughput", {
                 "type": IntCfnParam,
-                "allowed_values": ALLOWED_VALUES["fsx_ssd_throughput"] + ALLOWED_VALUES["fsx_hdd_throughput"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("daily_automatic_backup_start_time", {
-                "allowed_values": r"NONE|^([01]\d|2[0-3]):([0-5]\d)$",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("automatic_backup_retention_days", {
                 "type": IntCfnParam,
-                "allowed_values": "^(3[0-5]|[0-2][0-9]|[0-9])$",
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("copy_tags_to_backups", {
@@ -526,21 +502,17 @@ FSX = {
             }),
             ("fsx_backup_id", {
                 "validators": [fsx_lustre_backup_validator],
-                "allowed_values": "^(backup-[0-9a-f]{8,})$",
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("auto_import_policy", {
                 "validators": [fsx_lustre_auto_import_validator],
-                "allowed_values": ALLOWED_VALUES["fsx_auto_import_policy"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("storage_type", {
-                "allowed_values": ALLOWED_VALUES["fsx_storage_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("drive_cache_type", {
                 "default": "NONE",
-                "allowed_values": ALLOWED_VALUES["fsx_drive_cache_type"],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             })
         ]
@@ -555,7 +527,7 @@ DCV = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("enable", {
-                "allowed_values": ["master"],
+                "allowed_values": ["master"],  # does not apply to pcluster 3.0
                 "validators": [dcv_enabled_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
@@ -566,7 +538,6 @@ DCV = {
             }),
             ("access_from", {
                 "default": CIDR_ALL_IPS,
-                "allowed_values": ALLOWED_VALUES["cidr"],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
         ]
@@ -588,9 +559,6 @@ CW_LOG = {
             "type": IntCfnParam,
             "default": 14,
             "cfn_param_mapping": "CWLogEventRententionDays",
-            "allowed_values": [
-                1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653
-            ],
             "update_policy": UpdatePolicy.SUPPORTED,
         }),
     ])
@@ -704,7 +672,6 @@ QUEUE = {
         ("compute_type", {
             "type": JsonParam,
             "default": "ondemand",
-            "allowed_values": ["ondemand", "spot"],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
         ("enable_efa", {
@@ -750,7 +717,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("scheduler", {
         "cfn_param_mapping": "Scheduler",
-        "allowed_values": ["awsbatch", "sge", "slurm", "torque"],
         "validators": [scheduler_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
@@ -765,7 +731,6 @@ CLUSTER_COMMON_PARAMS = [
     ("master_root_volume_size", {
         "type": IntCfnParam,
         "default": 25,
-        "allowed_values": ALLOWED_VALUES["greater_than_25"],
         "cfn_param_mapping": "MasterRootVolumeSize",
         "update_policy": UpdatePolicy(
             UpdatePolicy.UNSUPPORTED,
@@ -776,7 +741,6 @@ CLUSTER_COMMON_PARAMS = [
     ("base_os", {
         "type": BaseOSCfnParam,
         "cfn_param_mapping": "BaseOS",
-        "allowed_values": ["alinux", "alinux2", "ubuntu1604", "ubuntu1804", "centos7", "centos8"],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
@@ -784,7 +748,6 @@ CLUSTER_COMMON_PARAMS = [
     ("compute_root_volume_size", {
         "type": IntCfnParam,
         "default": 25,
-        "allowed_values": ALLOWED_VALUES["greater_than_25"],
         "cfn_param_mapping": "ComputeRootVolumeSize",
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
     }),
@@ -814,26 +777,24 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("shared_dir", {
         "type": SharedDirCfnParam,
-        "allowed_values": ALLOWED_VALUES["file_path"],
         "cfn_param_mapping": "SharedDir",
         "default": "/shared",
         "validators": [shared_dir_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa", {
-        "allowed_values": ["compute"],
+        "allowed_values": ["compute"],  # does not apply to pcluster 3.0
         "cfn_param_mapping": "EFA",
         "validators": [efa_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa_gdr", {
-        "allowed_values": ["compute"],
+        "allowed_values": ["compute"],  # does not apply to pcluster 3.0
         "cfn_param_mapping": "EFAGDR",
         "validators": [efa_gdr_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("ephemeral_dir", {
-        "allowed_values": ALLOWED_VALUES["file_path"],
         "default": "/scratch",
         "cfn_param_mapping": "EphemeralDir",
         "update_policy": UpdatePolicy.UNSUPPORTED,
@@ -846,7 +807,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("custom_ami", {
         "cfn_param_mapping": "CustomAMI",
-        "allowed_values": ALLOWED_VALUES["ami_id"],
         "validators": [ec2_ami_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
@@ -1011,7 +971,7 @@ CLUSTER_SIT = {
             ("placement", {
                 "default": "compute",
                 "cfn_param_mapping": "Placement",
-                "allowed_values": ["cluster", "compute"],
+                "allowed_values": ["cluster", "compute"],  # does not apply to pcluster 3.0
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             # Compute fleet
@@ -1061,7 +1021,6 @@ CLUSTER_SIT = {
             }),
             ("cluster_type", {
                 "default": "ondemand",
-                "allowed_values": ["ondemand", "spot"],
                 "cfn_param_mapping": "ClusterType",
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
             }),
@@ -1075,7 +1034,6 @@ CLUSTER_SIT = {
                 "type": SpotBidPercentageCfnParam,
                 "default": 0,
                 "cfn_param_mapping": "SpotPrice",
-                "allowed_values": r"^(100|[1-9][0-9]|[0-9])$",  # 0 <= value <= 100
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("disable_hyperthreading", {
