@@ -111,12 +111,12 @@ class AwsbatchCluster(BaseCluster):
                 self._add_validator(
                     AwsbatchInstancesArchitectureCompatibilityValidator,
                     instance_types=compute_resource.instance_type,
-                    architecture=self.architecture,
+                    architecture=self.head_node.architecture,
                 )
                 if compute_resource.efa:
                     self._add_validator(
                         EfaOsArchitectureValidator,
                         efa_enabled=compute_resource.efa.enabled,
                         os=self.image.os,
-                        architecture=self.architecture,
+                        architecture=self.head_node.architecture,
                     )
