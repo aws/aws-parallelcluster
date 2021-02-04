@@ -38,3 +38,8 @@ class Ec2Client(Boto3Client):
                 ]
             )
         )
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_key_pair(self, key_name):
+        """Return the given key, if exists."""
+        return self._client.describe_key_pairs(KeyNames=[key_name])

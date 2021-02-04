@@ -34,7 +34,7 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
-from pcluster.validators.ec2_validators import AdditionalIamPolicyValidator, InstanceTypeValidator
+from pcluster.validators.ec2_validators import AdditionalIamPolicyValidator, InstanceTypeValidator, KeyPairValidator
 from pcluster.validators.fsx_validators import (
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,
@@ -327,6 +327,9 @@ class Ssh(Resource):
         super().__init__()
         self.key_name = Param(key_name)
         self.allowed_ips = Param(allowed_ips, default=CIDR_ALL_IPS)
+
+    def _register_validators(self):
+        self._add_validator(KeyPairValidator, key_name=self.key_name)
 
 
 class Dcv(Resource):

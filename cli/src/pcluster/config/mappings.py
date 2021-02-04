@@ -56,7 +56,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     ec2_ami_validator,
-    ec2_key_pair_validator,
     ec2_placement_group_validator,
     ec2_security_group_validator,
     ec2_subnet_id_validator,
@@ -701,7 +700,6 @@ CLUSTER_COMMON_PARAMS = [
     ("key_name", {
         "cfn_param_mapping": "KeyName",
         "required": True,
-        "validators": [ec2_key_pair_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("scheduler", {

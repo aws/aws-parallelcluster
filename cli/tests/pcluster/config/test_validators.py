@@ -42,24 +42,6 @@ def test_head_node_instance_type_validator(mocker, instance_type, expected_messa
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
-def test_ec2_key_pair_validator(mocker, boto3_stubber):
-    describe_key_pairs_response = {
-        "KeyPairs": [
-            {"KeyFingerprint": "12:bf:7c:56:6c:dd:4f:8c:24:45:75:f1:1b:16:54:89:82:09:a4:26", "KeyName": "key1"}
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_key_pairs", response=describe_key_pairs_response, expected_params={"KeyNames": ["key1"]}
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {"cluster default": {"key_name": "key1"}}
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
 @pytest.mark.parametrize(
     "image_architecture, bad_ami_message, bad_architecture_message",
     [
