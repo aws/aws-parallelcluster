@@ -621,18 +621,10 @@ def vpc_stacks(cfn_stacks_factory, request):
             availability_zone=availability_zones[1],
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        no_internet_subnet = SubnetConfig(
-            name="NoInternet",
-            cidr="192.168.0.0/19",  # 8190 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NONE,
-        )
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
             additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
+            subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
         )
         template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
