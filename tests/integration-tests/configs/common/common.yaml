@@ -263,18 +263,6 @@ networking:
   test_networking.py::test_public_private_network_topology:
     dimensions:
       - regions: ["af-south-1", "us-gov-east-1", "cn-northwest-1"]
-  test_cluster_networking.py::test_cluster_in_no_internet_subnet:
-    dimensions:
-        # The region needs to be the same of the Jenkins server since default pre/post install scripts are hosted in an
-        # S3 bucket belonging to the same region and S3 VPC Endpoints only work within the region.
-      - regions: ["us-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_X86 }}
-        oss: ["alinux", "alinux2", "centos7", "ubuntu1604", "ubuntu1804"]  # To replace with {{ common.OSS_COMMERCIAL_X86 }}
-        schedulers: ["sge", "slurm"]
-      - regions: ["us-east-1"]
-        instances: {{ common.INSTANCES_DEFAULT_ARM }}
-        oss: ["alinux2", "ubuntu1804"]  # To replace with {{ common.OSS_COMMERCIAL_ARM }}
-        schedulers: ["sge", "slurm"]
   test_multi_cidr.py::test_multi_cidr:
     dimensions:
       - regions: ["ap-northeast-2"]
@@ -332,7 +320,7 @@ scaling:
         instances: {{ common.INSTANCES_DEFAULT_X86 }}
         oss: {{ common.OSS_COMMERCIAL_X86 }}
         schedulers: ["slurm", "sge"]
-      - regions: ["eu-central-1"]
+      - regions: ["us-east-1"]
         instances: {{ common.INSTANCES_DEFAULT_ARM }}
         oss: {{ common.OSS_COMMERCIAL_ARM }}
         schedulers: ["slurm", "sge"]

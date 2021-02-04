@@ -35,7 +35,6 @@ class Gateways(Enum):
     INTERNET_GATEWAY = auto()
     NAT_GATEWAY = auto()
     PROXY = auto()
-    NONE = auto()
 
 
 class SubnetConfig(NamedTuple):
