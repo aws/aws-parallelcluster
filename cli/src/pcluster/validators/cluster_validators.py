@@ -252,10 +252,26 @@ class DuplicateMountDirValidator(Validator):
             self._add_failure(
                 "Mount {0} {1} cannot be specified for multiple volumes".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",
-                    ", ".join(mount_dir.value for mount_dir in duplicated_mount_dirs)
+                    ", ".join(mount_dir.value for mount_dir in duplicated_mount_dirs),
                 ),
                 FailureLevel.ERROR,
                 duplicated_mount_dirs,
+            )
+
+
+class NumberOfStorageValidator(Validator):
+    """
+    Number of storage validator.
+
+    Validate the number of storage specified is lower than maximum supported.
+    """
+
+    def _validate(self, storage_type, max_number, storage_count):
+        if storage_count > max_number:
+            self._add_failure(
+                "Invalid number of shared storage of {0} type specified. "
+                "Currently only supports upto {1}".format(storage_type, max_number),
+                FailureLevel.ERROR,
             )
 
 

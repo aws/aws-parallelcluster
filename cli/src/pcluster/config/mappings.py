@@ -55,7 +55,6 @@ from pcluster.config.json_param_types import (
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
-    ebs_settings_validator,
     ec2_ami_validator,
     ec2_iam_policies_validator,
     ec2_key_pair_validator,
@@ -865,7 +864,6 @@ CLUSTER_COMMON_PARAMS = [
     ("ebs_settings", {
         "type": EBSSettingsCfnParam,
         "referred_section": EBS,
-        "validators": [ebs_settings_validator],
         "update_policy": UpdatePolicy(
             UpdatePolicy.UNSUPPORTED,
             fail_reason=UpdatePolicy.FAIL_REASONS["ebs_sections_change"],
