@@ -59,8 +59,10 @@ class AwsbatchComputeResource(BaseComputeResource):
         self.min_vcpus = Param(min_vcpus, default=0)
         self.desired_vcpus = Param(desired_vcpus, default=0)
         self.spot_bid_percentage = spot_bid_percentage
+
+    def _register_validators(self):
         self._add_validator(
-            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=max_vcpus
+            AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=self.max_vcpus
         )
 
 
@@ -106,6 +108,7 @@ class AwsbatchCluster(BaseCluster):
         super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
         self.scheduling = scheduling
 
+    def _register_validators(self):
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._add_validator(

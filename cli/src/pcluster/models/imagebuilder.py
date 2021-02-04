@@ -37,6 +37,8 @@ class Volume(Resource):
         self.encrypted = Param(encrypted, default=False)
         self.kms_key_id = Param(kms_key_id)
         # TODO: add validator
+
+    def _register_validators(self):
         self._add_validator(
             EBSVolumeKmsKeyIdValidator, volume_kms_key_id=self.kms_key_id, volume_encrypted=self.encrypted
         )
@@ -102,7 +104,8 @@ class Build(Resource):
         self.subnet_id = Param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
-        # TODO: add validator
+
+    def _register_validators(self):
         self._add_validator(BaseAMIValidator, priority=15, parent_image=self.parent_image)
         self._add_validator(InstanceTypeValidator, priority=15, instance_type=self.instance_type)
         self._add_validator(
@@ -148,7 +151,8 @@ class DevSettings(Resource):
         self.aws_batch_cli_url = Param(aws_batch_cli_url)
         self.distribution_configuration_arn = Param(distribution_configuration_arn)
         self.terminate_instance_on_failure = Param(terminate_instance_on_failure, default=True)
-        # TODO: add validator
+
+    def _register_validators(self):
         self._add_validator(UrlValidator, url=self.node_url)
         self._add_validator(UrlValidator, url=self.aws_batch_cli_url)
 
@@ -170,6 +174,8 @@ class ImageBuilder(Resource):
         self.build = build
         self.dev_settings = dev_settings
         self._set_default()
+
+    def _register_validators(self):
         self._add_validator(
             EbsVolumeTypeSizeValidator, priority=10, volume_type=Param("gp2"), volume_size=self.image.root_volume.size
         )
