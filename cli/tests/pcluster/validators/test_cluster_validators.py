@@ -19,6 +19,7 @@ from pcluster.validators.cluster_validators import (
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
+    NumberOfStorageValidator,
     SimultaneousMultithreadingArchitectureValidator,
 )
 from tests.common import MockedBoto3Request
@@ -369,6 +370,19 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
     mount_dir_param_list = [Param(mount_dir) for mount_dir in mount_dir_list]
     actual_failures = DuplicateMountDirValidator().execute(mount_dir_param_list)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "storage_type, max_number, storage_count, expected_message",
+    [
+        ("fsx", 1, 0, None),
+        ("efs", 1, 1, None),
+        ("ebs", 5, 6, "Invalid number of shared storage of ebs type specified. Currently only supports upto 5"),
+    ],
+)
+def test_number_of_storage_validator(storage_type, max_number, storage_count, expected_message):
+    actual_failures = NumberOfStorageValidator().execute(storage_type, max_number, storage_count)
     assert_failure_messages(actual_failures, expected_message)
 
 

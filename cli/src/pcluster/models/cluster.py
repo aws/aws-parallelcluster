@@ -25,6 +25,7 @@ from pcluster.validators.cluster_validators import (
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     FsxNetworkingValidator,
+    NumberOfStorageValidator,
     SimultaneousMultithreadingArchitectureValidator,
 )
 from pcluster.validators.ebs_validators import (
@@ -44,6 +45,8 @@ from pcluster.validators.fsx_validators import (
 from pcluster.validators.s3_validators import UrlValidator
 
 # ---------------------- Storage ---------------------- #
+
+MAX_STORAGE_COUNT = {"ebs": 5, "efs": 1, "fsx": 1}
 
 
 class Ebs(Resource):
@@ -622,15 +625,29 @@ class BaseCluster(Resource):
             architecture=self.head_node.architecture,
         )
         mount_dirs = []
+        storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
         if self.shared_storage:
             for storage in self.shared_storage:
                 mount_dirs.append(storage.mount_dir)
                 if isinstance(storage, SharedFsx):
+                    storage_count["fsx"] += 1
                     self._add_validator(
                         FsxNetworkingValidator,
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
                     )
+                if isinstance(storage, SharedEbs):
+                    storage_count["ebs"] += 1
+                if isinstance(storage, SharedEfs):
+                    storage_count["efs"] += 1
+
+            for storage_type in ["ebs", "efs", "fsx"]:
+                self._add_validator(
+                    NumberOfStorageValidator,
+                    storage_type=storage_type.upper(),
+                    max_number=MAX_STORAGE_COUNT.get(storage_type),
+                    storage_count=storage_count[storage_type],
+                )
 
         if self.head_node.storage and self.head_node.storage.ephemeral_volume:
             mount_dirs.append(self.head_node.storage.ephemeral_volume.mount_dir)

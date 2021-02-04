@@ -833,46 +833,6 @@ def test_efa_validator_with_vpc_security_group(
 
 
 @pytest.mark.parametrize(
-    "cluster_section_dict, ebs_section_dict, expected_message",
-    [
-        (
-            {"ebs_settings": "vol1, vol2, vol3, vol4, vol5, vol6"},
-            {
-                "vol1": {"shared_dir": "/vol1"},
-                "vol2": {"shared_dir": "/vol2"},
-                "vol3": {"shared_dir": "/vol3"},
-                "vol4": {"shared_dir": "/vol4"},
-                "vol5": {"shared_dir": "/vol5"},
-                "vol6": {"shared_dir": "/vol6"},
-            },
-            "Invalid number of 'ebs' sections specified. Max 5 expected.",
-        ),
-        (
-            {"ebs_settings": "vol1, vol2 "},
-            {"vol1": {"shared_dir": "vol1"}, "vol2": {"volume_type": "io1"}},
-            "When using more than 1 EBS volume, shared_dir is required under each EBS section",
-        ),
-        (
-            {"ebs_settings": "vol1,vol2"},
-            {"vol1": {"shared_dir": "/NONE"}, "vol2": {"shared_dir": "vol2"}},
-            "/NONE cannot be used as a shared directory",
-        ),
-        (
-            {"ebs_settings": "vol1, vol2 "},
-            {"vol1": {"shared_dir": "/vol1"}, "vol2": {"shared_dir": "NONE"}},
-            "NONE cannot be used as a shared directory",
-        ),
-    ],
-)
-def test_ebs_settings_validator(mocker, cluster_section_dict, ebs_section_dict, expected_message):
-    config_parser_dict = {"cluster default": cluster_section_dict}
-    if ebs_section_dict:
-        for vol in ebs_section_dict:
-            config_parser_dict["ebs {0}".format(vol)] = ebs_section_dict.get(vol)
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
     "architecture, base_os, expected_message",
     [
         # Supported combinations
