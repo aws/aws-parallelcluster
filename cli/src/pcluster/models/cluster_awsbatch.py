@@ -19,17 +19,10 @@ from pcluster.models.cluster import (
     BaseComputeResource,
     BaseQueue,
     CommonSchedulingSettings,
-    CustomAction,
     Efa,
-    HeadNode,
-    Iam,
-    Image,
-    Monitoring,
     QueueNetworking,
     Resource,
-    SharedStorage,
     Storage,
-    Tag,
 )
 from pcluster.models.common import Param
 from pcluster.validators.awsbatch_validators import (
@@ -94,18 +87,8 @@ class AwsbatchScheduling(Resource):
 class AwsbatchCluster(BaseCluster):
     """Represent the full Awsbatch Cluster configuration."""
 
-    def __init__(
-        self,
-        image: Image,
-        head_node: HeadNode,
-        scheduling: AwsbatchScheduling,
-        shared_storage: List[SharedStorage] = None,
-        monitoring: Monitoring = None,
-        tags: List[Tag] = None,
-        iam: Iam = None,
-        custom_actions: CustomAction = None,
-    ):
-        super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
+    def __init__(self, scheduling: AwsbatchScheduling, **kwargs):
+        super().__init__(**kwargs)
         self.scheduling = scheduling
 
     def _register_validators(self):

@@ -19,17 +19,10 @@ from pcluster.models.cluster import (
     BaseComputeResource,
     BaseQueue,
     CommonSchedulingSettings,
-    CustomAction,
     Efa,
-    HeadNode,
-    Iam,
-    Image,
-    Monitoring,
     QueueNetworking,
     Resource,
-    SharedStorage,
     Storage,
-    Tag,
 )
 from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
@@ -96,18 +89,8 @@ class SlurmScheduling(Resource):
 class SlurmCluster(BaseCluster):
     """Represent the full Slurm Cluster configuration."""
 
-    def __init__(
-        self,
-        image: Image,
-        head_node: HeadNode,
-        scheduling: SlurmScheduling,
-        shared_storage: List[SharedStorage] = None,
-        monitoring: Monitoring = None,
-        tags: List[Tag] = None,
-        iam: Iam = None,
-        custom_actions: CustomAction = None,
-    ):
-        super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
+    def __init__(self, scheduling: SlurmScheduling, **kwargs):
+        super().__init__(**kwargs)
         self.scheduling = scheduling
 
     def _register_validators(self):

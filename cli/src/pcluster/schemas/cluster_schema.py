@@ -20,6 +20,7 @@ from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
+    AdditionalPackages,
     CloudWatchDashboards,
     CloudWatchLogs,
     CommonSchedulingSettings,
@@ -33,6 +34,7 @@ from pcluster.models.cluster import (
     HeadNodeNetworking,
     Iam,
     Image,
+    IntelSelectSolutions,
     Logs,
     Monitoring,
     PlacementGroup,
@@ -624,6 +626,28 @@ class IamSchema(BaseSchema):
         return Iam(**data)
 
 
+class IntelSelectSolutionsSchema(BaseSchema):
+    """Represent the schema of additional packages."""
+
+    install_intel_software = fields.Bool()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return IntelSelectSolutions(**data)
+
+
+class AdditionalPackagesSchema(BaseSchema):
+    """Represent the schema of additional packages."""
+
+    intel_select_solutions = fields.Nested(IntelSelectSolutionsSchema)
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return AdditionalPackages(**data)
+
+
 # ---------------------- Root Schema ---------------------- #
 
 
@@ -636,9 +660,12 @@ class ClusterSchema(BaseSchema):
     shared_storage = fields.Nested(SharedStorageSchema, many=True)
 
     monitoring = fields.Nested(MonitoringSchema)
+    additional_packages = fields.Nested(AdditionalPackagesSchema)
     tags = fields.Nested(TagSchema, many=True)
     custom_actions = fields.Nested(CustomActionSchema, many=True)
     iam = fields.Nested(IamSchema, data_key="IAM")
+    cluster_s3_bucket = fields.Str()
+    additional_resources = fields.Str()
 
     @post_load
     def make_resource(self, data, **kwargs):

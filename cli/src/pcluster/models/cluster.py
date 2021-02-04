@@ -580,6 +580,28 @@ class Iam(Resource):
         self.additional_iam_policies = additional_iam_policies
 
 
+class IntelSelectSolutions(Resource):
+    """Represent the Intel select solution configuration."""
+
+    def __init__(
+        self,
+        install_intel_software: bool = None,
+    ):
+        super().__init__()
+        self.install_intel_software = Param(install_intel_software, default=False)
+
+
+class AdditionalPackages(Resource):
+    """Represent the additional packages configuration."""
+
+    def __init__(
+        self,
+        intel_select_solutions: IntelSelectSolutions = None,
+    ):
+        super().__init__()
+        self.intel_select_solutions = intel_select_solutions
+
+
 # ---------------------- Root resource ---------------------- #
 
 
@@ -592,18 +614,24 @@ class BaseCluster(Resource):
         head_node: HeadNode,
         shared_storage: List[SharedStorage] = None,
         monitoring: Monitoring = None,
+        additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: Iam = None,
         custom_actions: CustomAction = None,
+        cluster_s3_bucket: str = None,
+        additional_resources: str = None,
     ):
         super().__init__()
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
         self.monitoring = monitoring
+        self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
         self.custom_actions = custom_actions
+        self.cluster_s3_bucket = cluster_s3_bucket
+        self.additional_resources = additional_resources
 
     def _register_validators(self):
         self._add_validator(

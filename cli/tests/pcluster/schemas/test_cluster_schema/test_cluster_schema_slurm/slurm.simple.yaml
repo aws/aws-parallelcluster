@@ -127,6 +127,9 @@ Monitoring:
   Dashboards:
     CloudWatch:
       Enabled: true  # true
+AdditionalPackages:
+  IntelSelectSolutions:
+    InstallIntelSoftware: false
 Tags:
   - Key: String
     Value: String
@@ -139,3 +142,5 @@ CustomActions:
       - stirng2
     Event: NODE_START
     RunAs: String
+ClusterS3Bucket: String
+AdditionalResources: String  # https://template.url
