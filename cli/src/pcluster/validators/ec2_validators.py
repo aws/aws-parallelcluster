@@ -80,3 +80,17 @@ class AdditionalIamPolicyValidator(Validator):  # TODO add test
     @staticmethod
     def _get_base_additional_iam_policies():
         return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]
+
+
+class KeyPairValidator(Validator):  # TODO add test
+    """
+    EC2 key pair validator.
+
+    Verify the given key pair is correct.
+    """
+
+    def _validate(self, key_name: Param):
+        try:
+            Ec2Client().describe_key_pair(key_name)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR, [key_name])
