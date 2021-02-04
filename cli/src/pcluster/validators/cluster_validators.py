@@ -16,7 +16,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
-from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Param, Validator
 from pcluster.utils import get_supported_architectures_for_instance_type, get_supported_os_for_architecture
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
@@ -46,9 +46,9 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
     Validate Simultaneous Multithreading and architecture combination.
     """
 
-    def _validate(self, simultaneous_multithreading: Param, architecture: DynamicParam):
+    def _validate(self, simultaneous_multithreading: Param, architecture: str):
         supported_architectures = ["x86_64"]
-        if simultaneous_multithreading.value and architecture.value not in supported_architectures:
+        if simultaneous_multithreading.value and architecture not in supported_architectures:
             self._add_failure(
                 "Simultaneous Multithreading is only supported on instance types that support "
                 "these architectures: {0}".format(", ".join(supported_architectures)),
@@ -60,10 +60,10 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def _validate(self, efa_enabled: Param, os: Param, architecture: DynamicParam):
-        if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture.value):
+    def _validate(self, efa_enabled: Param, os: Param, architecture: str):
+        if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
-                "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture.value),
+                "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture),
                 FailureLevel.ERROR,
                 [efa_enabled],
             )
@@ -76,12 +76,12 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os: Param, architecture: DynamicParam):
-        allowed_oses = get_supported_os_for_architecture(architecture.value)
+    def _validate(self, os: Param, architecture: str):
+        allowed_oses = get_supported_os_for_architecture(architecture)
         if os.value not in allowed_oses:
             self._add_failure(
                 "The architecture {0} is only supported for the following operating systems: {1}".format(
-                    architecture.value, allowed_oses
+                    architecture, allowed_oses
                 ),
                 FailureLevel.ERROR,
                 [os],
@@ -95,8 +95,8 @@ class InstanceArchitectureCompatibilityValidator(Validator):
     Verify that head node and compute instance types imply compatible architectures.
     """
 
-    def _validate(self, instance_type: Param, architecture: DynamicParam):
-        head_node_architecture = architecture.value
+    def _validate(self, instance_type: Param, architecture: str):
+        head_node_architecture = architecture
         compute_architectures = get_supported_architectures_for_instance_type(instance_type.value)
         if head_node_architecture not in compute_architectures:
             self._add_failure(
@@ -292,10 +292,10 @@ class DcvValidator(Validator):
         allowed_ips: Param,
         port: Param,
         os: Param,
-        architecture: DynamicParam,
+        architecture: str,
     ):
         if dcv_enabled.value:
-            allowed_oses = get_supported_dcv_os(architecture.value)
+            allowed_oses = get_supported_dcv_os(architecture)
             if os.value not in allowed_oses:
                 self._add_failure(
                     "NICE DCV can be used with one of the following operating systems: {0}. "

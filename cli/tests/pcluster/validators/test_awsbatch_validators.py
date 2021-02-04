@@ -11,7 +11,7 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.models.common import DynamicParam, Param
+from pcluster.models.common import Param
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
@@ -105,7 +105,7 @@ def test_awsbatch_instances_architecture_compatibility_validator(
     instance_types = compute_instance_types.split(",")
 
     actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator().execute(
-        Param(compute_instance_types), DynamicParam(lambda: head_node_architecture)
+        Param(compute_instance_types), head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
     if expected_message:

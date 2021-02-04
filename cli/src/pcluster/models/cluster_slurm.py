@@ -110,6 +110,7 @@ class SlurmCluster(BaseCluster):
         super().__init__(image, head_node, shared_storage, monitoring, tags, iam, custom_actions)
         self.scheduling = scheduling
 
+    def _register_validators(self):
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._add_validator(

@@ -39,19 +39,6 @@ class Param:
         self.valid = valid
 
 
-class DynamicParam:
-    """Class to manage dynamic params that must be calculated at usage time."""
-
-    def __init__(self, value_calculator):
-        """Initialize dynamic param by saving the function to be used to retrieve the value."""
-        self.__value_calculator = value_calculator
-
-    @property
-    def value(self):
-        """Calculate and return the value."""
-        return self.__value_calculator()
-
-
 # ----------------- Validators ----------------- #
 
 
@@ -132,15 +119,28 @@ class Resource(ABC):
         self.__validators: List[_ResourceValidator] = []
         self._validation_failures: List[ValidationResult] = []
 
+    def _register_validators(self):
+        """
+        Register the validators.
+
+        Method to be implemented in Resources. It will be called before executing the validation.
+        """
+        pass
+
     def validate(self, raise_on_error=False):
         """Execute registered validators, ordered by priority (high prio --> executed first)."""
-        # order validators by priority
+        # Update validators to be executed according to current status of the model
+        self.__validators.clear()
+        self._register_validators()
+        # Cleanup failures
         self._validation_failures.clear()
+
+        # Order validators by priority
         self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
 
-        # execute validators and add results in validation_failures array
+        # Execute validators and add results in validation_failures array
         for attr_validator in self.__validators:
-            # execute it by passing all the arguments
+            # Execute it by passing all the arguments
             self._validation_failures.extend(
                 attr_validator.validator_class(raise_on_error=raise_on_error).execute(**attr_validator.validator_args)
             )

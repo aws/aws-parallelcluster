@@ -10,7 +10,7 @@
 # limitations under the License.
 import pytest
 
-from pcluster.models.common import DynamicParam, Param
+from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
@@ -61,7 +61,7 @@ def test_simultaneous_multithreading_architecture_validator(
     simultaneous_multithreading, architecture, expected_message
 ):
     actual_failures = SimultaneousMultithreadingArchitectureValidator().execute(
-        Param(simultaneous_multithreading), DynamicParam(lambda: architecture)
+        Param(simultaneous_multithreading), architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -84,9 +84,7 @@ def test_simultaneous_multithreading_architecture_validator(
     ],
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
-    actual_failures = EfaOsArchitectureValidator().execute(
-        Param(efa_enabled), Param(os), DynamicParam(lambda: architecture)
-    )
+    actual_failures = EfaOsArchitectureValidator().execute(Param(efa_enabled), Param(os), architecture)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -111,7 +109,7 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
 )
 def test_architecture_os_validator(os, architecture, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator().execute(Param(os), DynamicParam(lambda: architecture))
+    actual_failures = ArchitectureOsValidator().execute(Param(os), architecture)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -142,7 +140,7 @@ def test_instance_architecture_compatibility_validator(
         return_value=[compute_architecture],
     )
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
-        Param(compute_instance_type), DynamicParam(lambda: head_node_architecture)
+        Param(compute_instance_type), head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -417,6 +415,6 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
         Param(allowed_ips),
         Param(port),
         Param(os),
-        DynamicParam(lambda: "x86_64" if instance_type.startswith("t2") else "arm64"),
+        "x86_64" if instance_type.startswith("t2") else "arm64",
     )
     assert_failure_messages(actual_failures, expected_message)

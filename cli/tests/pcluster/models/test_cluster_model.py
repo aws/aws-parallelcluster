@@ -12,7 +12,7 @@
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
-from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Param, Validator
 
 
 class FakeInfoValidator(Validator):
@@ -36,6 +36,13 @@ class FakeComplexValidator(Validator):
         self._add_failure(f"Combination {fake_attribute.value} - {other_attribute.value}.", FailureLevel.WARNING)
 
 
+class FakePropertyValidator(Validator):
+    """Dummy property validator of info level."""
+
+    def _validate(self, property_value: str):
+        self._add_failure(f"Wrong value {property_value}.", FailureLevel.INFO)
+
+
 def _assert_validation_result(result, expected_level, expected_message):
     """Assert that validation results is the expected one, by checking level and message."""
     assert_that(result.level).is_equal_to(expected_level)
@@ -52,6 +59,8 @@ def test_resource_validate():
             super().__init__()
             self.fake_attribute = Param("fake-value")
             self.other_attribute = Param("other-value")
+
+        def _register_validators(self):
             self._add_validator(FakeErrorValidator, priority=10, param=self.fake_attribute)
             self._add_validator(FakeInfoValidator, priority=2, param=self.other_attribute)
             self._add_validator(
@@ -78,11 +87,13 @@ def test_dynamic_property_validate():
 
         def __init__(self):
             super().__init__()
-            self.dynamic_attribute = DynamicParam(value_calculator=self._fetch_dynamic_param)
             self.deps_value = ""
-            self._add_validator(FakeInfoValidator, param=self.dynamic_attribute)
 
-        def _fetch_dynamic_param(self):
+        def _register_validators(self):
+            self._add_validator(FakePropertyValidator, property_value=self.dynamic_attribute)
+
+        @property
+        def dynamic_attribute(self):
             return f"dynamic-value: {self.deps_value}"
 
     fake_resource = FakeResource()

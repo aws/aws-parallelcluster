@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pcluster.models.common import DynamicParam, FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Param, Validator
 from pcluster.utils import (
     InstanceTypeInfo,
     get_region,
@@ -102,8 +102,7 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
     With AWS Batch, compute instance type can contain a CSV list.
     """
 
-    def _validate(self, instance_types: Param, architecture: DynamicParam):
-        head_node_architecture = architecture.value
+    def _validate(self, instance_types: Param, architecture: str):
         for instance_type in instance_types.value.split(","):
             # When awsbatch is used as the scheduler instance families can be used.
             # Don't attempt to validate architectures for instance families, as it would require
@@ -116,11 +115,11 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                 )
                 continue
             compute_architectures = get_supported_architectures_for_instance_type(instance_type)
-            if head_node_architecture not in compute_architectures:
+            if architecture not in compute_architectures:
                 self._add_failure(
                     "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
                     "compatible with the architecture supported by the head node instance type ({2}).".format(
-                        instance_type, compute_architectures, head_node_architecture
+                        instance_type, compute_architectures, architecture
                     ),
                     FailureLevel.ERROR,
                     [instance_types],

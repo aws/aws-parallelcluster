@@ -17,7 +17,7 @@ from enum import Enum
 from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.common import DynamicParam, Param, Resource, Tag
+from pcluster.models.common import Param, Resource, Tag
 from pcluster.utils import error, get_supported_architectures_for_instance_type
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
@@ -69,6 +69,7 @@ class Ebs(Resource):
         self.kms_key_id = Param(kms_key_id)
         self.throughput = Param(throughput, default=125 if self.volume_type.value == "gp3" else None)
 
+    def _register_validators(self):
         self._add_validator(
             EbsVolumeTypeSizeValidator, priority=10, volume_type=self.volume_type, volume_size=self.size
         )
@@ -220,6 +221,8 @@ class SharedFsx(SharedStorage):
         self.auto_import_policy = Param(auto_import_policy)
         self.drive_cache_type = Param(drive_cache_type)
         self.storage_type = Param(storage_type)
+
+    def _register_validators(self):
         self._add_validator(
             FsxS3Validator,
             import_path=self.import_path,
@@ -260,7 +263,6 @@ class SharedFsx(SharedStorage):
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
         )
-        # TODO decide whether we should split FsxValidator into smaller ones
 
 
 # ---------------------- Networking ---------------------- #
@@ -379,24 +381,22 @@ class HeadNode(Resource):
         self.storage = storage
         self.dcv = dcv
         self.efa = efa
-        # Dynamic params, not present in config
-        self.architecture = DynamicParam(value_calculator=self._fetch_architecture)
-        # Validators
+
+    def _register_validators(self):
         self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
 
-    def _fetch_architecture(self):
+    @property
+    def architecture(self):
         """Compute cluster's architecture based on its head node instance type."""
-        head_node_instance_type = self.instance_type.value
-        # TODO verify if it's referred to an old instance type
-        head_node_supported_architectures = get_supported_architectures_for_instance_type(head_node_instance_type)
-        if not head_node_supported_architectures:
-            error(f"Unable to get architectures supported by instance type {head_node_instance_type}")
+        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type.value)
+        if not supported_architectures:
+            error(f"Unable to get architectures supported by instance type {self.instance_type.value}")
         # If the instance type supports multiple architectures, choose the first one.
         # TODO: this is currently not an issue because none of the instance types we support more than one of the
         #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
         #       probably need to choose based on the subset of the architectures supported by both the head node and
         #       compute instance types.
-        return head_node_supported_architectures[0]
+        return supported_architectures[0]
 
 
 class BaseComputeResource(Resource):
@@ -448,6 +448,8 @@ class CustomAction(Resource):
         self.args = args
         self.event = Param(event)
         self.run_as = Param(run_as)
+
+    def _register_validators(self):
         self._add_validator(UrlValidator, url=self.script)
 
 
@@ -602,8 +604,8 @@ class BaseCluster(Resource):
         self.tags = tags
         self.iam = iam
         self.custom_actions = custom_actions
-        self.cores = None
-        # Validators
+
+    def _register_validators(self):
         self._add_validator(
             ArchitectureOsValidator,
             priority=10,
