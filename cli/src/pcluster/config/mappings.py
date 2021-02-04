@@ -56,7 +56,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     ec2_ami_validator,
-    ec2_iam_policies_validator,
     ec2_key_pair_validator,
     ec2_placement_group_validator,
     ec2_security_group_validator,
@@ -905,7 +904,6 @@ CLUSTER_COMMON_PARAMS = [
     ("additional_iam_policies", {
         "type": AdditionalIamPoliciesCfnParam,
         "cfn_param_mapping": "EC2IAMPolicies",
-        "validators": [ec2_iam_policies_validator],
         "update_policy": UpdatePolicy.SUPPORTED,
     }),
     # Derived parameters - present in CFN parameters but not in config file
