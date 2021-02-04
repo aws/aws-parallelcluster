@@ -19,7 +19,6 @@ from botocore.exceptions import ClientError, ParamValidationError
 
 from pcluster.utils import (
     ellipsize,
-    get_base_additional_iam_policies,
     get_efs_mount_target_id,
     get_file_section_name,
     get_region,
@@ -322,21 +321,6 @@ def ec2_key_pair_validator(param_key, param_value, pcluster_config):
     warnings = []
     try:
         _describe_ec2_key_pair(param_value)
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
-def ec2_iam_policies_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        if param_value:
-            for iam_policy in param_value:
-                if iam_policy not in get_base_additional_iam_policies():
-                    iam = boto3.client("iam")
-                    iam.get_policy(PolicyArn=iam_policy.strip())
     except ClientError as e:
         errors.append(e.response.get("Error").get("Message"))
 

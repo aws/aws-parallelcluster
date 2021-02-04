@@ -8,9 +8,12 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
+from common.boto3.iam import IamClient
 from pcluster import utils
 from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.utils import policy_name_to_arn
 
 
 class BaseAMIValidator(Validator):
@@ -58,3 +61,22 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
                 FailureLevel.ERROR,
                 [instance_type, parent_image],
             )
+
+
+class AdditionalIamPolicyValidator(Validator):  # TODO add test
+    """
+    EC2 IAM Policy validator.
+
+    Verify the given policy is correct.
+    """
+
+    def _validate(self, iam_policy: Param):
+        try:
+            if iam_policy.value not in self._get_base_additional_iam_policies():
+                IamClient().get_policy(iam_policy.value)
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR, [iam_policy])
+
+    @staticmethod
+    def _get_base_additional_iam_policies():
+        return [policy_name_to_arn("CloudWatchAgentServerPolicy"), policy_name_to_arn("AWSBatchFullAccess")]

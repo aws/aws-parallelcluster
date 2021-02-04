@@ -34,7 +34,7 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
-from pcluster.validators.ec2_validators import InstanceTypeValidator
+from pcluster.validators.ec2_validators import AdditionalIamPolicyValidator, InstanceTypeValidator
 from pcluster.validators.fsx_validators import (
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,
@@ -563,6 +563,9 @@ class AdditionalIamPolicy(Resource):
         super().__init__()
         self.policy = Param(policy)
         self.scope = Param(scope, default="CLUSTER")
+
+    def _register_validators(self):
+        self._add_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
 class Iam(Resource):
