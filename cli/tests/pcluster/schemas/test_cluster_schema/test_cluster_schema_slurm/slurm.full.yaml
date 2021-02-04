@@ -168,7 +168,6 @@ CustomActions:
       - String  # HEAD | COMPUTE
     Event: String  # NODE_START | NODE_CONFIGURED
     RunAs: String
-ClusterS3ResourceBucket: String
 Tags:
   - Key: String
     Value: String
