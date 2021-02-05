@@ -18,12 +18,18 @@ from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.models.common import Param, Resource, Tag
-from pcluster.utils import error, get_region, get_supported_architectures_for_instance_type
+from pcluster.utils import (
+    error,
+    get_availability_zone_of_subnet,
+    get_region,
+    get_supported_architectures_for_instance_type,
+)
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     DcvValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
+    EfsIdValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     NumberOfStorageValidator,
@@ -303,6 +309,11 @@ class HeadNodeNetworking(_BaseNetworking):
         super().__init__(**kwargs)
         self.subnet_id = Param(subnet_id)
         self.elastic_ip = Param(elastic_ip)
+
+    @property
+    def availability_zone(self):
+        """Compute availability zone from subnet id."""
+        return get_availability_zone_of_subnet(self.subnet_id)
 
 
 class PlacementGroup(Resource):
@@ -684,6 +695,11 @@ class BaseCluster(Resource):
                     storage_count["ebs"] += 1
                 if isinstance(storage, SharedEfs):
                     storage_count["efs"] += 1
+                    self._add_validator(
+                        EfsIdValidator,
+                        efs_id=storage.file_system_id,
+                        head_node_avail_zone=self.head_node.networking.availability_zone,
+                    )
 
             for storage_type in ["ebs", "efs", "fsx"]:
                 self._add_validator(
