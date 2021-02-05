@@ -64,7 +64,6 @@ from pcluster.config.validators import (
     efa_gdr_validator,
     efa_validator,
     efs_id_validator,
-    efs_validator,
     head_node_instance_type_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
@@ -341,7 +340,6 @@ EFS = {
     "key": "efs",
     "type": EFSCfnSection,
     "default_label": "default",
-    "validators": [efs_validator],
     "cfn_param_mapping": "EFSOptions",  # All the parameters in the section are converted into a single CFN parameter
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
