@@ -33,6 +33,7 @@ from pcluster.validators.cluster_validators import (
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     NumberOfStorageValidator,
+    QueueNameValidator,
     SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
 )
@@ -447,6 +448,9 @@ class BaseQueue(Resource):
         self.networking = networking
         self.storage = storage
         self.compute_type = Param(compute_type, default="ONDEMAND")
+
+    def _register_validators(self):
+        self._add_validator(QueueNameValidator, name=self.name)
 
 
 class CommonSchedulingSettings(Resource):

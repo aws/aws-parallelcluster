@@ -49,10 +49,6 @@ EBS_VOLUME_TYPE_TO_IOPS_RATIO = {"io1": 50, "io2": 1000, "gp3": 500}
 HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES = []
 HEAD_NODE_UNSUPPORTED_MESSAGE = "The instance type '{0}' is not supported as head node."
 
-# Constants for section labels
-LABELS_MAX_LENGTH = 64
-LABELS_REGEX = r"^[A-Za-z0-9\-_]+$"
-
 
 def _get_sts_endpoint():
     """Get regionalized STS endpoint."""
@@ -480,27 +476,6 @@ def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def queue_settings_validator(param_key, param_value, pcluster_config):
-    errors = []
-    cluster_section = pcluster_config.get_section("cluster")
-    scheduler = cluster_section.get_param_value("scheduler")
-
-    if scheduler != "slurm":
-        errors.append("queue_settings is supported only with slurm scheduler")
-
-    for label in param_value.split(","):
-        if re.search("[A-Z]", label) or re.match("^default$", label) or "_" in label:
-            errors.append(
-                (
-                    "Invalid queue name '{0}'. Queue section names can be at most 30 chars long, must begin with"
-                    " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                    " 'default' as a queue section name."
-                ).format(label)
-            )
-
-    return errors, []
-
-
 def queue_validator(section_key, section_label, pcluster_config):
     errors = []
     warnings = []
@@ -560,26 +535,6 @@ def queue_validator(section_key, section_label, pcluster_config):
         errors.append("The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'")
 
     return errors, warnings
-
-
-def settings_validator(param_key, param_value, pcluster_config):
-    errors = []
-    if param_value:
-        for label in param_value.split(","):
-            label = label.strip()
-            match = re.match(LABELS_REGEX, label)
-            if not match:
-                errors.append(
-                    "Invalid label '{0}' in param '{1}'. Section labels can only contain alphanumeric characters, "
-                    "dashes or underscores.".format(ellipsize(label, 20), param_key)
-                )
-            else:
-                if len(label) > LABELS_MAX_LENGTH:
-                    errors.append(
-                        "Invalid label '{0}' in param '{1}'. The maximum length allowed for section labels is "
-                        "{2} characters".format(ellipsize(label, 20), param_key, LABELS_MAX_LENGTH)
-                    )
-    return errors, []
 
 
 def _get_efa_enabled_instance_types(errors):

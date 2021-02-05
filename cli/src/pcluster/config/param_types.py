@@ -19,7 +19,6 @@ from enum import Enum
 from configparser import NoSectionError
 
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.config.validators import settings_validator
 from pcluster.utils import get_file_section_name
 
 LOGGER = logging.getLogger(__name__)
@@ -261,7 +260,6 @@ class SettingsParam(Param):
         self.referred_section_definition = param_definition.get("referred_section")
         self.referred_section_key = self.referred_section_definition.get("key")
         self.referred_section_type = self.referred_section_definition.get("type")
-        param_definition.get("validators", []).append(settings_validator)
         super(SettingsParam, self).__init__(
             section_key, section_label, param_key, param_definition, pcluster_config, owner_section
         )
