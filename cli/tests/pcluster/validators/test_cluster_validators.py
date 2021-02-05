@@ -25,6 +25,7 @@ from pcluster.validators.cluster_validators import (
     NumberOfStorageValidator,
     SchedulerOsValidator,
     SimultaneousMultithreadingArchitectureValidator,
+    TagKeyValidator,
 )
 from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
@@ -488,4 +489,19 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
         Param(os),
         "x86_64" if instance_type.startswith("t2") else "arm64",
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+# -------------- Other validators -------------- #
+
+
+@pytest.mark.parametrize(
+    "key, expected_message",
+    [
+        ("key1", None),
+        ("Version", "The tag key 'Version' is a reserved one"),
+    ],
+)
+def test_tags_validator(key, expected_message):
+    actual_failures = TagKeyValidator().execute(Param(key))
     assert_failure_messages(actual_failures, expected_message)

@@ -415,3 +415,18 @@ class DcvValidator(Validator):
                     "It is recommended to restrict access.",
                     FailureLevel.WARNING,
                 )
+
+
+# --------------- Other validators --------------- #
+
+
+class TagKeyValidator(Validator):
+    """
+    Tag key validator.
+
+    Validate the tag key is not a reserved one.
+    """
+
+    def _validate(self, key: Param):
+        if key.value == "Version":
+            self._add_failure("The tag key 'Version' is a reserved one.", FailureLevel.ERROR, [key])
