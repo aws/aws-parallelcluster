@@ -18,8 +18,6 @@ import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
 from pcluster.utils import (
-    ellipsize,
-    get_efs_mount_target_id,
     get_file_section_name,
     get_region,
     paginate_boto3,
@@ -60,92 +58,6 @@ def _get_sts_endpoint():
     """Get regionalized STS endpoint."""
     region = get_region()
     return "https://sts.{0}.{1}".format(region, "amazonaws.com.cn" if region.startswith("cn-") else "amazonaws.com")
-
-
-def _check_sg_rules_for_port(rule, port_to_check):
-    """
-    Verify if the security group rule accepts connections on the given port.
-
-    :param rule: The rule to check
-    :param port_to_check: The port to check
-    :return: True if the rule accepts connection, False otherwise
-    """
-    from_port = rule.get("FromPort")
-    to_port = rule.get("ToPort")
-    ip_protocol = rule.get("IpProtocol")
-
-    # if ip_protocol is -1, all ports are allowed
-    if ip_protocol == "-1":
-        return True
-    # tcp == protocol 6,
-    # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
-    if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
-        return True
-
-    return False
-
-
-def efs_id_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        # Get head node availability zone
-        head_node_avail_zone = pcluster_config.get_head_node_availability_zone()
-        head_node_target_id = get_efs_mount_target_id(efs_fs_id=param_value, avail_zone=head_node_avail_zone)
-        # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
-        if head_node_target_id:
-            # Get list of security group IDs of the mount target
-            sg_ids = (
-                boto3.client("efs")
-                .describe_mount_target_security_groups(MountTargetId=head_node_target_id)
-                .get("SecurityGroups")
-            )
-            if not _check_in_out_access(sg_ids, port=2049):
-                warnings.append(
-                    "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
-                    "but it does not have a security group that allows inbound and outbound rules to support NFS. "
-                    "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
-                        head_node_target_id, head_node_avail_zone, param_value
-                    )
-                )
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
-def _check_in_out_access(security_groups_ids, port):
-    """
-    Verify given list of security groups to check if they allow in and out access on the given port.
-
-    :param security_groups_ids: list of security groups to verify
-    :param port: port to verify
-    :return true if
-    :raise: ClientError if a given security group doesn't exist
-    """
-    in_out_access = False
-    in_access = False
-    out_access = False
-
-    for sec_group in boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups"):
-
-        # Check all inbound rules
-        for rule in sec_group.get("IpPermissions"):
-            if _check_sg_rules_for_port(rule, port):
-                in_access = True
-                break
-
-        # Check all outbound rules
-        for rule in sec_group.get("IpPermissionsEgress"):
-            if _check_sg_rules_for_port(rule, port):
-                out_access = True
-                break
-
-        if in_access and out_access:
-            in_out_access = True
-            break
-
-    return in_out_access
 
 
 def disable_hyperthreading_validator(param_key, param_value, pcluster_config):

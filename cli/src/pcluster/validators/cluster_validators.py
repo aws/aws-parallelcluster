@@ -18,6 +18,7 @@ from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.models.common import FailureLevel, Param, Validator
 from pcluster.utils import (
+    get_efs_mount_target_id,
     get_supported_architectures_for_instance_type,
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
@@ -152,6 +153,63 @@ class InstanceArchitectureCompatibilityValidator(Validator):
 # --------------- Storage validators --------------- #
 
 
+def _check_in_out_access(security_groups_ids, port):
+    """
+    Verify given list of security groups to check if they allow in and out access on the given port.
+
+    :param security_groups_ids: list of security groups to verify
+    :param port: port to verify
+    :return true if
+    :raise: ClientError if a given security group doesn't exist
+    """
+    in_out_access = False
+    in_access = False
+    out_access = False
+
+    for sec_group in boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups"):
+
+        # Check all inbound rules
+        for rule in sec_group.get("IpPermissions"):
+            if _check_sg_rules_for_port(rule, port):
+                in_access = True
+                break
+
+        # Check all outbound rules
+        for rule in sec_group.get("IpPermissionsEgress"):
+            if _check_sg_rules_for_port(rule, port):
+                out_access = True
+                break
+
+        if in_access and out_access:
+            in_out_access = True
+            break
+
+    return in_out_access
+
+
+def _check_sg_rules_for_port(rule, port_to_check):
+    """
+    Verify if the security group rule accepts connections on the given port.
+
+    :param rule: The rule to check
+    :param port_to_check: The port to check
+    :return: True if the rule accepts connection, False otherwise
+    """
+    from_port = rule.get("FromPort")
+    to_port = rule.get("ToPort")
+    ip_protocol = rule.get("IpProtocol")
+
+    # if ip_protocol is -1, all ports are allowed
+    if ip_protocol == "-1":
+        return True
+    # tcp == protocol 6,
+    # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
+    if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
+        return True
+
+    return False
+
+
 class FsxNetworkingValidator(Validator):
     """
     FSx networking validator.
@@ -198,7 +256,7 @@ class FsxNetworkingValidator(Validator):
                 for network_interface in network_interfaces:
                     # Get list of security group IDs
                     sg_ids = [sg.get("GroupId") for sg in network_interface.get("Groups")]
-                    if self._check_in_out_access(sg_ids, port=988):
+                    if _check_in_out_access(sg_ids, port=988):
                         fs_access = True
                         break
                 if not fs_access:
@@ -211,64 +269,6 @@ class FsxNetworkingValidator(Validator):
                     )
         except ClientError as e:
             self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
-
-    def _check_in_out_access(self, security_groups_ids, port):
-        """
-        Verify given list of security groups to check if they allow in and out access on the given port.
-
-        :param security_groups_ids: list of security groups to verify
-        :param port: port to verify
-        :return true if
-        :raise: ClientError if a given security group doesn't exist
-        """
-        in_out_access = False
-        in_access = False
-        out_access = False
-
-        for sec_group in (
-            boto3.client("ec2").describe_security_groups(GroupIds=security_groups_ids).get("SecurityGroups")
-        ):
-
-            # Check all inbound rules
-            for rule in sec_group.get("IpPermissions"):
-                if self._check_sg_rules_for_port(rule, port):
-                    in_access = True
-                    break
-
-            # Check all outbound rules
-            for rule in sec_group.get("IpPermissionsEgress"):
-                if self._check_sg_rules_for_port(rule, port):
-                    out_access = True
-                    break
-
-            if in_access and out_access:
-                in_out_access = True
-                break
-
-        return in_out_access
-
-    @staticmethod
-    def _check_sg_rules_for_port(rule, port_to_check):
-        """
-        Verify if the security group rule accepts connections on the given port.
-
-        :param rule: The rule to check
-        :param port_to_check: The port to check
-        :return: True if the rule accepts connection, False otherwise
-        """
-        from_port = rule.get("FromPort")
-        to_port = rule.get("ToPort")
-        ip_protocol = rule.get("IpProtocol")
-
-        # if ip_protocol is -1, all ports are allowed
-        if ip_protocol == "-1":
-            return True
-        # tcp == protocol 6,
-        # if the ip_protocol is tcp, from_port and to_port must >= 0 and <= 65535
-        if (ip_protocol in ["tcp", "6"]) and (from_port <= port_to_check <= to_port):
-            return True
-
-        return False
 
 
 class FsxArchitectureOsValidator(Validator):
@@ -338,6 +338,38 @@ class NumberOfStorageValidator(Validator):
                 "Currently only supports upto {1}".format(storage_type, max_number),
                 FailureLevel.ERROR,
             )
+
+
+class EfsIdValidator(Validator):  # TODO add tests
+    """
+    EFS id validator.
+
+    Validate if there are existing mount target in the head node availability zone
+    """
+
+    def _validate(self, efs_id: Param, head_node_avail_zone: str):
+        try:
+            # Get head node availability zone
+            head_node_target_id = get_efs_mount_target_id(efs_fs_id=efs_id.value, avail_zone=head_node_avail_zone)
+            # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
+            if head_node_target_id:
+                # Get list of security group IDs of the mount target
+                sg_ids = (
+                    boto3.client("efs")
+                    .describe_mount_target_security_groups(MountTargetId=head_node_target_id)
+                    .get("SecurityGroups")
+                )
+                if not _check_in_out_access(sg_ids, port=2049):
+                    self._add_failure(
+                        "There is an existing Mount Target {0} in the Availability Zone {1} for EFS {2}, "
+                        "but it does not have a security group that allows inbound and outbound rules to support NFS. "
+                        "Please modify the Mount Target's security group, to allow traffic on port 2049.".format(
+                            head_node_target_id, head_node_avail_zone, efs_id
+                        ),
+                        FailureLevel.WARNING,
+                    )
+        except ClientError as e:
+            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR, [efs_id])
 
 
 # --------------- Third party software validators --------------- #

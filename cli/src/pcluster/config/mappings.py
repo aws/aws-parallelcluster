@@ -63,7 +63,6 @@ from pcluster.config.validators import (
     ec2_vpc_id_validator,
     efa_gdr_validator,
     efa_validator,
-    efs_id_validator,
     head_node_instance_type_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
@@ -347,7 +346,6 @@ EFS = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("efs_fs_id", {
-                "validators": [efs_id_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("performance_mode", {
