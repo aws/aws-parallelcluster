@@ -24,6 +24,25 @@ EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "arm64": ["centos8"],
 }
 
+FSX_SUPPORTED_ARCHITECTURES_OSES = {
+    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
+    "arm64": ["ubuntu1804", "alinux2", "centos8"],
+}
+
+FSX_MESSAGES = {
+    "errors": {
+        "unsupported_os": "On {architecture} instance types FSX Lustre can be used with one of the following operating "
+        "systems: {supported_oses}. Please double check the 'base_os' configuration parameter",
+        "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
+        "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
+        "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
+        "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
+        "cannot be specified.",
+        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
+        "fsx_fs_id.",
+    }
+}
+
 
 class ComputeResourceSizeValidator(Validator):
     """
@@ -229,6 +248,31 @@ class FsxNetworkingValidator(Validator):
             return True
 
         return False
+
+
+class FsxArchitectureOsValidator(Validator):
+    """
+    FSx networking validator.
+
+    Validate file system mount point according to the head node subnet.
+    """
+
+    def _validate(self, architecture: str, os: Param):
+
+        if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
+            self._add_failure(
+                FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                    supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
+                ),
+                FailureLevel.ERROR,
+            )
+        elif os.value not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
+            self._add_failure(
+                FSX_MESSAGES["errors"]["unsupported_os"].format(
+                    architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
+                ),
+                FailureLevel.ERROR,
+            )
 
 
 class DuplicateMountDirValidator(Validator):

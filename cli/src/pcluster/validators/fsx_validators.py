@@ -8,9 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import boto3
+from botocore.exceptions import ClientError
 
+from pcluster.config.validators import get_bucket_name_from_s3_url
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.utils import get_region
 
 
 class FsxS3Validator(Validator):
@@ -208,3 +212,63 @@ class FsxStorageCapacityValidator(Validator):
                     FailureLevel.ERROR,
                     [storage_capacity, deployment_type],
                 )
+
+
+class FsxBackupIdValidator(Validator):
+    """Backup id validator."""
+
+    def _validate(self, backup_id: Param):
+        if backup_id.value:
+            try:
+                boto3.client("fsx").describe_backups(BackupIds=[backup_id.value]).get("Backups")[0]
+            except ClientError as e:
+                self._add_failure(
+                    "Failed to retrieve backup with Id '{0}': {1}".format(
+                        backup_id.value, e.response.get("Error").get("Message")
+                    ),
+                    FailureLevel.ERROR,
+                    [backup_id],
+                )
+
+
+class FsxAutoImportValidator(Validator):
+    """Auto import validator."""
+
+    def _validate(self, auto_import_policy: Param, import_path: Param):
+        bucket = get_bucket_name_from_s3_url(import_path.value)
+
+        if auto_import_policy.value is not None:
+            try:
+                s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
+                # Buckets in Region us-east-1 have a LocationConstraint of null
+                if s3_bucket_region is None:
+                    s3_bucket_region = "us-east-1"
+                if s3_bucket_region != get_region():
+                    self._add_failure(
+                        "AutoImport is not supported for cross-region buckets.", FailureLevel.ERROR, [import_path]
+                    )
+            except ClientError as client_error:
+                if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+                    self._add_failure(
+                        "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+                            bucket, client_error.response.get("Error").get("Message")
+                        ),
+                        FailureLevel.ERROR,
+                        [import_path],
+                    )
+                elif client_error.response.get("Error").get("Code") == "AccessDenied":
+                    self._add_failure(
+                        "You do not have access to the S3 bucket '{0}': '{1}'".format(
+                            bucket, client_error.response.get("Error").get("Message")
+                        ),
+                        FailureLevel.ERROR,
+                        [import_path],
+                    )
+                else:
+                    self._add_failure(
+                        "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+                            bucket, client_error.response.get("Error").get("Message")
+                        ),
+                        FailureLevel.ERROR,
+                        [import_path],
+                    )

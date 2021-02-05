@@ -120,9 +120,9 @@ SharedStorage:
       CopyTagsToBackups: true  # true
       DailyAutomaticBackupStartTime: 01:03  # 01:03
       PerUnitStorageThroughput: 50  # 200
-      BackupId: backup-12345678  # backup-fedcba98
+      #BackupId: backup-12345678  # BackupId cannot coexist with some of the fields
       KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      #FileSystemId: fs-12345678123456789  # fsx-xxxx
+      #FileSystemId: fs-12345678123456789  # FileSystemId cannot coexist with some of the fields
       AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD

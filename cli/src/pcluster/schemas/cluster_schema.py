@@ -16,7 +16,6 @@
 
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
-from pcluster.config.validators import FSX_MESSAGES
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
@@ -52,6 +51,7 @@ from pcluster.models.cluster import (
 from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
 from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling, SlurmSettings
 from pcluster.schemas.common_schema import BaseSchema, TagSchema, get_field_validator
+from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # ---------------------- Storage ---------------------- #
 
@@ -181,7 +181,7 @@ class FsxSchema(BaseSchema):
     storage_type = fields.Str(validate=validate.OneOf(["HDD", "SSD"]))
 
     @validates_schema
-    def validate_fsx_ignored_parameters(self, data, **kwargs):
+    def validate_file_system_id_ignored_parameters(self, data, **kwargs):
         """Return errors for parameters in the FSx config section that would be ignored."""
         # If file_system_id is specified, all parameters are ignored.
         messages = []
@@ -189,6 +189,29 @@ class FsxSchema(BaseSchema):
             for key in data:
                 if key is not None and key != "file_system_id":
                     messages.append(FSX_MESSAGES["errors"]["ignored_param_with_fsx_fs_id"].format(fsx_param=key))
+            if messages:
+                raise ValidationError(message=messages)
+
+    @validates_schema
+    def validate_backup_id_unsupported_parameters(self, data, **kwargs):
+        """Return errors for parameters in the FSx config section that would be ignored."""
+        # If file_system_id is specified, all parameters are ignored.
+        messages = []
+        if data.get("backup_id") is not None:
+            unsupported_config_param_names = [
+                "deployment_type",
+                "per_unit_storage_throughput",
+                "storage_capacity",
+                "import_path",
+                "export_path",
+                "imported_file_chunk_size",
+                "kms_key_id",
+            ]
+
+            for key in data:
+                if key in unsupported_config_param_names:
+                    messages.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=key))
+
             if messages:
                 raise ValidationError(message=messages)
 

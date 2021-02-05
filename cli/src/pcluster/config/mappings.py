@@ -65,9 +65,6 @@ from pcluster.config.validators import (
     efa_validator,
     efs_id_validator,
     efs_validator,
-    fsx_architecture_os_validator,
-    fsx_lustre_auto_import_validator,
-    fsx_lustre_backup_validator,
     head_node_instance_type_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
@@ -492,11 +489,9 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("fsx_backup_id", {
-                "validators": [fsx_lustre_backup_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("auto_import_policy", {
-                "validators": [fsx_lustre_auto_import_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("storage_type", {
@@ -879,7 +874,6 @@ CLUSTER_COMMON_PARAMS = [
     ("fsx_settings", {
         "type": SettingsCfnParam,
         "referred_section": FSX,
-        "validators": [fsx_architecture_os_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("dcv_settings", {

@@ -29,25 +29,6 @@ from pcluster.utils import (
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
 
-FSX_MESSAGES = {
-    "errors": {
-        "unsupported_os": "On {architecture} instance types FSX Lustre can be used with one of the following operating "
-        "systems: {supported_oses}. Please double check the 'base_os' configuration parameter",
-        "unsupported_architecture": "FSX Lustre can be used only with instance types and AMIs that support these "
-        "architectures: {supported_architectures}. Please double check the 'master_instance_type', "
-        "'compute_instance_type' and/or 'custom_ami' configuration parameters.",
-        "unsupported_backup_param": "When restoring an FSx Lustre file system from backup, '{name}' "
-        "cannot be specified.",
-        "ignored_param_with_fsx_fs_id": "{fsx_param} is ignored when specifying an existing Lustre file system via "
-        "fsx_fs_id.",
-    }
-}
-
-FSX_SUPPORTED_ARCHITECTURES_OSES = {
-    "x86_64": ["centos7", "centos8", "ubuntu1604", "ubuntu1804", "alinux", "alinux2"],
-    "arm64": ["ubuntu1804", "alinux2", "centos8"],
-}
-
 FSX_PARAM_WITH_DEFAULT = {"drive_cache_type": "NONE"}
 
 EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
@@ -166,30 +147,6 @@ def _check_in_out_access(security_groups_ids, port):
             break
 
     return in_out_access
-
-
-def fsx_architecture_os_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    cluster_section = pcluster_config.get_section("cluster")
-    architecture = cluster_section.get_param_value("architecture")
-    base_os = cluster_section.get_param_value("base_os")
-
-    if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
-        errors.append(
-            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
-                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
-            )
-        )
-    elif base_os not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
-        errors.append(
-            FSX_MESSAGES["errors"]["unsupported_os"].format(
-                architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
-            )
-        )
-
-    return errors, warnings
 
 
 def disable_hyperthreading_validator(param_key, param_value, pcluster_config):
@@ -553,44 +510,6 @@ def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors
         )
 
 
-def fsx_lustre_auto_import_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    fsx_section = pcluster_config.get_section("fsx")
-    fsx_import_path = fsx_section.get_param_value("import_path")
-    bucket = get_bucket_name_from_s3_url(fsx_import_path)
-
-    if param_value is not None and param_value != "NONE":
-        try:
-            s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
-            # Buckets in Region us-east-1 have a LocationConstraint of null
-            if s3_bucket_region is None:
-                s3_bucket_region = "us-east-1"
-            if s3_bucket_region != pcluster_config.region:
-                errors.append("AutoImport is not supported for cross-region buckets.")
-        except ClientError as client_error:
-            if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-                errors.append(
-                    "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            elif client_error.response.get("Error").get("Code") == "AccessDenied":
-                errors.append(
-                    "You do not have access to the S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-            else:
-                errors.append(
-                    "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-                        bucket, client_error.response.get("Error").get("Message")
-                    )
-                )
-    return errors, warnings
-
-
 def shared_dir_validator(param_key, param_value, pcluster_config):
     """Validate that user is not specifying /NONE or NONE as shared_dir for any filesystem."""
     errors = []
@@ -837,35 +756,6 @@ def _get_efa_enabled_instance_types(errors):
         )
 
     return instance_types
-
-
-def fsx_lustre_backup_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    try:
-        boto3.client("fsx").describe_backups(BackupIds=[param_value]).get("Backups")[0]
-    except ClientError as e:
-        errors.append(
-            "Failed to retrieve backup with Id '{0}': {1}".format(param_value, e.response.get("Error").get("Message"))
-        )
-
-    fsx_section = pcluster_config.get_section("fsx")
-    unsupported_config_param_names = [
-        "deployment_type",
-        "per_unit_storage_throughput",
-        "storage_capacity",
-        "import_path",
-        "export_path",
-        "imported_file_chunk_size",
-        "fsx_kms_key_id",
-    ]
-
-    for config_param_name in unsupported_config_param_names:
-        if fsx_section.get_param_value(config_param_name) is not None:
-            errors.append(FSX_MESSAGES["errors"]["unsupported_backup_param"].format(name=config_param_name))
-
-    return errors, warnings
 
 
 def get_bucket_name_from_s3_url(import_path):
