@@ -68,7 +68,7 @@ Scheduling:
           Proxy:
             HttpProxyAddress: String  # https://proxy-address:port
         ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
-          - InstanceType: optimal
+          - InstanceType: optimal,c4.xlarge,c5.large
             MinvCpus: 0  # 0
             DesiredvCpus: 10
             MaxvCpus: 20
@@ -78,15 +78,6 @@ Scheduling:
               Enabled: true  # true
               GdrSupport: true  # false
             #AllocationStrategy: String
-          - InstanceType: c4.xlarge,c5.large
-          - InstanceType: c5,c4
-      - Name: queue2
-        Networking:
-          SubnetIds:
-            - subnet-12345678
-        ComputeResources:
-          - InstanceType: c5.xlarge
-          - InstanceType: c4.xlarge
 SharedStorage:
   - MountDir: /my/mount/point
     EBS:

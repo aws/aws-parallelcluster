@@ -438,7 +438,7 @@ class SlurmQueueSchema(_QueueSchema):
 class AwsbatchQueueSchema(_QueueSchema):
     """Represent the schema of a Batch Queue."""
 
-    compute_resources = fields.Nested(AwsbatchComputeResourceSchema, many=True)
+    compute_resources = fields.Nested(AwsbatchComputeResourceSchema, many=True, validate=validate.Length(equal=1))
 
     @post_load
     def make_resource(self, data, **kwargs):
@@ -483,7 +483,7 @@ class AwsbatchSchema(BaseSchema):
     """Represent the schema of the Awsbatch section."""
 
     settings = fields.Nested(AwsbatchSettingsSchema)
-    queues = fields.Nested(AwsbatchQueueSchema, many=True, required=True)
+    queues = fields.Nested(AwsbatchQueueSchema, many=True, required=True, validate=validate.Length(equal=1))
 
 
 class SchedulingSchema(BaseSchema):
