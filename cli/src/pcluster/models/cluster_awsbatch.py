@@ -28,8 +28,9 @@ from pcluster.models.common import Param
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
+    AwsbatchRegionValidator,
 )
-from pcluster.validators.cluster_validators import EfaOsArchitectureValidator
+from pcluster.validators.cluster_validators import EfaOsArchitectureValidator, SchedulerOsValidator
 
 
 class AwsbatchComputeResource(BaseComputeResource):
@@ -92,6 +93,9 @@ class AwsbatchCluster(BaseCluster):
         self.scheduling = scheduling
 
     def _register_validators(self):
+        self._add_validator(AwsbatchRegionValidator, region=self.region)
+        self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._add_validator(

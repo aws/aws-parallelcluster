@@ -17,7 +17,11 @@ from botocore.exceptions import ClientError
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.models.common import FailureLevel, Param, Validator
-from pcluster.utils import get_supported_architectures_for_instance_type, get_supported_os_for_architecture
+from pcluster.utils import (
+    get_supported_architectures_for_instance_type,
+    get_supported_os_for_architecture,
+    get_supported_os_for_scheduler,
+)
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
@@ -42,6 +46,23 @@ FSX_MESSAGES = {
         "fsx_fs_id.",
     }
 }
+
+
+class SchedulerOsValidator(Validator):
+    """
+    scheduler - os validator.
+
+    Validate os and scheduler combination.
+    """
+
+    def _validate(self, os: Param, scheduler: Param):
+        supported_os = get_supported_os_for_scheduler(scheduler.value)
+        if os.value not in supported_os:
+            self._add_failure(
+                f"{scheduler.value} scheduler supports the following Operating Systems: {supported_os}",
+                FailureLevel.ERROR,
+                [os],
+            )
 
 
 class ComputeResourceSizeValidator(Validator):
