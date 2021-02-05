@@ -537,25 +537,6 @@ def ec2_volume_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def efs_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-
-    section = pcluster_config.get_section(section_key, section_label)
-    throughput_mode = section.get_param_value("throughput_mode")
-    provisioned_throughput = section.get_param_value("provisioned_throughput")
-
-    if throughput_mode != "provisioned" and provisioned_throughput:
-        errors.append("When specifying 'provisioned_throughput', the 'throughput_mode' must be set to 'provisioned'")
-
-    if throughput_mode == "provisioned" and not provisioned_throughput:
-        errors.append(
-            "When specifying 'throughput_mode' to 'provisioned', the 'provisioned_throughput' option must be specified"
-        )
-
-    return errors, warnings
-
-
 def scheduler_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
