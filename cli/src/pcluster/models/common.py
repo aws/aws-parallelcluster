@@ -129,20 +129,30 @@ class Resource(ABC):
 
     def validate(self, raise_on_error=False):
         """Execute registered validators, ordered by priority (high prio --> executed first)."""
-        # Update validators to be executed according to current status of the model
-        self.__validators.clear()
-        self._register_validators()
         # Cleanup failures
         self._validation_failures.clear()
 
-        # Order validators by priority
+        # Call validators for nested resources
+        for attr, value in self.__dict__.items():
+            if isinstance(value, Resource):
+                # Validate nested Resources
+                self._validation_failures.extend(value.validate())
+            if isinstance(value, List) and value:
+                # Validate nested lists of Resources
+                for item in self.__getattribute__(attr):
+                    if isinstance(item, Resource):
+                        self._validation_failures.extend(item.validate())
+
+        # Update validators to be executed according to current status of the model and order by priority
+        self.__validators.clear()
+        self._register_validators()
         self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
 
         # Execute validators and add results in validation_failures array
-        for attr_validator in self.__validators:
+        for validator in self.__validators:
             # Execute it by passing all the arguments
             self._validation_failures.extend(
-                attr_validator.validator_class(raise_on_error=raise_on_error).execute(**attr_validator.validator_args)
+                validator.validator_class(raise_on_error=raise_on_error).execute(**validator.validator_args)
             )
 
         return self._validation_failures

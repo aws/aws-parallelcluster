@@ -9,6 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
@@ -113,3 +115,37 @@ def test_dynamic_property_validate():
     _assert_validation_result(
         validation_failures[0], FailureLevel.INFO, f"Wrong value dynamic-value: {fake_resource.deps_value}."
     )
+
+
+def test_nested_resource_validate():
+    """Verify that validators of nested resources are executed correctly."""
+
+    class FakeNestedResource(Resource):
+        """Fake nested resource class to test validators."""
+
+        def __init__(self, fake_value):
+            super().__init__()
+            self.fake_attribute = Param(fake_value)
+
+        def _register_validators(self):
+            self._add_validator(FakeErrorValidator, param=self.fake_attribute)
+
+    class FakeParentResource(Resource):
+        """Fake resource class to test validators."""
+
+        def __init__(self, nested_resource: FakeNestedResource, list_of_resources: List[FakeNestedResource]):
+            super().__init__()
+            self.fake_resource = nested_resource
+            self.other_attribute = Param("other-value")
+            self.list_of_resources = list_of_resources
+
+        def _register_validators(self):
+            self._add_validator(FakeInfoValidator, param=self.other_attribute)
+
+    fake_resource = FakeParentResource(FakeNestedResource("value1"), [FakeNestedResource("value2")])
+    validation_failures = fake_resource.validate()
+
+    # Verify children failures are executed first
+    _assert_validation_result(validation_failures[0], FailureLevel.ERROR, "Error value1.")
+    _assert_validation_result(validation_failures[1], FailureLevel.ERROR, "Error value2.")
+    _assert_validation_result(validation_failures[2], FailureLevel.INFO, "Wrong value other-value.")
