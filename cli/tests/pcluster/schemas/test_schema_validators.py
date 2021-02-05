@@ -151,6 +151,18 @@ def test_awsbatch_compute_resource_validator(section_dict, expected_message):
 
 
 @pytest.mark.parametrize(
+    "section_dict, expected_message",
+    [
+        ({"ComputeResources": []}, "Length must be 1"),
+        ({"ComputeResources": [{"InstanceType": "c5.xlarge"}]}, None),
+        ({"ComputeResources": [{"InstanceType": "c5.xlarge"}, {"InstanceType": "c4.xlarge"}]}, "Length must be 1"),
+    ],
+)
+def test_awsbatch_queue_validator(section_dict, expected_message):
+    _validate_and_assert_error(AwsbatchQueueSchema(), section_dict, expected_message)
+
+
+@pytest.mark.parametrize(
     "custom_ami, expected_message",
     [
         ("", "does not match expected pattern"),
