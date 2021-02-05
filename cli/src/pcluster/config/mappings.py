@@ -72,7 +72,6 @@ from pcluster.config.validators import (
     s3_bucket_uri_validator,
     s3_bucket_validator,
     shared_dir_validator,
-    tags_validator,
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
@@ -820,7 +819,6 @@ CLUSTER_COMMON_PARAMS = [
     ("tags", {
         # There is no cfn_param_mapping because it's not converted to a CFN Input parameter
         "type": TagsParam,
-        "validators": [tags_validator],
         "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
     }),
     ("custom_chef_cookbook", {

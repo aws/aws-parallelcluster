@@ -17,7 +17,7 @@
 from marshmallow import Schema, fields, post_dump, post_load, pre_dump, validate
 
 from pcluster.constants import SUPPORTED_ARCHITECTURES
-from pcluster.models.cluster import Tag
+from pcluster.models.cluster import BaseTag
 from pcluster.models.common import Param
 
 ALLOWED_VALUES = {
@@ -110,4 +110,4 @@ class TagSchema(BaseSchema):
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return Tag(**data)
+        return BaseTag(**data)

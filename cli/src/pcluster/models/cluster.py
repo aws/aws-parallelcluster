@@ -17,7 +17,7 @@ from enum import Enum
 from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.common import Param, Resource, Tag
+from pcluster.models.common import BaseTag, Param, Resource
 from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
@@ -34,6 +34,7 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     NumberOfStorageValidator,
     SimultaneousMultithreadingArchitectureValidator,
+    TagKeyValidator,
 )
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
@@ -539,6 +540,20 @@ class Monitoring(Resource):
 
 
 # ---------------------- Others ---------------------- #
+
+
+class Tag(BaseTag):
+    """Represent the Tag configuration."""
+
+    def __init__(
+        self,
+        key: str = None,
+        value: str = None,
+    ):
+        super().__init__(key, value)
+
+    def _register_validators(self):
+        self._add_validator(TagKeyValidator, key=self.key)
 
 
 class Roles(Resource):

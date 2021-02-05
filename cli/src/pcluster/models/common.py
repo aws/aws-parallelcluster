@@ -18,6 +18,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
+
 # ----------------- Params ----------------- #
 
 
@@ -172,7 +173,7 @@ class Resource(ABC):
 # ------------ Common resources between ImageBuilder an Cluster models ----------- #
 
 
-class Tag(Resource):
+class BaseTag(Resource):
     """Represent the Tag configuration."""
 
     def __init__(

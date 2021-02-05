@@ -16,7 +16,7 @@
 from typing import List
 
 from pcluster import utils
-from pcluster.models.common import Param, Resource, Tag
+from pcluster.models.common import BaseTag, Param, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import (
     BaseAMIValidator,
@@ -51,7 +51,7 @@ class Image(Resource):
         self,
         name: str,
         description: str = None,
-        tags: List[Tag] = None,
+        tags: List[BaseTag] = None,
         root_volume: Volume = None,
     ):
         super().__init__()
@@ -65,7 +65,7 @@ class Image(Resource):
     def _set_default(self):
         if self.tags is None:
             self.tags = []
-        default_tag = Tag("PclusterVersion", utils.get_installed_version())
+        default_tag = BaseTag("PclusterVersion", utils.get_installed_version())
         default_tag.implied = True
         self.tags.append(default_tag)
 
@@ -92,7 +92,7 @@ class Build(Resource):
         parent_image: str,
         instance_role: str = None,  # TODO: auto generate if not assigned
         subnet_id: str = None,  # TODO: auto generate if not assigned
-        tags: List[Tag] = None,
+        tags: List[BaseTag] = None,
         security_group_ids: List[str] = None,
         components: List[Component] = None,
     ):
