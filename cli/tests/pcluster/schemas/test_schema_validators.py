@@ -403,26 +403,11 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"ImportedFileChunkSize": "NONE"}, "Not a valid integer"),
         ({"ImportedFileChunkSize": "wrong_value"}, "Not a valid integer"),
         ({"ImportedFileChunkSize": 3}, None),
-        (
-            {"ImportedFileChunkSize": 0},
-            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
-        ),
-        (
-            {"ImportedFileChunkSize": 1},
-            None,
-        ),
-        (
-            {"ImportedFileChunkSize": 10},
-            None,
-        ),
-        (
-            {"ImportedFileChunkSize": 512000},
-            None,
-        ),
-        (
-            {"ImportedFileChunkSize": 512001},
-            "has a minimum size of 1 MiB, and max size of 512,000 MiB",
-        ),
+        ({"ImportedFileChunkSize": 0}, "has a minimum size of 1 MiB, and max size of 512,000 MiB"),
+        ({"ImportedFileChunkSize": 1}, None),
+        ({"ImportedFileChunkSize": 10}, None),
+        ({"ImportedFileChunkSize": 512000}, None),
+        ({"ImportedFileChunkSize": 512001}, "has a minimum size of 1 MiB, and max size of 512,000 MiB"),
         # TODO add regex for export path
         ({"ExportPath": ""}, None),
         ({"ExportPath": "fake_value"}, None),
@@ -455,14 +440,8 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"DailyAutomaticBackupStartTime": ""}, "does not match expected pattern"),
         ({"DailyAutomaticBackupStartTime": "01:00"}, None),
         ({"DailyAutomaticBackupStartTime": "23:00"}, None),
-        (
-            {"DailyAutomaticBackupStartTime": "25:00"},
-            "does not match expected pattern",
-        ),
-        (
-            {"DailyAutomaticBackupStartTime": "2300"},
-            "does not match expected pattern",
-        ),
+        ({"DailyAutomaticBackupStartTime": "25:00"}, "does not match expected pattern"),
+        ({"DailyAutomaticBackupStartTime": "2300"}, "does not match expected pattern"),
         ({"AutomaticBackupRetentionDays": ""}, "Not a valid integer"),
         ({"AutomaticBackupRetentionDays": 0}, None),
         ({"AutomaticBackupRetentionDays": 35}, None),
@@ -472,28 +451,16 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
         ({"CopyTagsToBackups": True}, None),
         ({"CopyTagsToBackups": False}, None),
         ({"BackupId": ""}, "does not match expected pattern"),
-        (
-            {"BackupId": "back-0a1b2c3d4e5f6a7b8"},
-            "does not match expected pattern",
-        ),
-        (
-            {"BackupId": "backup-0A1B2C3d4e5f6a7b8"},
-            "does not match expected pattern",
-        ),
+        ({"BackupId": "back-0a1b2c3d4e5f6a7b8"}, "does not match expected pattern"),
+        ({"BackupId": "backup-0A1B2C3d4e5f6a7b8"}, "does not match expected pattern"),
         ({"BackupId": "backup-0a1b2c3d4e5f6a7b8"}, None),
         ({"AutoImportPolicy": "NEW"}, None),
         ({"AutoImportPolicy": "NEW_CHANGED"}, None),
         ({"StorageType": "SSD"}, None),
         ({"StorageType": "HDD"}, None),
-        (
-            {"StorageType": "INVALID_VALUE"},
-            "Must be one of",
-        ),
+        ({"StorageType": "INVALID_VALUE"}, "Must be one of"),
         ({"DriveCacheType": "READ"}, None),
-        (
-            {"DriveCacheType": "INVALID_VALUE"},
-            "Must be one of",
-        ),
+        ({"DriveCacheType": "INVALID_VALUE"}, "Must be one of"),
         ({"invalid_key": "fake_value"}, "Unknown field"),
     ],
 )

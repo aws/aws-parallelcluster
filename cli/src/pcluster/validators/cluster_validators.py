@@ -331,7 +331,7 @@ class NumberOfStorageValidator(Validator):
     Validate the number of storage specified is lower than maximum supported.
     """
 
-    def _validate(self, storage_type, max_number, storage_count):
+    def _validate(self, storage_type: str, max_number: int, storage_count: int):
         if storage_count > max_number:
             self._add_failure(
                 "Invalid number of shared storage of {0} type specified. "
