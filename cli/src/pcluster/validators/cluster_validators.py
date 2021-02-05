@@ -24,6 +24,9 @@ from pcluster.utils import (
     get_supported_os_for_scheduler,
 )
 
+QUEUE_NAME_MAX_LENGTH = 30
+QUEUE_NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
+
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
     "arm64": ["centos8"],
@@ -148,6 +151,32 @@ class InstanceArchitectureCompatibilityValidator(Validator):
                 FailureLevel.ERROR,
                 [instance_type],
             )
+
+
+class QueueNameValidator(Validator):
+    """Validate queue name length and format."""
+
+    def _validate(self, name: Param):
+        match = re.match(QUEUE_NAME_REGEX, name.value)
+        if not match:
+            self._add_failure(
+                (
+                    f"Invalid queue name '{name.value}'. "
+                    "Queue name must begin with a letter and only contain lowercase letters, digits and hyphens."
+                ),
+                FailureLevel.ERROR,
+                [name],
+            )
+
+        if len(name.value) > QUEUE_NAME_MAX_LENGTH:
+            self._add_failure(
+                f"Invalid queue name '{name.value}'. Queue name can be at most {QUEUE_NAME_MAX_LENGTH} chars long.",
+                FailureLevel.ERROR,
+                [name],
+            )
+
+        if re.match("^default$", name.value):
+            self._add_failure(f"It is forbidden to use '{name.value}' as a queue name.", FailureLevel.ERROR, [name])
 
 
 # --------------- Storage validators --------------- #

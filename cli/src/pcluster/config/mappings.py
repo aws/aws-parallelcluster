@@ -67,7 +67,6 @@ from pcluster.config.validators import (
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
     kms_key_validator,
-    queue_settings_validator,
     queue_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
@@ -1030,7 +1029,6 @@ CLUSTER_HIT = {
             ("queue_settings", {
                 "type": SettingsJsonParam,
                 "referred_section": QUEUE,
-                "validators": [queue_settings_validator],
                 "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP,
             }),
             ("disable_hyperthreading", {

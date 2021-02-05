@@ -23,6 +23,7 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
     NumberOfStorageValidator,
+    QueueNameValidator,
     SchedulerOsValidator,
     SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
@@ -165,6 +166,24 @@ def test_instance_architecture_compatibility_validator(
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
         Param(compute_instance_type), head_node_architecture
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "name, expected_message",
+    [
+        ("default", "forbidden"),
+        ("1queue", "must begin with a letter"),
+        ("queue_1", "only contain lowercase letters, digits and hyphens"),
+        ("aQUEUEa", "only contain lowercase letters, digits and hyphens"),
+        ("queue1!2", "only contain lowercase letters, digits and hyphens"),
+        ("my-default-queue2", None),
+        ("queue-123456789abcdefghijklmnop", "can be at most 30 chars long"),
+        ("queue-123456789abcdefghijklmno", None),
+    ],
+)
+def test_queue_name_validator(name, expected_message):
+    actual_failures = QueueNameValidator().execute(Param(name))
     assert_failure_messages(actual_failures, expected_message)
 
 

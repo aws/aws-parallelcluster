@@ -22,7 +22,6 @@ from pcluster.config.validators import (
     efa_gdr_validator,
     intel_hpc_architecture_validator,
     queue_validator,
-    settings_validator,
 )
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
@@ -640,76 +639,6 @@ def test_efa_validator_with_vpc_security_group(
 
 
 @pytest.mark.parametrize(
-    "cluster_section_dict, expected_message",
-    [
-        # SIT cluster, perfectly fine
-        ({"scheduler": "slurm"}, None),
-        # HIT cluster with one queue
-        ({"scheduler": "slurm", "queue_settings": "queue1"}, None),
-        ({"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5"}, None),
-        ({"scheduler": "slurm", "queue_settings": "queue1, queue2"}, None),
-        (
-            {"scheduler": "slurm", "queue_settings": "queue1,queue2,queue3,queue4,queue5,queue6"},
-            "Invalid number of 'queue' sections specified. Max 5 expected.",
-        ),
-        (
-            {"scheduler": "slurm", "queue_settings": "queue_1"},
-            (
-                "Invalid queue name 'queue_1'. Queue section names can be at most 30 chars long, must begin with"
-                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                " 'default' as a queue section name."
-            ),
-        ),
-        (
-            {"scheduler": "slurm", "queue_settings": "default"},
-            (
-                "Invalid queue name 'default'. Queue section names can be at most 30 chars long, must begin with"
-                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                " 'default' as a queue section name."
-            ),
-        ),
-        (
-            {"scheduler": "slurm", "queue_settings": "queue1, default"},
-            (
-                "Invalid queue name '.*'. Queue section names can be at most 30 chars long, must begin with"
-                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                " 'default' as a queue section name."
-            ),
-        ),
-        (
-            {"scheduler": "slurm", "queue_settings": "QUEUE"},
-            (
-                "Invalid queue name 'QUEUE'. Queue section names can be at most 30 chars long, must begin with"
-                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                " 'default' as a queue section name."
-            ),
-        ),
-        (
-            {"scheduler": "slurm", "queue_settings": "aQUEUEa"},
-            (
-                "Invalid queue name 'aQUEUEa'. Queue section names can be at most 30 chars long, must begin with"
-                " a letter and only contain lowercase letters, digits and hyphens. It is forbidden to use"
-                " 'default' as a queue section name."
-            ),
-        ),
-        ({"scheduler": "slurm", "queue_settings": "my-default-queue"}, None),
-    ],
-)
-def test_queue_settings_validator(mocker, cluster_section_dict, expected_message):
-    config_parser_dict = {"cluster default": cluster_section_dict}
-    if cluster_section_dict.get("queue_settings"):
-        for i, queue_name in enumerate(cluster_section_dict["queue_settings"].split(",")):
-            config_parser_dict["queue {0}".format(queue_name.strip())] = {
-                "compute_resource_settings": "cr{0}".format(i),
-                "disable_hyperthreading": True,
-                "enable_efa": True,
-            }
-            config_parser_dict["compute_resource cr{0}".format(i)] = {"instance_type": "t2.micro"}
-
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
     "cluster_dict, queue_dict, expected_error_messages, expected_warning_messages",
     [
         (
@@ -857,60 +786,6 @@ def test_queue_validator(cluster_dict, queue_dict, expected_error_messages, expe
         assert_that(expected_warning_messages).is_equal_to(warnings)
     else:
         assert_that(warnings).is_empty()
-
-
-@pytest.mark.parametrize(
-    "param_value, expected_message",
-    [
-        (
-            "section1!2",
-            "Invalid label 'section1!2' in param 'queue_settings'. "
-            "Section labels can only contain alphanumeric characters, dashes or underscores.",
-        ),
-        (
-            "section!123456789abcdefghijklmnopqrstuvwxyz_123456789abcdefghijklmnopqrstuvwxyz_",
-            "Invalid label 'section!123456789...' in param 'queue_settings'. "
-            "Section labels can only contain alphanumeric characters, dashes or underscores.",
-        ),
-        ("section-1", None),
-        ("section_1", None),
-        (
-            "section_123456789abcdefghijklmnopqrstuvwxyz_123456789abcdefghijklmnopqrstuvwxyz_",
-            "Invalid label 'section_123456789...' in param 'queue_settings'. "
-            "The maximum length allowed for section labels is 64 characters",
-        ),
-    ],
-)
-def test_settings_validator(param_value, expected_message):
-    errors, warnings = settings_validator("queue_settings", param_value, None)
-    if expected_message:
-        assert_that(errors and len(errors) == 1).is_true()
-        assert_that(errors[0]).is_equal_to(expected_message)
-    else:
-        assert_that(errors).is_empty()
-
-
-@pytest.mark.parametrize(
-    "cluster_section_dict, sections_dict, expected_message",
-    [
-        (
-            {"vpc_settings": "vpc1, vpc2"},
-            {"vpc vpc1": {}, "vpc vpc2": {}},
-            "The value of 'vpc_settings' parameter is invalid. It can only contain a single vpc section label",
-        ),
-        (
-            {"efs_settings": "efs1, efs2"},
-            {"efs efs1": {}, "efs efs2": {}},
-            "The value of 'efs_settings' parameter is invalid. It can only contain a single efs section label",
-        ),
-    ],
-)
-def test_single_settings_validator(mocker, cluster_section_dict, sections_dict, expected_message):
-    config_parser_dict = {"cluster default": cluster_section_dict}
-    if sections_dict:
-        for key, section in sections_dict.items():
-            config_parser_dict[key] = section
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
 
 
 #########
