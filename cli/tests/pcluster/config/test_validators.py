@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
-import os
 import re
 
 import configparser
@@ -159,68 +158,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
         "ebs default": {"shared_dir": "test", "ebs_volume_id": "vol-12345678"},
     }
     utils.assert_param_validator(mocker, config_parser_dict)
-
-
-@pytest.mark.parametrize(
-    "region, base_os, scheduler, expected_message",
-    [
-        # verify awsbatch supported regions
-        ("ap-northeast-3", "alinux", "awsbatch", "scheduler is not supported in the .* region"),
-        ("us-gov-east-1", "alinux", "awsbatch", None),
-        ("us-gov-west-1", "alinux", "awsbatch", None),
-        ("eu-west-1", "alinux", "awsbatch", None),
-        ("us-east-1", "alinux", "awsbatch", None),
-        ("eu-north-1", "alinux", "awsbatch", None),
-        ("cn-north-1", "alinux", "awsbatch", None),
-        ("cn-northwest-1", "alinux", "awsbatch", None),
-        ("cn-northwest-1", "alinux2", "awsbatch", None),
-        # verify traditional schedulers are supported in all the regions
-        ("cn-northwest-1", "alinux", "sge", None),
-        ("ap-northeast-3", "alinux", "sge", None),
-        ("cn-northwest-1", "alinux", "slurm", None),
-        ("ap-northeast-3", "alinux", "slurm", None),
-        ("cn-northwest-1", "alinux", "torque", None),
-        ("ap-northeast-3", "alinux", "torque", None),
-        # verify awsbatch supported OSes
-        ("eu-west-1", "centos7", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "centos8", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "ubuntu1604", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
-        ("eu-west-1", "alinux", "awsbatch", None),
-        ("eu-west-1", "alinux2", "awsbatch", None),
-        # verify sge supports all the OSes
-        ("eu-west-1", "centos7", "sge", None),
-        ("eu-west-1", "centos8", "sge", None),
-        ("eu-west-1", "ubuntu1604", "sge", None),
-        ("eu-west-1", "ubuntu1804", "sge", None),
-        ("eu-west-1", "alinux", "sge", None),
-        ("eu-west-1", "alinux2", "sge", None),
-        # verify slurm supports all the OSes
-        ("eu-west-1", "centos7", "slurm", None),
-        ("eu-west-1", "centos8", "slurm", None),
-        ("eu-west-1", "ubuntu1604", "slurm", None),
-        ("eu-west-1", "ubuntu1804", "slurm", None),
-        ("eu-west-1", "alinux", "slurm", None),
-        ("eu-west-1", "alinux2", "slurm", None),
-        # verify torque supports all the OSes
-        ("eu-west-1", "centos7", "torque", None),
-        ("eu-west-1", "centos8", "torque", None),
-        ("eu-west-1", "ubuntu1604", "torque", None),
-        ("eu-west-1", "ubuntu1804", "torque", None),
-        ("eu-west-1", "alinux", "torque", None),
-        ("eu-west-1", "alinux2", "torque", None),
-    ],
-)
-def test_scheduler_validator(mocker, capsys, region, base_os, scheduler, expected_message):
-    # we need to set the region in the environment because it takes precedence respect of the config file
-    os.environ["AWS_DEFAULT_REGION"] = region
-    config_parser_dict = {"cluster default": {"base_os": base_os, "scheduler": scheduler}}
-    # Deprecation warning should be printed for sge and torque
-    expected_warning = None
-    wiki_url = "https://github.com/aws/aws-parallelcluster/wiki/Deprecation-of-SGE-and-Torque-in-ParallelCluster"
-    if scheduler in ["sge", "torque"]:
-        expected_warning = ".{0}. is scheduled to be deprecated.*{1}".format(scheduler, wiki_url)
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message, capsys, expected_warning)
 
 
 def test_placement_group_validator(mocker, boto3_stubber):

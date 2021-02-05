@@ -28,6 +28,7 @@ from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
     EfaOsArchitectureValidator,
     InstanceArchitectureCompatibilityValidator,
+    SchedulerOsValidator,
 )
 from pcluster.validators.ec2_validators import InstanceTypeValidator
 
@@ -94,6 +95,8 @@ class SlurmCluster(BaseCluster):
         self.scheduling = scheduling
 
     def _register_validators(self):
+        self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
                 self._add_validator(

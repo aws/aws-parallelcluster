@@ -23,6 +23,7 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
     NumberOfStorageValidator,
+    SchedulerOsValidator,
     SimultaneousMultithreadingArchitectureValidator,
 )
 from tests.common import MockedBoto3Request
@@ -32,6 +33,24 @@ from tests.pcluster.validators.utils import assert_failure_messages
 @pytest.fixture()
 def boto3_stubber_path():
     return "pcluster.validators.cluster_validators.boto3"
+
+
+@pytest.mark.parametrize(
+    "os, scheduler, expected_message",
+    [
+        ("centos7", "slurm", None),
+        ("centos8", "slurm", None),
+        ("ubuntu1804", "slurm", None),
+        ("alinux2", "slurm", None),
+        ("centos7", "awsbatch", "scheduler supports the following Operating Systems"),
+        ("centos8", "awsbatch", "scheduler supports the following Operating Systems"),
+        ("ubuntu1804", "awsbatch", "scheduler supports the following Operating Systems"),
+        ("alinux2", "awsbatch", None),
+    ],
+)
+def test_scheduler_os_validator(os, scheduler, expected_message):
+    actual_failures = SchedulerOsValidator().execute(Param(os), Param(scheduler))
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(

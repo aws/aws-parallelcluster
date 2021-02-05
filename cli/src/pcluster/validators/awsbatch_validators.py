@@ -19,6 +19,19 @@ from pcluster.utils import (
 )
 
 
+class AwsbatchRegionValidator(Validator):
+    """
+    AWS Batch region validator.
+
+    Validate if the region is supported by AWS Batch.
+    """
+
+    def _validate(self, region: str):
+        # TODO use dryrun
+        if region in ["ap-northeast-3"]:
+            self._add_failure(f"AWS Batch scheduler is not supported in the '{region}' region", FailureLevel.ERROR)
+
+
 class AwsbatchComputeResourceSizeValidator(Validator):
     """
     Awsbatch compute resource size validator.

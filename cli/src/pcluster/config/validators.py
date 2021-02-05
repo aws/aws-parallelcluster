@@ -22,7 +22,6 @@ from pcluster.utils import (
     get_efs_mount_target_id,
     get_file_section_name,
     get_region,
-    get_supported_os_for_scheduler,
     paginate_boto3,
     validate_pcluster_version_based_on_ami_name,
 )
@@ -533,29 +532,6 @@ def ec2_volume_validator(param_key, param_value, pcluster_config):
             errors.append("Volume {0} does not exist".format(param_value))
         else:
             errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
-def scheduler_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if param_value == "awsbatch":
-        if pcluster_config.region in ["ap-northeast-3"]:
-            errors.append("'awsbatch' scheduler is not supported in the '{0}' region".format(pcluster_config.region))
-
-    supported_os = get_supported_os_for_scheduler(param_value)
-    if pcluster_config.get_section("cluster").get_param_value("base_os") not in supported_os:
-        errors.append("'{0}' scheduler supports the following Operating Systems: {1}".format(param_value, supported_os))
-
-    will_be_deprecated = ["sge", "torque"]
-    wiki_url = "https://github.com/aws/aws-parallelcluster/wiki/Deprecation-of-SGE-and-Torque-in-ParallelCluster"
-    if param_value in will_be_deprecated:
-        warnings.append(
-            "The job scheduler you are using ({0}) is scheduled to be deprecated in future releases of "
-            "ParallelCluster. More information is available here: {1}".format(param_value, wiki_url)
-        )
 
     return errors, warnings
 

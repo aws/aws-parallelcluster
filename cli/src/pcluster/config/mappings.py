@@ -73,7 +73,6 @@ from pcluster.config.validators import (
     queue_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
-    scheduler_validator,
     shared_dir_validator,
     tags_validator,
 )
@@ -697,7 +696,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("scheduler", {
         "cfn_param_mapping": "Scheduler",
-        "validators": [scheduler_validator],
         "required": True,
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),

@@ -18,7 +18,7 @@ from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.models.common import Param, Resource, Tag
-from pcluster.utils import error, get_supported_architectures_for_instance_type
+from pcluster.utils import error, get_region, get_supported_architectures_for_instance_type
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     DcvValidator,
@@ -707,3 +707,8 @@ class BaseCluster(Resource):
                 os=self.image.os,
                 architecture=self.head_node.architecture,
             )
+
+    @property
+    def region(self):
+        """Retrieve region from environment."""
+        return get_region()

@@ -16,9 +16,22 @@ from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
+    AwsbatchRegionValidator,
 )
 
 from .utils import assert_failure_messages, mock_instance_type_info
+
+
+@pytest.mark.parametrize(
+    "region, expected_message",
+    [
+        ("eu-west-1", None),
+        ("ap-northeast-3", "AWS Batch scheduler is not supported in the .* region"),
+    ],
+)
+def test_awsbatch_region_validator(region, expected_message):
+    actual_failures = AwsbatchRegionValidator().execute(region)
+    assert_failure_messages(actual_failures, expected_message)
 
 
 @pytest.mark.parametrize(
