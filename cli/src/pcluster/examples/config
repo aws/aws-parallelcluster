@@ -95,11 +95,11 @@ key_name = mykey
 # (defaults to false)
 #encrypted_ephemeral = false
 # Head node root volume size in GB. (AMI must support growroot)
-# (defaults to 25)
-#master_root_volume_size = 25
+# (defaults to 35)
+#master_root_volume_size = 35
 # ComputeFleet root volume size in GB. (AMI must support growroot)
-# (defaults to 25)
-#compute_root_volume_size = 25
+# (defaults to 35)
+#compute_root_volume_size = 35
 # OS type used in the cluster. If the scheduler is awsbatch, only 'alinux' is supported.
 # (defaults to alinux)
 #base_os = alinux

@@ -31,8 +31,8 @@ def boto3_stubber_path():
             {
                 "cluster default": {
                     "scheduler": "slurm",
-                    "master_root_volume_size": 30,
-                    "compute_root_volume_size": 35,
+                    "master_root_volume_size": 40,
+                    "compute_root_volume_size": 45,
                     "cluster_type": "ondemand",
                     "enable_efa": "compute",
                     "disable_hyperthreading": True,
@@ -54,8 +54,8 @@ def boto3_stubber_path():
                 "cluster default": {
                     # Common cluster params must be copied
                     "scheduler": "slurm",
-                    "master_root_volume_size": 30,
-                    "compute_root_volume_size": 35,
+                    "master_root_volume_size": 40,
+                    "compute_root_volume_size": 45,
                     "enable_efa": None,
                     "additional_iam_policies": [
                         "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy",
@@ -91,7 +91,7 @@ def boto3_stubber_path():
             {
                 "cluster default": {
                     "scheduler": "slurm",
-                    "master_root_volume_size": 35,
+                    "master_root_volume_size": 45,
                     "compute_root_volume_size": 40,
                     "cluster_type": "ondemand",
                     "disable_hyperthreading": False,
@@ -107,7 +107,7 @@ def boto3_stubber_path():
                 "cluster default": {
                     # Common cluster params must be copied
                     "scheduler": "slurm",
-                    "master_root_volume_size": 35,
+                    "master_root_volume_size": 45,
                     "compute_root_volume_size": 40,
                     "enable_efa": None,
                     "disable_hyperthreading": False,
