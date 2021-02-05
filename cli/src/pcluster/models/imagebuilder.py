@@ -127,6 +127,8 @@ class ChefCookbook(Resource):
         self.url = Param(url)
         self.json = Param(json)
         # TODO: add validator
+
+    def _register_validators(self):
         self._add_validator(UrlValidator, url=self.url)
 
 
