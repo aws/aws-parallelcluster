@@ -67,7 +67,6 @@ from pcluster.config.validators import (
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
     kms_key_validator,
-    maintain_initial_size_validator,
     queue_settings_validator,
     queue_validator,
     s3_bucket_uri_validator,
@@ -968,7 +967,6 @@ CLUSTER_SIT = {
                 "type": MaintainInitialSizeCfnParam,
                 "default": False,
                 "cfn_param_mapping": "MinSize",
-                "validators": [maintain_initial_size_validator],
                 "update_policy": UpdatePolicy.SUPPORTED
             }),
             ("min_vcpus", {

@@ -655,24 +655,6 @@ def test_efa_validator_with_vpc_security_group(
 
 
 @pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        (
-            {"initial_queue_size": "0", "maintain_initial_size": True},
-            "maintain_initial_size cannot be set to true if initial_queue_size is 0",
-        ),
-        (
-            {"scheduler": "awsbatch", "maintain_initial_size": True},
-            "maintain_initial_size is not supported when using awsbatch as scheduler",
-        ),
-    ],
-)
-def test_maintain_initial_size_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
     "cluster_section_dict, expected_message",
     [
         # SIT cluster, perfectly fine
