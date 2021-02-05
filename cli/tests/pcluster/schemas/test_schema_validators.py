@@ -352,6 +352,38 @@ def test_efs_throughput_mode_provisioned_throughput_validator(section_dict, expe
             {"FileSystemId": "fs-0123456789abcdef0", "StorageCapacity": 3600},
             "storage_capacity is ignored when specifying an existing Lustre file system",
         ),
+        (
+            {
+                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "DeploymentType": "PERSISTENT_1",
+            },
+            "When restoring an FSx Lustre file system from backup, 'deployment_type' cannot be specified.",
+        ),
+        (
+            {"BackupId": "backup-0ff8da96d57f3b4e3", "StorageCapacity": 7200},
+            "When restoring an FSx Lustre file system from backup, 'storage_capacity' cannot be specified.",
+        ),
+        (
+            {
+                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "PerUnitStorageThroughput": 100,
+            },
+            "When restoring an FSx Lustre file system from backup, 'per_unit_storage_throughput' cannot be specified.",
+        ),
+        (
+            {
+                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "ImportedFileChunkSize": 1024,
+            },
+            "When restoring an FSx Lustre file system from backup, 'imported_file_chunk_size' cannot be specified.",
+        ),
+        (
+            {
+                "BackupId": "backup-0ff8da96d57f3b4e3",
+                "KmsKeyId": "somekey",
+            },
+            "When restoring an FSx Lustre file system from backup, 'kms_key_id' cannot be specified.",
+        ),
         ({"FileSystemId": ""}, "does not match expected pattern"),
         ({"FileSystemId": "wrong_value"}, "does not match expected pattern"),
         ({"FileSystemId": "fs-12345"}, "does not match expected pattern"),

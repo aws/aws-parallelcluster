@@ -24,6 +24,7 @@ from pcluster.validators.cluster_validators import (
     DcvValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
+    FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     NumberOfStorageValidator,
     SimultaneousMultithreadingArchitectureValidator,
@@ -36,6 +37,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import AdditionalIamPolicyValidator, InstanceTypeValidator, KeyPairValidator
 from pcluster.validators.fsx_validators import (
+    FsxBackupIdValidator,
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,
     FsxS3Validator,
@@ -263,6 +265,7 @@ class SharedFsx(SharedStorage):
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
         )
+        self._add_validator(FsxBackupIdValidator, backup_id=self.backup_id)
 
 
 # ---------------------- Networking ---------------------- #
@@ -671,6 +674,11 @@ class BaseCluster(Resource):
                         FsxNetworkingValidator,
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
+                    )
+                    self._add_validator(
+                        FsxArchitectureOsValidator,
+                        architecture=self.head_node.architecture,
+                        os=self.image.os,
                     )
                 if isinstance(storage, SharedEbs):
                     storage_count["ebs"] += 1

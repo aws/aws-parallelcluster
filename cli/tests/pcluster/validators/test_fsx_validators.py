@@ -8,17 +8,27 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+
 import pytest
 
 from pcluster.models.common import Param
 from pcluster.validators.fsx_validators import (
+    FsxAutoImportValidator,
+    FsxBackupIdValidator,
     FsxBackupOptionsValidator,
     FsxPersistentOptionsValidator,
     FsxS3Validator,
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
+
+
+@pytest.fixture()
+def boto3_stubber_path():
+    return "pcluster.validators.fsx_validators.boto3"
 
 
 @pytest.mark.parametrize(
@@ -368,4 +378,102 @@ def test_fsx_storage_capacity_validator(
         Param(file_system_id),
         Param(backup_id),
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "backup_id, expected_message",
+    [
+        ("backup-00000000000000000", "Failed to retrieve backup with Id 'backup-00000000000000000'"),
+        ("backup-0ff8da96d57f3b4e3", None),
+    ],
+)
+def test_fsx_backup_id_validator(boto3_stubber, backup_id, expected_message):
+    valid_key_id = "backup-0ff8da96d57f3b4e3"
+    describe_backups_response = {
+        "Backups": [
+            {
+                "BackupId": valid_key_id,
+                "Lifecycle": "AVAILABLE",
+                "Type": "USER_INITIATED",
+                "CreationTime": 1594159673.559,
+                "FileSystem": {
+                    "StorageCapacity": 7200,
+                    "StorageType": "SSD",
+                    "LustreConfiguration": {"DeploymentType": "PERSISTENT_1", "PerUnitStorageThroughput": 200},
+                },
+            }
+        ]
+    }
+
+    generate_describe_backups_error = backup_id != valid_key_id
+    fsx_mocked_requests = [
+        MockedBoto3Request(
+            method="describe_backups",
+            response=expected_message if generate_describe_backups_error else describe_backups_response,
+            expected_params={"BackupIds": [backup_id]},
+            generate_error=generate_describe_backups_error,
+        )
+    ]
+    boto3_stubber("fsx", fsx_mocked_requests)
+    actual_failures = FsxBackupIdValidator().execute(Param(backup_id))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "import_path, auto_import_policy, error_code, bucket, expected_message",
+    [
+        (
+            "s3://test/test1/test2",
+            "NEW",
+            None,
+            {"Bucket": "test"},
+            "AutoImport is not supported for cross-region buckets.",
+        ),
+        (
+            "s3://test/test1/test2",
+            "NEW",
+            "NoSuchBucket",
+            {"Bucket": "test"},
+            "The S3 bucket 'test' does not appear to exist.",
+        ),
+        (
+            "s3://test/test1/test2",
+            "NEW",
+            "AccessDenied",
+            {"Bucket": "test"},
+            "You do not have access to the S3 bucket",
+        ),
+    ],
+)
+def test_auto_import_policy_validator(
+    boto3_stubber, import_path, auto_import_policy, error_code, bucket, expected_message
+):
+    os.environ["AWS_DEFAULT_REGION"] = "eu-west-1"
+    get_bucket_location_response = {
+        "ResponseMetadata": {
+            "LocationConstraint": "af-south1",
+        }
+    }
+    mocked_requests = []
+    if error_code is None:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location", response=get_bucket_location_response, expected_params=bucket
+            )
+        )
+    else:
+        mocked_requests.append(
+            MockedBoto3Request(
+                method="get_bucket_location",
+                response=get_bucket_location_response,
+                expected_params=bucket,
+                generate_error=error_code is not None,
+                error_code=error_code,
+            )
+        )
+
+    boto3_stubber("s3", mocked_requests)
+
+    actual_failures = FsxAutoImportValidator().execute(Param(auto_import_policy), Param(import_path))
     assert_failure_messages(actual_failures, expected_message)

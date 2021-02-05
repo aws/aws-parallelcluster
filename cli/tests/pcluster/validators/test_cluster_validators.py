@@ -12,11 +12,14 @@ import pytest
 
 from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
+    FSX_MESSAGES,
+    FSX_SUPPORTED_ARCHITECTURES_OSES,
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
+    FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
     NumberOfStorageValidator,
@@ -337,6 +340,55 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
     boto3_stubber("ec2", ec2_mocked_requests)
 
     actual_failures = FsxNetworkingValidator().execute(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "architecture, os, expected_message",
+    [
+        # Supported combinations
+        ("x86_64", "alinux", None),
+        ("x86_64", "alinux2", None),
+        ("x86_64", "centos7", None),
+        ("x86_64", "centos8", None),
+        ("x86_64", "ubuntu1604", None),
+        ("x86_64", "ubuntu1804", None),
+        ("arm64", "ubuntu1804", None),
+        ("arm64", "alinux2", None),
+        ("arm64", "centos8", None),
+        # Unsupported combinations
+        (
+            "UnsupportedArchitecture",
+            "alinux2",
+            FSX_MESSAGES["errors"]["unsupported_architecture"].format(
+                supported_architectures=list(FSX_SUPPORTED_ARCHITECTURES_OSES.keys())
+            ),
+        ),
+        (
+            "arm64",
+            "centos7",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "alinux",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+        (
+            "arm64",
+            "ubuntu1604",
+            FSX_MESSAGES["errors"]["unsupported_os"].format(
+                architecture="arm64", supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get("arm64")
+            ),
+        ),
+    ],
+)
+def test_fsx_architecture_os_validator(architecture, os, expected_message):
+    actual_failures = FsxArchitectureOsValidator().execute(architecture, Param(os))
     assert_failure_messages(actual_failures, expected_message)
 
 
