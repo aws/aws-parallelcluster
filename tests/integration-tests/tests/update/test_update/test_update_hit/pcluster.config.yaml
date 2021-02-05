@@ -17,7 +17,7 @@ Scheduling:
     Queues:
       - Name: queue1
         ComputeSettings:
-          LocalStorage: 30
+          LocalStorage: 40
         ComputeType: ONDEMAND
         ComputeResources:
           - Name: compute-resource-11
@@ -34,7 +34,7 @@ Scheduling:
               EnableWriteAccess: true
       - Name: queue2
         ComputeSettings:
-          LocalStorage: 30
+          LocalStorage: 40
         ComputeResources:
           - Name: compute-resource-21
             EnabledEfa: True
