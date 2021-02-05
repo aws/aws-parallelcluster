@@ -464,21 +464,6 @@ def intel_hpc_os_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def maintain_initial_size_validator(param_key, param_value, pcluster_config):
-    errors = []
-    cluster_section = pcluster_config.get_section("cluster")
-    scheduler = cluster_section.get_param_value("scheduler")
-    initial_queue_size = cluster_section.get_param_value("initial_queue_size")
-
-    if param_value:
-        if scheduler == "awsbatch":
-            errors.append("maintain_initial_size is not supported when using awsbatch as scheduler")
-        elif initial_queue_size == 0:
-            errors.append("maintain_initial_size cannot be set to true if initial_queue_size is 0")
-
-    return errors, []
-
-
 def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []
