@@ -141,17 +141,6 @@ def ec2_subnet_id_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-def ec2_security_group_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        boto3.client("ec2").describe_security_groups(GroupIds=[param_value])
-    except ClientError as e:
-        errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
 def ec2_ami_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

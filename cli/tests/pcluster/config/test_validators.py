@@ -264,45 +264,6 @@ def test_ec2_subnet_id_validator(mocker, boto3_stubber):
     utils.assert_param_validator(mocker, config_parser_dict)
 
 
-def test_ec2_security_group_validator(mocker, boto3_stubber):
-    describe_security_groups_response = {
-        "SecurityGroups": [
-            {
-                "IpPermissionsEgress": [],
-                "Description": "My security group",
-                "IpPermissions": [
-                    {
-                        "PrefixListIds": [],
-                        "FromPort": 22,
-                        "IpRanges": [{"CidrIp": "203.0.113.0/24"}],
-                        "ToPort": 22,
-                        "IpProtocol": "tcp",
-                        "UserIdGroupPairs": [],
-                    }
-                ],
-                "GroupName": "MySecurityGroup",
-                "OwnerId": "123456789012",
-                "GroupId": "sg-12345678",
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_security_groups",
-            response=describe_security_groups_response,
-            expected_params={"GroupIds": ["sg-12345678"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {
-        "cluster default": {"vpc_settings": "default"},
-        "vpc default": {"vpc_security_group_id": "sg-12345678"},
-    }
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
 @pytest.mark.parametrize(
     "kms_key_id, expected_message",
     [
