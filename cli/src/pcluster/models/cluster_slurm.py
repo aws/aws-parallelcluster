@@ -26,7 +26,11 @@ from pcluster.models.cluster import (
 )
 from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
+    DuplicateInstanceTypeValidator,
     EfaOsArchitectureValidator,
+    EfaPlacementGroupValidator,
+    EfaSecurityGroupValidator,
+    EfaValidator,
     InstanceArchitectureCompatibilityValidator,
     SchedulerOsValidator,
 )
@@ -46,14 +50,22 @@ class SlurmComputeResource(BaseComputeResource):
         simultaneous_multithreading: bool = None,
         efa: Efa = None,
     ):
-        super().__init__(allocation_strategy, simultaneous_multithreading, efa)
+        super().__init__(allocation_strategy, simultaneous_multithreading)
         self.instance_type = Param(instance_type)
         self.max_count = Param(max_count, default=10)
         self.min_count = Param(min_count, default=0)
         self.spot_price = Param(spot_price)
+        self.efa = efa
 
     def _register_validators(self):
         self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        if self.efa:
+            self._add_validator(
+                EfaValidator,
+                instance_type=self.instance_type,
+                efa_enabled=self.efa.enabled,
+                gdr_support=self.efa.gdr_support,
+            )
 
 
 class SlurmQueue(BaseQueue):
@@ -69,6 +81,32 @@ class SlurmQueue(BaseQueue):
     ):
         super().__init__(name, networking, storage, compute_type)
         self.compute_resources = compute_resources
+
+    def _register_validators(self):
+        self._add_validator(
+            DuplicateInstanceTypeValidator,
+            instance_type_list=self.instance_type_list,
+        )
+        for compute_resource in self.compute_resources:
+            if compute_resource.efa:
+                self._add_validator(
+                    EfaSecurityGroupValidator,
+                    efa_enabled=compute_resource.efa,
+                    security_groups=self.networking.security_groups,
+                    additional_security_groups=self.networking.additional_security_groups,
+                )
+                if self.networking.placement_group:
+                    self._add_validator(
+                        EfaPlacementGroupValidator,
+                        efa_enabled=compute_resource.efa,
+                        placement_group_id=self.networking.placement_group.id,
+                        placement_group_enabled=self.networking.placement_group.enabled,
+                    )
+
+    @property
+    def instance_type_list(self):
+        """Return the list of instance types associated to the Queue."""
+        return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
 
 class SlurmSettings(CommonSchedulingSettings):

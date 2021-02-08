@@ -11,14 +11,19 @@
 import pytest
 
 from pcluster.models.common import Param
+from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
     FSX_SUPPORTED_ARCHITECTURES_OSES,
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
+    DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
+    EfaPlacementGroupValidator,
+    EfaSecurityGroupValidator,
+    EfaValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
@@ -66,6 +71,197 @@ def test_scheduler_os_validator(os, scheduler, expected_message):
 def test_compute_resource_size_validator(min_count, max_count, expected_message):
     actual_failures = ComputeResourceSizeValidator().execute(Param(min_count), Param(max_count))
     assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "instance_type_list, expected_message",
+    [
+        (["i1"], None),
+        (["i1", "i2"], None),
+        (["i1", "i2", "i3"], None),
+        (["i1", "i1", "i2"], "Instance type i1 cannot be specified for multiple Compute Resources"),
+        (
+            ["i1", "i2", "i3", "i2", "i1"],
+            "Instance types i2, i1 cannot be specified for multiple Compute Resources",
+        ),
+    ],
+)
+def test_duplicate_instance_type_validator(instance_type_list, expected_message):
+    instance_type_param_list = [Param(instance_type) for instance_type in instance_type_list]
+    actual_failures = DuplicateInstanceTypeValidator().execute(instance_type_param_list)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+# ---------------- EFA validators ---------------- #
+
+
+@pytest.mark.parametrize(
+    "instance_type, efa_enabled, gdr_support, efa_supported, expected_message",
+    [
+        # EFAGDR without EFA
+        ("c5n.18xlarge", False, True, True, "GDR Support can be used only if EFA is enabled"),
+        # EFAGDR with EFA
+        ("c5n.18xlarge", True, True, True, None),
+        # EFA without EFAGDR
+        ("c5n.18xlarge", True, False, True, None),
+        # Unsupported instance type
+        ("t2.large", True, False, False, "does not support EFA"),
+        ("t2.large", False, False, False, None),
+    ],
+)
+def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_support, efa_supported, expected_message):
+    if efa_enabled:
+        mocker.patch(
+            "pcluster.validators.cluster_validators.InstanceTypeInfo.init_from_instance_type",
+            return_value=InstanceTypeInfo(
+                {
+                    "InstanceType": instance_type,
+                    "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                    "NetworkInfo": {"EfaSupported": instance_type == "c5n.18xlarge"},
+                }
+            ),
+        )
+
+    actual_failures = EfaValidator().execute(Param(instance_type), Param(efa_enabled), Param(gdr_support))
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "efa_enabled, placement_group_id, placement_group_enabled, expected_message",
+    [
+        # Efa disabled, no check on placement group configuration
+        (False, None, False, None),
+        # Efa enabled
+        (True, None, False, "You may see better performance using a Placement Group"),
+        (True, None, True, None),
+        (True, "existing_pg", False, None),
+    ],
+)
+def test_efa_placement_group_validator(efa_enabled, placement_group_id, placement_group_enabled, expected_message):
+    actual_failures = EfaPlacementGroupValidator().execute(
+        Param(efa_enabled), Param(placement_group_id), Param(placement_group_enabled)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "efa_enabled, security_groups, additional_security_groups, ip_permissions, ip_permissions_egress, expected_message",
+    [
+        # Efa disabled, no checks on security groups
+        (False, [], [], [], [], None),
+        # Efa enabled, if not specified SG will be created by the cluster
+        (True, [], [], [], [], None),
+        (True, [], ["sg-12345678"], [{"IpProtocol": "-1", "UserIdGroupPairs": []}], [], None),
+        # Inbound rules only
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [],
+            "security group that allows all inbound and outbound",
+        ),
+        # right sg
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            None,
+        ),
+        # Multiple sec groups, one right
+        (
+            True,
+            ["sg-23456789", "sg-12345678"],
+            [],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            None,
+        ),
+        # Multiple sec groups, no one right
+        (True, ["sg-23456789", "sg-34567890"], [], [], [], "security group that allows all inbound and outbound"),
+        # Wrong rules
+        (
+            True,
+            ["sg-12345678"],
+            [],
+            [
+                {
+                    "PrefixListIds": [],
+                    "FromPort": 22,
+                    "IpRanges": [{"CidrIp": "203.0.113.0/24"}],
+                    "ToPort": 22,
+                    "IpProtocol": "tcp",
+                    "UserIdGroupPairs": [],
+                }
+            ],
+            [],
+            "security group that allows all inbound and outbound",
+        ),
+        # Right SG specified as additional sg
+        (
+            True,
+            ["sg-23456789"],
+            ["sg-12345678"],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            [{"IpProtocol": "-1", "UserIdGroupPairs": [{"UserId": "123456789012", "GroupId": "sg-12345678"}]}],
+            None,
+        ),
+    ],
+)
+def test_efa_security_group_validator(
+    boto3_stubber,
+    efa_enabled,
+    security_groups,
+    additional_security_groups,
+    ip_permissions,
+    ip_permissions_egress,
+    expected_message,
+):
+    def _append_mocked_describe_sg_request(ip_perm, ip_perm_egress, sec_group):
+        describe_security_groups_response = {
+            "SecurityGroups": [
+                {
+                    "IpPermissionsEgress": ip_perm_egress,
+                    "Description": "My security group",
+                    "IpPermissions": ip_perm,
+                    "GroupName": "MySecurityGroup",
+                    "OwnerId": "123456789012",
+                    "GroupId": sec_group,
+                }
+            ]
+        }
+        return MockedBoto3Request(
+            method="describe_security_groups",
+            response=describe_security_groups_response,
+            expected_params={"GroupIds": [security_group]},
+        )
+
+    if efa_enabled:
+        # Set SG different by sg-12345678 as incomplete. The only full valid SG can be the sg-12345678 one.
+        perm = ip_permissions if "sg-12345678" else []
+        perm_egress = ip_permissions_egress if "sg-12345678" else []
+
+        mocked_requests = []
+        if security_groups:
+            for security_group in security_groups:
+                mocked_requests.append(_append_mocked_describe_sg_request(perm, perm_egress, security_group))
+
+            # We don't need to check additional sg only if security_group is not a custom one.
+            if additional_security_groups:
+                for security_group in additional_security_groups:
+                    mocked_requests.append(_append_mocked_describe_sg_request(perm, perm_egress, security_group))
+
+        boto3_stubber("ec2", mocked_requests)
+
+    actual_failures = EfaSecurityGroupValidator().execute(
+        Param(efa_enabled), Param(security_groups), Param(additional_security_groups)
+    )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+# ---------------- Architecture Validators ---------------- #
 
 
 @pytest.mark.parametrize(

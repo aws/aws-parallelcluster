@@ -12,8 +12,6 @@ import re
 
 from assertpy import assert_that
 
-from pcluster.utils import InstanceTypeInfo
-
 
 def assert_failure_messages(actual_failures, expected_messages):
     """Check failure messages."""
@@ -29,16 +27,3 @@ def assert_failure_messages(actual_failures, expected_messages):
             ).is_true()
     else:
         assert_that(actual_failures).is_empty()
-
-
-def mock_instance_type_info(mocker, instance_type):
-    mocker.patch(
-        "pcluster.validators.awsbatch_validators.InstanceTypeInfo.init_from_instance_type",
-        return_value=InstanceTypeInfo(
-            {
-                "InstanceType": instance_type,
-                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
-                "NetworkInfo": {"EfaSupported": False},
-            }
-        ),
-    )

@@ -61,13 +61,10 @@ from pcluster.config.validators import (
     ec2_subnet_id_validator,
     ec2_volume_validator,
     ec2_vpc_id_validator,
-    efa_gdr_validator,
-    efa_validator,
     head_node_instance_type_validator,
     intel_hpc_architecture_validator,
     intel_hpc_os_validator,
     kms_key_validator,
-    queue_validator,
     s3_bucket_uri_validator,
     s3_bucket_validator,
     shared_dir_validator,
@@ -641,7 +638,6 @@ QUEUE = {
     "type": QueueJsonSection,
     "key": "queue",
     "default_label": "default",
-    "validators": [queue_validator],
     "max_resources": 5,
     "params": OrderedDict([
         ("compute_type", {
@@ -758,13 +754,11 @@ CLUSTER_COMMON_PARAMS = [
     ("enable_efa", {
         "allowed_values": ["compute"],  # does not apply to pcluster 3.0
         "cfn_param_mapping": "EFA",
-        "validators": [efa_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa_gdr", {
         "allowed_values": ["compute"],  # does not apply to pcluster 3.0
         "cfn_param_mapping": "EFAGDR",
-        "validators": [efa_gdr_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("ephemeral_dir", {

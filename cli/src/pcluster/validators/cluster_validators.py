@@ -18,6 +18,7 @@ from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
 from pcluster.models.common import FailureLevel, Param, Validator
 from pcluster.utils import (
+    InstanceTypeInfo,
     get_efs_mount_target_id,
     get_supported_architectures_for_instance_type,
     get_supported_os_for_architecture,
@@ -179,6 +180,116 @@ class QueueNameValidator(Validator):
             self._add_failure(f"It is forbidden to use '{name.value}' as a queue name.", FailureLevel.ERROR, [name])
 
 
+class DuplicateInstanceTypeValidator(Validator):
+    """
+    Instance type validator.
+
+    Verify if there are duplicated instance types between compute resources in the same queue.
+    """
+
+    def _validate(self, instance_type_list: List[Param]):
+        duplicated_instance_types = _find_duplicate_params(instance_type_list)
+        if duplicated_instance_types:
+            self._add_failure(
+                "Instance {0} {1} cannot be specified for multiple Compute Resources in the same Queue".format(
+                    "types" if len(duplicated_instance_types) > 1 else "type",
+                    ", ".join(instance_type.value for instance_type in duplicated_instance_types),
+                ),
+                FailureLevel.ERROR,
+                duplicated_instance_types,
+            )
+
+
+# --------------- EFA validators --------------- #
+
+
+class EfaValidator(Validator):
+    """Check if EFA and EFA GDR are supported features in the given instance type."""
+
+    def _validate(self, instance_type: Param, efa_enabled: Param, gdr_support: Param):
+
+        if efa_enabled.value:
+            if not InstanceTypeInfo.init_from_instance_type(instance_type.value).is_efa_supported():
+                self._add_failure(
+                    f"Instance type '{instance_type.value}' does not support EFA.",
+                    FailureLevel.WARNING,
+                )
+        elif gdr_support.value:
+            self._add_failure(
+                "The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR, [gdr_support]
+            )
+
+
+class EfaPlacementGroupValidator(Validator):
+    """Validate placement group if EFA is enabled."""
+
+    def _validate(self, efa_enabled: Param, placement_group_id: Param, placement_group_enabled: Param):
+        if efa_enabled.value and not placement_group_id.value and not placement_group_enabled.value:
+            self._add_failure(
+                "You may see better performance using a Placement Group for the queue.", FailureLevel.WARNING
+            )
+
+
+class EfaSecurityGroupValidator(Validator):
+    """Validate Security Group if EFA is enabled."""
+
+    def _validate(self, efa_enabled: Param, security_groups: Param, additional_security_groups: Param):
+        if efa_enabled.value and security_groups.value:
+            # Check security groups associated to the EFA
+            efa_sg_found = self._check_in_out_rules(security_groups)
+            if additional_security_groups.value:
+                efa_sg_found = efa_sg_found or self._check_in_out_rules(additional_security_groups)
+
+            if not efa_sg_found:
+                self._add_failure(
+                    "An EFA requires a security group that allows all inbound and outbound traffic "
+                    "to and from the security group itself. See "
+                    "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security",
+                    FailureLevel.ERROR,
+                    [security_groups],
+                )
+
+    def _check_in_out_rules(self, security_groups: Param):
+        efa_sg_found = False
+        for security_group in security_groups.value:
+            try:
+                sec_group = (
+                    boto3.client("ec2").describe_security_groups(GroupIds=[security_group]).get("SecurityGroups")[0]
+                )
+                allowed_in = False
+                allowed_out = False
+
+                # check inbound rules
+                for rule in sec_group.get("IpPermissions"):
+                    # UserIdGroupPairs is always of length 1, so grabbing 0th object is ok
+                    if (
+                        rule.get("IpProtocol") == "-1"
+                        and rule.get("UserIdGroupPairs")
+                        and rule.get("UserIdGroupPairs")[0].get("GroupId") == security_group
+                    ):
+                        allowed_in = True
+                        break
+
+                # check outbound rules
+                for rule in sec_group.get("IpPermissionsEgress"):
+                    if (
+                        rule.get("IpProtocol") == "-1"
+                        and rule.get("UserIdGroupPairs")
+                        and rule.get("UserIdGroupPairs")[0].get("GroupId") == security_group
+                    ):
+                        allowed_out = True
+                        break
+
+                if allowed_in and allowed_out:
+                    efa_sg_found = True
+                    break
+
+            except ClientError as e:
+                self._add_failure(e.response.get("Error").get("Message"), FailureLevel.WARNING)
+
+        return efa_sg_found
+
+
 # --------------- Storage validators --------------- #
 
 
@@ -325,6 +436,18 @@ class FsxArchitectureOsValidator(Validator):
             )
 
 
+def _find_duplicate_params(param_list: List[Param]):
+    param_value_set = set()
+    duplicated_params = []
+
+    for param in param_list:
+        if param.value in param_value_set:
+            duplicated_params.append(param)
+        else:
+            param_value_set.add(param.value)
+    return duplicated_params
+
+
 class DuplicateMountDirValidator(Validator):
     """
     Mount dir validator.
@@ -333,16 +456,8 @@ class DuplicateMountDirValidator(Validator):
     """
 
     def _validate(self, mount_dir_list: List[Param]):
-        mount_dirs_set = set()
-        duplicated_mount_dirs = []
-
-        for param in mount_dir_list:
-            if param.value in mount_dirs_set:
-                duplicated_mount_dirs.append(param)
-            else:
-                mount_dirs_set.add(param.value)
-
-        if len(mount_dir_list) != len(mount_dirs_set):
+        duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
+        if duplicated_mount_dirs:
             self._add_failure(
                 "Mount {0} {1} cannot be specified for multiple volumes".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",

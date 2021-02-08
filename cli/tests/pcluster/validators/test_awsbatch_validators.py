@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that
 
 from pcluster.models.common import Param
+from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchComputeResourceSizeValidator,
@@ -19,7 +20,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsbatchRegionValidator,
 )
 
-from .utils import assert_failure_messages, mock_instance_type_info
+from .utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
@@ -47,7 +48,16 @@ def test_awsbatch_region_validator(region, expected_message):
 )
 def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expected_message):
     mocker.patch("pcluster.utils.get_supported_instance_types", return_value=["t2.micro", "p4d.24xlarge"])
-    mock_instance_type_info(mocker, instance_type)
+    mocker.patch(
+        "pcluster.validators.awsbatch_validators.InstanceTypeInfo.init_from_instance_type",
+        return_value=InstanceTypeInfo(
+            {
+                "InstanceType": instance_type,
+                "VCpuInfo": {"DefaultVCpus": 4, "DefaultCores": 2},
+                "NetworkInfo": {"EfaSupported": False},
+            }
+        ),
+    )
     actual_failures = AwsbatchComputeInstanceTypeValidator().execute(Param(instance_type), Param(max_vcpus))
     assert_failure_messages(actual_failures, expected_message)
 

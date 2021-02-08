@@ -34,9 +34,6 @@ HeadNode:
     Enabled: true  # true
     Port: 8443  # 8443
     AllowedIps: 0.0.0.0/0  # 0.0.0.0/0
-  Efa:
-    Enabled: true  # false
-    GdrSupport: true  # false
 Scheduling:
   Awsbatch:
     Queues:
@@ -74,9 +71,6 @@ Scheduling:
             MaxvCpus: 20
             SpotBidPercentage: 0.5
             SimultaneousMultithreading: true  # true
-            Efa:
-              Enabled: true  # true
-              GdrSupport: true  # false
             #AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point

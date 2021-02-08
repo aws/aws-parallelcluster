@@ -17,12 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.utils import (
-    get_file_section_name,
-    get_region,
-    paginate_boto3,
-    validate_pcluster_version_based_on_ami_name,
-)
+from pcluster.utils import get_region, paginate_boto3, validate_pcluster_version_based_on_ami_name
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
 
@@ -97,87 +92,6 @@ def kms_key_validator(param_key, param_value, pcluster_config):
         errors.append(e.response.get("Error").get("Message"))
 
     return errors, warnings
-
-
-def efa_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    cluster_section = pcluster_config.get_section("cluster")
-
-    allowed_instances = _get_efa_enabled_instance_types(errors)
-    if pcluster_config.cluster_model.name == "SIT":
-        # Specific validations for SIT clusters
-        if cluster_section.get_param_value("compute_instance_type") not in allowed_instances:
-            errors.append(
-                "When using 'enable_efa = {0}' it is required to set the 'compute_instance_type' parameter "
-                "to one of the following values : {1}".format(param_value, allowed_instances)
-            )
-        if cluster_section.get_param_value("placement_group") is None:
-            warnings.append("You may see better performance using a cluster placement group.")
-
-    allowed_schedulers = ["sge", "slurm", "torque"]
-    if cluster_section.get_param_value("scheduler") not in allowed_schedulers:
-        errors.append(
-            "When using 'enable_efa = {0}' it is required to set the 'scheduler' parameter "
-            "to one of the following values : {1}".format(param_value, allowed_schedulers)
-        )
-
-    _validate_efa_sg(pcluster_config, errors)
-
-    return errors, warnings
-
-
-def efa_gdr_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    cluster_section = pcluster_config.get_section("cluster")
-    if param_value and cluster_section.get_param_value("enable_efa") is None:
-        errors.append("The parameter '{0}' can be used only in combination with 'enable_efa'".format(param_key))
-
-    return errors, warnings
-
-
-def _validate_efa_sg(pcluster_config, errors):
-    vpc_security_group_id = pcluster_config.get_section("vpc").get_param_value("vpc_security_group_id")
-    if vpc_security_group_id:
-        try:
-            sg = boto3.client("ec2").describe_security_groups(GroupIds=[vpc_security_group_id]).get("SecurityGroups")[0]
-            allowed_in = False
-            allowed_out = False
-
-            # check inbound rules
-            for rule in sg.get("IpPermissions"):
-                # UserIdGroupPairs is always of length 1, so grabbing 0th object is ok
-                if (
-                    rule.get("IpProtocol") == "-1"
-                    and rule.get("UserIdGroupPairs")
-                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == vpc_security_group_id
-                ):
-                    allowed_in = True
-                    break
-
-            # check outbound rules
-            for rule in sg.get("IpPermissionsEgress"):
-                if (
-                    rule.get("IpProtocol") == "-1"
-                    and rule.get("UserIdGroupPairs")
-                    and rule.get("UserIdGroupPairs")[0].get("GroupId") == vpc_security_group_id
-                ):
-                    allowed_out = True
-                    break
-
-            if not (allowed_in and allowed_out):
-                errors.append(
-                    "The VPC Security Group '{0}' set in the vpc_security_group_id parameter "
-                    "must allow all traffic in and out from itself. "
-                    "See https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security".format(
-                        vpc_security_group_id
-                    )
-                )
-        except ClientError as e:
-            errors.append(e.response.get("Error").get("Message"))
 
 
 def head_node_instance_type_validator(param_key, param_value, pcluster_config):
@@ -474,84 +388,6 @@ def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
         )
 
     return errors, warnings
-
-
-def queue_validator(section_key, section_label, pcluster_config):
-    errors = []
-    warnings = []
-    queue_section = pcluster_config.get_section(section_key, section_label)
-    compute_resource_labels = str(queue_section.get_param_value("compute_resource_settings") or "").split(",")
-
-    # Check for replicated parameters in cluster and queue sections
-    def check_queue_xor_cluster(param_key):
-        """Check that the param is not used in both queue and cluster section."""
-        # FIXME: Improve the design of the validation mechanism to allow validators to be linked to a specific
-        # validation phase (before, after refresh operations)
-        config_parser = pcluster_config.config_parser
-        if config_parser:
-            # This check is performed only if the configuration is loaded from file.
-            queue_param_in_config_file = config_parser.has_option(
-                get_file_section_name("queue", section_label), param_key
-            )
-            cluster_param_in_config_file = pcluster_config.get_section("cluster").get_param_value(param_key) is not None
-
-            if cluster_param_in_config_file and queue_param_in_config_file:
-                errors.append("Parameter '{0}' can be used only in 'cluster' or in 'queue' section".format(param_key))
-
-    check_queue_xor_cluster("enable_efa")
-    check_queue_xor_cluster("enable_efa_gdr")
-    check_queue_xor_cluster("disable_hyperthreading")
-
-    # Check for unsupported features in compute resources
-    def check_unsupported_feature(compute_resource, feature_name, param_key):
-        """Check if a feature enabled in the parent queue section is supported on a given child compute resource."""
-        feature_enabled = queue_section.get_param_value(param_key)
-        if feature_enabled and not compute_resource.get_param_value(param_key):
-            warnings.append(
-                "{0} was enabled on queue '{1}', but instance type '{2}' defined in compute resource settings {3} "
-                "does not support {0}.".format(feature_name, queue_section.label, instance_type, compute_resource_label)
-            )
-
-    instance_types = []
-    for compute_resource_label in compute_resource_labels:
-        compute_resource = pcluster_config.get_section("compute_resource", compute_resource_label)
-        if compute_resource:
-            instance_type = compute_resource.get_param_value("instance_type")
-            if instance_type in instance_types:
-                errors.append(
-                    "Duplicate instance type '{0}' found in queue '{1}'. "
-                    "Compute resources in the same queue must use different instance types".format(
-                        instance_type, section_label
-                    )
-                )
-            else:
-                instance_types.append(instance_type)
-
-            check_unsupported_feature(compute_resource, "EFA", "enable_efa")
-            check_unsupported_feature(compute_resource, "EFA GDR", "enable_efa_gdr")
-
-    # Check that efa_gdr is used with enable_efa
-    if queue_section.get_param_value("enable_efa_gdr") and not queue_section.get_param_value("enable_efa"):
-        errors.append("The parameter 'enable_efa_gdr' can be used only in combination with 'enable_efa'")
-
-    return errors, warnings
-
-
-def _get_efa_enabled_instance_types(errors):
-    instance_types = []
-
-    try:
-        for response in paginate_boto3(
-            boto3.client("ec2").describe_instance_types,
-            Filters=[{"Name": "network-info.efa-supported", "Values": ["true"]}],
-        ):
-            instance_types.append(response.get("InstanceType"))
-    except ClientError as e:
-        errors.append(
-            "Failed retrieving efa enabled instance types: {0}".format(e.response.get("Error").get("Message"))
-        )
-
-    return instance_types
 
 
 def get_bucket_name_from_s3_url(import_path):
