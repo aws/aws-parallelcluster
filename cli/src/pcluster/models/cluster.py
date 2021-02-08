@@ -425,12 +425,10 @@ class BaseComputeResource(Resource):
         self,
         allocation_strategy: str = None,
         simultaneous_multithreading: bool = None,
-        efa: Efa = None,
     ):
         super().__init__()
         self.allocation_strategy = Param(allocation_strategy, default="BEST_FIT")
         self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
-        self.efa = efa
 
 
 class BaseQueue(Resource):

@@ -19,7 +19,6 @@ from pcluster.models.cluster import (
     BaseComputeResource,
     BaseQueue,
     CommonSchedulingSettings,
-    Efa,
     QueueNetworking,
     Resource,
     Storage,
@@ -45,9 +44,8 @@ class AwsbatchComputeResource(BaseComputeResource):
         spot_bid_percentage: float = None,
         allocation_strategy: str = None,
         simultaneous_multithreading: bool = None,
-        efa: Efa = None,
     ):
-        super().__init__(allocation_strategy, simultaneous_multithreading, efa)
+        super().__init__(allocation_strategy, simultaneous_multithreading)
         self.instance_type = instance_type
         self.max_vcpus = Param(max_vcpus, default=10)
         self.min_vcpus = Param(min_vcpus, default=0)
