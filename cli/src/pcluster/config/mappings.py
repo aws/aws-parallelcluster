@@ -56,7 +56,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     ec2_ami_validator,
-    ec2_placement_group_validator,
     ec2_security_group_validator,
     ec2_subnet_id_validator,
     ec2_volume_validator,
@@ -659,7 +658,6 @@ QUEUE = {
         }),
         ("placement_group", {
             "type": JsonParam,
-            "validators": [ec2_placement_group_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
         ("compute_resource_settings", {
@@ -927,7 +925,6 @@ CLUSTER_SIT = {
         CLUSTER_COMMON_PARAMS + [
             ("placement_group", {
                 "cfn_param_mapping": "PlacementGroup",
-                "validators": [ec2_placement_group_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("placement", {

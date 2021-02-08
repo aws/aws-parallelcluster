@@ -43,3 +43,8 @@ class Ec2Client(Boto3Client):
     def describe_key_pair(self, key_name):
         """Return the given key, if exists."""
         return self._client.describe_key_pairs(KeyNames=[key_name])
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_placement_group(self, group_name):
+        """Return the given placement group, if exists."""
+        return self._client.describe_placement_group(GroupNames=[group_name])

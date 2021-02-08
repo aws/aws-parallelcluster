@@ -137,7 +137,7 @@ class Resource(ABC):
             if isinstance(value, Resource):
                 # Validate nested Resources
                 self._validation_failures.extend(value.validate())
-            if isinstance(value, List) and value:
+            if isinstance(value, list) and value:
                 # Validate nested lists of Resources
                 for item in self.__getattribute__(attr):
                     if isinstance(item, Resource):

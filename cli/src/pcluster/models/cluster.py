@@ -43,7 +43,12 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
 )
-from pcluster.validators.ec2_validators import AdditionalIamPolicyValidator, InstanceTypeValidator, KeyPairValidator
+from pcluster.validators.ec2_validators import (
+    AdditionalIamPolicyValidator,
+    InstanceTypeValidator,
+    KeyPairValidator,
+    PlacementGroupIdValidator,
+)
 from pcluster.validators.fsx_validators import (
     FsxBackupIdValidator,
     FsxBackupOptionsValidator,
@@ -325,6 +330,9 @@ class PlacementGroup(Resource):
         super().__init__()
         self.enabled = Param(enabled, default=False)
         self.id = Param(id)
+
+    def _register_validators(self):
+        self._add_validator(PlacementGroupIdValidator, placement_group_id=self.id)
 
 
 class QueueNetworking(_BaseNetworking):
