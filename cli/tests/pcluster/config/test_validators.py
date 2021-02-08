@@ -138,24 +138,6 @@ def test_ec2_volume_validator(mocker, boto3_stubber):
     utils.assert_param_validator(mocker, config_parser_dict)
 
 
-def test_placement_group_validator(mocker, boto3_stubber):
-    describe_placement_groups_response = {
-        "PlacementGroups": [{"GroupName": "my-cluster", "State": "available", "Strategy": "cluster"}]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_placement_groups",
-            response=describe_placement_groups_response,
-            expected_params={"GroupNames": ["my-cluster"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid group name
-    config_parser_dict = {"cluster default": {"placement_group": "my-cluster"}}
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
 @pytest.mark.parametrize(
     "config, num_calls, bucket, expected_message",
     [

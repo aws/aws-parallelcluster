@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError, ParamValidationError
 
-from pcluster.utils import get_region, paginate_boto3, validate_pcluster_version_based_on_ami_name
+from pcluster.utils import get_region, validate_pcluster_version_based_on_ami_name
 
 LOGFILE_LOGGER = logging.getLogger("cli_log_file")
 
@@ -180,21 +180,6 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
                     param_value, ami_architecture, cluster_section.get_param_value("architecture")
                 )
             )
-
-    return errors, warnings
-
-
-def ec2_placement_group_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if param_value == "DYNAMIC":
-        pass
-    else:
-        try:
-            boto3.client("ec2").describe_placement_groups(GroupNames=[param_value])
-        except ClientError as e:
-            errors.append(e.response.get("Error").get("Message"))
 
     return errors, warnings
 

@@ -94,3 +94,14 @@ class KeyPairValidator(Validator):  # TODO add test
             Ec2Client().describe_key_pair(key_name)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR, [key_name])
+
+
+class PlacementGroupIdValidator(Validator):  # TODO: add tests
+    """Placement group id validator."""
+
+    def _validate(self, placement_group_id: Param):
+        if placement_group_id.value:
+            try:
+                Ec2Client().describe_placement_group(placement_group_id)
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.ERROR, [placement_group_id])
