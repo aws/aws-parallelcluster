@@ -19,10 +19,12 @@ from pcluster.models.cluster import HeadNode
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 from pcluster.templates.cluster_stack import HeadNodeConstruct
 
+from ..boto3.dummy_boto3 import mock_aws_api
 from ..models.cluster_dummy_model import dummy_cluster, dummy_head_node
 
 
 def test_cluster_builder():
+    mock_aws_api()
     generated_template = CDKTemplateBuilder().build(cluster=dummy_cluster())
     print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template

@@ -13,3 +13,4 @@ aws-cdk.aws-imagebuilder
 aws-cdk.aws-iam
 aws-cdk.aws-ssm
 aws-cdk.aws-fsx
+aws-cdk.aws-efs

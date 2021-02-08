@@ -14,9 +14,12 @@
 #
 
 from aws_cdk import aws_ec2 as ec2
+from aws_cdk import aws_efs as efs
+from aws_cdk import aws_fsx as fsx
 from aws_cdk import core
 
-from pcluster.models.cluster import HeadNode, SharedFsx
+from common.aws.aws_api import AWSApi
+from pcluster.models.cluster import HeadNode, SharedEbs, SharedEfs, SharedFsx, SharedStorage
 from pcluster.models.cluster_slurm import SlurmCluster
 
 
@@ -179,17 +182,6 @@ class HeadNodeConstruct(core.Construct):
         # )
 
 
-class FsxConstruct(core.Construct):
-    """Create the resources related to the FSX."""
-
-    # https://cdkworkshop.com/30-python/40-hit-counter/100-api.html
-    def __init__(self, scope: core.Construct, id: str, fsx: SharedFsx, **kwargs):
-        super().__init__(scope, id)
-        self.fsx = fsx
-        # TODO add all the other required info other than fsx object and generate template
-        # TODO Verify if there are building blocks ready to be used
-
-
 class ClusterStack(core.Stack):
     """Create the Stack and delegate to specific Construct for the creation of all the resources for the Cluster."""
 
@@ -197,12 +189,155 @@ class ClusterStack(core.Stack):
         super().__init__(scope, construct_id, **kwargs)
         self._cluster = cluster
 
+        # Storage filesystem Ids
+        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorage.Type}
+
+        # Compute security group Ids
+        # TODO: add sgs created from main stack
+        self._compute_security_groups = []
+        self._compute_security_groups.extend(self._cluster.compute_security_groups)
+
         HeadNodeConstruct(self, "HeadNode", cluster.head_node)
+
         if cluster.shared_storage:
             for storage in cluster.shared_storage:
-                if storage.fsx:
-                    FsxConstruct(self, "Fsx", storage.fsx)
-                # if storage.efs:
-                #    EfsConstruct(storage.efs)  # TODO Verify if there are building blocks ready to be used
-                # if storage.ebs:
-                #    EbsConstruct(ebs)  # Verify if there are building blocks ready to be used
+                self._add_shared_storage(storage)
+
+        self._add_shared_storage_outputs()
+
+    def _add_shared_storage(self, storage: SharedStorage):
+        """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
+        storage_id = None
+        cfn_resource_id = "{0}{1}".format(
+            storage.shared_storage_type.name, len(self._storage_resource_ids[storage.shared_storage_type])
+        )
+        if storage.shared_storage_type == SharedStorage.Type.FSX:
+            storage_id = self._add_fsx_storage(cfn_resource_id, storage)
+        elif storage.shared_storage_type == SharedStorage.Type.EBS:
+            storage_id = self._add_ebs_volume(cfn_resource_id, storage)
+        elif storage.shared_storage_type == SharedStorage.Type.EFS:
+            storage_id = self._add_efs_storage(cfn_resource_id, storage)
+
+        # Store filesystem id
+        storage_ids_list = self._storage_resource_ids[storage.shared_storage_type]
+        if not storage_ids_list:
+            storage_ids_list = []
+            self._storage_resource_ids[storage.shared_storage_type] = storage_ids_list
+        storage_ids_list.append(storage_id)
+
+    def _add_shared_storage_outputs(self):
+        """Add the ids of the managed filesystem to the Stack Outputs."""
+        for storage_type, storage_ids in self._storage_resource_ids.items():
+            core.CfnOutput(
+                scope=self,
+                id="{0}Ids".format(storage_type.name),
+                description="{0} Filesystem IDs".format(storage_type.name),
+                value=",".join(storage_ids),
+            )
+
+    def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
+        """Add specific Cfn Resources to map the FSX storage."""
+        fsx_id = shared_fsx.file_system_id.value
+
+        if not fsx_id and shared_fsx.mount_dir.value:
+            fsx_resource = fsx.CfnFileSystem(
+                scope=self,
+                storage_capacity=shared_fsx.storage_capacity.value,
+                lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
+                    deployment_type=shared_fsx.deployment_type.value,
+                    imported_file_chunk_size=shared_fsx.imported_file_chunk_size.value,
+                    export_path=shared_fsx.export_path.value,
+                    import_path=shared_fsx.import_path.value,
+                    weekly_maintenance_start_time=shared_fsx.weekly_maintenance_start_time.value,
+                    automatic_backup_retention_days=shared_fsx.automatic_backup_retention_days.value,
+                    copy_tags_to_backups=shared_fsx.copy_tags_to_backups.value,
+                    daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time.value,
+                    per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput.value,
+                    auto_import_policy=shared_fsx.auto_import_policy.value,
+                    drive_cache_type=shared_fsx.drive_cache_type.value,
+                ),
+                backup_id=shared_fsx.backup_id.value,
+                kms_key_id=shared_fsx.kms_key_id.value,
+                id=id,
+                file_system_type="LUSTRE",
+                storage_type=shared_fsx.drive_cache_type.value,
+                subnet_ids=self._cluster.compute_subnet_ids,
+                security_group_ids=self._cluster.compute_security_groups,
+            )
+            fsx_id = fsx_resource.ref
+
+        return fsx_id
+
+    def _add_efs_storage(self, id: str, shared_efs: SharedEfs):
+        """Add specific Cfn Resources to map the EFS storage."""
+        # EFS FileSystem
+        efs_id = shared_efs.file_system_id.value
+        if not efs_id and shared_efs.mount_dir:
+            efs_resource = efs.CfnFileSystem(
+                scope=self,
+                id=id,
+                encrypted=shared_efs.encrypted.value,
+                kms_key_id=shared_efs.kms_key_id.value,
+                performance_mode=shared_efs.performance_mode.value,
+                provisioned_throughput_in_mibps=shared_efs.provisioned_throughput.value,
+                throughput_mode=shared_efs.throughput_mode.value,
+            )
+            efs_id = efs_resource.ref
+
+        checked_availability_zones = []
+        # Mount Targets for Compute Fleet
+        compute_subnet_ids = self._cluster.compute_subnet_ids
+        for subnet_id in compute_subnet_ids:
+            self._add_efs_mount_target(
+                id, efs_id, self._cluster.compute_security_groups, subnet_id, checked_availability_zones
+            )
+
+        # Mount Target for Head Node
+        self._add_efs_mount_target(
+            id,
+            efs_id,
+            self._cluster.head_node.networking.security_groups.value,
+            self._cluster.head_node.networking.subnet_id.value,
+            checked_availability_zones,
+        )
+        return efs_id
+
+    def _add_efs_mount_target(
+        self, efs_cfn_resource_id, file_system_id, security_groups, subnet_id, checked_availability_zones
+    ):
+        """Create a EFS Mount Point for the file system, if not already available on the same AZ."""
+        availability_zone = AWSApi.instance().ec2.get_availability_zone_of_subnet(subnet_id)
+        if availability_zone not in checked_availability_zones:
+            mount_target_id = AWSApi.instance().efs.get_efs_mount_target_id(file_system_id, availability_zone)
+
+            if not mount_target_id:
+                efs.CfnMountTarget(
+                    scope=self,
+                    id="{0}MT{1}".format(efs_cfn_resource_id, availability_zone),
+                    file_system_id=file_system_id,
+                    security_groups=security_groups,
+                    subnet_id=subnet_id,
+                )
+            checked_availability_zones.append(availability_zone)
+
+    def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
+        """Add specific Cfn Resources to map the EBS storage."""
+        ebs_id = shared_ebs.volume_id.value
+        if not ebs_id and shared_ebs.mount_dir:
+            ebs_resource = ec2.CfnVolume(
+                scope=self,
+                id=id,
+                availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
+                    self._cluster.head_node.networking.subnet_id.value
+                ),
+                encrypted=shared_ebs.encrypted.value,
+                iops=shared_ebs.iops.value,
+                throughput=shared_ebs.throughput.value,
+                kms_key_id=shared_ebs.kms_key_id.value,
+                size=shared_ebs.size.value,
+                snapshot_id=shared_ebs.snapshot_id.value,
+                volume_type=shared_ebs.volume_type.value,
+            )
+            ebs_id = ebs_resource.ref
+
+        return ebs_id
