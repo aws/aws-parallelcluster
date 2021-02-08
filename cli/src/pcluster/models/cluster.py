@@ -693,11 +693,9 @@ class BaseCluster(Resource):
             simultaneous_multithreading=self.head_node.simultaneous_multithreading,
             architecture=self.head_node.architecture,
         )
-        mount_dirs = []
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
         if self.shared_storage:
             for storage in self.shared_storage:
-                mount_dirs.append(storage.mount_dir)
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
                     self._add_validator(
@@ -728,9 +726,7 @@ class BaseCluster(Resource):
                     storage_count=storage_count[storage_type],
                 )
 
-        if self.head_node.storage and self.head_node.storage.ephemeral_volume:
-            mount_dirs.append(self.head_node.storage.ephemeral_volume.mount_dir)
-        self._add_validator(DuplicateMountDirValidator, mount_dir_list=mount_dirs)
+        self._add_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
 
         if self.head_node.dcv:
             self._add_validator(
@@ -747,3 +743,16 @@ class BaseCluster(Resource):
     def region(self):
         """Retrieve region from environment."""
         return get_region()
+
+    @property
+    def mount_dir_list(self):
+        """Retrieve the list of mount dirs for the shared storage and head node ephemeral volume."""
+        mount_dir_list = []
+        if self.shared_storage:
+            for storage in self.shared_storage:
+                mount_dir_list.append(storage.mount_dir)
+
+        if self.head_node.storage and self.head_node.storage.ephemeral_volume:
+            mount_dir_list.append(self.head_node.storage.ephemeral_volume.mount_dir)
+
+        return mount_dir_list
