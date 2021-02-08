@@ -305,8 +305,8 @@ class _BaseNetworking(Resource):
     ):
         super().__init__()
         self.assign_public_ip = Param(assign_public_ip)
-        self.security_groups = security_groups
-        self.additional_security_groups = additional_security_groups
+        self.security_groups = Param(security_groups)
+        self.additional_security_groups = Param(additional_security_groups)
         self.proxy = proxy
 
     def _register_validators(self):
@@ -345,7 +345,7 @@ class QueueNetworking(_BaseNetworking):
 
     def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_ids = subnet_ids
+        self.subnet_ids = Param(subnet_ids)
         self.placement_group = placement_group
 
 
