@@ -56,7 +56,6 @@ from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     ec2_ami_validator,
-    ec2_security_group_validator,
     ec2_subnet_id_validator,
     ec2_volume_validator,
     ec2_vpc_id_validator,
@@ -224,7 +223,6 @@ VPC = {
         }),
         ("additional_sg", {
             "cfn_param_mapping": "AdditionalSG",
-            "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
         }),
         ("compute_subnet_id", {
@@ -245,7 +243,6 @@ VPC = {
         }),
         ("vpc_security_group_id", {
             "cfn_param_mapping": "VPCSecurityGroupId",
-            "validators": [ec2_security_group_validator],
             "update_policy": UpdatePolicy.SUPPORTED
         }),
         ("master_availability_zone", {

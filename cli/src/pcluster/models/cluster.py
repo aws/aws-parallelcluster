@@ -57,6 +57,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
+from pcluster.validators.networking_validators import SecurityGroupsValidator
 from pcluster.validators.s3_validators import UrlValidator
 
 # ---------------------- Storage ---------------------- #
@@ -307,6 +308,10 @@ class _BaseNetworking(Resource):
         self.security_groups = security_groups
         self.additional_security_groups = additional_security_groups
         self.proxy = proxy
+
+    def _register_validators(self):
+        self._add_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
+        self._add_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
 class HeadNodeNetworking(_BaseNetworking):
