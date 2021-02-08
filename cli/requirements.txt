@@ -9,6 +9,8 @@ jinja2>=2.11.0
 marshmallow
 aws-cdk.core
 aws-cdk.aws-ec2
+aws-cdk.aws-fsx
 aws-cdk.aws-imagebuilder
 aws-cdk.aws-iam
 aws-cdk.aws-ssm
+aws-cdk.aws-efs
