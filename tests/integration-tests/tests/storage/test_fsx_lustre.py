@@ -78,7 +78,7 @@ def test_fsx_lustre_configuration_options(
     bucket_name = s3_bucket_factory()
     bucket = boto3.resource("s3", region_name=region).Bucket(bucket_name)
     bucket.upload_file(str(test_datadir / "s3_test_file"), "s3_test_file")
-    weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%w:%H:%M")
+    weekly_maintenance_start_time = (datetime.datetime.utcnow() + datetime.timedelta(minutes=60)).strftime("%u:%H:%M")
     cluster_config = pcluster_config_reader(
         bucket_name=bucket_name,
         mount_dir=mount_dir,
