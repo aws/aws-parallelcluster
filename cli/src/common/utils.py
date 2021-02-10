@@ -21,9 +21,9 @@ def download_file(url):
     return response.read().decode("utf-8")
 
 
-def load_yaml_dict(config_file):
+def load_yaml_dict(file_path):
     """Read the content of a yaml file."""
-    with open(config_file) as conf_file:
+    with open(file_path) as conf_file:
         yaml_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
     # TODO prevent yaml.load from converting 1:00:00 to int 3600
 
