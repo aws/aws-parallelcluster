@@ -44,6 +44,11 @@ class S3Client(Boto3Client):
                 function_name="head_bucket", message=_process_generic_s3_bucket_error(client_error, bucket_name)
             )
 
+    @AWSExceptionHandler.handle_client_exception
+    def put_object(self, bucket_name, body, key):
+        """Upload object content to s3."""
+        return self._client.put_object(Bucket=bucket_name, Body=body, Key=key)
+
 
 def _process_generic_s3_bucket_error(client_error, bucket_name):
     if client_error.response.get("Error").get("Code") == "NoSuchBucket":
@@ -57,3 +62,5 @@ def _process_generic_s3_bucket_error(client_error, bucket_name):
     return "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
         bucket_name, client_error.response.get("Error").get("Message")
     )
+
+

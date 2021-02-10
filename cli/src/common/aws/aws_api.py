@@ -8,7 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
+from common.boto3.cfn import CfnClient
 from common.boto3.ec2 import Ec2Client
 from common.boto3.efs import EfsClient
 from common.boto3.imagebuilder import ImageBuilderClient
@@ -28,6 +28,7 @@ class AWSApi:
     _instance = None
 
     def __init__(self):
+        self.cfn = CfnClient()
         self.ec2 = Ec2Client()
         self.efs = EfsClient(ec2_client=self.ec2)
         # pylint: disable=C0103
