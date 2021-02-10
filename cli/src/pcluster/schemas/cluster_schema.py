@@ -23,6 +23,7 @@ from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
 from pcluster.models.cluster import (
     AdditionalIamPolicy,
     AdditionalPackages,
+    BaseCluster,
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
@@ -738,11 +739,16 @@ class ClusterSchema(BaseSchema):
     additional_resources = fields.Str()
     dev_settings = fields.Nested(ClusterDevSettingsSchema)
 
-    @post_load
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        if data.get("scheduling").scheduler == "slurm":
-            return SlurmCluster(**data)
-        if data.get("scheduling").scheduler == "awsbatch":
-            return AwsbatchCluster(**data)
-        return None
+    @post_load(pass_original=True)
+    def make_resource(self, data, original_data, **kwargs):
+        """Generate cluster according to the scheduler. Save original configuration."""
+        scheduler = data.get("scheduling").scheduler
+        if scheduler == "slurm":
+            cluster = SlurmCluster(**data)
+        elif scheduler == "awsbatch":
+            cluster = AwsbatchCluster(**data)
+        else:  # scheduler == "custom":
+            cluster = BaseCluster(**data)  # FIXME Must be ByosCluster
+
+        cluster.source_config = original_data
+        return cluster

@@ -745,6 +745,7 @@ class BaseCluster(Resource):
         dev_settings: ClusterDevSettings = None,
     ):
         super().__init__()
+        self.source_config = None
         self.image = image
         self.head_node = head_node
         self.shared_storage = shared_storage
