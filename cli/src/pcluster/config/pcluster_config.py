@@ -26,6 +26,7 @@ from pcluster.config.cfn_param_types import ClusterCfnSection
 from pcluster.config.mappings import ALIASES, AWS, GLOBAL
 from pcluster.config.param_types import StorageData
 from pcluster.utils import (
+    default_config_file_path,
     get_cfn_param,
     get_file_section_name,
     get_installed_version,
@@ -36,11 +37,6 @@ from pcluster.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
-
-
-def default_config_file_path():
-    """Return the default path for the ParallelCluster configuration file."""
-    return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
 
 
 class PclusterConfig(object):

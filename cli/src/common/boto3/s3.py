@@ -12,8 +12,6 @@ from botocore.exceptions import ClientError
 
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
-# TODO move s3_factory.py and awsbatch/utils.py here
-
 
 class S3Client(Boto3Client):
     """S3 Boto3 client."""

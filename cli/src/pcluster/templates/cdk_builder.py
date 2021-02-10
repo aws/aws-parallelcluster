@@ -18,7 +18,6 @@ import tempfile
 from aws_cdk import core
 
 from common.utils import load_yaml_dict
-from pcluster.models.cluster_slurm import SlurmCluster
 from pcluster.models.imagebuilder import ImageBuilder
 from pcluster.templates.cluster_stack import ClusterStack
 from pcluster.templates.imagebuilder_stack import ImageBuilderStack
@@ -27,7 +26,8 @@ from pcluster.templates.imagebuilder_stack import ImageBuilderStack
 class CDKTemplateBuilder:
     """Create the template, starting from the given resources."""
 
-    def build(self, cluster: SlurmCluster):
+    @staticmethod
+    def build_cluster_template(cluster):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "parallelcluster-cluster"  # TODO: pass stack name as argument
@@ -38,7 +38,8 @@ class CDKTemplateBuilder:
 
         return generated_template
 
-    def build_ami(self, imagebuild: ImageBuilder):
+    @staticmethod
+    def build_imagebuilder_template(imagebuild: ImageBuilder):
         """Build template for the given imagebuilder and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
             output_file = "imagebuilder"

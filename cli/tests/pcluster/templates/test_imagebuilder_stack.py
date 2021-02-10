@@ -275,7 +275,7 @@ def test_imagebuilder(mocker, resource, response, expected_template):
         return_value=response,
     )
     dummy_imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_ami(dummy_imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(dummy_imagebuild)
     # TODO assert content of the template by matching expected template, re-enable it after refactoring
     _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
     _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
@@ -442,7 +442,7 @@ def test_imagebuilder_instance_role(
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
     assert_that(generated_template.get("Resources").get("InstanceRole")).is_equal_to(expected_instance_role)
     assert_that(generated_template.get("Resources").get("InstanceProfile")).is_equal_to(expected_instance_profile)
     assert_that(
@@ -554,7 +554,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
     assert_that(
         generated_template.get("Resources").get("PClusterImageRecipe").get("Properties").get("Components")
     ).is_equal_to(expected_components)
@@ -686,7 +686,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
     assert_that(
         generated_template.get("Resources")
         .get("ParallelClusterDistributionConfiguration")
@@ -811,7 +811,7 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
         return_value=response,
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
-    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
 
     for resource_name, resource in generated_template.get("Resources").items():
         if resource_name == "InstanceProfile":

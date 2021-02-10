@@ -89,6 +89,11 @@ def get_stack_version(stack):
     return next(iter([tag["Value"] for tag in stack.get("Tags") if tag["Key"] == "Version"]), None)
 
 
+def default_config_file_path():
+    """Return the default path for the ParallelCluster configuration file."""
+    return os.path.expanduser(os.path.join("~", ".parallelcluster", "config"))
+
+
 def _wait_for_update(stack_name):
     """Wait for the given stack to be finished updating."""
     while get_stack(stack_name).get("StackStatus") == "UPDATE_IN_PROGRESS":
