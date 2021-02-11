@@ -9,9 +9,9 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pcluster.models.imagebuilder import Build, DevSettings
+from pcluster.models.imagebuilder import Build
 from pcluster.models.imagebuilder import Image as ImageBuilderImage
-from pcluster.models.imagebuilder import ImageBuilder
+from pcluster.models.imagebuilder import ImageBuilder, ImagebuilderDevSettings
 
 
 def dummy_imagebuilder(is_official_ami_build):
@@ -21,8 +21,8 @@ def dummy_imagebuilder(is_official_ami_build):
         build = Build(
             instance_type="c5.xlarge", parent_image="arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x"
         )
-        dev_settings = DevSettings(update_os_and_reboot=True)
+        dev_settings = ImagebuilderDevSettings(update_os_and_reboot=True)
     else:
         build = Build(instance_type="g4dn.xlarge", parent_image="ami-0185634c5a8a37250")
-        dev_settings = DevSettings()
+        dev_settings = ImagebuilderDevSettings()
     return ImageBuilder(image=image, build=build, dev_settings=dev_settings)

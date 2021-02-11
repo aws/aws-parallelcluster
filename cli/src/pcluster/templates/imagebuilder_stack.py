@@ -37,12 +37,12 @@ class ImageBuilderStack(core.Stack):
         # TODO: use attributes from imagebuilder config instead of using these static variables.
         core.CfnParameter(self, "EnableNvidia", type="String", default="false", description="EnableNvidia")
         core.CfnParameter(self, "EnableDCV", type="String", default="false", description="EnableDCV")
-        default_node_url = dev_settings.node_url if dev_settings and dev_settings.node_url else ""
+        default_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         core.CfnParameter(
             self,
             "CustomNodePackage",
             type="String",
-            default=default_node_url,
+            default=default_node_package,
             description="CustomNodePackage",
         )
         core.CfnParameter(

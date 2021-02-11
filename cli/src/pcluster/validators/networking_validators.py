@@ -13,7 +13,7 @@ from typing import List
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.models.common import FailureLevel, Validator
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class SecurityGroupsValidator(Validator):

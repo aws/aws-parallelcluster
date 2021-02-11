@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import (
     InstanceTypeInfo,
     get_region,
@@ -17,6 +16,7 @@ from pcluster.utils import (
     get_supported_batch_instance_types,
     is_instance_type_format,
 )
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class AwsbatchRegionValidator(Validator):

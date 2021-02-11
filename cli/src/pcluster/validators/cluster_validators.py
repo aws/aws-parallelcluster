@@ -15,7 +15,6 @@ from botocore.exceptions import ClientError
 
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
-from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import (
     InstanceTypeInfo,
     get_efs_mount_target_id,
@@ -23,6 +22,7 @@ from pcluster.utils import (
     get_supported_os_for_architecture,
     get_supported_os_for_scheduler,
 )
+from pcluster.validators.common import FailureLevel, Validator
 
 QUEUE_NAME_MAX_LENGTH = 30
 QUEUE_NAME_REGEX = r"^[a-z][a-z0-9\-]*$"

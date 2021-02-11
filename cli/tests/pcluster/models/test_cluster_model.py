@@ -14,7 +14,7 @@ from typing import List
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
-from pcluster.models.common import FailureLevel, Validator
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class FakeInfoValidator(Validator):

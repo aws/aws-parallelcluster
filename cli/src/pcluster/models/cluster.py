@@ -16,7 +16,7 @@ from enum import Enum
 from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.common import BaseTag, Resource
+from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
@@ -651,6 +651,18 @@ class AdditionalPackages(Resource):
         self.intel_select_solutions = intel_select_solutions
 
 
+class ClusterDevSettings(BaseDevSettings):
+    """Represent the dev settings configuration."""
+
+    def __init__(self, cluster_template: str = None, **kwargs):
+        super().__init__(**kwargs)
+        self.cluster_template = Resource.init_param(cluster_template)
+
+    def _register_validators(self):
+        super()._register_validators()
+        self._add_validator(UrlValidator, url=self.cluster_template)
+
+
 # ---------------------- Root resource ---------------------- #
 
 
@@ -669,6 +681,7 @@ class BaseCluster(Resource):
         custom_actions: CustomAction = None,
         cluster_s3_bucket: str = None,
         additional_resources: str = None,
+        dev_settings: ClusterDevSettings = None,
     ):
         super().__init__()
         self.image = image
@@ -681,6 +694,7 @@ class BaseCluster(Resource):
         self.custom_actions = custom_actions
         self.cluster_s3_bucket = cluster_s3_bucket
         self.additional_resources = additional_resources
+        self.dev_settings = dev_settings
 
     def _register_validators(self):
         self._add_validator(

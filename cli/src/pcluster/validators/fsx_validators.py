@@ -13,8 +13,8 @@ from botocore.exceptions import ClientError
 
 from pcluster.config.validators import get_bucket_name_from_s3_url
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
-from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import get_region
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class FsxS3Validator(Validator):
