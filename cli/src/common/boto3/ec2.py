@@ -9,7 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO move s3_factory.py and awsbatch/utils.py here
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 from pcluster import utils
 from pcluster.utils import Cache, InstanceTypeInfo

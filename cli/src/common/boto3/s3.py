@@ -62,5 +62,3 @@ def _process_generic_s3_bucket_error(client_error, bucket_name):
     return "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
         bucket_name, client_error.response.get("Error").get("Message")
     )
-
-

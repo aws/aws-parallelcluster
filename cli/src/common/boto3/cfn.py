@@ -16,7 +16,7 @@ class CfnClient(Boto3Client):
     """Implement CFN Boto3 client."""
 
     def __init__(self):
-        super().__init__("cfn")
+        super().__init__("cloudformation")
 
     @AWSExceptionHandler.handle_client_exception
     def create_stack(self, stack_name, template_url, disable_rollback, tags):

@@ -48,9 +48,6 @@ class Validator(ABC):
         self._failures = []
         self._raise_on_error = raise_on_error
 
-    def _fail(self, message, level):
-        raise ConfigValidationError
-
     def _add_failure(self, message: str, level: FailureLevel):
         result = ValidationResult(message, level)
         if self._raise_on_error:

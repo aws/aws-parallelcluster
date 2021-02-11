@@ -68,7 +68,7 @@ class AwsbatchComputeInstanceTypeValidator(Validator):
 
     def _validate(self, instance_types, max_vcpus):
         supported_instances = get_supported_batch_instance_types()
-        if supported_instances:
+        if supported_instances and instance_types:
             for instance_type in instance_types.split(","):
                 if not instance_type.strip() in supported_instances:
                     self._add_failure(
@@ -113,23 +113,24 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
     """
 
     def _validate(self, instance_types, architecture: str):
-        for instance_type in instance_types.split(","):
-            # When awsbatch is used as the scheduler instance families can be used.
-            # Don't attempt to validate architectures for instance families, as it would require
-            # guessing a valid instance type from within the family.
-            if not is_instance_type_format(instance_type) and instance_type != "optimal":
-                self._add_failure(
-                    "Not validating architecture compatibility for compute instance type {0} because it does not have "
-                    "the expected format".format(instance_type),
-                    FailureLevel.INFO,
-                )
-                continue
-            compute_architectures = get_supported_architectures_for_instance_type(instance_type)
-            if architecture not in compute_architectures:
-                self._add_failure(
-                    "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
-                    "compatible with the architecture supported by the head node instance type ({2}).".format(
-                        instance_type, compute_architectures, architecture
-                    ),
-                    FailureLevel.ERROR,
-                )
+        if instance_types:
+            for instance_type in instance_types.split(","):
+                # When awsbatch is used as the scheduler instance families can be used.
+                # Don't attempt to validate architectures for instance families, as it would require
+                # guessing a valid instance type from within the family.
+                if not is_instance_type_format(instance_type) and instance_type != "optimal":
+                    self._add_failure(
+                        "Not validating architecture compatibility for compute instance type {0} because "
+                        "it does not have the expected format".format(instance_type),
+                        FailureLevel.INFO,
+                    )
+                    continue
+                compute_architectures = get_supported_architectures_for_instance_type(instance_type)
+                if architecture not in compute_architectures:
+                    self._add_failure(
+                        "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
+                        "compatible with the architecture supported by the head node instance type ({2}).".format(
+                            instance_type, compute_architectures, architecture
+                        ),
+                        FailureLevel.ERROR,
+                    )
