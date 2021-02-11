@@ -16,14 +16,13 @@
 from typing import List
 
 from pcluster import utils
-from pcluster.models.common import BaseTag, Resource
+from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import (
     BaseAMIValidator,
     InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
 )
-from pcluster.validators.s3_validators import UrlValidator
 
 # ---------------------- Image ---------------------- #
 
@@ -119,44 +118,22 @@ class Build(Resource):
 # ---------------------- Dev Settings ---------------------- #
 
 
-class ChefCookbook(Resource):
-    """Represent the chef cookbook configuration for the ImageBuilder."""
-
-    def __init__(self, url: str, json: str):
-        super().__init__()
-        self.url = Resource.init_param(url)
-        self.json = Resource.init_param(json)
-        # TODO: add validator
-
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.url)
-
-
-class DevSettings(Resource):
+class ImagebuilderDevSettings(BaseDevSettings):
     """Represent the dev settings configuration for the ImageBuilder."""
 
     def __init__(
         self,
         update_os_and_reboot: bool = None,
         disable_pcluster_component: bool = None,
-        chef_cookbook: ChefCookbook = None,
-        node_url: str = None,
-        aws_batch_cli_url: str = None,
         distribution_configuration_arn: str = None,
         terminate_instance_on_failure: bool = None,
+        **kwargs
     ):
-        super().__init__()
+        super().__init__(**kwargs)
         self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
         self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
-        self.chef_cookbook = chef_cookbook
-        self.node_url = Resource.init_param(node_url)
-        self.aws_batch_cli_url = Resource.init_param(aws_batch_cli_url)
         self.distribution_configuration_arn = Resource.init_param(distribution_configuration_arn)
         self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
-
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.node_url)
-        self._add_validator(UrlValidator, url=self.aws_batch_cli_url)
 
 
 # ---------------------- ImageBuilder ---------------------- #
@@ -169,7 +146,7 @@ class ImageBuilder(Resource):
         self,
         image: Image,
         build: Build,
-        dev_settings: DevSettings = None,
+        dev_settings: ImagebuilderDevSettings = None,
     ):
         super().__init__()
         self.image = image

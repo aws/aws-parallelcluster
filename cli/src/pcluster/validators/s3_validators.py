@@ -6,7 +6,7 @@ from urllib.request import urlopen
 from botocore.exceptions import ClientError
 
 from common.boto3.s3 import S3Client
-from pcluster.models.common import FailureLevel, Validator
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class UrlValidator(Validator):

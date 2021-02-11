@@ -14,10 +14,12 @@
 # These classes are created by following marshmallow syntax.
 #
 
-from marshmallow import Schema, fields, post_dump, post_load, pre_dump, validate
+from marshmallow import Schema, ValidationError, fields, post_dump, post_load, pre_dump, validate, validates
 
+from common.utils import validate_json_format
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import BaseTag
+from pcluster.models.common import Cookbook
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -116,3 +118,30 @@ class TagSchema(BaseSchema):
     def make_resource(self, data, **kwargs):
         """Generate resource."""
         return BaseTag(**data)
+
+
+class CookbookSchema(BaseSchema):
+    """Represent the schema of cookbook."""
+
+    chef_cookbook = fields.Str()
+    extra_chef_attributes = fields.Str()
+
+    @post_load()
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return Cookbook(**data)
+
+    @validates("extra_chef_attributes")
+    def validate_extra_chef_attributes(self, value):
+        """Validate json."""
+        # TODO: double check the allowed pattern for extra chef attribute
+        if value and not validate_json_format(value):
+            raise ValidationError(message="'{0}' is invalid".format(value))
+
+
+class BaseDevSettingsSchema(BaseSchema):
+    """Represent the common schema of Dev Setting for ImageBuilder and Cluster."""
+
+    cookbook = fields.Nested(CookbookSchema)
+    node_package = fields.Str()
+    aws_batch_cli_package = fields.Str()

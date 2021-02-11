@@ -37,11 +37,11 @@ Build:
 DevSettings:
   UpdateOsAndReboot: True
   DisablePclusterComponent: False
-  ChefCookbook:
-    Url: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
-    Json: |
+  Cookbook:
+    ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
+    ExtraChefAttributes: |
       {"cluster": {"cfn_scheduler_slots": "cores"}}
-  NodeUrl: s3://test/aws-parallelcluster-node-3.0.tgz
-  AWSBatchCliUrl: s3://test/aws-parallelcluster-batch-3.0.tgz
+  NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz
+  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
   DistributionConfigurationArn: arn:aws:imagebuilder:us-east-1:aws:distributionconfiguration/amazon-cloudwatch-agent-linux/1.0.0
   TerminateInstanceOnFailure: True

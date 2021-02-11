@@ -15,8 +15,8 @@ from pcluster.config.validators import (
     EBS_VOLUME_TYPE_TO_IOPS_RATIO,
     EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
 )
-from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import get_ebs_snapshot_info, get_partition
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class EbsVolumeTypeSizeValidator(Validator):

@@ -14,65 +14,11 @@
 #
 
 import operator
-from abc import ABC, abstractmethod
-from enum import Enum
+from abc import ABC
 from typing import List
 
-# ----------------- Validators ----------------- #
-
-
-class FailureLevel(Enum):
-    """Validation failure level."""
-
-    ERROR = 40
-    WARNING = 30
-    INFO = 20
-
-
-class ValidationResult:
-    """Represent the result of the validation."""
-
-    def __init__(self, message: str, level: FailureLevel):
-        self.message = message
-        self.level = level
-
-
-class ConfigValidationError(Exception):
-    """Configuration file validation error."""
-
-    def __init__(self, validation_result: ValidationResult):
-        message = f"{validation_result.level.name}: {validation_result.message}"
-        super().__init__(message)
-
-
-class Validator(ABC):
-    """Abstract validator. The children must implement the validate method."""
-
-    def __init__(self, raise_on_error=False):
-        self._failures = []
-        self._raise_on_error = raise_on_error
-
-    def _fail(self, message, level):
-        raise ConfigValidationError
-
-    def _add_failure(self, message: str, level: FailureLevel):
-        result = ValidationResult(message, level)
-        if self._raise_on_error:
-            raise ConfigValidationError(result)
-        self._failures.append(result)
-
-    def execute(self, *arg, **kwargs):
-        """Entry point of all validators to verify all input params are valid."""
-        self._validate(*arg, **kwargs)
-        return self._failures
-
-    @abstractmethod
-    def _validate(self, *args, **kwargs):
-        """Must be implemented with specific validation logic."""
-        pass
-
-
-# ----------------- Resources ----------------- #
+from pcluster.validators.common import ValidationResult, Validator
+from pcluster.validators.s3_validators import UrlValidator
 
 
 class _ResourceValidator(ABC):
@@ -247,3 +193,35 @@ class BaseTag(Resource):
         super().__init__()
         self.key = Resource.init_param(key)
         self.value = Resource.init_param(value)
+
+
+class Cookbook(Resource):
+    """Represent the chef cookbook configuration."""
+
+    def __init__(self, chef_cookbook: str, extra_chef_attributes: str = None):
+        super().__init__()
+        self.chef_cookbook = Resource.init_param(chef_cookbook)
+        self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
+        # TODO: add validator
+
+    def _register_validators(self):
+        self._add_validator(UrlValidator, url=self.chef_cookbook)
+
+
+class BaseDevSettings(Resource):
+    """Represent the common dev settings configuration between the ImageBuilder and Cluster."""
+
+    def __init__(
+        self,
+        cookbook: Cookbook = None,
+        node_package: str = None,
+        aws_batch_cli_package: str = None,
+    ):
+        super().__init__()
+        self.cookbook = cookbook
+        self.node_package = Resource.init_param(node_package)
+        self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
+
+    def _register_validators(self):
+        self._add_validator(UrlValidator, url=self.node_package)
+        self._add_validator(UrlValidator, url=self.aws_batch_cli_package)

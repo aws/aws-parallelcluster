@@ -12,8 +12,8 @@ from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.iam import IamClient
 from pcluster import utils
-from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import policy_name_to_arn
+from pcluster.validators.common import FailureLevel, Validator
 
 
 class BaseAMIValidator(Validator):

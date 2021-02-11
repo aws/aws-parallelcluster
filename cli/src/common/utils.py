@@ -25,6 +25,7 @@ def load_yaml_dict(config_file):
     """Read the content of a yaml file."""
     with open(config_file) as conf_file:
         yaml_content = yaml.load(conf_file, Loader=yaml.SafeLoader)
+    # TODO prevent yaml.load from converting 1:00:00 to int 3600
 
     # TODO use from cfn_flip import load_yaml
     return yaml_content

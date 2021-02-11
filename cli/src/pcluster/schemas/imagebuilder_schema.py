@@ -18,9 +18,14 @@ from urllib.parse import urlparse
 
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
-from common.utils import validate_json_format
-from pcluster.models.imagebuilder import Build, ChefCookbook, Component, DevSettings, Image, ImageBuilder, Volume
-from pcluster.schemas.common_schema import ALLOWED_VALUES, BaseSchema, TagSchema, get_field_validator
+from pcluster.models.imagebuilder import Build, Component, Image, ImageBuilder, ImagebuilderDevSettings, Volume
+from pcluster.schemas.common_schema import (
+    ALLOWED_VALUES,
+    BaseDevSettingsSchema,
+    BaseSchema,
+    TagSchema,
+    get_field_validator,
+)
 
 # ---------------------- Image Schema---------------------- #
 
@@ -131,41 +136,18 @@ class BuildSchema(BaseSchema):
 # ---------------------- Dev Settings Schema ---------------------- #
 
 
-class ChefCookbookSchema(BaseSchema):
-    """Represent the schema of the ImageBuilder chef cookbook."""
-
-    url = fields.Str()
-    json = fields.Str()
-
-    @post_load()
-    def make_resource(self, data, **kwargs):
-        """Generate resource."""
-        return ChefCookbook(**data)
-
-    @validates("json")
-    def validate_json(self, value):
-        """Validate json."""
-        if value and not validate_json_format(value):
-            raise ValidationError(
-                message="The Json in ChefCookbook '{0}' is invalid, check the json format.".format(value)
-            )
-
-
-class DevSettingsSchema(BaseSchema):
+class ImagebuilderDevSettingsSchema(BaseDevSettingsSchema):
     """Represent the schema of the ImageBuilder Dev Setting."""
 
     update_os_and_reboot = fields.Bool()
     disable_pcluster_component = fields.Bool()
-    chef_cookbook = fields.Nested(ChefCookbookSchema)
-    node_url = fields.Str()
-    aws_batch_cli_url = fields.Str(data_key="AWSBatchCliUrl")
     distribution_configuration_arn = fields.Str(validate=validate.Regexp("^arn"))
     terminate_instance_on_failure = fields.Bool()
 
     @post_load
     def make_resource(self, data, **kwargs):
         """Generate resource."""
-        return DevSettings(**data)
+        return ImagebuilderDevSettings(**data)
 
 
 # ---------------------- ImageBuilder Schema ---------------------- #
@@ -176,7 +158,7 @@ class ImageBuilderSchema(BaseSchema):
 
     image = fields.Nested(ImageSchema, required=True)
     build = fields.Nested(BuildSchema, required=True)
-    dev_settings = fields.Nested(DevSettingsSchema)
+    dev_settings = fields.Nested(ImagebuilderDevSettingsSchema)
 
     @post_load()
     def make_resource(self, data, **kwargs):

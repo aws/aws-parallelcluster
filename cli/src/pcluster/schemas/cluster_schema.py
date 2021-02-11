@@ -14,6 +14,8 @@
 # These classes are created by following marshmallow syntax.
 #
 
+import copy
+
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
@@ -22,6 +24,7 @@ from pcluster.models.cluster import (
     AdditionalPackages,
     CloudWatchDashboards,
     CloudWatchLogs,
+    ClusterDevSettings,
     CommonSchedulingSettings,
     CustomAction,
     Dashboards,
@@ -50,7 +53,7 @@ from pcluster.models.cluster import (
 )
 from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
 from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling, SlurmSettings
-from pcluster.schemas.common_schema import BaseSchema, TagSchema, get_field_validator
+from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
 
 # ---------------------- Storage ---------------------- #
@@ -238,7 +241,8 @@ class SharedStorageSchema(BaseSchema):
     @pre_dump
     def restore_child(self, data, **kwargs):
         """Restore back the child in the schema."""
-        setattr(data, data.shared_storage_type.value, data)
+        child = copy.copy(data)
+        setattr(data, data.shared_storage_type.value, child)
         return data
 
     @validates_schema
@@ -671,6 +675,17 @@ class AdditionalPackagesSchema(BaseSchema):
         return AdditionalPackages(**data)
 
 
+class ClusterDevSettingsSchema(BaseDevSettingsSchema):
+    """Represent the schema of Dev Setting."""
+
+    cluster_template = fields.Str()
+
+    @post_load
+    def make_resource(self, data, **kwargs):
+        """Generate resource."""
+        return ClusterDevSettings(**data)
+
+
 # ---------------------- Root Schema ---------------------- #
 
 
@@ -689,6 +704,7 @@ class ClusterSchema(BaseSchema):
     iam = fields.Nested(IamSchema, data_key="IAM")
     cluster_s3_bucket = fields.Str()
     additional_resources = fields.Str()
+    dev_settings = fields.Nested(ClusterDevSettingsSchema)
 
     @post_load
     def make_resource(self, data, **kwargs):
