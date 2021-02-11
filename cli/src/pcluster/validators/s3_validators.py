@@ -3,8 +3,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
-from botocore.exceptions import ClientError
-
+from common.boto3.common import AWSClientError
 from common.boto3.s3 import S3Client
 from pcluster.validators.common import FailureLevel, Validator
 
@@ -21,7 +20,7 @@ class UrlValidator(Validator):
         if scheme in ["https", "s3", "file"]:
             if scheme == "s3":
                 self._validate_s3_uri(url)
-            if scheme == "https":
+            else:
                 try:
                     urlopen(url)
                 except HTTPError as e:
@@ -47,20 +46,14 @@ class UrlValidator(Validator):
                 FailureLevel.ERROR,
             )
 
-    def _validate_s3_uri(self, s3_url):
+    def _validate_s3_uri(self, url: str):
         try:
-            match = re.match(r"s3://(.*?)/(.*)", s3_url)
+            match = re.match(r"s3://(.*?)/(.*)", url)
             if not match or len(match.groups()) < 2:
-                self._add_failure(f"s3 url '{s3_url}' is invalid.", FailureLevel.ERROR)
+                self._add_failure(f"s3 url '{url}' is invalid.", FailureLevel.ERROR)
             bucket_name, object_name = match.group(1), match.group(2)
             S3Client().head_object(bucket_name=bucket_name, object_name=object_name)
 
-        except ClientError:
+        except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
-            self._add_failure(
-                (
-                    "The S3 object does not exist or you do not have access to it.\n"
-                    "Please make sure the cluster nodes have access to it."
-                ),
-                FailureLevel.ERROR,
-            )
+            self._add_failure(("The S3 object does not exist or you do not have access to it."), FailureLevel.ERROR)

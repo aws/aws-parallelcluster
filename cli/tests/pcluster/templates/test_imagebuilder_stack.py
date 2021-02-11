@@ -24,23 +24,21 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
     [
         (
             True,
-            [
-                {
-                    "Architecture": "x86_64",
-                    "BlockDeviceMappings": [
-                        {
-                            "DeviceName": "/dev/xvda",
-                            "Ebs": {
-                                "DeleteOnTermination": True,
-                                "SnapshotId": "snap-0a20b6671bc5e3ead",
-                                "VolumeSize": 25,
-                                "VolumeType": "gp2",
-                                "Encrypted": False,
-                            },
-                        }
-                    ],
-                }
-            ],
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
             {
                 "Parameters": {
                     "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
@@ -140,23 +138,21 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
         ),
         (
             False,
-            [
-                {
-                    "Architecture": "x86_64",
-                    "BlockDeviceMappings": [
-                        {
-                            "DeviceName": "/dev/xvda",
-                            "Ebs": {
-                                "DeleteOnTermination": True,
-                                "SnapshotId": "snap-0a20b6671bc5e3ead",
-                                "VolumeSize": 50,
-                                "VolumeType": "gp2",
-                                "Encrypted": False,
-                            },
-                        }
-                    ],
-                }
-            ],
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
             {
                 "Parameters": {
                     "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
@@ -245,8 +241,12 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
     ],
 )
 def test_imagebuilder(mocker, is_official_ami_build, response, expected_template):
-    mocker.patch("pcluster.utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.utils.get_info_for_amis", return_value=response)
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch(
+        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        return_value=response,
+    )
     # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
     mocker.patch(
         "pcluster.utils.get_cloudformation_directory",

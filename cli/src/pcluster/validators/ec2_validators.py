@@ -8,25 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from common import imagebuilder_utils
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.iam import IamClient
 from pcluster import utils
 from pcluster.utils import policy_name_to_arn
 from pcluster.validators.common import FailureLevel, Validator
-
-
-class BaseAMIValidator(Validator):
-    """
-    Base AMI validator.
-
-    Validate given ami id or image arn.
-    """
-
-    def _validate(self, image: str):
-        ami_id = utils.get_ami_id(image)
-        if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
-            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.ERROR)
 
 
 class InstanceTypeValidator(Validator):
@@ -47,18 +35,38 @@ class InstanceTypeValidator(Validator):
 class InstanceTypeBaseAMICompatibleValidator(Validator):
     """EC2 Instance type and base ami compatibility validator."""
 
-    def _validate(self, instance_type: str, parent_image: str):
-        ami_id = utils.get_ami_id(parent_image)
-        ami_architecture = utils.get_info_for_amis([ami_id])[0].get("Architecture")
-        instance_architecture = utils.get_supported_architectures_for_instance_type(instance_type)
-        if instance_architecture != ami_architecture:
+    def _validate(self, instance_type: str, image: str):
+        ami_id, ami_info = self._validate_base_ami(image)
+        instance_architectures = self._validate_instance_type(instance_type)
+        if ami_id is not None and instance_architectures:
+            ami_architecture = ami_info.get("Architecture", "")
+            if ami_architecture not in instance_architectures:
+                self._add_failure(
+                    "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the "
+                    "instance type {2} "
+                    "chosen ({3}). Use either a different AMI or a different instance type.".format(
+                        ami_id, ami_architecture, instance_type, instance_architectures
+                    ),
+                    FailureLevel.ERROR,
+                )
+
+    def _validate_base_ami(self, image: str):
+        try:
+            ami_id = imagebuilder_utils.get_ami_id(image)
+            ami_info = Ec2Client().describe_image(ami_id=ami_id)
+            return ami_id, ami_info
+        except AWSClientError:
+            self._add_failure(f"Invalid image '{image}'.", FailureLevel.ERROR)
+            return None, None
+
+    def _validate_instance_type(self, instance_type: str):
+        if instance_type not in Ec2Client().describe_instance_type_offerings():
             self._add_failure(
-                "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the instance type {2} "
-                "chosen ({3}). Use either a different AMI or a different instance type.".format(
-                    ami_id, ami_architecture, instance_type, instance_architecture
-                ),
+                f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
             )
+            return []
+        return utils.get_supported_architectures_for_instance_type(instance_type)
 
 
 class AdditionalIamPolicyValidator(Validator):  # TODO add test

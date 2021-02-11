@@ -11,33 +11,36 @@
 
 import pytest
 
-from common.boto3.common import AWSClientError
-from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator, InstanceTypeValidator
+from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
 @pytest.mark.parametrize(
-    "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
-)
-def test_instance_type_validator(mocker, instance_type, expected_message):
-
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
-    mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_instance_type_offerings",
-        return_value=["t2.micro", "c4.xlarge"],
-    )
-
-    actual_failures = InstanceTypeValidator().execute(instance_type)
-    assert_failure_messages(actual_failures, expected_message)
-
-
-@pytest.mark.parametrize(
-    "instance_type, parent_image, expected_message, ami_response, ami_side_effect, instance_response, "
-    "instance_architectures",
+    "image, volume_size, expected_message, ami_response",
     [
         (
-            "c5.xlarge",
+            "ami-0185634c5a8a37250",
+            65,
+            None,
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+        ),
+        (
             "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+            25,
             None,
             {
                 "Architecture": "x86_64",
@@ -47,23 +50,19 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
                         "Ebs": {
                             "DeleteOnTermination": True,
                             "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 25,
+                            "VolumeSize": 8,
                             "VolumeType": "gp2",
                             "Encrypted": False,
                         },
                     }
                 ],
             },
-            None,
-            ["m6g.xlarge", "c5.xlarge"],
-            ["x86_64"],
         ),
         (
-            "m6g.xlarge",
             "ami-0185634c5a8a37250",
-            "AMI ami-0185634c5a8a37250's architecture \\(x86_64\\) is incompatible with the architecture supported by "
-            "the instance type m6g.xlarge chosen \\(\\['arm64'\\]\\). "
-            "Use either a different AMI or a different instance type.",
+            25,
+            "Root volume size 25 GB is less than the minimum required size 65 GB that equals base ami 50 GB plus "
+            "size 15 GB to allow PCluster software stack installation.",
             {
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
@@ -72,21 +71,19 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
                         "Ebs": {
                             "DeleteOnTermination": True,
                             "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 25,
+                            "VolumeSize": 50,
                             "VolumeType": "gp2",
                             "Encrypted": False,
                         },
                     }
                 ],
             },
-            None,
-            ["m6g.xlarge", "c5.xlarge"],
-            ["arm64"],
         ),
         (
-            "m6g.xlarge",
-            "ami-000000000000",
-            "Invalid image 'ami-000000000000'",
+            "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+            15,
+            "Root volume size 15 GB is less than the minimum required size 23 GB that equals base ami "
+            "8 GB plus size 15 GB to allow PCluster software stack installation.",
             {
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
@@ -95,63 +92,22 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
                         "Ebs": {
                             "DeleteOnTermination": True,
                             "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 25,
+                            "VolumeSize": 8,
                             "VolumeType": "gp2",
                             "Encrypted": False,
                         },
                     }
                 ],
             },
-            AWSClientError(function_name="describe_image", message="error"),
-            ["m6g.xlarge", "c5.xlarge"],
-            ["arm64"],
-        ),
-        (
-            "p4d.24xlarge",
-            "ami-0185634c5a8a37250",
-            "The instance type 'p4d.24xlarge' is not supported.",
-            {
-                "Architecture": "x86_64",
-                "BlockDeviceMappings": [
-                    {
-                        "DeviceName": "/dev/xvda",
-                        "Ebs": {
-                            "DeleteOnTermination": True,
-                            "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 25,
-                            "VolumeType": "gp2",
-                            "Encrypted": False,
-                        },
-                    }
-                ],
-            },
-            None,
-            ["m6g.xlarge", "c5.xlarge"],
-            [],
         ),
     ],
 )
-def test_instance_type_base_ami_compatible_validator(
-    mocker,
-    instance_type,
-    parent_image,
-    expected_message,
-    ami_response,
-    ami_side_effect,
-    instance_response,
-    instance_architectures,
-):
+def test_ami_volume_size_validator(mocker, image, volume_size, expected_message, ami_response):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("pcluster.validators.imagebuilder_validators.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_image",
         return_value=ami_response,
-        side_effect=ami_side_effect,
     )
-    mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_instance_type_offerings",
-        return_value=instance_response,
-    )
-    mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architectures)
-    actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(instance_type=instance_type, image=parent_image)
+    actual_failures = AMIVolumeSizeValidator().execute(volume_size, image, pcluster_reserved_volume_size=15)
     assert_failure_messages(actual_failures, expected_message)
