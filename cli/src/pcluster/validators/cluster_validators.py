@@ -432,11 +432,12 @@ def _find_duplicate_params(param_list):
     param_set = set()
     duplicated_params = []
 
-    for param in param_list:
-        if param in param_set:
-            duplicated_params.append(param)
-        else:
-            param_set.add(param)
+    if param_list:
+        for param in param_list:
+            if param in param_set:
+                duplicated_params.append(param)
+            else:
+                param_set.add(param)
     return duplicated_params
 
 

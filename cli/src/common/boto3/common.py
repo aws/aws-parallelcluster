@@ -35,7 +35,9 @@ class AWSExceptionHandler:
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except (BotoCoreError, ClientError) as e:
+            except BotoCoreError as e:
+                raise AWSClientError(func.__name__, e)
+            except ClientError as e:
                 raise AWSClientError(func.__name__, e.response["Error"]["Message"])
             except ParamValidationError as validation_error:
                 raise AWSClientError(

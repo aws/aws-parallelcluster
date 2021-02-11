@@ -22,11 +22,12 @@ class SecurityGroupsValidator(Validator):
     """Security groups validator."""
 
     def _validate(self, security_group_ids: List[str]):
-        for sg_id in security_group_ids:
-            try:
-                boto3.client("ec2").describe_security_groups(GroupIds=[sg_id])
-            except ClientError as e:
-                self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
+        if security_group_ids:
+            for sg_id in security_group_ids:
+                try:
+                    boto3.client("ec2").describe_security_groups(GroupIds=[sg_id])
+                except ClientError as e:
+                    self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
 
 
 class SubnetsValidator(Validator):
