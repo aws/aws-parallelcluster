@@ -6,7 +6,7 @@ from urllib.request import urlopen
 from botocore.exceptions import ClientError
 
 from common.boto3.s3 import S3Client
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 
 
 class UrlValidator(Validator):
@@ -16,37 +16,35 @@ class UrlValidator(Validator):
     Validate given url with s3, https or file prefix.
     """
 
-    def _validate(self, url: Param):
-        scheme = urlparse(url.value).scheme
+    def _validate(self, url):
+        scheme = urlparse(url).scheme
         if scheme in ["https", "s3", "file"]:
             if scheme == "s3":
-                self._validate_s3_uri(url.value)
+                self._validate_s3_uri(url)
             if scheme == "https":
                 try:
-                    urlopen(url.value)
+                    urlopen(url)
                 except HTTPError as e:
                     self._add_failure(
                         "The url '{0}' cause HTTPError, the error code is '{1}', the error reason is '{2}'".format(
-                            url.value, e.code, e.reason
+                            url, e.code, e.reason
                         ),
                         FailureLevel.WARNING,
                     )
                 except URLError as e:
                     self._add_failure(
-                        "The url '{0}' causes URLError, the error reason is '{1}'".format(url.value, e.reason),
+                        "The url '{0}' causes URLError, the error reason is '{1}'".format(url, e.reason),
                         FailureLevel.WARNING,
                     )
                 except ValueError:
                     self._add_failure(
-                        "The value '{0}' is not a valid URL".format(url.value),
+                        "The value '{0}' is not a valid URL".format(url),
                         FailureLevel.ERROR,
-                        [url],
                     )
         else:
             self._add_failure(
-                f"The value '{url.value}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.",
+                f"The value '{url}' is not a valid URL, choose URL with 'https', 's3' or 'file' prefix.",
                 FailureLevel.ERROR,
-                [url],
             )
 
     def _validate_s3_uri(self, s3_url):

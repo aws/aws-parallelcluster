@@ -11,7 +11,6 @@
 
 import pytest
 
-from pcluster.models.common import Param
 from pcluster.validators.ec2_validators import (
     BaseAMIValidator,
     InstanceTypeBaseAMICompatibleValidator,
@@ -31,7 +30,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
         return_value=["t2.micro", "c4.xlarge"],
     )
 
-    actual_failures = InstanceTypeValidator().execute(Param(instance_type))
+    actual_failures = InstanceTypeValidator().execute(instance_type)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -42,7 +41,7 @@ def test_instance_type_validator(mocker, instance_type, expected_message):
 def test_base_ami_validator(mocker, image_id, expected_message, response):
     mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
     mocker.patch("pcluster.validators.ec2_validators.Ec2Client.describe_ami_id_offering", return_value=response)
-    actual_failures = BaseAMIValidator().execute(Param(image_id))
+    actual_failures = BaseAMIValidator().execute(image_id)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -105,6 +104,6 @@ def test_instance_type_base_ami_compatible_validator(
     mocker.patch("pcluster.utils.get_info_for_amis", return_value=ami_response)
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architecture)
     actual_failures = InstanceTypeBaseAMICompatibleValidator().execute(
-        instance_type=Param(instance_type), parent_image=Param(parent_image)
+        instance_type=instance_type, parent_image=parent_image
     )
     assert_failure_messages(actual_failures, expected_message)

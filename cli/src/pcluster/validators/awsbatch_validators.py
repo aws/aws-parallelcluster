@@ -9,7 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import (
     InstanceTypeInfo,
     get_region,
@@ -39,24 +39,23 @@ class AwsbatchComputeResourceSizeValidator(Validator):
     Validate min, desired and max vcpus combination.
     """
 
-    def _validate(self, min_vcpus: Param, desired_vcpus: Param, max_vcpus: Param):
-        if desired_vcpus.value < min_vcpus.value:
+    def _validate(self, min_vcpus: int, desired_vcpus: int, max_vcpus: int):
+        if desired_vcpus < min_vcpus:
             self._add_failure(
                 "The number of desired vcpus must be greater than or equal to min vcpus",
                 FailureLevel.ERROR,
-                [min_vcpus, desired_vcpus],
             )
 
-        if desired_vcpus.value > max_vcpus.value:
+        if desired_vcpus > max_vcpus:
             self._add_failure(
                 "The number of desired vcpus must be fewer than or equal to max vcpus",
                 FailureLevel.ERROR,
-                [max_vcpus, desired_vcpus],
             )
 
-        if max_vcpus.value < min_vcpus.value:
+        if max_vcpus < min_vcpus:
             self._add_failure(
-                "Max vcpus must be greater than or equal to min vcpus", FailureLevel.ERROR, [max_vcpus, min_vcpus]
+                "Max vcpus must be greater than or equal to min vcpus",
+                FailureLevel.ERROR,
             )
 
 
@@ -67,17 +66,16 @@ class AwsbatchComputeInstanceTypeValidator(Validator):
     Validate instance types and max vcpus combination.
     """
 
-    def _validate(self, instance_types: Param, max_vcpus: Param):
+    def _validate(self, instance_types, max_vcpus):
         supported_instances = get_supported_batch_instance_types()
         if supported_instances:
-            for instance_type in instance_types.value.split(","):
+            for instance_type in instance_types.split(","):
                 if not instance_type.strip() in supported_instances:
                     self._add_failure(
                         "compute instance type '{0}' is not supported by AWS Batch in region '{1}'".format(
                             instance_type, get_region()
                         ),
                         FailureLevel.ERROR,
-                        [instance_types],
                     )
         else:
             self._add_failure(
@@ -85,25 +83,24 @@ class AwsbatchComputeInstanceTypeValidator(Validator):
                 FailureLevel.WARNING,
             )
 
-        if "," not in instance_types.value and "." in instance_types.value:
+        if "," not in instance_types and "." in instance_types:
             # if the type is not a list, and contains dot (nor optimal, nor a family)
             # validate instance type against max vcpus limit
-            vcpus = InstanceTypeInfo.init_from_instance_type(instance_types.value).vcpus_count()
+            vcpus = InstanceTypeInfo.init_from_instance_type(instance_types).vcpus_count()
             if vcpus <= 0:
                 self._add_failure(
                     "Unable to get the number of vcpus for the compute instance type '{0}'. "
-                    "Skipping instance type against max vcpus validation".format(instance_types.value),
+                    "Skipping instance type against max vcpus validation".format(instance_types),
                     FailureLevel.WARNING,
                 )
             else:
-                if max_vcpus.value < vcpus:
+                if max_vcpus < vcpus:
                     self._add_failure(
                         "max vcpus must be greater than or equal to {0}, that is the number of vcpus "
                         "available for the {1} that you selected as compute instance type".format(
-                            vcpus, instance_types.value
+                            vcpus, instance_types
                         ),
                         FailureLevel.ERROR,
-                        [instance_types, max_vcpus],
                     )
 
 
@@ -115,8 +112,8 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
     With AWS Batch, compute instance type can contain a CSV list.
     """
 
-    def _validate(self, instance_types: Param, architecture: str):
-        for instance_type in instance_types.value.split(","):
+    def _validate(self, instance_types, architecture: str):
+        for instance_type in instance_types.split(","):
             # When awsbatch is used as the scheduler instance families can be used.
             # Don't attempt to validate architectures for instance families, as it would require
             # guessing a valid instance type from within the family.
@@ -135,5 +132,4 @@ class AwsbatchInstancesArchitectureCompatibilityValidator(Validator):
                         instance_type, compute_architectures, architecture
                     ),
                     FailureLevel.ERROR,
-                    [instance_types],
                 )

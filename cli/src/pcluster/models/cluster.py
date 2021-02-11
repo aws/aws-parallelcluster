@@ -12,12 +12,11 @@
 # This module contains all the classes representing the Resources objects.
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
-
 from enum import Enum
 from typing import List
 
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
-from pcluster.models.common import BaseTag, Param, Resource
+from pcluster.models.common import BaseTag, Resource
 from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
@@ -78,12 +77,12 @@ class Ebs(Resource):
         throughput: int = None,
     ):
         super().__init__()
-        self.volume_type = Param(volume_type, default="gp2")
-        self.iops = Param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type.value))
-        self.size = Param(size, default=20)
-        self.encrypted = Param(encrypted, default=False)
-        self.kms_key_id = Param(kms_key_id)
-        self.throughput = Param(throughput, default=125 if self.volume_type.value == "gp3" else None)
+        self.volume_type = Resource.init_param(volume_type, default="gp2")
+        self.iops = Resource.init_param(iops, default=EBS_VOLUME_TYPE_IOPS_DEFAULT.get(self.volume_type))
+        self.size = Resource.init_param(size, default=20)
+        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.kms_key_id = Resource.init_param(kms_key_id)
+        self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
     def _register_validators(self):
         self._add_validator(
@@ -113,8 +112,8 @@ class Raid(Resource):
 
     def __init__(self, raid_type: int = None, number_of_volumes=None):
         super().__init__()
-        self.raid_type = Param(raid_type)
-        self.number_of_volumes = Param(number_of_volumes, default=2)
+        self.raid_type = Resource.init_param(raid_type)
+        self.number_of_volumes = Resource.init_param(number_of_volumes, default=2)
 
 
 class EphemeralVolume(Resource):
@@ -122,8 +121,8 @@ class EphemeralVolume(Resource):
 
     def __init__(self, encrypted: bool = None, mount_dir: str = None):
         super().__init__()
-        self.encrypted = Param(encrypted, default=False)
-        self.mount_dir = Param(mount_dir, default="/scratch")
+        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.mount_dir = Resource.init_param(mount_dir, default="/scratch")
 
 
 class Storage(Resource):
@@ -131,7 +130,7 @@ class Storage(Resource):
 
     def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
         super().__init__()
-        self.root_volume = Param(root_volume)
+        self.root_volume = Resource.init_param(root_volume)
         self.ephemeral_volume = ephemeral_volume
 
 
@@ -147,7 +146,7 @@ class SharedStorage(Resource):
 
     def __init__(self, mount_dir: str, shared_storage_type: Type):
         super().__init__()
-        self.mount_dir = Param(mount_dir)
+        self.mount_dir = Resource.init_param(mount_dir)
         self.shared_storage_type = shared_storage_type
 
 
@@ -169,8 +168,8 @@ class SharedEbs(SharedStorage, Ebs):
     ):
         SharedStorage.__init__(self, mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EBS)
         Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
-        self.snapshot_id = Param(snapshot_id)
-        self.volume_id = Param(volume_id)
+        self.snapshot_id = Resource.init_param(snapshot_id)
+        self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
 
 
@@ -188,12 +187,12 @@ class SharedEfs(SharedStorage):
         file_system_id: str = None,
     ):
         super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EFS)
-        self.encrypted = Param(encrypted, default=False)
-        self.kms_key_id = Param(kms_key_id)
-        self.performance_mode = Param(performance_mode, default="generalPurpose")
-        self.throughput_mode = Param(throughput_mode, default="bursting")
-        self.provisioned_throughput = Param(provisioned_throughput)
-        self.file_system_id = Param(file_system_id)
+        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.kms_key_id = Resource.init_param(kms_key_id)
+        self.performance_mode = Resource.init_param(performance_mode, default="generalPurpose")
+        self.throughput_mode = Resource.init_param(throughput_mode, default="bursting")
+        self.provisioned_throughput = Resource.init_param(provisioned_throughput)
+        self.file_system_id = Resource.init_param(file_system_id)
 
 
 class SharedFsx(SharedStorage):
@@ -220,23 +219,23 @@ class SharedFsx(SharedStorage):
         storage_type: str = None,
     ):
         super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.FSX)
-        self.storage_capacity = Param(storage_capacity)
-        self.storage_type = Param(storage_type)
-        self.deployment_type = Param(deployment_type)
-        self.export_path = Param(export_path)
-        self.import_path = Param(import_path)
-        self.imported_file_chunk_size = Param(imported_file_chunk_size)
-        self.weekly_maintenance_start_time = Param(weekly_maintenance_start_time)
-        self.automatic_backup_retention_days = Param(automatic_backup_retention_days)
-        self.copy_tags_to_backups = Param(copy_tags_to_backups)
-        self.daily_automatic_backup_start_time = Param(daily_automatic_backup_start_time)
-        self.per_unit_storage_throughput = Param(per_unit_storage_throughput)
-        self.backup_id = Param(backup_id)
-        self.kms_key_id = Param(kms_key_id)
-        self.file_system_id = Param(file_system_id)
-        self.auto_import_policy = Param(auto_import_policy)
-        self.drive_cache_type = Param(drive_cache_type)
-        self.storage_type = Param(storage_type)
+        self.storage_capacity = Resource.init_param(storage_capacity)
+        self.storage_type = Resource.init_param(storage_type)
+        self.deployment_type = Resource.init_param(deployment_type)
+        self.export_path = Resource.init_param(export_path)
+        self.import_path = Resource.init_param(import_path)
+        self.imported_file_chunk_size = Resource.init_param(imported_file_chunk_size)
+        self.weekly_maintenance_start_time = Resource.init_param(weekly_maintenance_start_time)
+        self.automatic_backup_retention_days = Resource.init_param(automatic_backup_retention_days)
+        self.copy_tags_to_backups = Resource.init_param(copy_tags_to_backups)
+        self.daily_automatic_backup_start_time = Resource.init_param(daily_automatic_backup_start_time)
+        self.per_unit_storage_throughput = Resource.init_param(per_unit_storage_throughput)
+        self.backup_id = Resource.init_param(backup_id)
+        self.kms_key_id = Resource.init_param(kms_key_id)
+        self.file_system_id = Resource.init_param(file_system_id)
+        self.auto_import_policy = Resource.init_param(auto_import_policy)
+        self.drive_cache_type = Resource.init_param(drive_cache_type)
+        self.storage_type = Resource.init_param(storage_type)
 
     def _register_validators(self):
         self._add_validator(
@@ -304,9 +303,9 @@ class _BaseNetworking(Resource):
         proxy: Proxy = None,
     ):
         super().__init__()
-        self.assign_public_ip = Param(assign_public_ip)
-        self.security_groups = Param(security_groups)
-        self.additional_security_groups = Param(additional_security_groups)
+        self.assign_public_ip = Resource.init_param(assign_public_ip)
+        self.security_groups = Resource.init_param(security_groups)
+        self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
 
     def _register_validators(self):
@@ -319,8 +318,8 @@ class HeadNodeNetworking(_BaseNetworking):
 
     def __init__(self, subnet_id: str, elastic_ip: str = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_id = Param(subnet_id)
-        self.elastic_ip = Param(elastic_ip)
+        self.subnet_id = Resource.init_param(subnet_id)
+        self.elastic_ip = Resource.init_param(elastic_ip)
 
     @property
     def availability_zone(self):
@@ -333,8 +332,8 @@ class PlacementGroup(Resource):
 
     def __init__(self, enabled: bool = None, id: str = None):
         super().__init__()
-        self.enabled = Param(enabled, default=False)
-        self.id = Param(id)
+        self.enabled = Resource.init_param(enabled, default=False)
+        self.id = Resource.init_param(id)
 
     def _register_validators(self):
         self._add_validator(PlacementGroupIdValidator, placement_group_id=self.id)
@@ -345,7 +344,7 @@ class QueueNetworking(_BaseNetworking):
 
     def __init__(self, subnet_ids: List[str], placement_group: PlacementGroup = None, **kwargs):
         super().__init__(**kwargs)
-        self.subnet_ids = Param(subnet_ids)
+        self.subnet_ids = Resource.init_param(subnet_ids)
         self.placement_group = placement_group
 
 
@@ -354,8 +353,8 @@ class Ssh(Resource):
 
     def __init__(self, key_name: str, allowed_ips: str = None):
         super().__init__()
-        self.key_name = Param(key_name)
-        self.allowed_ips = Param(allowed_ips, default=CIDR_ALL_IPS)
+        self.key_name = Resource.init_param(key_name)
+        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
     def _register_validators(self):
         self._add_validator(KeyPairValidator, key_name=self.key_name)
@@ -366,9 +365,9 @@ class Dcv(Resource):
 
     def __init__(self, enabled: bool, port: int = None, allowed_ips: str = None):
         super().__init__()
-        self.enabled = Param(enabled)
-        self.port = Param(port, default=8843)
-        self.allowed_ips = Param(allowed_ips, default=CIDR_ALL_IPS)
+        self.enabled = Resource.init_param(enabled)
+        self.port = Resource.init_param(port, default=8843)
+        self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
 
 class Efa(Resource):
@@ -376,8 +375,8 @@ class Efa(Resource):
 
     def __init__(self, enabled: bool = None, gdr_support: bool = None):
         super().__init__()
-        self.enabled = Param(enabled, default=True)
-        self.gdr_support = Param(gdr_support, default=False)
+        self.enabled = Resource.init_param(enabled, default=True)
+        self.gdr_support = Resource.init_param(gdr_support, default=False)
 
 
 # ---------------------- Nodes ---------------------- #
@@ -388,8 +387,8 @@ class Image(Resource):
 
     def __init__(self, os: str, custom_ami: str = None):
         super().__init__()
-        self.os = Param(os)
-        self.custom_ami = Param(custom_ami)
+        self.os = Resource.init_param(os)
+        self.custom_ami = Resource.init_param(custom_ami)
 
 
 class HeadNode(Resource):
@@ -406,8 +405,8 @@ class HeadNode(Resource):
         efa: Efa = None,
     ):
         super().__init__()
-        self.instance_type = Param(instance_type)
-        self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
+        self.instance_type = Resource.init_param(instance_type)
+        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
         self.networking = networking
         self.ssh = ssh
         self.storage = storage
@@ -420,9 +419,9 @@ class HeadNode(Resource):
     @property
     def architecture(self):
         """Compute cluster's architecture based on its head node instance type."""
-        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type.value)
+        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
         if not supported_architectures:
-            error(f"Unable to get architectures supported by instance type {self.instance_type.value}")
+            error(f"Unable to get architectures supported by instance type {self.instance_type}")
         # If the instance type supports multiple architectures, choose the first one.
         # TODO: this is currently not an issue because none of the instance types we support more than one of the
         #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
@@ -440,8 +439,8 @@ class BaseComputeResource(Resource):
         simultaneous_multithreading: bool = None,
     ):
         super().__init__()
-        self.allocation_strategy = Param(allocation_strategy, default="BEST_FIT")
-        self.simultaneous_multithreading = Param(simultaneous_multithreading, default=True)
+        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
+        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
 
 
 class BaseQueue(Resource):
@@ -455,10 +454,10 @@ class BaseQueue(Resource):
         compute_type: str = None,
     ):
         super().__init__()
-        self.name = Param(name)
+        self.name = Resource.init_param(name)
         self.networking = networking
         self.storage = storage
-        self.compute_type = Param(compute_type, default="ONDEMAND")
+        self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
 
     def _register_validators(self):
         self._add_validator(QueueNameValidator, name=self.name)
@@ -469,7 +468,7 @@ class CommonSchedulingSettings(Resource):
 
     def __init__(self, scaledown_idletime: int):
         super().__init__()
-        self.scaledown_idletime = Param(scaledown_idletime)
+        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
 
 
 class CustomAction(Resource):
@@ -477,10 +476,10 @@ class CustomAction(Resource):
 
     def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
         super().__init__()
-        self.script = Param(script)
+        self.script = Resource.init_param(script)
         self.args = args
-        self.event = Param(event)
-        self.run_as = Param(run_as)
+        self.event = Resource.init_param(event)
+        self.run_as = Resource.init_param(run_as)
 
     def _register_validators(self):
         self._add_validator(UrlValidator, url=self.script)
@@ -500,10 +499,10 @@ class CloudWatchLogs(Resource):
         kms_key_id: str = None,
     ):
         super().__init__()
-        self.enabled = Param(enabled, default=True)
-        self.retention_in_days = Param(retention_in_days, default=14)
-        self.log_group_id = Param(log_group_id)
-        self.kms_key_id = Param(kms_key_id)
+        self.enabled = Resource.init_param(enabled, default=True)
+        self.retention_in_days = Resource.init_param(retention_in_days, default=14)
+        self.log_group_id = Resource.init_param(log_group_id)
+        self.kms_key_id = Resource.init_param(kms_key_id)
 
 
 class CloudWatchDashboards(Resource):
@@ -514,7 +513,7 @@ class CloudWatchDashboards(Resource):
         enabled: bool = None,
     ):
         super().__init__()
-        self.enabled = Param(enabled, default=True)
+        self.enabled = Resource.init_param(enabled, default=True)
 
 
 class Logs(Resource):
@@ -549,7 +548,7 @@ class Monitoring(Resource):
         dashboards: Dashboards = None,
     ):
         super().__init__()
-        self.detailed_monitoring = Param(detailed_monitoring, default=False)
+        self.detailed_monitoring = Resource.init_param(detailed_monitoring, default=False)
         self.logs = logs
         self.dashboards = dashboards
 
@@ -581,9 +580,9 @@ class Roles(Resource):
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        self.head_node = Param(head_node, default="AUTO")
-        self.compute_node = Param(compute_node, default="AUTO")
-        self.custom_lambda_resources = Param(custom_lambda_resources, default="AUTO")
+        self.head_node = Resource.init_param(head_node, default="AUTO")
+        self.compute_node = Resource.init_param(compute_node, default="AUTO")
+        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources, default="AUTO")
 
 
 class S3Access(Resource):
@@ -595,8 +594,8 @@ class S3Access(Resource):
         type: str = None,
     ):
         super().__init__()
-        self.bucket_name = Param(bucket_name)
-        self.type = Param(type, default="READ_ONLY")
+        self.bucket_name = Resource.init_param(bucket_name)
+        self.type = Resource.init_param(type, default="READ_ONLY")
 
 
 class AdditionalIamPolicy(Resource):
@@ -608,8 +607,8 @@ class AdditionalIamPolicy(Resource):
         scope: str = None,
     ):
         super().__init__()
-        self.policy = Param(policy)
-        self.scope = Param(scope, default="CLUSTER")
+        self.policy = Resource.init_param(policy)
+        self.scope = Resource.init_param(scope, default="CLUSTER")
 
     def _register_validators(self):
         self._add_validator(AdditionalIamPolicyValidator, policy=self.policy)
@@ -638,7 +637,7 @@ class IntelSelectSolutions(Resource):
         install_intel_software: bool = None,
     ):
         super().__init__()
-        self.install_intel_software = Param(install_intel_software, default=False)
+        self.install_intel_software = Resource.init_param(install_intel_software, default=False)
 
 
 class AdditionalPackages(Resource):

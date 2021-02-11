@@ -11,7 +11,6 @@
 import pytest
 from assertpy import assert_that
 
-from pcluster.models.common import Param
 from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
@@ -58,7 +57,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
             }
         ),
     )
-    actual_failures = AwsbatchComputeInstanceTypeValidator().execute(Param(instance_type), Param(max_vcpus))
+    actual_failures = AwsbatchComputeInstanceTypeValidator().execute(instance_type, max_vcpus)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -87,9 +86,7 @@ def test_compute_instance_type_validator(mocker, instance_type, max_vcpus, expec
     ],
 )
 def test_awsbatch_compute_resource_size_validator(min_vcpus, desired_vcpus, max_vcpus, expected_message):
-    actual_failures = AwsbatchComputeResourceSizeValidator().execute(
-        Param(min_vcpus), Param(desired_vcpus), Param(max_vcpus)
-    )
+    actual_failures = AwsbatchComputeResourceSizeValidator().execute(min_vcpus, desired_vcpus, max_vcpus)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -128,7 +125,7 @@ def test_awsbatch_instances_architecture_compatibility_validator(
     instance_types = compute_instance_types.split(",")
 
     actual_failures = AwsbatchInstancesArchitectureCompatibilityValidator().execute(
-        Param(compute_instance_types), head_node_architecture
+        compute_instance_types, head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
     if expected_message:

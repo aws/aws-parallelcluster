@@ -18,7 +18,6 @@ from marshmallow import Schema, fields, post_dump, post_load, pre_dump, validate
 
 from pcluster.constants import SUPPORTED_ARCHITECTURES
 from pcluster.models.cluster import BaseTag
-from pcluster.models.common import Param
 
 ALLOWED_VALUES = {
     "cidr": r"^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}"
@@ -67,18 +66,18 @@ class BaseSchema(Schema):
     def remove_implied_values(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
         for key, value in vars(data).copy().items():
-            if _is_implied(value):
+            if _is_implied(data, key, value):
                 delattr(data, key)
             if isinstance(value, list):
-                value[:] = [v for v in value if not _is_implied(v)]
+                value[:] = [v for v in value if not _is_implied(data, key, v)]
         return data
 
     @pre_dump
     def unwrap_marked_class(self, data, **kwargs):
         """Remove value implied by the code. i.e., only keep parameters that were specified in the yaml file."""
         for key, value in vars(data).items():
-            if isinstance(value, Param):
-                setattr(data, key, value.value)
+            if data.get_param(key) is not None:
+                setattr(data, key, value)
         return data
 
     @post_dump
@@ -93,9 +92,15 @@ def _camelcase(snake_case_word):
     return "".join(word.title() for word in parts)
 
 
-def _is_implied(value):
-    """Check if the given value has the implied attribute and it's true."""
-    return hasattr(value, "implied") and value.implied
+def _is_implied(resource, attr, value):
+    """Check if the value of the given attribute for the resource is implied."""
+    if hasattr(value, "implied"):
+        implied = value.implied
+    else:
+        param = resource.get_param(attr)
+        implied = param and param.implied
+
+    return implied
 
 
 # --------------- Common Schemas --------------- #

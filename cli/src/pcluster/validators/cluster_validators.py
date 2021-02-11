@@ -9,14 +9,13 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import re
-from typing import List
 
 import boto3
 from botocore.exceptions import ClientError
 
 from pcluster.constants import CIDR_ALL_IPS
 from pcluster.dcv.utils import get_supported_dcv_os
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import (
     InstanceTypeInfo,
     get_efs_mount_target_id,
@@ -60,13 +59,12 @@ class SchedulerOsValidator(Validator):
     Validate os and scheduler combination.
     """
 
-    def _validate(self, os: Param, scheduler: Param):
-        supported_os = get_supported_os_for_scheduler(scheduler.value)
-        if os.value not in supported_os:
+    def _validate(self, os, scheduler):
+        supported_os = get_supported_os_for_scheduler(scheduler)
+        if os not in supported_os:
             self._add_failure(
-                f"{scheduler.value} scheduler supports the following Operating Systems: {supported_os}",
+                f"{scheduler} scheduler supports the following Operating Systems: {supported_os}",
                 FailureLevel.ERROR,
-                [os],
             )
 
 
@@ -77,10 +75,11 @@ class ComputeResourceSizeValidator(Validator):
     Validate min count and max count combinations.
     """
 
-    def _validate(self, min_count: Param, max_count: Param):
-        if max_count.value < min_count.value:
+    def _validate(self, min_count, max_count):
+        if max_count < min_count:
             self._add_failure(
-                "Max count must be greater than or equal to min count", FailureLevel.ERROR, [min_count, max_count]
+                "Max count must be greater than or equal to min count",
+                FailureLevel.ERROR,
             )
 
 
@@ -91,26 +90,24 @@ class SimultaneousMultithreadingArchitectureValidator(Validator):
     Validate Simultaneous Multithreading and architecture combination.
     """
 
-    def _validate(self, simultaneous_multithreading: Param, architecture: str):
+    def _validate(self, simultaneous_multithreading, architecture: str):
         supported_architectures = ["x86_64"]
-        if simultaneous_multithreading.value and architecture not in supported_architectures:
+        if simultaneous_multithreading and architecture not in supported_architectures:
             self._add_failure(
                 "Simultaneous Multithreading is only supported on instance types that support "
                 "these architectures: {0}".format(", ".join(supported_architectures)),
                 FailureLevel.ERROR,
-                [simultaneous_multithreading],
             )
 
 
 class EfaOsArchitectureValidator(Validator):
     """OS and architecture combination validator if EFA is enabled."""
 
-    def _validate(self, efa_enabled: Param, os: Param, architecture: str):
-        if efa_enabled.value and os.value in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
+    def _validate(self, efa_enabled, os, architecture: str):
+        if efa_enabled and os in EFA_UNSUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
-                "EFA currently not supported on {0} for {1} architecture".format(os.value, architecture),
+                "EFA currently not supported on {0} for {1} architecture".format(os, architecture),
                 FailureLevel.ERROR,
-                [efa_enabled],
             )
 
 
@@ -121,15 +118,14 @@ class ArchitectureOsValidator(Validator):
     ARM AMIs are only available for a subset of the supported OSes.
     """
 
-    def _validate(self, os: Param, architecture: str):
+    def _validate(self, os, architecture: str):
         allowed_oses = get_supported_os_for_architecture(architecture)
-        if os.value not in allowed_oses:
+        if os not in allowed_oses:
             self._add_failure(
                 "The architecture {0} is only supported for the following operating systems: {1}".format(
                     architecture, allowed_oses
                 ),
                 FailureLevel.ERROR,
-                [os],
             )
 
 
@@ -140,44 +136,44 @@ class InstanceArchitectureCompatibilityValidator(Validator):
     Verify that head node and compute instance types imply compatible architectures.
     """
 
-    def _validate(self, instance_type: Param, architecture: str):
+    def _validate(self, instance_type, architecture: str):
         head_node_architecture = architecture
-        compute_architectures = get_supported_architectures_for_instance_type(instance_type.value)
+        compute_architectures = get_supported_architectures_for_instance_type(instance_type)
         if head_node_architecture not in compute_architectures:
             self._add_failure(
                 "The specified compute instance type ({0}) supports the architectures {1}, none of which are "
                 "compatible with the architecture supported by the head node instance type ({2}).".format(
-                    instance_type.value, compute_architectures, head_node_architecture
+                    instance_type, compute_architectures, head_node_architecture
                 ),
                 FailureLevel.ERROR,
-                [instance_type],
             )
 
 
 class QueueNameValidator(Validator):
     """Validate queue name length and format."""
 
-    def _validate(self, name: Param):
-        match = re.match(QUEUE_NAME_REGEX, name.value)
+    def _validate(self, name):
+        match = re.match(QUEUE_NAME_REGEX, name)
         if not match:
             self._add_failure(
                 (
-                    f"Invalid queue name '{name.value}'. "
+                    f"Invalid queue name '{name}'. "
                     "Queue name must begin with a letter and only contain lowercase letters, digits and hyphens."
                 ),
                 FailureLevel.ERROR,
-                [name],
             )
 
-        if len(name.value) > QUEUE_NAME_MAX_LENGTH:
+        if len(name) > QUEUE_NAME_MAX_LENGTH:
             self._add_failure(
-                f"Invalid queue name '{name.value}'. Queue name can be at most {QUEUE_NAME_MAX_LENGTH} chars long.",
+                f"Invalid queue name '{name}'. Queue name can be at most {QUEUE_NAME_MAX_LENGTH} chars long.",
                 FailureLevel.ERROR,
-                [name],
             )
 
-        if re.match("^default$", name.value):
-            self._add_failure(f"It is forbidden to use '{name.value}' as a queue name.", FailureLevel.ERROR, [name])
+        if re.match("^default$", name):
+            self._add_failure(
+                f"It is forbidden to use '{name}' as a queue name.",
+                FailureLevel.ERROR,
+            )
 
 
 class DuplicateInstanceTypeValidator(Validator):
@@ -187,16 +183,15 @@ class DuplicateInstanceTypeValidator(Validator):
     Verify if there are duplicated instance types between compute resources in the same queue.
     """
 
-    def _validate(self, instance_type_list: List[Param]):
+    def _validate(self, instance_type_list):
         duplicated_instance_types = _find_duplicate_params(instance_type_list)
         if duplicated_instance_types:
             self._add_failure(
                 "Instance {0} {1} cannot be specified for multiple Compute Resources in the same Queue".format(
                     "types" if len(duplicated_instance_types) > 1 else "type",
-                    ", ".join(instance_type.value for instance_type in duplicated_instance_types),
+                    ", ".join(instance_type for instance_type in duplicated_instance_types),
                 ),
                 FailureLevel.ERROR,
-                duplicated_instance_types,
             )
 
 
@@ -206,25 +201,26 @@ class DuplicateInstanceTypeValidator(Validator):
 class EfaValidator(Validator):
     """Check if EFA and EFA GDR are supported features in the given instance type."""
 
-    def _validate(self, instance_type: Param, efa_enabled: Param, gdr_support: Param):
+    def _validate(self, instance_type, efa_enabled, gdr_support):
 
-        if efa_enabled.value:
-            if not InstanceTypeInfo.init_from_instance_type(instance_type.value).is_efa_supported():
+        if efa_enabled:
+            if not InstanceTypeInfo.init_from_instance_type(instance_type).is_efa_supported():
                 self._add_failure(
-                    f"Instance type '{instance_type.value}' does not support EFA.",
+                    f"Instance type '{instance_type}' does not support EFA.",
                     FailureLevel.WARNING,
                 )
-        elif gdr_support.value:
+        elif gdr_support:
             self._add_failure(
-                "The EFA GDR Support can be used only if EFA is enabled.", FailureLevel.ERROR, [gdr_support]
+                "The EFA GDR Support can be used only if EFA is enabled.",
+                FailureLevel.ERROR,
             )
 
 
 class EfaPlacementGroupValidator(Validator):
     """Validate placement group if EFA is enabled."""
 
-    def _validate(self, efa_enabled: Param, placement_group_id: Param, placement_group_enabled: Param):
-        if efa_enabled.value and not placement_group_id.value and not placement_group_enabled.value:
+    def _validate(self, efa_enabled, placement_group_id, placement_group_enabled):
+        if efa_enabled and not placement_group_id and not placement_group_enabled:
             self._add_failure(
                 "You may see better performance using a Placement Group for the queue.", FailureLevel.WARNING
             )
@@ -233,11 +229,11 @@ class EfaPlacementGroupValidator(Validator):
 class EfaSecurityGroupValidator(Validator):
     """Validate Security Group if EFA is enabled."""
 
-    def _validate(self, efa_enabled: Param, security_groups: Param, additional_security_groups: Param):
-        if efa_enabled.value and security_groups.value:
+    def _validate(self, efa_enabled, security_groups, additional_security_groups):
+        if efa_enabled and security_groups:
             # Check security groups associated to the EFA
             efa_sg_found = self._check_in_out_rules(security_groups)
-            if additional_security_groups.value:
+            if additional_security_groups:
                 efa_sg_found = efa_sg_found or self._check_in_out_rules(additional_security_groups)
 
             if not efa_sg_found:
@@ -246,12 +242,11 @@ class EfaSecurityGroupValidator(Validator):
                     "to and from the security group itself. See "
                     "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/efa-start.html#efa-start-security",
                     FailureLevel.ERROR,
-                    [security_groups],
                 )
 
-    def _check_in_out_rules(self, security_groups: Param):
+    def _check_in_out_rules(self, security_groups):
         efa_sg_found = False
-        for security_group in security_groups.value:
+        for security_group in security_groups:
             try:
                 sec_group = (
                     boto3.client("ec2").describe_security_groups(GroupIds=[security_group]).get("SecurityGroups")[0]
@@ -357,16 +352,16 @@ class FsxNetworkingValidator(Validator):
     Validate file system mount point according to the head node subnet.
     """
 
-    def _validate(self, file_system_id: Param, head_node_subnet_id: Param):
+    def _validate(self, file_system_id, head_node_subnet_id):
         try:
             ec2 = boto3.client("ec2")
 
             # Check to see if there is any existing mt on the fs
             file_system = (
-                boto3.client("fsx").describe_file_systems(FileSystemIds=[file_system_id.value]).get("FileSystems")[0]
+                boto3.client("fsx").describe_file_systems(FileSystemIds=[file_system_id]).get("FileSystems")[0]
             )
 
-            vpc_id = ec2.describe_subnets(SubnetIds=[head_node_subnet_id.value]).get("Subnets")[0].get("VpcId")
+            vpc_id = ec2.describe_subnets(SubnetIds=[head_node_subnet_id]).get("Subnets")[0].get("VpcId")
 
             # Check to see if fs is in the same VPC as the stack
             if file_system.get("VpcId") != vpc_id:
@@ -374,7 +369,6 @@ class FsxNetworkingValidator(Validator):
                     "Currently only support using FSx file system that is in the same VPC as the stack. "
                     "The file system provided is in {0}".format(file_system.get("VpcId")),
                     FailureLevel.ERROR,
-                    [file_system_id],
                 )
 
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
@@ -382,9 +376,8 @@ class FsxNetworkingValidator(Validator):
             if not network_interface_ids:
                 self._add_failure(
                     "Unable to validate FSx security groups. The given FSx file system '{0}' doesn't have "
-                    "Elastic Network Interfaces attached to it.".format(file_system_id.value),
+                    "Elastic Network Interfaces attached to it.".format(file_system_id),
                     FailureLevel.ERROR,
-                    [file_system_id],
                 )
             else:
                 network_interface_responses = ec2.describe_network_interfaces(
@@ -403,9 +396,8 @@ class FsxNetworkingValidator(Validator):
                     self._add_failure(
                         "The current security group settings on file system '{0}' does not satisfy mounting requirement"
                         ". The file system must be associated to a security group that allows inbound and outbound "
-                        "TCP traffic through port 988.".format(file_system_id.value),
+                        "TCP traffic through port 988.".format(file_system_id),
                         FailureLevel.ERROR,
-                        [file_system_id],
                     )
         except ClientError as e:
             self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
@@ -418,7 +410,7 @@ class FsxArchitectureOsValidator(Validator):
     Validate file system mount point according to the head node subnet.
     """
 
-    def _validate(self, architecture: str, os: Param):
+    def _validate(self, architecture: str, os):
 
         if architecture not in FSX_SUPPORTED_ARCHITECTURES_OSES:
             self._add_failure(
@@ -427,7 +419,7 @@ class FsxArchitectureOsValidator(Validator):
                 ),
                 FailureLevel.ERROR,
             )
-        elif os.value not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
+        elif os not in FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture):
             self._add_failure(
                 FSX_MESSAGES["errors"]["unsupported_os"].format(
                     architecture=architecture, supported_oses=FSX_SUPPORTED_ARCHITECTURES_OSES.get(architecture)
@@ -436,15 +428,15 @@ class FsxArchitectureOsValidator(Validator):
             )
 
 
-def _find_duplicate_params(param_list: List[Param]):
-    param_value_set = set()
+def _find_duplicate_params(param_list):
+    param_set = set()
     duplicated_params = []
 
     for param in param_list:
-        if param.value in param_value_set:
+        if param in param_set:
             duplicated_params.append(param)
         else:
-            param_value_set.add(param.value)
+            param_set.add(param)
     return duplicated_params
 
 
@@ -455,16 +447,15 @@ class DuplicateMountDirValidator(Validator):
     Verify if there are duplicated mount dirs between shared storage and ephemeral volumes.
     """
 
-    def _validate(self, mount_dir_list: List[Param]):
+    def _validate(self, mount_dir_list):
         duplicated_mount_dirs = _find_duplicate_params(mount_dir_list)
         if duplicated_mount_dirs:
             self._add_failure(
                 "Mount {0} {1} cannot be specified for multiple volumes".format(
                     "directories" if len(duplicated_mount_dirs) > 1 else "directory",
-                    ", ".join(mount_dir.value for mount_dir in duplicated_mount_dirs),
+                    ", ".join(mount_dir for mount_dir in duplicated_mount_dirs),
                 ),
                 FailureLevel.ERROR,
-                duplicated_mount_dirs,
             )
 
 
@@ -491,10 +482,10 @@ class EfsIdValidator(Validator):  # TODO add tests
     Validate if there are existing mount target in the head node availability zone
     """
 
-    def _validate(self, efs_id: Param, head_node_avail_zone: str):
+    def _validate(self, efs_id, head_node_avail_zone: str):
         try:
             # Get head node availability zone
-            head_node_target_id = get_efs_mount_target_id(efs_fs_id=efs_id.value, avail_zone=head_node_avail_zone)
+            head_node_target_id = get_efs_mount_target_id(efs_fs_id=efs_id, avail_zone=head_node_avail_zone)
             # If there is an existing mt in the az, need to check the inbound and outbound rules of the security groups
             if head_node_target_id:
                 # Get list of security group IDs of the mount target
@@ -513,7 +504,7 @@ class EfsIdValidator(Validator):  # TODO add tests
                         FailureLevel.WARNING,
                     )
         except ClientError as e:
-            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR, [efs_id])
+            self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
 
 
 # --------------- Third party software validators --------------- #
@@ -528,34 +519,33 @@ class DcvValidator(Validator):
 
     def _validate(
         self,
-        instance_type: Param,
-        dcv_enabled: Param,
-        allowed_ips: Param,
-        port: Param,
-        os: Param,
+        instance_type,
+        dcv_enabled,
+        allowed_ips,
+        port,
+        os,
         architecture: str,
     ):
-        if dcv_enabled.value:
+        if dcv_enabled:
             allowed_oses = get_supported_dcv_os(architecture)
-            if os.value not in allowed_oses:
+            if os not in allowed_oses:
                 self._add_failure(
                     "NICE DCV can be used with one of the following operating systems: {0}. "
                     "Please double check the Os configuration parameter".format(allowed_oses),
                     FailureLevel.ERROR,
-                    [dcv_enabled],
                 )
 
-            if re.search(r"(micro)|(nano)", instance_type.value):
+            if re.search(r"(micro)|(nano)", instance_type):
                 self._add_failure(
                     "The packages required for desktop virtualization in the selected instance type '{0}' "
                     "may cause instability of the instance. If you want to use NICE DCV it is recommended "
-                    "to use an instance type with at least 1.7 GB of memory.".format(instance_type.value),
+                    "to use an instance type with at least 1.7 GB of memory.".format(instance_type),
                     FailureLevel.WARNING,
                 )
 
-            if allowed_ips.value == CIDR_ALL_IPS:
+            if allowed_ips == CIDR_ALL_IPS:
                 self._add_failure(
-                    f"With this configuration you are opening DCV port {port.value} to the world (0.0.0.0/0). "
+                    f"With this configuration you are opening DCV port {port} to the world (0.0.0.0/0). "
                     "It is recommended to restrict access.",
                     FailureLevel.WARNING,
                 )
@@ -571,6 +561,6 @@ class TagKeyValidator(Validator):
     Validate the tag key is not a reserved one.
     """
 
-    def _validate(self, key: Param):
-        if key.value == "Version":
-            self._add_failure("The tag key 'Version' is a reserved one.", FailureLevel.ERROR, [key])
+    def _validate(self, key):
+        if key == "Version":
+            self._add_failure("The tag key 'Version' is a reserved one.", FailureLevel.ERROR)

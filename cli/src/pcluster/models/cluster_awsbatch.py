@@ -20,10 +20,9 @@ from pcluster.models.cluster import (
     BaseQueue,
     CommonSchedulingSettings,
     QueueNetworking,
-    Resource,
     Storage,
 )
-from pcluster.models.common import Param
+from pcluster.models.common import Resource
 from pcluster.validators.awsbatch_validators import (
     AwsbatchComputeInstanceTypeValidator,
     AwsbatchInstancesArchitectureCompatibilityValidator,
@@ -47,9 +46,9 @@ class AwsbatchComputeResource(BaseComputeResource):
     ):
         super().__init__(allocation_strategy, simultaneous_multithreading)
         self.instance_type = instance_type
-        self.max_vcpus = Param(max_vcpus, default=10)
-        self.min_vcpus = Param(min_vcpus, default=0)
-        self.desired_vcpus = Param(desired_vcpus, default=0)
+        self.max_vcpus = Resource.init_param(max_vcpus, default=10)
+        self.min_vcpus = Resource.init_param(min_vcpus, default=0)
+        self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
         self.spot_bid_percentage = spot_bid_percentage
 
     def _register_validators(self):

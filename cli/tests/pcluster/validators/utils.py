@@ -21,9 +21,9 @@ def assert_failure_messages(actual_failures, expected_messages):
         for expected_message in expected_messages:
             # Either check the regex of expected_message match actual failure or check the whole strings are equal.
             # This is to deal with strings having regex symbols (e.g. "[") inside
-            assert_that(
-                any(re.search(expected_message, actual_failure.message) for actual_failure in actual_failures)
-                or any(expected_message == actual_failure.message for actual_failure in actual_failures)
-            ).is_true()
+            res = any(re.search(expected_message, actual_failure.message) for actual_failure in actual_failures) or any(
+                expected_message == actual_failure.message for actual_failure in actual_failures
+            )
+            assert_that(res).is_true()
     else:
         assert_that(actual_failures).is_empty()

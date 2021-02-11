@@ -14,28 +14,28 @@ from typing import List
 from assertpy import assert_that
 
 from pcluster.models.cluster import Resource
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 
 
 class FakeInfoValidator(Validator):
     """Dummy validator of info level."""
 
-    def _validate(self, param: Param):
-        self._add_failure(f"Wrong value {param.value}.", FailureLevel.INFO)
+    def _validate(self, param):
+        self._add_failure(f"Wrong value {param}.", FailureLevel.INFO)
 
 
 class FakeErrorValidator(Validator):
     """Dummy validator of error level."""
 
-    def _validate(self, param: Param):
-        self._add_failure(f"Error {param.value}.", FailureLevel.ERROR)
+    def _validate(self, param):
+        self._add_failure(f"Error {param}.", FailureLevel.ERROR)
 
 
 class FakeComplexValidator(Validator):
     """Dummy validator requiring multiple parameters as input."""
 
-    def _validate(self, fake_attribute: Param, other_attribute: Param):
-        self._add_failure(f"Combination {fake_attribute.value} - {other_attribute.value}.", FailureLevel.WARNING)
+    def _validate(self, fake_attribute, other_attribute):
+        self._add_failure(f"Combination {fake_attribute} - {other_attribute}.", FailureLevel.WARNING)
 
 
 class FakePropertyValidator(Validator):
@@ -59,8 +59,8 @@ def test_resource_validate():
 
         def __init__(self):
             super().__init__()
-            self.fake_attribute = Param("fake-value")
-            self.other_attribute = Param("other-value")
+            self.fake_attribute = "fake-value"
+            self.other_attribute = "other-value"
 
         def _register_validators(self):
             self._add_validator(FakeErrorValidator, priority=10, param=self.fake_attribute)
@@ -125,7 +125,7 @@ def test_nested_resource_validate():
 
         def __init__(self, fake_value):
             super().__init__()
-            self.fake_attribute = Param(fake_value)
+            self.fake_attribute = fake_value
 
         def _register_validators(self):
             self._add_validator(FakeErrorValidator, param=self.fake_attribute)
@@ -136,7 +136,7 @@ def test_nested_resource_validate():
         def __init__(self, nested_resource: FakeNestedResource, list_of_resources: List[FakeNestedResource]):
             super().__init__()
             self.fake_resource = nested_resource
-            self.other_attribute = Param("other-value")
+            self.other_attribute = "other-value"
             self.list_of_resources = list_of_resources
 
         def _register_validators(self):

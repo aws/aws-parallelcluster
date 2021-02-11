@@ -32,7 +32,7 @@ class HeadNodeConstruct(core.Construct):
         self.head_node = head_node
 
         # TODO: use attributes from head_node instead of using these static variables.
-        master_instance_type = self.head_node.instance_type.value
+        master_instance_type = self.head_node.instance_type
         master_core_count = "-1,true"
         # compute_core_count = "-1"
         key_name = "keyname"
@@ -237,30 +237,30 @@ class ClusterStack(core.Stack):
 
     def _add_fsx_storage(self, id: str, shared_fsx: SharedFsx):
         """Add specific Cfn Resources to map the FSX storage."""
-        fsx_id = shared_fsx.file_system_id.value
+        fsx_id = shared_fsx.file_system_id
 
-        if not fsx_id and shared_fsx.mount_dir.value:
+        if not fsx_id and shared_fsx.mount_dir:
             fsx_resource = fsx.CfnFileSystem(
                 scope=self,
-                storage_capacity=shared_fsx.storage_capacity.value,
+                storage_capacity=shared_fsx.storage_capacity,
                 lustre_configuration=fsx.CfnFileSystem.LustreConfigurationProperty(
-                    deployment_type=shared_fsx.deployment_type.value,
-                    imported_file_chunk_size=shared_fsx.imported_file_chunk_size.value,
-                    export_path=shared_fsx.export_path.value,
-                    import_path=shared_fsx.import_path.value,
-                    weekly_maintenance_start_time=shared_fsx.weekly_maintenance_start_time.value,
-                    automatic_backup_retention_days=shared_fsx.automatic_backup_retention_days.value,
-                    copy_tags_to_backups=shared_fsx.copy_tags_to_backups.value,
-                    daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time.value,
-                    per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput.value,
-                    auto_import_policy=shared_fsx.auto_import_policy.value,
-                    drive_cache_type=shared_fsx.drive_cache_type.value,
+                    deployment_type=shared_fsx.deployment_type,
+                    imported_file_chunk_size=shared_fsx.imported_file_chunk_size,
+                    export_path=shared_fsx.export_path,
+                    import_path=shared_fsx.import_path,
+                    weekly_maintenance_start_time=shared_fsx.weekly_maintenance_start_time,
+                    automatic_backup_retention_days=shared_fsx.automatic_backup_retention_days,
+                    copy_tags_to_backups=shared_fsx.copy_tags_to_backups,
+                    daily_automatic_backup_start_time=shared_fsx.daily_automatic_backup_start_time,
+                    per_unit_storage_throughput=shared_fsx.per_unit_storage_throughput,
+                    auto_import_policy=shared_fsx.auto_import_policy,
+                    drive_cache_type=shared_fsx.drive_cache_type,
                 ),
-                backup_id=shared_fsx.backup_id.value,
-                kms_key_id=shared_fsx.kms_key_id.value,
+                backup_id=shared_fsx.backup_id,
+                kms_key_id=shared_fsx.kms_key_id,
                 id=id,
                 file_system_type="LUSTRE",
-                storage_type=shared_fsx.drive_cache_type.value,
+                storage_type=shared_fsx.drive_cache_type,
                 subnet_ids=self._cluster.compute_subnet_ids,
                 security_group_ids=self._cluster.compute_security_groups,
             )
@@ -271,16 +271,16 @@ class ClusterStack(core.Stack):
     def _add_efs_storage(self, id: str, shared_efs: SharedEfs):
         """Add specific Cfn Resources to map the EFS storage."""
         # EFS FileSystem
-        efs_id = shared_efs.file_system_id.value
+        efs_id = shared_efs.file_system_id
         if not efs_id and shared_efs.mount_dir:
             efs_resource = efs.CfnFileSystem(
                 scope=self,
                 id=id,
-                encrypted=shared_efs.encrypted.value,
-                kms_key_id=shared_efs.kms_key_id.value,
-                performance_mode=shared_efs.performance_mode.value,
-                provisioned_throughput_in_mibps=shared_efs.provisioned_throughput.value,
-                throughput_mode=shared_efs.throughput_mode.value,
+                encrypted=shared_efs.encrypted,
+                kms_key_id=shared_efs.kms_key_id,
+                performance_mode=shared_efs.performance_mode,
+                provisioned_throughput_in_mibps=shared_efs.provisioned_throughput,
+                throughput_mode=shared_efs.throughput_mode,
             )
             efs_id = efs_resource.ref
 
@@ -296,8 +296,8 @@ class ClusterStack(core.Stack):
         self._add_efs_mount_target(
             id,
             efs_id,
-            self._cluster.head_node.networking.security_groups.value,
-            self._cluster.head_node.networking.subnet_id.value,
+            self._cluster.head_node.networking.security_groups,
+            self._cluster.head_node.networking.subnet_id,
             checked_availability_zones,
         )
         return efs_id
@@ -322,21 +322,21 @@ class ClusterStack(core.Stack):
 
     def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
         """Add specific Cfn Resources to map the EBS storage."""
-        ebs_id = shared_ebs.volume_id.value
+        ebs_id = shared_ebs.volume_id
         if not ebs_id and shared_ebs.mount_dir:
             ebs_resource = ec2.CfnVolume(
                 scope=self,
                 id=id,
                 availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
-                    self._cluster.head_node.networking.subnet_id.value
+                    self._cluster.head_node.networking.subnet_id
                 ),
-                encrypted=shared_ebs.encrypted.value,
-                iops=shared_ebs.iops.value,
-                throughput=shared_ebs.throughput.value,
-                kms_key_id=shared_ebs.kms_key_id.value,
-                size=shared_ebs.size.value,
-                snapshot_id=shared_ebs.snapshot_id.value,
-                volume_type=shared_ebs.volume_type.value,
+                encrypted=shared_ebs.encrypted,
+                iops=shared_ebs.iops,
+                throughput=shared_ebs.throughput,
+                kms_key_id=shared_ebs.kms_key_id,
+                size=shared_ebs.size,
+                snapshot_id=shared_ebs.snapshot_id,
+                volume_type=shared_ebs.volume_type,
             )
             ebs_id = ebs_resource.ref
 
