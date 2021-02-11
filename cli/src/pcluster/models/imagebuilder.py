@@ -16,7 +16,7 @@
 from typing import List
 
 from pcluster import utils
-from pcluster.models.common import BaseTag, Param, Resource
+from pcluster.models.common import BaseTag, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import (
     BaseAMIValidator,
@@ -33,9 +33,9 @@ class Volume(Resource):
 
     def __init__(self, size: int = None, encrypted: bool = None, kms_key_id: str = None):
         super().__init__()
-        self.size = Param(size)
-        self.encrypted = Param(encrypted, default=False)
-        self.kms_key_id = Param(kms_key_id)
+        self.size = Resource.init_param(size)
+        self.encrypted = Resource.init_param(encrypted, default=False)
+        self.kms_key_id = Resource.init_param(kms_key_id)
         # TODO: add validator
 
     def _register_validators(self):
@@ -55,8 +55,8 @@ class Image(Resource):
         root_volume: Volume = None,
     ):
         super().__init__()
-        self.name = Param(name)
-        self.description = Param(description)
+        self.name = Resource.init_param(name)
+        self.description = Resource.init_param(description)
         self.tags = tags
         self.root_volume = root_volume
         self._set_default()
@@ -78,8 +78,8 @@ class Component(Resource):
 
     def __init__(self, type: str = None, value: str = None):
         super().__init__()
-        self.type = Param(type)
-        self.value = Param(value)
+        self.type = Resource.init_param(type)
+        self.value = Resource.init_param(value)
         # TODO: add validator
 
 
@@ -97,11 +97,11 @@ class Build(Resource):
         components: List[Component] = None,
     ):
         super().__init__()
-        self.instance_type = Param(instance_type)
-        self.parent_image = Param(parent_image)
-        self.instance_role = Param(instance_role)
+        self.instance_type = Resource.init_param(instance_type)
+        self.parent_image = Resource.init_param(parent_image)
+        self.instance_role = Resource.init_param(instance_role)
         self.tags = tags
-        self.subnet_id = Param(subnet_id)
+        self.subnet_id = Resource.init_param(subnet_id)
         self.security_group_ids = security_group_ids
         self.components = components
 
@@ -124,8 +124,8 @@ class ChefCookbook(Resource):
 
     def __init__(self, url: str, json: str):
         super().__init__()
-        self.url = Param(url)
-        self.json = Param(json)
+        self.url = Resource.init_param(url)
+        self.json = Resource.init_param(json)
         # TODO: add validator
 
     def _register_validators(self):
@@ -146,13 +146,13 @@ class DevSettings(Resource):
         terminate_instance_on_failure: bool = None,
     ):
         super().__init__()
-        self.update_os_and_reboot = Param(update_os_and_reboot, default=False)
-        self.disable_pcluster_component = Param(disable_pcluster_component, default=False)
+        self.update_os_and_reboot = Resource.init_param(update_os_and_reboot, default=False)
+        self.disable_pcluster_component = Resource.init_param(disable_pcluster_component, default=False)
         self.chef_cookbook = chef_cookbook
-        self.node_url = Param(node_url)
-        self.aws_batch_cli_url = Param(aws_batch_cli_url)
-        self.distribution_configuration_arn = Param(distribution_configuration_arn)
-        self.terminate_instance_on_failure = Param(terminate_instance_on_failure, default=True)
+        self.node_url = Resource.init_param(node_url)
+        self.aws_batch_cli_url = Resource.init_param(aws_batch_cli_url)
+        self.distribution_configuration_arn = Resource.init_param(distribution_configuration_arn)
+        self.terminate_instance_on_failure = Resource.init_param(terminate_instance_on_failure, default=True)
 
     def _register_validators(self):
         self._add_validator(UrlValidator, url=self.node_url)
@@ -179,14 +179,14 @@ class ImageBuilder(Resource):
 
     def _register_validators(self):
         self._add_validator(
-            EbsVolumeTypeSizeValidator, priority=10, volume_type=Param("gp2"), volume_size=self.image.root_volume.size
+            EbsVolumeTypeSizeValidator, priority=10, volume_type="gp2", volume_size=self.image.root_volume.size
         )
 
     def _set_default(self):
         # set default root volume
-        if self.image.root_volume is None or self.image.root_volume.size.value is None:
+        if self.image.root_volume is None or self.image.root_volume.size is None:
             increase_volume_size = 15
-            ami_id = utils.get_ami_id(self.build.parent_image.value)
+            ami_id = utils.get_ami_id(self.build.parent_image)
             ami_info = utils.get_info_for_amis([ami_id])
             default_root_volume_size = (
                 ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + increase_volume_size
@@ -196,4 +196,4 @@ class ImageBuilder(Resource):
                 default_root_volume.implied = True
                 self.image.root_volume = default_root_volume
             else:
-                self.image.root_volume.size = Param(value=None, default=default_root_volume_size)
+                self.image.root_volume.size = Resource.init_param(value=None, default=default_root_volume_size)

@@ -1,6 +1,5 @@
 import pytest
 
-from pcluster.models.common import Param
 from pcluster.validators.s3_validators import UrlValidator
 from tests.pcluster.validators.utils import assert_failure_messages
 
@@ -27,5 +26,5 @@ def test_url_validator(mocker, url, response, expected_message):
     )
     mocker.patch("pcluster.validators.s3_validators.urlopen", return_value=None)
 
-    actual_failures = UrlValidator().execute(url=Param(url))
+    actual_failures = UrlValidator().execute(url=url)
     assert_failure_messages(actual_failures, expected_message)

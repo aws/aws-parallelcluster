@@ -10,7 +10,6 @@
 # limitations under the License.
 import pytest
 
-from pcluster.models.common import Param
 from pcluster.utils import InstanceTypeInfo
 from pcluster.validators.cluster_validators import (
     FSX_MESSAGES,
@@ -56,7 +55,7 @@ def boto3_stubber_path():
     ],
 )
 def test_scheduler_os_validator(os, scheduler, expected_message):
-    actual_failures = SchedulerOsValidator().execute(Param(os), Param(scheduler))
+    actual_failures = SchedulerOsValidator().execute(os, scheduler)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -69,7 +68,7 @@ def test_scheduler_os_validator(os, scheduler, expected_message):
     ],
 )
 def test_compute_resource_size_validator(min_count, max_count, expected_message):
-    actual_failures = ComputeResourceSizeValidator().execute(Param(min_count), Param(max_count))
+    actual_failures = ComputeResourceSizeValidator().execute(min_count, max_count)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -87,7 +86,7 @@ def test_compute_resource_size_validator(min_count, max_count, expected_message)
     ],
 )
 def test_duplicate_instance_type_validator(instance_type_list, expected_message):
-    instance_type_param_list = [Param(instance_type) for instance_type in instance_type_list]
+    instance_type_param_list = [instance_type for instance_type in instance_type_list]
     actual_failures = DuplicateInstanceTypeValidator().execute(instance_type_param_list)
     assert_failure_messages(actual_failures, expected_message)
 
@@ -122,7 +121,7 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
             ),
         )
 
-    actual_failures = EfaValidator().execute(Param(instance_type), Param(efa_enabled), Param(gdr_support))
+    actual_failures = EfaValidator().execute(instance_type, efa_enabled, gdr_support)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -138,9 +137,7 @@ def test_efa_validator(mocker, boto3_stubber, instance_type, efa_enabled, gdr_su
     ],
 )
 def test_efa_placement_group_validator(efa_enabled, placement_group_id, placement_group_enabled, expected_message):
-    actual_failures = EfaPlacementGroupValidator().execute(
-        Param(efa_enabled), Param(placement_group_id), Param(placement_group_enabled)
-    )
+    actual_failures = EfaPlacementGroupValidator().execute(efa_enabled, placement_group_id, placement_group_enabled)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -255,9 +252,7 @@ def test_efa_security_group_validator(
 
         boto3_stubber("ec2", mocked_requests)
 
-    actual_failures = EfaSecurityGroupValidator().execute(
-        Param(efa_enabled), Param(security_groups), Param(additional_security_groups)
-    )
+    actual_failures = EfaSecurityGroupValidator().execute(efa_enabled, security_groups, additional_security_groups)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -281,7 +276,7 @@ def test_simultaneous_multithreading_architecture_validator(
     simultaneous_multithreading, architecture, expected_message
 ):
     actual_failures = SimultaneousMultithreadingArchitectureValidator().execute(
-        Param(simultaneous_multithreading), architecture
+        simultaneous_multithreading, architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -304,7 +299,7 @@ def test_simultaneous_multithreading_architecture_validator(
     ],
 )
 def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_message):
-    actual_failures = EfaOsArchitectureValidator().execute(Param(efa_enabled), Param(os), architecture)
+    actual_failures = EfaOsArchitectureValidator().execute(efa_enabled, os, architecture)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -329,7 +324,7 @@ def test_efa_os_architecture_validator(efa_enabled, os, architecture, expected_m
 )
 def test_architecture_os_validator(os, architecture, expected_message):
     """Verify that the correct set of OSes is supported for each supported architecture."""
-    actual_failures = ArchitectureOsValidator().execute(Param(os), architecture)
+    actual_failures = ArchitectureOsValidator().execute(os, architecture)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -360,7 +355,7 @@ def test_instance_architecture_compatibility_validator(
         return_value=[compute_architecture],
     )
     actual_failures = InstanceArchitectureCompatibilityValidator().execute(
-        Param(compute_instance_type), head_node_architecture
+        compute_instance_type, head_node_architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 
@@ -379,7 +374,7 @@ def test_instance_architecture_compatibility_validator(
     ],
 )
 def test_queue_name_validator(name, expected_message):
-    actual_failures = QueueNameValidator().execute(Param(name))
+    actual_failures = QueueNameValidator().execute(name)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -574,7 +569,7 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
 
     boto3_stubber("ec2", ec2_mocked_requests)
 
-    actual_failures = FsxNetworkingValidator().execute(Param("fs-0ff8da96d57f3b4e3"), Param("subnet-12345678"))
+    actual_failures = FsxNetworkingValidator().execute("fs-0ff8da96d57f3b4e3", "subnet-12345678")
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -623,7 +618,7 @@ def test_fsx_network_validator(boto3_stubber, fsx_vpc, ip_permissions, network_i
     ],
 )
 def test_fsx_architecture_os_validator(architecture, os, expected_message):
-    actual_failures = FsxArchitectureOsValidator().execute(architecture, Param(os))
+    actual_failures = FsxArchitectureOsValidator().execute(architecture, os)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -653,7 +648,7 @@ def test_fsx_architecture_os_validator(architecture, os, expected_message):
     ],
 )
 def test_duplicate_mount_dir_validator(mount_dir_list, expected_message):
-    mount_dir_param_list = [Param(mount_dir) for mount_dir in mount_dir_list]
+    mount_dir_param_list = [mount_dir for mount_dir in mount_dir_list]
     actual_failures = DuplicateMountDirValidator().execute(mount_dir_param_list)
     assert_failure_messages(actual_failures, expected_message)
 
@@ -697,11 +692,11 @@ def test_number_of_storage_validator(storage_type, max_number, storage_count, ex
 )
 def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expected_message):
     actual_failures = DcvValidator().execute(
-        Param(instance_type),
-        Param(dcv_enabled),
-        Param(allowed_ips),
-        Param(port),
-        Param(os),
+        instance_type,
+        dcv_enabled,
+        allowed_ips,
+        port,
+        os,
         "x86_64" if instance_type.startswith("t2") else "arm64",
     )
     assert_failure_messages(actual_failures, expected_message)
@@ -718,5 +713,5 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
     ],
 )
 def test_tags_validator(key, expected_message):
-    actual_failures = TagKeyValidator().execute(Param(key))
+    actual_failures = TagKeyValidator().execute(key)
     assert_failure_messages(actual_failures, expected_message)

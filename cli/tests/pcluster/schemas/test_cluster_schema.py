@@ -69,8 +69,8 @@ def test_image_schema(os, custom_ami, failure_message):
             ImageSchema().load(image_schema)
     else:
         image = ImageSchema().load(image_schema)
-        assert_that(image.os.value).is_equal_to(os)
-        assert_that(image.custom_ami.value).is_equal_to(custom_ami)
+        assert_that(image.os).is_equal_to(os)
+        assert_that(image.custom_ami).is_equal_to(custom_ami)
 
 
 DUMMY_REQUIRED_QUEUE = [

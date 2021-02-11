@@ -18,27 +18,6 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
-# ----------------- Params ----------------- #
-
-
-class Param:
-    """Custom class to wrap a value and add more attributes."""
-
-    def __init__(self, value, default=None, valid: bool = True):
-        """
-        Initialize param by adding internal attributes.
-
-        implied attribute is useful for distinguishing values implied vs specified by a user.
-        """
-        if value is None and default is not None:
-            self.value = default
-            self.implied = True
-        else:
-            self.value = value
-            self.implied = False
-        self.valid = valid
-
-
 # ----------------- Validators ----------------- #
 
 
@@ -76,20 +55,14 @@ class Validator(ABC):
     def _fail(self, message, level):
         raise ConfigValidationError
 
-    def _add_failure(self, message: str, level: FailureLevel, failed_params: List[Param] = ()):
+    def _add_failure(self, message: str, level: FailureLevel):
         result = ValidationResult(message, level)
-        for param in failed_params:
-            param.valid = False
         if self._raise_on_error:
             raise ConfigValidationError(result)
         self._failures.append(result)
 
     def execute(self, *arg, **kwargs):
         """Entry point of all validators to verify all input params are valid."""
-        for _, param in kwargs.items():
-            if isinstance(param, Param):
-                if not param.valid:
-                    return self._failures
         self._validate(*arg, **kwargs)
         return self._failures
 
@@ -115,9 +88,100 @@ class _ResourceValidator(ABC):
 class Resource(ABC):
     """Represent an abstract Resource entity."""
 
+    class Param:
+        """
+        Represent a Configuration-managed attribute of a Resource.
+
+        Other than the value of the attribute, it contains metadata information that allows to check if the value is
+        implied or not, get the update policy and the default value.
+        Instances of this class are not meant to be created directly, but only through the `init_param` utility method
+        of resource class.
+        """
+
+        def __init__(self, value, default=None, update_policy=None):
+
+            # If the value is None, it means that the value has not been specified in the configuration; hence it can
+            # be implied from its default, if present.
+            if value is None and default is not None:
+                self.__value = default
+                self.__implied = True
+            else:
+                self.__value = value
+                self.__implied = False
+            self.__default = default
+            self.__update_policy = update_policy
+
+        @property
+        def value(self):
+            """
+            Return the value of the parameter.
+
+            This value is always kept in sync with the corresponding resource attribute, so it is always safe to read it
+            from here, if needed.
+            """
+            return self.__value
+
+        @property
+        def implied(self):
+            """Tell if the value of this parameter is implied or not."""
+            return self.__implied
+
+        @property
+        def default(self):
+            """Return the default value."""
+            return self.__default
+
+        @property
+        def update_policy(self):
+            """Return the update policy."""
+            return self.__update_policy()
+
     def __init__(self):
+        # Parameters registry
+        self.__params = {}
         self.__validators: List[_ResourceValidator] = []
         self._validation_failures: List[ValidationResult] = []
+
+    @property
+    def params(self):
+        """Return the params registry for this Resource."""
+        return self.__params
+
+    def get_param(self, param_name):
+        """Get the information related to the specified parameter name."""
+        return self.__params.get(param_name, None)
+
+    def is_implied(self, param_name):
+        """Tell if the value of an attribute is implied or not."""
+        return self.__params[param_name].implied
+
+    def __setattr__(self, key, value):
+        """
+        Override the parent __set_attr__ method to manage parameters information related to Resource attributes.
+
+        When an attribute is initialized through the `init_param` method, a Resource.Param instance is associated to
+        the attribute and then kept updated accordingly every time the attribute is updated.
+        """
+        if key != "_Resource__params":
+            if isinstance(value, Resource.Param):
+                # If value is a param instance, register the Param and replace the value in the attribute
+                # Register in params dict
+                self.__params[key] = value
+                # Set parameter value as attribute value
+                value = value.value
+            else:
+                # If other type, check if it is backed by a param; if yes, sync the param
+                param = self.__params.get(key, None)
+                if param:
+                    param._Param__value = value
+                    param._Param__implied = False
+
+        super().__setattr__(key, value)
+
+    @staticmethod
+    def init_param(value, default=None, update_policy=None):
+        """Create a resource attribute backed by a Configuration Parameter."""
+        return Resource.Param(value, default=default, update_policy=update_policy)
 
     def _register_validators(self):
         """
@@ -181,5 +245,5 @@ class BaseTag(Resource):
         value: str = None,
     ):
         super().__init__()
-        self.key = Param(key)
-        self.value = Param(value)
+        self.key = Resource.init_param(key)
+        self.value = Resource.init_param(value)

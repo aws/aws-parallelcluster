@@ -10,7 +10,6 @@
 # limitations under the License.
 import pytest
 
-from pcluster.models.common import Param
 from pcluster.validators.ebs_validators import (
     EbsVolumeIopsValidator,
     EBSVolumeKmsKeyIdValidator,
@@ -33,7 +32,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
     ],
 )
 def test_ebs_volume_throughput_validator(volume_type, volume_throughput, expected_message):
-    actual_failures = EbsVolumeThroughputValidator().execute(Param(volume_type), Param(volume_throughput))
+    actual_failures = EbsVolumeThroughputValidator().execute(volume_type, volume_throughput)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -48,9 +47,7 @@ def test_ebs_volume_throughput_validator(volume_type, volume_throughput, expecte
     ],
 )
 def test_ebs_volume_throughput_iops_validator(volume_type, volume_iops, volume_throughput, expected_message):
-    actual_failures = EbsVolumeThroughputIopsValidator().execute(
-        Param(volume_type), Param(volume_iops), Param(volume_throughput)
-    )
+    actual_failures = EbsVolumeThroughputIopsValidator().execute(volume_type, volume_iops, volume_throughput)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -72,7 +69,7 @@ def test_ebs_volume_throughput_iops_validator(volume_type, volume_iops, volume_t
     ],
 )
 def test_ebs_volume_iops_validators(volume_type, volume_size, volume_iops, expected_message):
-    actual_failures = EbsVolumeIopsValidator().execute(Param(volume_type), Param(volume_size), Param(volume_iops))
+    actual_failures = EbsVolumeIopsValidator().execute(volume_type, volume_size, volume_iops)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -103,7 +100,7 @@ def test_ebs_volume_iops_validators(volume_type, volume_size, volume_iops, expec
     ],
 )
 def test_ebs_volume_type_size_validator(volume_type, volume_size, expected_message):
-    actual_failures = EbsVolumeTypeSizeValidator().execute(Param(volume_type), Param(volume_size))
+    actual_failures = EbsVolumeTypeSizeValidator().execute(volume_type, volume_size)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -200,7 +197,7 @@ def test_ebs_volume_size_snapshot_validator(
         return_value="aws-cn" if partition == "aws-cn" else "aws-us-gov",
     )
 
-    actual_failures = EbsVolumeSizeSnapshotValidator().execute(Param(snapshot_id), Param(volume_size))
+    actual_failures = EbsVolumeSizeSnapshotValidator().execute(snapshot_id, volume_size)
     assert_failure_messages(actual_failures, expected_message)
 
 
@@ -222,7 +219,5 @@ def test_ebs_volume_size_snapshot_validator(
     ],
 )
 def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message):
-    actual_failures = EBSVolumeKmsKeyIdValidator().execute(
-        volume_kms_key_id=Param(kms_key_id), volume_encrypted=Param(encrypted)
-    )
+    actual_failures = EBSVolumeKmsKeyIdValidator().execute(volume_kms_key_id=kms_key_id, volume_encrypted=encrypted)
     assert_failure_messages(actual_failures, expected_message)

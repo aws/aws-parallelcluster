@@ -13,7 +13,7 @@ from botocore.exceptions import ClientError
 
 from pcluster.config.validators import get_bucket_name_from_s3_url
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import get_region
 
 
@@ -25,27 +25,28 @@ class FsxS3Validator(Validator):
     """
 
     def _validate(
-        self, import_path: Param, imported_file_chunk_size: Param, export_path: Param, auto_import_policy: Param
+        self,
+        import_path,
+        imported_file_chunk_size,
+        export_path,
+        auto_import_policy,
     ):
-        if imported_file_chunk_size.value and not import_path.value:
+        if imported_file_chunk_size and not import_path:
             self._add_failure(
                 "When specifying imported file chunk size, the import path option must be specified",
                 FailureLevel.ERROR,
-                [imported_file_chunk_size, import_path],
             )
 
-        if export_path.value and not import_path.value:
+        if export_path and not import_path:
             self._add_failure(
                 "When specifying export path, the import path option must be specified",
                 FailureLevel.ERROR,
-                [export_path, import_path],
             )
 
-        if auto_import_policy.value and not import_path.value:
+        if auto_import_policy and not import_path:
             self._add_failure(
                 "When specifying auto import policy, the import path option must be specified",
                 FailureLevel.ERROR,
-                [auto_import_policy, import_path],
             )
 
 
@@ -56,26 +57,23 @@ class FsxPersistentOptionsValidator(Validator):
     Verify compatibility of given persistent options for FSX.
     """
 
-    def _validate(self, deployment_type: Param, kms_key_id: Param, per_unit_storage_throughput: Param):
-        if deployment_type.value == "PERSISTENT_1":
-            if not per_unit_storage_throughput.value:
+    def _validate(self, deployment_type, kms_key_id, per_unit_storage_throughput):
+        if deployment_type == "PERSISTENT_1":
+            if not per_unit_storage_throughput:
                 self._add_failure(
                     "per unit storage throughput must be specified when deployment type is `PERSISTENT_1'",
                     FailureLevel.ERROR,
-                    [deployment_type, per_unit_storage_throughput],
                 )
         else:
-            if kms_key_id.value:
+            if kms_key_id:
                 self._add_failure(
                     "kms key id can only be used when deployment type is `PERSISTENT_1'",
                     FailureLevel.ERROR,
-                    [deployment_type, kms_key_id],
                 )
-            if per_unit_storage_throughput.value:
+            if per_unit_storage_throughput:
                 self._add_failure(
                     "per unit storage throughput can only be used when deployment type is `PERSISTENT_1'",
                     FailureLevel.ERROR,
-                    [deployment_type, per_unit_storage_throughput],
                 )
 
 
@@ -84,41 +82,37 @@ class FsxBackupOptionsValidator(Validator):
 
     def _validate(
         self,
-        automatic_backup_retention_days: Param,
-        daily_automatic_backup_start_time: Param,
-        copy_tags_to_backups: Param,
-        deployment_type: Param,
-        imported_file_chunk_size: Param,
-        import_path: Param,
-        export_path: Param,
-        auto_import_policy: Param,
+        automatic_backup_retention_days,
+        daily_automatic_backup_start_time,
+        copy_tags_to_backups,
+        deployment_type,
+        imported_file_chunk_size,
+        import_path,
+        export_path,
+        auto_import_policy,
     ):
-        if not automatic_backup_retention_days.value and daily_automatic_backup_start_time.value:
+        if not automatic_backup_retention_days and daily_automatic_backup_start_time:
             self._add_failure(
                 "When specifying daily automatic backup start time,"
                 "the automatic backup retention days option must be specified",
                 FailureLevel.ERROR,
-                [automatic_backup_retention_days, daily_automatic_backup_start_time],
             )
-        if not automatic_backup_retention_days.value and copy_tags_to_backups.value is not None:
+        if not automatic_backup_retention_days and copy_tags_to_backups is not None:
             self._add_failure(
                 "When specifying copy tags to backups, " "the automatic backup retention days option must be specified",
                 FailureLevel.ERROR,
-                [automatic_backup_retention_days, copy_tags_to_backups],
             )
-        if deployment_type.value != "PERSISTENT_1" and automatic_backup_retention_days.value:
+        if deployment_type != "PERSISTENT_1" and automatic_backup_retention_days:
             self._add_failure(
                 "FSx automatic backup features can be used only with 'PERSISTENT_1' file systems",
                 FailureLevel.ERROR,
-                [deployment_type, automatic_backup_retention_days],
             )
         if (
-            imported_file_chunk_size.value or import_path.value or export_path.value or auto_import_policy.value
-        ) and automatic_backup_retention_days.value:
+            imported_file_chunk_size or import_path or export_path or auto_import_policy
+        ) and automatic_backup_retention_days:
             self._add_failure(
                 "Backups cannot be created on S3-linked file systems",
                 FailureLevel.ERROR,
-                [automatic_backup_retention_days],
             )
 
 
@@ -126,37 +120,37 @@ class FsxStorageTypeOptionsValidator(Validator):
     """FSX storage type options validator."""
 
     def _validate(
-        self, storage_type: Param, deployment_type: Param, per_unit_storage_throughput: Param, drive_cache_type: Param
+        self,
+        storage_type,
+        deployment_type,
+        per_unit_storage_throughput,
+        drive_cache_type,
     ):
-        if storage_type.value == "HDD":
-            if deployment_type.value != "PERSISTENT_1":
+        if storage_type == "HDD":
+            if deployment_type != "PERSISTENT_1":
                 self._add_failure(
                     "For HDD filesystems, deployment type must be 'PERSISTENT_1'",
                     FailureLevel.ERROR,
-                    [storage_type, deployment_type],
                 )
-            if per_unit_storage_throughput.value not in FSX_HDD_THROUGHPUT:
+            if per_unit_storage_throughput not in FSX_HDD_THROUGHPUT:
                 self._add_failure(
                     "For HDD filesystems, per unit storage throughput can only have the following values: {0}".format(
                         FSX_HDD_THROUGHPUT
                     ),
                     FailureLevel.ERROR,
-                    [storage_type, per_unit_storage_throughput],
                 )
         else:  # SSD or None
-            if drive_cache_type.value:
+            if drive_cache_type:
                 self._add_failure(
                     "drive cache type features can be used only with HDD filesystems",
                     FailureLevel.ERROR,
-                    [storage_type, drive_cache_type],
                 )
-            if per_unit_storage_throughput.value and per_unit_storage_throughput.value not in FSX_SSD_THROUGHPUT:
+            if per_unit_storage_throughput and per_unit_storage_throughput not in FSX_SSD_THROUGHPUT:
                 self._add_failure(
                     "For SSD filesystems, per unit storage throughput can only have the following values: {0}".format(
                         FSX_SSD_THROUGHPUT
                     ),
                     FailureLevel.ERROR,
-                    [storage_type, per_unit_storage_throughput],
                 )
 
 
@@ -165,88 +159,78 @@ class FsxStorageCapacityValidator(Validator):
 
     def _validate(
         self,
-        storage_capacity: Param,
-        deployment_type: Param,
-        storage_type: Param,
-        per_unit_storage_throughput: Param,
-        file_system_id: Param,
-        backup_id: Param,
+        storage_capacity,
+        deployment_type,
+        storage_type,
+        per_unit_storage_throughput,
+        file_system_id,
+        backup_id,
     ):
-        if file_system_id.value or backup_id.value:
+        if file_system_id or backup_id:
             # if file_system_id is provided, don't validate storage_capacity
             # if backup_id is provided, validation for storage_capacity will be done in fsx_lustre_backup_validator.
             return
-        if not storage_capacity.value:
+        if not storage_capacity:
             # if file_system_id is not provided, storage_capacity must be provided
             self._add_failure(
                 "When specifying 'fsx' section, the 'StorageCapacity' option must be specified",
                 FailureLevel.ERROR,
-                [storage_capacity],
             )
-        elif deployment_type.value == "SCRATCH_1":
-            if not (
-                storage_capacity.value == 1200 or storage_capacity.value == 2400 or storage_capacity.value % 3600 == 0
-            ):
+        elif deployment_type == "SCRATCH_1":
+            if not (storage_capacity == 1200 or storage_capacity == 2400 or storage_capacity % 3600 == 0):
                 self._add_failure(
                     "Capacity for FSx SCRATCH_1 filesystem is 1,200 GB, 2,400 GB or increments of 3,600 GB",
                     FailureLevel.ERROR,
-                    [storage_capacity, deployment_type],
                 )
-        elif deployment_type.value == "PERSISTENT_1" and storage_type.value == "HDD":
-            if per_unit_storage_throughput.value == 12 and not storage_capacity.value % 6000 == 0:
+        elif deployment_type == "PERSISTENT_1" and storage_type == "HDD":
+            if per_unit_storage_throughput == 12 and not storage_capacity % 6000 == 0:
                 self._add_failure(
                     "Capacity for FSx PERSISTENT HDD 12 MB/s/TiB file systems is increments of 6,000 GiB",
                     FailureLevel.ERROR,
-                    [storage_capacity, deployment_type, storage_type, per_unit_storage_throughput],
                 )
-            elif per_unit_storage_throughput.value == 40 and not storage_capacity.value % 1800 == 0:
+            elif per_unit_storage_throughput == 40 and not storage_capacity % 1800 == 0:
                 self._add_failure(
                     "Capacity for FSx PERSISTENT HDD 40 MB/s/TiB file systems is increments of 1,800 GiB",
                     FailureLevel.ERROR,
-                    [storage_capacity, deployment_type, storage_type, per_unit_storage_throughput],
                 )
-        elif deployment_type.value in ["SCRATCH_2", "PERSISTENT_1"]:
-            if not (storage_capacity.value == 1200 or storage_capacity.value % 2400 == 0):
+        elif deployment_type in ["SCRATCH_2", "PERSISTENT_1"]:
+            if not (storage_capacity == 1200 or storage_capacity % 2400 == 0):
                 self._add_failure(
                     "Capacity for FSx SCRATCH_2 and PERSISTENT_1 filesystems is 1,200 GB or increments of 2,400 GB",
                     FailureLevel.ERROR,
-                    [storage_capacity, deployment_type],
                 )
 
 
 class FsxBackupIdValidator(Validator):
     """Backup id validator."""
 
-    def _validate(self, backup_id: Param):
-        if backup_id.value:
+    def _validate(self, backup_id):
+        if backup_id:
             try:
-                boto3.client("fsx").describe_backups(BackupIds=[backup_id.value]).get("Backups")[0]
+                boto3.client("fsx").describe_backups(BackupIds=[backup_id]).get("Backups")[0]
             except ClientError as e:
                 self._add_failure(
                     "Failed to retrieve backup with Id '{0}': {1}".format(
-                        backup_id.value, e.response.get("Error").get("Message")
+                        backup_id, e.response.get("Error").get("Message")
                     ),
                     FailureLevel.ERROR,
-                    [backup_id],
                 )
 
 
 class FsxAutoImportValidator(Validator):
     """Auto import validator."""
 
-    def _validate(self, auto_import_policy: Param, import_path: Param):
-        bucket = get_bucket_name_from_s3_url(import_path.value)
+    def _validate(self, auto_import_policy, import_path):
+        bucket = get_bucket_name_from_s3_url(import_path)
 
-        if auto_import_policy.value is not None:
+        if auto_import_policy is not None:
             try:
                 s3_bucket_region = boto3.client("s3").get_bucket_location(Bucket=bucket).get("LocationConstraint")
                 # Buckets in Region us-east-1 have a LocationConstraint of null
                 if s3_bucket_region is None:
                     s3_bucket_region = "us-east-1"
                 if s3_bucket_region != get_region():
-                    self._add_failure(
-                        "AutoImport is not supported for cross-region buckets.", FailureLevel.ERROR, [import_path]
-                    )
+                    self._add_failure("AutoImport is not supported for cross-region buckets.", FailureLevel.ERROR)
             except ClientError as client_error:
                 if client_error.response.get("Error").get("Code") == "NoSuchBucket":
                     self._add_failure(
@@ -254,7 +238,6 @@ class FsxAutoImportValidator(Validator):
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
-                        [import_path],
                     )
                 elif client_error.response.get("Error").get("Code") == "AccessDenied":
                     self._add_failure(
@@ -262,7 +245,6 @@ class FsxAutoImportValidator(Validator):
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
-                        [import_path],
                     )
                 else:
                     self._add_failure(
@@ -270,5 +252,4 @@ class FsxAutoImportValidator(Validator):
                             bucket, client_error.response.get("Error").get("Message")
                         ),
                         FailureLevel.ERROR,
-                        [import_path],
                     )

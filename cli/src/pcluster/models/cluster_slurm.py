@@ -24,7 +24,6 @@ from pcluster.models.cluster import (
     Resource,
     Storage,
 )
-from pcluster.models.common import Param
 from pcluster.validators.cluster_validators import (
     DuplicateInstanceTypeValidator,
     EfaOsArchitectureValidator,
@@ -51,10 +50,10 @@ class SlurmComputeResource(BaseComputeResource):
         efa: Efa = None,
     ):
         super().__init__(allocation_strategy, simultaneous_multithreading)
-        self.instance_type = Param(instance_type)
-        self.max_count = Param(max_count, default=10)
-        self.min_count = Param(min_count, default=0)
-        self.spot_price = Param(spot_price)
+        self.instance_type = Resource.init_param(instance_type)
+        self.max_count = Resource.init_param(max_count, default=10)
+        self.min_count = Resource.init_param(min_count, default=0)
+        self.spot_price = Resource.init_param(spot_price)
         self.efa = efa
 
     def _register_validators(self):
@@ -160,8 +159,8 @@ class SlurmCluster(BaseCluster):
             {
                 subnet_id
                 for queue in self.scheduling.queues
-                if queue.networking.subnet_ids and queue.networking.subnet_ids.value
-                for subnet_id in queue.networking.subnet_ids.value
+                if queue.networking.subnet_ids and queue.networking.subnet_ids
+                for subnet_id in queue.networking.subnet_ids
                 if queue.networking.subnet_ids
             }
         )
@@ -173,7 +172,7 @@ class SlurmCluster(BaseCluster):
             {
                 security_group
                 for queue in self.scheduling.queues
-                if queue.networking.security_groups and queue.networking.security_groups.value
-                for security_group in queue.networking.security_groups.value
+                if queue.networking.security_groups and queue.networking.security_groups
+                for security_group in queue.networking.security_groups
             }
         )

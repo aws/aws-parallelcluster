@@ -12,7 +12,7 @@ from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.iam import IamClient
 from pcluster import utils
-from pcluster.models.common import FailureLevel, Param, Validator
+from pcluster.models.common import FailureLevel, Validator
 from pcluster.utils import policy_name_to_arn
 
 
@@ -23,10 +23,10 @@ class BaseAMIValidator(Validator):
     Validate given ami id or image arn.
     """
 
-    def _validate(self, image: Param):
-        ami_id = utils.get_ami_id(image.value)
+    def _validate(self, image: str):
+        ami_id = utils.get_ami_id(image)
         if not Ec2Client().describe_ami_id_offering(ami_id=ami_id):
-            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.ERROR, [image])
+            self._add_failure(f"The ami id '{ami_id}' is not supported.", FailureLevel.ERROR)
 
 
 class InstanceTypeValidator(Validator):
@@ -36,30 +36,28 @@ class InstanceTypeValidator(Validator):
     Verify the given instance type is a supported one.
     """
 
-    def _validate(self, instance_type: Param):
-        if instance_type.value not in Ec2Client().describe_instance_type_offerings():
+    def _validate(self, instance_type: str):
+        if instance_type not in Ec2Client().describe_instance_type_offerings():
             self._add_failure(
-                f"The instance type '{instance_type.value}' is not supported.",
+                f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
-                [instance_type],
             )
 
 
 class InstanceTypeBaseAMICompatibleValidator(Validator):
     """EC2 Instance type and base ami compatibility validator."""
 
-    def _validate(self, instance_type: Param, parent_image: Param):
-        ami_id = utils.get_ami_id(parent_image.value)
+    def _validate(self, instance_type: str, parent_image: str):
+        ami_id = utils.get_ami_id(parent_image)
         ami_architecture = utils.get_info_for_amis([ami_id])[0].get("Architecture")
-        instance_architecture = utils.get_supported_architectures_for_instance_type(instance_type.value)
+        instance_architecture = utils.get_supported_architectures_for_instance_type(instance_type)
         if instance_architecture != ami_architecture:
             self._add_failure(
                 "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the instance type {2} "
                 "chosen ({3}). Use either a different AMI or a different instance type.".format(
-                    ami_id, ami_architecture, instance_type.value, instance_architecture
+                    ami_id, ami_architecture, instance_type, instance_architecture
                 ),
                 FailureLevel.ERROR,
-                [instance_type, parent_image],
             )
 
 
@@ -70,12 +68,12 @@ class AdditionalIamPolicyValidator(Validator):  # TODO add test
     Verify the given policy is correct.
     """
 
-    def _validate(self, iam_policy: Param):
+    def _validate(self, iam_policy: str):
         try:
-            if iam_policy.value not in self._get_base_additional_iam_policies():
-                IamClient().get_policy(iam_policy.value)
+            if iam_policy not in self._get_base_additional_iam_policies():
+                IamClient().get_policy(iam_policy)
         except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR, [iam_policy])
+            self._add_failure(str(e), FailureLevel.ERROR)
 
     @staticmethod
     def _get_base_additional_iam_policies():
@@ -89,19 +87,19 @@ class KeyPairValidator(Validator):  # TODO add test
     Verify the given key pair is correct.
     """
 
-    def _validate(self, key_name: Param):
+    def _validate(self, key_name: str):
         try:
             Ec2Client().describe_key_pair(key_name)
         except AWSClientError as e:
-            self._add_failure(str(e), FailureLevel.ERROR, [key_name])
+            self._add_failure(str(e), FailureLevel.ERROR)
 
 
 class PlacementGroupIdValidator(Validator):  # TODO: add tests
     """Placement group id validator."""
 
-    def _validate(self, placement_group_id: Param):
-        if placement_group_id.value:
+    def _validate(self, placement_group_id: str):
+        if placement_group_id:
             try:
                 Ec2Client().describe_placement_group(placement_group_id)
             except AWSClientError as e:
-                self._add_failure(str(e), FailureLevel.ERROR, [placement_group_id])
+                self._add_failure(str(e), FailureLevel.ERROR)
