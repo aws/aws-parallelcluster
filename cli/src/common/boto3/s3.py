@@ -8,8 +8,9 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from botocore.exceptions import ClientError
 
-from common.boto3.common import AWSExceptionHandler, Boto3Client
+from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
 # TODO move s3_factory.py and awsbatch/utils.py here
 
@@ -28,4 +29,33 @@ class S3Client(Boto3Client):
     @AWSExceptionHandler.handle_client_exception
     def head_object(self, bucket_name, object_name):
         """Retrieve metadata from an object without returning the object itself."""
-        return self._client.head_object(Bucket=bucket_name, Key=object_name)
+        try:
+            return self._client.head_object(Bucket=bucket_name, Key=object_name)
+        except ClientError as client_error:
+            raise AWSClientError(
+                function_name="head_object", message=_process_generic_s3_bucket_error(client_error, bucket_name)
+            )
+
+    @AWSExceptionHandler.handle_client_exception
+    def head_bucket(self, bucket_name):
+        """Retrieve metadata for a bucket without returning the object itself."""
+        try:
+            return self._client.head_bucket(Bucket=bucket_name)
+        except ClientError as client_error:
+            raise AWSClientError(
+                function_name="head_bucket", message=_process_generic_s3_bucket_error(client_error, bucket_name)
+            )
+
+
+def _process_generic_s3_bucket_error(client_error, bucket_name):
+    if client_error.response.get("Error").get("Code") == "NoSuchBucket":
+        return "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
+            bucket_name, client_error.response.get("Error").get("Message")
+        )
+    if client_error.response.get("Error").get("Code") == "AccessDenied":
+        return "You do not have access to the S3 bucket '{0}': '{1}'".format(
+            bucket_name, client_error.response.get("Error").get("Message")
+        )
+    return "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
+        bucket_name, client_error.response.get("Error").get("Message")
+    )

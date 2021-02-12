@@ -8,6 +8,7 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+import boto3
 from botocore.exceptions import ClientError
 
 from pcluster.config.validators import (
@@ -188,3 +189,30 @@ class EBSVolumeKmsKeyIdValidator(Validator):
                 "Kms Key Id {0} is specified, the encrypted state must be True.".format(volume_kms_key_id),
                 FailureLevel.ERROR,
             )
+
+
+class SharedEBSVolumeIdValidator(Validator):
+    """
+    SharedEBS volume id validator.
+
+    Validate the volume exist and is available.
+    """
+
+    def _validate(self, volume_id: str):
+        if volume_id:
+            try:
+                respond = boto3.client("ec2").describe_volumes(VolumeIds=[volume_id]).get("Volumes")[0]
+                if respond.get("State") != "available":
+                    self._add_failure(
+                        "Volume {0} is in state '{1}' not 'available'".format(volume_id, respond.get("State")),
+                        FailureLevel.WARNING,
+                    )
+            except ClientError as e:
+                if (
+                    e.response.get("Error")
+                    .get("Message")
+                    .endswith("parameter volumes is invalid. Expected: 'vol-...'.")
+                ):
+                    self._add_failure("Volume {0} does not exist".format(volume_id), FailureLevel.ERROR)
+                else:
+                    self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)

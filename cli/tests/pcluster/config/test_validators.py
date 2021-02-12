@@ -16,7 +16,7 @@ from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
 from pcluster.config.mappings import ALLOWED_VALUES
-from pcluster.config.validators import EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS, intel_hpc_architecture_validator
+from pcluster.config.validators import EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
 
@@ -94,85 +94,6 @@ def test_ec2_ami_validator(mocker, boto3_stubber, image_architecture, bad_ami_me
     config_parser_dict = {"cluster default": {"custom_ami": "ami-12345678"}}
     expected_message = bad_ami_message or bad_architecture_message
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-def test_ec2_volume_validator(mocker, boto3_stubber):
-    describe_volumes_response = {
-        "Volumes": [
-            {
-                "AvailabilityZone": "us-east-1a",
-                "Attachments": [
-                    {
-                        "AttachTime": "2013-12-18T22:35:00.000Z",
-                        "InstanceId": "i-1234567890abcdef0",
-                        "VolumeId": "vol-12345678",
-                        "State": "attached",
-                        "DeleteOnTermination": True,
-                        "Device": "/dev/sda1",
-                    }
-                ],
-                "Encrypted": False,
-                "VolumeType": "gp2",
-                "VolumeId": "vol-049df61146c4d7901",
-                "State": "available",  # TODO add test with "in-use"
-                "SnapshotId": "snap-1234567890abcdef0",
-                "CreateTime": "2013-12-18T22:35:00.084Z",
-                "Size": 8,
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_volumes",
-            response=describe_volumes_response,
-            expected_params={"VolumeIds": ["vol-12345678"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {
-        "cluster default": {"ebs_settings": "default"},
-        "ebs default": {"shared_dir": "test", "ebs_volume_id": "vol-12345678"},
-    }
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
-@pytest.mark.parametrize(
-    "config, num_calls, bucket, expected_message",
-    [
-        (
-            {
-                "cluster default": {"fsx_settings": "fsx"},
-                "fsx fsx": {
-                    "storage_capacity": 1200,
-                    "import_path": "s3://test/test1/test2",
-                    "export_path": "s3://test/test1/test2",
-                },
-            },
-            2,
-            {"Bucket": "test"},
-            None,
-        ),
-        (
-            {
-                "cluster default": {"fsx_settings": "fsx"},
-                "fsx fsx": {
-                    "storage_capacity": 1200,
-                    "import_path": "http://test/test.json",
-                    "export_path": "s3://test/test1/test2",
-                },
-            },
-            1,
-            {"Bucket": "test"},
-            "The value 'http://test/test.json' used for the parameter 'import_path' is not a valid S3 URI.",
-        ),
-    ],
-)
-def test_s3_validator(mocker, boto3_stubber, config, num_calls, bucket, expected_message):
-    if bucket:
-        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
-    utils.assert_param_validator(mocker, config, expected_message)
 
 
 def test_ec2_vpc_id_validator(mocker, boto3_stubber):
@@ -389,24 +310,6 @@ def _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls):
     mocker.patch("pcluster.config.validators.urllib.request.urlopen")
 
 
-@pytest.mark.parametrize(
-    "section_dict, expected_message",
-    [
-        ({"enable_intel_hpc_platform": "true", "base_os": "centos7"}, None),
-        ({"enable_intel_hpc_platform": "true", "base_os": "centos8"}, None),
-        ({"enable_intel_hpc_platform": "true", "base_os": "alinux"}, "it is required to set the 'base_os'"),
-        ({"enable_intel_hpc_platform": "true", "base_os": "alinux2"}, "it is required to set the 'base_os'"),
-        ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1604"}, "it is required to set the 'base_os'"),
-        ({"enable_intel_hpc_platform": "true", "base_os": "ubuntu1804"}, "it is required to set the 'base_os'"),
-        # intel hpc disabled, you can use any os
-        ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
-    ],
-)
-def test_intel_hpc_os_validator(mocker, section_dict, expected_message):
-    config_parser_dict = {"cluster default": section_dict}
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
 #########
 #
 # architecture validator tests
@@ -475,30 +378,6 @@ def run_architecture_validator_test(
     assert_that(len(errors)).is_equal_to(len(expected_messages))
     for error, expected_message in zip(errors, expected_messages):
         assert_that(error).matches(re.escape(expected_message))
-
-
-@pytest.mark.parametrize(
-    "enabled, architecture, expected_message",
-    [
-        (True, "x86_64", []),
-        (True, "arm64", ["instance types and an AMI that support these architectures"]),
-        (False, "x86_64", []),
-        (False, "arm64", []),
-    ],
-)
-def test_intel_hpc_architecture_validator(mocker, enabled, architecture, expected_message):
-    """Verify that setting enable_intel_hpc_platform is invalid when architecture != x86_64."""
-    config_dict = {"cluster": {"enable_intel_hpc_platform": enabled, "architecture": architecture}}
-    run_architecture_validator_test(
-        mocker,
-        config_dict,
-        "cluster",
-        "architecture",
-        "enable_intel_hpc_platform",
-        enabled,
-        intel_hpc_architecture_validator,
-        expected_message,
-    )
 
 
 #########

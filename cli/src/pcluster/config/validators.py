@@ -10,12 +10,9 @@
 # limitations under the License.
 import logging
 import re
-import urllib.error
-import urllib.request
-from urllib.parse import urlparse
 
 import boto3
-from botocore.exceptions import ClientError, ParamValidationError
+from botocore.exceptions import ClientError
 
 from pcluster.utils import get_region, validate_pcluster_version_based_on_ami_name
 
@@ -174,138 +171,6 @@ def ec2_ami_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
-# FIXME moved
-def url_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if urlparse(param_value).scheme == "s3":
-        errors_s3, warnings_s3 = s3_uri_validator(param_key, param_value, pcluster_config)
-        errors += errors_s3
-        warnings += warnings_s3
-
-    else:
-        try:
-            urllib.request.urlopen(param_value)
-        except urllib.error.HTTPError as e:
-            warnings.append("{0} {1} {2}".format(param_value, e.code, e.reason))
-        except urllib.error.URLError as e:
-            warnings.append("{0} {1}".format(param_value, e.reason))
-        except ValueError:
-            errors.append(
-                "The value '{0}' used for the parameter '{1}' is not a valid URL".format(param_value, param_key)
-            )
-
-    return errors, warnings
-
-
-# FIXME moved
-def s3_uri_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    try:
-        match = re.match(r"s3://(.*?)/(.*)", param_value)
-        if not match or len(match.groups()) < 2:
-            raise ValueError("S3 url is invalid.")
-        bucket, key = match.group(1), match.group(2)
-        boto3.client("s3").head_object(Bucket=bucket, Key=key)
-
-    except ClientError:
-
-        # Check that bucket is in s3_read_resource or s3_read_write_resource.
-        cluster_section = pcluster_config.get_section("cluster")
-        s3_read_resource = cluster_section.get_param_value("s3_read_resource")
-        s3_read_write_resource = cluster_section.get_param_value("s3_read_write_resource")
-
-        if s3_read_resource == "*" or s3_read_write_resource == "*":
-            pass
-        else:
-            # Match after arn prefix until end of line, or * or /.
-            match_bucket_from_arn = r"(?<=arn:aws:s3:::)([^*/]*)"
-            s3_read_bucket = re.search(match_bucket_from_arn, s3_read_resource).group(0) if s3_read_resource else None
-            s3_write_bucket = (
-                re.search(match_bucket_from_arn, s3_read_write_resource).group(0) if s3_read_write_resource else None
-            )
-
-            if bucket in [s3_read_bucket, s3_write_bucket]:
-                pass
-            else:
-                warnings.append(
-                    (
-                        "The S3 object does not exist or you do not have access to it.\n"
-                        "Please make sure the cluster nodes have access to it."
-                    )
-                )
-
-    return errors, warnings
-
-
-def s3_bucket_uri_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    if urlparse(param_value).scheme == "s3":
-        try:
-            bucket = get_bucket_name_from_s3_url(param_value)
-            boto3.client("s3").head_bucket(Bucket=bucket)
-        except ClientError as client_error:
-            _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
-    else:
-        errors.append(
-            "The value '{0}' used for the parameter '{1}' is not a valid S3 URI.".format(param_value, param_key)
-        )
-
-    return errors, warnings
-
-
-def s3_bucket_validator(param_key, param_value, pcluster_config):
-    """Validate S3 bucket can be used to store cluster artifacts."""
-    errors = []
-    warnings = []
-    s3_client = boto3.client("s3")
-    try:
-        s3_client.head_bucket(Bucket=param_value)
-        # Check versioning is enabled on the bucket
-        response = s3_client.get_bucket_versioning(Bucket=param_value)
-        if response.get("Status") != "Enabled":
-            errors.append(
-                (
-                    "The S3 bucket {0} specified cannot be used by cluster "
-                    "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning."
-                ).format(param_value, response.get("Status"))
-            )
-    except ClientError as client_error:
-        _process_generic_s3_bucket_error(client_error, param_value, warnings, errors)
-    except ParamValidationError as validation_error:
-        errors.append(
-            "Error validating parameter '{0}'. Failed with exception: {1}".format(param_key, str(validation_error))
-        )
-
-    return errors, warnings
-
-
-def _process_generic_s3_bucket_error(client_error, bucket_name, warnings, errors):
-    if client_error.response.get("Error").get("Code") == "NoSuchBucket":
-        errors.append(
-            "The S3 bucket '{0}' does not appear to exist: '{1}'".format(
-                bucket_name, client_error.response.get("Error").get("Message")
-            )
-        )
-    elif client_error.response.get("Error").get("Code") == "AccessDenied":
-        errors.append(
-            "You do not have access to the S3 bucket '{0}': '{1}'".format(
-                bucket_name, client_error.response.get("Error").get("Message")
-            )
-        )
-    else:
-        errors.append(
-            "Unexpected error when calling get_bucket_location on S3 bucket '{0}': '{1}'".format(
-                bucket_name, client_error.response.get("Error").get("Message")
-            )
-        )
-
-
 def shared_dir_validator(param_key, param_value, pcluster_config):
     """Validate that user is not specifying /NONE or NONE as shared_dir for any filesystem."""
     errors = []
@@ -315,55 +180,3 @@ def shared_dir_validator(param_key, param_value, pcluster_config):
         errors.append("{0} cannot be used as a shared directory".format(param_value))
 
     return errors, warnings
-
-
-def ec2_volume_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-    try:
-        test = boto3.client("ec2").describe_volumes(VolumeIds=[param_value]).get("Volumes")[0]
-        if test.get("State") != "available":
-            warnings.append("Volume {0} is in state '{1}' not 'available'".format(param_value, test.get("State")))
-    except ClientError as e:
-        if e.response.get("Error").get("Message").endswith("parameter volumes is invalid. Expected: 'vol-...'."):
-            errors.append("Volume {0} does not exist".format(param_value))
-        else:
-            errors.append(e.response.get("Error").get("Message"))
-
-    return errors, warnings
-
-
-def intel_hpc_os_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    allowed_oses = ["centos7", "centos8"]
-
-    cluster_section = pcluster_config.get_section("cluster")
-    if param_value and cluster_section.get_param_value("base_os") not in allowed_oses:
-        errors.append(
-            "When using 'enable_intel_hpc_platform = {0}' it is required to set the 'base_os' parameter "
-            "to one of the following values : {1}".format(param_value, allowed_oses)
-        )
-
-    return errors, warnings
-
-
-def intel_hpc_architecture_validator(param_key, param_value, pcluster_config):
-    errors = []
-    warnings = []
-
-    allowed_architectures = ["x86_64"]
-
-    architecture = pcluster_config.get_section("cluster").get_param_value("architecture")
-    if param_value and architecture not in allowed_architectures:
-        errors.append(
-            "When using enable_intel_hpc_platform = {0} it is required to use head node and compute instance "
-            "types and an AMI that support these architectures: {1}".format(param_value, allowed_architectures)
-        )
-
-    return errors, warnings
-
-
-def get_bucket_name_from_s3_url(import_path):
-    return import_path.split("/")[2]

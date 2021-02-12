@@ -57,14 +57,9 @@ from pcluster.config.update_policy import UpdatePolicy
 from pcluster.config.validators import (
     ec2_ami_validator,
     ec2_subnet_id_validator,
-    ec2_volume_validator,
     ec2_vpc_id_validator,
     head_node_instance_type_validator,
-    intel_hpc_architecture_validator,
-    intel_hpc_os_validator,
     kms_key_validator,
-    s3_bucket_uri_validator,
-    s3_bucket_validator,
     shared_dir_validator,
 )
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
@@ -312,7 +307,6 @@ EBS = {
         }),
         ("ebs_volume_id", {
             "cfn_param_mapping": "EBSVolumeId",
-            "validators": [ec2_volume_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("volume_throughput", {
@@ -444,11 +438,9 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("export_path", {
-                "validators": [s3_bucket_uri_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("import_path", {
-                "validators": [s3_bucket_uri_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("weekly_maintenance_start_time", {
@@ -817,7 +809,6 @@ CLUSTER_COMMON_PARAMS = [
         "default": False,
         "type": BoolCfnParam,
         "cfn_param_mapping": "IntelHPCPlatform",
-        "validators": [intel_hpc_os_validator, intel_hpc_architecture_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     # Settings
@@ -903,7 +894,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("cluster_resource_bucket", {
         "cfn_param_mapping": "ResourcesS3Bucket",
-        "validators": [s3_bucket_validator],
         "update_policy": UpdatePolicy.READ_ONLY_RESOURCE_BUCKET,
     }),
     ("iam_lambda_role", {

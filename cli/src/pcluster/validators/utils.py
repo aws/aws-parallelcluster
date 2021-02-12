@@ -8,20 +8,11 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-from typing import List
-
-import boto3
-from botocore.exceptions import ClientError
-
-from pcluster.validators.common import FailureLevel, Validator
+#
+# This module contains all the classes representing the Resources objects.
+# These objects are obtained from the configuration file through a conversion based on the Schema classes.
+#
 
 
-class SecurityGroupsValidator(Validator):
-    """SubnetId validator."""
-
-    def _validate(self, security_group_ids: List[str]):
-        for sg_id in security_group_ids:
-            try:
-                boto3.client("ec2").describe_security_groups(GroupIds=[sg_id])
-            except ClientError as e:
-                self._add_failure(e.response.get("Error").get("Message"), FailureLevel.ERROR)
+def get_bucket_name_from_s3_url(import_path):
+    return import_path.split("/")[2]
