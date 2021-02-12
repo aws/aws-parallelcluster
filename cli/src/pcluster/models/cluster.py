@@ -31,6 +31,8 @@ from pcluster.validators.cluster_validators import (
     EfsIdValidator,
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
+    IntelHpcArchitectureValidator,
+    IntelHpcOsValidator,
     NumberOfStorageValidator,
     QueueNameValidator,
     SimultaneousMultithreadingArchitectureValidator,
@@ -41,6 +43,7 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
+    SharedEBSVolumeIdValidator,
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
@@ -57,7 +60,7 @@ from pcluster.validators.fsx_validators import (
     FsxStorageTypeOptionsValidator,
 )
 from pcluster.validators.networking_validators import SecurityGroupsValidator
-from pcluster.validators.s3_validators import UrlValidator
+from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
 
 # ---------------------- Storage ---------------------- #
 
@@ -172,6 +175,9 @@ class SharedEbs(SharedStorage, Ebs):
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
 
+    def _register_validators(self):
+        self._add_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
+
 
 class SharedEfs(SharedStorage):
     """Represent the shared EFS resource."""
@@ -279,6 +285,11 @@ class SharedFsx(SharedStorage):
             backup_id=self.backup_id,
         )
         self._add_validator(FsxBackupIdValidator, backup_id=self.backup_id)
+
+        if self.import_path:
+            self._add_validator(S3BucketUriValidator, url=self.import_path)
+        if self.export_path:
+            self._add_validator(S3BucketUriValidator, url=self.export_path)
 
 
 # ---------------------- Networking ---------------------- #
@@ -717,6 +728,32 @@ class BaseCluster(Resource):
             simultaneous_multithreading=self.head_node.simultaneous_multithreading,
             architecture=self.head_node.architecture,
         )
+        self._register_storage_validators()
+
+        if self.head_node.dcv:
+            self._add_validator(
+                DcvValidator,
+                instance_type=self.head_node.instance_type,
+                dcv_enabled=self.head_node.dcv.enabled,
+                allowed_ips=self.head_node.dcv.allowed_ips,
+                port=self.head_node.dcv.port,
+                os=self.image.os,
+                architecture=self.head_node.architecture,
+            )
+        if (
+            self.additional_packages
+            and self.additional_packages.intel_select_solutions
+            and self.additional_packages.intel_select_solutions.install_intel_software
+        ):
+            self._add_validator(IntelHpcOsValidator, os=self.image.os)
+            self._add_validator(
+                IntelHpcArchitectureValidator,
+                architecture=self.head_node.architecture,
+            )
+        if self.cluster_s3_bucket:
+            self._add_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
+
+    def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
         if self.shared_storage:
             for storage in self.shared_storage:
@@ -751,17 +788,6 @@ class BaseCluster(Resource):
                 )
 
         self._add_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
-
-        if self.head_node.dcv:
-            self._add_validator(
-                DcvValidator,
-                instance_type=self.head_node.instance_type,
-                dcv_enabled=self.head_node.dcv.enabled,
-                allowed_ips=self.head_node.dcv.allowed_ips,
-                port=self.head_node.dcv.port,
-                os=self.image.os,
-                architecture=self.head_node.architecture,
-            )
 
     @property
     def region(self):

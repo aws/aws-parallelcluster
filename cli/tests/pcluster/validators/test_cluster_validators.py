@@ -26,6 +26,8 @@ from pcluster.validators.cluster_validators import (
     FsxArchitectureOsValidator,
     FsxNetworkingValidator,
     InstanceArchitectureCompatibilityValidator,
+    IntelHpcArchitectureValidator,
+    IntelHpcOsValidator,
     NumberOfStorageValidator,
     QueueNameValidator,
     SchedulerOsValidator,
@@ -699,6 +701,40 @@ def test_dcv_validator(dcv_enabled, os, instance_type, allowed_ips, port, expect
         os,
         "x86_64" if instance_type.startswith("t2") else "arm64",
     )
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "architecture, expected_message",
+    [
+        ("x86_64", []),
+        ("arm64", ["instance types and an AMI that support these architectures"]),
+        # TODO migrate the parametrizations below to unit test for the whole model
+        # (False, "x86_64", []),
+        # (False, "arm64", []),
+    ],
+)
+def test_intel_hpc_architecture_validator(architecture, expected_message):
+    actual_failures = IntelHpcArchitectureValidator().execute(architecture)
+    assert_failure_messages(actual_failures, expected_message)
+
+
+@pytest.mark.parametrize(
+    "os, expected_message",
+    [
+        ("centos7", None),
+        ("centos8", None),
+        ("alinux", "the operating system is required to be set"),
+        ("alinux2", "the operating system is required to be set"),
+        ("ubuntu1604", "the operating system is required to be set"),
+        ("ubuntu1804", "the operating system is required to be set"),
+        # TODO migrate the parametrization below to unit test for the whole model
+        # intel hpc disabled, you can use any os
+        # ({"enable_intel_hpc_platform": "false", "base_os": "alinux"}, None),
+    ],
+)
+def test_intel_hpc_os_validator(os, expected_message):
+    actual_failures = IntelHpcOsValidator().execute(os)
     assert_failure_messages(actual_failures, expected_message)
 
 

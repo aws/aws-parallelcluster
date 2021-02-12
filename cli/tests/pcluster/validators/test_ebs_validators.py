@@ -17,8 +17,15 @@ from pcluster.validators.ebs_validators import (
     EbsVolumeThroughputIopsValidator,
     EbsVolumeThroughputValidator,
     EbsVolumeTypeSizeValidator,
+    SharedEBSVolumeIdValidator,
 )
+from tests.common import MockedBoto3Request
 from tests.pcluster.validators.utils import assert_failure_messages
+
+
+@pytest.fixture()
+def boto3_stubber_path():
+    return "pcluster.validators.ebs_validators.boto3"
 
 
 @pytest.mark.parametrize(
@@ -221,3 +228,41 @@ def test_ebs_volume_size_snapshot_validator(
 def test_ebs_volume_kms_key_id_validator(kms_key_id, encrypted, expected_message):
     actual_failures = EBSVolumeKmsKeyIdValidator().execute(volume_kms_key_id=kms_key_id, volume_encrypted=encrypted)
     assert_failure_messages(actual_failures, expected_message)
+
+
+def test_ec2_volume_validator(boto3_stubber):
+    describe_volumes_response = {
+        "Volumes": [
+            {
+                "AvailabilityZone": "us-east-1a",
+                "Attachments": [
+                    {
+                        "AttachTime": "2013-12-18T22:35:00.000Z",
+                        "InstanceId": "i-1234567890abcdef0",
+                        "VolumeId": "vol-12345678",
+                        "State": "attached",
+                        "DeleteOnTermination": True,
+                        "Device": "/dev/sda1",
+                    }
+                ],
+                "Encrypted": False,
+                "VolumeType": "gp2",
+                "VolumeId": "vol-049df61146c4d7901",
+                "State": "available",  # TODO add test with "in-use"
+                "SnapshotId": "snap-1234567890abcdef0",
+                "CreateTime": "2013-12-18T22:35:00.084Z",
+                "Size": 8,
+            }
+        ]
+    }
+    mocked_requests = [
+        MockedBoto3Request(
+            method="describe_volumes",
+            response=describe_volumes_response,
+            expected_params={"VolumeIds": ["vol-12345678"]},
+        )
+    ]
+    boto3_stubber("ec2", mocked_requests)
+
+    actual_failures = SharedEBSVolumeIdValidator().execute(volume_id="vol-12345678")
+    assert_failure_messages(actual_failures, None)

@@ -551,6 +551,32 @@ class DcvValidator(Validator):
                 )
 
 
+class IntelHpcOsValidator(Validator):
+    """Intel HPC OS validator."""
+
+    def _validate(self, os: str):
+        allowed_oses = ["centos7", "centos8"]
+        if os not in allowed_oses:
+            self._add_failure(
+                "When enabling intel software, the operating system is required to be set "
+                "to one of the following values : {0}".format(allowed_oses),
+                FailureLevel.ERROR,
+            )
+
+
+class IntelHpcArchitectureValidator(Validator):
+    """Intel HPC architecture validator."""
+
+    def _validate(self, architecture: str):
+        allowed_architectures = ["x86_64"]
+        if architecture not in allowed_architectures:
+            self._add_failure(
+                "When enabling intel software, it is required to use head node and compute instance "
+                "types and an AMI that support these architectures: {0}".format(allowed_architectures),
+                FailureLevel.ERROR,
+            )
+
+
 # --------------- Other validators --------------- #
 
 

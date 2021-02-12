@@ -13,7 +13,7 @@ import functools
 from abc import ABC
 
 import boto3
-from botocore.exceptions import BotoCoreError, ClientError
+from botocore.exceptions import BotoCoreError, ClientError, ParamValidationError
 
 
 class AWSClientError(Exception):
@@ -37,6 +37,11 @@ class AWSExceptionHandler:
                 return func(*args, **kwargs)
             except (BotoCoreError, ClientError) as e:
                 raise AWSClientError(func.__name__, e.response["Error"]["Message"])
+            except ParamValidationError as validation_error:
+                raise AWSClientError(
+                    func.__name__,
+                    "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
+                )
 
         return wrapper
 

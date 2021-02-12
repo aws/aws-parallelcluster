@@ -3,9 +3,11 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import urlopen
 
+from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
 from common.boto3.s3 import S3Client
 from pcluster.validators.common import FailureLevel, Validator
+from pcluster.validators.utils import get_bucket_name_from_s3_url
 
 
 class UrlValidator(Validator):
@@ -51,9 +53,46 @@ class UrlValidator(Validator):
             match = re.match(r"s3://(.*?)/(.*)", url)
             if not match or len(match.groups()) < 2:
                 self._add_failure(f"s3 url '{url}' is invalid.", FailureLevel.ERROR)
-            bucket_name, object_name = match.group(1), match.group(2)
-            S3Client().head_object(bucket_name=bucket_name, object_name=object_name)
+            else:
+                bucket_name, object_name = match.group(1), match.group(2)
+                S3Client().head_object(bucket_name=bucket_name, object_name=object_name)
 
         except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
             self._add_failure(("The S3 object does not exist or you do not have access to it."), FailureLevel.ERROR)
+
+
+class S3BucketUriValidator(Validator):
+    """S3 Bucket Url Validator."""
+
+    def _validate(self, url):
+
+        if urlparse(url).scheme == "s3":
+            try:
+                bucket = get_bucket_name_from_s3_url(url)
+                S3Client().head_bucket(bucket_name=bucket)
+            except AWSClientError as e:
+                self._add_failure(str(e), FailureLevel.ERROR)
+        else:
+            self._add_failure(f"The value '{url}' is not a valid S3 URI.", FailureLevel.ERROR)
+
+
+class S3BucketValidator(Validator):
+    """S3 Bucket Validator."""
+
+    def _validate(self, bucket):
+
+        try:
+            AWSApi.instance().s3.head_bucket(bucket_name=bucket)
+            # Check versioning is enabled on the bucket
+            response = AWSApi.instance().s3.get_bucket_versioning(bucket_name=bucket)
+            if response.get("Status") != "Enabled":
+                self._add_failure(
+                    "The S3 bucket {0} specified cannot be used by cluster "
+                    "because versioning setting is: {1}, not 'Enabled'. Please enable bucket versioning.".format(
+                        bucket, response.get("Status")
+                    ),
+                    FailureLevel.ERROR,
+                )
+        except AWSClientError as e:
+            self._add_failure(str(e), FailureLevel.ERROR)
