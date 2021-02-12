@@ -15,11 +15,13 @@
 from enum import Enum
 from typing import List
 
+from common.aws.aws_api import AWSApi
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.utils import (
     error,
     get_availability_zone_of_subnet,
+    get_partition,
     get_region,
     get_supported_architectures_for_instance_type,
 )
@@ -851,6 +853,11 @@ class BaseCluster(Resource):
         return get_region()
 
     @property
+    def partition(self):
+        """Retrieve partition from environment."""
+        return get_partition()
+
+    @property
     def mount_dir_list(self):
         """Retrieve the list of mount dirs for the shared storage and head node ephemeral volume."""
         mount_dir_list = []
@@ -886,4 +893,42 @@ class BaseCluster(Resource):
                 if queue.networking.security_groups
                 for security_group in queue.networking.security_groups
             }
+        )
+
+    @property
+    def head_iam_role(self):
+        """Return the IAM role for head node, if set."""
+        role = None
+        if self.iam and self.iam.roles:
+            role = self.iam.roles.head_node
+        return role
+
+    @property
+    def compute_iam_role(self):
+        """Return the IAM role for compute nodes, if set."""
+        role = None
+        if self.iam and self.iam.roles:
+            role = self.iam.roles.compute_node
+        return role
+
+    @property
+    def artifacts_s3_root_directory(self):
+        """Return the root directory for artifacts in cluster's S3 bucket."""
+        # TODO: retrieve this information from cluster S3 bucket
+        return None
+
+    @property
+    def remove_s3_bucket_on_deletion(self):
+        """Tell if the cluster's S3 bucket must be removed at Stack deletion."""
+        # TODO: retrieve this information from cluster S3 bucket
+        return None
+
+    @property
+    def vpc_id(self):
+        """Return the VPC of the cluster."""
+        return (
+            AWSApi.instance()
+            .ec2.describe_subnets(SubnetIds=[self.head_node.networking.subnet_id])
+            .get("Subnets")[0]
+            .get("VpcId")
         )

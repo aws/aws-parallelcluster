@@ -14,3 +14,5 @@ aws-cdk.aws-iam
 aws-cdk.aws-ssm
 aws-cdk.aws-fsx
 aws-cdk.aws-efs
+aws-cdk.aws-sqs
+aws_cdk.aws_lambda

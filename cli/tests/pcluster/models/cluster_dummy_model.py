@@ -11,10 +11,13 @@
 from typing import List
 
 from pcluster.models.cluster import (
+    Dcv,
     HeadNode,
     HeadNodeNetworking,
+    Iam,
     Image,
     QueueNetworking,
+    S3Access,
     SharedEbs,
     SharedEfs,
     SharedFsx,
@@ -24,16 +27,45 @@ from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, Sl
 from pcluster.models.common import Resource
 
 
+class DummySlurmCluster(SlurmCluster):
+    def __init__(self, scheduling: SlurmScheduling, **kwargs):
+        super().__init__(scheduling, **kwargs)
+
+    @property
+    def region(self):
+        return "us-east-1"
+
+    @property
+    def partition(self):
+        return "aws"
+
+    @property
+    def artifacts_s3_root_directory(self):
+        return "dummy_root_dir"
+
+    @property
+    def remove_s3_bucket_on_deletion(self):
+        return True
+
+    @property
+    def vpc_id(self):
+        return "dummy_vpc_id"
+
+
 def dummy_head_node():
     """Generate dummy head node."""
     head_node_networking = HeadNodeNetworking(subnet_id="dummy-subnet-1")
+    head_node_networking.assign_public_ip = True
+    head_node_networking.additional_security_groups = ["additional-dummy-sg-1"]
+    head_node_dcv = Dcv(enabled=True, port=1024)
     ssh = Ssh(key_name="test")
-    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh)
+
+    return HeadNode(instance_type="fake", networking=head_node_networking, ssh=ssh, dcv=head_node_dcv)
 
 
 def dummy_cluster():
     """Generate dummy cluster."""
-    image = Image(os="fakeos")
+    image = Image(os="alinux2")
     head_node = dummy_head_node()
     compute_resources = [SlurmComputeResource(name="test", instance_type="test")]
     queue_networking1 = QueueNetworking(
@@ -42,9 +74,11 @@ def dummy_cluster():
     queue_networking2 = QueueNetworking(
         subnet_ids=["dummy-subnet-1", "dummy-subnet-2", "dummy-subnet-3"], security_groups=["sg-1", "sg-3"]
     )
+    queue_networking3 = QueueNetworking(subnet_ids=["dummy-subnet-1"], security_groups=None)
     queues = [
         SlurmQueue(name="testQueue1", networking=queue_networking1, compute_resources=compute_resources),
         SlurmQueue(name="testQueue2", networking=queue_networking2, compute_resources=compute_resources),
+        SlurmQueue(name="testQueue3", networking=queue_networking3, compute_resources=compute_resources),
     ]
     scheduling = SlurmScheduling(queues=queues)
     # shared storage
@@ -54,7 +88,18 @@ def dummy_cluster():
     shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))
     shared_storage.append(dummy_efs("/efs1"))
     shared_storage.append(dummy_efs("/efs2", file_system_id="fs-efs-1"))
-    return SlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
+
+    cluster = DummySlurmCluster(image=image, head_node=head_node, scheduling=scheduling, shared_storage=shared_storage)
+    cluster.cluster_s3_bucket = "s3://dummy-s3-bucket"
+    cluster.additional_resources = "https://additional.template.url"
+    cluster.iam = Iam(
+        s3_access=[
+            S3Access("dummy-readonly-bucket", type="READ_ONLY"),
+            S3Access("dummy-readwrite-bucket", type="READ_WRITE"),
+        ]
+    )
+
+    return cluster
 
 
 def dummy_fsx(file_system_id=None, mount_dir="/shared"):
