@@ -141,6 +141,7 @@ def ec2_subnet_id_validator(param_key, param_value, pcluster_config):
     return errors, warnings
 
 
+# FIXME moved
 def ec2_ami_validator(param_key, param_value, pcluster_config):
     errors = []
     warnings = []

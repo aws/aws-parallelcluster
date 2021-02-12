@@ -11,7 +11,7 @@
 
 # TODO move s3_factory.py and awsbatch/utils.py here
 
-from common.boto3.common import AWSExceptionHandler, Boto3Client
+from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
 
 
 class Ec2Client(Boto3Client):
@@ -29,15 +29,12 @@ class Ec2Client(Boto3Client):
         ]
 
     @AWSExceptionHandler.handle_client_exception
-    def describe_ami_id_offering(self, ami_id):
-        """Return a boolean to determine ami id is valid or not."""
-        return self._paginate_results(
-            self._client.describe_images(
-                ImageIds=[
-                    ami_id,
-                ]
-            )
-        )
+    def describe_image(self, ami_id):
+        """Return a dict of ami info."""
+        result = self._client.describe_images(ImageIds=[ami_id])
+        if result.get("Images"):
+            return result.get("Images")[0]
+        raise AWSClientError(function_name="describe_image", message=f"Image {ami_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_key_pair(self, key_name):

@@ -13,49 +13,49 @@ from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
     [
         (
             "imagebuilder_schema_required.yaml",
-            [
-                {
-                    "Architecture": "x86_64",
-                    "BlockDeviceMappings": [
-                        {
-                            "DeviceName": "/dev/xvda",
-                            "Ebs": {
-                                "DeleteOnTermination": True,
-                                "SnapshotId": "snap-0a20b6671bc5e3ead",
-                                "VolumeSize": 25,
-                                "VolumeType": "gp2",
-                                "Encrypted": False,
-                            },
-                        }
-                    ],
-                }
-            ],
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
         ),
         (
             "imagebuilder_schema_dev.yaml",
-            [
-                {
-                    "Architecture": "x86_64",
-                    "BlockDeviceMappings": [
-                        {
-                            "DeviceName": "/dev/xvda",
-                            "Ebs": {
-                                "DeleteOnTermination": True,
-                                "SnapshotId": "snap-0a20b6671bc5e3ead",
-                                "VolumeSize": 25,
-                                "VolumeType": "gp2",
-                                "Encrypted": False,
-                            },
-                        }
-                    ],
-                }
-            ],
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 25,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
         ),
     ],
 )
 def test_imagebuilder_schema(mocker, test_datadir, config_file_name, response):
-    mocker.patch("pcluster.utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.utils.get_info_for_amis", return_value=response)
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch(
+        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        return_value=response,
+    )
     # Load imagebuilder model from Yaml file
     input_yaml = load_yaml_dict(test_datadir / config_file_name)
     print(input_yaml)

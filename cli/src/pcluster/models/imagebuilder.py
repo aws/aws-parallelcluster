@@ -15,15 +15,16 @@
 
 from typing import List
 
+from common import imagebuilder_utils
+from common.boto3.common import AWSClientError
+from common.boto3.ec2 import Ec2Client
 from pcluster import utils
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
-from pcluster.validators.ec2_validators import (
-    BaseAMIValidator,
-    InstanceTypeBaseAMICompatibleValidator,
-    InstanceTypeValidator,
-)
+from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
+from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
 
+PCLUSTER_RESERVED_VOLUME_SIZE = 15
 # ---------------------- Image ---------------------- #
 
 
@@ -75,7 +76,7 @@ class Image(Resource):
 class Component(Resource):
     """Represent the components configuration for the ImageBuilder."""
 
-    def __init__(self, type: str = None, value: str = None):
+    def __init__(self, type: str, value: str):
         super().__init__()
         self.type = Resource.init_param(type)
         self.value = Resource.init_param(value)
@@ -105,13 +106,10 @@ class Build(Resource):
         self.components = components
 
     def _register_validators(self):
-        self._add_validator(BaseAMIValidator, priority=15, parent_image=self.parent_image)
-        self._add_validator(InstanceTypeValidator, priority=15, instance_type=self.instance_type)
         self._add_validator(
             InstanceTypeBaseAMICompatibleValidator,
-            priority=14,
             instance_type=self.instance_type,
-            parent_image=self.parent_image,
+            image=self.parent_image,
         )
 
 
@@ -158,19 +156,28 @@ class ImageBuilder(Resource):
         self._add_validator(
             EbsVolumeTypeSizeValidator, priority=10, volume_type="gp2", volume_size=self.image.root_volume.size
         )
+        self._add_validator(
+            AMIVolumeSizeValidator,
+            priority=9,
+            volume_size=self.image.root_volume.size,
+            image=self.build.parent_image,
+            pcluster_reserved_volume_size=PCLUSTER_RESERVED_VOLUME_SIZE,
+        )
 
     def _set_default(self):
         # set default root volume
         if self.image.root_volume is None or self.image.root_volume.size is None:
-            increase_volume_size = 15
-            ami_id = utils.get_ami_id(self.build.parent_image)
-            ami_info = utils.get_info_for_amis([ami_id])
-            default_root_volume_size = (
-                ami_info[0].get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + increase_volume_size
-            )
-            if self.image.root_volume is None:
-                default_root_volume = Volume(size=default_root_volume_size)
-                default_root_volume.implied = True
-                self.image.root_volume = default_root_volume
-            else:
-                self.image.root_volume.size = Resource.init_param(value=None, default=default_root_volume_size)
+            try:
+                ami_id = imagebuilder_utils.get_ami_id(self.build.parent_image)
+                ami_info = Ec2Client().describe_image(ami_id)
+                default_root_volume_size = (
+                    ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize") + PCLUSTER_RESERVED_VOLUME_SIZE
+                )
+                if self.image.root_volume is None:
+                    default_root_volume = Volume(size=default_root_volume_size)
+                    default_root_volume.implied = True
+                    self.image.root_volume = default_root_volume
+                else:
+                    self.image.root_volume.size = Resource.init_param(value=None, default=default_root_volume_size)
+            except AWSClientError:
+                self.image.root_volume = Volume(size=PCLUSTER_RESERVED_VOLUME_SIZE)
