@@ -5,11 +5,46 @@ schemaVersion: 1.0
 phases:
   - name: build
     steps:
-      - name: Exit
+      # Exit code for failures
+      - name: Fail
         action: ExecuteBash
         inputs:
           commands:
             - echo 1
+
+      # Get Cookbook name
+      - name: PClusterCookbookVersionName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              # TODO pass version from CFN and add check
+              PCLUSTER_COOKBOOK_VERSION=2.10.1
+              echo "aws-parallelcluster-cookbook-${!PCLUSTER_COOKBOOK_VERSION}"
+
+      # Get AWS domain
+      - name: AWSDomain
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              DOMAIN=".amazonaws.com"
+              [[ ${AWS::Region} =~ ^cn- ]] && DOMAIN=".amazonaws.com.cn"
+              echo {!DOMAIN}
+
+      # Get Cookbook URL
+      - name: CookbookUrl
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
+              [ -n "{COOKBOOK_CHEF_COOKBOOK}" ] && COOKBOOK_URL=${COOKBOOK_CHEF_COOKBOOK}
+              # TODO add checks
+              echo "${!COOKBOOK_URL}"
 
       # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
       - name: OperatingSystemRelease
@@ -17,13 +52,14 @@ phases:
         inputs:
           commands:
             - |
+              set -x
               FILE=/etc/os-release
               if [ -e ${!FILE} ]; then
                 . ${!FILE}
                 echo "${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               else
                 echo "The file '${!FILE}' does not exist. Failing build."
-                exit {{ build.Exit.outputs.stdout }}
+                exit {{ build.Fail.outputs.stdout }}
               fi
 
       # Get uniformed OS name
@@ -32,6 +68,7 @@ phases:
         inputs:
           commands:
             - |
+              set -x
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
@@ -48,7 +85,7 @@ phases:
                 OS='ubuntu1604'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
-                exit {{ build.Exit.outputs.stdout }}
+                exit {{ build.Fail.outputs.stdout }}
               fi
 
               echo ${!OS}
@@ -76,6 +113,7 @@ phases:
         inputs:
           commands:
             - |
+              set -x
               ARCH=$(uname -m)
               case ${!ARCH} in
                 'x86_64')
@@ -86,10 +124,11 @@ phases:
                   ;;
                 *)
                   echo "The '${!ARCH}' architecture is not supported. Failing build."
-                  exit {{ build.Exit.outputs.stdout }}
+                  exit {{ build.Fail.outputs.stdout }}
                   ;;
               esac
 
+      # Install prerequisite OS packages
       - name: OperationSystemPrerequisite
         action: ExecuteBash
         inputs:
@@ -114,6 +153,8 @@ phases:
                   apt-get update
               fi
 
+      # Install prerequisite OS packages
+      # TODO merge with OperationSystemPrerequisite
       - name: InstallDevelopmentAndJq
         action: ExecuteBash
         inputs:
@@ -133,33 +174,35 @@ phases:
                 apt-get -y install build-essential curl wget jq
               fi
 
+      # Download and vendor Cookbook
       - name: DownloadCookbook
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -x
-              CookbookVersion="aws-parallelcluster-cookbook-2.10.1"
-              cookbook_url=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/cookbooks/${!CookbookVersion}.tgz
-              echo "${!cookbook_url}"
+              # TODO move vars out in separate actions
               chef_version="15.11.8"
               berkshelf_version="7.0.10"
+
+              # TODO install cinc in separate action
+              # TODO add custom cinc url
               curl --retry 3 -L https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
               /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
 
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz ${!cookbook_url}
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date ${!cookbook_url}.date
-              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 ${!cookbook_url}.md5
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz {{ build.CookbookUrl.outputs.stdout }}
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date {{ build.CookbookUrl.outputs.stdout }}.date
+              curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.md5 {{ build.CookbookUrl.outputs.stdout }}.md5
 
               mkdir /tmp/cookbooks
               cd /tmp/cookbooks
               tar -xzf /etc/chef/aws-parallelcluster-cookbook.tgz
 
               export HOME="/tmp"
-              for d in `ls /tmp/cookbooks`; do
-                cd /tmp/cookbooks/$d
-                LANG=en_US.UTF-8 sudo /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete || (echo 'Vendoring cookbook failed.' && exit {{ build.Exit.outputs.stdout }})
+              for dir in $(ls /tmp/cookbooks); do
+                cd /tmp/cookbooks/${!dir}
+                LANG=en_US.UTF-8 sudo /opt/cinc/embedded/bin/berks vendor /etc/chef/cookbooks --delete || (echo 'Vendoring cookbook failed.' && exit {{ build.Fail.outputs.stdout }})
               done;
 
       - name: CreatingChefClientFile
@@ -196,7 +239,7 @@ phases:
               set -x
               chef-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /tmp/dna.json --override-runlist aws-parallelcluster::default
 
-      - name: Bootstrap
+      - name: InstallCfnBootstrap
         action: ExecuteBash
         inputs:
           commands:
@@ -223,21 +266,21 @@ phases:
                 fi
               fi
 
-              echo aws-parallelcluster-cookbook-2.10.1 | sudo tee /opt/parallelcluster/.bootstrapped
+      - name: CreateBootstrapFile
+        action: CreateFile
+        inputs:
+          - path: /opt/parallelcluster/.bootstrapped
+            content: |
+              {{ build.PClusterCookbookVersionName.outputs.stdout }}
+            overwrite: true
 
-              if [[ ${!OS} =~ ^centos[7-8]$ ]]; then
-                sed -i -e "s/\s*Defaults\s\s*requiretty//# Defaults  requiretty/" /etc/sudoers
-              fi
-
-      - name: CleanUp
+      - name: AmiCleanup
         action: ExecuteBash
         inputs:
           commands:
             - |
               set -x
               /usr/local/sbin/ami_cleanup.sh
-
-
 
   - name: validate
     steps:
@@ -246,4 +289,4 @@ phases:
         inputs:
           commands:
             - |
-              echo "I am validate"
+              echo "Check ParallelCluster software stack has been installed"
