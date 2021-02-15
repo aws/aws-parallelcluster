@@ -5,7 +5,7 @@ schemaVersion: 1.0
 phases:
   - name: build
     steps:
-      - name: Exit
+      - name: Fail
         action: ExecuteBash
         inputs:
           commands:
@@ -24,7 +24,7 @@ phases:
                 echo "${!ID}${!VERSION_ID:+.${!VERSION_ID}}"
               else
                 echo "The file '${!FILE}' does not exist. Failing build."
-                exit {{ build.Exit.outputs.stdout }}
+                exit {{ build.Fail.outputs.stdout }}
               fi
 
       # Get uniformed OS name
@@ -50,7 +50,7 @@ phases:
                 OS='ubuntu1604'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
-                exit {{ build.Exit.outputs.stdout }}
+                exit {{ build.Fail.outputs.stdout }}
               fi
 
               echo ${!OS}
@@ -82,7 +82,7 @@ phases:
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
               if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
-                exit {{ build.Exit.outputs.stdout }}
+                exit {{ build.Fail.outputs.stdout }}
               fi
 
               # This component only supports aarch64 CPUs on Amazon Linux 2, Ubuntu1804 and Centos8
@@ -90,7 +90,7 @@ phases:
               if [[ `echo ${!ARCH}` == 'aarch64' ]]; then
                 if [ `echo "${!RELEASE}" | grep -Ev '^(amzn\.2|centos\.8|ubuntu\.18\.04)'` ]; then
                   echo "This component does not support '${!RELEASE}' on ARM64 CPUs. Failing build."
-                  exit {{ build.Exit.outputs.stdout }}
+                  exit {{ build.Fail.outputs.stdout }}
                 fi
               fi
 
@@ -100,7 +100,6 @@ phases:
           commands:
             - |
               set -x
-
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
