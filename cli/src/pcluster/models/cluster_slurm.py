@@ -19,10 +19,9 @@ from pcluster.models.cluster import (
     BaseComputeResource,
     BaseQueue,
     CommonSchedulingSettings,
+    CustomAction,
     Efa,
-    QueueNetworking,
     Resource,
-    Storage,
 )
 from pcluster.validators.cluster_validators import (
     DuplicateInstanceTypeValidator,
@@ -41,6 +40,7 @@ class SlurmComputeResource(BaseComputeResource):
 
     def __init__(
         self,
+        name: str,
         instance_type: str,
         max_count: int = None,
         min_count: int = None,
@@ -49,7 +49,7 @@ class SlurmComputeResource(BaseComputeResource):
         simultaneous_multithreading: bool = None,
         efa: Efa = None,
     ):
-        super().__init__(allocation_strategy, simultaneous_multithreading)
+        super().__init__(name, allocation_strategy, simultaneous_multithreading)
         self.instance_type = Resource.init_param(instance_type)
         self.max_count = Resource.init_param(max_count, default=10)
         self.min_count = Resource.init_param(min_count, default=0)
@@ -71,15 +71,11 @@ class SlurmQueue(BaseQueue):
     """Represent the Slurm Queue resource."""
 
     def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        compute_resources: List[SlurmComputeResource],
-        storage: Storage = None,
-        compute_type: str = None,
+        self, compute_resources: List[SlurmComputeResource], custom_actions: List[CustomAction] = None, **kwargs
     ):
-        super().__init__(name, networking, storage, compute_type)
+        super().__init__(**kwargs)
         self.compute_resources = compute_resources
+        self.custom_actions = custom_actions
 
     def _register_validators(self):
         self._add_validator(
@@ -108,12 +104,22 @@ class SlurmQueue(BaseQueue):
         return [compute_resource.instance_type for compute_resource in self.compute_resources]
 
 
+class Dns(Resource):
+    """Represent the DNS settings."""
+
+    def __init__(self, disable_managed_dns: bool = None, domain: str = None, hosted_zone_id: str = None):
+        super().__init__()
+        self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
+        self.domain = Resource.init_param(domain)
+        self.hosted_zone_id = Resource.init_param(hosted_zone_id, default="AUTO")
+
+
 class SlurmSettings(CommonSchedulingSettings):
     """Represent the Slurm settings."""
 
-    def __init__(self, scaledown_idletime: int):
+    def __init__(self, scaledown_idletime: int, dns: Dns = None):
         super().__init__(scaledown_idletime)
-        # self.dns = dns
+        self.dns = dns
 
 
 class SlurmScheduling(Resource):

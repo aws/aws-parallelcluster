@@ -39,7 +39,7 @@ def _check_cluster_schema(test_datadir, config_file_name):
     print(output_yaml)
 
 
-@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.simple.yaml"])
+@pytest.mark.parametrize("config_file_name", ["slurm.required.yaml", "slurm.full.yaml"])
 def test_cluster_schema_slurm(test_datadir, config_file_name):
     _check_cluster_schema(test_datadir, config_file_name)
 
@@ -77,7 +77,7 @@ DUMMY_REQUIRED_QUEUE = [
     {
         "Name": "queue1",
         "Networking": {"SubnetIds": ["subnet-12345678"]},
-        "ComputeResources": [{"InstanceType": "c5.xlarge"}],
+        "ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}],
     }
 ]
 

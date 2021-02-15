@@ -28,8 +28,8 @@ from pcluster.validators.cluster_validators import (
     InstanceArchitectureCompatibilityValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    NameValidator,
     NumberOfStorageValidator,
-    QueueNameValidator,
     SchedulerOsValidator,
     SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
@@ -376,7 +376,7 @@ def test_instance_architecture_compatibility_validator(
     ],
 )
 def test_queue_name_validator(name, expected_message):
-    actual_failures = QueueNameValidator().execute(name)
+    actual_failures = NameValidator().execute(name)
     assert_failure_messages(actual_failures, expected_message)
 
 

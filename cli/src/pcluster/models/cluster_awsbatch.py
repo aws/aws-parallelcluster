@@ -36,6 +36,7 @@ class AwsbatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
+        name: str,
         instance_type: str,
         max_vcpus: int = None,
         min_vcpus: int = None,
@@ -44,12 +45,12 @@ class AwsbatchComputeResource(BaseComputeResource):
         allocation_strategy: str = None,
         simultaneous_multithreading: bool = None,
     ):
-        super().__init__(allocation_strategy, simultaneous_multithreading)
-        self.instance_type = instance_type
+        super().__init__(name, allocation_strategy, simultaneous_multithreading)
+        self.instance_type = Resource.init_param(instance_type)
         self.max_vcpus = Resource.init_param(max_vcpus, default=10)
         self.min_vcpus = Resource.init_param(min_vcpus, default=0)
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
-        self.spot_bid_percentage = spot_bid_percentage
+        self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
     def _register_validators(self):
         self._add_validator(

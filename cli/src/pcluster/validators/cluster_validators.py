@@ -24,8 +24,8 @@ from pcluster.utils import (
 )
 from pcluster.validators.common import FailureLevel, Validator
 
-QUEUE_NAME_MAX_LENGTH = 30
-QUEUE_NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
+NAME_MAX_LENGTH = 30
+NAME_REGEX = r"^[a-z][a-z0-9\-]*$"
 
 EFA_UNSUPPORTED_ARCHITECTURES_OSES = {
     "x86_64": [],
@@ -149,29 +149,29 @@ class InstanceArchitectureCompatibilityValidator(Validator):
             )
 
 
-class QueueNameValidator(Validator):
+class NameValidator(Validator):
     """Validate queue name length and format."""
 
     def _validate(self, name):
-        match = re.match(QUEUE_NAME_REGEX, name)
+        match = re.match(NAME_REGEX, name)
         if not match:
             self._add_failure(
                 (
-                    f"Invalid queue name '{name}'. "
-                    "Queue name must begin with a letter and only contain lowercase letters, digits and hyphens."
+                    f"Invalid name '{name}'. "
+                    "Name must begin with a letter and only contain lowercase letters, digits and hyphens."
                 ),
                 FailureLevel.ERROR,
             )
 
-        if len(name) > QUEUE_NAME_MAX_LENGTH:
+        if len(name) > NAME_MAX_LENGTH:
             self._add_failure(
-                f"Invalid queue name '{name}'. Queue name can be at most {QUEUE_NAME_MAX_LENGTH} chars long.",
+                f"Invalid name '{name}'. Name can be at most {NAME_MAX_LENGTH} chars long.",
                 FailureLevel.ERROR,
             )
 
         if re.match("^default$", name):
             self._add_failure(
-                f"It is forbidden to use '{name}' as a queue name.",
+                f"It is forbidden to use '{name}' as a name.",
                 FailureLevel.ERROR,
             )
 

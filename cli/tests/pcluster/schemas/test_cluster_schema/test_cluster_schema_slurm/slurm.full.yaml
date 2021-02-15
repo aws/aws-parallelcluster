@@ -1,156 +1,186 @@
 Image:
-  Os: String  # alinux2 | centos7 | centos8 | ubuntu1804
-  CustomAmi: String  # ami-xxx
+  Os: centos8
+  CustomAmi: ami-12345678
 HeadNode:
-  InstanceType: String  # t2.micro
+  InstanceType: t2.micro  # t2.micro
   Networking:
-    SubnetId: String  # subnet-xxx
+    SubnetId: subnet-12345678  # subnet-xxx
     ElasticIp: String  # true|false|EIP-id
-    AssignPublicIp: Boolean  # true|false
+    AssignPublicIp: True  # true|false
     SecurityGroups:
-      - String  # sg-xxxx
-      - sg-2
+      - sg-12345678
+      - sg-23456789
     AdditionalSecurityGroups:
-      - String  # sg-xxxx
-      - sg-3
+      - sg-34567890
+      - sg-45678901
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
-  SimultaneousMultithreading: Boolean  # true
+  SimultaneousMultithreading: true
+  Image:
+    Os: centos8
+    CustomAmi: ami-23456789
   Ssh:
-    KeyName: String  # ec2-key-name
-    AllowedIps: String  # 1.2.3.4/32
+    KeyName: ec2-key-name
+    AllowedIps: 1.2.3.4/32
   Storage:
     RootVolume:
-      Size: Integer  # 25
-      Encrypted: Boolean  # true
+      Size: 40
+      Encrypted: true
       KmsKeyId: String
-      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-      Iops: Integer
-      Throughput: integer
+      VolumeType: gp2
+      Iops: 100
+      Throughput: 150
     EphemeralVolume:
-      Encrypted: Boolean  # true
-      MountDir: String  # /scratch
+      Encrypted: true
+      MountDir: /test
   Dcv:
-    Enabled: Boolean  # true
-    Port: Integer  # 8443
-    AllowedIps: String  # 0.0.0.0/0
+    Enabled: true
+    Port: 8443
+    AllowedIps: 0.0.0.0/0
+  CustomActions:
+    - Script: s3://test/template.tgz  # s3:// | https:// | file://*
+      Args:
+        - String  # arg1
+        - stirng2
+      Event: NODE_START
+      RunAs: String
   Efa:
-    Enabled: Boolean  # false
-    GdrSupport: Boolean  # false
+    Enabled: false
+    GdrSupport: false
+  Iam:
+    Roles:
+      InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+      CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+    S3Access:
+      - BucketName: String
+        Type: READ_ONLY
+    AdditionalIamPolicies:
+      - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
 Scheduling:
   Slurm:
-    Settings: # These are scheduler specific settings and will be custom in case of byos
-      ScaledownIdletime: Integer
+    Settings:
+      ScaledownIdletime: 10
       Dns:
-        DisableManagedDns: Boolean  # false
-        Domain: String  # my.custom.domain
-        HostedZoneId: String  # Z23ABC4XYZL05B
+        DisableManagedDns: true
+        Domain: String
+        HostedZoneId: String
     Queues:
-      - Name: String  # queue
-        Storage:
-          RootVolume:
-            Size: Integer  # 25
-            Encrypted: Boolean  # true
-            KmsKeyId: String
-            VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-            Iops: Integer
-            Throughput: Integer
-          EphemeralVolume:
-            Encrypted: Boolean  # true
-            MountDir: String  # /scratch
-        ComputeType: String  # ONDEMAND | SPOT
-        Image:
-          CustomAmi: String  # ami-xxx
+      - Name: queue1
+        ComputeType: ONDEMAND
         Networking:
           SubnetIds:
-            - String
-            - subnet-2
-          AssignPublicIp: Boolean  # true|false
+            - subnet-12345678
+        ComputeResources:
+          - Name: compute_resource1
+            InstanceType: c5.xlarge
+          - Name: compute_resource2
+            InstanceType: c4.xlarge
+        Image:
+          Os: centos8
+          CustomAmi: ami-23456789
+        CustomActions:
+          - Script: s3://test/template.tgz  # s3:// | https:// | file://*
+            Args:
+              - String  # arg1
+              - stirng2
+            Event: NODE_START
+            RunAs: String
+        Iam:
+          Roles:
+            InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
+            CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
+          S3Access:
+            - BucketName: String
+              Type: READ_ONLY
+          AdditionalIamPolicies:
+            - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
+      - Name: queue2
+        Storage:
+          RootVolume:
+            Size:  25
+            Encrypted:  true
+            KmsKeyId: String
+            VolumeType: gp2
+            Iops: 100
+            Throughput: 100
+          EphemeralVolume:
+            Encrypted: true
+            MountDir: /scratch
+        Networking:
+          SubnetIds:
+            - subnet-12345678
+            - subnet-23456789
+          AssignPublicIp: true
           SecurityGroups:
-            - String  # sg-xxxx
+            - sg-12345678
           AdditionalSecurityGroups:
-            - String  # sg-xxxx
+            - sg-23456789
           PlacementGroup:
-            Enabled: Boolean  # true
+            Enabled: true
             Id: String
           Proxy:
             HttpProxyAddress: String  # https://proxy-address:port
-        ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
-          - InstanceType: String # comma separated list in case of batch/byos
-            MinCount: Integer  # 0
-            MaxCount: Integer
-            SpotPrice: Float
-            SimultaneousMultithreading: Boolean  # true
+        ComputeResources:
+          - Name: compute_resource_1
+            InstanceType: c4.2xlarge
+          - Name: compute_resource_2
+            InstanceType: c5.2xlarge
+            MinCount: 1
+            MaxCount: 15
+            SpotPrice: 1.1
+            SimultaneousMultithreading: false
             Efa:
-              Enabled: Boolean  # true
-              GdrSupport: Boolean  # false
-            AllocationStrategy*: String
-          - InstanceType: instance-2
-      - Name: queue2
-        Networking:
-          SubnetIds:
-            - subnet-xxx
-          ComputeResources:
-            - InstanceType: c5.xlarge
-            - InstanceType: c4.xlarge
+              Enabled: true
+              GdrSupport: false
+            AllocationStrategy: String
 SharedStorage:
-  - MountDir: /my/mount/point
-    EBS:
-      VolumeType: String  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
-      Iops: Integer
-      Size: Integer
-      Encrypted: Boolean
+  - MountDir: /my/mount/point1
+    Ebs:
+      VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
+      Iops: 100
+      Size: 150
+      Encrypted: True
       KmsKeyId: String
-      SnapshotId: snap-12345678  # snap-xxxx
-      VolumeId: vol-12345678  # ebs-xxxx
-      Raid:
-        Type: String  # 0|1
-        NumberOfVolumes: Integer  # [2-5]
+      SnapshotId: snap-12345678
+      VolumeId: vol-12345678
   - MountDir: /my/mount/point2
-    EFS:
-      Encrypted: Boolean  # true
-      KmsKeyId: String  # id-xxx
-      PerformanceMode: generalPurpose  # generalPurpose | maxIO
+    Efs:
       ThroughputMode: provisioned  # bursting | provisioned
-      ProvisionedThroughput: 12  # 1024
-      FileSystemId: fs-12345678  # fs-xxxx
+      ProvisionedThroughput: 1024
   - MountDir: /my/mount/point3
-    FSxLustre:
-      StorageCapacity: 20  # 3600
-      DeploymentType: String  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
-      ImportedFileChunkSize: Integer  # 1024
+    FsxLustre:
+      StorageCapacity: 3600
+      DeploymentType: PERSISTENT_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
+      ImportedFileChunkSize: 1024
       ExportPath: String  # s3://bucket/folder
       ImportPath: String  # s3://bucket
-      WeeklyMaintenanceStartTime: String  # 1:00:00
-      AutomaticBackupRetentionDays: Integer  # 0
-      CopyTagsToBackups: Boolean  # true
-      DailyAutomaticBackupStartTime: String  # 01:03
-      PerUnitStorageThroughput: Integer  # 200
-      BackupId: String  # backup-fedcba98
+      # WeeklyMaintenanceStartTime: 1:00:00
+      AutomaticBackupRetentionDays: 0
+      CopyTagsToBackups: true
+      DailyAutomaticBackupStartTime: 01:03
+      PerUnitStorageThroughput: 200
+      # BackupId: backup-fedcba98 # BackupId cannot coexist with some of the fields
       KmsKeyId: String  # xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-      FileSystemId: String  # fsx-xxxx
-      AutoImportPolicy: String  # NEW | NEW_CHANGED
-      DriveCacheType: String  # READ
-      StorageType: String  # HDD | SSD
-IAM:
+      # FileSystemId: fs-12345678123456789 # FileSystemId cannot coexist with some of the fields
+      AutoImportPolicy: NEW  # NEW | NEW_CHANGED
+      DriveCacheType: READ  # READ
+      StorageType: HDD  # HDD | SSD
+Iam:
   Roles:
-    HeadNode: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-    ComputeNode: String  # arn:aws:iam::aws:role/CustomComputeNodeRole
+    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
   S3Access:
     - BucketName: String
-      Type: String # READ_ONLY | READ_WRITE
-  AdditionalIAMPolicies:
+      Type: READ_ONLY
+  AdditionalIamPolicies:
     - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-      Scope: String  # HEAD | COMPUTE | CLUSTER
     - Policy: policy2
-      Scope: other
 Monitoring:
-  DetailedMonitoring: Boolean  # false
+  DetailedMonitoring: true  # false
   Logs:
     CloudWatch:
       Enabled: true  # true
-      RetentionInDays: Integer  # 14
+      RetentionInDays: 30  # 14
       LogGroupId: String
       KmsKeyId: String
   Dashboards:
@@ -158,16 +188,7 @@ Monitoring:
       Enabled: true  # true
 AdditionalPackages:
   IntelSelectSolutions:
-    InstallIntelSoftware: Boolean  # false
-CustomActions:
-  - Script: String  # s3:// | https:// | file://*
-    Args:
-      - String  # arg1
-      - stirng2
-    NodeType:
-      - String  # HEAD | COMPUTE
-    Event: String  # NODE_START | NODE_CONFIGURED
-    RunAs: String
+    InstallIntelSoftware: false
 Tags:
   - Key: String
     Value: String
@@ -176,9 +197,10 @@ Tags:
 ClusterS3Bucket: String
 AdditionalResources: String  # https://template.url
 DevSettings:
-  ClusterTemplate: String
+  ClusterTemplate: file:///tests/aws-parallelcluster-template-3.0.tgz
   Cookbook:
-    ChefCookbook: String
-    ExtraChefAttributes: Object
-  AWSBatchCLIPackage: String
-  NodePackage: String
+    ChefCookbook: file:///tests/aws-parallelcluster-cookbook-3.0.tgz
+    ExtraChefAttributes: |
+      {"cluster": {"cfn_scheduler_slots": "cores"}}
+  AwsBatchCliPackage: s3://test/aws-parallelcluster-batch-3.0.tgz
+  NodePackage: s3://test/aws-parallelcluster-node-3.0.tgz

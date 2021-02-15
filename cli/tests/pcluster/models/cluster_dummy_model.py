@@ -35,7 +35,7 @@ def dummy_cluster():
     """Generate dummy cluster."""
     image = Image(os="fakeos")
     head_node = dummy_head_node()
-    compute_resources = [SlurmComputeResource(instance_type="test")]
+    compute_resources = [SlurmComputeResource(name="test", instance_type="test")]
     queue_networking1 = QueueNetworking(
         subnet_ids=["dummy-subnet-1", "dummy-subnet-2"], security_groups=["sg-1", "sg-2"]
     )
