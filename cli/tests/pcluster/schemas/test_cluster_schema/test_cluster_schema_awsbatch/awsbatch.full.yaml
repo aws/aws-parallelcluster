@@ -16,6 +16,12 @@ HeadNode:
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
   SimultaneousMultithreading: false
+  CustomActions:
+    - Script: https://test.tgz  # s3:// | https:// | file://*
+      Args:
+        - String  # arg1
+        - stirng2
+      Event: NODE_START  # NODE_START | NODE_CONFIGURED
   Ssh:
     KeyName: String  # ec2-key-name
     AllowedIps: 1.2.3.4/32  # 1.2.3.4/32
@@ -65,7 +71,8 @@ Scheduling:
           Proxy:
             HttpProxyAddress: String  # https://proxy-address:port
         ComputeResources:  # this maps to a Batch compute environment (initially we support only 1)
-          - InstanceType: optimal,c4.xlarge,c5.large
+          - Name: compute_resource
+            InstanceType: optimal,c4.xlarge,c5.large
             MinvCpus: 0  # 0
             DesiredvCpus: 10
             MaxvCpus: 20
@@ -74,7 +81,7 @@ Scheduling:
             #AllocationStrategy: String
 SharedStorage:
   - MountDir: /my/mount/point
-    EBS:
+    Ebs:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 10
       Size: 20
@@ -86,7 +93,7 @@ SharedStorage:
         Type: 0  # 0|1
         NumberOfVolumes: 2  # [2-5]
   - MountDir: /my/mount/point2
-    EFS:
+    Efs:
       Encrypted: true  # true
       KmsKeyId: String  # id-xxx
       PerformanceMode: maxIO  # generalPurpose | maxIO
@@ -94,7 +101,7 @@ SharedStorage:
       ProvisionedThroughput: 1024  # 1024
       FileSystemId: fs-12345678  # fs-xxxx
   - MountDir: /my/mount/point3
-    FSxLustre:
+    FsxLustre:
       StorageCapacity: 3600  # 3600
       DeploymentType: SCRATCH_1  # PERSISTENT_1 | SCRATCH_1 | SCRATCH_2
       ImportedFileChunkSize: 10  # 1024
@@ -111,19 +118,16 @@ SharedStorage:
       AutoImportPolicy: NEW_CHANGED  # NEW | NEW_CHANGED
       DriveCacheType: READ  # READ
       StorageType: HDD  # HDD | SSD
-IAM:
+Iam:
   Roles:
-    HeadNode: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
-    ComputeNode: String  # arn:aws:iam::aws:role/CustomComputeNodeRole
+    InstanceRole: String  # arn:aws:iam::aws:role/CustomHeadNodeRole
     CustomLambdaResources: String  # arn:aws:iam::aws:role/CustomResourcesLambdaRole
   S3Access:
     - BucketName: String
       Type: READ_WRITE # READ_ONLY | READ_WRITE
-  AdditionalIAMPolicies:
+  AdditionalIamPolicies:
     - Policy: String  # arn:aws:iam::aws:policy/AdministratorAccess
-      Scope: COMPUTE  # HEAD | COMPUTE | CLUSTER
     - Policy: policy2
-      Scope: other
 Monitoring:
   DetailedMonitoring: true  # false
   Logs:
@@ -138,12 +142,6 @@ Monitoring:
 #AdditionalPackages:
 #  IntelSelectSolutions:
 #    InstallIntelSoftware: true  # false
-CustomActions:
-  - Script: https://test.tgz  # s3:// | https:// | file://*
-    Args:
-      - String  # arg1
-      - stirng2
-    Event: NODE_START  # NODE_START | NODE_CONFIGURED
 #ClusterS3ResourceBucket: String
 Tags:
   - Key: String

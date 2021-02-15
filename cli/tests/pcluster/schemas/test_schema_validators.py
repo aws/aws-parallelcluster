@@ -154,8 +154,16 @@ def test_awsbatch_compute_resource_validator(section_dict, expected_message):
     "section_dict, expected_message",
     [
         ({"ComputeResources": []}, "Length must be 1"),
-        ({"ComputeResources": [{"InstanceType": "c5.xlarge"}]}, None),
-        ({"ComputeResources": [{"InstanceType": "c5.xlarge"}, {"InstanceType": "c4.xlarge"}]}, "Length must be 1"),
+        ({"ComputeResources": [{"Name": "compute_resource1", "InstanceType": "c5.xlarge"}]}, None),
+        (
+            {
+                "ComputeResources": [
+                    {"Name": "compute_resource1", "InstanceType": "c5.xlarge"},
+                    {"Name": "compute_resource1", "InstanceType": "c4.xlarge"},
+                ]
+            },
+            "Length must be 1",
+        ),
     ],
 )
 def test_awsbatch_queue_validator(section_dict, expected_message):

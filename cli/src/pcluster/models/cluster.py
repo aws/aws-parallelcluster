@@ -33,8 +33,8 @@ from pcluster.validators.cluster_validators import (
     FsxNetworkingValidator,
     IntelHpcArchitectureValidator,
     IntelHpcOsValidator,
+    NameValidator,
     NumberOfStorageValidator,
-    QueueNameValidator,
     SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
 )
@@ -133,7 +133,7 @@ class Storage(Resource):
 
     def __init__(self, root_volume: Ebs = None, ephemeral_volume: EphemeralVolume = None):
         super().__init__()
-        self.root_volume = Resource.init_param(root_volume)
+        self.root_volume = root_volume
         self.ephemeral_volume = ephemeral_volume
 
 
@@ -390,112 +390,6 @@ class Efa(Resource):
         self.gdr_support = Resource.init_param(gdr_support, default=False)
 
 
-# ---------------------- Nodes ---------------------- #
-
-
-class Image(Resource):
-    """Represent the configuration of an Image."""
-
-    def __init__(self, os: str, custom_ami: str = None):
-        super().__init__()
-        self.os = Resource.init_param(os)
-        self.custom_ami = Resource.init_param(custom_ami)
-
-
-class HeadNode(Resource):
-    """Represent the Head Node resource."""
-
-    def __init__(
-        self,
-        instance_type: str,
-        networking: HeadNodeNetworking,
-        ssh: Ssh,
-        simultaneous_multithreading: bool = None,
-        storage: Storage = None,
-        dcv: Dcv = None,
-        efa: Efa = None,
-    ):
-        super().__init__()
-        self.instance_type = Resource.init_param(instance_type)
-        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
-        self.networking = networking
-        self.ssh = ssh
-        self.storage = storage
-        self.dcv = dcv
-        self.efa = efa
-
-    def _register_validators(self):
-        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
-
-    @property
-    def architecture(self):
-        """Compute cluster's architecture based on its head node instance type."""
-        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
-        if not supported_architectures:
-            error(f"Unable to get architectures supported by instance type {self.instance_type}")
-        # If the instance type supports multiple architectures, choose the first one.
-        # TODO: this is currently not an issue because none of the instance types we support more than one of the
-        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
-        #       probably need to choose based on the subset of the architectures supported by both the head node and
-        #       compute instance types.
-        return supported_architectures[0]
-
-
-class BaseComputeResource(Resource):
-    """Represent the base Compute Resource, with the fields in common between all the schedulers."""
-
-    def __init__(
-        self,
-        allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
-    ):
-        super().__init__()
-        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
-        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
-
-
-class BaseQueue(Resource):
-    """Represent the generic Queue resource."""
-
-    def __init__(
-        self,
-        name: str,
-        networking: QueueNetworking,
-        storage: Storage = None,
-        compute_type: str = None,
-    ):
-        super().__init__()
-        self.name = Resource.init_param(name)
-        self.networking = networking
-        self.storage = storage
-        self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
-
-    def _register_validators(self):
-        self._add_validator(QueueNameValidator, name=self.name)
-
-
-class CommonSchedulingSettings(Resource):
-    """Represent the common scheduler settings."""
-
-    def __init__(self, scaledown_idletime: int):
-        super().__init__()
-        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
-
-
-class CustomAction(Resource):
-    """Represent a custom action resource."""
-
-    def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
-        super().__init__()
-        self.script = Resource.init_param(script)
-        self.args = args
-        self.event = Resource.init_param(event)
-        self.run_as = Resource.init_param(run_as)
-
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.script)
-
-
 # ---------------------- Monitoring ---------------------- #
 
 
@@ -586,13 +480,11 @@ class Roles(Resource):
 
     def __init__(
         self,
-        head_node: str = None,
-        compute_node: str = None,
+        instance_role: str = None,
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        self.head_node = Resource.init_param(head_node, default="AUTO")
-        self.compute_node = Resource.init_param(compute_node, default="AUTO")
+        self.instance_role = Resource.init_param(instance_role, default="AUTO")
         self.custom_lambda_resources = Resource.init_param(custom_lambda_resources, default="AUTO")
 
 
@@ -615,11 +507,9 @@ class AdditionalIamPolicy(Resource):
     def __init__(
         self,
         policy: str,
-        scope: str = None,
     ):
         super().__init__()
         self.policy = Resource.init_param(policy)
-        self.scope = Resource.init_param(scope, default="CLUSTER")
 
     def _register_validators(self):
         self._add_validator(AdditionalIamPolicyValidator, policy=self.policy)
@@ -674,7 +564,125 @@ class ClusterDevSettings(BaseDevSettings):
         self._add_validator(UrlValidator, url=self.cluster_template)
 
 
-# ---------------------- Root resource ---------------------- #
+# ---------------------- Nodes and Cluster ---------------------- #
+
+
+class Image(Resource):
+    """Represent the configuration of an Image."""
+
+    def __init__(self, os: str, custom_ami: str = None):
+        super().__init__()
+        self.os = Resource.init_param(os)
+        self.custom_ami = Resource.init_param(custom_ami)
+
+
+class CustomAction(Resource):
+    """Represent a custom action resource."""
+
+    def __init__(self, script: str, args: List[str] = None, event: str = None, run_as: str = None):
+        super().__init__()
+        self.script = Resource.init_param(script)
+        self.args = Resource.init_param(args)
+        self.event = Resource.init_param(event)
+        self.run_as = Resource.init_param(run_as)
+
+    def _register_validators(self):
+        self._add_validator(UrlValidator, url=self.script)
+
+
+class HeadNode(Resource):
+    """Represent the Head Node resource."""
+
+    def __init__(
+        self,
+        instance_type: str,
+        networking: HeadNodeNetworking,
+        ssh: Ssh,
+        image: Image = None,
+        simultaneous_multithreading: bool = None,
+        storage: Storage = None,
+        dcv: Dcv = None,
+        efa: Efa = None,
+        custom_actions: List[CustomAction] = None,
+        iam: Iam = None,
+    ):
+        super().__init__()
+        self.instance_type = Resource.init_param(instance_type)
+        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
+        self.networking = networking
+        self.ssh = ssh
+        self.image = image
+        self.storage = storage
+        self.dcv = dcv
+        self.efa = efa
+        self.custom_actions = custom_actions
+        self.iam = iam
+
+    def _register_validators(self):
+        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
+
+    @property
+    def architecture(self):
+        """Compute cluster's architecture based on its head node instance type."""
+        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
+        if not supported_architectures:
+            error(f"Unable to get architectures supported by instance type {self.instance_type}")
+        # If the instance type supports multiple architectures, choose the first one.
+        # TODO: this is currently not an issue because none of the instance types we support more than one of the
+        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
+        #       probably need to choose based on the subset of the architectures supported by both the head node and
+        #       compute instance types.
+        return supported_architectures[0]
+
+
+class BaseComputeResource(Resource):
+    """Represent the base Compute Resource, with the fields in common between all the schedulers."""
+
+    def __init__(
+        self,
+        name: str,
+        allocation_strategy: str = None,
+        simultaneous_multithreading: bool = None,
+    ):
+        super().__init__()
+        self.name = Resource.init_param(name)
+        self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
+        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
+
+    def _register_validators(self):
+        self._add_validator(NameValidator, name=self.name)
+
+
+class BaseQueue(Resource):
+    """Represent the generic Queue resource."""
+
+    def __init__(
+        self,
+        name: str,
+        networking: QueueNetworking,
+        storage: Storage = None,
+        compute_type: str = None,
+        image: Image = None,
+        iam: Iam = None,
+    ):
+        super().__init__()
+        self.name = Resource.init_param(name)
+        self.networking = networking
+        self.storage = storage
+        self.compute_type = Resource.init_param(compute_type, default="ONDEMAND")
+        self.image = image
+        self.iam = iam
+
+    def _register_validators(self):
+        self._add_validator(NameValidator, name=self.name)
+
+
+class CommonSchedulingSettings(Resource):
+    """Represent the common scheduler settings."""
+
+    def __init__(self, scaledown_idletime: int):
+        super().__init__()
+        self.scaledown_idletime = Resource.init_param(scaledown_idletime)
 
 
 class BaseCluster(Resource):
@@ -689,7 +697,6 @@ class BaseCluster(Resource):
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
         iam: Iam = None,
-        custom_actions: CustomAction = None,
         cluster_s3_bucket: str = None,
         additional_resources: str = None,
         dev_settings: ClusterDevSettings = None,
@@ -702,9 +709,8 @@ class BaseCluster(Resource):
         self.additional_packages = additional_packages
         self.tags = tags
         self.iam = iam
-        self.custom_actions = custom_actions
-        self.cluster_s3_bucket = cluster_s3_bucket
-        self.additional_resources = additional_resources
+        self.cluster_s3_bucket = Resource.init_param(cluster_s3_bucket)
+        self.additional_resources = Resource.init_param(additional_resources)
         self.dev_settings = dev_settings
 
     def _register_validators(self):

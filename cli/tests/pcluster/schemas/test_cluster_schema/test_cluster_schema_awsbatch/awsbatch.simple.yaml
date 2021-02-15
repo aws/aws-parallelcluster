@@ -15,11 +15,12 @@ Scheduling:
             - subnet-12345678
             - subnet-23456789
         ComputeResources:
-          - InstanceType: c4.xlarge,c5.large|optimal|c5,c4
+          - Name: compute_resource1
+            InstanceType: c4.xlarge,c5.large|optimal|c5,c4
             MaxvCpus: 10
 SharedStorage:
   - MountDir: /shared
-    EBS:
+    Ebs:
       VolumeType: gp2  # gp2 | gp3 | io1 | io2 | sc1 | st1 | standard
       Iops: 100
       Size: 150
