@@ -92,7 +92,15 @@ class RemoteCommandExecutor:
         return result
 
     def run_remote_script(
-        self, script_file, args=None, log_error=True, additional_files=None, hide=False, timeout=None, run_as_root=False
+        self,
+        script_file,
+        args=None,
+        log_error=True,
+        additional_files=None,
+        hide=False,
+        timeout=None,
+        run_as_root=False,
+        login_shell=True,
     ):
         """
         Execute a script remotely on the cluster head node.
@@ -104,28 +112,24 @@ class RemoteCommandExecutor:
         :param additional_files: list of additional files (full path) to copy before executing script.
         :param hide: do not print command output to the local stdout
         :param timeout: interrupt connection after N seconds, default of None = no timeout
+        :param run_as_root: boolean; if True 'sudo' is prepended to the command used to run the script
+        :login_shell: boolean; passed to run_remote_command
         :return: result of the execution.
         """
         script_name = os.path.basename(script_file)
         self.__connection.put(script_file, script_name)
         if not args:
             args = []
-        return (
-            self.run_remote_command(
-                ["sudo", "/bin/bash", script_name] + args,
-                log_error=log_error,
-                additional_files=additional_files,
-                hide=hide,
-                timeout=timeout,
-            )
-            if run_as_root
-            else self.run_remote_command(
-                ["/bin/bash", "--login", script_name] + args,
-                log_error=log_error,
-                additional_files=additional_files,
-                hide=hide,
-                timeout=timeout,
-            )
+        cmd = ["/bin/bash", script_name] + args
+        if run_as_root:
+            cmd.insert(0, "sudo")
+        return self.run_remote_command(
+            cmd,
+            log_error=log_error,
+            additional_files=additional_files,
+            hide=hide,
+            timeout=timeout,
+            login_shell=login_shell,
         )
 
     def _copy_additional_files(self, files):

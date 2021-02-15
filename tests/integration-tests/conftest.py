@@ -595,7 +595,7 @@ def vpc_stacks(cfn_stacks_factory, request):
                 availability_zones = random.sample(az_list, k=2)
 
         # Subnets visual representation:
-        # https://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=9.720
+        # http://www.davidc.net/sites/default/subnets/subnets.html?network=192.168.0.0&mask=16&division=7.70
         public_subnet = SubnetConfig(
             name="Public",
             cidr="192.168.32.0/19",  # 8190 IPs
@@ -606,13 +606,12 @@ def vpc_stacks(cfn_stacks_factory, request):
         )
         private_subnet = SubnetConfig(
             name="Private",
-            cidr="192.168.64.0/19",  # 8190 IPs
+            cidr="192.168.64.0/18",  # 16382 IPs
             map_public_ip_on_launch=False,
             has_nat_gateway=False,
             availability_zone=availability_zones[0],
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        # cidr="192.168.96.0/19" used by test_networking
         private_subnet_different_cidr = SubnetConfig(
             name="PrivateAdditionalCidr",
             cidr="192.168.128.0/17",  # 32766 IPs
@@ -621,18 +620,10 @@ def vpc_stacks(cfn_stacks_factory, request):
             availability_zone=availability_zones[1],
             default_gateway=Gateways.NAT_GATEWAY,
         )
-        no_internet_subnet = SubnetConfig(
-            name="NoInternet",
-            cidr="192.168.0.0/19",  # 8190 IPs
-            map_public_ip_on_launch=False,
-            has_nat_gateway=False,
-            availability_zone=availability_zones[0],
-            default_gateway=Gateways.NONE,
-        )
         vpc_config = VPCConfig(
             cidr="192.168.0.0/17",
             additional_cidr_blocks=["192.168.128.0/17"],
-            subnets=[public_subnet, private_subnet, private_subnet_different_cidr, no_internet_subnet],
+            subnets=[public_subnet, private_subnet, private_subnet_different_cidr],
         )
         template = NetworkTemplateBuilder(vpc_configuration=vpc_config, availability_zone=availability_zones[0]).build()
         vpc_stacks[region] = _create_vpc_stack(request, template, region, cfn_stacks_factory)
