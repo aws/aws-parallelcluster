@@ -9,10 +9,7 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from pcluster.models.common import BaseTag, Cookbook
-from pcluster.models.imagebuilder import Build, Component
-from pcluster.models.imagebuilder import Image
-from pcluster.models.imagebuilder import Image as ImageBuilderImage
-from pcluster.models.imagebuilder import ImageBuilder, ImagebuilderDevSettings, Volume
+from pcluster.models.imagebuilder import Build, Component, Image, ImageBuilder, ImagebuilderDevSettings, Volume
 
 CLASS_DICT = {
     "imagebuilder": ImageBuilder,
@@ -28,7 +25,7 @@ CLASS_DICT = {
 
 def dummy_imagebuilder(is_official_ami_build):
     """Generate dummy imagebuilder configuration."""
-    image = ImageBuilderImage(name="Pcluster")
+    image = Image(name="Pcluster")
     if is_official_ami_build:
         build = Build(
             instance_type="c5.xlarge", parent_image="arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x"

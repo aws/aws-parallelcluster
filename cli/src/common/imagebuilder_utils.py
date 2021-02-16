@@ -8,7 +8,13 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
+from enum import Enum
+
 from common.aws.aws_api import AWSApi
+
+ROOT_VOLUME_TYPE = "gp2"
+PCLUSTER_RESERVED_VOLUME_SIZE = 15
+InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE", "DEFAULT"))
 
 
 def get_ami_id(parent_image):

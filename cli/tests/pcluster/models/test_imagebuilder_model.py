@@ -55,8 +55,8 @@ from tests.pcluster.models.test_cluster_model import _assert_validation_result
             None,
             [
                 "Kms Key Id key_id is specified, the encrypted state must be True.",
-                "Root volume size 25 GB is less than the minimum required size 65 GB that equals "
-                "base ami 50 GB plus size 15 GB to allow PCluster software stack installation.",
+                "Root volume size 25 GB is less than the minimum required size 50 GB that equals parent ami"
+                " volume size.",
             ],
             [FailureLevel.ERROR, FailureLevel.ERROR],
         )

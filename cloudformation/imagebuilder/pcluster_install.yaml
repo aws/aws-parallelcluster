@@ -244,18 +244,7 @@ phases:
         action: CreateFile
         inputs:
           - path: /tmp/dna.json
-            content: |
-              {
-                "cfncluster" : {
-                  "cfn_region": "${AWS::Region}",
-                  "nvidia" : {
-                    "enabled" : "${EnableNvidia}"
-                  },
-                  "is_official_ami_build": "${UpdateAndReboot}",
-                  "custom_node_package" : "${CustomNodePackage}",
-                  "cfn_base_os" : "{{ build.OperatingSystemName.outputs.stdout }}"
-                }
-              }
+            content: ${CfnParamDnaJson}
             overwrite: true
 
       - name: InstallPClusterPackages

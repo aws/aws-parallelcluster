@@ -62,8 +62,7 @@ from tests.pcluster.validators.utils import assert_failure_messages
         (
             "ami-0185634c5a8a37250",
             25,
-            "Root volume size 25 GB is less than the minimum required size 65 GB that equals base ami 50 GB plus "
-            "size 15 GB to allow PCluster software stack installation.",
+            "Root volume size 25 GB is less than the minimum required size 50 GB that equals parent ami volume size.",
             {
                 "Architecture": "x86_64",
                 "BlockDeviceMappings": [
@@ -80,27 +79,6 @@ from tests.pcluster.validators.utils import assert_failure_messages
                 ],
             },
         ),
-        (
-            "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
-            15,
-            "Root volume size 15 GB is less than the minimum required size 23 GB that equals base ami "
-            "8 GB plus size 15 GB to allow PCluster software stack installation.",
-            {
-                "Architecture": "x86_64",
-                "BlockDeviceMappings": [
-                    {
-                        "DeviceName": "/dev/xvda",
-                        "Ebs": {
-                            "DeleteOnTermination": True,
-                            "SnapshotId": "snap-0a20b6671bc5e3ead",
-                            "VolumeSize": 8,
-                            "VolumeType": "gp2",
-                            "Encrypted": False,
-                        },
-                    }
-                ],
-            },
-        ),
     ],
 )
 def test_ami_volume_size_validator(mocker, image, volume_size, expected_message, ami_response):
@@ -110,5 +88,5 @@ def test_ami_volume_size_validator(mocker, image, volume_size, expected_message,
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
     )
-    actual_failures = AMIVolumeSizeValidator().execute(volume_size, image, pcluster_reserved_volume_size=15)
+    actual_failures = AMIVolumeSizeValidator().execute(volume_size, image)
     assert_failure_messages(actual_failures, expected_message)
