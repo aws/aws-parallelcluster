@@ -10,7 +10,7 @@
 # limitations under the License.
 
 from common import imagebuilder_utils
-from common.boto3.ec2 import Ec2Client
+from common.aws.aws_api import AWSApi
 from pcluster.validators.common import FailureLevel, Validator
 
 
@@ -20,7 +20,7 @@ class AMIVolumeSizeValidator(Validator):
     def _validate(self, volume_size: int, image: str, pcluster_reserved_volume_size: int):
         """Validate the volume size is larger than base ami volume size."""
         ami_id = imagebuilder_utils.get_ami_id(image)
-        ami_info = Ec2Client().describe_image(ami_id)
+        ami_info = AWSApi.instance().ec2.describe_image(ami_id)
         base_ami_volume_size = ami_info.get("BlockDeviceMappings")[0].get("Ebs").get("VolumeSize")
         min_volume_size = base_ami_volume_size + pcluster_reserved_volume_size
         if volume_size < min_volume_size:

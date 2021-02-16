@@ -6,6 +6,7 @@ from assertpy import assert_that
 
 from common.utils import load_yaml_dict
 from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 
 
 @pytest.mark.parametrize(
@@ -50,10 +51,10 @@ from pcluster.schemas.imagebuilder_schema import ImageBuilderSchema
     ],
 )
 def test_imagebuilder_schema(mocker, test_datadir, config_file_name, response):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
     # Load imagebuilder model from Yaml file

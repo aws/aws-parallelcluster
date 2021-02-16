@@ -12,6 +12,7 @@
 import pytest
 
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -104,9 +105,9 @@ from tests.pcluster.validators.utils import assert_failure_messages
 )
 def test_ami_volume_size_validator(mocker, image, volume_size, expected_message, ami_response):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.imagebuilder_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch(
-        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
     )
     actual_failures = AMIVolumeSizeValidator().execute(volume_size, image, pcluster_reserved_volume_size=15)

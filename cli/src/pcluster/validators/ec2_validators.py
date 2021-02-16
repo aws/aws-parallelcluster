@@ -9,8 +9,8 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 from common import imagebuilder_utils
+from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
-from common.boto3.ec2 import Ec2Client
 from common.boto3.iam import IamClient
 from pcluster import utils
 from pcluster.utils import policy_name_to_arn
@@ -25,7 +25,7 @@ class InstanceTypeValidator(Validator):
     """
 
     def _validate(self, instance_type: str):
-        if instance_type not in Ec2Client().describe_instance_type_offerings():
+        if instance_type not in AWSApi.instance().ec2.describe_instance_type_offerings():
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
@@ -53,14 +53,14 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
     def _validate_base_ami(self, image: str):
         try:
             ami_id = imagebuilder_utils.get_ami_id(image)
-            ami_info = Ec2Client().describe_image(ami_id=ami_id)
+            ami_info = AWSApi.instance().ec2.describe_image(ami_id=ami_id)
             return ami_id, ami_info
         except AWSClientError:
             self._add_failure(f"Invalid image '{image}'.", FailureLevel.ERROR)
             return None, None
 
     def _validate_instance_type(self, instance_type: str):
-        if instance_type not in Ec2Client().describe_instance_type_offerings():
+        if instance_type not in AWSApi.instance().ec2.describe_instance_type_offerings():
             self._add_failure(
                 f"The instance type '{instance_type}' is not supported.",
                 FailureLevel.ERROR,
@@ -97,7 +97,7 @@ class KeyPairValidator(Validator):  # TODO add test
 
     def _validate(self, key_name: str):
         try:
-            Ec2Client().describe_key_pair(key_name)
+            AWSApi.instance().ec2.describe_key_pair(key_name)
         except AWSClientError as e:
             self._add_failure(str(e), FailureLevel.ERROR)
 
@@ -108,6 +108,6 @@ class PlacementGroupIdValidator(Validator):  # TODO: add tests
     def _validate(self, placement_group_id: str):
         if placement_group_id:
             try:
-                Ec2Client().describe_placement_group(placement_group_id)
+                AWSApi.instance().ec2.describe_placement_group(placement_group_id)
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)

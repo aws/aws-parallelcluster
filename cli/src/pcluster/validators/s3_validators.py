@@ -5,7 +5,6 @@ from urllib.request import urlopen
 
 from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
-from common.boto3.s3 import S3Client
 from pcluster.validators.common import FailureLevel, Validator
 from pcluster.validators.utils import get_bucket_name_from_s3_url
 
@@ -55,7 +54,7 @@ class UrlValidator(Validator):
                 self._add_failure(f"s3 url '{url}' is invalid.", FailureLevel.ERROR)
             else:
                 bucket_name, object_name = match.group(1), match.group(2)
-                S3Client().head_object(bucket_name=bucket_name, object_name=object_name)
+                AWSApi.instance().s3.head_object(bucket_name=bucket_name, object_name=object_name)
 
         except AWSClientError:
             # Todo: Check that bucket is in s3_read_resource or s3_read_write_resource.
@@ -70,7 +69,7 @@ class S3BucketUriValidator(Validator):
         if urlparse(url).scheme == "s3":
             try:
                 bucket = get_bucket_name_from_s3_url(url)
-                S3Client().head_bucket(bucket_name=bucket)
+                AWSApi.instance().s3.head_bucket(bucket_name=bucket)
             except AWSClientError as e:
                 self._add_failure(str(e), FailureLevel.ERROR)
         else:

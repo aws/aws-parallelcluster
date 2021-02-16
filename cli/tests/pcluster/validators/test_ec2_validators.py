@@ -13,6 +13,7 @@ import pytest
 
 from common.boto3.common import AWSClientError
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator, InstanceTypeValidator
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -20,10 +21,9 @@ from tests.pcluster.validators.utils import assert_failure_messages
     "instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None), ("c5.xlarge", "is not supported")]
 )
 def test_instance_type_validator(mocker, instance_type, expected_message):
-
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_instance_type_offerings",
+        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=["t2.micro", "c4.xlarge"],
     )
 
@@ -142,14 +142,14 @@ def test_instance_type_base_ami_compatible_validator(
     instance_architectures,
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
         side_effect=ami_side_effect,
     )
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_instance_type_offerings",
+        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=instance_response,
     )
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=instance_architectures)

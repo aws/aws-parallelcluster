@@ -12,10 +12,12 @@
 import os
 
 import pytest
+import yaml
 from assertpy import assert_that
 
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 
+from ..boto3.dummy_boto3 import DummyAWSApi
 from ..models.imagebuilder_dummy_model import dummy_imagebuilder
 
 
@@ -241,10 +243,10 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
     ],
 )
 def test_imagebuilder(mocker, is_official_ami_build, response, expected_template):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
     # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
@@ -254,6 +256,7 @@ def test_imagebuilder(mocker, is_official_ami_build, response, expected_template
     )
     dummy_imagebuild = dummy_imagebuilder(is_official_ami_build)
     generated_template = CDKTemplateBuilder().build_ami(dummy_imagebuild)
+    print(yaml.dump(generated_template))
     # TODO assert content of the template by matching expected template
     _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
     _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
