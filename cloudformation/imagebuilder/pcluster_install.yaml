@@ -12,6 +12,24 @@ phases:
           commands:
             - echo 1
 
+      # Get Chef Version
+      - name: ChefVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              echo "15.11.8"
+
+      # Get Berkshelf Version
+      - name: BerkshelfVersion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              echo "7.0.10"
+
       # Get Cookbook name
       - name: PClusterCookbookVersionName
         action: ExecuteBash
@@ -19,9 +37,7 @@ phases:
           commands:
             - |
               set -x
-              # TODO pass version from CFN and add check
-              PCLUSTER_COOKBOOK_VERSION=2.10.1
-              echo "aws-parallelcluster-cookbook-${!PCLUSTER_COOKBOOK_VERSION}"
+              echo "aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
 
       # Get AWS domain
       - name: AWSDomain
@@ -32,9 +48,9 @@ phases:
               set -x
               DOMAIN=".amazonaws.com"
               [[ ${AWS::Region} =~ ^cn- ]] && DOMAIN=".amazonaws.com.cn"
-              echo {!DOMAIN}
+              echo ${!DOMAIN}
 
-      # Get Cookbook URL
+      # Get Cookbook Url
       - name: CookbookUrl
         action: ExecuteBash
         inputs:
@@ -42,9 +58,30 @@ phases:
             - |
               set -x
               COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
-              [ -n "{COOKBOOK_CHEF_COOKBOOK}" ] && COOKBOOK_URL=${COOKBOOK_CHEF_COOKBOOK}
-              # TODO add checks
+              [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL=${CfnParamChefCookbook}
               echo "${!COOKBOOK_URL}"
+
+      # Get Cinc Url
+      - name: CincUrl
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/archives/cinc/cinc-install.sh
+              [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
+              echo "${!CINC_URL}"
+
+      # Get Cfn Bootstrap Url
+      - name: CfnBootstrapUrl
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              BUCKET="s3.amazonaws.com"
+              [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
+              echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
 
       # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
       - name: OperatingSystemRelease
@@ -129,7 +166,7 @@ phases:
               esac
 
       # Install prerequisite OS packages
-      - name: OperationSystemPrerequisite
+      - name: InstallPrerequisite
         action: ExecuteBash
         inputs:
           commands:
@@ -153,17 +190,6 @@ phases:
                   apt-get update
               fi
 
-      # Install prerequisite OS packages
-      # TODO merge with OperationSystemPrerequisite
-      - name: InstallDevelopmentAndJq
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -x
-              OS='{{ build.OperatingSystemName.outputs.stdout }}'
-              PLATFORM='{{ build.PlatformName.outputs.stdout }}'
-
               if [[ ${!PLATFORM} == RHEL ]]; then
                 if [[ ${!OS} == centos8 ]]; then
                   dnf -y groupinstall development && sudo dnf -y install curl wget jq
@@ -174,6 +200,16 @@ phases:
                 apt-get -y install build-essential curl wget jq
               fi
 
+      # Install Cinc
+      - name: InstallCinc
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              curl --retry 3 -L {{ build.CincUrl.outputs.stdout }} | bash -s -- -v {{ build.ChefVersion.outputs.stdout }}
+              /opt/cinc/embedded/bin/gem install --no-document berkshelf:{{ build.BerkshelfVersion.outputs.stdout }}
+
       # Download and vendor Cookbook
       - name: DownloadCookbook
         action: ExecuteBash
@@ -181,15 +217,6 @@ phases:
           commands:
             - |
               set -x
-              # TODO move vars out in separate actions
-              chef_version="15.11.8"
-              berkshelf_version="7.0.10"
-
-              # TODO install cinc in separate action
-              # TODO add custom cinc url
-              curl --retry 3 -L https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}.amazonaws.com/archives/cinc/cinc-install.sh | bash -s -- -v ${!chef_version}
-              /opt/cinc/embedded/bin/gem install --no-document berkshelf:${!berkshelf_version}
-
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
               curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz {{ build.CookbookUrl.outputs.stdout }}
               curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date {{ build.CookbookUrl.outputs.stdout }}.date
@@ -248,9 +275,7 @@ phases:
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
               if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1(6|8)04)$ ]]; then
-                bucket="s3.amazonaws.com"
-                [[ ${AWS::Region} =~ ^cn- ]] && bucket="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz https://${!bucket}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz
+                curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
                 if [[ ${!OS} == centos8 ]]; then
                   dnf install -y python3-pip
                   pip3 install /tmp/aws-cfn-bootstrap-py3-latest.tar.gz
