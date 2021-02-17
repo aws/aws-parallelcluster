@@ -57,18 +57,10 @@ class ImageBuilderStack(core.Stack):
         core.CfnParameter(self, "CfnParamCincInstaller", type="String", default="", description="CincInstaller")
         core.CfnParameter(
             self,
-            "CfnParamDnaJson",
+            "CfnParamAttributeJson",
             type="String",
             default=ChefAttributes(dev_settings).dump_json(),
             description="ChefAttributes",
-        )
-
-        core.CfnParameter(
-            self,
-            "UpdateAndReboot",
-            type="String",
-            default=str.lower(str(dev_settings.update_os_and_reboot)),
-            description="UpdateAndReboot",
         )
 
         # Setup ImageBuilder Resources
@@ -80,10 +72,8 @@ class ImageBuilderStack(core.Stack):
             instance_role_type = self._get_instance_role_type()
             if instance_role_type == InstanceRole.ROLE:
                 self._set_instance_profile(instance_role=build.instance_role)
-            elif instance_role_type == InstanceRole.INSTANCE_PROFILE:
-                instance_profile_name = build.instance_role
             else:
-                self._set_instance_profile()
+                instance_profile_name = build.instance_role
         else:
             self._set_default_instance_role()
             self._set_instance_profile()
@@ -165,9 +155,7 @@ class ImageBuilderStack(core.Stack):
         identifier = instance_role.split("/", 1)[0]
         if identifier.endswith("role"):
             return InstanceRole.ROLE
-        if identifier.endswith("instance-profile"):
-            return InstanceRole.INSTANCE_PROFILE
-        return InstanceRole.DEFAULT
+        return InstanceRole.INSTANCE_PROFILE
 
     def _set_default_instance_role(self):
         """Set default instance role in imagebuilder cfn template."""
@@ -222,6 +210,7 @@ class ImageBuilderStack(core.Stack):
                     description="CustomComponent",
                     change_description="First version",
                     platform="Linux",
+                    # TODO check the yaml url for https://, s3:// and file:///
                     uri=custom_component,
                 )
             else:
@@ -235,6 +224,7 @@ class ImageBuilderStack(core.Stack):
                     description="CustomComponent",
                     change_description="First version",
                     platform="Linux",
+                    # TODO implement _wrap_bash_to_component
                     data=self._wrap_bash_to_component(),
                 )
 

@@ -14,7 +14,7 @@ from common.aws.aws_api import AWSApi
 
 ROOT_VOLUME_TYPE = "gp2"
 PCLUSTER_RESERVED_VOLUME_SIZE = 15
-InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE", "DEFAULT"))
+InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE"))
 
 
 def get_ami_id(parent_image):

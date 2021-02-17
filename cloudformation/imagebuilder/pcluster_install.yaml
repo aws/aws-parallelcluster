@@ -12,6 +12,15 @@ phases:
           commands:
             - echo 1
 
+      # Get AWS Region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              echo ${AWS::Region}
+
       # Get Chef Version
       - name: ChefVersion
         action: ExecuteBash
@@ -251,7 +260,8 @@ phases:
         action: CreateFile
         inputs:
           - path: /tmp/dna.json
-            content: ${CfnParamDnaJson}
+            content: |
+              ${CfnParamAttributeJson}
             overwrite: true
 
       - name: InstallPClusterPackages

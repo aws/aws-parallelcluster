@@ -25,15 +25,15 @@ from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
                 "dev_settings": {
                     "cookbook": {
                         "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
-                        "extra_chef_attributes": '{"nvidia": { "enable" : "true" }, "dcv" :"false"}',
+                        "extra_chef_attributes": '{"nvidia": { "enabled" : "true" }, "dcv" :"false"}',
                     },
                     "node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                 },
             },
             {
                 "cfncluster": {
-                    "cfn_region": "${AWS::Region}",
-                    "nvidia": {"enable": "true"},
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "nvidia": {"enabled": "true"},
                     "is_official_ami_build": "false",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
@@ -46,15 +46,15 @@ from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
                 "dev_settings": {
                     "cookbook": {
                         "chef_cookbook": "file:///test/aws-parallelcluster-cookbook-3.0.tgz",
-                        "extra_chef_attributes": '{"nvidia": { "enable" : "true" }, "dcv" :"false", '
+                        "extra_chef_attributes": '{"nvidia": { "enabled" : "true" }, "dcv" :"false", '
                         '"cluster":{"cfn_slots":"cores"}}',
                     },
                 },
             },
             {
                 "cfncluster": {
-                    "cfn_region": "${AWS::Region}",
-                    "nvidia": {"enable": "true"},
+                    "cfn_region": "{{ build.AWSRegion.outputs.stdout }}",
+                    "nvidia": {"enabled": "true"},
                     "is_official_ami_build": "false",
                     "custom_node_package": "",
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",

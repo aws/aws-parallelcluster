@@ -27,9 +27,13 @@ class ChefAttributes:
         self._set_extra_attributes(dev_settings)
 
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
-        self.cfn_region = "${AWS::Region}"
+        self.cfn_region = "{{ build.AWSRegion.outputs.stdout }}"
         self.nvidia = {"enabled": "false"}
-        self.is_official_ami_build = str.lower(str(dev_settings.update_os_and_reboot)) if dev_settings else "false"
+        self.is_official_ami_build = (
+            str.lower(str(dev_settings.update_os_and_reboot))
+            if dev_settings and dev_settings.update_os_and_reboot
+            else "false"
+        )
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
 
@@ -46,5 +50,5 @@ class ChefAttributes:
         """Dump chef attribute json to string."""
         default_attributes_json = {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
         default_attributes_json.update(self._extra_attributes_json)
-        dna_json = {"cfncluster": default_attributes_json}
-        return json.dumps(dna_json)
+        attribute_json = {"cfncluster": default_attributes_json}
+        return json.dumps(attribute_json)
