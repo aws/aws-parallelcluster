@@ -288,6 +288,11 @@ phases:
               {{ build.PClusterCookbookVersionName.outputs.stdout }}
             overwrite: true
 
+      - name: KeepSSM
+        action: DeleteFile
+        inputs:
+          - path: /tmp/imagebuilder_service/ssm_installed
+
       - name: AmiCleanup
         action: ExecuteBash
         inputs:
