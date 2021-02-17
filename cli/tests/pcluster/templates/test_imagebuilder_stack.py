@@ -16,6 +16,7 @@ from assertpy import assert_that
 
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 
+from ..boto3.dummy_boto3 import DummyAWSApi
 from ..models.imagebuilder_dummy_model import dummy_imagebuilder
 
 
@@ -40,10 +41,27 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
                 ],
             },
             {
+                "Metadata": {
+                    "Config": "Build:\n  InstanceType: c5.xlarge\n  "
+                    "ParentImage: arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x\n\
+                    DevSettings:\n  UpdateOsAndReboot: true\nImage:\n  Name: Pcluster\n"
+                },
                 "Parameters": {
-                    "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
-                    "EnableDCV": {"Type": "String", "Default": "false", "Description": "EnableDCV"},
-                    "CustomNodePackage": {"Type": "String", "Default": "", "Description": "CustomNodePackage"},
+                    "CfnParamAttributeJson": {
+                        "Type": "String",
+                        "Default": '{"cfncluster": {"cfn_region": '
+                        '"{{ build.AWSRegion.outputs.stdout }}","nvidia": {"enabled": "false"}, '
+                        '"is_official_ami_build": "true", "custom_node_package":"", "cfn_base_os": '
+                        '"{{ build.OperatingSystemName.outputs.stdout }}"}}',
+                        "Description": "ChefAttributes",
+                    },
+                    "CfnParamChefCookbook": {"Type": "String", "Default": "", "Description": "ChefCookbook"},
+                    "CfnParamCincInstaller": {"Type": "String", "Default": "", "Description": "CincInstaller"},
+                    "CfnParamCookbookVersion": {
+                        "Type": "String",
+                        "Default": "2.10.1",
+                        "Description": "CookbookVersion",
+                    },
                 },
                 "Resources": {
                     "InstanceRole": {
@@ -124,15 +142,6 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
                             "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
                         },
                     },
-                    "PClusterParameter": {
-                        "Type": "AWS::SSM::Parameter",
-                        "Properties": {
-                            "Type": "String",
-                            "Value": {"Fn::GetAtt": ["PClusterImage", "ImageId"]},
-                            "Description": "Image Id for PCluster",
-                            "Name": "/Test/Images/PCluster-qd6lpbzo8gd2j4dr",
-                        },
-                    },
                 },
             },
         ),
@@ -154,13 +163,24 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
                 ],
             },
             {
+                "Metadata": {
+                    "Config": "Build:\n  InstanceType: g4dn.xlarge\n  ParentImage: ami-0185634c5a8a37250\n\
+    DevSettings: {}\nImage:\n  Name: Pcluster\n"
+                },
                 "Parameters": {
-                    "EnableNvidia": {"Type": "String", "Default": "false", "Description": "EnableNvidia"},
-                    "EnableDCV": {"Type": "String", "Default": "false", "Description": "EnableDCV"},
-                    "CustomNodePackage": {
+                    "CfnParamAttributeJson": {
                         "Type": "String",
-                        "Default": "",
-                        "Description": "CustomNodePackage",
+                        "Default": '{"cfncluster": {"cfn_region": "{{ build.AWSRegion.outputs.stdout }}",'
+                        '"nvidia": {"enabled": "false"}, "is_official_ami_build": "true", '
+                        '"custom_node_package":"", "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}"}}',
+                        "Description": "ChefAttributes",
+                    },
+                    "CfnParamChefCookbook": {"Type": "String", "Default": "", "Description": "ChefCookbook"},
+                    "CfnParamCincInstaller": {"Type": "String", "Default": "", "Description": "CincInstaller"},
+                    "CfnParamCookbookVersion": {
+                        "Type": "String",
+                        "Default": "2.10.1",
+                        "Description": "CookbookVersion",
                     },
                 },
                 "Resources": {
@@ -226,25 +246,16 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
                             "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
                         },
                     },
-                    "PClusterParameter": {
-                        "Type": "AWS::SSM::Parameter",
-                        "Properties": {
-                            "Type": "String",
-                            "Value": {"Fn::GetAtt": ["PClusterImage", "ImageId"]},
-                            "Description": "Image Id for PCluster",
-                            "Name": "/Test/Images/PCluster-gw85hm3tw3qka4fd",
-                        },
-                    },
                 },
             },
         ),
     ],
 )
 def test_imagebuilder(mocker, is_official_ami_build, response, expected_template):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
-    mocker.patch("pcluster.validators.ec2_validators.Ec2Client.__init__", return_value=None)
     mocker.patch(
-        "pcluster.validators.ec2_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
     )
     # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
@@ -254,7 +265,7 @@ def test_imagebuilder(mocker, is_official_ami_build, response, expected_template
     )
     dummy_imagebuild = dummy_imagebuilder(is_official_ami_build)
     generated_template = CDKTemplateBuilder().build_ami(dummy_imagebuild)
-    # TODO assert content of the template by matching expected template
+    # TODO assert content of the template by matching expected template, re-enable it after refactoring
     _test_parameters(generated_template.get("Parameters"), expected_template.get("Parameters"))
     _test_resources(generated_template.get("Resources"), expected_template.get("Resources"))
 

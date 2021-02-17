@@ -14,6 +14,7 @@ import pytest
 
 from common.boto3.common import AWSClientError
 from pcluster.validators.common import FailureLevel
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 from tests.pcluster.models.test_cluster_model import _assert_validation_result
 
@@ -54,8 +55,8 @@ from tests.pcluster.models.test_cluster_model import _assert_validation_result
             None,
             [
                 "Kms Key Id key_id is specified, the encrypted state must be True.",
-                "Root volume size 25 GB is less than the minimum required size 65 GB that equals "
-                "base ami 50 GB plus size 15 GB to allow PCluster software stack installation.",
+                "Root volume size 25 GB is less than the minimum required size 50 GB that equals parent ami"
+                " volume size.",
             ],
             [FailureLevel.ERROR, FailureLevel.ERROR],
         )
@@ -143,20 +144,17 @@ def _test_imagebuilder(
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=supported_architecture)
-    mocker.patch("pcluster.validators.imagebuilder_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch(
-        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
         side_effect=ami_side_effect,
     )
     mocker.patch(
-        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_instance_type_offerings",
+        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=instance_response,
     )
-    mocker.patch("pcluster.validators.s3_validators.S3Client.__init__", return_value=None)
-    mocker.patch(
-        "pcluster.validators.s3_validators.S3Client.head_object", return_value=url_response, side_effect=url_side_effect
-    )
+    mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=url_open_side_effect)
 
     imagebuilder = imagebuilder_factory(resource).get("imagebuilder")
@@ -188,14 +186,14 @@ def _test_build(
 ):
     mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
     mocker.patch("pcluster.utils.get_supported_architectures_for_instance_type", return_value=supported_architecture)
-    mocker.patch("pcluster.validators.imagebuilder_validators.Ec2Client.__init__", return_value=None)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
     mocker.patch(
-        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_image",
+        "common.boto3.ec2.Ec2Client.describe_image",
         return_value=ami_response,
         side_effect=ami_side_effect,
     )
     mocker.patch(
-        "pcluster.validators.imagebuilder_validators.Ec2Client.describe_instance_type_offerings",
+        "common.boto3.ec2.Ec2Client.describe_instance_type_offerings",
         return_value=instance_response,
     )
 
@@ -216,10 +214,8 @@ def _test_dev_settings(
     expected_failure_messages,
     expected_failure_levels,
 ):
-    mocker.patch("pcluster.validators.s3_validators.S3Client.__init__", return_value=None)
-    mocker.patch(
-        "pcluster.validators.s3_validators.S3Client.head_object", return_value=url_response, side_effect=url_side_effect
-    )
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=url_open_side_effect)
 
     dev_settings = imagebuilder_factory(resource).get("dev_settings")

@@ -111,7 +111,7 @@ class ComponentSchema(BaseSchema):
 class BuildSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Build."""
 
-    instance_role = fields.Str()
+    instance_role = fields.Str(validate=validate.Regexp("^arn:.*:(role|instance-profile)/"))
     instance_type = fields.Str(required=True)
     components = fields.List(fields.Nested(ComponentSchema))
     parent_image = fields.Str(required=True, validate=validate.Regexp("^ami|arn"))

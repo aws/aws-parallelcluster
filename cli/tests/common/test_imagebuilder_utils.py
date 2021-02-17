@@ -12,6 +12,7 @@ import pytest
 from assertpy import assert_that
 
 from common import imagebuilder_utils
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 
 
 @pytest.mark.parametrize(
@@ -19,15 +20,15 @@ from common import imagebuilder_utils
     [
         (
             "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
-            {"image": {"outputResources": {"amis": [{"image": "ami-0be2609ba883822ec"}]}}},
+            "ami-0be2609ba883822ec",
             "ami-0be2609ba883822ec",
         ),
         ("ami-00e87074e52e6c9f9", "{}", "ami-00e87074e52e6c9f9"),
     ],
 )
 def test_evaluate_ami_id(mocker, parent_image, response, ami_id):
-    mocker.patch("common.imagebuilder_utils.ImageBuilderClient.__init__", return_value=None)
-    mocker.patch("common.imagebuilder_utils.ImageBuilderClient.get_image_resources", return_value=response)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_id", return_value=response)
     assert_that(imagebuilder_utils.get_ami_id(parent_image)).is_equal_to(ami_id)
 
 
@@ -46,6 +47,6 @@ def test_evaluate_ami_id(mocker, parent_image, response, ami_id):
 )
 def test_get_info_for_ami_from_arn(mocker, image_arn, response):
     """Verify get_info_for_ami_from_arn returns the expected response, and that errors cause nonzero exit."""
-    mocker.patch("common.imagebuilder_utils.ImageBuilderClient.__init__", return_value=None)
-    mocker.patch("common.imagebuilder_utils.ImageBuilderClient.get_image_resources", return_value=response)
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.imagebuilder.ImageBuilderClient.get_image_resources", return_value=response)
     assert_that(imagebuilder_utils.get_info_for_ami_from_arn(image_arn)).is_equal_to(response)

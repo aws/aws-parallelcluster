@@ -11,6 +11,7 @@
 
 from common.boto3.ec2 import Ec2Client
 from common.boto3.efs import EfsClient
+from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.s3 import S3Client
 
 
@@ -30,6 +31,7 @@ class AWSApi:
         self.efs = EfsClient(ec2_client=self.ec2)
         # pylint: disable=C0103
         self.s3 = S3Client()
+        self.imagebuilder = ImageBuilderClient()
 
     @staticmethod
     def instance():

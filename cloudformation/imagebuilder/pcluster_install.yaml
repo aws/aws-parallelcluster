@@ -12,6 +12,15 @@ phases:
           commands:
             - echo 1
 
+      # Get AWS Region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              echo ${AWS::Region}
+
       # Get Chef Version
       - name: ChefVersion
         action: ExecuteBash
@@ -71,17 +80,6 @@ phases:
               CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/archives/cinc/cinc-install.sh
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
               echo "${!CINC_URL}"
-
-      # Get Cfn Bootstrap Url
-      - name: CfnBootstrapUrl
-        action: ExecuteBash
-        inputs:
-          commands:
-            - |
-              set -x
-              BUCKET="s3.amazonaws.com"
-              [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
-              echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
 
       # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
       - name: OperatingSystemRelease
@@ -144,6 +142,24 @@ phases:
 
                echo ${!PLATFORM}
 
+      # Get Cfn Bootstrap Url
+      - name: CfnBootstrapUrl
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -x
+              BUCKET="s3.amazonaws.com"
+              [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
+
+              OS='{{ build.OperatingSystemName.outputs.stdout }}'
+
+              if [[ ${!OS} =~ ^(centos8)$ ]]; then
+                echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-py3-latest.tar.gz"
+              else
+                echo "https://${!BUCKET}/cloudformation-examples/aws-cfn-bootstrap-latest.tar.gz"
+              fi
+
       # Get input base AMI Architecture
       - name: OperatingSystemArchitecture
         action: ExecuteBash
@@ -182,7 +198,7 @@ phases:
                     dnf -y install epel-release
                   fi
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
-                  /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="(.*)"/GRUB_CMDLINE_LINUX="\\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
+                  /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
                   grub2-mkconfig -o /boot/grub2/grub.cfg
               elif [[ ${!OS} =~ ^ubuntu1(6|8)04$ ]]; then
                   apt-cache search build-essential
@@ -245,17 +261,7 @@ phases:
         inputs:
           - path: /tmp/dna.json
             content: |
-              {
-                "cfncluster" : {
-                  "cfn_region": "${AWS::Region}",
-                  "nvidia" : {
-                    "enabled" : "${EnableNvidia}"
-                  },
-                  "is_official_ami_build": "${UpdateAndReboot}",
-                  "custom_node_package" : "${CustomNodePackage}",
-                  "cfn_base_os" : "{{ build.OperatingSystemName.outputs.stdout }}"
-                }
-              }
+              ${CfnParamAttributeJson}
             overwrite: true
 
       - name: InstallPClusterPackages
@@ -278,7 +284,7 @@ phases:
                 curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
                 if [[ ${!OS} == centos8 ]]; then
                   dnf install -y python3-pip
-                  pip3 install /tmp/aws-cfn-bootstrap-py3-latest.tar.gz
+                  pip3 install /tmp/aws-cfn-bootstrap-latest.tar.gz
                 elif [[ ${!OS} == centos7 ]]; then
                   which pip2
                   if [ $? -eq 0 ]; then
@@ -298,6 +304,11 @@ phases:
             content: |
               {{ build.PClusterCookbookVersionName.outputs.stdout }}
             overwrite: true
+
+      - name: KeepSSM
+        action: DeleteFile
+        inputs:
+          - path: /tmp/imagebuilder_service/ssm_installed
 
       - name: AmiCleanup
         action: ExecuteBash
