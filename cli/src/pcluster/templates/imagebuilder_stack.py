@@ -145,7 +145,7 @@ class ImageBuilderStack(core.Stack):
             components=components,
             block_device_mappings=[
                 imagebuilder.CfnImageRecipe.InstanceBlockDeviceMappingProperty(
-                    device_name="/dev/xvda",
+                    device_name=self._get_root_device_name(),
                     ebs=self._set_ebs_volume(),
                 )
             ],
@@ -269,3 +269,8 @@ class ImageBuilderStack(core.Stack):
             )
 
         return ebs
+
+    def _get_root_device_name(self):
+        ami_id = imagebuilder_utils.get_ami_id(self.imagebuild.build.parent_image)
+        ami_info = AWSApi.instance().ec2.describe_image(ami_id)
+        return ami_info.get("BlockDeviceMappings")[0].get("DeviceName")
