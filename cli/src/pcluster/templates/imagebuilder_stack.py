@@ -84,7 +84,9 @@ class ImageBuilderStack(core.Stack):
             id="PClusterImageInfrastructureConfiguration",
             name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
             instance_profile_name=core.Fn.ref(instance_profile_name or "InstanceProfile"),
-            terminate_instance_on_failure=dev_settings.terminate_instance_on_failure,
+            terminate_instance_on_failure=dev_settings.terminate_instance_on_failure
+            if dev_settings and dev_settings.terminate_instance_on_failure is not None
+            else True,
             instance_types=[build.instance_type],
         )
 
@@ -178,17 +180,17 @@ class ImageBuilderStack(core.Stack):
         ]
 
         instancerole_policy_document = {
-                            "Version": "2012-10-17",
-                            "Statement": [
-                                {
-                                    "Effect": "Allow",
-                                    "Action": ["ec2:CreateTags"],
-                                    "Resource": [
-                                        core.Fn.sub("arn:${AWS::Partition}:ec2:*::image/*"),
-                                    ],
-                                },
-                            ],
-                        }
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Action": ["ec2:CreateTags"],
+                    "Resource": [
+                        core.Fn.sub("arn:${AWS::Partition}:ec2:*::image/*"),
+                    ],
+                },
+            ],
+        }
 
         instancerole_policy = iam.CfnRole.PolicyProperty(
             policy_name="InstanceRoleInlinePolicy",
@@ -210,7 +212,7 @@ class ImageBuilderStack(core.Stack):
             path="/executionServiceEC2Role/",
             policies=[
                 instancerole_policy,
-            ]
+            ],
         )
 
         instancerole.add_metadata("Comment", "Role to be used by instance during image build.")
@@ -225,40 +227,13 @@ class ImageBuilderStack(core.Stack):
         """Set custom component in imagebuilder cfn template."""
         build = self.imagebuild.build
         custom_components = build.components
-        initial_component_len = len(custom_components)
         arn_components_len = 0
         for custom_component in custom_components:
             if custom_component.type.startswith("arn"):
                 components.append(
-                    imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=custom_component)
+                    imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=custom_component.value)
                 )
                 arn_components_len += 1
-            elif custom_component.type.startswith("yaml"):
-                imagebuilder.CfnComponent(
-                    self,
-                    id="CustomComponent" + str(len(components) - initial_component_len - arn_components_len),
-                    name="-".join(
-                        ["CustomComponent", str(len(components) - initial_component_len - arn_components_len)]
-                    ),
-                    version=utils.get_installed_version(),
-                    description="CustomComponent",
-                    platform="Linux",
-                    # TODO check the yaml url for https://, s3:// and file:///
-                    uri=custom_component,
-                )
-            else:
-                imagebuilder.CfnComponent(
-                    self,
-                    id="CustomComponent" + str(len(components) - initial_component_len - arn_components_len),
-                    name="-".join(
-                        ["CustomComponent", str(len(components) - initial_component_len - arn_components_len)]
-                    ),
-                    version=utils.get_installed_version(),
-                    description="CustomComponent",
-                    platform="Linux",
-                    # TODO implement _wrap_bash_to_component
-                    data=self._wrap_bash_to_component(),
-                )
 
     def _set_ebs_volume(self):
         """Set ebs root volume in imagebuilder cfn template."""

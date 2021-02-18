@@ -30,8 +30,8 @@ from tests.pcluster.models.test_cluster_model import _assert_validation_result
                         "description": "Pcluster 3.0 Image",
                         "root_volume": {"size": 25, "kms_key_id": "key_id"},
                         "tags": [
-                            {"tag": {"key": "name", "value": "pcluster"}},
-                            {"tag": {"key": "date", "value": "2022.1.1"}},
+                            {"key": "name", "value": "pcluster"},
+                            {"key": "date", "value": "2022.1.1"},
                         ],
                     },
                     "build": {"parent_image": "ami-0185634c5a8a37250", "instance_type": "c5.xlarge"},
