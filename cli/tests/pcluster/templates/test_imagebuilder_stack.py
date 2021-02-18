@@ -47,7 +47,7 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
                     DevSettings:\n  UpdateOsAndReboot: true\nImage:\n  Name: Pcluster\n"
                 },
                 "Parameters": {
-                    "CfnParamAttributeJson": {
+                    "CfnParamChefDnaJson": {
                         "Type": "String",
                         "Default": '{"cfncluster": {"cfn_region": '
                         '"{{ build.AWSRegion.outputs.stdout }}","nvidia": {"enabled": "false"}, '
@@ -168,7 +168,7 @@ from ..models.imagebuilder_dummy_model import dummy_imagebuilder
     DevSettings: {}\nImage:\n  Name: Pcluster\n"
                 },
                 "Parameters": {
-                    "CfnParamAttributeJson": {
+                    "CfnParamChefDnaJson": {
                         "Type": "String",
                         "Default": '{"cfncluster": {"cfn_region": "{{ build.AWSRegion.outputs.stdout }}",'
                         '"nvidia": {"enabled": "false"}, "is_official_ami_build": "true", '
