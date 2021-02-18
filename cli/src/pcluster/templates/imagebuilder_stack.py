@@ -96,9 +96,8 @@ class ImageBuilderStack(core.Stack):
                 self,
                 id="UpdateAndRebootComponent",
                 name="-".join(["UpdateAndReboot", resources_prefix]),
-                version="0.0.1",
+                version=utils.get_installed_version(),
                 description="Update OS and Reboot",
-                change_description="First version",
                 platform="Linux",
                 data=core.Fn.sub(load_yaml(imagebuilder_cloudformation_dir, "update_and_reboot.yaml")),
             )
@@ -112,9 +111,8 @@ class ImageBuilderStack(core.Stack):
             self,
             id="PClusterComponent",
             name="-".join(["PCluster", resources_prefix]),
-            version="0.0.1",
+            version=utils.get_installed_version(),
             description="Bake PCluster AMI",
-            change_description="First version",
             platform="Linux",
             data=core.Fn.sub(load_yaml(imagebuilder_cloudformation_dir, "pcluster_install.yaml")),
         )
@@ -145,7 +143,7 @@ class ImageBuilderStack(core.Stack):
             self,
             id="PClusterImageRecipe",
             name="-".join(["PCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
-            version="0.0.1",
+            version=utils.get_installed_version(),
             parent_image=core.Fn.sub(build.parent_image),
             components=components,
             block_device_mappings=[
@@ -242,9 +240,8 @@ class ImageBuilderStack(core.Stack):
                     name="-".join(
                         ["CustomComponent", str(len(components) - initial_component_len - arn_components_len)]
                     ),
-                    version="0.0.1",
+                    version=utils.get_installed_version(),
                     description="CustomComponent",
-                    change_description="First version",
                     platform="Linux",
                     # TODO check the yaml url for https://, s3:// and file:///
                     uri=custom_component,
@@ -256,9 +253,8 @@ class ImageBuilderStack(core.Stack):
                     name="-".join(
                         ["CustomComponent", str(len(components) - initial_component_len - arn_components_len)]
                     ),
-                    version="0.0.1",
+                    version=utils.get_installed_version(),
                     description="CustomComponent",
-                    change_description="First version",
                     platform="Linux",
                     # TODO implement _wrap_bash_to_component
                     data=self._wrap_bash_to_component(),
