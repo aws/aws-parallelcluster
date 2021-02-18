@@ -9,8 +9,6 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-
 import pytest
 from assertpy import assert_that
 
@@ -257,11 +255,6 @@ def test_imagebuilder(mocker, is_official_ami_build, response, expected_template
     mocker.patch(
         "common.boto3.ec2.Ec2Client.describe_image",
         return_value=response,
-    )
-    # Tox can't find upper directory based on file_path in pcluster dir, mock it with file_path in test dir
-    mocker.patch(
-        "pcluster.utils.get_cloudformation_directory",
-        return_value=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "cloudformation"),
     )
     dummy_imagebuild = dummy_imagebuilder(is_official_ami_build)
     generated_template = CDKTemplateBuilder().build_ami(dummy_imagebuild)

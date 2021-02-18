@@ -88,7 +88,7 @@ class ImageBuilderStack(core.Stack):
             instance_types=[build.instance_type],
         )
 
-        imagebuilder_cloudformation_dir = os.path.join(utils.get_cloudformation_directory(), "imagebuilder")
+        imagebuilder_resources_dir = os.path.join(imagebuilder_utils.get_resources_directory(), "imagebuilder")
         # Components
         components = []
         if dev_settings and dev_settings.update_os_and_reboot:
@@ -99,7 +99,7 @@ class ImageBuilderStack(core.Stack):
                 version=utils.get_installed_version(),
                 description="Update OS and Reboot",
                 platform="Linux",
-                data=core.Fn.sub(load_yaml(imagebuilder_cloudformation_dir, "update_and_reboot.yaml")),
+                data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "update_and_reboot.yaml")),
             )
             components.append(
                 imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
@@ -114,7 +114,7 @@ class ImageBuilderStack(core.Stack):
             version=utils.get_installed_version(),
             description="Bake PCluster AMI",
             platform="Linux",
-            data=core.Fn.sub(load_yaml(imagebuilder_cloudformation_dir, "pcluster_install.yaml")),
+            data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "pcluster_install.yaml")),
         )
 
         components.append(
@@ -131,7 +131,7 @@ class ImageBuilderStack(core.Stack):
             version=utils.get_installed_version(),
             description="Tag ParallelCluster AMI",
             platform="Linux",
-            data=load_yaml(imagebuilder_cloudformation_dir, "parallelcluster_tag.yaml"),
+            data=load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
         )
 
         components.append(
