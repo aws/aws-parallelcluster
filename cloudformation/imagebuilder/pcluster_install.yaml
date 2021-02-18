@@ -18,7 +18,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               echo ${AWS::Region}
 
       # Get Chef Version
@@ -27,7 +27,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               echo "15.11.8"
 
       # Get Berkshelf Version
@@ -36,7 +36,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               echo "7.0.10"
 
       # Get Cookbook name
@@ -45,7 +45,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               echo "aws-parallelcluster-cookbook-${CfnParamCookbookVersion}"
 
       # Get AWS domain
@@ -54,7 +54,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               DOMAIN=".amazonaws.com"
               [[ ${AWS::Region} =~ ^cn- ]] && DOMAIN=".amazonaws.com.cn"
               echo ${!DOMAIN}
@@ -65,7 +65,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               COOKBOOK_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/cookbooks/{{ build.PClusterCookbookVersionName.outputs.stdout }}.tgz
               [ -n "${CfnParamChefCookbook}" ] && COOKBOOK_URL=${CfnParamChefCookbook}
               echo "${!COOKBOOK_URL}"
@@ -76,7 +76,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               CINC_URL=https://${AWS::Region}-aws-parallelcluster.s3.${AWS::Region}{{ build.AWSDomain.outputs.stdout }}/archives/cinc/cinc-install.sh
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
               echo "${!CINC_URL}"
@@ -87,7 +87,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               FILE=/etc/os-release
               if [ -e ${!FILE} ]; then
                 . ${!FILE}
@@ -103,7 +103,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
@@ -131,7 +131,7 @@ phases:
         inputs:
           commands:
             - |
-               set -x
+               set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
                if [ `echo "${!OS}" | grep -E '^(alinux|centos)'` ]; then
@@ -148,7 +148,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               BUCKET="s3.amazonaws.com"
               [[ ${AWS::Region} =~ ^cn- ]] && BUCKET="s3.cn-north-1.amazonaws.com.cn/cn-north-1-aws-parallelcluster"
 
@@ -166,7 +166,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               ARCH=$(uname -m)
               case ${!ARCH} in
                 'x86_64')
@@ -187,7 +187,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
@@ -222,7 +222,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               curl --retry 3 -L {{ build.CincUrl.outputs.stdout }} | bash -s -- -v {{ build.ChefVersion.outputs.stdout }}
               /opt/cinc/embedded/bin/gem install --no-document berkshelf:{{ build.BerkshelfVersion.outputs.stdout }}
 
@@ -232,7 +232,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               mkdir -p /etc/chef && sudo chown -R root:root /etc/chef
               curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz {{ build.CookbookUrl.outputs.stdout }}
               curl --retry 3 -L -o /etc/chef/aws-parallelcluster-cookbook.tgz.date {{ build.CookbookUrl.outputs.stdout }}.date
@@ -269,7 +269,9 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
+              echo "Calling chef-client with /tmp/dna.json"
+              cat /tmp/dna.json
               chef-client --local-mode --config /etc/chef/client.rb --log_level info --logfile /var/log/chef-client.log --force-formatter --no-color --chef-zero-port 8889 --json-attributes /tmp/dna.json --override-runlist aws-parallelcluster::default
 
       - name: InstallCfnBootstrap
@@ -277,7 +279,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
               if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1(6|8)04)$ ]]; then
@@ -315,7 +317,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               /usr/local/sbin/ami_cleanup.sh
 
   - name: validate

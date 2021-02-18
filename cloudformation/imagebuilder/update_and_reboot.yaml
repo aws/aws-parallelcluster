@@ -17,7 +17,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               FILE=/etc/os-release
               if [ -e ${!FILE} ]; then
                 . ${!FILE}
@@ -33,7 +33,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
@@ -61,7 +61,7 @@ phases:
         inputs:
           commands:
             - |
-               set -x
+               set -v
                OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
                if [ `echo "${!OS}" | grep -E '^(alinux|centos)'` ]; then
@@ -78,7 +78,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               RELEASE='{{ build.OperatingSystemRelease.outputs.stdout }}'
               if [ `echo "${!RELEASE}" | grep -Ev '^(amzn|centos|ubuntu)'` ]; then
                 echo "This component does not support '${!RELEASE}'. Failing build."
@@ -99,7 +99,7 @@ phases:
         inputs:
           commands:
             - |
-              set -x
+              set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
               PLATFORM='{{ build.PlatformName.outputs.stdout }}'
 
