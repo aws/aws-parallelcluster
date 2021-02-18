@@ -304,9 +304,17 @@ phases:
             overwrite: true
 
       - name: KeepSSM
-        action: DeleteFile
+        action: ExecuteBash
         inputs:
-          - path: /tmp/imagebuilder_service/ssm_installed
+          commands:
+            - |
+              set -v
+              if [[ -f /tmp/imagebuilder_service/ssm_installed ]]; then
+                echo "Keeping SSM agent installed"
+                rm -rf /tmp/imagebuilder_service/ssm_installed
+              else
+                 echo "SSM agent is installed by default"
+              fi
 
       - name: AmiCleanup
         action: ExecuteBash
