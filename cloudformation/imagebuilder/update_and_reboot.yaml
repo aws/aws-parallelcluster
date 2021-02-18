@@ -11,7 +11,7 @@ phases:
           commands:
             - echo 1
 
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -38,16 +38,12 @@ phases:
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
-              elif [ `echo "${!RELEASE}" | grep '^amzn'` ]; then
-                OS='alinux'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${!RELEASE}" | grep '^centos\.8'` ]; then
                 OS='centos8'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
                 OS='ubuntu1804'
-              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.16'` ]; then
-                OS='ubuntu1604'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
                 exit {{ build.Fail.outputs.stdout }}
