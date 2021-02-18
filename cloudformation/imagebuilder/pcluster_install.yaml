@@ -81,7 +81,7 @@ phases:
               [ -n "${CfnParamCincInstaller}" ] && CINC_URL=${CfnParamCincInstaller}
               echo "${!CINC_URL}"
 
-      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2018.03 | amzn.2 | ubuntu.18.04 | ubuntu.16.04
+      # Check input base AMI OS and get OS information, the output should be like centos.7 | centos.8 | amzn.2 | ubuntu.18.04
       - name: OperatingSystemRelease
         action: ExecuteBash
         inputs:
@@ -108,16 +108,12 @@ phases:
 
               if [ `echo "${!RELEASE}" | grep -w '^amzn\.2'` ]; then
                 OS='alinux2'
-              elif [ `echo "${!RELEASE}" | grep '^amzn'` ]; then
-                OS='alinux'
               elif [ `echo "${!RELEASE}" | grep '^centos\.7'` ]; then
                 OS='centos7'
               elif [ `echo "${!RELEASE}" | grep '^centos\.8'` ]; then
                 OS='centos8'
               elif [ `echo "${!RELEASE}" | grep '^ubuntu\.18'` ]; then
                 OS='ubuntu1804'
-              elif [ `echo "${!RELEASE}" | grep '^ubuntu\.16'` ]; then
-                OS='ubuntu1604'
               else
                 echo "Operating System '${!RELEASE}' is not supported. Failing build."
                 exit {{ build.Fail.outputs.stdout }}
@@ -200,7 +196,7 @@ phases:
                   /bin/sed -r -i -e 's/SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config
                   /bin/sed -r -i -e 's/GRUB_CMDLINE_LINUX="\(.*\)"/GRUB_CMDLINE_LINUX="\1 rd.driver.blacklist=nouveau nouveau.modeset=0"/' /etc/default/grub
                   grub2-mkconfig -o /boot/grub2/grub.cfg
-              elif [[ ${!OS} =~ ^ubuntu1(6|8)04$ ]]; then
+              elif [[ ${!OS} =~ ^ubuntu1804$ ]]; then
                   apt-cache search build-essential
                   apt-get clean
                   apt-get update
@@ -282,7 +278,7 @@ phases:
               set -v
               OS='{{ build.OperatingSystemName.outputs.stdout }}'
 
-              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1(6|8)04)$ ]]; then
+              if [[ ${!OS} =~ ^(centos[7-8]|ubuntu1804)$ ]]; then
                 curl --retry 3 -L -o /tmp/aws-cfn-bootstrap-latest.tar.gz {{ build.CfnBootstrapUrl.outputs.stdout }}
                 if [[ ${!OS} == centos8 ]]; then
                   dnf install -y python3-pip
@@ -294,7 +290,7 @@ phases:
                   else
                     pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
                   fi
-                elif [[ ${!OS} =~ ^ubuntu1(6|8)04$ ]]; then
+                elif [[ ${!OS} =~ ^ubuntu1804$ ]]; then
                   pip install /tmp/aws-cfn-bootstrap-latest.tar.gz
                 fi
               fi
