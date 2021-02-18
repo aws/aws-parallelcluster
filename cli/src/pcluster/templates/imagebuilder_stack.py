@@ -122,8 +122,23 @@ class ImageBuilderStack(core.Stack):
         components.append(
             imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("PClusterComponent"))
         )
+
         if build.components:
             self._set_custom_components(components)
+
+        imagebuilder.CfnComponent(
+            self,
+            id="ParallelClusterTag",
+            name="-".join(["ParallelClusterTag", resources_prefix]),
+            version=utils.get_installed_version(),
+            description="Tag ParallelCluster AMI",
+            platform="Linux",
+            data=load_yaml(imagebuilder_cloudformation_dir, "parallelcluster_tag.yaml"),
+        )
+
+        components.append(
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("ParallelClusterTag"))
+        )
 
         # ImageRecipe
         imagebuilder.CfnImageRecipe(
@@ -164,6 +179,24 @@ class ImageBuilderStack(core.Stack):
             core.Fn.sub("arn:${AWS::Partition}:iam::aws:policy/EC2InstanceProfileForImageBuilder"),
         ]
 
+        instancerole_policy_document = {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": ["ec2:CreateTags"],
+                                    "Resource": [
+                                        core.Fn.sub("arn:${AWS::Partition}:ec2:*::image/*"),
+                                    ],
+                                },
+                            ],
+                        }
+
+        instancerole_policy = iam.CfnRole.PolicyProperty(
+            policy_name="InstanceRoleInlinePolicy",
+            policy_document=instancerole_policy_document,
+        )
+
         instancerole = iam.CfnRole(
             self,
             id="InstanceRole",
@@ -177,6 +210,9 @@ class ImageBuilderStack(core.Stack):
                 "Version": "2012-10-17",
             },
             path="/executionServiceEC2Role/",
+            policies=[
+                instancerole_policy,
+            ]
         )
 
         instancerole.add_metadata("Comment", "Role to be used by instance during image build.")

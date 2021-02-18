@@ -1,0 +1,121 @@
+name: ParallelClusterTag
+description: Tag ParallelCluster AMI
+schemaVersion: 1.0
+
+phases:
+  - name: test
+    steps:
+      # Get AMI ID
+      - name: AmiId
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              AMI_ID=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/ami-id)
+              echo ${AMI_ID}
+
+      # Get AWS region
+      - name: AWSRegion
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+
+              AVAIL_ZONE=$(curl --retry 3 --retry-delay 0 --silent --fail http://169.254.169.254/latest/meta-data/placement/availability-zone)
+              AWS_REGION=${AVAIL_ZONE::-1}
+              echo ${AWS_REGION}
+
+      - name: OperatingSystemName
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+              FILE=/etc/os-release
+              if [ -e ${FILE} ]; then
+                . ${FILE}
+                RELEASE="${ID}${VERSION_ID:+.${VERSION_ID}}"
+              fi
+
+              if [ $(echo "${RELEASE}" | grep -w '^amzn\.2') ]; then
+                OS='alinux2'
+              elif [ $(echo "${RELEASE}" | grep '^centos\.7') ]; then
+                OS='centos7'
+              elif [ $(echo "${RELEASE}" | grep '^centos\.8') ]; then
+                OS='centos8'
+              elif [ $(echo "${RELEASE}" | grep '^ubuntu\.18') ]; then
+                OS='ubuntu1804'
+              fi
+
+              echo ${OS}
+
+      - name: ParallelClusterTag
+        action: ExecuteBash
+        inputs:
+          commands:
+            - |
+              set -v
+
+              add_tag () {
+                KEY="$1"
+                VALUE="$2"
+                if [[ ! "${VALUE}" =~ NOT_INSTALLED ]]; then
+                  echo "Adding Tag Key=${KEY},Value=${VALUE} to AMI {{ test.AmiId.outputs.stdout }}"
+                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}"
+                fi
+              }
+
+              get_package_version () {
+                set -o pipefail
+                PACKAGE_NAME="$1"
+                if [ $(which dpkg 2> /dev/null) ]; then
+                  VERSION=$(dpkg -s "${PACKAGE_NAME}" 2> /dev/null | grep -i version | cut -d' ' -f2 || echo "NOT_INSTALLED")
+                  echo "${PACKAGE_NAME}-${VERSION}"
+                elif [ $(which rpm 2> /dev/null) ]; then
+                  echo $(rpm -q "${PACKAGE_NAME}" 2> /dev/null || echo "NOT_INSTALLED")
+                fi
+                set +o pipefail
+              }
+
+              get_source_version () {
+                PACKAGE_NAME="$1"
+                basename $(ls "/opt/parallelcluster/sources/${PACKAGE_NAME}"* 2> /dev/null || echo "NOT_INSTALLED")
+              }
+
+              # ParallelCluster Cookbook
+              add_tag "pcluster_cookbook" "$(cat /opt/parallelcluster/.bootstrapped)"
+
+              # OS
+              add_tag "pcluster_os" "{{ test.OperatingSystemName.outputs.stdout }}"
+
+              # Kernel
+              add_tag "pcluster_kernel" "$(uname -r)"
+
+              # sudo
+              add_tag "pcluster_sudo" "$(get_package_version "sudo")"
+
+              # Lustre
+              add_tag "pcluster_lustre" "$(get_package_version "lustre-client")"
+              add_tag "pcluster_lustre" "$(get_package_version "lustre-client-modules-aws")"
+
+              # EFA
+              add_tag "pcluster_efa" "$(get_package_version "efa")"
+              add_tag "pcluster_efa_profile" "$(get_package_version "efa-profile")"
+              add_tag "pcluster_efa_config" "$(get_package_version "efa-config")"
+              add_tag "pcluster_efa_rdma_core" "$(get_package_version "rdma-core")"
+              add_tag "pcluster_efa_libfabric" "$(get_package_version "libfabric-aws-bin")"
+              add_tag "pcluster_efa_openmpi40_aws" "$(get_package_version "openmpi40-aws")"
+
+              # DCV
+              add_tag "pcluster_dcv_server" "$(get_package_version "nice-dcv-server")"
+              add_tag "pcluster_dcv_xdcv" "$(get_package_version "nice-xdcv")"
+
+              # Slurm, Munge and PMIx
+              add_tag "pcluster_slurm" "$(get_source_version "slurm")"
+              add_tag "pcluster_munge" "$(get_source_version "munge")"
+              add_tag "pcluster_pmix" "$(get_source_version "pmix")"
+
+              # TODO Nvidia and Cuda
+
