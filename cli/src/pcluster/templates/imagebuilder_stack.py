@@ -57,7 +57,7 @@ class ImageBuilderStack(core.Stack):
         core.CfnParameter(self, "CfnParamCincInstaller", type="String", default="", description="CincInstaller")
         core.CfnParameter(
             self,
-            "CfnParamAttributeJson",
+            "CfnParamChefDnaJson",
             type="String",
             default=ChefAttributes(dev_settings).dump_json(),
             description="ChefAttributes",

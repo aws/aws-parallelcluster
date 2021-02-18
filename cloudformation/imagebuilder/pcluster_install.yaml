@@ -261,7 +261,7 @@ phases:
         inputs:
           - path: /tmp/dna.json
             content: |
-              ${CfnParamAttributeJson}
+              ${CfnParamChefDnaJson}
             overwrite: true
 
       - name: InstallPClusterPackages
