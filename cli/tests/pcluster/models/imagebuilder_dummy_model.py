@@ -17,24 +17,10 @@ CLASS_DICT = {
     "build": Build,
     "dev_settings": ImagebuilderDevSettings,
     "root_volume": Volume,
-    "tag": BaseTag,
-    "component": Component,
+    "tags": BaseTag,
+    "components": Component,
     "cookbook": Cookbook,
 }
-
-
-def dummy_imagebuilder(is_official_ami_build):
-    """Generate dummy imagebuilder configuration."""
-    image = Image(name="Pcluster")
-    if is_official_ami_build:
-        build = Build(
-            instance_type="c5.xlarge", parent_image="arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x"
-        )
-        dev_settings = ImagebuilderDevSettings(update_os_and_reboot=True)
-    else:
-        build = Build(instance_type="g4dn.xlarge", parent_image="ami-0185634c5a8a37250")
-        dev_settings = ImagebuilderDevSettings()
-    return ImageBuilder(image=image, build=build, dev_settings=dev_settings)
 
 
 def imagebuilder_factory(resource):
@@ -44,16 +30,14 @@ def imagebuilder_factory(resource):
         value = resource.get(r)
         if isinstance(value, list):
             temp = []
-            for v in value:
-                if isinstance(v, dict):
-                    for dict_key, dict_value in v.items():
-                        kwargs = imagebuilder_factory(dict_value)
-                        cls = CLASS_DICT.get(dict_key)
-                        temp.append(cls(**kwargs))
-                else:
-                    temp.extend(v)
+            if r in CLASS_DICT:
+                cls = CLASS_DICT.get(r)
+                for kwargs in value:
+                    temp.append(cls(**kwargs))
+            else:
+                temp = value
             object_dict[r] = temp
-        if r in CLASS_DICT:
+        elif r in CLASS_DICT:
             kwargs = imagebuilder_factory(value)
             cls = CLASS_DICT.get(r)
             object_dict[r] = cls(**kwargs)
