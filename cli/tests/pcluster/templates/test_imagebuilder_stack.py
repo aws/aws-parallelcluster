@@ -812,38 +812,12 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
     )
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
     generated_template = CDKTemplateBuilder().build_ami(imagebuild)
-    assert_that(
-        generated_template.get("Resources")
-        .get("ParallelClusterDistributionConfiguration")
-        .get("Properties")
-        .get("Tags")
-    ).is_equal_to(expected_imagebuilder_resource_tags)
-    assert_that(
-        generated_template.get("Resources")
-        .get("PClusterImageInfrastructureConfiguration")
-        .get("Properties")
-        .get("Tags")
-    ).is_equal_to(expected_imagebuilder_resource_tags)
-    assert_that(generated_template.get("Resources").get("PClusterComponent").get("Properties").get("Tags")).is_equal_to(
-        expected_imagebuilder_resource_tags
-    )
-    assert_that(
-        generated_template.get("Resources").get("ParallelClusterTag").get("Properties").get("Tags")
-    ).is_equal_to(expected_imagebuilder_resource_tags)
-    assert_that(
-        generated_template.get("Resources").get("PClusterImageRecipe").get("Properties").get("Tags")
-    ).is_equal_to(expected_imagebuilder_resource_tags)
-    assert_that(
-        generated_template.get("Resources")
-        .get("ParallelClusterDistributionConfiguration")
-        .get("Properties")
-        .get("Tags")
-    ).is_equal_to(expected_imagebuilder_resource_tags)
-    if generated_template.get("Resources").get("UpdateAndRebootComponent"):
-        assert_that(
-            generated_template.get("Resources").get("UpdateAndRebootComponent").get("Properties").get("Tags")
-        ).is_equal_to(expected_imagebuilder_resource_tags)
-    if generated_template.get("Resources").get("InstanceRole"):
-        assert_that(generated_template.get("Resources").get("InstanceRole").get("Properties").get("Tags")).is_equal_to(
-            expected_role_tags
-        )
+
+    for resource_name, resource in generated_template.get("Resources").items():
+        if resource_name == "InstanceProfile":
+            # InstanceProfile has no tags
+            continue
+        elif resource_name == "InstanceRole":
+            assert_that(resource.get("Properties").get("Tags")).is_equal_to(expected_role_tags)
+        else:
+            assert_that(resource.get("Properties").get("Tags")).is_equal_to(expected_imagebuilder_resource_tags)
