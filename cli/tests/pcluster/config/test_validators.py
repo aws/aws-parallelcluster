@@ -15,201 +15,14 @@ import pytest
 from assertpy import assert_that
 
 import tests.pcluster.config.utils as utils
-from pcluster.config.mappings import ALLOWED_VALUES
-from pcluster.config.validators import EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS
 from tests.common import MockedBoto3Request
 from tests.pcluster.config.defaults import DefaultDict
-
-
-@pytest.fixture()
-def boto3_stubber_path():
-    return "pcluster.config.validators.boto3"
 
 
 @pytest.mark.parametrize("instance_type, expected_message", [("t2.micro", None), ("c4.xlarge", None)])
 def test_head_node_instance_type_validator(mocker, instance_type, expected_message):
     config_parser_dict = {"cluster default": {"master_instance_type": instance_type}}
     utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-@pytest.mark.parametrize(
-    "image_architecture, bad_ami_message, bad_architecture_message",
-    [
-        ("x86_64", None, None),
-        (
-            "arm64",
-            None,
-            "incompatible with the architecture supported by the instance type chosen for the head node",
-        ),
-        (
-            "arm64",
-            "Unable to get information for AMI",
-            "incompatible with the architecture supported by the instance type chosen for the head node",
-        ),
-    ],
-)
-def test_ec2_ami_validator(mocker, boto3_stubber, image_architecture, bad_ami_message, bad_architecture_message):
-    describe_images_response = {
-        "Images": [
-            {
-                "VirtualizationType": "paravirtual",
-                "Name": "My server",
-                "Hypervisor": "xen",
-                "ImageId": "ami-12345678",
-                "RootDeviceType": "ebs",
-                "State": "available",
-                "BlockDeviceMappings": [
-                    {
-                        "DeviceName": "/dev/sda1",
-                        "Ebs": {
-                            "DeleteOnTermination": True,
-                            "SnapshotId": "snap-1234567890abcdef0",
-                            "VolumeSize": 8,
-                            "VolumeType": "standard",
-                        },
-                    }
-                ],
-                "Architecture": image_architecture,
-                "ImageLocation": "123456789012/My server",
-                "KernelId": "aki-88aa75e1",
-                "OwnerId": "123456789012",
-                "RootDeviceName": "/dev/sda1",
-                "Public": False,
-                "ImageType": "machine",
-                "Description": "An AMI for my server",
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_images",
-            response=describe_images_response,
-            expected_params={"ImageIds": ["ami-12345678"]},
-            generate_error=bad_ami_message,
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {"cluster default": {"custom_ami": "ami-12345678"}}
-    expected_message = bad_ami_message or bad_architecture_message
-    utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-def test_ec2_vpc_id_validator(mocker, boto3_stubber):
-    mocked_requests = []
-
-    # mock describe_vpc boto3 call
-    describe_vpc_response = {
-        "Vpcs": [
-            {
-                "VpcId": "vpc-12345678",
-                "InstanceTenancy": "default",
-                "Tags": [{"Value": "Default VPC", "Key": "Name"}],
-                "State": "available",
-                "DhcpOptionsId": "dopt-4ef69c2a",
-                "CidrBlock": "172.31.0.0/16",
-                "IsDefault": True,
-            }
-        ]
-    }
-    mocked_requests.append(
-        MockedBoto3Request(
-            method="describe_vpcs", response=describe_vpc_response, expected_params={"VpcIds": ["vpc-12345678"]}
-        )
-    )
-
-    # mock describe_vpc_attribute boto3 call
-    describe_vpc_attribute_response = {
-        "VpcId": "vpc-12345678",
-        "EnableDnsSupport": {"Value": True},
-        "EnableDnsHostnames": {"Value": True},
-    }
-    mocked_requests.append(
-        MockedBoto3Request(
-            method="describe_vpc_attribute",
-            response=describe_vpc_attribute_response,
-            expected_params={"VpcId": "vpc-12345678", "Attribute": "enableDnsSupport"},
-        )
-    )
-    mocked_requests.append(
-        MockedBoto3Request(
-            method="describe_vpc_attribute",
-            response=describe_vpc_attribute_response,
-            expected_params={"VpcId": "vpc-12345678", "Attribute": "enableDnsHostnames"},
-        )
-    )
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO mock and test invalid vpc-id
-    for vpc_id, expected_message in [("vpc-12345678", None)]:
-        config_parser_dict = {"cluster default": {"vpc_settings": "default"}, "vpc default": {"vpc_id": vpc_id}}
-        utils.assert_param_validator(mocker, config_parser_dict, expected_message)
-
-
-def test_ec2_subnet_id_validator(mocker, boto3_stubber):
-    describe_subnets_response = {
-        "Subnets": [
-            {
-                "AvailabilityZone": "us-east-2c",
-                "AvailabilityZoneId": "use2-az3",
-                "AvailableIpAddressCount": 248,
-                "CidrBlock": "10.0.1.0/24",
-                "DefaultForAz": False,
-                "MapPublicIpOnLaunch": False,
-                "State": "available",
-                "SubnetId": "subnet-12345678",
-                "VpcId": "vpc-06e4ab6c6cEXAMPLE",
-                "OwnerId": "111122223333",
-                "AssignIpv6AddressOnCreation": False,
-                "Ipv6CidrBlockAssociationSet": [],
-                "Tags": [{"Key": "Name", "Value": "MySubnet"}],
-                "SubnetArn": "arn:aws:ec2:us-east-2:111122223333:subnet/subnet-12345678",
-            }
-        ]
-    }
-    mocked_requests = [
-        MockedBoto3Request(
-            method="describe_subnets",
-            response=describe_subnets_response,
-            expected_params={"SubnetIds": ["subnet-12345678"]},
-        )
-    ]
-    boto3_stubber("ec2", mocked_requests)
-
-    # TODO test with invalid key
-    config_parser_dict = {
-        "cluster default": {"vpc_settings": "default"},
-        "vpc default": {"master_subnet_id": "subnet-12345678"},
-    }
-    utils.assert_param_validator(mocker, config_parser_dict)
-
-
-@pytest.mark.parametrize(
-    "kms_key_id, expected_message",
-    [
-        ("9e8a129be-0e46-459d-865b-3a5bf974a22k", None),
-        (
-            "9e7a129be-0e46-459d-865b-3a5bf974a22k",
-            "Key 'arn:aws:kms:us-east-1:12345678:key/9e7a129be-0e46-459d-865b-3a5bf974a22k' does not exist",
-        ),
-    ],
-)
-def test_kms_key_validator(mocker, boto3_stubber, kms_key_id, expected_message):
-    _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, 1)
-
-    config_parser_dict = {
-        "cluster default": {"fsx_settings": "fsx"},
-        "fsx fsx": {
-            "storage_capacity": 1200,
-            "fsx_kms_key_id": kms_key_id,
-            "deployment_type": "PERSISTENT_1",
-            "per_unit_storage_throughput": 50,
-        },
-    }
-    utils.assert_param_validator(
-        mocker, config_parser_dict, expected_error=expected_message if expected_message else None
-    )
 
 
 def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_calls):
@@ -267,11 +80,7 @@ def _kms_key_stubber(mocker, boto3_stubber, kms_key_id, expected_message, num_ca
         ),
     ],
 )
-def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_error, num_calls):
-    if bucket:
-        _head_bucket_stubber(mocker, boto3_stubber, bucket, num_calls)
-    if "fsx_kms_key_id" in section_dict:
-        _kms_key_stubber(mocker, boto3_stubber, section_dict.get("fsx_kms_key_id"), None, 0 if expected_error else 1)
+def test_fsx_validator(mocker, section_dict, bucket, expected_error, num_calls):
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     if expected_error:
         expected_error = re.escape(expected_error)
@@ -284,7 +93,7 @@ def test_fsx_validator(mocker, boto3_stubber, section_dict, bucket, expected_err
         ({"storage_capacity": 7200}, None, None),
     ],
 )
-def test_fsx_storage_capacity_validator(mocker, boto3_stubber, capsys, section_dict, expected_error, expected_warning):
+def test_fsx_storage_capacity_validator(mocker, capsys, section_dict, expected_error, expected_warning):
     config_parser_dict = {"cluster default": {"fsx_settings": "default"}, "fsx default": section_dict}
     utils.assert_param_validator(
         mocker, config_parser_dict, capsys=capsys, expected_error=expected_error, expected_warning=expected_warning
@@ -391,11 +200,3 @@ def run_architecture_validator_test(
 # and calls the validator directly.
 #
 #########
-
-
-def test_ebs_allowed_values_all_have_volume_size_bounds():
-    """Ensure that all known EBS volume types are accounted for by the volume size validator."""
-    allowed_values_all_have_volume_size_bounds = set(ALLOWED_VALUES["volume_types"]) <= set(
-        EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys()
-    )
-    assert_that(allowed_values_all_have_volume_size_bounds).is_true()

@@ -12,6 +12,7 @@ from common.aws.aws_api import AWSApi
 from common.boto3.common import AWSClientError
 from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
+from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
 
 
@@ -21,6 +22,7 @@ class DummyAWSApi(AWSApi):
         self.efs = dummy_efs_client()
         self.s3 = dummy_s3_client()
         self.imagebuilder = dummy_imagebuilder_client()
+        self.kms = dummy_kms_client()
         # TODO: mock all clients
 
 
@@ -78,6 +80,11 @@ class DummyImageBuilderClient(ImageBuilderClient):
     pass
 
 
+class DummyKmsClient(KmsClient):
+    def __init__(self):
+        """Override Parent constructor. No real boto3 client is created."""
+
+
 def dummy_ec2_client():
     return DummyEc2Client()
 
@@ -92,6 +99,10 @@ def dummy_s3_client():
 
 def dummy_imagebuilder_client():
     return DummyImageBuilderClient()
+
+
+def dummy_kms_client():
+    return DummyKmsClient()
 
 
 def mock_aws_api():

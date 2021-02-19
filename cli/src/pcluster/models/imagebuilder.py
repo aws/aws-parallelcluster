@@ -21,6 +21,7 @@ from pcluster.models.common import BaseDevSettings, BaseTag, Resource
 from pcluster.validators.ebs_validators import EBSVolumeKmsKeyIdValidator, EbsVolumeTypeSizeValidator
 from pcluster.validators.ec2_validators import InstanceTypeBaseAMICompatibleValidator
 from pcluster.validators.imagebuilder_validators import AMIVolumeSizeValidator
+from pcluster.validators.kms_validators import KmsKeyValidator
 
 # ---------------------- Image ---------------------- #
 
@@ -39,6 +40,8 @@ class Volume(Resource):
         self._add_validator(
             EBSVolumeKmsKeyIdValidator, volume_kms_key_id=self.kms_key_id, volume_encrypted=self.encrypted
         )
+        if self.kms_key_id:
+            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class Image(Resource):

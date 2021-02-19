@@ -29,6 +29,7 @@ ALLOWED_VALUES = {
     "security_group_id": r"^sg-[0-9a-z]{8}$|^sg-[0-9a-z]{17}$",
     "subnet_id": r"^subnet-[0-9a-z]{8}$|^subnet-[0-9a-z]{17}$",
     "architectures": SUPPORTED_ARCHITECTURES,
+    "volume_type": ["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"],
 }
 
 

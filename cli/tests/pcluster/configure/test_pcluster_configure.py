@@ -287,7 +287,6 @@ def _mock_parallel_cluster_config(mocker):
         "p4d.24xlarge",
     ]
     mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
-    mocker.patch("pcluster.configure.easyconfig.get_supported_instance_types", return_value=supported_instance_types)
     mocker.patch("pcluster.config.cfn_param_types.get_availability_zone_of_subnet", return_value="mocked_avail_zone")
     mocker.patch(
         "pcluster.config.cfn_param_types.get_supported_architectures_for_instance_type",

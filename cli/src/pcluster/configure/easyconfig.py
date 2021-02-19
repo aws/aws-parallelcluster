@@ -24,7 +24,6 @@ import boto3
 from pcluster.cluster_model import ClusterModel
 from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
-from pcluster.config.validators import HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES, HEAD_NODE_UNSUPPORTED_MESSAGE
 from pcluster.configure.networking import (
     NetworkConfiguration,
     PublicPrivateNetworkConfig,
@@ -324,13 +323,6 @@ def _prompt_for_subnet(default_subnet, all_subnets, qualified_subnets, message):
     return prompt_iterable(message, qualified_subnets, default_value=default_subnet)
 
 
-def _is_instance_type_supported_for_head_node(instance_type):
-    if instance_type in HEAD_NODE_UNSUPPORTED_INSTANCE_TYPES:
-        print(HEAD_NODE_UNSUPPORTED_MESSAGE.format(instance_type))
-        return False
-    return True
-
-
 class ClusterConfigureHelper:
     """Handle prompts for cluster section."""
 
@@ -372,7 +364,7 @@ class ClusterConfigureHelper:
             default_head_node_instance_type = get_default_instance_type()
         self.head_node_instance_type = prompt(
             "Head node instance type",
-            lambda x: _is_instance_type_supported_for_head_node(x) and x in get_supported_instance_types(),
+            lambda x: x in get_supported_instance_types(),
             default_value=default_head_node_instance_type,
         )
         if not self.is_aws_batch:
