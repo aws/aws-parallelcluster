@@ -70,10 +70,10 @@ phases:
               get_package_version () {
                 set -o pipefail
                 PACKAGE_NAME="$1"
-                if [ $(which dpkg 2> /dev/null) ]; then
+                if [ $(which apt 2> /dev/null) ]; then
                   VERSION=$(dpkg -s "${PACKAGE_NAME}" 2> /dev/null | grep -i version | cut -d' ' -f2 || echo "NOT_INSTALLED")
                   echo "${PACKAGE_NAME}-${VERSION}"
-                elif [ $(which rpm 2> /dev/null) ]; then
+                elif [ $(which yum 2> /dev/null) ]; then
                   echo $(rpm -q "${PACKAGE_NAME}" 2> /dev/null || echo "NOT_INSTALLED")
                 fi
                 set +o pipefail
