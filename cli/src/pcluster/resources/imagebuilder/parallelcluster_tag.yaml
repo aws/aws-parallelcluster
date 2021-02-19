@@ -87,8 +87,8 @@ phases:
                 echo "${filename}"
               }
 
-              # ParallelCluster Cookbook
-              add_tag "pcluster_cookbook" "$(cat /opt/parallelcluster/.bootstrapped)"
+              # ParallelCluster bootstrap file
+              add_tag "pcluster_bootstrap_file" "$(cat /opt/parallelcluster/.bootstrapped)"
 
               # OS
               add_tag "pcluster_os" "{{ test.OperatingSystemName.outputs.stdout }}"
