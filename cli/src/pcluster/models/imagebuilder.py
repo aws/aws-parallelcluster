@@ -62,7 +62,7 @@ class Image(Resource):
     def _set_default(self):
         if self.tags is None:
             self.tags = []
-        default_tag = BaseTag("PclusterVersion", utils.get_installed_version())
+        default_tag = BaseTag("pcluster_version", utils.get_installed_version())
         default_tag.implied = True
         self.tags.append(default_tag)
 
