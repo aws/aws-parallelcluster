@@ -62,6 +62,13 @@ class ImageBuilderStack(core.Stack):
             default=ChefAttributes(dev_settings).dump_json(),
             description="ChefAttributes",
         )
+        core.CfnParameter(
+            self,
+            "CfnParamUpdateOsAndReboot",
+            type="String",
+            default="true" if dev_settings and dev_settings.update_os_and_reboot else "false",
+            description="UpdateOsAndReboot",
+        )
 
         # Setup ImageBuilder Resources
         resources_prefix = utils.generate_random_prefix()
