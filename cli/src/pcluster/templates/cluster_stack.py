@@ -12,7 +12,7 @@
 #
 # This module contains all the classes required to convert a Cluster into a CFN template by using CDK.
 #
-
+import pkg_resources
 from aws_cdk import aws_ec2 as ec2
 from aws_cdk import aws_efs as efs
 from aws_cdk import aws_fsx as fsx
@@ -20,10 +20,14 @@ from aws_cdk import core
 from aws_cdk.aws_ec2 import (
     CfnEIP,
     CfnEIPAssociation,
+    CfnLaunchTemplate,
     CfnNetworkInterface,
     CfnSecurityGroup,
     CfnSecurityGroupEgress,
     CfnSecurityGroupIngress,
+    CloudFormationInit,
+    InitConfig,
+    InitFile,
 )
 from aws_cdk.aws_iam import (
     CfnInstanceProfile,
@@ -35,10 +39,11 @@ from aws_cdk.aws_iam import (
     ServicePrincipal,
 )
 from aws_cdk.aws_lambda import CfnFunction
-from aws_cdk.core import CfnCustomResource, CfnOutput, CfnStack, Fn
+from aws_cdk.core import CfnCustomResource, CfnOutput, CfnStack, CfnTag, Fn
 
 from common.aws.aws_api import AWSApi
-from pcluster.models.cluster import HeadNode, SharedEbs, SharedEfs, SharedFsx, SharedStorageType
+from pcluster import utils
+from pcluster.models.cluster import SharedEbs, SharedEfs, SharedFsx, SharedStorageType
 from pcluster.models.cluster_slurm import SlurmCluster
 
 
@@ -67,7 +72,20 @@ class ClusterStack(core.Stack):
         }
 
         # Storage filesystem Ids
-        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorage.Type}
+        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
+
+    # -- Utility methods --------------------------------------------------------------------------------------------- #
+    def _raids_count(self):
+        return len(
+            [
+                storage
+                for storage in self._cluster.shared_storage
+                if storage.shared_storage_type == SharedStorageType.EBS and storage.raid
+            ]
+        )
+
+    def _short_stack_name(self):
+        return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
 
     # -- Resources --------------------------------------------------------------------------------------------------- #
     def _add_resources(self):
@@ -79,7 +97,7 @@ class ClusterStack(core.Stack):
             self.root_iam_role = self._add_root_iam_role()
 
         # RootInstanceProfile
-        self._add_root_instance_profile()
+        self.root_instance_profile = self._add_root_instance_profile()
 
         # ParallelClusterPolicies
         if self._condition_create_ec2_iam_role():
@@ -310,7 +328,7 @@ class ClusterStack(core.Stack):
             self._cluster.head_iam_role,
             self._cluster.compute_iam_role,
         ]
-        CfnInstanceProfile(
+        return CfnInstanceProfile(
             scope=self,
             id="RootInstanceProfile",
             roles=[role for role in root_instance_profile_roles if role is not None],
@@ -621,17 +639,17 @@ class ClusterStack(core.Stack):
         cleanup_resources_bucket_custom_resource.add_property_override("Action", "DELETE_S3_ARTIFACTS")
         return cleanup_resources_bucket_custom_resource
 
-    def _add_shared_storage(self, storage: SharedStorage):
+    def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
         storage_id = None
         cfn_resource_id = "{0}{1}".format(
             storage.shared_storage_type.name, len(self._storage_resource_ids[storage.shared_storage_type])
         )
-        if storage.shared_storage_type == SharedStorage.Type.FSX:
+        if storage.shared_storage_type == SharedStorageType.FSX:
             storage_id = self._add_fsx_storage(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorage.Type.EBS:
+        elif storage.shared_storage_type == SharedStorageType.EBS:
             storage_id = self._add_ebs_volume(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorage.Type.EFS:
+        elif storage.shared_storage_type == SharedStorageType.EFS:
             storage_id = self._add_efs_storage(cfn_resource_id, storage)
 
         # Store filesystem id
@@ -728,176 +746,164 @@ class ClusterStack(core.Stack):
 
     def _add_ebs_volume(self, id: str, shared_ebs: SharedEbs):
         """Add specific Cfn Resources to map the EBS storage."""
-        ebs_id = shared_ebs.volume_id
-        if not ebs_id and shared_ebs.mount_dir:
-            ebs_resource = ec2.CfnVolume(
-                scope=self,
-                id=id,
-                availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
-                    self._cluster.head_node.networking.subnet_id
-                ),
-                encrypted=shared_ebs.encrypted,
-                iops=shared_ebs.iops,
-                throughput=shared_ebs.throughput,
-                kms_key_id=shared_ebs.kms_key_id,
-                size=shared_ebs.size,
-                snapshot_id=shared_ebs.snapshot_id,
-                volume_type=shared_ebs.volume_type,
-            )
-            ebs_id = ebs_resource.ref
+        if shared_ebs.raid:
+            # TODO: add RAID storage
+            ebs_id = ""
+        else:
+            ebs_id = shared_ebs.volume_id
+            if not ebs_id and shared_ebs.mount_dir:
+                ebs_resource = ec2.CfnVolume(
+                    scope=self,
+                    id=id,
+                    availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
+                        self._cluster.head_node.networking.subnet_id
+                    ),
+                    encrypted=shared_ebs.encrypted,
+                    iops=shared_ebs.iops,
+                    throughput=shared_ebs.throughput,
+                    kms_key_id=shared_ebs.kms_key_id,
+                    size=shared_ebs.size,
+                    snapshot_id=shared_ebs.snapshot_id,
+                    volume_type=shared_ebs.volume_type,
+                )
+                ebs_id = ebs_resource.ref
 
         return ebs_id
 
     def _add_head_node(self):
-        # TODO: use attributes from head_node instead of using these static variables. Double check compliance with
-        # MasterServerSubStack
-        master_instance_type = self._cluster.head_node.instance_type
-        master_core_count = "-1,true"
-        # compute_core_count = "-1"
-        key_name = self._cluster.head_node.ssh.key_name
-        root_device = self.os_features[self._cluster.image.os]["RootDevice"]
-        root_volume_size = 10
-        # proxy_server = "proxy_server"
-        placement_group = "placement_group"
-        # update_waiter_function_arn = "update_waiter_function_arn"
-        # use_master_public_ip = True
-        master_network_interfaces_count = 5
-        head_eni = "head_eni"
-        master_security_groups = ["master_security_groups"]
-        master_subnet_id = "master_subnet_id"
-        image_id = "image_id"
-        iam_instance_profile = "iam_instance_profile"
+        # LT security groups
+        head_lt_security_groups = []
+        if self._cluster.head_node.networking.security_groups:
+            head_lt_security_groups.extend(self._cluster.head_node.networking.security_groups)
+        if self._cluster.head_node.networking.additional_security_groups:
+            head_lt_security_groups.extend(self._cluster.head_node.networking.additional_security_groups)
+        if self._head_security_group:
+            head_lt_security_groups.append(self._head_security_group.ref)
 
-        # Conditions
-        master_core_info = master_core_count.split(",")
-        disable_master_hyperthreading = master_core_info[0] != -1 and master_core_info[0] != "NONE"
-        # disable_compute_hyperthreading = master_core_info != -1 and master_core_info != "NONE"
-        disable_hyperthreading_via_cpu_options = disable_master_hyperthreading and master_core_info[1] == "true"
-        # disable_hyperthreading_manually = disable_master_hyperthreading and not disable_hyperthreading_via_cpu_options
-        is_master_instance_ebs_opt = master_instance_type not in [
-            "cc2.8xlarge",
-            "cr1.8xlarge",
-            "m3.medium",
-            "m3.large",
-            "c3.8xlarge",
-            "c3.large",
-            "",
+        # LT network interfaces
+        head_lt_nw_interfaces = [
+            CfnLaunchTemplate.NetworkInterfaceProperty(device_index=0, network_interface_id=self.head_eni.ref)
         ]
-        # use_proxy = proxy_server != "NONE"
-        use_placement_group = placement_group != "NONE"
-        # has_update_waiter_function = update_waiter_function_arn != "NONE"
-        # has_master_public_ip = use_master_public_ip == "true"
-        # use_nic1 = master_network_interfaces_count ... TODO
-
-        cpu_options = ec2.CfnLaunchTemplate.CpuOptionsProperty(
-            core_count=int(master_core_info[0]),
-            threads_per_core=1,
-        )
-        block_device_mappings = []
-        for _, (device_name_index, virtual_name_index) in enumerate(zip(list(map(chr, range(97, 121))), range(0, 24))):
-            device_name = "/dev/xvdb{0}".format(device_name_index)
-            virtual_name = "ephemeral{0}".format(virtual_name_index)
-            block_device_mappings.append(
-                ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(device_name=device_name, virtual_name=virtual_name)
-            )
-
-        block_device_mappings.append(
-            ec2.CfnLaunchTemplate.BlockDeviceMappingProperty(
-                device_name=root_device,
-                ebs=ec2.CfnLaunchTemplate.EbsProperty(
-                    volume_size=root_volume_size,
-                    volume_type="gp2",
-                ),
-            )
-        )
-
-        tags_raw = [
-            ("Application", self.stack_name),
-            ("Name", "Master"),
-            ("aws-parallelcluster-node-type", "Master"),
-            ("ClusterName", "parallelcluster-{0}".format(self.stack_name)),
-            # ... TODO
-        ]
-        tags = []
-        for key, value in tags_raw:
-            tags.append(core.CfnTag(key=key, value=value))
-        tag_specifications = [
-            ec2.CfnLaunchTemplate.TagSpecificationProperty(resource_type="instance", tags=tags),
-            ec2.CfnLaunchTemplate.TagSpecificationProperty(resource_type="volume", tags=tags),  # FIXME
-        ]
-
-        network_interfaces = [
-            ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                network_interface_id=head_eni,
-                device_index=0,
-            )
-        ]
-        for index in range(1, master_network_interfaces_count + 1):
-            network_interfaces.append(
-                ec2.CfnLaunchTemplate.NetworkInterfaceProperty(
-                    device_index=index,
-                    network_card_index=index,
-                    groups=master_security_groups,
-                    subnet_id=master_subnet_id,
+        for if_number in range(1, self._cluster.head_node.instance_type_info.max_network_interface_count() - 1):
+            head_lt_nw_interfaces.append(
+                CfnLaunchTemplate.NetworkInterfaceProperty(
+                    device_index=if_number,
+                    network_card_index=if_number,
+                    groups=head_lt_security_groups,
+                    subnet_id=self._cluster.head_node.networking.subnet_id,
                 )
             )
 
-        launch_template_data = ec2.CfnLaunchTemplate.LaunchTemplateDataProperty(
-            instance_type=master_instance_type,
-            cpu_options=cpu_options if disable_hyperthreading_via_cpu_options else None,
-            block_device_mappings=block_device_mappings,
-            key_name=key_name,
-            tag_specifications=tag_specifications,
-            network_interfaces=network_interfaces,
-            image_id=image_id,
-            ebs_optimized=is_master_instance_ebs_opt,
-            iam_instance_profile=ec2.CfnLaunchTemplate.IamInstanceProfileProperty(name=iam_instance_profile),
-            placement=ec2.CfnLaunchTemplate.PlacementProperty(
-                group_name=placement_group if use_placement_group else None
+        # LT userdata
+        user_data_file_path = pkg_resources.resource_filename(__name__, "../resources/user_data/head_node/head_node.sh")
+        with open(user_data_file_path, "r") as user_data_file:
+            head_node_lt_user_data = user_data_file.read()
+
+        head_node_launch_template = CfnLaunchTemplate(
+            scope=self,
+            id="MasterServerLaunchTemplate",
+            launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
+                instance_type=self._cluster.head_node.instance_type,
+                cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
+                    core_count=self._cluster.head_node.vcpus, threads_per_core=1
+                )
+                if self._cluster.head_node.pass_cpu_options_in_launch_template
+                else None,
+                # block_device_mappings="",  # TODO: Implement this!
+                key_name=self._cluster.head_node.ssh.key_name,
+                tag_specifications=[
+                    CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="instance",
+                        tags=[
+                            CfnTag(key="Application", value=self.stack_name),
+                            CfnTag(key="Name", value="Master"),
+                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),
+                            CfnTag(key="ClusterName", value=self._short_stack_name()),
+                            CfnTag(
+                                key="aws-parallelcluster-attributes",
+                                value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
+                                    BaseOS=self._cluster.image.os,
+                                    Scheduler=self._cluster.scheduling.scheduler,
+                                    Version=utils.get_installed_version(),
+                                    Architecture=self._cluster.head_node.architecture,
+                                ),
+                            ),
+                            CfnTag(key="aws-parallelcluster-networking", value=""),  # TODO: is this needed?
+                            CfnTag(
+                                key="aws-parallelcluster-filesystem",
+                                value="efs={efs}, multiebs={multiebs}, raid={raid}, fsx={fsx}".format(
+                                    efs=len(self._storage_resource_ids[SharedStorageType.EFS]),
+                                    multiebs=len(self._storage_resource_ids[SharedStorageType.EBS]),
+                                    # TODO: shall we add a EBS_RAID StorageType?
+                                    raid=self._raids_count(),
+                                    fsx=len(self._storage_resource_ids[SharedStorageType.FSX]),
+                                ),
+                            ),
+                        ],
+                    ),
+                    CfnLaunchTemplate.TagSpecificationProperty(
+                        resource_type="volume",
+                        tags=[
+                            CfnTag(key="ClusterName", value=self._short_stack_name()),
+                            CfnTag(key="Application", value=self.stack_name),
+                            CfnTag(key="aws-parallelcluster-node-type", value="Master"),
+                        ],
+                    ),
+                ],
+                network_interfaces=head_lt_nw_interfaces,
+                image_id=self._cluster.ami_id,
+                ebs_optimized=self._cluster.head_node.instance_type_info.is_ebs_optimized(),
+                iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
+                user_data=Fn.base64(
+                    Fn.sub(
+                        head_node_lt_user_data,
+                        {
+                            "YumProxy": self._cluster.head_node.networking.proxy
+                            if self._cluster.head_node.networking.proxy
+                            else "_none_",
+                            "DnfProxy": self._cluster.head_node.networking.proxy
+                            if self._cluster.head_node.networking.proxy
+                            else "",
+                            "AptProxy": self._cluster.head_node.networking.proxy
+                            if self._cluster.head_node.networking.proxy
+                            else "false",
+                        },
+                    )
+                ),
             ),
-            # user_data= TODO
-            # https://stackoverflow.com/questions/57753032/how-to-obtain-pseudo-parameters-user-data-with-aws-cdk
         )
 
-        launch_template = ec2.CfnLaunchTemplate(
-            scope=self, id="MasterServerLaunchTemplate", launch_template_data=launch_template_data
+        # Metadata
+        head_node_launch_template.add_metadata("cfn-lint", {"config": {"ignore_checks": ["E3002"]}})
+        head_node_launch_template.add_metadata("Comment", "AWS ParallelCluster Master server")
+
+        # CloudFormation Init
+        # TODO: Finish implementation and fix deployConfigFiles
+        head_node_cfn_init = CloudFormationInit.from_config_sets(
+            config_sets={
+                "default": [
+                    "deployConfigFiles",
+                    "cfnHupConfig",
+                    "chefPrepEnv",
+                    "shellRunPreInstall",
+                    "chefConfig",
+                    "shellRunPostInstall",
+                    "chefFinalize",
+                ],
+                "update": ["deployConfigFiles", "chefUpdate"],
+            },
+            configs={
+                "deployConfigFiles": InitConfig(
+                    [
+                        InitFile.from_file_inline(
+                            target_file_name="/tmp/dna.json", source_file_name=user_data_file_path, base64_encoded=True
+                        )
+                    ]
+                )
+            },
         )
 
-        master_instance = ec2.CfnInstance(
-            self,
-            id="MasterServer",
-            launch_template=ec2.CfnInstance.LaunchTemplateSpecificationProperty(
-                launch_template_id=launch_template.ref, version=launch_template.attr_latest_version_number
-            ),
-        )
-
-        core.CfnOutput(
-            self,
-            id="privateip",
-            description="Private IP Address of the Master host",
-            value=master_instance.attr_public_ip,
-        )
-        core.CfnOutput(
-            self,
-            id="publicip",
-            description="Public IP Address of the Master host",
-            value=master_instance.attr_public_ip,
-        )
-        core.CfnOutput(
-            self,
-            id="dnsname",
-            description="Private DNS name of the Master host",
-            value=master_instance.attr_private_dns_name,
-        )
-
-        # TODO metadata?
-
-        # https://docs.aws.amazon.com/cdk/latest/guide/use_cfn_template.html
-        # with open('master-server-substack.cfn.yaml', 'r') as f:
-        # template = yaml.load(f, Loader=yaml.SafeLoader)
-        # include = core.CfnInclude(self, 'ExistingInfrastructure',
-        #    template=template,
-        # )
+        head_node_launch_template.add_metadata("AWS::CloudFormation::Init", head_node_cfn_init)
 
     # -- Conditions -------------------------------------------------------------------------------------------------- #
 

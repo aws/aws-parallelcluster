@@ -18,13 +18,7 @@ from typing import List
 from common.aws.aws_api import AWSApi
 from pcluster.constants import CIDR_ALL_IPS, EBS_VOLUME_TYPE_IOPS_DEFAULT
 from pcluster.models.common import BaseDevSettings, BaseTag, Resource
-from pcluster.utils import (
-    error,
-    get_availability_zone_of_subnet,
-    get_partition,
-    get_region,
-    get_supported_architectures_for_instance_type,
-)
+from pcluster.utils import get_availability_zone_of_subnet, get_partition, get_region
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     DcvValidator,
@@ -642,16 +636,31 @@ class HeadNode(Resource):
 
     @property
     def architecture(self):
-        """Compute cluster's architecture based on its instance type."""
-        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
-        if not supported_architectures:
-            error(f"Unable to get architectures supported by instance type {self.instance_type}")
-        # If the instance type supports multiple architectures, choose the first one.
-        # TODO: this is currently not an issue because none of the instance types we support more than one of the
-        #       architectures we support. If this were ever to change (e.g., we start supporting i386) then we would
-        #       probably need to choose based on the subset of the architectures supported by both the head node and
-        #       compute instance types.
-        return supported_architectures[0]
+        """Compute cluster's architecture based on its head node instance type."""
+        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return instance_type_info.supported_architecture()
+
+    @property
+    def vcpus(self):
+        """Get the number of vcpus for the instance according to disable_hyperthreading and instance features."""
+        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        default_threads_per_core = instance_type_info.default_threads_per_core()
+        return (
+            instance_type_info.vcpus_count()
+            if not self.disable_simultaneous_multithreading
+            else (instance_type_info.vcpus_count() // default_threads_per_core)
+        )
+
+    @property
+    def pass_cpu_options_in_launch_template(self):
+        """Check whether CPU Options must be passed in launch template for head node."""
+        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return self.disable_simultaneous_multithreading and instance_type_info.is_cpu_options_supported_in_lt()
+
+    @property
+    def instance_type_info(self):
+        """Return head node instance type information as returned from aws ec2 describe-instamce-types."""
+        return AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
 
 
 class BaseComputeResource(Resource):
@@ -683,11 +692,8 @@ class BaseComputeResource(Resource):
     @property
     def architecture(self):
         """Compute cluster's architecture based on its head node instance type."""
-        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
-        if not supported_architectures:
-            error(f"Unable to get architectures supported by instance type {self.instance_type}")
-        # If the instance type supports multiple architectures, choose the first one.
-        return supported_architectures[0]
+        instance_type_info = AWSApi.instance().ec2.get_instance_type_info(self.instance_type)
+        return instance_type_info.supported_architecture()
 
 
 class BaseQueue(Resource):
@@ -931,4 +937,13 @@ class BaseCluster(Resource):
             .ec2.describe_subnets(SubnetIds=[self.head_node.networking.subnet_id])
             .get("Subnets")[0]
             .get("VpcId")
+        )
+
+    @property
+    def ami_id(self):
+        """Get the image id of the cluster."""
+        return (
+            self.image.custom_ami
+            if self.image.custom_ami
+            else AWSApi.instance().ec2.get_official_image_id(self.image.os, self.head_node.architecture)
         )

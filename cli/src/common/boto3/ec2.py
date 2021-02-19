@@ -10,8 +10,9 @@
 # limitations under the License.
 
 # TODO move s3_factory.py and awsbatch/utils.py here
-
 from common.boto3.common import AWSClientError, AWSExceptionHandler, Boto3Client
+from pcluster import utils
+from pcluster.utils import Cache, InstanceTypeInfo
 
 
 class Ec2Client(Boto3Client):
@@ -70,4 +71,38 @@ class Ec2Client(Boto3Client):
             self.describe_vpc_attribute(vpc_id=vpc_id, attribute="enableDnsHostnames")
             .get("EnableDnsHostnames")
             .get("Value")
+        )
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_instance_type_info(self, instance_type):
+        """Return the results of calling EC2's DescribeInstanceTypes API for the given instance type."""
+        return InstanceTypeInfo(
+            self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+        )
+
+    @AWSExceptionHandler.handle_client_exception
+    @Cache.cached
+    def get_official_image_id(self, os, architecture):
+        """Return the id of the current official image, for the provided os-architecture combination."""
+        images = self._client.describe_images(
+            Filters=[
+                {"Name": "name", "Values": ["{0}*".format(self.get_official_image_name_prefix(os, architecture))]},
+                {"Name": "owner-alias", "Values": ["amazon"]},
+            ],
+        ).get("Images")
+        return images[0].get("ImageId") if images else None
+
+    def get_official_image_name_prefix(self, os, architecture):
+        """Return the prefix of the current official image, for the provided os-architecture combination."""
+        suffixes = {
+            "alinux": "amzn-hvm",
+            "alinux2": "amzn2-hvm",
+            "centos7": "centos7-hvm",
+            "centos8": "centos8-hvm",
+            "ubuntu1604": "ubuntu-1604-lts-hvm",
+            "ubuntu1804": "ubuntu-1804-lts-hvm",
+        }
+        return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
+            version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture
         )

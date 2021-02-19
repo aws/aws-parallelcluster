@@ -14,6 +14,53 @@ from common.boto3.ec2 import Ec2Client
 from common.boto3.imagebuilder import ImageBuilderClient
 from common.boto3.kms import KmsClient
 from common.boto3.s3 import S3Client
+from pcluster.utils import InstanceTypeInfo
+
+
+class DummyInstanceTypeInfo(InstanceTypeInfo):
+    def __init__(
+        self,
+        instance_type,
+        gpu_count=0,
+        interfaces_count=1,
+        default_threads_per_core=1,
+        vcpus=1,
+        supported_architectures=None,
+        efa_supported=False,
+        ebs_optimized=False,
+    ):
+        self._gpu_count = gpu_count
+        self._max_network_interface_count = interfaces_count
+        self._default_threads_per_core = default_threads_per_core
+        self._vcpus = vcpus
+        self._supported_architectures = supported_architectures if supported_architectures else ["x86_64"]
+        self._efa_supported = efa_supported
+        self._instance_type = instance_type
+        self._ebs_optimized = ebs_optimized
+
+    def gpu_count(self):
+        return self._gpu_count
+
+    def max_network_interface_count(self):
+        return self._max_network_interface_count
+
+    def default_threads_per_core(self):
+        return self._default_threads_per_core
+
+    def vcpus_count(self):
+        return self._vcpus
+
+    def supported_architecture(self):
+        return self._supported_architectures
+
+    def is_efa_supported(self):
+        return self._efa_supported
+
+    def instance_type(self):
+        return self._instance_type
+
+    def is_ebs_optimized(self):
+        return self._ebs_optimized
 
 
 class DummyAWSApi(AWSApi):
@@ -43,6 +90,12 @@ class DummyEc2Client(Ec2Client):
                 self.get_availability_zone_of_subnet.__name__, "Invalid subnet ID: {0}".format(subnet_id)
             )
         return availability_zone
+
+    def get_instance_type_info(self, instance_type):
+        return DummyInstanceTypeInfo(instance_type)
+
+    def get_official_image_id(self, os, architecture):
+        return "dummy-ami-id"
 
 
 class DummyEfsClient(Ec2Client):
