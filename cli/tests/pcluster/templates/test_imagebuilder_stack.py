@@ -12,6 +12,7 @@
 import pytest
 from assertpy import assert_that
 
+import pcluster.utils as utils
 from pcluster.templates.cdk_builder import CDKTemplateBuilder
 
 from ..boto3.dummy_boto3 import DummyAWSApi
@@ -557,3 +558,292 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     assert_that(
         generated_template.get("Resources").get("PClusterImageRecipe").get("Properties").get("Components")
     ).is_equal_to(expected_components)
+
+
+@pytest.mark.parametrize(
+    "resource, response, expected_ami_distribution_configuration",
+    [
+        (
+            {
+                "imagebuilder": {
+                    "image": {
+                        "name": "my AMI 1",
+                        "tags": [
+                            {
+                                "key": "keyTag1",
+                                "value": "valueTag1",
+                            },
+                            {
+                                "key": "keyTag2",
+                                "value": "valueTag2",
+                            },
+                        ],
+                    },
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "my AMI 1 {{ imagebuilder:buildDate }}",
+                        "AmiTags": {
+                            "keyTag1": "valueTag1",
+                            "keyTag2": "valueTag2",
+                            "pcluster_version": utils.get_installed_version(),
+                        },
+                    },
+                    "Region": {"Fn::Sub": "${AWS::Region}"},
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "my AMI 2", "description": "my description"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "my AMI 2 {{ imagebuilder:buildDate }}",
+                        "Description": "my description",
+                        "AmiTags": {"pcluster_version": utils.get_installed_version()},
+                    },
+                    "Region": {"Fn::Sub": "${AWS::Region}"},
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {
+                        "name": "my AMI 1",
+                        "tags": [],
+                    },
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            [
+                {
+                    "AmiDistributionConfiguration": {
+                        "Name": "my AMI 1 {{ imagebuilder:buildDate }}",
+                        "AmiTags": {"pcluster_version": utils.get_installed_version()},
+                    },
+                    "Region": {"Fn::Sub": "${AWS::Region}"},
+                },
+            ],
+        ),
+    ],
+)
+def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribution_configuration):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_image",
+        return_value=response,
+    )
+    imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    assert_that(
+        generated_template.get("Resources")
+        .get("ParallelClusterDistributionConfiguration")
+        .get("Properties")
+        .get("Distributions")
+    ).is_equal_to(expected_ami_distribution_configuration)
+
+
+@pytest.mark.parametrize(
+    "resource, response, expected_imagebuilder_resource_tags, expected_role_tags",
+    [
+        (
+            {
+                "imagebuilder": {
+                    "image": {
+                        "name": "my AMI 1",
+                    },
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                        "tags": [
+                            {
+                                "key": "keyTag1",
+                                "value": "valueTag1",
+                            },
+                            {
+                                "key": "keyTag2",
+                                "value": "valueTag2",
+                            },
+                        ],
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            {
+                "keyTag1": "valueTag1",
+                "keyTag2": "valueTag2",
+            },
+            [
+                {
+                    "Key": "keyTag1",
+                    "Value": "valueTag1",
+                },
+                {
+                    "Key": "keyTag2",
+                    "Value": "valueTag2",
+                },
+            ],
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "my AMI 2", "description": "my description"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            None,
+            None,
+        ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {
+                        "name": "my AMI 1",
+                    },
+                    "build": {
+                        "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                        "instance_type": "c5.xlarge",
+                        "tags": [],
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": 50,
+                        },
+                    }
+                ],
+            },
+            None,
+            None,
+        ),
+    ],
+)
+def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuilder_resource_tags, expected_role_tags):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_image",
+        return_value=response,
+    )
+    imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_ami(imagebuild)
+    assert_that(
+        generated_template.get("Resources")
+        .get("ParallelClusterDistributionConfiguration")
+        .get("Properties")
+        .get("Tags")
+    ).is_equal_to(expected_imagebuilder_resource_tags)
+    assert_that(
+        generated_template.get("Resources")
+        .get("PClusterImageInfrastructureConfiguration")
+        .get("Properties")
+        .get("Tags")
+    ).is_equal_to(expected_imagebuilder_resource_tags)
+    assert_that(generated_template.get("Resources").get("PClusterComponent").get("Properties").get("Tags")).is_equal_to(
+        expected_imagebuilder_resource_tags
+    )
+    assert_that(
+        generated_template.get("Resources").get("ParallelClusterTag").get("Properties").get("Tags")
+    ).is_equal_to(expected_imagebuilder_resource_tags)
+    assert_that(
+        generated_template.get("Resources").get("PClusterImageRecipe").get("Properties").get("Tags")
+    ).is_equal_to(expected_imagebuilder_resource_tags)
+    assert_that(
+        generated_template.get("Resources")
+        .get("ParallelClusterDistributionConfiguration")
+        .get("Properties")
+        .get("Tags")
+    ).is_equal_to(expected_imagebuilder_resource_tags)
+    if generated_template.get("Resources").get("UpdateAndRebootComponent"):
+        assert_that(
+            generated_template.get("Resources").get("UpdateAndRebootComponent").get("Properties").get("Tags")
+        ).is_equal_to(expected_imagebuilder_resource_tags)
+    if generated_template.get("Resources").get("InstanceRole"):
+        assert_that(generated_template.get("Resources").get("InstanceRole").get("Properties").get("Tags")).is_equal_to(
+            expected_role_tags
+        )
