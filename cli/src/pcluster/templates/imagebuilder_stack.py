@@ -90,6 +90,7 @@ class ImageBuilderStack(core.Stack):
             self,
             id="PClusterImageInfrastructureConfiguration",
             name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
             instance_profile_name=core.Fn.ref(instance_profile_name or "InstanceProfile"),
             terminate_instance_on_failure=dev_settings.terminate_instance_on_failure
             if dev_settings and dev_settings.terminate_instance_on_failure is not None
@@ -106,6 +107,7 @@ class ImageBuilderStack(core.Stack):
                 id="UpdateAndRebootComponent",
                 name="-".join(["UpdateAndReboot", resources_prefix]),
                 version=utils.get_installed_version(),
+                tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
                 description="Update OS and Reboot",
                 platform="Linux",
                 data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "update_and_reboot.yaml")),
@@ -121,6 +123,7 @@ class ImageBuilderStack(core.Stack):
             id="PClusterComponent",
             name="-".join(["PCluster", resources_prefix]),
             version=utils.get_installed_version(),
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
             description="Bake PCluster AMI",
             platform="Linux",
             data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "pcluster_install.yaml")),
@@ -138,6 +141,7 @@ class ImageBuilderStack(core.Stack):
             id="ParallelClusterTag",
             name="-".join(["ParallelClusterTag", resources_prefix]),
             version=utils.get_installed_version(),
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
             description="Tag ParallelCluster AMI",
             platform="Linux",
             data=load_yaml(imagebuilder_resources_dir, "parallelcluster_tag.yaml"),
@@ -153,6 +157,7 @@ class ImageBuilderStack(core.Stack):
             id="PClusterImageRecipe",
             name="-".join(["PCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
             version=utils.get_installed_version(),
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
             parent_image=core.Fn.sub(build.parent_image),
             components=components,
             block_device_mappings=[
@@ -163,12 +168,35 @@ class ImageBuilderStack(core.Stack):
             ],
         )
 
+        ami_distribution_configuration = {
+            "Name": self.imagebuild.image.name,
+            "Description": self.imagebuild.image.description,
+            "AmiTags": {tag.key: tag.value for tag in self.imagebuild.image.tags}
+            if self.imagebuild.image.tags
+            else None,
+        }
+
+        imagebuilder.CfnDistributionConfiguration(
+            self,
+            id="ParallelClusterDistributionConfiguration",
+            name="-".join(["ParallelCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
+            distributions=[
+                imagebuilder.CfnDistributionConfiguration.DistributionProperty(
+                    ami_distribution_configuration=ami_distribution_configuration,
+                    region=core.Fn.sub("${AWS::Region}"),
+                )
+            ],
+        )
+
         # Image
         imagebuilder.CfnImage(
             self,
             id="PClusterImage",
+            tags={tag.key: tag.value for tag in build.tags} if build.tags else None,
             image_recipe_arn=core.Fn.ref("PClusterImageRecipe"),
             infrastructure_configuration_arn=core.Fn.ref("PClusterImageInfrastructureConfiguration"),
+            distribution_configuration_arn=core.Fn.ref("ParallelClusterDistributionConfiguration"),
         )
 
     def _get_instance_role_type(self):
@@ -220,6 +248,9 @@ class ImageBuilderStack(core.Stack):
             policies=[
                 instancerole_policy,
             ],
+            tags=[core.CfnTag(key=tag.key, value=tag.value) for tag in self.imagebuild.build.tags]
+            if self.imagebuild.build.tags
+            else None,
         )
 
         instancerole.add_metadata("Comment", "Role to be used by instance during image build.")
