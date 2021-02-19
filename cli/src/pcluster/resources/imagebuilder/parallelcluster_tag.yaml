@@ -81,7 +81,10 @@ phases:
 
               get_source_version () {
                 PACKAGE_NAME="$1"
-                basename $(ls "/opt/parallelcluster/sources/${PACKAGE_NAME}"* 2> /dev/null || echo "NOT_INSTALLED")
+                filename="$(basename $(ls "/opt/parallelcluster/sources/${PACKAGE_NAME}"* 2> /dev/null || echo "NOT_INSTALLED"))"
+                filename="${filename%%.tar.gz}"
+                filename="${filename%%.zip}"
+                echo "${filename}"
               }
 
               # ParallelCluster Cookbook
