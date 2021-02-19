@@ -29,11 +29,7 @@ class ChefAttributes:
     def _set_default(self, dev_settings: ImagebuilderDevSettings):
         self.cfn_region = "{{ build.AWSRegion.outputs.stdout }}"
         self.nvidia = {"enabled": "false"}
-        self.is_official_ami_build = (
-            str.lower(str(dev_settings.update_os_and_reboot))
-            if dev_settings and dev_settings.update_os_and_reboot
-            else "false"
-        )
+        self.is_official_ami_build = "true" if dev_settings and dev_settings.update_os_and_reboot else "false"
         self.custom_node_package = dev_settings.node_package if dev_settings and dev_settings.node_package else ""
         self.cfn_base_os = "{{ build.OperatingSystemName.outputs.stdout }}"
 
