@@ -52,7 +52,7 @@ class Image(Resource):
         root_volume: Volume = None,
     ):
         super().__init__()
-        self.name = Resource.init_param(name + " {{ imagebuilder:buildDate }}")
+        self.name = Resource.init_param(name)
         self.description = Resource.init_param(description)
         self.tags = tags
         self.root_volume = root_volume
