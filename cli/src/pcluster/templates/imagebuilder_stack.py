@@ -172,7 +172,7 @@ class ImageBuilderStack(core.Stack):
         )
 
         ami_distribution_configuration = {
-            "Name": self.imagebuild.image.name,
+            "Name": self._set_ami_name(),
             "Description": self.imagebuild.image.description,
             "AmiTags": ami_tags,
         }
@@ -199,6 +199,11 @@ class ImageBuilderStack(core.Stack):
             infrastructure_configuration_arn=core.Fn.ref("PClusterImageInfrastructureConfiguration"),
             distribution_configuration_arn=core.Fn.ref("ParallelClusterDistributionConfiguration"),
         )
+
+    def _set_ami_name(self):
+        if "{{ imagebuilder:buildDate }}" not in self.imagebuild.image.name:
+            return self.imagebuild.image.name + " {{ imagebuilder:buildDate }}"
+        return self.imagebuild.image.name
 
     def _get_instance_role_type(self):
         """Get instance role type based on instance_role in config."""
