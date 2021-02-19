@@ -26,6 +26,7 @@ from pcluster.utils import (
 from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     DcvValidator,
+    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
     EfsIdValidator,
@@ -35,7 +36,6 @@ from pcluster.validators.cluster_validators import (
     IntelHpcOsValidator,
     NameValidator,
     NumberOfStorageValidator,
-    SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
 )
 from pcluster.validators.ebs_validators import (
@@ -47,6 +47,7 @@ from pcluster.validators.ebs_validators import (
 )
 from pcluster.validators.ec2_validators import (
     AdditionalIamPolicyValidator,
+    InstanceTypeBaseAMICompatibleValidator,
     InstanceTypeValidator,
     KeyPairValidator,
     PlacementGroupIdValidator,
@@ -59,7 +60,8 @@ from pcluster.validators.fsx_validators import (
     FsxStorageCapacityValidator,
     FsxStorageTypeOptionsValidator,
 )
-from pcluster.validators.networking_validators import SecurityGroupsValidator
+from pcluster.validators.kms_validators import KmsKeyValidator
+from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
 from pcluster.validators.s3_validators import S3BucketUriValidator, S3BucketValidator, UrlValidator
 
 # ---------------------- Storage ---------------------- #
@@ -88,6 +90,7 @@ class Ebs(Resource):
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
     def _register_validators(self):
+        # FIXME This method is not executed because subclass override the method.
         self._add_validator(
             EbsVolumeTypeSizeValidator, priority=10, volume_type=self.volume_type, volume_size=self.size
         )
@@ -108,6 +111,8 @@ class Ebs(Resource):
             volume_iops=self.iops,
             volume_throughput=self.throughput,
         )
+        if self.kms_key_id:
+            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class Raid(Resource):
@@ -200,6 +205,10 @@ class SharedEfs(SharedStorage):
         self.provisioned_throughput = Resource.init_param(provisioned_throughput)
         self.file_system_id = Resource.init_param(file_system_id)
 
+    def _register_validators(self):
+        if self.kms_key_id:
+            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+
 
 class SharedFsx(SharedStorage):
     """Represent the shared FSX resource."""
@@ -290,6 +299,8 @@ class SharedFsx(SharedStorage):
             self._add_validator(S3BucketUriValidator, url=self.import_path)
         if self.export_path:
             self._add_validator(S3BucketUriValidator, url=self.export_path)
+        if self.kms_key_id:
+            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 # ---------------------- Networking ---------------------- #
@@ -409,6 +420,10 @@ class CloudWatchLogs(Resource):
         self.log_group_id = Resource.init_param(log_group_id)
         self.kms_key_id = Resource.init_param(kms_key_id)
 
+    def _register_validators(self):
+        if self.kms_key_id:
+            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+
 
 class CloudWatchDashboards(Resource):
     """Represent the CloudWatch Dashboard."""
@@ -484,8 +499,8 @@ class Roles(Resource):
         custom_lambda_resources: str = None,
     ):
         super().__init__()
-        self.instance_role = Resource.init_param(instance_role, default="AUTO")
-        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources, default="AUTO")
+        self.instance_role = Resource.init_param(instance_role)
+        self.custom_lambda_resources = Resource.init_param(custom_lambda_resources)
 
 
 class S3Access(Resource):
@@ -599,7 +614,7 @@ class HeadNode(Resource):
         networking: HeadNodeNetworking,
         ssh: Ssh,
         image: Image = None,
-        simultaneous_multithreading: bool = None,
+        disable_simultaneous_multithreading: bool = None,
         storage: Storage = None,
         dcv: Dcv = None,
         efa: Efa = None,
@@ -608,7 +623,9 @@ class HeadNode(Resource):
     ):
         super().__init__()
         self.instance_type = Resource.init_param(instance_type)
-        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
+        self.disable_simultaneous_multithreading = Resource.init_param(
+            disable_simultaneous_multithreading, default=True
+        )
         self.networking = networking
         self.ssh = ssh
         self.image = image
@@ -620,10 +637,15 @@ class HeadNode(Resource):
 
     def _register_validators(self):
         self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._add_validator(
+            DisableSimultaneousMultithreadingArchitectureValidator,
+            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
+            architecture=self.architecture,
+        )
 
     @property
     def architecture(self):
-        """Compute cluster's architecture based on its head node instance type."""
+        """Compute cluster's architecture based on its instance type."""
         supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
         if not supported_architectures:
             error(f"Unable to get architectures supported by instance type {self.instance_type}")
@@ -641,16 +663,34 @@ class BaseComputeResource(Resource):
     def __init__(
         self,
         name: str,
+        instance_type: str,
         allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
+        disable_simultaneous_multithreading: bool = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
+        self.instance_type = Resource.init_param(instance_type)
         self.allocation_strategy = Resource.init_param(allocation_strategy, default="BEST_FIT")
-        self.simultaneous_multithreading = Resource.init_param(simultaneous_multithreading, default=True)
+        self.disable_simultaneous_multithreading = Resource.init_param(
+            disable_simultaneous_multithreading, default=True
+        )
 
     def _register_validators(self):
         self._add_validator(NameValidator, name=self.name)
+        self._add_validator(
+            DisableSimultaneousMultithreadingArchitectureValidator,
+            disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
+            architecture=self.architecture,
+        )
+
+    @property
+    def architecture(self):
+        """Compute cluster's architecture based on its head node instance type."""
+        supported_architectures = get_supported_architectures_for_instance_type(self.instance_type)
+        if not supported_architectures:
+            error(f"Unable to get architectures supported by instance type {self.instance_type}")
+        # If the instance type supports multiple architectures, choose the first one.
+        return supported_architectures[0]
 
 
 class BaseQueue(Resource):
@@ -720,6 +760,21 @@ class BaseCluster(Resource):
             os=self.image.os,
             architecture=self.head_node.architecture,
         )
+        self._add_validator(
+            InstanceTypeBaseAMICompatibleValidator,
+            instance_type=self.head_node.instance_type,
+            image=self.image.custom_ami,
+        )
+        self._add_validator(
+            SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
+        )
+        for queue in self.scheduling.queues:
+            for compute_resource in queue.compute_resources:
+                self._add_validator(
+                    InstanceTypeBaseAMICompatibleValidator,
+                    instance_type=compute_resource.instance_type,
+                    image=self.image.custom_ami,
+                )
         if self.head_node.efa:
             self._add_validator(
                 EfaOsArchitectureValidator,
@@ -728,12 +783,6 @@ class BaseCluster(Resource):
                 os=self.image.os,
                 architecture=self.head_node.architecture,
             )
-        self._add_validator(
-            SimultaneousMultithreadingArchitectureValidator,
-            priority=8,
-            simultaneous_multithreading=self.head_node.simultaneous_multithreading,
-            architecture=self.head_node.architecture,
-        )
         self._register_storage_validators()
 
         if self.head_node.dcv:
@@ -812,3 +861,28 @@ class BaseCluster(Resource):
             mount_dir_list.append(self.head_node.storage.ephemeral_volume.mount_dir)
 
         return mount_dir_list
+
+    @property
+    def compute_subnet_ids(self):
+        """Return the list of all compute subnet ids in the cluster."""
+        return list(
+            {
+                subnet_id
+                for queue in self.scheduling.queues
+                if queue.networking.subnet_ids
+                for subnet_id in queue.networking.subnet_ids
+                if queue.networking.subnet_ids
+            }
+        )
+
+    @property
+    def compute_security_groups(self):
+        """Return the list of all compute security groups in the cluster."""
+        return list(
+            {
+                security_group
+                for queue in self.scheduling.queues
+                if queue.networking.security_groups
+                for security_group in queue.networking.security_groups
+            }
+        )

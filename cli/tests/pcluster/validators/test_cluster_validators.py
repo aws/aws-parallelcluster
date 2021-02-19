@@ -17,6 +17,7 @@ from pcluster.validators.cluster_validators import (
     ArchitectureOsValidator,
     ComputeResourceSizeValidator,
     DcvValidator,
+    DisableSimultaneousMultithreadingArchitectureValidator,
     DuplicateInstanceTypeValidator,
     DuplicateMountDirValidator,
     EfaOsArchitectureValidator,
@@ -31,7 +32,6 @@ from pcluster.validators.cluster_validators import (
     NameValidator,
     NumberOfStorageValidator,
     SchedulerOsValidator,
-    SimultaneousMultithreadingArchitectureValidator,
     TagKeyValidator,
 )
 from tests.common import MockedBoto3Request
@@ -262,23 +262,24 @@ def test_efa_security_group_validator(
 
 
 @pytest.mark.parametrize(
-    "simultaneous_multithreading, architecture, expected_message",
+    "disable_simultaneous_multithreading, architecture, expected_message",
     [
         (True, "x86_64", None),
         (False, "x86_64", None),
         (
             True,
             "arm64",
-            "Simultaneous Multithreading is only supported on instance types that support these architectures",
+            "Disabling simultaneous multithreading is only supported"
+            " on instance types that support these architectures",
         ),
         (False, "arm64", None),
     ],
 )
-def test_simultaneous_multithreading_architecture_validator(
-    simultaneous_multithreading, architecture, expected_message
+def test_disable_simultaneous_multithreading_architecture_validator(
+    disable_simultaneous_multithreading, architecture, expected_message
 ):
-    actual_failures = SimultaneousMultithreadingArchitectureValidator().execute(
-        simultaneous_multithreading, architecture
+    actual_failures = DisableSimultaneousMultithreadingArchitectureValidator().execute(
+        disable_simultaneous_multithreading, architecture
     )
     assert_failure_messages(actual_failures, expected_message)
 

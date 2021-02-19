@@ -36,17 +36,13 @@ class AwsbatchComputeResource(BaseComputeResource):
 
     def __init__(
         self,
-        name: str,
-        instance_type: str,
         max_vcpus: int = None,
         min_vcpus: int = None,
         desired_vcpus: int = None,
         spot_bid_percentage: float = None,
-        allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
+        **kwargs
     ):
-        super().__init__(name, allocation_strategy, simultaneous_multithreading)
-        self.instance_type = Resource.init_param(instance_type)
+        super().__init__(**kwargs)
         self.max_vcpus = Resource.init_param(max_vcpus, default=10)
         self.min_vcpus = Resource.init_param(min_vcpus, default=0)
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
@@ -91,6 +87,7 @@ class AwsbatchCluster(BaseCluster):
         self.scheduling = scheduling
 
     def _register_validators(self):
+        super()._register_validators()
         self._add_validator(AwsbatchRegionValidator, region=self.region)
         self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 

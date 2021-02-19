@@ -54,14 +54,6 @@ from pcluster.config.json_param_types import (
 )
 from pcluster.config.param_types import Visibility
 from pcluster.config.update_policy import UpdatePolicy
-from pcluster.config.validators import (
-    ec2_ami_validator,
-    ec2_subnet_id_validator,
-    ec2_vpc_id_validator,
-    head_node_instance_type_validator,
-    kms_key_validator,
-    shared_dir_validator,
-)
 from pcluster.constants import CIDR_ALL_IPS, FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT, SUPPORTED_ARCHITECTURES
 
 # This file contains a definition of all the sections and the parameters configurable by the user
@@ -202,13 +194,11 @@ VPC = {
             "cfn_param_mapping": "VPCId",
             "required": True,
             "allowed_values": ALLOWED_VALUES["vpc_id"],  # does not apply to pcluster 3.0
-            "validators": [ec2_vpc_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("master_subnet_id", {
             "cfn_param_mapping": "MasterSubnetId",
             "required": True,
-            "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("ssh_from", {
@@ -222,7 +212,6 @@ VPC = {
         }),
         ("compute_subnet_id", {
             "cfn_param_mapping": "ComputeSubnetId",
-            "validators": [ec2_subnet_id_validator],
             "update_policy": UpdatePolicy.COMPUTE_FLEET_STOP
         }),
         ("compute_subnet_cidr", {
@@ -265,7 +254,6 @@ EBS = {
         # the test of hit converter
         ("shared_dir", {
             "cfn_param_mapping": "SharedDir",
-            "validators": [shared_dir_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("ebs_snapshot_id", {
@@ -302,7 +290,6 @@ EBS = {
         }),
         ("ebs_kms_key_id", {
             "cfn_param_mapping": "EBSKMSKeyId",
-            "validators": [kms_key_validator],
             "update_policy": UpdatePolicy.UNSUPPORTED
         }),
         ("ebs_volume_id", {
@@ -326,7 +313,6 @@ EFS = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("efs_fs_id", {
@@ -337,7 +323,6 @@ EFS = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("efs_kms_key_id", {
-                "validators": [kms_key_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("provisioned_throughput", {
@@ -365,7 +350,6 @@ RAID = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("raid_type", {
@@ -397,7 +381,6 @@ RAID = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("ebs_kms_key_id", {
-                "validators": [kms_key_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("volume_throughput", {
@@ -419,7 +402,6 @@ FSX = {
     "params": OrderedDict(  # Use OrderedDict because the parameters must respect the order in the CFN parameter
         [
             ("shared_dir", {
-                "validators": [shared_dir_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("fsx_fs_id", {
@@ -430,7 +412,6 @@ FSX = {
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("fsx_kms_key_id", {
-                "validators": [kms_key_validator],
                 "update_policy": UpdatePolicy.UNSUPPORTED
             }),
             ("imported_file_chunk_size", {
@@ -681,7 +662,6 @@ CLUSTER_COMMON_PARAMS = [
     ("master_instance_type", {
         "type": HeadNodeInstanceTypeCfnParam,
         "cfn_param_mapping": "MasterInstanceType",
-        "validators": [head_node_instance_type_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("master_root_volume_size", {
@@ -735,7 +715,6 @@ CLUSTER_COMMON_PARAMS = [
         "type": SharedDirCfnParam,
         "cfn_param_mapping": "SharedDir",
         "default": "/shared",
-        "validators": [shared_dir_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED
     }),
     ("enable_efa", {
@@ -761,7 +740,6 @@ CLUSTER_COMMON_PARAMS = [
     }),
     ("custom_ami", {
         "cfn_param_mapping": "CustomAMI",
-        "validators": [ec2_ami_validator],
         "update_policy": UpdatePolicy.UNSUPPORTED,
     }),
     ("pre_install", {

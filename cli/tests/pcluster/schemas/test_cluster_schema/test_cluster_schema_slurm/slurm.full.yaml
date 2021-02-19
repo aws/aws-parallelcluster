@@ -15,7 +15,7 @@ HeadNode:
       - sg-45678901
     Proxy:
       HttpProxyAddress: String  # https://proxy-address:port
-  SimultaneousMultithreading: true
+  DisableSimultaneousMultithreading: false
   Image:
     Os: centos8
     CustomAmi: ami-23456789
@@ -128,7 +128,7 @@ Scheduling:
             MinCount: 1
             MaxCount: 15
             SpotPrice: 1.1
-            SimultaneousMultithreading: false
+            DisableSimultaneousMultithreading: true
             Efa:
               Enabled: true
               GdrSupport: false

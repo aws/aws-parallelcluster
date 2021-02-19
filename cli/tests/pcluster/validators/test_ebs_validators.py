@@ -9,8 +9,11 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 import pytest
+from assertpy import assert_that
 
+from pcluster.schemas.common_schema import ALLOWED_VALUES
 from pcluster.validators.ebs_validators import (
+    EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
     EbsVolumeIopsValidator,
     EBSVolumeKmsKeyIdValidator,
     EbsVolumeSizeSnapshotValidator,
@@ -266,3 +269,8 @@ def test_ec2_volume_validator(boto3_stubber):
 
     actual_failures = SharedEBSVolumeIdValidator().execute(volume_id="vol-12345678")
     assert_failure_messages(actual_failures, None)
+
+
+def test_ebs_allowed_values_all_have_volume_size_bounds():
+    """Ensure that all known EBS volume types are accounted for by the volume size validator."""
+    assert_that(set(ALLOWED_VALUES["volume_type"]) <= set(EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS.keys())).is_true()

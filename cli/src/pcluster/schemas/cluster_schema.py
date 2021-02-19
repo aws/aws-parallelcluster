@@ -15,6 +15,7 @@
 #
 
 import copy
+import re
 
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
@@ -69,7 +70,7 @@ from pcluster.validators.cluster_validators import FSX_MESSAGES
 class _BaseEbsSchema(BaseSchema):
     """Represent the schema shared by SharedEBS and RootVolume section."""
 
-    volume_type = fields.Str(validate=validate.OneOf(["standard", "io1", "io2", "gp2", "st1", "sc1", "gp3"]))
+    volume_type = fields.Str(validate=get_field_validator("volume_type"))
     iops = fields.Int()
     size = fields.Int()
     kms_key_id = fields.Str()
@@ -251,6 +252,16 @@ class SharedStorageSchema(BaseSchema):
         child = copy.copy(data)
         setattr(data, data.shared_storage_type.value, child)
         return data
+
+    @validates("mount_dir")
+    def shared_dir_validator(self, value):
+        """Validate that user is not specifying /NONE or NONE as shared_dir for any filesystem."""
+        # FIXME: pcluster2 doesn't allow "^/?NONE$" mount dir to avoid an ambiguity in cookbook.
+        #  We should change cookbook to solve the ambiguity and allow "^/?NONE$" for mount dir
+        #  Cookbook location to be modified:
+        #  https://github.com/aws/aws-parallelcluster-cookbook/blob/develop/recipes/head_node_base_config.rb#L51
+        if re.match("^/?NONE$", value):
+            raise ValidationError(f"{value} cannot be used as a shared directory")
 
     @validates_schema
     def only_one_storage(self, data, **kwargs):
@@ -539,7 +550,7 @@ class HeadNodeSchema(BaseSchema):
     """Represent the schema of the HeadNode."""
 
     instance_type = fields.Str(required=True)
-    simultaneous_multithreading = fields.Bool()
+    disable_simultaneous_multithreading = fields.Bool()
     networking = fields.Nested(HeadNodeNetworkingSchema, required=True)
     image = fields.Nested(ImageSchema)
     ssh = fields.Nested(SshSchema, required=True)
@@ -560,7 +571,7 @@ class _ComputeResourceSchema(BaseSchema):
 
     name = fields.Str(required=True)
     allocation_strategy = fields.Str()
-    simultaneous_multithreading = fields.Bool()
+    disable_simultaneous_multithreading = fields.Bool()
     efa = fields.Nested(EfaSchema)
 
 

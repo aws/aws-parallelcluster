@@ -10,8 +10,9 @@
 # limitations under the License.
 import pytest
 
-from pcluster.validators.networking_validators import SecurityGroupsValidator
+from pcluster.validators.networking_validators import SecurityGroupsValidator, SubnetsValidator
 from tests.common import MockedBoto3Request
+from tests.pcluster.boto3.dummy_boto3 import DummyAWSApi
 from tests.pcluster.validators.utils import assert_failure_messages
 
 
@@ -52,4 +53,26 @@ def test_ec2_security_group_validator(mocker, boto3_stubber):
     boto3_stubber("ec2", mocked_requests)
 
     actual_failures = SecurityGroupsValidator().execute(["sg-12345678"])
+    assert_failure_messages(actual_failures, None)
+
+
+def test_ec2_subnet_id_validator(mocker):
+    describe_subnets_response = [
+        {
+            "SubnetId": "subnet-12345678",
+            "VpcId": "vpc-06e4ab6c6cEXAMPLE",
+        },
+        {
+            "SubnetId": "subnet-23456789",
+            "VpcId": "vpc-06e4ab6c6cEXAMPLE",
+        },
+    ]
+
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.boto3.ec2.Ec2Client.describe_subnets", return_value=describe_subnets_response)
+    mocker.patch("common.boto3.ec2.Ec2Client.is_enable_dns_support", return_value=True)
+    mocker.patch("common.boto3.ec2.Ec2Client.is_enable_dns_hostnames", return_value=describe_subnets_response)
+
+    # TODO test with invalid key
+    actual_failures = SubnetsValidator().execute(["subnet-12345678", "subnet-23456789"])
     assert_failure_messages(actual_failures, None)

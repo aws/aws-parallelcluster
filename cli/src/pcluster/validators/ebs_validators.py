@@ -11,13 +11,26 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from pcluster.config.validators import (
-    EBS_VOLUME_IOPS_BOUNDS,
-    EBS_VOLUME_TYPE_TO_IOPS_RATIO,
-    EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS,
-)
 from pcluster.utils import get_ebs_snapshot_info, get_partition
 from pcluster.validators.common import FailureLevel, Validator
+
+EBS_VOLUME_TYPE_TO_VOLUME_SIZE_BOUNDS = {
+    "standard": (1, 1024),
+    "io1": (4, 16 * 1024),
+    "io2": (4, 64 * 1024),
+    "gp2": (1, 16 * 1024),
+    "gp3": (1, 16 * 1024),
+    "st1": (500, 16 * 1024),
+    "sc1": (500, 16 * 1024),
+}
+
+EBS_VOLUME_IOPS_BOUNDS = {
+    "io1": (100, 64000),
+    "io2": (100, 256000),
+    "gp3": (3000, 16000),
+}
+
+EBS_VOLUME_TYPE_TO_IOPS_RATIO = {"io1": 50, "io2": 1000, "gp3": 500}
 
 
 class EbsVolumeTypeSizeValidator(Validator):

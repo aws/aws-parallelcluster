@@ -39,18 +39,9 @@ class SlurmComputeResource(BaseComputeResource):
     """Represent the Slurm Compute Resource."""
 
     def __init__(
-        self,
-        name: str,
-        instance_type: str,
-        max_count: int = None,
-        min_count: int = None,
-        spot_price: float = None,
-        allocation_strategy: str = None,
-        simultaneous_multithreading: bool = None,
-        efa: Efa = None,
+        self, max_count: int = None, min_count: int = None, spot_price: float = None, efa: Efa = None, **kwargs
     ):
-        super().__init__(name, allocation_strategy, simultaneous_multithreading)
-        self.instance_type = Resource.init_param(instance_type)
+        super().__init__(**kwargs)
         self.max_count = Resource.init_param(max_count, default=10)
         self.min_count = Resource.init_param(min_count, default=0)
         self.spot_price = Resource.init_param(spot_price)
@@ -111,7 +102,7 @@ class Dns(Resource):
         super().__init__()
         self.disable_managed_dns = Resource.init_param(disable_managed_dns, default=False)
         self.domain = Resource.init_param(domain)
-        self.hosted_zone_id = Resource.init_param(hosted_zone_id, default="AUTO")
+        self.hosted_zone_id = Resource.init_param(hosted_zone_id)
 
 
 class SlurmSettings(CommonSchedulingSettings):
@@ -140,6 +131,7 @@ class SlurmCluster(BaseCluster):
         self.scheduling = scheduling
 
     def _register_validators(self):
+        super()._register_validators()
         self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 
         for queue in self.scheduling.queues:
@@ -157,28 +149,3 @@ class SlurmCluster(BaseCluster):
                         os=self.image.os,
                         architecture=self.head_node.architecture,
                     )
-
-    @property
-    def compute_subnet_ids(self):
-        """Return the list of all compute subnet ids in the cluster."""
-        return list(
-            {
-                subnet_id
-                for queue in self.scheduling.queues
-                if queue.networking.subnet_ids and queue.networking.subnet_ids
-                for subnet_id in queue.networking.subnet_ids
-                if queue.networking.subnet_ids
-            }
-        )
-
-    @property
-    def compute_security_groups(self):
-        """Return the list of all compute security groups in the cluster."""
-        return list(
-            {
-                security_group
-                for queue in self.scheduling.queues
-                if queue.networking.security_groups and queue.networking.security_groups
-                for security_group in queue.networking.security_groups
-            }
-        )

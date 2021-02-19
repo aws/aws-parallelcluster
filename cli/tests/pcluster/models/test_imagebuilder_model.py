@@ -156,6 +156,7 @@ def _test_imagebuilder(
     )
     mocker.patch("common.boto3.s3.S3Client.head_object", return_value=url_response, side_effect=url_side_effect)
     mocker.patch("pcluster.validators.s3_validators.urlopen", side_effect=url_open_side_effect)
+    mocker.patch("common.boto3.kms.KmsClient.describe_key", return_value=None)
 
     imagebuilder = imagebuilder_factory(resource).get("imagebuilder")
     validation_failures = imagebuilder.validate()

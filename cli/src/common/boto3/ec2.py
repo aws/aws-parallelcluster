@@ -29,6 +29,11 @@ class Ec2Client(Boto3Client):
         ]
 
     @AWSExceptionHandler.handle_client_exception
+    def describe_subnets(self, subnet_ids):
+        """Return a list of subnets."""
+        return self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids)
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_image(self, ami_id):
         """Return a dict of ami info."""
         result = self._client.describe_images(ImageIds=[ami_id])
@@ -45,3 +50,24 @@ class Ec2Client(Boto3Client):
     def describe_placement_group(self, group_name):
         """Return the given placement group, if exists."""
         return self._client.describe_placement_group(GroupNames=[group_name])
+
+    @AWSExceptionHandler.handle_client_exception
+    def describe_vpc_attribute(self, vpc_id, attribute):
+        """Return the attribute of the VPC."""
+        return self._client.describe_vpc_attribute(VpcId=vpc_id, Attribute=attribute)
+
+    def is_enable_dns_support(self, vpc_id):
+        """Return the value of EnableDnsSupport of the VPC."""
+        return (
+            self.describe_vpc_attribute(vpc_id=vpc_id, attribute="enableDnsSupport")
+            .get("EnableDnsSupport")
+            .get("Value")
+        )
+
+    def is_enable_dns_hostnames(self, vpc_id):
+        """Return the value of EnableDnsHostnames of the VPC."""
+        return (
+            self.describe_vpc_attribute(vpc_id=vpc_id, attribute="enableDnsHostnames")
+            .get("EnableDnsHostnames")
+            .get("Value")
+        )
