@@ -30,7 +30,7 @@ class CDKTemplateBuilder:
     def build(self, cluster: SlurmCluster):
         """Build template for the given cluster and return as output in Yaml format."""
         with tempfile.TemporaryDirectory() as tempdir:
-            output_file = "cluster"
+            output_file = "parallelcluster-cluster"  # TODO: pass stack name as argument
             app = core.App(outdir=str(tempdir))
             ClusterStack(app, output_file, cluster=cluster)
             app.synth()

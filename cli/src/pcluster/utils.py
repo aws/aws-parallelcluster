@@ -1325,3 +1325,32 @@ class InstanceTypeInfo:
     def is_efa_supported(self):
         """Check whether EFA is supported."""
         return self.instance_type_data.get("NetworkInfo").get("EfaSupported")
+
+    def instance_type(self):
+        """Get the instance type."""
+        return self.instance_type_data.get("InstanceType")
+
+    def is_cpu_options_supported_in_lt(self):
+        """Check whether hyperthreading can be disabled via CPU options."""
+        instance_type = self.instance_type()
+        res = all(
+            [
+                # If default threads per core is 1, HT doesn't need to be disabled
+                self.default_threads_per_core() > 1,
+                # Currently, hyperthreading must be disabled manually on *.metal instances
+                not (
+                    instance_type.endswith(".metal")
+                    or instance_type.startswith("m4.")
+                    or instance_type in ["cc2.8xlarge"]
+                ),
+            ]
+        )
+        return res
+
+    def is_ebs_optimized(self):
+        """Check whether the instance has optimized EBS support."""
+        ebs_optimized = False
+        ebs_info = self.instance_type_data.get("EbsInfo")
+        if ebs_info:
+            ebs_optimized = ebs_info.get("EbsOptimizedSupport") != "unsupported"
+        return ebs_optimized
