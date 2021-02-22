@@ -173,7 +173,6 @@ class ImageBuilderStack(core.Stack):
 
         ami_distribution_configuration = {
             "Name": self._set_ami_name(),
-            "Description": self.imagebuild.image.description,
             "AmiTags": ami_tags,
         }
 
@@ -225,7 +224,7 @@ class ImageBuilderStack(core.Stack):
             "Statement": [
                 {
                     "Effect": "Allow",
-                    "Action": ["ec2:CreateTags"],
+                    "Action": ["ec2:CreateTags", "ec2:ModifyImageAttribute"],
                     "Resource": [
                         core.Fn.sub("arn:${AWS::Partition}:ec2:*::image/*"),
                     ],

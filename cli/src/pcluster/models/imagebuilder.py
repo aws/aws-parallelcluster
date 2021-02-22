@@ -50,13 +50,11 @@ class Image(Resource):
     def __init__(
         self,
         name: str,
-        description: str = None,
         tags: List[BaseTag] = None,
         root_volume: Volume = None,
     ):
         super().__init__()
         self.name = Resource.init_param(name)
-        self.description = Resource.init_param(description)
         self.tags = tags
         self.root_volume = root_volume
         self._set_default()
