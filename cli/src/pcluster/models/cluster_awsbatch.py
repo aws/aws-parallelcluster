@@ -28,7 +28,7 @@ from pcluster.validators.awsbatch_validators import (
     AwsbatchInstancesArchitectureCompatibilityValidator,
     AwsbatchRegionValidator,
 )
-from pcluster.validators.cluster_validators import EfaOsArchitectureValidator, SchedulerOsValidator
+from pcluster.validators.cluster_validators import SchedulerOsValidator
 
 
 class AwsbatchComputeResource(BaseComputeResource):
@@ -48,8 +48,9 @@ class AwsbatchComputeResource(BaseComputeResource):
         self.desired_vcpus = Resource.init_param(desired_vcpus, default=0)
         self.spot_bid_percentage = Resource.init_param(spot_bid_percentage)
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(
             AwsbatchComputeInstanceTypeValidator, instance_types=self.instance_type, max_vcpus=self.max_vcpus
         )
 
@@ -86,22 +87,15 @@ class AwsbatchCluster(BaseCluster):
         super().__init__(**kwargs)
         self.scheduling = scheduling
 
-    def _register_validators(self):
-        super()._register_validators()
-        self._add_validator(AwsbatchRegionValidator, region=self.region)
-        self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(AwsbatchRegionValidator, region=self.region)
+        self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                self._add_validator(
+                self._execute_validator(
                     AwsbatchInstancesArchitectureCompatibilityValidator,
                     instance_types=compute_resource.instance_type,
                     architecture=self.head_node.architecture,
                 )
-                if compute_resource.efa:
-                    self._add_validator(
-                        EfaOsArchitectureValidator,
-                        efa_enabled=compute_resource.efa.enabled,
-                        os=self.image.os,
-                        architecture=self.head_node.architecture,
-                    )

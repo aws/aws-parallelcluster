@@ -36,12 +36,12 @@ class Volume(Resource):
         self.kms_key_id = Resource.init_param(kms_key_id)
         # TODO: add validator
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             EBSVolumeKmsKeyIdValidator, volume_kms_key_id=self.kms_key_id, volume_encrypted=self.encrypted
         )
         if self.kms_key_id:
-            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class Image(Resource):
@@ -105,8 +105,8 @@ class Build(Resource):
         self.security_group_ids = security_group_ids
         self.components = components
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.instance_type,
             image=self.parent_image,
@@ -151,16 +151,14 @@ class ImageBuilder(Resource):
         self.build = build
         self.dev_settings = dev_settings
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             EbsVolumeTypeSizeValidator,
-            priority=10,
             volume_type=ROOT_VOLUME_TYPE,
             volume_size=self.image.root_volume.size,
         )
-        self._add_validator(
+        self._execute_validator(
             AMIVolumeSizeValidator,
-            priority=9,
             volume_size=self.image.root_volume.size,
             image=self.build.parent_image,
         )

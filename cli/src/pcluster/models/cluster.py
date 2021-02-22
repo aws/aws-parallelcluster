@@ -89,30 +89,28 @@ class Ebs(Resource):
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.throughput = Resource.init_param(throughput, default=125 if self.volume_type == "gp3" else None)
 
-    def _register_validators(self):
+    def _validate(self):
         # FIXME This method is not executed because subclass override the method.
-        self._add_validator(
-            EbsVolumeTypeSizeValidator, priority=10, volume_type=self.volume_type, volume_size=self.size
-        )
-        self._add_validator(
+        self._execute_validator(EbsVolumeTypeSizeValidator, volume_type=self.volume_type, volume_size=self.size)
+        self._execute_validator(
             EbsVolumeIopsValidator,
             volume_type=self.volume_type,
             volume_size=self.size,
             volume_iops=self.iops,
         )
-        self._add_validator(
+        self._execute_validator(
             EbsVolumeThroughputValidator,
             volume_type=self.volume_type,
             volume_throughput=self.throughput,
         )
-        self._add_validator(
+        self._execute_validator(
             EbsVolumeThroughputIopsValidator,
             volume_type=self.volume_type,
             volume_iops=self.iops,
             volume_throughput=self.throughput,
         )
         if self.kms_key_id:
-            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class Raid(Resource):
@@ -173,8 +171,8 @@ class SharedEbs(Ebs):
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
 
-    def _register_validators(self):
-        self._add_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
+    def _validate(self):
+        self._execute_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
 
 
 class SharedEfs(Resource):
@@ -200,9 +198,9 @@ class SharedEfs(Resource):
         self.provisioned_throughput = Resource.init_param(provisioned_throughput)
         self.file_system_id = Resource.init_param(file_system_id)
 
-    def _register_validators(self):
+    def _validate(self):
         if self.kms_key_id:
-            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class SharedFsx(Resource):
@@ -249,21 +247,21 @@ class SharedFsx(Resource):
         self.drive_cache_type = Resource.init_param(drive_cache_type)
         self.storage_type = Resource.init_param(storage_type)
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             FsxS3Validator,
             import_path=self.import_path,
             imported_file_chunk_size=self.imported_file_chunk_size,
             export_path=self.export_path,
             auto_import_policy=self.auto_import_policy,
         )
-        self._add_validator(
+        self._execute_validator(
             FsxPersistentOptionsValidator,
             deployment_type=self.deployment_type,
             kms_key_id=self.kms_key_id,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
         )
-        self._add_validator(
+        self._execute_validator(
             FsxBackupOptionsValidator,
             automatic_backup_retention_days=self.automatic_backup_retention_days,
             daily_automatic_backup_start_time=self.daily_automatic_backup_start_time,
@@ -274,14 +272,14 @@ class SharedFsx(Resource):
             export_path=self.export_path,
             auto_import_policy=self.auto_import_policy,
         )
-        self._add_validator(
+        self._execute_validator(
             FsxStorageTypeOptionsValidator,
             storage_type=self.storage_type,
             deployment_type=self.deployment_type,
             per_unit_storage_throughput=self.per_unit_storage_throughput,
             drive_cache_type=self.drive_cache_type,
         )
-        self._add_validator(
+        self._execute_validator(
             FsxStorageCapacityValidator,
             storage_capacity=self.storage_capacity,
             deployment_type=self.deployment_type,
@@ -290,14 +288,14 @@ class SharedFsx(Resource):
             file_system_id=self.file_system_id,
             backup_id=self.backup_id,
         )
-        self._add_validator(FsxBackupIdValidator, backup_id=self.backup_id)
+        self._execute_validator(FsxBackupIdValidator, backup_id=self.backup_id)
 
         if self.import_path:
-            self._add_validator(S3BucketUriValidator, url=self.import_path)
+            self._execute_validator(S3BucketUriValidator, url=self.import_path)
         if self.export_path:
-            self._add_validator(S3BucketUriValidator, url=self.export_path)
+            self._execute_validator(S3BucketUriValidator, url=self.export_path)
         if self.kms_key_id:
-            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 # ---------------------- Networking ---------------------- #
@@ -327,9 +325,9 @@ class _BaseNetworking(Resource):
         self.additional_security_groups = Resource.init_param(additional_security_groups)
         self.proxy = proxy
 
-    def _register_validators(self):
-        self._add_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
-        self._add_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
+    def _validate(self):
+        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.security_groups)
+        self._execute_validator(SecurityGroupsValidator, security_group_ids=self.additional_security_groups)
 
 
 class HeadNodeNetworking(_BaseNetworking):
@@ -354,8 +352,8 @@ class PlacementGroup(Resource):
         self.enabled = Resource.init_param(enabled, default=False)
         self.id = Resource.init_param(id)
 
-    def _register_validators(self):
-        self._add_validator(PlacementGroupIdValidator, placement_group_id=self.id)
+    def _validate(self):
+        self._execute_validator(PlacementGroupIdValidator, placement_group_id=self.id)
 
 
 class QueueNetworking(_BaseNetworking):
@@ -375,8 +373,8 @@ class Ssh(Resource):
         self.key_name = Resource.init_param(key_name)
         self.allowed_ips = Resource.init_param(allowed_ips, default=CIDR_ALL_IPS)
 
-    def _register_validators(self):
-        self._add_validator(KeyPairValidator, key_name=self.key_name)
+    def _validate(self):
+        self._execute_validator(KeyPairValidator, key_name=self.key_name)
 
 
 class Dcv(Resource):
@@ -417,9 +415,9 @@ class CloudWatchLogs(Resource):
         self.log_group_id = Resource.init_param(log_group_id)
         self.kms_key_id = Resource.init_param(kms_key_id)
 
-    def _register_validators(self):
+    def _validate(self):
         if self.kms_key_id:
-            self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
+            self._execute_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
 class CloudWatchDashboards(Resource):
@@ -483,8 +481,8 @@ class Tag(BaseTag):
     ):
         super().__init__(key, value)
 
-    def _register_validators(self):
-        self._add_validator(TagKeyValidator, key=self.key)
+    def _validate(self):
+        self._execute_validator(TagKeyValidator, key=self.key)
 
 
 class Roles(Resource):
@@ -523,8 +521,8 @@ class AdditionalIamPolicy(Resource):
         super().__init__()
         self.policy = Resource.init_param(policy)
 
-    def _register_validators(self):
-        self._add_validator(AdditionalIamPolicyValidator, policy=self.policy)
+    def _validate(self):
+        self._execute_validator(AdditionalIamPolicyValidator, policy=self.policy)
 
 
 class Iam(Resource):
@@ -571,9 +569,9 @@ class ClusterDevSettings(BaseDevSettings):
         super().__init__(**kwargs)
         self.cluster_template = Resource.init_param(cluster_template)
 
-    def _register_validators(self):
-        super()._register_validators()
-        self._add_validator(UrlValidator, url=self.cluster_template)
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(UrlValidator, url=self.cluster_template)
 
 
 # ---------------------- Nodes and Cluster ---------------------- #
@@ -598,8 +596,8 @@ class CustomAction(Resource):
         self.event = Resource.init_param(event)
         self.run_as = Resource.init_param(run_as)
 
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.script)
+    def _validate(self):
+        self._execute_validator(UrlValidator, url=self.script)
 
 
 class HeadNode(Resource):
@@ -632,9 +630,9 @@ class HeadNode(Resource):
         self.custom_actions = custom_actions
         self.iam = iam
 
-    def _register_validators(self):
-        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
+        self._execute_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
             architecture=self.architecture,
@@ -672,9 +670,9 @@ class BaseComputeResource(Resource):
             disable_simultaneous_multithreading, default=True
         )
 
-    def _register_validators(self):
-        self._add_validator(NameValidator, name=self.name)
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(NameValidator, name=self.name)
+        self._execute_validator(
             DisableSimultaneousMultithreadingArchitectureValidator,
             disable_simultaneous_multithreading=self.disable_simultaneous_multithreading,
             architecture=self.architecture,
@@ -710,8 +708,8 @@ class BaseQueue(Resource):
         self.image = image
         self.iam = iam
 
-    def _register_validators(self):
-        self._add_validator(NameValidator, name=self.name)
+    def _validate(self):
+        self._execute_validator(NameValidator, name=self.name)
 
 
 class CommonSchedulingSettings(Resource):
@@ -750,32 +748,38 @@ class BaseCluster(Resource):
         self.additional_resources = Resource.init_param(additional_resources)
         self.dev_settings = dev_settings
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             ArchitectureOsValidator,
-            priority=10,
             os=self.image.os,
             architecture=self.head_node.architecture,
         )
-        self._add_validator(
+        self._execute_validator(
             InstanceTypeBaseAMICompatibleValidator,
             instance_type=self.head_node.instance_type,
             image=self.image.custom_ami,
         )
-        self._add_validator(
+        self._execute_validator(
             SubnetsValidator, subnet_ids=self.compute_subnet_ids + [self.head_node.networking.subnet_id]
         )
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                self._add_validator(
+                self._execute_validator(
                     InstanceTypeBaseAMICompatibleValidator,
                     instance_type=compute_resource.instance_type,
                     image=self.image.custom_ami,
                 )
+                if compute_resource.efa:
+                    self._execute_validator(
+                        EfaOsArchitectureValidator,
+                        efa_enabled=compute_resource.efa.enabled,
+                        os=self.image.os,
+                        # FIXME: head_node.architecture vs compute_resource.architecture?
+                        architecture=self.head_node.architecture,
+                    )
         if self.head_node.efa:
-            self._add_validator(
+            self._execute_validator(
                 EfaOsArchitectureValidator,
-                priority=9,
                 efa_enabled=self.head_node.efa.enabled,
                 os=self.image.os,
                 architecture=self.head_node.architecture,
@@ -783,7 +787,7 @@ class BaseCluster(Resource):
         self._register_storage_validators()
 
         if self.head_node.dcv:
-            self._add_validator(
+            self._execute_validator(
                 DcvValidator,
                 instance_type=self.head_node.instance_type,
                 dcv_enabled=self.head_node.dcv.enabled,
@@ -797,13 +801,13 @@ class BaseCluster(Resource):
             and self.additional_packages.intel_select_solutions
             and self.additional_packages.intel_select_solutions.install_intel_software
         ):
-            self._add_validator(IntelHpcOsValidator, os=self.image.os)
-            self._add_validator(
+            self._execute_validator(IntelHpcOsValidator, os=self.image.os)
+            self._execute_validator(
                 IntelHpcArchitectureValidator,
                 architecture=self.head_node.architecture,
             )
         if self.cluster_s3_bucket:
-            self._add_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
+            self._execute_validator(S3BucketValidator, bucket=self.cluster_s3_bucket)
 
     def _register_storage_validators(self):
         storage_count = {"ebs": 0, "efs": 0, "fsx": 0}
@@ -811,12 +815,12 @@ class BaseCluster(Resource):
             for storage in self.shared_storage:
                 if isinstance(storage, SharedFsx):
                     storage_count["fsx"] += 1
-                    self._add_validator(
+                    self._execute_validator(
                         FsxNetworkingValidator,
                         fs_system_id=storage.file_system_id,
                         head_node_subnet_id=self.head_node.networking.subnet_id,
                     )
-                    self._add_validator(
+                    self._execute_validator(
                         FsxArchitectureOsValidator,
                         architecture=self.head_node.architecture,
                         os=self.image.os,
@@ -825,21 +829,21 @@ class BaseCluster(Resource):
                     storage_count["ebs"] += 1
                 if isinstance(storage, SharedEfs):
                     storage_count["efs"] += 1
-                    self._add_validator(
+                    self._execute_validator(
                         EfsIdValidator,
                         efs_id=storage.file_system_id,
                         head_node_avail_zone=self.head_node.networking.availability_zone,
                     )
 
             for storage_type in ["ebs", "efs", "fsx"]:
-                self._add_validator(
+                self._execute_validator(
                     NumberOfStorageValidator,
                     storage_type=storage_type.upper(),
                     max_number=MAX_STORAGE_COUNT.get(storage_type),
                     storage_count=storage_count[storage_type],
                 )
 
-        self._add_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
+        self._execute_validator(DuplicateMountDirValidator, mount_dir_list=self.mount_dir_list)
 
     @property
     def region(self):

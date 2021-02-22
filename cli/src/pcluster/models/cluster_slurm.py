@@ -25,7 +25,6 @@ from pcluster.models.cluster import (
 )
 from pcluster.validators.cluster_validators import (
     DuplicateInstanceTypeValidator,
-    EfaOsArchitectureValidator,
     EfaPlacementGroupValidator,
     EfaSecurityGroupValidator,
     EfaValidator,
@@ -47,10 +46,11 @@ class SlurmComputeResource(BaseComputeResource):
         self.spot_price = Resource.init_param(spot_price)
         self.efa = efa
 
-    def _register_validators(self):
-        self._add_validator(InstanceTypeValidator, instance_type=self.instance_type)
+    def _validate(self):
+        super().validate()
+        self._execute_validator(InstanceTypeValidator, instance_type=self.instance_type)
         if self.efa:
-            self._add_validator(
+            self._execute_validator(
                 EfaValidator,
                 instance_type=self.instance_type,
                 efa_enabled=self.efa.enabled,
@@ -68,21 +68,21 @@ class SlurmQueue(BaseQueue):
         self.compute_resources = compute_resources
         self.custom_actions = custom_actions
 
-    def _register_validators(self):
-        self._add_validator(
+    def _validate(self):
+        self._execute_validator(
             DuplicateInstanceTypeValidator,
             instance_type_list=self.instance_type_list,
         )
         for compute_resource in self.compute_resources:
             if compute_resource.efa:
-                self._add_validator(
+                self._execute_validator(
                     EfaSecurityGroupValidator,
                     efa_enabled=compute_resource.efa,
                     security_groups=self.networking.security_groups,
                     additional_security_groups=self.networking.additional_security_groups,
                 )
                 if self.networking.placement_group:
-                    self._add_validator(
+                    self._execute_validator(
                         EfaPlacementGroupValidator,
                         efa_enabled=compute_resource.efa,
                         placement_group_id=self.networking.placement_group.id,
@@ -130,22 +130,14 @@ class SlurmCluster(BaseCluster):
         super().__init__(**kwargs)
         self.scheduling = scheduling
 
-    def _register_validators(self):
-        super()._register_validators()
-        self._add_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
+    def _validate(self):
+        super()._validate()
+        self._execute_validator(SchedulerOsValidator, scheduler=self.scheduling.scheduler, os=self.image.os)
 
         for queue in self.scheduling.queues:
             for compute_resource in queue.compute_resources:
-                self._add_validator(
+                self._execute_validator(
                     InstanceArchitectureCompatibilityValidator,
                     instance_type=compute_resource.instance_type,
                     architecture=self.head_node.architecture,
                 )
-                if compute_resource.efa:
-                    self._add_validator(
-                        EfaOsArchitectureValidator,
-                        priority=9,
-                        efa_enabled=compute_resource.efa.enabled,
-                        os=self.image.os,
-                        architecture=self.head_node.architecture,
-                    )
