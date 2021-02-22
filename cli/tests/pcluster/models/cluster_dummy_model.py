@@ -18,10 +18,10 @@ from pcluster.models.cluster import (
     SharedEbs,
     SharedEfs,
     SharedFsx,
-    SharedStorage,
     Ssh,
 )
 from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
+from pcluster.models.common import Resource
 
 
 def dummy_head_node():
@@ -48,7 +48,7 @@ def dummy_cluster():
     ]
     scheduling = SlurmScheduling(queues=queues)
     # shared storage
-    shared_storage: List[SharedStorage] = []
+    shared_storage: List[Resource] = []
     shared_storage.append(dummy_fsx())
     shared_storage.append(dummy_ebs("/ebs1"))
     shared_storage.append(dummy_ebs("/ebs2", volume_id="vol-abc"))

@@ -142,23 +142,15 @@ class Storage(Resource):
         self.ephemeral_volume = ephemeral_volume
 
 
-class SharedStorage(Resource):
-    """Represent a generic shared Storage resource."""
+class SharedStorageType(Enum):
+    """Define storage types to be used as shared storage."""
 
-    class Type(Enum):
-        """Define storage types to be used as shared storage."""
-
-        EBS = "ebs"
-        EFS = "efs"
-        FSX = "fsx"
-
-    def __init__(self, mount_dir: str, shared_storage_type: Type):
-        super().__init__()
-        self.mount_dir = Resource.init_param(mount_dir)
-        self.shared_storage_type = shared_storage_type
+    EBS = "ebs"
+    EFS = "efs"
+    FSX = "fsx"
 
 
-class SharedEbs(SharedStorage, Ebs):
+class SharedEbs(Ebs):
     """Represent a shared EBS, inherits from both _SharedStorage and Ebs classes."""
 
     def __init__(
@@ -174,8 +166,9 @@ class SharedEbs(SharedStorage, Ebs):
         volume_id: str = None,
         raid: Raid = None,
     ):
-        SharedStorage.__init__(self, mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EBS)
         Ebs.__init__(self, volume_type, iops, size, encrypted, kms_key_id, throughput)
+        self.mount_dir = mount_dir
+        self.shared_storage_type = SharedStorageType.EBS
         self.snapshot_id = Resource.init_param(snapshot_id)
         self.volume_id = Resource.init_param(volume_id)
         self.raid = raid
@@ -184,7 +177,7 @@ class SharedEbs(SharedStorage, Ebs):
         self._add_validator(SharedEBSVolumeIdValidator, volume_id=self.volume_id)
 
 
-class SharedEfs(SharedStorage):
+class SharedEfs(Resource):
     """Represent the shared EFS resource."""
 
     def __init__(
@@ -197,7 +190,9 @@ class SharedEfs(SharedStorage):
         provisioned_throughput: int = None,
         file_system_id: str = None,
     ):
-        super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.EFS)
+        super().__init__()
+        self.mount_dir = mount_dir
+        self.shared_storage_type = SharedStorageType.EFS
         self.encrypted = Resource.init_param(encrypted, default=False)
         self.kms_key_id = Resource.init_param(kms_key_id)
         self.performance_mode = Resource.init_param(performance_mode, default="generalPurpose")
@@ -210,7 +205,7 @@ class SharedEfs(SharedStorage):
             self._add_validator(KmsKeyValidator, kms_key_id=self.kms_key_id)
 
 
-class SharedFsx(SharedStorage):
+class SharedFsx(Resource):
     """Represent the shared FSX resource."""
 
     def __init__(
@@ -233,7 +228,9 @@ class SharedFsx(SharedStorage):
         drive_cache_type: str = None,
         storage_type: str = None,
     ):
-        super().__init__(mount_dir=mount_dir, shared_storage_type=SharedStorage.Type.FSX)
+        super().__init__()
+        self.mount_dir = mount_dir
+        self.shared_storage_type = SharedStorageType.FSX
         self.storage_capacity = Resource.init_param(storage_capacity)
         self.storage_type = Resource.init_param(storage_type)
         self.deployment_type = Resource.init_param(deployment_type)
@@ -732,7 +729,7 @@ class BaseCluster(Resource):
         self,
         image: Image,
         head_node: HeadNode,
-        shared_storage: List[SharedStorage] = None,
+        shared_storage: List[Resource] = None,
         monitoring: Monitoring = None,
         additional_packages: AdditionalPackages = None,
         tags: List[Tag] = None,
