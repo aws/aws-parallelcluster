@@ -544,6 +544,50 @@ def test_imagebuilder_instance_role(
                 {"ComponentArn": {"Ref": "ParallelClusterTag"}},
             ],
         ),
+        (
+            {
+                "imagebuilder": {
+                    "image": {"name": "Pcluster"},
+                    "build": {
+                        "parent_image": "ami-0185634c5a8a37250",
+                        "instance_type": "c5.xlarge",
+                        "components": [
+                            {
+                                "type": "arn",
+                                "value": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0",
+                            },
+                            {"type": "script", "value": "s3://test-slurm/run.sh"},
+                            {
+                                "type": "script",
+                                "value": "https://test-slurm.s3.us-east-2.amazonaws.com/post_install_script.sh",
+                            },
+                        ],
+                    },
+                }
+            },
+            {
+                "Architecture": "x86_64",
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "DeleteOnTermination": True,
+                            "SnapshotId": "snap-0a20b6671bc5e3ead",
+                            "VolumeSize": 50,
+                            "VolumeType": "gp2",
+                            "Encrypted": False,
+                        },
+                    }
+                ],
+            },
+            [
+                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
+                {"ComponentArn": {"Ref": "ParallelClusterScriptComponent0"}},
+                {"ComponentArn": {"Ref": "ParallelClusterScriptComponent1"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTag"}},
+            ],
+        ),
     ],
 )
 def test_imagebuilder_components(mocker, resource, response, expected_components):

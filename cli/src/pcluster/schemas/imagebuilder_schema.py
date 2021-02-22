@@ -14,12 +14,11 @@
 # These classes are created by following marshmallow syntax.
 #
 import re
-from urllib.parse import urlparse
 
 from marshmallow import ValidationError, fields, post_load, validate, validates, validates_schema
 
 from common.imagebuilder_utils import AMI_NAME_REQUIRED_SUBSTRING
-from common.utils import validate_json_format
+from common.utils import get_url_scheme, validate_json_format
 from pcluster.models.imagebuilder import (
     Build,
     Component,
@@ -87,7 +86,7 @@ class ImageSchema(BaseSchema):
 class ComponentSchema(BaseSchema):
     """Represent the schema of the ImageBuilder component."""
 
-    type = fields.Str(validate=validate.OneOf(["arn", "yaml", "bash"]))
+    type = fields.Str(validate=validate.OneOf(["arn", "script"]))
     value = fields.Str()
 
     @post_load()
@@ -106,17 +105,10 @@ class ComponentSchema(BaseSchema):
                 "Choose a value with 'arn' prefix.".format(value),
                 field_name="Value",
             )
-        if type == "yaml" and (urlparse(value).scheme not in ["https", "s3", "file"] or not value.endswith("yaml")):
-            print(urlparse(value))
+        if type == "script" and get_url_scheme(value) not in ["https", "s3"]:
             raise ValidationError(
-                message="The Type in Component is yaml, the value '{0}' is invalid. "
-                "Choose a value with 'https', 's3' or 'file' prefix and 'yaml' suffix url.".format(value),
-                field_name="Value",
-            )
-        if type == "bash" and urlparse(value).scheme not in ["https", "s3", "file"]:
-            raise ValidationError(
-                message="The Type in Component is bash, the value '{0}' is invalid. "
-                "Choose a value with 'https', 's3' or 'file' prefix url.".format(value),
+                message="The Type in Component is script, the value '{0}' is invalid. "
+                "Choose a value with 'https' or 's3' prefix url.".format(value),
                 field_name="Value",
             )
 

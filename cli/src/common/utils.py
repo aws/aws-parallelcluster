@@ -10,6 +10,9 @@
 # limitations under the License.
 import json
 import os
+import re
+from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import urlopen
 
 import yaml
@@ -43,3 +46,26 @@ def validate_json_format(data):
     except ValueError:
         return False
     return True
+
+
+def get_url_scheme(url):
+    """Parse url to get scheme."""
+    return urlparse(url).scheme
+
+
+def parse_bucket_url(url):
+    """
+    Parse s3 url to get bucket name and object name.
+
+    input: s3://test/templates/3.0/post_install.sh
+    output: {"bucket_name": "test", "object_key": "templates/3.0/post_install.sh", "object_name": "post_install.sh"}
+    """
+    match = re.match(r"s3://(.*?)/(.*)", url)
+    if match:
+        bucket_name = match.group(1)
+        object_key = match.group(2)
+        object_name = object_key.split("/")[-1]
+    else:
+        raise URLError("Invalid s3 url: {0}".format(url))
+
+    return {"bucket_name": bucket_name, "object_key": object_key, "object_name": object_name}

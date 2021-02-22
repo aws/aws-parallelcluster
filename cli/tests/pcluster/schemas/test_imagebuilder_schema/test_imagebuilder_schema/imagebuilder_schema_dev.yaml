@@ -16,12 +16,10 @@ Build:
   Components:
     - Type: arn
       Value: arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0
-    - Type: yaml
-      Value: https://test/mysql_component.yaml
-    - Type: yaml
-      Value: s3://test/keras_component.yaml
-    - Type: bash
-      Value: file:///test/post_install.sh
+    - Type: script
+      Value: https://test/post_install.sh
+    - Type: script
+      Value: s3://test/post_install.sh
   ParentImage: arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x
   Tags:
     - Key: Name
