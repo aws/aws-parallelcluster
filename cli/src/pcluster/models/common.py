@@ -13,22 +13,11 @@
 # These objects are obtained from the configuration file through a conversion based on the Schema classes.
 #
 
-import operator
 from abc import ABC
 from typing import List
 
-from pcluster.validators.common import ValidationResult, Validator
+from pcluster.validators.common import ValidationResult
 from pcluster.validators.s3_validators import UrlValidator
-
-
-class _ResourceValidator(ABC):
-    """Represent a generic validator for a resource attribute or object. It's a module private class."""
-
-    def __init__(self, validator_class: Validator, priority: int = 1, **kwargs):
-        """Initialize validator. Note: Validators with higher priorities will be executed first."""
-        self.validator_class = validator_class
-        self.priority = priority
-        self.validator_args = kwargs
 
 
 class Resource(ABC):
@@ -85,7 +74,6 @@ class Resource(ABC):
     def __init__(self):
         # Parameters registry
         self.__params = {}
-        self.__validators: List[_ResourceValidator] = []
         self._validation_failures: List[ValidationResult] = []
 
     @property
@@ -129,16 +117,8 @@ class Resource(ABC):
         """Create a resource attribute backed by a Configuration Parameter."""
         return Resource.Param(value, default=default, update_policy=update_policy)
 
-    def _register_validators(self):
-        """
-        Register the validators.
-
-        Method to be implemented in Resources. It will be called before executing the validation.
-        """
-        pass
-
-    def validate(self, raise_on_error=False):
-        """Execute registered validators, ordered by priority (high prio --> executed first)."""
+    def validate(self):
+        """Execute registered validators."""
         # Cleanup failures
         self._validation_failures.clear()
 
@@ -154,22 +134,21 @@ class Resource(ABC):
                         self._validation_failures.extend(item.validate())
 
         # Update validators to be executed according to current status of the model and order by priority
-        self.__validators.clear()
-        self._register_validators()
-        self.__validators = sorted(self.__validators, key=operator.attrgetter("priority"), reverse=True)
-
-        # Execute validators and add results in validation_failures array
-        for validator in self.__validators:
-            # Execute it by passing all the arguments
-            self._validation_failures.extend(
-                validator.validator_class(raise_on_error=raise_on_error).execute(**validator.validator_args)
-            )
-
+        self._validate()
         return self._validation_failures
 
-    def _add_validator(self, validator_class: Validator, priority: int = 1, **kwargs):
-        """Store validator to be executed at validation execution."""
-        self.__validators.append(_ResourceValidator(validator_class, priority=priority, **kwargs))
+    def _validate(self):
+        """
+        Execute validators.
+
+        Method to be implemented in Resources.
+        """
+        pass
+
+    def _execute_validator(self, validator_class, **validator_args):
+        """Execute the validator."""
+        self._validation_failures.extend(validator_class().execute(**validator_args))
+        return self._validation_failures
 
     def __repr__(self):
         """Return a human readable representation of the Resource object."""
@@ -204,8 +183,8 @@ class Cookbook(Resource):
         self.extra_chef_attributes = Resource.init_param(extra_chef_attributes)
         # TODO: add validator
 
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.chef_cookbook)
+    def _validate(self):
+        self._execute_validator(UrlValidator, url=self.chef_cookbook)
 
 
 class BaseDevSettings(Resource):
@@ -222,6 +201,6 @@ class BaseDevSettings(Resource):
         self.node_package = Resource.init_param(node_package)
         self.aws_batch_cli_package = Resource.init_param(aws_batch_cli_package)
 
-    def _register_validators(self):
-        self._add_validator(UrlValidator, url=self.node_package)
-        self._add_validator(UrlValidator, url=self.aws_batch_cli_package)
+    def _validate(self):
+        self._execute_validator(UrlValidator, url=self.node_package)
+        self._execute_validator(UrlValidator, url=self.aws_batch_cli_package)
