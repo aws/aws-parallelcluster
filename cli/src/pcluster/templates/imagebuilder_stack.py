@@ -96,8 +96,8 @@ class ImageBuilderStack(core.Stack):
         # InfrastructureConfiguration
         imagebuilder.CfnInfrastructureConfiguration(
             self,
-            id="PClusterImageInfrastructureConfiguration",
-            name="-".join(["PCluster-Image-Infrastructure-Configuration", resources_prefix]),
+            id="ParallelClusterInfrastructureConfiguration",
+            name="-".join(["ParallelClusterInfrastructureConfiguration", resources_prefix]),
             tags=build_tags,
             instance_profile_name=core.Fn.ref(instance_profile_name or "InstanceProfile"),
             terminate_instance_on_failure=dev_settings.terminate_instance_on_failure
@@ -115,7 +115,7 @@ class ImageBuilderStack(core.Stack):
             imagebuilder.CfnComponent(
                 self,
                 id="UpdateAndRebootComponent",
-                name="-".join(["UpdateAndReboot", resources_prefix]),
+                name="-".join(["UpdateAndRebootComponent", resources_prefix]),
                 version=utils.get_installed_version(),
                 tags=build_tags,
                 description="Update OS and Reboot",
@@ -130,17 +130,19 @@ class ImageBuilderStack(core.Stack):
 
         imagebuilder.CfnComponent(
             self,
-            id="PClusterComponent",
-            name="-".join(["PCluster", resources_prefix]),
+            id="ParallelClusterComponent",
+            name="-".join(["ParallelClusterComponent", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
-            description="Bake PCluster AMI",
+            description="Bake ParallelCluster AMI",
             platform="Linux",
-            data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "pcluster_install.yaml")),
+            data=core.Fn.sub(load_yaml(imagebuilder_resources_dir, "parallelcluster.yaml")),
         )
 
         components.append(
-            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("PClusterComponent"))
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=core.Fn.ref("ParallelClusterComponent")
+            )
         )
 
         if build.components:
@@ -148,8 +150,8 @@ class ImageBuilderStack(core.Stack):
 
         imagebuilder.CfnComponent(
             self,
-            id="ParallelClusterTag",
-            name="-".join(["ParallelClusterTag", resources_prefix]),
+            id="ParallelClusterTagComponent",
+            name="-".join(["ParallelClusterTagComponent", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
             description="Tag ParallelCluster AMI",
@@ -158,14 +160,16 @@ class ImageBuilderStack(core.Stack):
         )
 
         components.append(
-            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(component_arn=core.Fn.ref("ParallelClusterTag"))
+            imagebuilder.CfnImageRecipe.ComponentConfigurationProperty(
+                component_arn=core.Fn.ref("ParallelClusterTagComponent")
+            )
         )
 
         # ImageRecipe
         imagebuilder.CfnImageRecipe(
             self,
-            id="PClusterImageRecipe",
-            name="-".join(["PCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
+            id="ParallelClusterImageRecipe",
+            name="-".join(["ParallelClusterImageRecipe", resources_prefix]),
             version=utils.get_installed_version(),
             tags=build_tags,
             parent_image=core.Fn.sub(build.parent_image),
@@ -207,7 +211,7 @@ class ImageBuilderStack(core.Stack):
         imagebuilder.CfnDistributionConfiguration(
             self,
             id="ParallelClusterDistributionConfiguration",
-            name="-".join(["ParallelCluster", utils.get_installed_version().replace(".", "-"), resources_prefix]),
+            name="-".join(["ParallelClusterDistributionConfiguration", resources_prefix]),
             tags=build_tags,
             distributions=distributions,
         )
@@ -215,10 +219,10 @@ class ImageBuilderStack(core.Stack):
         # Image
         imagebuilder.CfnImage(
             self,
-            id="PClusterImage",
+            id="ParallelClusterImage",
             tags=build_tags,
-            image_recipe_arn=core.Fn.ref("PClusterImageRecipe"),
-            infrastructure_configuration_arn=core.Fn.ref("PClusterImageInfrastructureConfiguration"),
+            image_recipe_arn=core.Fn.ref("ParallelClusterImageRecipe"),
+            infrastructure_configuration_arn=core.Fn.ref("ParallelClusterInfrastructureConfiguration"),
             distribution_configuration_arn=core.Fn.ref("ParallelClusterDistributionConfiguration"),
         )
 

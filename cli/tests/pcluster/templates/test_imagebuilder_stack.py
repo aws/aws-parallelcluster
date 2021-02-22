@@ -67,7 +67,7 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
                     "CfnParamCincInstaller": {"Type": "String", "Default": "", "Description": "CincInstaller"},
                     "CfnParamCookbookVersion": {
                         "Type": "String",
-                        "Default": "2.10.1",
+                        "Default": "3.0",
                         "Description": "CookbookVersion",
                     },
                 },
@@ -95,11 +95,11 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
                         "Type": "AWS::IAM::InstanceProfile",
                         "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/executionServiceEC2Role/"},
                     },
-                    "PClusterImageInfrastructureConfiguration": {
+                    "ParallelClusterInfrastructureConfiguration": {
                         "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
                         "Properties": {
                             "InstanceProfileName": {"Ref": "InstanceProfile"},
-                            "Name": "PCluster-Image-Infrastructure-Configuration-qd6lpbzo8gd2j4dr",
+                            "Name": "ParallelClusterInfrastructureConfiguration-qd6lpbzo8gd2j4dr",
                             "InstanceTypes": ["c5.xlarge"],
                             "TerminateInstanceOnFailure": False,
                         },
@@ -107,47 +107,46 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
                     "UpdateAndRebootComponent": {
                         "Type": "AWS::ImageBuilder::Component",
                         "Properties": {
-                            "Name": "UpdateAndReboot-qd6lpbzo8gd2j4dr",
+                            "Name": "UpdateAndRebootComponent-qd6lpbzo8gd2j4dr",
                             "Platform": "Linux",
-                            "Version": "0.0.1",
-                            "ChangeDescription": "First version",
+                            "Version": "3.0",
                             "Data": {"Fn::Sub": "content"},
                             "Description": "Update OS and Reboot",
                         },
                     },
-                    "PClusterComponent": {
+                    "ParallelClusterComponent": {
                         "Type": "AWS::ImageBuilder::Component",
                         "Properties": {
-                            "Name": "PCluster-qd6lpbzo8gd2j4dr",
+                            "Name": "ParallelClusterComponent-qd6lpbzo8gd2j4dr",
                             "Platform": "Linux",
-                            "Version": "0.0.1",
-                            "ChangeDescription": "First version",
+                            "Version": "3.0",
                             "Data": {"Fn::Sub": "content"},
-                            "Description": "Bake PCluster AMI",
+                            "Description": "Bake ParallelCluster AMI",
                         },
                     },
-                    "PClusterImageRecipe": {
+                    "ParallelClusterImageRecipe": {
                         "Type": "AWS::ImageBuilder::ImageRecipe",
                         "Properties": {
                             "Components": [
                                 {"ComponentArn": {"Ref": "UpdateAndRebootComponent"}},
-                                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
                             ],
-                            "Name": "PCluster-2-10-1-qd6lpbzo8gd2j4dr",
+                            "Name": "ParallelClusterImageRecipe-qd6lpbzo8gd2j4dr",
                             "ParentImage": {
                                 "Fn::Sub": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x"
                             },
-                            "Version": "0.0.1",
+                            "Version": "3.0",
                             "BlockDeviceMappings": [
                                 {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 40, "VolumeType": "gp2"}}
                             ],
                         },
                     },
-                    "PClusterImage": {
+                    "ParallelClusterImage": {
                         "Type": "AWS::ImageBuilder::Image",
                         "Properties": {
-                            "ImageRecipeArn": {"Ref": "PClusterImageRecipe"},
-                            "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
+                            "ImageRecipeArn": {"Ref": "ParallelClusterImageRecipe"},
+                            "InfrastructureConfigurationArn": {"Ref": "ParallelClusterInfrastructureConfiguration"},
+                            "DistributionConfigurationArn": {"Ref": "ParallelClusterDistributionConfiguration"},
                         },
                     },
                 },
@@ -156,7 +155,7 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster"},
+                    "image": {"name": "Parallelcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -223,43 +222,44 @@ from ..models.imagebuilder_dummy_model import imagebuilder_factory
                         "Type": "AWS::IAM::InstanceProfile",
                         "Properties": {"Roles": [{"Ref": "InstanceRole"}], "Path": "/executionServiceEC2Role/"},
                     },
-                    "PClusterImageInfrastructureConfiguration": {
+                    "ParallelClusterInfrastructureConfiguration": {
                         "Type": "AWS::ImageBuilder::InfrastructureConfiguration",
                         "Properties": {
                             "InstanceProfileName": {"Ref": "InstanceProfile"},
-                            "Name": "PCluster-Image-Infrastructure-Configuration-gw85hm3tw3qka4fd",
+                            "Name": "ParallelClusterInfrastructureConfiguration-gw85hm3tw3qka4fd",
                             "InstanceTypes": ["g4dn.xlarge"],
                             "TerminateInstanceOnFailure": True,
                         },
                     },
-                    "PClusterComponent": {
+                    "ParallelClusterComponent": {
                         "Type": "AWS::ImageBuilder::Component",
                         "Properties": {
-                            "Name": "PCluster-gw85hm3tw3qka4fd",
+                            "Name": "ParallelClusterComponent-gw85hm3tw3qka4fd",
                             "Platform": "Linux",
                             "Version": "0.0.1",
                             "ChangeDescription": "First version",
                             "Data": {"Fn::Sub": "install pcluster"},
-                            "Description": "Bake PCluster AMI",
+                            "Description": "Bake ParallelCluster AMI",
                         },
                     },
-                    "PClusterImageRecipe": {
+                    "ParallelClusterImageRecipe": {
                         "Type": "AWS::ImageBuilder::ImageRecipe",
                         "Properties": {
-                            "Components": [{"ComponentArn": {"Ref": "PClusterComponent"}}],
-                            "Name": "PCluster-2-10-1-gw85hm3tw3qka4fd",
+                            "Components": [{"ComponentArn": {"Ref": "ParallelClusterComponent"}}],
+                            "Name": "ParallelClusterImageRecipe-gw85hm3tw3qka4fd",
                             "ParentImage": {"Fn::Sub": "ami-0185634c5a8a37250"},
-                            "Version": "0.0.1",
+                            "Version": "3.0",
                             "BlockDeviceMappings": [
                                 {"DeviceName": "/dev/xvda", "Ebs": {"VolumeSize": 65, "VolumeType": "gp2"}}
                             ],
                         },
                     },
-                    "PClusterImage": {
+                    "ParallelClusterImage": {
                         "Type": "AWS::ImageBuilder::Image",
                         "Properties": {
-                            "ImageRecipeArn": {"Ref": "PClusterImageRecipe"},
-                            "InfrastructureConfigurationArn": {"Ref": "PClusterImageInfrastructureConfiguration"},
+                            "ImageRecipeArn": {"Ref": "ParallelClusterImageRecipe"},
+                            "InfrastructureConfigurationArn": {"Ref": "ParallelClusterInfrastructureConfiguration"},
+                            "DistributionConfigurationArn": {"Ref": "ParallelClusterDistributionConfiguration"},
                         },
                     },
                 },
@@ -447,7 +447,7 @@ def test_imagebuilder_instance_role(
     assert_that(generated_template.get("Resources").get("InstanceProfile")).is_equal_to(expected_instance_profile)
     assert_that(
         generated_template.get("Resources")
-        .get("PClusterImageInfrastructureConfiguration")
+        .get("ParallelClusterInfrastructureConfiguration")
         .get("Properties")
         .get("InstanceProfileName")
     ).is_equal_to(expected_instance_profile_in_configuration)
@@ -493,10 +493,10 @@ def test_imagebuilder_instance_role(
                 ],
             },
             [
-                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
-                {"ComponentArn": {"Ref": "ParallelClusterTag"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
             ],
         ),
         (
@@ -538,10 +538,10 @@ def test_imagebuilder_instance_role(
             },
             [
                 {"ComponentArn": {"Ref": "UpdateAndRebootComponent"}},
-                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/amazon-cloudwatch-agent-linux/1.0.0"},
-                {"ComponentArn": {"Ref": "ParallelClusterTag"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
             ],
         ),
         (
@@ -556,7 +556,7 @@ def test_imagebuilder_instance_role(
                                 "type": "arn",
                                 "value": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0",
                             },
-                            {"type": "script", "value": "s3://test-slurm/run.sh"},
+                            {"type": "script", "value": "s3://test-slurm/templates/run.sh"},
                             {
                                 "type": "script",
                                 "value": "https://test-slurm.s3.us-east-2.amazonaws.com/post_install_script.sh",
@@ -581,11 +581,11 @@ def test_imagebuilder_instance_role(
                 ],
             },
             [
-                {"ComponentArn": {"Ref": "PClusterComponent"}},
+                {"ComponentArn": {"Ref": "ParallelClusterComponent"}},
                 {"ComponentArn": "arn:aws:imagebuilder:us-east-1:aws:component/apache-tomcat-9-linux/1.0.0"},
                 {"ComponentArn": {"Ref": "ParallelClusterScriptComponent0"}},
                 {"ComponentArn": {"Ref": "ParallelClusterScriptComponent1"}},
-                {"ComponentArn": {"Ref": "ParallelClusterTag"}},
+                {"ComponentArn": {"Ref": "ParallelClusterTagComponent"}},
             ],
         ),
     ],
@@ -600,7 +600,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
     imagebuild = imagebuilder_factory(resource).get("imagebuilder")
     generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
     assert_that(
-        generated_template.get("Resources").get("PClusterImageRecipe").get("Properties").get("Components")
+        generated_template.get("Resources").get("ParallelClusterImageRecipe").get("Properties").get("Components")
     ).is_equal_to(expected_components)
 
 
@@ -932,7 +932,7 @@ def test_imagebuilder_subnet_id(mocker, resource, response, expected_imagebuilde
 
     assert_that(
         generated_template.get("Resources")
-        .get("PClusterImageInfrastructureConfiguration")
+        .get("ParallelClusterInfrastructureConfiguration")
         .get("Properties")
         .get("SubnetId")
     ).is_equal_to(expected_imagebuilder_subnet_id)
@@ -1004,7 +1004,7 @@ def test_imagebuilder_security_group_ids(mocker, resource, response, expected_im
 
     assert_that(
         generated_template.get("Resources")
-        .get("PClusterImageInfrastructureConfiguration")
+        .get("ParallelClusterInfrastructureConfiguration")
         .get("Properties")
         .get("SecurityGroupIds")
     ).is_equal_to(expected_imagebuilder_security_group_ids)
