@@ -19,7 +19,7 @@ from aws_cdk import aws_fsx as fsx
 from aws_cdk import core
 
 from common.aws.aws_api import AWSApi
-from pcluster.models.cluster import HeadNode, SharedEbs, SharedEfs, SharedFsx, SharedStorage
+from pcluster.models.cluster import HeadNode, SharedEbs, SharedEfs, SharedFsx, SharedStorageType
 from pcluster.models.cluster_slurm import SlurmCluster
 
 
@@ -190,7 +190,7 @@ class ClusterStack(core.Stack):
         self._cluster = cluster
 
         # Storage filesystem Ids
-        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorage.Type}
+        self._storage_resource_ids = {storage_type: [] for storage_type in SharedStorageType}
 
         # Compute security group Ids
         # TODO: add sgs created from main stack
@@ -205,17 +205,17 @@ class ClusterStack(core.Stack):
 
         self._add_shared_storage_outputs()
 
-    def _add_shared_storage(self, storage: SharedStorage):
+    def _add_shared_storage(self, storage):
         """Add specific Cfn Resources to map the shared storage and store the output filesystem id."""
         storage_id = None
         cfn_resource_id = "{0}{1}".format(
             storage.shared_storage_type.name, len(self._storage_resource_ids[storage.shared_storage_type])
         )
-        if storage.shared_storage_type == SharedStorage.Type.FSX:
+        if storage.shared_storage_type == SharedStorageType.FSX:
             storage_id = self._add_fsx_storage(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorage.Type.EBS:
+        elif storage.shared_storage_type == SharedStorageType.EBS:
             storage_id = self._add_ebs_volume(cfn_resource_id, storage)
-        elif storage.shared_storage_type == SharedStorage.Type.EFS:
+        elif storage.shared_storage_type == SharedStorageType.EFS:
             storage_id = self._add_efs_storage(cfn_resource_id, storage)
 
         # Store filesystem id
