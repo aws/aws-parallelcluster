@@ -297,7 +297,7 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster", "description": "Pcluster 3.0 Image"},
+                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -342,7 +342,7 @@ def _test_resources(generated_resouces, expected_resources):
                                 "Statement": [
                                     {
                                         "Effect": "Allow",
-                                        "Action": ["ec2:CreateTags"],
+                                        "Action": ["ec2:CreateTags", "ec2:ModifyImageAttribute"],
                                         "Resource": [{"Fn::Sub": "arn:${AWS::Partition}:ec2:*::image/*"}],
                                     }
                                 ],
@@ -362,7 +362,7 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster", "description": "Pcluster 3.0 Image"},
+                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -398,7 +398,7 @@ def _test_resources(generated_resouces, expected_resources):
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster", "description": "Pcluster 3.0 Image"},
+                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -459,7 +459,7 @@ def test_imagebuilder_instance_role(
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster", "description": "Pcluster 3.0 Image"},
+                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -502,7 +502,7 @@ def test_imagebuilder_instance_role(
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "Pcluster", "description": "Pcluster 3.0 Image"},
+                    "image": {"name": "Pcluster"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -613,7 +613,7 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2", "description": "my description"},
+                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",
@@ -635,7 +635,6 @@ def test_imagebuilder_components(mocker, resource, response, expected_components
                 {
                     "AmiDistributionConfiguration": {
                         "Name": "my AMI 2 {{ imagebuilder:buildDate }}",
-                        "Description": "my description",
                         "AmiTags": {"pcluster_version": utils.get_installed_version()},
                     },
                     "Region": {"Fn::Sub": "${AWS::Region}"},
@@ -753,7 +752,7 @@ def test_imagebuilder_ami_tags(mocker, resource, response, expected_ami_distribu
         (
             {
                 "imagebuilder": {
-                    "image": {"name": "my AMI 2", "description": "my description"},
+                    "image": {"name": "my AMI 2"},
                     "build": {
                         "parent_image": "ami-0185634c5a8a37250",
                         "instance_type": "c5.xlarge",

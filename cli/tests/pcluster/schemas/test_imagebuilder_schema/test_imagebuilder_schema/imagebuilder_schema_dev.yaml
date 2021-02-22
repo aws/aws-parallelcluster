@@ -1,6 +1,5 @@
 Image:
   Name: Pcluster
-  Description: Build for Pcluster 3.0
   Tags:
     - Key: Name
       Value: ParallelCluster-3.0-AMI
