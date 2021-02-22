@@ -73,11 +73,9 @@ class ImageSchema(BaseSchema):
         """Validate reserved tag in tags."""
         if value:
             for tag in value:
-                if tag.key == "PclusterVersion":
-                    raise ValidationError(
-                        message="The Key 'PclusterVersion' used in your 'tags' configuration parameter "
-                        "is a reserved one, please change it."
-                    )
+                match = re.match(r"^pcluster_*", tag.key)
+                if match:
+                    raise ValidationError(message="The tag key prefix 'pcluster_' is reserved and cannot be used.")
 
 
 # ---------------------- Build Schema---------------------- #
