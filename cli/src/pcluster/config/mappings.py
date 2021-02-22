@@ -680,6 +680,13 @@ COMPUTE_RESOURCE = {
             "visibility": Visibility.PRIVATE,
             "default": 0
         }),
+        ("gpu_type", {
+            "type": JsonParam,
+            # This param is managed automatically
+            "update_policy": UpdatePolicy.IGNORED,
+            "visibility": Visibility.PRIVATE,
+            "default": "no_gpu_type"
+        }),
         ("network_interfaces", {
             "type": IntJsonParam,
             # This param is managed automatically

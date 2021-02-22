@@ -57,9 +57,19 @@ def assert_no_errors_in_logs(remote_command_executor, scheduler):
         log_files = []
 
     for log_file in log_files:
-        log = remote_command_executor.run_remote_command("cat {0}".format(log_file), hide=True).stdout
+        log = remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
         for error_level in ["CRITICAL", "ERROR"]:
             assert_that(log).does_not_contain(error_level)
+
+
+def assert_no_msg_in_logs(remote_command_executor, log_files, log_msg):
+    """Assert log msgs are not in logs."""
+    __tracebackhide__ = True
+    log = ""
+    for log_file in log_files:
+        log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
+    for message in log_msg:
+        assert_that(log).does_not_contain(message)
 
 
 def assert_errors_in_logs(remote_command_executor, log_files, expected_errors):
@@ -68,7 +78,7 @@ def assert_errors_in_logs(remote_command_executor, log_files, expected_errors):
 
     log = ""
     for log_file in log_files:
-        log += remote_command_executor.run_remote_command("cat {0}".format(log_file), hide=True).stdout
+        log += remote_command_executor.run_remote_command("sudo cat {0}".format(log_file), hide=True).stdout
     for message in expected_errors:
         assert_that(log).matches(message)
 
