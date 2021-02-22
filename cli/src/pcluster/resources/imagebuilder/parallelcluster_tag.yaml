@@ -58,12 +58,27 @@ phases:
             - |
               set -v
 
+              DESCRIPTION="AWS ParallelCluster AMI for {{ test.OperatingSystemName.outputs.stdout }}."
+              append_description () {
+                VALUE="$1"
+                if [[ ! "${VALUE}" =~ NOT_INSTALLED ]] && [[ -n "${VALUE}" ]]; then
+                  echo "Appending ${VALUE} to decription"
+                  DESCRIPTION="${DESCRIPTION} ${VALUE}"
+                fi
+              }
+
+              add_description () {
+                DESCRIPTION="$(echo ${DESCRIPTION} | cut -c -1024)"
+                echo "Setting decription to ${DESCRIPTION}"
+                aws ec2 modify-image-attribute --region {{ test.AWSRegion.outputs.stdout }} --image-id {{ test.AmiId.outputs.stdout }} --description "${DESCRIPTION}" || echo "Not able to set AMI description"
+              }
+
               add_tag () {
                 KEY="$1"
                 VALUE="$2"
-                if [[ ! "${VALUE}" =~ NOT_INSTALLED ]]; then
-                  echo "Adding Tag Key=${KEY},Value=${VALUE} to AMI {{ test.AmiId.outputs.stdout }}"
-                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}"
+                if [[ ! "${VALUE}" =~ NOT_INSTALLED ]] && [[ -n "${VALUE}" ]]; then
+                  echo "Adding Tag Key=${KEY},Value=${VALUE}"
+                  aws ec2 create-tags --region {{ test.AWSRegion.outputs.stdout }} --resource {{ test.AmiId.outputs.stdout }} --tags "Key=${KEY},Value=${VALUE}" || echo "Not able to set AMI tag"
                 fi
               }
 
@@ -71,11 +86,19 @@ phases:
                 set -o pipefail
                 PACKAGE_NAME="$1"
                 if [ $(which apt 2> /dev/null) ]; then
-                  VERSION=$(dpkg -s "${PACKAGE_NAME}" 2> /dev/null | grep -i version | cut -d' ' -f2 || echo "NOT_INSTALLED")
+                  VERSION=$(dpkg -s "${PACKAGE_NAME}" 2> /dev/null | grep -i "^version:" | tr -s ' ' | cut -d' ' -f2 || echo "NOT_INSTALLED")
                   echo "${PACKAGE_NAME}-${VERSION}"
                 elif [ $(which yum 2> /dev/null) ]; then
                   echo $(rpm -q "${PACKAGE_NAME}" 2> /dev/null || echo "NOT_INSTALLED")
                 fi
+                set +o pipefail
+              }
+
+              get_modinfo () {
+                set -o pipefail
+                MODULE_NAME="$1"
+                VERSION=$(modinfo "${MODULE_NAME}" 2> /dev/null | grep -i "^version:" | tr -s ' ' | cut -d' ' -f2 || echo "NOT_INSTALLED")
+                echo "${MODULE_NAME}-${VERSION}"
                 set +o pipefail
               }
 
@@ -94,17 +117,25 @@ phases:
               add_tag "pcluster_os" "{{ test.OperatingSystemName.outputs.stdout }}"
 
               # Kernel
-              add_tag "pcluster_kernel" "$(uname -r)"
+              KERNEL_VERSION="$(uname -r)"
+              add_tag "pcluster_kernel" "${KERNEL_VERSION}"
+              append_description "kernel-${KERNEL_VERSION}"
 
               # sudo
               add_tag "pcluster_sudo" "$(get_package_version "sudo")"
 
               # Lustre
-              add_tag "pcluster_lustre" "$(get_package_version "lustre-client")"
-              add_tag "pcluster_lustre" "$(get_package_version "lustre-client-modules-aws")"
+              LUSTRE_VERSION="$(get_package_version "lustre-client")"
+              add_tag "pcluster_lustre" "${LUSTRE_VERSION}"
+              append_description "${LUSTRE_VERSION}"
+              LUSTRE_VERSION="$(get_package_version "lustre-client-modules-aws")"
+              add_tag "pcluster_lustre" "${LUSTRE_VERSION}"
+              append_description "${LUSTRE_VERSION}"
 
               # EFA
-              add_tag "pcluster_efa" "$(get_package_version "efa")"
+              EFA_VERSION="$(get_package_version "efa")"
+              add_tag "pcluster_efa" "${EFA_VERSION}"
+              append_description "${EFA_VERSION}"
               add_tag "pcluster_efa_profile" "$(get_package_version "efa-profile")"
               add_tag "pcluster_efa_config" "$(get_package_version "efa-config")"
               add_tag "pcluster_efa_rdma_core" "$(get_package_version "rdma-core")"
@@ -112,13 +143,23 @@ phases:
               add_tag "pcluster_efa_openmpi40_aws" "$(get_package_version "openmpi40-aws")"
 
               # DCV
-              add_tag "pcluster_dcv_server" "$(get_package_version "nice-dcv-server")"
+              DCV_VERSION="$(get_package_version "nice-dcv-server")"
+              add_tag "pcluster_dcv_server" "${DCV_VERSION}"
+              append_description "${DCV_VERSION}"
               add_tag "pcluster_dcv_xdcv" "$(get_package_version "nice-xdcv")"
 
               # Slurm, Munge and PMIx
-              add_tag "pcluster_slurm" "$(get_source_version "slurm")"
+              SLURM_VERSION="$(get_source_version "slurm")"
+              add_tag "pcluster_slurm" "${SLURM_VERSION}"
+              append_description "${SLURM_VERSION}"
               add_tag "pcluster_munge" "$(get_source_version "munge")"
               add_tag "pcluster_pmix" "$(get_source_version "pmix")"
 
-              # TODO Nvidia and Cuda
+              # Nvidia and Cuda
+              NVIDIA_VERSION="$(get_modinfo "nvidia")"
+              add_tag "pcluster_nvidia" "${NVIDIA_VERSION}"
+              append_description "${NVIDIA_VERSION}"
+              # TODO Cuda
 
+              # Add description
+              add_description

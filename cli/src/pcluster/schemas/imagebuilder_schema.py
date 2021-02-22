@@ -47,7 +47,6 @@ class ImageSchema(BaseSchema):
     """Represent the schema of the ImageBuilder Image."""
 
     name = fields.Str(validate=validate.Regexp(r"^[-_A-Za-z-0-9][-_A-Za-z0-9 ]{1,126}[-_A-Za-z-0-9]$"), required=True)
-    description = fields.Str()
     tags = fields.List(fields.Nested(TagSchema))
     root_volume = fields.Nested(VolumeSchema)
 
