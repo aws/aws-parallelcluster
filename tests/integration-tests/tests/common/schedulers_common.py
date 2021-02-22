@@ -505,6 +505,12 @@ class SlurmCommands(SchedulerCommands):
             else current_node_states
         )
 
+    def get_node_addr_host(self):
+        """Return a list of nodename, nodeaddr, nodehostname entries."""
+        return self._remote_command_executor.run_remote_command(
+            "/opt/slurm/bin/sinfo -O NodeList:' ',NodeAddr:' ',NodeHost:' ' -N -h | awk '{print$1, $2, $3}'"
+        ).stdout.splitlines()
+
     def submit_command_and_assert_job_accepted(self, submit_command_args):
         """Submit a command and assert the job is accepted by scheduler."""
         result = self.submit_command(**submit_command_args)
