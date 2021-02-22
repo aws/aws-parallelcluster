@@ -1286,6 +1286,12 @@ class InstanceTypeInfo:
 
         return gpu_count
 
+    def gpu_type(self):
+        """Return name or type of the GPU for the instance."""
+        gpu_info = self.instance_type_data.get("GpuInfo", None)
+        # Remove space and change to all lowercase for name
+        return "no_gpu_type" if not gpu_info else gpu_info.get("Gpus")[0].get("Name").replace(" ", "").lower()
+
     def max_network_interface_count(self):
         """Max number of NICs for the instance."""
         needed_interfaces = int(self.instance_type_data.get("NetworkInfo").get("MaximumNetworkCards", 1))
