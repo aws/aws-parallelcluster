@@ -820,3 +820,75 @@ def test_imagebuilder_build_tags(mocker, resource, response, expected_imagebuild
             assert_that(resource.get("Properties").get("Tags")).is_equal_to(expected_role_tags)
         else:
             assert_that(resource.get("Properties").get("Tags")).is_equal_to(expected_imagebuilder_resource_tags)
+
+
+@pytest.mark.parametrize(
+    "resource, response, expected_imagebuilder_subnet_id",
+    [
+        (
+                {
+                    "imagebuilder": {
+                        "image": {
+                            "name": "my AMI 1",
+                        },
+                        "build": {
+                            "parent_image": "arn:aws:imagebuilder:us-east-1:aws:image/amazon-linux-2-x86/x.x.x",
+                            "instance_type": "c5.xlarge",
+                        },
+                    }
+                },
+                {
+                    "Architecture": "x86_64",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "VolumeSize": 50,
+                            },
+                        }
+                    ],
+                },
+                None,
+        ),
+        (
+                {
+                    "imagebuilder": {
+                        "image": {"name": "my AMI 2"},
+                        "build": {
+                            "parent_image": "ami-0185634c5a8a37250",
+                            "instance_type": "c5.xlarge",
+                            "subnet_id": "subnet-0292c5356eadc531f",
+                        },
+                    }
+                },
+                {
+                    "Architecture": "x86_64",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "VolumeSize": 50,
+                            },
+                        }
+                    ],
+                },
+                "subnet-0292c5356eadc531f",
+        ),
+    ],
+)
+def test_imagebuilder_security_group_ids(mocker, resource, response, expected_imagebuilder_subnet_id):
+    mocker.patch("common.aws.aws_api.AWSApi.instance", return_value=DummyAWSApi())
+    mocker.patch("common.imagebuilder_utils.get_ami_id", return_value="ami-0185634c5a8a37250")
+    mocker.patch(
+        "common.boto3.ec2.Ec2Client.describe_image",
+        return_value=response,
+    )
+    imagebuild = imagebuilder_factory(resource).get("imagebuilder")
+    generated_template = CDKTemplateBuilder().build_imagebuilder_template(imagebuild)
+
+    assert_that(
+        generated_template.get("Resources")
+            .get("PClusterImageInfrastructureConfiguration")
+            .get("Properties")
+            .get("SubnetId")
+    ).is_equal_to(expected_imagebuilder_subnet_id)

@@ -99,6 +99,7 @@ class ImageBuilderStack(core.Stack):
             if dev_settings and dev_settings.terminate_instance_on_failure is not None
             else True,
             instance_types=[build.instance_type],
+            subnet_id=build.subnet_id,
         )
 
         imagebuilder_resources_dir = os.path.join(imagebuilder_utils.get_resources_directory(), "imagebuilder")
