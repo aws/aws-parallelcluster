@@ -15,6 +15,7 @@ from common.aws.aws_api import AWSApi
 
 ROOT_VOLUME_TYPE = "gp2"
 PCLUSTER_RESERVED_VOLUME_SIZE = 15
+AMI_NAME_REQUIRED_SUBSTRING = " {{ imagebuilder:buildDate }}"
 InstanceRole = Enum("InstanceRole", ("ROLE", "INSTANCE_PROFILE"))
 
 

@@ -23,7 +23,12 @@ from aws_cdk import core
 import pcluster.utils as utils
 from common import imagebuilder_utils
 from common.aws.aws_api import AWSApi
-from common.imagebuilder_utils import PCLUSTER_RESERVED_VOLUME_SIZE, ROOT_VOLUME_TYPE, InstanceRole
+from common.imagebuilder_utils import (
+    AMI_NAME_REQUIRED_SUBSTRING,
+    PCLUSTER_RESERVED_VOLUME_SIZE,
+    ROOT_VOLUME_TYPE,
+    InstanceRole,
+)
 from common.utils import load_yaml
 from pcluster.models.imagebuilder import ImageBuilder, Volume
 from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
@@ -200,9 +205,7 @@ class ImageBuilderStack(core.Stack):
         )
 
     def _set_ami_name(self):
-        if "{{ imagebuilder:buildDate }}" not in self.imagebuild.image.name:
-            return self.imagebuild.image.name + " {{ imagebuilder:buildDate }}"
-        return self.imagebuild.image.name
+        return self.imagebuild.image.name + AMI_NAME_REQUIRED_SUBSTRING
 
     def _get_instance_role_type(self):
         """Get instance role type based on instance_role in config."""
