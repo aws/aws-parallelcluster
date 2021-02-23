@@ -28,7 +28,7 @@ class DCVConnectionError(Exception):
 
 
 def _check_command_output(cmd):
-    return sub.check_output(cmd, shell=True, universal_newlines=True, stderr=sub.STDOUT).strip()
+    return sub.check_output(cmd, shell=True, timeout=5000, universal_newlines=True, stderr=sub.STDOUT).strip()
 
 
 def dcv_connect(args):
