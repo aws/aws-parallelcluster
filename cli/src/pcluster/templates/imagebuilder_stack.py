@@ -104,6 +104,7 @@ class ImageBuilderStack(core.Stack):
             if dev_settings and dev_settings.terminate_instance_on_failure is not None
             else True,
             instance_types=[build.instance_type],
+            security_group_ids=build.security_group_ids,
             subnet_id=build.subnet_id,
         )
 
