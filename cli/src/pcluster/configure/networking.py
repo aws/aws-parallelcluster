@@ -175,7 +175,7 @@ def _create_network_stack(configuration, parameters):
         )
         LOGGER.debug("StackId: {0}".format(stack.get("StackId")))
         LOGGER.info("Stack Name: {0}".format(stack_name))
-        if not verify_stack_creation(stack_name, cfn_client):
+        if not verify_stack_creation(stack_name):
             LOGGER.error("Could not create the network configuration")
             sys.exit(0)
         print()

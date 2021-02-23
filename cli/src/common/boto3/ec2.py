@@ -21,17 +21,30 @@ class Ec2Client(Boto3Client):
         super().__init__("ec2")
 
     @AWSExceptionHandler.handle_client_exception
+    def describe_instance_type(self, instance_type):
+        """Return instance type info."""
+        return self._client.describe_instance_types(InstanceTypes=[instance_type]).get("InstanceTypes")[0]
+
+    @AWSExceptionHandler.handle_client_exception
     def describe_instance_type_offerings(self):
         """Return a list of instance types."""
         return [
-            offering.get("InstanceType")
-            for offering in self._paginate_results(self._client.describe_instance_type_offerings)
+            response.get("InstanceType")
+            for response in self._paginate_results(self._client.describe_instance_type_offerings)
         ]
 
     @AWSExceptionHandler.handle_client_exception
     def describe_subnets(self, subnet_ids):
         """Return a list of subnets."""
-        return self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids)
+        return list(self._paginate_results(self._client.describe_subnets, SubnetIds=subnet_ids))
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_subnet_vpc(self, subnet_id):
+        """Return a vpc associated to the given subnet."""
+        subnets = self.describe_subnets([subnet_id])
+        if subnets:
+            return subnets[0].get("VpcId")
+        raise AWSClientError(function_name="describe_subnets", message=f"Subnet {subnet_id} not found")
 
     @AWSExceptionHandler.handle_client_exception
     def describe_image(self, ami_id):
@@ -105,3 +118,17 @@ class Ec2Client(Boto3Client):
         return "aws-parallelcluster-{version}-{suffix}-{arch}".format(
             version=utils.get_installed_version(), suffix=suffixes[os], arch=architecture
         )
+
+    @AWSExceptionHandler.handle_client_exception
+    def terminate_instances(self, instance_ids):
+        """Terminate list of EC2 instances."""
+        return self._client.terminate_instances(InstanceIds=instance_ids)
+
+    @AWSExceptionHandler.handle_client_exception
+    def list_instance_ids(self, filters):
+        """Retrieve a filtered list of instance ids."""
+        return [
+            instance.get("InstanceId")
+            for result in self._paginate_results(self._client.describe_instances, Filters=filters)
+            for instance in result.get("Instances")
+        ]

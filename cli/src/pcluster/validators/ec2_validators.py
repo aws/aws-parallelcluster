@@ -43,8 +43,7 @@ class InstanceTypeBaseAMICompatibleValidator(Validator):
             if ami_architecture not in instance_architectures:
                 self._add_failure(
                     "AMI {0}'s architecture ({1}) is incompatible with the architecture supported by the "
-                    "instance type {2} "
-                    "chosen ({3}). Use either a different AMI or a different instance type.".format(
+                    "instance type {2} chosen ({3}). Use either a different AMI or a different instance type.".format(
                         ami_id, ami_architecture, instance_type, instance_architectures
                     ),
                     FailureLevel.ERROR,

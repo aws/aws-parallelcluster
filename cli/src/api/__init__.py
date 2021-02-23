@@ -8,20 +8,3 @@
 # or in the "LICENSE.txt" file accompanying this file. This file is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
-
-import yaml
-
-from pcluster.templates.cdk_builder import CDKTemplateBuilder
-
-from ..boto3.dummy_boto3 import mock_aws_api
-from ..models.cluster_dummy_model import dummy_bucket, dummy_cluster
-
-
-def test_cluster_builder():
-    mock_aws_api()
-    generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_cluster(),
-        bucket=dummy_bucket(),
-    )
-    print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template

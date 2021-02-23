@@ -9,19 +9,16 @@
 # OR CONDITIONS OF ANY KIND, express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-import yaml
-
-from pcluster.templates.cdk_builder import CDKTemplateBuilder
-
-from ..boto3.dummy_boto3 import mock_aws_api
-from ..models.cluster_dummy_model import dummy_bucket, dummy_cluster
+from common.boto3.common import AWSExceptionHandler, Boto3Client
 
 
-def test_cluster_builder():
-    mock_aws_api()
-    generated_template = CDKTemplateBuilder().build_cluster_template(
-        cluster_config=dummy_cluster(),
-        bucket=dummy_bucket(),
-    )
-    print(yaml.dump(generated_template))
-    # TODO assert content of the template by matching expected template
+class DynamodbClient(Boto3Client):
+    """Implement DynamoDB Boto3 client."""
+
+    def __init__(self):
+        super().__init__("dynamodb")
+
+    @AWSExceptionHandler.handle_client_exception
+    def get_item(self, table_name, key_name):
+        """Return item from a table."""
+        return self._client.get_item(TableName=table_name, ConsistentRead=True, Key={"Id": key_name})

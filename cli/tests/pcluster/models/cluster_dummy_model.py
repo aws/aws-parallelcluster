@@ -10,7 +10,8 @@
 # limitations under the License.
 from typing import List
 
-from pcluster.models.cluster import (
+from pcluster.models.cluster_config import (
+    ClusterBucket,
     Dcv,
     HeadNode,
     HeadNodeNetworking,
@@ -21,13 +22,18 @@ from pcluster.models.cluster import (
     SharedEbs,
     SharedEfs,
     SharedFsx,
+    SlurmClusterConfig,
+    SlurmComputeResource,
+    SlurmQueue,
+    SlurmScheduling,
     Ssh,
 )
-from pcluster.models.cluster_slurm import SlurmCluster, SlurmComputeResource, SlurmQueue, SlurmScheduling
 from pcluster.models.common import Resource
 
 
-class DummySlurmCluster(SlurmCluster):
+class DummySlurmCluster(SlurmClusterConfig):
+    """Generate dummy Slurm cluster config."""
+
     def __init__(self, scheduling: SlurmScheduling, **kwargs):
         super().__init__(scheduling, **kwargs)
 
@@ -40,16 +46,13 @@ class DummySlurmCluster(SlurmCluster):
         return "aws"
 
     @property
-    def artifacts_s3_root_directory(self):
-        return "dummy_root_dir"
-
-    @property
-    def remove_s3_bucket_on_deletion(self):
-        return True
-
-    @property
     def vpc_id(self):
         return "dummy_vpc_id"
+
+
+def dummy_bucket():
+    """Generate dummy cluster bucket."""
+    return ClusterBucket(name="dummy-bucket", artifact_directory="dummy_root_dir", remove_on_deletion=True)
 
 
 def dummy_head_node():

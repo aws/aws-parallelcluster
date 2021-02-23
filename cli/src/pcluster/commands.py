@@ -30,14 +30,16 @@ from botocore.exceptions import ClientError
 from tabulate import tabulate
 
 import pcluster.utils as utils
+from api.pcluster_api import ClusterInfo, PclusterApi
+from common.utils import load_yaml_dict
 from pcluster.cli_commands.compute_fleet_status_manager import ComputeFleetStatusManager
-from pcluster.config.hit_converter import HitConverter
 from pcluster.config.pcluster_config import PclusterConfig
 from pcluster.constants import PCLUSTER_NAME_MAX_LENGTH, PCLUSTER_NAME_REGEX, PCLUSTER_STACK_PREFIX
 
 LOGGER = logging.getLogger(__name__)
 
 
+# TODO moved
 def _setup_bucket_with_resources(pcluster_config, storage_data, stack_name, tags):
     """
     Create pcluster bucket if needed and upload cluster specific resources.
@@ -57,7 +59,7 @@ def _setup_bucket_with_resources(pcluster_config, storage_data, stack_name, tags
         s3_bucket_name = utils.generate_random_name_with_prefix("parallelcluster")
         LOGGER.debug("Creating S3 bucket for cluster resources, named %s", s3_bucket_name)
         try:
-            utils.create_s3_bucket(s3_bucket_name, pcluster_config.region)
+            utils.create_s3_bucket(s3_bucket_name)
         except Exception:
             LOGGER.error("Unable to create S3 bucket %s.", s3_bucket_name)
             raise
@@ -78,6 +80,7 @@ def _setup_bucket_with_resources(pcluster_config, storage_data, stack_name, tags
     return s3_bucket_name, artifact_directory, remove_bucket_on_deletion
 
 
+# TODO moved
 def _upload_cluster_artifacts(
     s3_bucket_name, artifact_directory, pcluster_config, storage_data, tags, remove_bucket_on_deletion
 ):
@@ -106,6 +109,7 @@ def _upload_cluster_artifacts(
         raise
 
 
+# TODO to be deleted
 def upload_hit_resources(bucket_name, artifact_directory, pcluster_config, json_params, tags=None):
     if tags is None:
         tags = []
@@ -178,13 +182,6 @@ def version():
     return utils.get_installed_version()
 
 
-def _check_for_updates(pcluster_config):
-    """Check for updates."""
-    update_check = pcluster_config.get_section("global").get_param_value("update_check")
-    if update_check:
-        utils.check_if_latest_version()
-
-
 def _validate_cluster_name(cluster_name):
     if not re.match(PCLUSTER_NAME_REGEX % (PCLUSTER_NAME_MAX_LENGTH - 1), cluster_name):
         LOGGER.error(
@@ -196,96 +193,88 @@ def _validate_cluster_name(cluster_name):
         sys.exit(1)
 
 
-def create(args):  # noqa: C901 FIXME!!!
-    LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
-    LOGGER.debug("Building cluster config based on args %s", str(args))
+def _parse_config_file(config_file, fail_on_config_file_absence=True):
+    """
+    Parse the config file and initialize config_file and config_parser attributes.
 
-    _validate_cluster_name(args.cluster_name)
+    :param config_file: The config file to parse
+    :param fail_on_config_file_absence: set to true to raise SystemExit if config file doesn't exist
+    """
+    if config_file:
+        default_config = False
+    elif "AWS_PCLUSTER_CONFIG_FILE" in os.environ:
+        config_file = os.environ["AWS_PCLUSTER_CONFIG_FILE"]
+        default_config = False
+    else:
+        config_file = utils.default_config_file_path()
+        default_config = True
 
-    # Build the config based on args
-    pcluster_config = PclusterConfig(
-        config_file=args.config_file, cluster_label=args.cluster_template, fail_on_file_absence=True
-    )
-    pcluster_config.validate()
-
-    # Automatic SIT -> HIT conversion, if needed
-    HitConverter(pcluster_config).convert()
-
-    # get CFN parameters, template url and tags from config
-    storage_data = pcluster_config.to_storage()
-    cfn_params = storage_data.cfn_params
-
-    _check_for_updates(pcluster_config)
-
-    bucket_name = None
-    artifact_directory = None
-    cleanup_bucket = False
+    if not os.path.isfile(config_file):
+        if fail_on_config_file_absence:
+            error_message = "Configuration file {0} not found.".format(config_file)
+            if default_config:
+                error_message += (
+                    "\nYou can execute the 'pcluster configure' command "
+                    "or see https://docs.aws.amazon.com/parallelcluster/latest/ug/configuration.html"
+                )
+            utils.error(error_message)
+        else:
+            LOGGER.debug("Specified configuration file %s doesn't exist.", config_file)
+    else:
+        LOGGER.debug("Parsing configuration file %s", config_file)
     try:
-        cfn_client = boto3.client("cloudformation")
-        stack_name = utils.get_stack_name(args.cluster_name)
-
-        # merge tags from configuration, command-line and internal ones
-        tags = _evaluate_tags(pcluster_config, preferred_tags=args.tags)
-
-        bucket_name, artifact_directory, cleanup_bucket = _setup_bucket_with_resources(
-            pcluster_config, storage_data, stack_name, tags
+        return load_yaml_dict(file_path=config_file)
+    except Exception as e:
+        utils.error(
+            "Error parsing configuration file {0}.\nDouble check it's a valid Yaml file. "
+            "Error: {1}".format(config_file, str(e))
         )
-        cfn_params["ResourcesS3Bucket"] = bucket_name
-        cfn_params["ArtifactS3RootDirectory"] = artifact_directory
-        cfn_params["RemoveBucketOnDeletion"] = str(cleanup_bucket)
 
-        LOGGER.info("Creating stack named: %s", stack_name)
 
-        # determine the CloudFormation Template URL to use
-        template_url = evaluate_pcluster_template_url(pcluster_config, preferred_template_url=args.template_url)
+def create(args):
+    """Create cluster."""
+    LOGGER.info("Beginning cluster creation for cluster: %s", args.cluster_name)
+    LOGGER.debug("CLI args: %s", str(args))
 
-        # append extra parameters from command-line
-        if args.extra_parameters:
-            LOGGER.debug("Adding extra parameters to the CFN parameters")
-            cfn_params.update(dict(args.extra_parameters))
+    if not args.disable_update_check:
+        utils.check_if_latest_version()
 
-        # prepare input parameters for stack creation and create the stack
-        LOGGER.debug(cfn_params)
-        params = [{"ParameterKey": key, "ParameterValue": value} for key, value in cfn_params.items()]
-        stack = cfn_client.create_stack(
-            StackName=stack_name,
-            TemplateURL=template_url,
-            Parameters=params,
-            Capabilities=["CAPABILITY_IAM"],
-            DisableRollback=args.norollback,
-            Tags=tags,
-        )
-        LOGGER.debug("StackId: %s", stack.get("StackId"))
+    cluster_config = _parse_config_file(config_file=args.config_file)
+    result = PclusterApi().create_cluster(
+        cluster_config=cluster_config,
+        cluster_name=args.cluster_name,
+        region=utils.get_region(),
+        disable_rollback=args.norollback,
+    )
+    if isinstance(result, ClusterInfo):
+        print(f"Cluster creation started successfully. {result}")
 
         if not args.nowait:
-            verified = utils.verify_stack_creation(stack_name, cfn_client)
+            verified = utils.verify_stack_creation(result.stack_name)
             LOGGER.info("")
-            result_stack = utils.get_stack(stack_name, cfn_client)
-            _print_stack_outputs(result_stack)
+
+            result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+            if isinstance(result, ClusterInfo):
+                # result_stack = utils.get_stack(stack_name, cfn_client)
+                _print_stack_outputs(result.stack_outputs)
+            else:
+                utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
             if not verified:
                 sys.exit(1)
         else:
-            stack_status = utils.get_stack(stack_name, cfn_client).get("StackStatus")
-            LOGGER.info("Status: %s", stack_status)
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
-        sys.exit(1)
-    except KeyboardInterrupt:
-        LOGGER.info("\nExiting...")
-        if not utils.stack_exists(stack_name):
-            # Cleanup S3 artifacts if stack is not created yet
-            utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
-        sys.exit(0)
-    except KeyError as e:
-        LOGGER.critical("ERROR: KeyError - reason:\n%s", e)
-        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
-        sys.exit(1)
-    except Exception as e:
-        LOGGER.critical(e)
-        utils.cleanup_s3_resources(bucket_name, artifact_directory, cleanup_bucket)
-        sys.exit(1)
+            result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+            if isinstance(result, ClusterInfo):
+                LOGGER.info("Status: %s", result.stack_status)
+            else:
+                utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
+
+    else:
+        message = "Cluster creation failed. {0}.".format(result.message if result.message else "")
+        if result.validation_failures:
+            message += "\nValidation failures:\n"
+            message += "\n".join([f"{result.level.name}: {result.message}" for result in result.validation_failures])
+
+        utils.error(message)
 
 
 def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None):
@@ -303,45 +292,19 @@ def evaluate_pcluster_template_url(pcluster_config, preferred_template_url=None)
     return preferred_template_url or configured_template_url or _get_default_template_url(pcluster_config.region)
 
 
-def _evaluate_tags(pcluster_config, preferred_tags=None):
-    """
-    Merge given tags to the ones defined in the configuration file and convert them into the Key/Value format.
-
-    :param pcluster_config: PclusterConfig, it can contain tags
-    :param preferred_tags: tags that must take the precedence before the configured ones
-    :return: a merge of the tags + version tag
-    """
-    tags = {}
-
-    configured_tags = pcluster_config.get_section("cluster").get_param_value("tags")
-    if configured_tags:
-        tags.update(configured_tags)
-
-    if preferred_tags:
-        # add tags from command line parameter, by overriding configured ones
-        tags.update(preferred_tags)
-
-    # add pcluster version
-    tags["Version"] = utils.get_installed_version()
-
-    # convert to CFN tags
-    return [{"Key": tag, "Value": tags[tag]} for tag in tags]
-
-
-def _print_compute_fleet_status(cluster_name, stack):
-    outputs = stack.get("Outputs", [])
-    if utils.get_stack_output_value(outputs, "IsHITCluster") == "true":
+def _print_compute_fleet_status(cluster_name, stack_outputs):
+    if utils.get_stack_output_value(stack_outputs, "IsHITCluster") == "true":
         status_manager = ComputeFleetStatusManager(cluster_name)
         compute_fleet_status = status_manager.get_status()
         if compute_fleet_status:
             LOGGER.info("ComputeFleetStatus: %s", compute_fleet_status)
 
 
-def _print_stack_outputs(stack):
+def _print_stack_outputs(stack_outputs):
     """
     Print a limited set of the CloudFormation Stack outputs.
 
-    :param stack: the stack dictionary
+    :param stack_outputs: the stack outputs dictionary
     """
     whitelisted_outputs = [
         "ClusterUser",
@@ -352,24 +315,14 @@ def _print_stack_outputs(stack):
         "BatchJobDefinitionArn",
         "BatchJobDefinitionMnpArn",
         "BatchUserRole",
+        "GangliaPrivateURL",
+        "GangliaPublicURL",
     ]
-    if _is_ganglia_enabled(stack.get("Parameters")):
-        whitelisted_outputs.extend(["GangliaPrivateURL", "GangliaPublicURL"])
 
-    for output in stack.get("Outputs", []):
+    for output in stack_outputs:
         output_key = output.get("OutputKey")
         if output_key in whitelisted_outputs:
             LOGGER.info("%s: %s", output_key, output.get("OutputValue"))
-
-
-def _is_ganglia_enabled(parameters):
-    is_ganglia_enabled = False
-    try:
-        cfn_extra_json = utils.get_cfn_param(parameters, "ExtraJson")
-        is_ganglia_enabled = json.loads(cfn_extra_json).get("cfncluster").get("ganglia_enabled") == "yes"
-    except Exception:
-        pass
-    return is_ganglia_enabled
 
 
 def _get_pcluster_version_from_stack(stack):
@@ -528,59 +481,57 @@ def ssh(args, extra_args):  # noqa: C901 FIXME!!!
 
 
 def status(args):  # noqa: C901 FIXME!!!
-    stack_name = utils.get_stack_name(args.cluster_name)
-
-    # Parse configuration file to read the AWS section
-    PclusterConfig.init_aws(config_file=args.config_file)
-
-    cfn = boto3.client("cloudformation")
     try:
-        stack = utils.get_stack(stack_name, cfn)
-        sys.stdout.write("\rStatus: %s" % stack.get("StackStatus"))
-        sys.stdout.flush()
-        if not args.nowait:
-            while stack.get("StackStatus") not in [
-                "CREATE_COMPLETE",
-                "UPDATE_COMPLETE",
-                "UPDATE_ROLLBACK_COMPLETE",
-                "ROLLBACK_COMPLETE",
-                "CREATE_FAILED",
-                "DELETE_FAILED",
-            ]:
-                time.sleep(5)
-                stack = utils.get_stack(stack_name, cfn)
-                events = utils.get_stack_events(stack_name)[0]
-                resource_status = (
-                    "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
-                ).ljust(80)
-                sys.stdout.write("\r%s" % resource_status)
+        result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+        if isinstance(result, ClusterInfo):
+            # print(f"{result}")
+            sys.stdout.write("\rStatus: %s" % result.stack_status)
+            sys.stdout.flush()
+            if not args.nowait:
+                while result.stack_status not in [
+                    "CREATE_COMPLETE",
+                    "UPDATE_COMPLETE",
+                    "UPDATE_ROLLBACK_COMPLETE",
+                    "ROLLBACK_COMPLETE",
+                    "CREATE_FAILED",
+                    "DELETE_FAILED",
+                ]:
+                    time.sleep(5)
+                    result = PclusterApi().describe_cluster(cluster_name=args.cluster_name, region=utils.get_region())
+
+                    # stack = utils.get_stack(stack_name, cfn)
+                    events = utils.get_stack_events(result.stack_name)[0]
+                    resource_status = (
+                        "Status: %s - %s" % (events.get("LogicalResourceId"), events.get("ResourceStatus"))
+                    ).ljust(80)
+                    sys.stdout.write("\r%s" % resource_status)
+                    sys.stdout.flush()
+                sys.stdout.write("\rStatus: %s\n" % result.stack_status)
                 sys.stdout.flush()
-            sys.stdout.write("\rStatus: %s\n" % stack.get("StackStatus"))
-            sys.stdout.flush()
-            if stack.get("StackStatus") in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
-                state = _poll_head_node_state(stack_name)
-                if state == "running":
-                    _print_stack_outputs(stack)
-                _print_compute_fleet_status(args.cluster_name, stack)
-            elif stack.get("StackStatus") in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
-                events = utils.get_stack_events(stack_name)
-                for event in events:
-                    if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:
-                        LOGGER.info(
-                            "%s %s %s %s %s",
-                            event.get("Timestamp"),
-                            event.get("ResourceStatus"),
-                            event.get("ResourceType"),
-                            event.get("LogicalResourceId"),
-                            event.get("ResourceStatusReason"),
-                        )
+                if result.stack_status in ["CREATE_COMPLETE", "UPDATE_COMPLETE", "UPDATE_ROLLBACK_COMPLETE"]:
+                    state = _poll_head_node_state(result.stack_name)
+                    if state == "running":
+                        _print_stack_outputs(result.stack_outputs)
+                    _print_compute_fleet_status(args.cluster_name, result.stack_outputs)
+                elif result.stack_status in ["ROLLBACK_COMPLETE", "CREATE_FAILED", "DELETE_FAILED"]:
+                    events = utils.get_stack_events(result.stack_name)
+                    for event in events:
+                        if event.get("ResourceStatus") in ["CREATE_FAILED", "DELETE_FAILED", "UPDATE_FAILED"]:
+                            LOGGER.info(
+                                "%s %s %s %s %s",
+                                event.get("Timestamp"),
+                                event.get("ResourceStatus"),
+                                event.get("ResourceType"),
+                                event.get("LogicalResourceId"),
+                                event.get("ResourceStatusReason"),
+                            )
+            else:
+                sys.stdout.write("\n")
+                sys.stdout.flush()
+
         else:
-            sys.stdout.write("\n")
-            sys.stdout.flush()
-    except ClientError as e:
-        LOGGER.critical(e.response.get("Error").get("Message"))
-        sys.stdout.flush()
-        sys.exit(1)
+            utils.error(f"Unable to retrieve the status of the cluster.\n{result.message}")
+
     except KeyboardInterrupt:
         LOGGER.info("\nExiting...")
         sys.exit(0)

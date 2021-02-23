@@ -20,10 +20,14 @@ import re
 from marshmallow import ValidationError, fields, post_load, pre_dump, validate, validates, validates_schema
 
 from pcluster.constants import FSX_HDD_THROUGHPUT, FSX_SSD_THROUGHPUT
-from pcluster.models.cluster import (
+from pcluster.models.cluster_config import (
     AdditionalIamPolicy,
     AdditionalPackages,
-    BaseCluster,
+    AwsbatchClusterConfig,
+    AwsbatchComputeResource,
+    AwsbatchQueue,
+    AwsbatchScheduling,
+    BaseClusterConfig,
     CloudWatchDashboards,
     CloudWatchLogs,
     ClusterDevSettings,
@@ -31,6 +35,7 @@ from pcluster.models.cluster import (
     CustomAction,
     Dashboards,
     Dcv,
+    Dns,
     Ebs,
     Efa,
     EphemeralVolume,
@@ -50,17 +55,13 @@ from pcluster.models.cluster import (
     SharedEbs,
     SharedEfs,
     SharedFsx,
-    Ssh,
-    Storage,
-)
-from pcluster.models.cluster_awsbatch import AwsbatchCluster, AwsbatchComputeResource, AwsbatchQueue, AwsbatchScheduling
-from pcluster.models.cluster_slurm import (
-    Dns,
-    SlurmCluster,
+    SlurmClusterConfig,
     SlurmComputeResource,
     SlurmQueue,
     SlurmScheduling,
     SlurmSettings,
+    Ssh,
+    Storage,
 )
 from pcluster.schemas.common_schema import BaseDevSettingsSchema, BaseSchema, TagSchema, get_field_validator
 from pcluster.validators.cluster_validators import FSX_MESSAGES
@@ -744,11 +745,11 @@ class ClusterSchema(BaseSchema):
         """Generate cluster according to the scheduler. Save original configuration."""
         scheduler = data.get("scheduling").scheduler
         if scheduler == "slurm":
-            cluster = SlurmCluster(**data)
+            cluster = SlurmClusterConfig(**data)
         elif scheduler == "awsbatch":
-            cluster = AwsbatchCluster(**data)
+            cluster = AwsbatchClusterConfig(**data)
         else:  # scheduler == "custom":
-            cluster = BaseCluster(**data)  # FIXME Must be ByosCluster
+            cluster = BaseClusterConfig(**data)  # FIXME Must be ByosCluster
 
         cluster.source_config = original_data
         return cluster

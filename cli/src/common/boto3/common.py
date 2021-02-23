@@ -20,7 +20,7 @@ class AWSClientError(Exception):
     """Error during execution of some AWS calls."""
 
     def __init__(self, function_name: str, message: str):
-        message = f"ERROR during execution of {function_name}. {message}"
+        message = f"Error during execution of {function_name}. {message}"
         super().__init__(message)
 
 
@@ -29,21 +29,21 @@ class AWSExceptionHandler:
 
     @staticmethod
     def handle_client_exception(func):
-        """Handle ClientError and BotoCoreError, can be used as a decorator."""
+        """Handle Boto3 errors, can be used as a decorator."""
 
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except BotoCoreError as e:
-                raise AWSClientError(func.__name__, e)
-            except ClientError as e:
-                raise AWSClientError(func.__name__, e.response["Error"]["Message"])
             except ParamValidationError as validation_error:
                 raise AWSClientError(
                     func.__name__,
                     "Error validating parameter. Failed with exception: {0}".format(str(validation_error)),
                 )
+            except BotoCoreError as e:
+                raise AWSClientError(func.__name__, str(e))
+            except ClientError as e:
+                raise AWSClientError(func.__name__, e.response["Error"]["Message"])
 
         return wrapper
 
@@ -51,7 +51,7 @@ class AWSExceptionHandler:
 class Boto3Client(ABC):
     """Abstract Boto3 client."""
 
-    def __init__(self, client_name):
+    def __init__(self, client_name: str):
         self._client = boto3.client(client_name)
 
     def _paginate_results(self, method, **kwargs):

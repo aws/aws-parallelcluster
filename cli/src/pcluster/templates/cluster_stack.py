@@ -43,17 +43,31 @@ from aws_cdk.core import CfnCustomResource, CfnOutput, CfnStack, CfnTag, Fn
 
 from common.aws.aws_api import AWSApi
 from pcluster import utils
-from pcluster.models.cluster import SharedEbs, SharedEfs, SharedFsx, SharedStorageType
-from pcluster.models.cluster_slurm import SlurmCluster
+from pcluster.models.cluster_config import (
+    ClusterBucket,
+    SharedEbs,
+    SharedEfs,
+    SharedFsx,
+    SharedStorageType,
+    SlurmClusterConfig,
+)
 
 
 # pylint: disable=too-many-lines
-class ClusterStack(core.Stack):
+class ClusterCdkStack(core.Stack):
     """Create the CloudFormation stack template for the Cluster."""
 
-    def __init__(self, scope: core.Construct, construct_id: str, cluster: SlurmCluster, **kwargs) -> None:
+    def __init__(
+        self,
+        scope: core.Construct,
+        construct_id: str,
+        cluster_config: SlurmClusterConfig,
+        bucket: ClusterBucket,
+        **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self._cluster = cluster
+        self._cluster_config = cluster_config
+        self._bucket = bucket
 
         self._init_mappings()
         self._add_resources()
@@ -76,13 +90,14 @@ class ClusterStack(core.Stack):
 
     # -- Utility methods --------------------------------------------------------------------------------------------- #
     def _raids_count(self):
-        return len(
-            [
+        raid_volumes = []
+        if self._cluster_config.shared_storage:
+            raid_volumes = [
                 storage
-                for storage in self._cluster.shared_storage
+                for storage in self._cluster_config.shared_storage
                 if storage.shared_storage_type == SharedStorageType.EBS and storage.raid
             ]
-        )
+        return len(raid_volumes)
 
     def _short_stack_name(self):
         return Fn.select(1, Fn.split("parallelcluster-", self.stack_name))
@@ -112,7 +127,7 @@ class ClusterStack(core.Stack):
             self._add_s3_access_policies()
 
         # MasterEIP
-        if self._cluster.head_node.networking.assign_public_ip:
+        if self._cluster_config.head_node.networking.assign_public_ip:
             self._head_eip = CfnEIP(scope=self, id="MasterEIP", domain="vpc")
 
         # ParallelCluster managed security groups
@@ -122,8 +137,8 @@ class ClusterStack(core.Stack):
         self.head_eni = self._add_head_eni()
 
         # AdditionalCfnStack
-        if self._cluster.additional_resources:
-            CfnStack(scope=self, id="AdditionalCfnStack", template_url=self._cluster.additional_resources)
+        if self._cluster_config.additional_resources:
+            CfnStack(scope=self, id="AdditionalCfnStack", template_url=self._cluster_config.additional_resources)
 
         # AWSBatchStack
         # TODO: inline resources
@@ -154,8 +169,8 @@ class ClusterStack(core.Stack):
         # CloudWatchDashboardSubstack
         # TODO: inline resources
 
-        if self._cluster.shared_storage:
-            for storage in self._cluster.shared_storage:
+        if self._cluster_config.shared_storage:
+            for storage in self._cluster_config.shared_storage:
                 self._add_shared_storage(storage)
 
     def _add_terminate_compute_fleet_custom_resource(self):
@@ -179,15 +194,17 @@ class ClusterStack(core.Stack):
                 "pcluster-CleanupResources-${StackId}", {"StackId": Fn.select(2, Fn.split("/", self.stack_id))}
             ),
             code=CfnFunction.CodeProperty(
-                s3_bucket=self._cluster.cluster_s3_bucket,
-                s3_key="{0}/custom_resources_code/artifacts.zip".format(self._cluster.artifacts_s3_root_directory),
+                s3_bucket=self._bucket.name,
+                s3_key="{0}/custom_resources_code/artifacts.zip".format(self._bucket.artifact_directory),
             ),
             handler="cleanup_resources.handler",
             memory_size=128,
             role=self.cleanup_resources_function_execution_role.attr_arn
             if self._condition_create_lambda_iam_role()
             else self.format_arn(
-                service="iam", region="", resource="role/{0}".format(self._cluster.iam.roles.custom_lambda_resources)
+                service="iam",
+                region="",
+                resource="role/{0}".format(self._cluster_config.iam.roles.custom_lambda_resources),
             ),
             runtime="python3.8",
             timeout=900,
@@ -195,22 +212,22 @@ class ClusterStack(core.Stack):
 
     def _add_head_eni(self):
         head_eni_groupset = []
-        if self._cluster.head_node.networking.additional_security_groups:
-            head_eni_groupset.extend(self._cluster.head_node.networking.additional_security_groups)
+        if self._cluster_config.head_node.networking.additional_security_groups:
+            head_eni_groupset.extend(self._cluster_config.head_node.networking.additional_security_groups)
         if self._condition_create_head_security_group():
             head_eni_groupset.append(self._head_security_group.ref)
-        elif self._cluster.head_node.networking.security_groups:
-            head_eni_groupset.extend(self._cluster.head_node.networking.security_groups)
+        elif self._cluster_config.head_node.networking.security_groups:
+            head_eni_groupset.extend(self._cluster_config.head_node.networking.security_groups)
         head_eni = CfnNetworkInterface(
             scope=self,
             id="MasterENI",
             description="AWS ParallelCluster head node interface",
-            subnet_id=self._cluster.head_node.networking.subnet_id,
+            subnet_id=self._cluster_config.head_node.networking.subnet_id,
             source_dest_check=False,
             group_set=head_eni_groupset,
         )
         # AssociateEIP
-        if self._cluster.head_node.networking.assign_public_ip:
+        if self._cluster_config.head_node.networking.assign_public_ip:
             CfnEIPAssociation(
                 scope=self,
                 id="AssociateEIP",
@@ -280,7 +297,7 @@ class ClusterStack(core.Stack):
             scope=self,
             id="ComputeSecurityGroup",
             group_description="Allow access to resources in subnets behind front",
-            vpc_id=self._cluster.vpc_id,
+            vpc_id=self._cluster_config.vpc_id,
             security_group_ingress=[
                 # Access from master security group
                 CfnSecurityGroup.IngressProperty(
@@ -294,10 +311,10 @@ class ClusterStack(core.Stack):
 
     def _add_s3_access_policies(self):
         read_only_s3_resources = [
-            s3_access.bucket_name for s3_access in self._cluster.iam.s3_access if s3_access.type == "READ_ONLY"
+            s3_access.bucket_name for s3_access in self._cluster_config.iam.s3_access if s3_access.type == "READ_ONLY"
         ]
         read_write_s3_resources = [
-            s3_access.bucket_name for s3_access in self._cluster.iam.s3_access if s3_access.type != "READ_ONLY"
+            s3_access.bucket_name for s3_access in self._cluster_config.iam.s3_access if s3_access.type != "READ_ONLY"
         ]
         s3_access_policy = CfnPolicy(
             scope=self,
@@ -325,8 +342,8 @@ class ClusterStack(core.Stack):
     def _add_root_instance_profile(self):
         root_instance_profile_roles = [
             self.root_iam_role.ref if hasattr(self, "root_iam_role") else None,
-            self._cluster.head_iam_role,
-            self._cluster.compute_iam_role,
+            self._cluster_config.head_iam_role,
+            self._cluster_config.compute_iam_role,
         ]
         return CfnInstanceProfile(
             scope=self,
@@ -339,7 +356,7 @@ class ClusterStack(core.Stack):
         return CfnRole(
             scope=self,
             id="RootRole",
-            managed_policy_arns=self._cluster.iam.additional_iam_policies if self._cluster.iam else None,
+            managed_policy_arns=self._cluster_config.iam.additional_iam_policies if self._cluster_config.iam else None,
             assume_role_policy_document=PolicyDocument(
                 statements=[
                     PolicyStatement(
@@ -358,7 +375,7 @@ class ClusterStack(core.Stack):
 
     def _add_iam_lambda_role(self):
         s3_policy_actions = ["s3:DeleteObject", "s3:DeleteObjectVersion", "s3:ListBucket", "s3:ListBucketVersions"]
-        if self._cluster.remove_s3_bucket_on_deletion:
+        if self._bucket.remove_on_deletion:
             s3_policy_actions.append("s3:DeleteBucket")
         self.cleanup_resources_function_execution_role = CfnRole(
             scope=self,
@@ -387,16 +404,12 @@ class ClusterStack(core.Stack):
                                 actions=s3_policy_actions,
                                 effect=Effect.ALLOW,
                                 resources=[
-                                    self.format_arn(
-                                        service="s3", account="", region="", resource=self._cluster.cluster_s3_bucket
-                                    ),
+                                    self.format_arn(service="s3", account="", region="", resource=self._bucket.name),
                                     self.format_arn(
                                         service="s3",
                                         account="",
                                         region="",
-                                        resource="{0}/{1}/*".format(
-                                            self._cluster.cluster_s3_bucket, self._cluster.artifacts_s3_root_directory
-                                        ),
+                                        resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
                                     ),
                                 ],
                                 sid="S3BucketPolicy",
@@ -500,9 +513,7 @@ class ClusterStack(core.Stack):
                                 service="s3",
                                 account=None,  # No account ID needed here
                                 region=None,  # No region needed here
-                                resource="{0}/{1}/batch/".format(
-                                    self._cluster.cluster_s3_bucket, self._cluster.artifacts_s3_root_directory
-                                ),
+                                resource="{0}/{1}/batch/".format(self._bucket.name, self._bucket.artifact_directory),
                             )
                         ],
                     ),
@@ -563,19 +574,15 @@ class ClusterStack(core.Stack):
                         sid="ResourcesS3Bucket",
                         effect=Effect.ALLOW,
                         actions=["s3:ListBucket", "s3:ListBucketVersions", "s3:GetObject*", "s3:PutObject*"]
-                        if self._cluster.remove_s3_bucket_on_deletion
+                        if self._bucket.remove_on_deletion
                         else ["s3:*"],
                         resources=[
-                            self.format_arn(
-                                service="s3", account="", region="", resource=self._cluster.cluster_s3_bucket
-                            ),
+                            self.format_arn(service="s3", account="", region="", resource=self._bucket.name),
                             self.format_arn(
                                 service="s3",
                                 account="",
                                 region="",
-                                resource="{0}/{1}/*".format(
-                                    self._cluster.cluster_s3_bucket, self._cluster.artifacts_s3_root_directory
-                                ),
+                                resource="{0}/{1}/*".format(self._bucket.name, self._bucket.artifact_directory),
                             ),
                         ],
                     ),
@@ -600,24 +607,24 @@ class ClusterStack(core.Stack):
                 ip_protocol="tcp",
                 from_port=22,
                 to_port=22,
-                cidr_ip=self._cluster.head_node.ssh.allowed_ips,
+                cidr_ip=self._cluster_config.head_node.ssh.allowed_ips,
             ),
         ]
-        if self._cluster.head_node.dcv and self._cluster.head_node.dcv.enabled:
+        if self._cluster_config.head_node.dcv and self._cluster_config.head_node.dcv.enabled:
             head_security_group_ingress.append(
                 # DCV access
                 CfnSecurityGroup.IngressProperty(
                     ip_protocol="tcp",
-                    from_port=self._cluster.head_node.dcv.port,
-                    to_port=self._cluster.head_node.dcv.port,
-                    cidr_ip=self._cluster.head_node.dcv.allowed_ips,
+                    from_port=self._cluster_config.head_node.dcv.port,
+                    to_port=self._cluster_config.head_node.dcv.port,
+                    cidr_ip=self._cluster_config.head_node.dcv.allowed_ips,
                 )
             )
         return CfnSecurityGroup(
             scope=self,
             id="MasterSecurityGroup",
             group_description="Enable access to the head node",
-            vpc_id=self._cluster.vpc_id,
+            vpc_id=self._cluster_config.vpc_id,
             security_group_ingress=head_security_group_ingress,
         )
 
@@ -627,14 +634,12 @@ class ClusterStack(core.Stack):
             id="CleanupResourcesS3BucketCustomResource",
             service_token=self.cleanup_resources_function.attr_arn,
         )
+        cleanup_resources_bucket_custom_resource.add_property_override("ResourcesS3Bucket", self._bucket.name)
         cleanup_resources_bucket_custom_resource.add_property_override(
-            "ResourcesS3Bucket", self._cluster.cluster_s3_bucket
+            "ArtifactS3RootDirectory", self._bucket.artifact_directory
         )
         cleanup_resources_bucket_custom_resource.add_property_override(
-            "ArtifactS3RootDirectory", self._cluster.artifacts_s3_root_directory
-        )
-        cleanup_resources_bucket_custom_resource.add_property_override(
-            "RemoveBucketOnDeletion", self._cluster.remove_s3_bucket_on_deletion
+            "RemoveBucketOnDeletion", self._bucket.remove_on_deletion
         )
         cleanup_resources_bucket_custom_resource.add_property_override("Action", "DELETE_S3_ARTIFACTS")
         return cleanup_resources_bucket_custom_resource
@@ -685,8 +690,8 @@ class ClusterStack(core.Stack):
                 id=id,
                 file_system_type="LUSTRE",
                 storage_type=shared_fsx.drive_cache_type,
-                subnet_ids=self._cluster.compute_subnet_ids,
-                security_group_ids=self._cluster.compute_security_groups,
+                subnet_ids=self._cluster_config.compute_subnet_ids,
+                security_group_ids=self._cluster_config.compute_security_groups,
             )
             fsx_id = fsx_resource.ref
 
@@ -710,18 +715,18 @@ class ClusterStack(core.Stack):
 
         checked_availability_zones = []
         # Mount Targets for Compute Fleet
-        compute_subnet_ids = self._cluster.compute_subnet_ids
+        compute_subnet_ids = self._cluster_config.compute_subnet_ids
         for subnet_id in compute_subnet_ids:
             self._add_efs_mount_target(
-                id, efs_id, self._cluster.compute_security_groups, subnet_id, checked_availability_zones
+                id, efs_id, self._cluster_config.compute_security_groups, subnet_id, checked_availability_zones
             )
 
         # Mount Target for Head Node
         self._add_efs_mount_target(
             id,
             efs_id,
-            self._cluster.head_node.networking.security_groups,
-            self._cluster.head_node.networking.subnet_id,
+            self._cluster_config.head_node.networking.security_groups,
+            self._cluster_config.head_node.networking.subnet_id,
             checked_availability_zones,
         )
         return efs_id
@@ -756,7 +761,7 @@ class ClusterStack(core.Stack):
                     scope=self,
                     id=id,
                     availability_zone=AWSApi.instance().ec2.get_availability_zone_of_subnet(
-                        self._cluster.head_node.networking.subnet_id
+                        self._cluster_config.head_node.networking.subnet_id
                     ),
                     encrypted=shared_ebs.encrypted,
                     iops=shared_ebs.iops,
@@ -773,10 +778,10 @@ class ClusterStack(core.Stack):
     def _add_head_node(self):
         # LT security groups
         head_lt_security_groups = []
-        if self._cluster.head_node.networking.security_groups:
-            head_lt_security_groups.extend(self._cluster.head_node.networking.security_groups)
-        if self._cluster.head_node.networking.additional_security_groups:
-            head_lt_security_groups.extend(self._cluster.head_node.networking.additional_security_groups)
+        if self._cluster_config.head_node.networking.security_groups:
+            head_lt_security_groups.extend(self._cluster_config.head_node.networking.security_groups)
+        if self._cluster_config.head_node.networking.additional_security_groups:
+            head_lt_security_groups.extend(self._cluster_config.head_node.networking.additional_security_groups)
         if self._head_security_group:
             head_lt_security_groups.append(self._head_security_group.ref)
 
@@ -784,13 +789,13 @@ class ClusterStack(core.Stack):
         head_lt_nw_interfaces = [
             CfnLaunchTemplate.NetworkInterfaceProperty(device_index=0, network_interface_id=self.head_eni.ref)
         ]
-        for if_number in range(1, self._cluster.head_node.instance_type_info.max_network_interface_count() - 1):
+        for if_number in range(1, self._cluster_config.head_node.instance_type_info.max_network_interface_count() - 1):
             head_lt_nw_interfaces.append(
                 CfnLaunchTemplate.NetworkInterfaceProperty(
                     device_index=if_number,
                     network_card_index=if_number,
                     groups=head_lt_security_groups,
-                    subnet_id=self._cluster.head_node.networking.subnet_id,
+                    subnet_id=self._cluster_config.head_node.networking.subnet_id,
                 )
             )
 
@@ -803,14 +808,14 @@ class ClusterStack(core.Stack):
             scope=self,
             id="MasterServerLaunchTemplate",
             launch_template_data=CfnLaunchTemplate.LaunchTemplateDataProperty(
-                instance_type=self._cluster.head_node.instance_type,
+                instance_type=self._cluster_config.head_node.instance_type,
                 cpu_options=CfnLaunchTemplate.CpuOptionsProperty(
-                    core_count=self._cluster.head_node.vcpus, threads_per_core=1
+                    core_count=self._cluster_config.head_node.vcpus, threads_per_core=1
                 )
-                if self._cluster.head_node.pass_cpu_options_in_launch_template
+                if self._cluster_config.head_node.pass_cpu_options_in_launch_template
                 else None,
                 # block_device_mappings="",  # TODO: Implement this!
-                key_name=self._cluster.head_node.ssh.key_name,
+                key_name=self._cluster_config.head_node.ssh.key_name,
                 tag_specifications=[
                     CfnLaunchTemplate.TagSpecificationProperty(
                         resource_type="instance",
@@ -822,10 +827,10 @@ class ClusterStack(core.Stack):
                             CfnTag(
                                 key="aws-parallelcluster-attributes",
                                 value="{BaseOS}, {Scheduler}, {Version}, {Architecture}".format(
-                                    BaseOS=self._cluster.image.os,
-                                    Scheduler=self._cluster.scheduling.scheduler,
+                                    BaseOS=self._cluster_config.image.os,
+                                    Scheduler=self._cluster_config.scheduling.scheduler,
                                     Version=utils.get_installed_version(),
-                                    Architecture=self._cluster.head_node.architecture,
+                                    Architecture=self._cluster_config.head_node.architecture,
                                 ),
                             ),
                             CfnTag(key="aws-parallelcluster-networking", value=""),  # TODO: is this needed?
@@ -851,21 +856,21 @@ class ClusterStack(core.Stack):
                     ),
                 ],
                 network_interfaces=head_lt_nw_interfaces,
-                image_id=self._cluster.ami_id,
-                ebs_optimized=self._cluster.head_node.instance_type_info.is_ebs_optimized(),
+                image_id=self._cluster_config.ami_id,
+                ebs_optimized=self._cluster_config.head_node.instance_type_info.is_ebs_optimized(),
                 iam_instance_profile=CfnLaunchTemplate.IamInstanceProfileProperty(name=self.root_instance_profile.ref),
                 user_data=Fn.base64(
                     Fn.sub(
                         head_node_lt_user_data,
                         {
-                            "YumProxy": self._cluster.head_node.networking.proxy
-                            if self._cluster.head_node.networking.proxy
+                            "YumProxy": self._cluster_config.head_node.networking.proxy
+                            if self._cluster_config.head_node.networking.proxy
                             else "_none_",
-                            "DnfProxy": self._cluster.head_node.networking.proxy
-                            if self._cluster.head_node.networking.proxy
+                            "DnfProxy": self._cluster_config.head_node.networking.proxy
+                            if self._cluster_config.head_node.networking.proxy
                             else "",
-                            "AptProxy": self._cluster.head_node.networking.proxy
-                            if self._cluster.head_node.networking.proxy
+                            "AptProxy": self._cluster_config.head_node.networking.proxy
+                            if self._cluster_config.head_node.networking.proxy
                             else "false",
                         },
                     )
@@ -910,7 +915,7 @@ class ClusterStack(core.Stack):
     def _condition_create_ec2_iam_role(self):
         """Root role is created if head instance role or one of compute node instance roles is not specified."""
         # TODO: split root role in head and compute roles
-        head_node = self._cluster.head_node
+        head_node = self._cluster_config.head_node
         role_needed = (
             not head_node.iam
             or not head_node.iam.roles
@@ -919,7 +924,7 @@ class ClusterStack(core.Stack):
         )
 
         if not role_needed:
-            for queue in self._cluster.scheduling.queues:
+            for queue in self._cluster_config.scheduling.queues:
                 role_needed = (
                     not queue.head_node.iam
                     or not queue.iam.roles
@@ -932,31 +937,31 @@ class ClusterStack(core.Stack):
 
     def _condition_create_lambda_iam_role(self):
         return (
-            not self._cluster.iam
-            or not self._cluster.iam.roles
-            or not self._cluster.iam.roles.custom_lambda_resources
-            or self._cluster.iam.roles.get_param("custom_lambda_resources").implied
+            not self._cluster_config.iam
+            or not self._cluster_config.iam.roles
+            or not self._cluster_config.iam.roles.custom_lambda_resources
+            or self._cluster_config.iam.roles.get_param("custom_lambda_resources").implied
         )
 
     def _condition_create_s3_access_policies(self):
-        return self._cluster.iam and self._cluster.iam.s3_access
+        return self._cluster_config.iam and self._cluster_config.iam.s3_access
 
     def _condition_add_hit_iam_policies(self):
-        return self._condition_create_ec2_iam_role() and self._cluster.scheduling.scheduler == "slurm"
+        return self._condition_create_ec2_iam_role() and self._cluster_config.scheduling.scheduler == "slurm"
 
     def _condition_create_compute_security_group(self):
         # Compute security group must be created if at list one queue's networking does not specify security groups
         condition = False
-        for queue in self._cluster.scheduling.queues:
+        for queue in self._cluster_config.scheduling.queues:
             if not queue.networking.security_groups:
                 condition = True
         return condition
 
     def _condition_create_head_security_group(self):
-        return not self._cluster.head_node.networking.security_groups
+        return not self._cluster_config.head_node.networking.security_groups
 
     def _condition_create_hit_substack(self):
-        return self._cluster.scheduling.scheduler == "slurm"
+        return self._cluster_config.scheduling.scheduler == "slurm"
 
     # -- Outputs ----------------------------------------------------------------------------------------------------- #
 
@@ -969,7 +974,7 @@ class ClusterStack(core.Stack):
             scope=self,
             id="ClusterUser",
             description="Username to login to head node",
-            value=self.os_features[self._cluster.image.os]["User"],
+            value=self.os_features[self._cluster_config.image.os]["User"],
         )
 
         # MasterPrivateIP
@@ -1001,7 +1006,7 @@ class ClusterStack(core.Stack):
             scope=self,
             id="ResourcesS3Bucket",
             description="S3 user bucket where AWS ParallelCluster resources are stored",
-            value=self._cluster.cluster_s3_bucket,
+            value=self._bucket.name,
         )
 
         # ArtifactS3RootDirectory
@@ -1009,7 +1014,7 @@ class ClusterStack(core.Stack):
             scope=self,
             id="ArtifactS3RootDirectory",
             description="Root directory in S3 bucket where cluster artifacts are stored",
-            value=self._cluster.artifacts_s3_root_directory,
+            value=self._bucket.artifact_directory,
         )
 
         # BatchComputeEnvironmentArn
