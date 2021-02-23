@@ -12,9 +12,9 @@ import json
 
 import pytest
 from assertpy import assert_that
+from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 
 from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
-from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 
 
 @pytest.mark.parametrize(
@@ -36,6 +36,7 @@ from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
                     "nvidia": {"enabled": "true"},
                     "is_official_ami_build": "false",
                     "custom_node_package": "s3://test/aws-parallelcluster-node-3.0.tgz",
+                    "custom_awsbatchcli_package": "",
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "dcv": "false",
                 }
@@ -49,6 +50,7 @@ from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
                         "extra_chef_attributes": '{"nvidia": { "enabled" : "true" }, "dcv" :"false", '
                         '"cluster":{"cfn_slots":"cores"}}',
                     },
+                    "aws_batch_cli_package": "https://test/aws-parallelcluster-3.0.tgz",
                 },
             },
             {
@@ -57,6 +59,7 @@ from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
                     "nvidia": {"enabled": "true"},
                     "is_official_ami_build": "false",
                     "custom_node_package": "",
+                    "custom_awsbatchcli_package": "https://test/aws-parallelcluster-3.0.tgz",
                     "cfn_base_os": "{{ build.OperatingSystemName.outputs.stdout }}",
                     "dcv": "false",
                     "cluster": {"cfn_slots": "cores"},
