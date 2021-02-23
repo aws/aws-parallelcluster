@@ -12,9 +12,9 @@ import json
 
 import pytest
 from assertpy import assert_that
-from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 
 from pcluster.models.imagebuilder_extra_attributes import ChefAttributes
+from tests.pcluster.models.imagebuilder_dummy_model import imagebuilder_factory
 
 
 @pytest.mark.parametrize(
